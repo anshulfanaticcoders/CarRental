@@ -1,0 +1,187 @@
+<script setup>
+import InputError from '@/Components/InputError.vue';
+import InputLabel from '@/Components/InputLabel.vue';
+import PrimaryButton from '@/Components/PrimaryButton.vue';
+import TextArea from '@/Components/TextArea.vue';
+import TextInput from '@/Components/TextInput.vue';
+import { useForm, usePage } from '@inertiajs/vue3';
+import { ref, watch } from 'vue';
+
+defineProps({
+    mustVerifyEmail: {
+        type: Boolean,
+    },
+    status: {
+        type: String,
+    },
+});
+
+const user = usePage().props.auth.user; 
+const profile = usePage().props.auth.user.profile;
+
+const form = useForm({
+    first_name: user.first_name,
+    last_name: user.last_name,
+    email: user.email,
+    phone: user.phone,
+    date_of_birth: profile?.date_of_birth || '',
+    address_line1: profile?.address_line1 || '',
+    address_line2: profile?.address_line2 || '',
+    city: profile?.city || '',
+    state: profile?.state || '',
+    country: profile?.country || '',
+    postal_code: profile?.postal_code || '',
+    tax_identification: profile?.tax_identification || '',
+    about: profile?.about || '',
+    title: profile?.title || '',
+    gender: profile?.gender || '',
+    currency: profile?.currency || '',
+});
+
+
+// Gender Selection
+watch(() => form.title, (newTitle) => {
+    if (newTitle === 'Mr.') {
+        form.gender = 'Male';
+    } else if (newTitle === 'Miss') {
+        form.gender = 'Female';
+    } else {
+        form.gender = '';
+    }
+});
+
+
+
+</script>
+
+<template>
+    <header>
+        <h2 class="text-[1.75rem] font-medium text-gray-900">Personal Details</h2>
+    </header>
+    <section v-bind="$attrs">
+        <form @submit.prevent="form.patch(route('profile.update'))" class="mt-6 space-y-6">
+
+            <div class="grid grid-cols-2 gap-8">
+                <div class="col-span-2 w-[6rem]">
+                    <InputLabel for="title" value="Title" />
+                    <select id="title" class="mt-1 block w-full" v-model="form.title">
+                        <option value="">Select Title</option>
+                        <option value="Mr.">Mr.</option>
+                        <option value="Miss">Miss</option>
+                    </select>
+                    <InputError class="mt-2" :message="form.errors.title" />
+                </div>
+
+                <!-- First and Last Name -->
+
+                <div class="w-full">
+                    <InputLabel for="first_name" value="First Name (as on passport)" />
+                    <TextInput id="first_name" type="text" class="mt-1 block w-full" v-model="form.first_name"
+                        required />
+                    <InputError class="mt-2" :message="form.errors.first_name" />
+                </div>
+
+                <div class="w-full">
+                    <InputLabel for="last_name" value="Last Name (as on passport)" />
+                    <TextInput id="last_name" type="text" class="mt-1 block w-full" v-model="form.last_name" required />
+                    <InputError class="mt-2" :message="form.errors.last_name" />
+                </div>
+                <!-- First and Last Name// -->
+
+
+                <div>
+                    <InputLabel for="phone" value="Phone Number" />
+                    <TextInput id="phone" type="tel" class="mt-1 block w-full" v-model="form.phone" required />
+                    <InputError class="mt-2" :message="form.errors.phone" />
+                </div>
+
+
+                <div>
+                    <InputLabel for="email" value="Email" />
+                    <TextInput id="email" type="email" class="mt-1 block w-full bg-gray-200" v-model="form.email"
+                        required readonly />
+                    <InputError class="mt-2" :message="form.errors.email" />
+                </div>
+
+
+                <div>
+                    <InputLabel for="date_of_birth" value="Date of Birth" />
+                    <TextInput id="date_of_birth" type="date" class="mt-1 block w-full" v-model="form.date_of_birth" />
+                    <InputError class="mt-2" :message="form.errors.date_of_birth" />
+                </div>
+
+                <div>
+                    <InputLabel for="country" value="Country" />
+                    <TextInput id="country" type="text" class="mt-1 block w-full" v-model="form.country" />
+                    <InputError class="mt-2" :message="form.errors.country" />
+                </div>
+
+                <div class="">
+                    <InputLabel for="currency" value="Currency" />
+                    <select id="currency" class="mt-1 block w-full" v-model="form.currency">
+                        <option value="">Select Currency</option>
+                        <option value="USD">USD</option>
+                        <option value="EUR">EUR</option>
+                    </select>
+                    <InputError class="mt-2" :message="form.errors.currency" />
+                </div>
+
+                <div>
+                    <InputLabel for="city" value="City" />
+                    <TextInput id="city" type="text" class="mt-1 block w-full" v-model="form.city" />
+                    <InputError class="mt-2" :message="form.errors.city" />
+                </div>
+
+
+                <div>
+                    <InputLabel for="state" value="State" />
+                    <TextInput id="state" type="text" class="mt-1 block w-full" v-model="form.state" />
+                    <InputError class="mt-2" :message="form.errors.state" />
+                </div>
+
+                <div>
+                    <InputLabel for="postal_code" value="Postal Code" />
+                    <TextInput id="postal_code" type="text" class="mt-1 block w-full" v-model="form.postal_code" />
+                    <InputError class="mt-2" :message="form.errors.postal_code" />
+                </div>
+
+                <div class="col-span-2">
+                    <InputLabel for="address_line1" value="Address Line 1" />
+                    <TextInput id="address_line1" type="text" class="mt-1 block w-full" v-model="form.address_line1" />
+                    <InputError class="mt-2" :message="form.errors.address_line1" />
+                </div>
+
+
+                <h2 class="text-[1.5rem] font-medium text-gray-900">Profile</h2>
+
+                <div class="col-span-2">
+                    <p class="mb-[1rem] text-customLightGrayColor font-medium">Who am I? <i>(optional)</i></p>
+                    <InputLabel for="about" value="" />
+                    <TextArea id="about" class="mt-1 block w-full" v-model="form.about" />
+                    <InputError class="mt-2" :message="form.errors.about" />
+                </div>
+
+
+
+                <div class="col-span-2">
+                    <InputLabel for="address_line2" value="Address Line 2" />
+                    <TextInput id="address_line2" type="text" class="mt-1 block w-full" v-model="form.address_line2" />
+                    <InputError class="mt-2" :message="form.errors.address_line2" />
+                </div>
+
+                
+                <div class="">
+                    <h2 class="text-[1.5rem] font-medium text-gray-900">Tax Identification Number</h2>
+                    <InputLabel for="tax_identification" value="Tax Identification Number" />
+                    <TextInput id="tax_identification" type="text" class="mt-1 block w-full"
+                        v-model="form.tax_identification" />
+                    <InputError class="mt-2" :message="form.errors.tax_identification" />
+                </div>
+
+                <div class="flex items-end gap-4 row-span-3 col-span-2">
+                    <PrimaryButton :disabled="form.processing" class="w-[10rem]">Save</PrimaryButton>
+                </div>
+            </div>
+        </form>
+    </section>
+</template>
