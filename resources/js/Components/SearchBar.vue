@@ -1,4 +1,4 @@
-<script setup lang="ts">
+<script setup>
 import { Link } from "@inertiajs/vue3";
 import { ref } from "vue";
 const sameLocation = ref(true);
@@ -22,7 +22,7 @@ const sameLocation = ref(true);
                         <label for="" class="mb-4 inline-block"
                             >Pickup & Return Location</label
                         >
-                        <div class="flex">
+                        <div class="flex items-center">
                             <svg
                                 width="24"
                                 height="24"
@@ -44,7 +44,7 @@ const sameLocation = ref(true);
                                 class="pl-3 border-b border-customPrimaryColor mb-4 focus:outline-none w-[80%]"
                             />
                         </div>
-                        <div v-if="!sameLocation" class="flex">
+                        <div v-if="!sameLocation" class="flex items-center">
                             <svg
                                 width="24"
                                 height="24"
@@ -113,4 +113,9 @@ const sameLocation = ref(true);
     </div>
 </template>
 
-<style scoped></style>
+<style scoped>
+input{
+    margin-bottom: 0;
+    border: 0;
+}
+</style>

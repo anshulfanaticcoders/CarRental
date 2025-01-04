@@ -10,7 +10,7 @@ const showingNavigationDropdown = ref(false);
 </script>
 
 <template>
-    <div class="border-b-2 py-5">
+    <div class="py-5">
         <div class="container bg-gray-100">
             <nav class="bg-white border-b border-gray-100">
                 <!-- Primary Navigation Menu -->

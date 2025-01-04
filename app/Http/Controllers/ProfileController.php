@@ -29,6 +29,7 @@ class ProfileController extends Controller
             'status' => session('status'),
             'user' => $user,  
             'profile' => $profile,
+            'gender' => $profile->gender,
         ]);
     }
 
@@ -42,7 +43,7 @@ class ProfileController extends Controller
         // Update the user's basic information (User table)
         $user->fill($request->validated());
         if ($user->isDirty('email')) {
-            $user->email_verified_at = null; // Nullify email verification if email changes
+            $user->email_verified_at = null;
         }
         $user->save();
 

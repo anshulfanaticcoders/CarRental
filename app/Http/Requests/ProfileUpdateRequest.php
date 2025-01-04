@@ -33,7 +33,7 @@ class ProfileUpdateRequest extends FormRequest
         'tax_identification' => ['nullable', 'string', 'max:50'],
         'about' => ['nullable', 'string', 'max:1000'],
         'title' => ['nullable', 'string', 'in:Mr.,Miss'], 
-        'gender' => ['nullable', 'string', 'in:Male,Female'],
+        'gender' => ['nullable', 'string', 'in:Male,Female,Other'],
         'languages' => ['nullable', 'string'],
         'currency' => ['nullable', 'string'],
     ];
@@ -61,7 +61,7 @@ public function update(ProfileUpdateRequest $request): RedirectResponse
     $profile->fill($profileData);
     $profile->save();
 
-    return Redirect::route('profile.edit')->with('status', 'Profile updated successfully.');
+    return Redirect::route('profile.update')->with('status', 'Profile updated successfully.');
 }
 
 }

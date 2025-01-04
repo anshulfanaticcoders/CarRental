@@ -46,7 +46,7 @@ watch(() => form.title, (newTitle) => {
     } else if (newTitle === 'Miss') {
         form.gender = 'Female';
     } else {
-        form.gender = '';
+        form.gender = 'Other';
     }
 });
 
@@ -65,7 +65,7 @@ watch(() => form.title, (newTitle) => {
                 <div class="col-span-2 w-[6rem]">
                     <InputLabel for="title" value="Title" />
                     <select id="title" class="mt-1 block w-full" v-model="form.title">
-                        <option value="">Select Title</option>
+                        <option value="Other">Select Title</option>
                         <option value="Mr.">Mr.</option>
                         <option value="Miss">Miss</option>
                     </select>

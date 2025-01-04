@@ -1,12 +1,7 @@
-<script setup lang="ts">
-import gridLines from "../../assets/gridLines.png";
-import gridLinesForegroundImage from "../../assets/gridLineFoegroundimage.jpeg";
-import {
-    Accordion,
-    AccordionContent,
-    AccordionItem,
-    AccordionTrigger,
-} from "@/Components/ui/accordion";
+<script setup>
+import gridLines from "../../../assets/gridLines.png";
+import gridLinesForegroundImage from "../../../assets/gridLineFoegroundimage.jpeg";
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/Components/ui/accordion';
 
 const defaultValue = "item-1";
 
@@ -46,7 +41,7 @@ const accordionItems = [
             <div class="column flex flex-col gap-10">
                 <div class="col">
                     <span>-How it Works -</span>
-                    <h3>Treamlined processes fora hassle-free experience</h3>
+                    <h3>Treamlined processes for a hassle-free experience</h3>
                     <p>
                         Our streamlined process ensures a seamless car rental
                         experience from start to finish. With easy online
@@ -54,29 +49,20 @@ const accordionItems = [
                     </p>
                 </div>
                 <div class="col">
-                    <Accordion
-                        type="single"
-                        class="w-full"
-                        collapsible
-                        :default-value="defaultValue"
-                    >
-                        <AccordionItem
-                            v-for="item in accordionItems"
-                            :key="item.value"
-                            :value="item.value"
-                        >
-                            <AccordionTrigger class="text-[1.5rem] text-customPrimaryColor">{{
-                                item.title
-                            }}</AccordionTrigger>
-                            <AccordionContent class="text-[1.25rem] text-customMediumBlackColor">
-                                {{ item.content }}
-                            </AccordionContent>
-                        </AccordionItem>
-                    </Accordion>
+                    <Accordion type="single" class="w-full" collapsible :default-value="defaultValue">
+    <AccordionItem v-for="item in accordionItems" :key="item.value" :value="item.value">
+      <AccordionTrigger>{{ item.title }}</AccordionTrigger>
+      <AccordionContent>
+        {{ item.content }}
+      </AccordionContent>
+    </AccordionItem>
+  </Accordion>
                 </div>
             </div>
         </div>
     </section>
 </template>
 
-<style></style>
+<style>
+
+</style>
