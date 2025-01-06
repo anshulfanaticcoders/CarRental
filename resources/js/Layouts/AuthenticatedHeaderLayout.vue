@@ -39,6 +39,14 @@ const showingNavigationDropdown = ref(false);
                                     Create a Listing
                                 </Link>
                             </div>
+                            <div v-if="$page.props.auth.user.role === 'customer'">
+                                <Link
+                                    href="/vendor/register"
+                                    class="button-secondary inline-block"
+                                >
+                                    Register as Vendor
+                                </Link>
+                            </div>
                             <!-- Settings Dropdown -->
                             <div class="ms-3 relative">
                                 <Dropdown align="right" width="48">

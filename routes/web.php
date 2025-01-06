@@ -43,7 +43,18 @@ Route::middleware('auth')->group(function () {
 // -------------web routes for Vendor profile ----------------------
 Route::middleware(['auth'])->group(function () {
 
-    Route::get('/vendor/register', [VendorDocumentController::class, 'create'])->name('vendor.register');
+    // User Profile routes
+    Route::inertia('travel-documents', 'Profile/TravelDocuments');
+    Route::inertia('completed-bookings', 'Profile/CompletedBookings');
+    Route::inertia('confirmed-bookings', 'Profile/ConfirmedBookings');
+    Route::inertia('pending-bookings', 'Profile/PendingBookings');
+    Route::inertia('issued-payments', 'Profile/IssuedPayments');
+    Route::inertia('review', 'Profile/Review');
+    Route::inertia('favourites', 'Profile/Favourites');
+    Route::inertia('inbox', 'Profile/Inbox');
+
+    // Vendor Profile Web Routes
+    Route::get('/vendor/register', [VendorController::class, 'create'])->name('vendor.register');
     Route::post('/vendor/store', [VendorController::class, 'store'])->name('vendor.store');
     Route::get('/vehicle/{id}', [VehicleController::class, 'show']);
 });
@@ -54,17 +65,9 @@ Route::middleware(['auth'])->group(function () {
 Route::post('/documents/upload', [UserDocumentController::class, 'uploadDocuments'])->name('documents.upload');
 
 // Routing for Travel documents
-Route::inertia('travel-documents','Profile/TravelDocuments');
-Route::inertia('completed-bookings','Profile/CompletedBookings');
-Route::inertia('confirmed-bookings','Profile/ConfirmedBookings');
-Route::inertia('pending-bookings','Profile/PendingBookings');
-Route::inertia('issued-payments','Profile/IssuedPayments');
-Route::inertia('review','Profile/Review');
-Route::inertia('favourites','Profile/Favourites');
-Route::inertia('inbox','Profile/Inbox');
-Route::inertia('single-car','SingleCar');
+Route::inertia('single-car', 'SingleCar');
 
-Route::inertia('vehicle-listing','Auth/VehicleListing');
+Route::inertia('vehicle-listing', 'Auth/VehicleListing');
 
 // Route to display the form for creating a new vehicle
 Route::get('/vehicles/create', [VehicleController::class, 'create'])->name('vehicles.create');
@@ -75,4 +78,4 @@ Route::post('/vehicles', [VehicleController::class, 'store'])->name('vehicles.st
 // Route to display the list of vehicles
 Route::get('/vehicles', [VehicleController::class, 'index'])->name('vehicles.index');
 
-require __DIR__.'/auth.php';
+require __DIR__ . '/auth.php';

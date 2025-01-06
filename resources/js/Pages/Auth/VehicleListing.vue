@@ -78,7 +78,9 @@ const submit = () => {
             form.reset();
         },
         onError: (errors) => {
-            console.error(errors);
+            Object.keys(errors).forEach(field => {
+                form.errors[field] = errors[field];
+            });
         },
     });
 };
@@ -461,7 +463,7 @@ onMounted(() => {
                         >
                             Back
                         </button>
-                        <PrimaryButton class="w-[40%]" @click="nextStep"
+                        <PrimaryButton class="w-[40%]" :disabled="form.processing" @click="nextStep"
                             >Next</PrimaryButton
                         >
                     </div>

@@ -3,11 +3,24 @@ namespace App\Http\Controllers;
 
 use App\Models\VendorDocument;
 use App\Models\VendorProfile; // Assuming you have a VendorProfile model
+use App\Providers\RouteServiceProvider;
 use Illuminate\Http\Request;
 use App\Models\User;
 
 class VendorController extends Controller
 {
+
+    public function create()
+    {
+        $user = auth()->user();
+        $userProfile = $user->profile; // Assuming the user has a profile relationship
+
+        return inertia('Auth/VendorRegister', [
+            'user' => $user,
+            'userProfile' => $userProfile,
+        ]);
+    }
+
     public function store(Request $request)
     {
         // Validate the incoming request
@@ -28,18 +41,20 @@ class VendorController extends Controller
             'driving_license' => $request->hasFile('driving_license') ? $request->file('driving_license')->store('vendorDocuments', 'public') : null,
             'passport' => $request->hasFile('passport') ? $request->file('passport')->store('vendorDocuments', 'public') : null,
             'passport_photo' => $request->hasFile('passport_photo') ? $request->file('passport_photo')->store('vendorDocuments', 'public') : null,
+            'status' => 'pending',
         ]);
 
         // Create or update the vendor profile
         VendorProfile::updateOrCreate(
-            ['user_id' => $request->user()->id], 
-            $request->only(['company_name', 'company_phone_number', 'company_email', 'company_address', 'company_gst_number'])
+            ['user_id' => $request->user()->id],
+            $request->only(['company_name', 'company_phone_number', 'company_email', 'company_address', 'company_gst_number', 'status' => 'pending',])
         );
 
         $user = User::find($request->user()->id);
         $user->role = 'vendor';
         $user->save();
 
-        return response()->json(['success' => true, 'message' => 'Vendor documents and profile created successfully.']);
+        return redirect(RouteServiceProvider::HOMEPAGE);
     }
+
 }

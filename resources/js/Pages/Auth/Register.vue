@@ -64,7 +64,7 @@ const submit = () => {
 </script>
 
 <template>
-    <GuestHeader>
+    <GuestHeader/>
         <Head title="Register" />
          <div class="min-h-[80vh] flex justify-center items-center">
         <form @submit.prevent="currentStep === steps.length - 1 ? submit() : nextStep()" class="w-[40%]">
@@ -165,13 +165,12 @@ const submit = () => {
 
             <div class="flex items-center justify-between mt-[3rem]">
                 <button class="button-secondary w-[30%]" type="button" @click="prevStep" v-if="currentStep > 0">Back</button>
-                <PrimaryButton :disabled="!isStepValid()" class="w-[30%]">
+                <PrimaryButton  :disabled="form.processing" class="w-[30%]">
                     {{ currentStep === steps.length - 1 ? 'Register' : 'Continue' }}
                 </PrimaryButton>
             </div>
         </form>
     </div>
-    </GuestHeader>
 </template>
 
 <style>

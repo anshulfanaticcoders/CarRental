@@ -19,6 +19,7 @@ use Illuminate\Support\Facades\Schema;
             $table->string('company_email')->unique();
             $table->text('company_address');
             $table->string('company_gst_number')->unique();
+            $table->enum('status', ['pending', 'approved', 'rejected'])->default('pending');
             $table->timestamps();
         });
     }

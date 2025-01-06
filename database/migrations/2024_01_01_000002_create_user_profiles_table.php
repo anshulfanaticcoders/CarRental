@@ -19,7 +19,7 @@ class CreateUserProfilesTable extends Migration
             $table->string('country');
             $table->string('postal_code');
             $table->date('date_of_birth');
-            $table->enum('gender', ['male', 'female', 'other'])->nullable();
+            $table->enum('gender', ['male', 'female'])->nullable();
             $table->text('about')->nullable();
             $table->string('tax_identification')->nullable();
             $table->string('languages')->nullable();

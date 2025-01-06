@@ -16,10 +16,11 @@ class VendorProfile extends Model
         'company_email',
         'company_address',
         'company_gst_number',
+        'status',
     ];
 
     public function user()
     {
-        return $this->belongsTo(User::class);
+        return $this->belongsTo(User::class, 'user_id');
     }
 }

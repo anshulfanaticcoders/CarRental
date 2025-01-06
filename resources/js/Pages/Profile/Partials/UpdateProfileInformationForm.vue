@@ -7,15 +7,6 @@ import TextInput from '@/Components/TextInput.vue';
 import { useForm, usePage } from '@inertiajs/vue3';
 import { ref, watch } from 'vue';
 
-defineProps({
-    mustVerifyEmail: {
-        type: Boolean,
-    },
-    status: {
-        type: String,
-    },
-});
-
 const user = usePage().props.auth.user; 
 const profile = usePage().props.auth.user.profile;
 
@@ -34,7 +25,7 @@ const form = useForm({
     tax_identification: profile?.tax_identification || '',
     about: profile?.about || '',
     title: profile?.title || '',
-    gender: profile?.gender || '',
+    gender: profile?.gender || 'male',
     currency: profile?.currency || '',
 });
 
@@ -42,11 +33,11 @@ const form = useForm({
 // Gender Selection
 watch(() => form.title, (newTitle) => {
     if (newTitle === 'Mr.') {
-        form.gender = 'Male';
+        form.gender = 'male';
     } else if (newTitle === 'Miss') {
-        form.gender = 'Female';
+        form.gender = 'female';
     } else {
-        form.gender = 'Other';
+        form.gender = 'male';
     }
 });
 
@@ -65,8 +56,7 @@ watch(() => form.title, (newTitle) => {
                 <div class="col-span-2 w-[6rem]">
                     <InputLabel for="title" value="Title" />
                     <select id="title" class="mt-1 block w-full" v-model="form.title">
-                        <option value="Other">Select Title</option>
-                        <option value="Mr.">Mr.</option>
+                        <option value="Mr." selected>Mr.</option>
                         <option value="Miss">Miss</option>
                     </select>
                     <InputError class="mt-2" :message="form.errors.title" />

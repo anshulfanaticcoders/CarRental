@@ -1,6 +1,8 @@
 <script setup>
 import { ref, defineProps, onMounted } from "vue";
 import { Head, useForm } from "@inertiajs/vue3";
+import { useToast } from "@/Components/ui/toast/use-toast";
+const { toast } = useToast();
 import TextInput from "@/Components/TextInput.vue";
 import InputLabel from "@/Components/InputLabel.vue";
 import PrimaryButton from "@/Components/PrimaryButton.vue";
@@ -17,11 +19,11 @@ const form = useForm({
     driving_license: null,
     passport: null,
     passport_photo: null,
-    company_name: '',
-    company_phone_number: '',
-    company_email: '',
-    company_address: '',
-    company_gst_number: '',
+    company_name: "",
+    company_phone_number: "",
+    company_email: "",
+    company_address: "",
+    company_gst_number: "",
 });
 
 const currentStep = ref(0);
@@ -29,24 +31,32 @@ const fullName = `${props.user.first_name} ${props.user.last_name}`;
 
 // Add refs to store file names for display
 const fileNames = ref({
-    driving_license: '',
-    passport: '',
-    passport_photo: ''
+    driving_license: "",
+    passport: "",
+    passport_photo: "",
 });
 
 // Load saved file data on component mount
 onMounted(() => {
-    const savedFileData = localStorage.getItem('vendorFileData');
+    const savedFileData = localStorage.getItem("vendorFileData");
     if (savedFileData) {
         const parsedData = JSON.parse(savedFileData);
         fileNames.value = parsedData;
     }
 });
 
+const requiredFiles = ["driving_license", "passport", "passport_photo"]; // Define required file fields
+
 const nextStep = () => {
-    if (currentStep.value === 1) {
-        // Save file names to localStorage when moving from step 2
-        localStorage.setItem('vendorFileData', JSON.stringify(fileNames.value));
+    if (currentStep.value === 2) {
+        const allFilesSelected = requiredFiles.every(
+            (field) => form[field] !== null
+        );
+        if (!allFilesSelected) {
+            alert("Please select all required documents before proceeding.");
+            return;
+        }
+        localStorage.setItem("vendorFileData", JSON.stringify(fileNames.value));
     }
     currentStep.value++;
 };
@@ -60,17 +70,20 @@ const handleFileChange = (field, event) => {
     if (file) {
         form[field] = file;
         fileNames.value[field] = file.name;
-        
+
         // Store the updated file names in localStorage
-        localStorage.setItem('vendorFileData', JSON.stringify(fileNames.value));
+        localStorage.setItem("vendorFileData", JSON.stringify(fileNames.value));
     }
 };
 
 const submit = () => {
     form.post(route("vendor.store"), {
         onFinish: () => {
-            // Clear localStorage after successful submission
-            localStorage.removeItem('vendorFileData');
+            toast({
+                title: "Huraahhhh!!!",
+                description: "You are registered as a vendor Successfully",
+            });
+            localStorage.removeItem("vendorFileData");
             form.reset();
         },
         onError: (errors) => {
@@ -172,90 +185,158 @@ const submit = () => {
                         </div>
                     </div>
                     <div v-else-if="currentStep === 2">
-        <div class="grid grid-cols-1 gap-5">
-            <div class="column w-full">
-                <InputLabel for="driving_license">Driving License</InputLabel>
-                <div class="flex flex-col gap-2">
-                    <TextInput
-                        type="file"
-                        @change="handleFileChange('driving_license', $event)"
-                        class="w-full"
-                    />
-                    <span v-if="fileNames.driving_license" class="text-sm text-gray-600">
-                        Selected file: {{ fileNames.driving_license }}
-                    </span>
-                </div>
-            </div>
+                        <div class="grid grid-cols-1 gap-5">
+                            <div class="column w-full">
+                                <InputLabel for="driving_license"
+                                    >Driving License</InputLabel
+                                >
+                                <div class="flex flex-col gap-2">
+                                    <TextInput
+                                        type="file"
+                                        @change="
+                                            handleFileChange(
+                                                'driving_license',
+                                                $event
+                                            )
+                                        "
+                                        class="w-full"
+                                    />
+                                    <span
+                                        v-if="fileNames.driving_license"
+                                        class="text-sm text-gray-600"
+                                    >
+                                        Selected file:
+                                        {{ fileNames.driving_license }}
+                                    </span>
+                                </div>
+                            </div>
 
-            <div class="column w-full">
-                <InputLabel for="passport">Passport</InputLabel>
-                <div class="flex flex-col gap-2">
-                    <TextInput
-                        type="file"
-                        @change="handleFileChange('passport', $event)"
-                        class="w-full"
-                    />
-                    <span v-if="fileNames.passport" class="text-sm text-gray-600">
-                        Selected file: {{ fileNames.passport }}
-                    </span>
-                </div>
-            </div>
+                            <div class="column w-full">
+                                <InputLabel for="passport">Passport</InputLabel>
+                                <div class="flex flex-col gap-2">
+                                    <TextInput
+                                        type="file"
+                                        @change="
+                                            handleFileChange('passport', $event)
+                                        "
+                                        class="w-full"
+                                    />
+                                    <span
+                                        v-if="fileNames.passport"
+                                        class="text-sm text-gray-600"
+                                    >
+                                        Selected file: {{ fileNames.passport }}
+                                    </span>
+                                </div>
+                            </div>
 
-            <div class="column w-full">
-                <InputLabel for="passport_photo">Passport Photo</InputLabel>
-                <div class="flex flex-col gap-2">
-                    <TextInput
-                        type="file"
-                        @change="handleFileChange('passport_photo', $event)"
-                        class="w-full"
-                    />
-                    <span v-if="fileNames.passport_photo" class="text-sm text-gray-600">
-                        Selected file: {{ fileNames.passport_photo }}
-                    </span>
-                </div>
-            </div>
+                            <div class="column w-full">
+                                <InputLabel for="passport_photo"
+                                    >Passport Photo</InputLabel
+                                >
+                                <div class="flex flex-col gap-2">
+                                    <TextInput
+                                        type="file"
+                                        @change="
+                                            handleFileChange(
+                                                'passport_photo',
+                                                $event
+                                            )
+                                        "
+                                        class="w-full"
+                                    />
+                                    <span
+                                        v-if="fileNames.passport_photo"
+                                        class="text-sm text-gray-600"
+                                    >
+                                        Selected file:
+                                        {{ fileNames.passport_photo }}
+                                    </span>
+                                </div>
+                            </div>
 
-            <div class="flex justify-between">
-                <button
-                    class="button-secondary w-[30%]"
-                    type="button"
-                    @click="prevStep"
-                >
-                    Back
-                </button>
-                <PrimaryButton
-                    class="w-[30%]"
-                    type="button"
-                    @click="nextStep"
-                >Next</PrimaryButton>
-            </div>
-        </div>
-    </div>
+                            <div class="flex justify-between">
+                                <button
+                                    class="button-secondary w-[30%]"
+                                    type="button"
+                                    @click="prevStep"
+                                >
+                                    Back
+                                </button>
+                                <PrimaryButton
+                                    class="w-[30%]"
+                                    type="button"
+                                    @click="nextStep"
+                                    >Next</PrimaryButton
+                                >
+                            </div>
+                        </div>
+                    </div>
 
                     <div v-else-if="currentStep === 3">
                         <div class="grid grid-cols-1 gap-5">
                             <div class="column w-full">
-                                <InputLabel for="company_name">Company Name</InputLabel>
-                                <TextInput type="text" v-model="form.company_name" class="w-full" required/>
+                                <InputLabel for="company_name"
+                                    >Company Name</InputLabel
+                                >
+                                <TextInput
+                                    type="text"
+                                    v-model="form.company_name"
+                                    class="w-full"
+                                    required
+                                />
                             </div>
                             <div class="column w-full">
-                                <InputLabel for="company_phone_number">Company Phone Number</InputLabel>
-                                <TextInput type="tel" v-model="form.company_phone_number" class="w-full" required/>
+                                <InputLabel for="company_phone_number"
+                                    >Company Phone Number</InputLabel
+                                >
+                                <TextInput
+                                    type="tel"
+                                    v-model="form.company_phone_number"
+                                    class="w-full"
+                                    required
+                                />
                             </div>
                             <div class="column w-full">
-                                <InputLabel for="company_email">Company Email</InputLabel>
-                                <TextInput type="email" v-model="form.company_email" class="w-full" required/>
+                                <InputLabel for="company_email"
+                                    >Company Email</InputLabel
+                                >
+                                <TextInput
+                                    type="email"
+                                    v-model="form.company_email"
+                                    class="w-full"
+                                    required
+                                />
                             </div>
                             <div class="column w-full">
-                                <InputLabel for="company_address">Company Address</InputLabel>
-                                <textarea v-model="form.company_address" class="w-full" required></textarea>
+                                <InputLabel for="company_address"
+                                    >Company Address</InputLabel
+                                >
+                                <textarea
+                                    v-model="form.company_address"
+                                    class="w-full"
+                                    required
+                                ></textarea>
                             </div>
                             <div class="column w-full">
-                                <InputLabel for="company_gst_number">Company GST Number</InputLabel>
-                                <TextInput type="text" v-model="form.company_gst_number" class="w-full" required/>
+                                <InputLabel for="company_gst_number"
+                                    >Company GST Number</InputLabel
+                                >
+                                <TextInput
+                                    type="text"
+                                    v-model="form.company_gst_number"
+                                    class="w-full"
+                                    required
+                                />
                             </div>
                             <div class="flex justify-between">
-                                <button class="button-secondary w-[30%]" type="button" @click="prevStep">Back</button>
+                                <button
+                                    class="button-secondary w-[30%]"
+                                    type="button"
+                                    @click="prevStep"
+                                >
+                                    Back
+                                </button>
                                 <PrimaryButton class="w-[30%]" type="submit"
                                     >Submit</PrimaryButton
                                 >
