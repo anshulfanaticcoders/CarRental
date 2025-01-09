@@ -1,70 +1,11 @@
-<script setup>
-// car overview icons import
-import doorIcon from "../../assets/door.svg";
-import luggageIcon from "../../assets/luggage.svg";
-import fuelIcon from "../../assets/fuel.svg";
-import transmisionIcon from "../../assets/transmision.svg";
-import peopleIcon from "../../assets/people.svg";
-import carbonIcon from "../../assets/carbon-emmision.svg";
-import ageIcon from "../../assets/age.svg";
-import enginepowerIcon from "../../assets/enginepower.svg";
-
-
-import ShareIcon from "../../assets/ShareNetwork.svg";
-import Heart from "../../assets/Heart.svg";
-import carIcon from "../../assets/carIcon.svg";
-import walkIcon from "../../assets/walking.svg";
-import mileageIcon from "../../assets/mileageIcon.svg";
-import pickupLocationIcon from "../../assets/pickupLocationIcon.svg";
-import returnLocationIcon from "../../assets/returnLocationIcon.svg";
-import pencilIcon from "../../assets/Pencil.svg";
-import partnersIcon from "../../assets/partners.svg";
-import infoIcon from "../../assets/WarningCircle.svg";
-import { Head, Link } from "@inertiajs/vue3";
-import { onMounted, ref } from "vue";
-import AuthenticatedHeaderLayout from "@/Layouts/AuthenticatedHeaderLayout.vue";
-
-// Fetching Vehicle Details
-const vehicle = ref(null);
-const vehicleId = 1;
-
-const fetchVehicleData = async () => {
-    try {
-        const response = await axios.get(`/api/vehicle/${vehicleId}`);
-        vehicle.value = response.data;
-    } catch (error) {
-        console.error("Error fetching vehicle data:", error);
-    }
-};
-
-onMounted(() => {
-    fetchVehicleData();
-});
-
-// Feature-Icon Mapping
-const featureIconMap = {
-    "Bluetooth": "/storage/icons/bluetooth.svg",
-    "Music System": "/storage/icons/music.svg",
-    "Toolkit": "/storage/icons/toolkit.svg",
-    "USB Charger": "/storage/icons/usb.svg",
-    "Key Lock": "/storage/icons/lock.svg",
-    "Back Camera": "/storage/icons/camera.svg",
-    "Voice Control": "/storage/icons/voiceControl.svg",
-    "Navigation": "/storage/icons/navigation.svg",
-};
-</script>
-
 <template>
-    <Head title="Single Car" />
-    <AuthenticatedHeaderLayout/>
-    <main>
-        <section>
+    <section>
             <div class="container py-customVerticalSpacing">
                 <div class="flex gap-5 items-center mb-5">
-                    <h4 class="font-medium">{{ vehicle?.brand }}</h4>
+                    <h4 class="font-medium">{{ vehicle.brand }}</h4>
                     <span
                         class="bg-[#f5f5f5] inline-block px-8 py-2 text-center rounded-[40px]"
-                        >{{ vehicle?.category.name }}</span
+                        >{{ vehicle.category.name }}</span
                     >
                 </div>
                 <div class="flex gap-5 items-center text-[1.25rem]">
@@ -73,13 +14,13 @@ const featureIconMap = {
                         <strong>.</strong>
                     </div>
                     <div class="car_location">
-                        <span>{{ vehicle?.location }}</span>
+                        <span>{{ vehicle.location }}</span>
                     </div>
                 </div>
                 <div class="gallery w-full mt-[4rem] flex gap-5">
                     <div class="primary-image mb-4">
                         <img
-                            v-if="vehicle?.images"
+                            v-if="vehicle.images"
                             :src="`/storage/${
                                 vehicle.images.find(
                                     (image) =>
@@ -98,7 +39,7 @@ const featureIconMap = {
                         <div
                             v-for="(
                                 image, index
-                            ) in vehicle?.images.filter(
+                            ) in vehicle.images.filter(
                                 (image) =>
                                     image.image_type === 'gallery'
                             )"
@@ -123,56 +64,56 @@ const featureIconMap = {
                                        <img :src="peopleIcon" alt="">
                                        <div class="flex flex-col">
                                         <span class="text-customLightGrayColor">People</span>
-                                        <span class="font-medium">0{{ vehicle?.seating_capacity }}</span>
+                                        <span class="font-medium">0{{ vehicle.seating_capacity }}</span>
                                        </div>
                                    </div>
                                    <div class="feature-item items-center flex gap-3">
                                        <img :src="doorIcon" alt="">
                                        <div class="flex flex-col">
                                         <span class="text-customLightGrayColor">Doors</span>
-                                        <span class="font-medium">0{{ vehicle?.number_of_doors}}</span>
+                                        <span class="font-medium">0{{ vehicle.number_of_doors}}</span>
                                        </div>
                                    </div>
                                    <div class="feature-item items-center flex gap-3">
                                        <img :src="luggageIcon" alt="">
                                        <div class="flex flex-col">
                                         <span class="text-customLightGrayColor">Luggage</span>
-                                        <span class="font-medium">0{{ vehicle?.luggage_capacity}}</span>
+                                        <span class="font-medium">0{{ vehicle.luggage_capacity}}</span>
                                        </div>
                                    </div>
                                    <div class="feature-item items-center flex gap-3">
                                        <img :src="transmisionIcon" alt="">
                                        <div class="flex flex-col">
                                         <span class="text-customLightGrayColor">Transmission</span>
-                                        <span class="font-medium capitalize">{{ vehicle?.transmission}}</span>
+                                        <span class="font-medium capitalize">{{ vehicle.transmission}}</span>
                                        </div>
                                    </div>
                                    <div class="feature-item items-center flex gap-3">
                                        <img :src="fuelIcon" alt="">
                                        <div class="flex flex-col">
                                         <span class="text-customLightGrayColor">Fuel Type</span>
-                                        <span class="font-medium capitalize">{{ vehicle?.fuel}}</span>
+                                        <span class="font-medium capitalize">{{ vehicle.fuel}}</span>
                                        </div>
                                    </div>
                                    <div class="feature-item items-center flex gap-3">
                                        <img :src="enginepowerIcon" alt="">
                                        <div class="flex flex-col">
                                         <span class="text-customLightGrayColor">Horsepower</span>
-                                        <span class="font-medium">{{ vehicle?.horsepower}} hp</span>
+                                        <span class="font-medium">{{ vehicle.horsepower}} hp</span>
                                        </div>
                                    </div>
                                    <div class="feature-item items-center flex gap-3">
                                        <img :src="carbonIcon" alt="">
                                        <div class="flex flex-col">
                                         <span class="text-customLightGrayColor">Co2 Emission</span>
-                                        <span class="font-medium">{{ vehicle?.co2}} (g/km)</span>
+                                        <span class="font-medium">{{ vehicle.co2}} (g/km)</span>
                                        </div>
                                    </div>
                                    <div class="feature-item items-center flex gap-3">
                                        <img :src="mileageIcon" alt="">
                                        <div class="flex flex-col">
                                         <span class="text-customLightGrayColor">Mileage</span>
-                                        <span class="font-medium">{{ vehicle?.mileage}} km/d</span>
+                                        <span class="font-medium">{{ vehicle.mileage}} km/d</span>
                                        </div>
                                    </div>
                                    <div class="feature-item items-center flex gap-3">
@@ -190,7 +131,7 @@ const featureIconMap = {
                                 >Features</span
                             >
                             <div class="grid grid-cols-4 mt-[2rem] gap-y-[2rem]">
-                                <div class="flex items-center gap-3" v-if="vehicle?.features" v-for="(feature, index) in JSON.parse(vehicle.features)" :key="index">
+                                <div class="flex items-center gap-3" v-if="vehicle.features" v-for="(feature, index) in JSON.parse(vehicle.features)" :key="index">
                                     <img :src="featureIconMap[feature]" alt="Feature Icon" class="feature-icon" />
                                   {{ feature }} 
                                  </div>
@@ -205,7 +146,7 @@ const featureIconMap = {
                                 >Car Location</span
                             >
                             <div class="mt-[2rem] gap-y-[2rem]">
-                                {{ vehicle?.location }}
+                                {{ vehicle.location }}
                             </div>
                         </div>
 
@@ -217,10 +158,10 @@ const featureIconMap = {
                             <div
                                 class="flex items-center justify-between gap-3"
                             >
-                                <h4>{{ vehicle?.brand }}</h4>
+                                <h4>{{ vehicle.brand }}</h4>
                                 <span
                                     class="bg-[#f5f5f5] inline-block px-8 py-2 text-center rounded-[40px]"
-                                    >{{ vehicle?.category.name }}</span
+                                    >{{ vehicle.category.name }}</span
                                 >
                                 <div class="icons flex items-center gap-3">
                                     <Link href="" class="w-full"
@@ -234,8 +175,8 @@ const featureIconMap = {
                             <div class="">
                                 <span>Hosted by
                                     <span class="vendorName uppercase">
-                                        {{ vehicle?.user.first_name}}
-                                        {{ vehicle?.user.last_name}}
+                                        {{ vehicle.user.first_name}}
+                                        {{ vehicle.user.last_name}}
                                     </span>
                                 </span>
                             </div>
@@ -243,7 +184,7 @@ const featureIconMap = {
                                 <img :src="carIcon" alt="" />
                                 <div class="features">
                                     <span class="text-[1.15rem] capitalize">
-                                        {{ vehicle?.transmission}} . {{ vehicle?.fuel}} . {{ vehicle?.seating_capacity}} Seats
+                                        {{ vehicle.transmission}} . {{ vehicle.fuel}} . {{ vehicle.seating_capacity}} Seats
                                     </span>
                                 </div>
                             </div>
@@ -257,7 +198,7 @@ const featureIconMap = {
                                 <div class="col flex gap-3">
                                     <img :src="mileageIcon" alt="" /><span
                                         class="text-[1.15rem]"
-                                        >{{ vehicle?.mileage}} km/d</span
+                                        >{{ vehicle.mileage}} km/d</span
                                     >
                                 </div>
                             </div>
@@ -314,7 +255,7 @@ const featureIconMap = {
                                         <div>
                                             <span
                                                 class="text-customPrimaryColor text-[1.875rem] font-medium"
-                                                >€{{ vehicle?.price_per_day}}</span
+                                                >€{{ vehicle.price_per_day}}</span
                                             ><span>/day</span>
                                             <br />
                                             <span class="flex gap-3"
@@ -343,16 +284,36 @@ const featureIconMap = {
                 </div>
             </div>
         </section>
-
-        <section class="py-customVerticalSpacing"></section>
-    </main>
 </template>
 
+<script setup>
+import { Link } from '@inertiajs/vue3'
+import { onMounted } from 'vue'
+import L from 'leaflet'
+import 'leaflet/dist/leaflet.css'
+
+const props = defineProps({
+    vehicle: Object
+})
+
+onMounted(() => {
+    const map = L.map('detail-map').setView([props.vehicle.latitude, props.vehicle.longitude], 15)
+    
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '© OpenStreetMap contributors'
+    }).addTo(map)
+
+    L.marker([props.vehicle.latitude, props.vehicle.longitude])
+        .bindPopup(`
+            <div class="text-center">
+                <h3 class="font-semibold">${props.vehicle.name}</h3>
+                <p class="text-green-600">₹${props.vehicle.price_per_day}/day</p>
+            </div>
+        `)
+        .addTo(map)
+})
+</script>
+
 <style>
-.overview .col:not(:last-child) {
-    border-bottom: 1px solid #2b2b2b;
-}
-.overview .col {
-    padding: 2rem;
-}
+@import 'leaflet/dist/leaflet.css';
 </style>

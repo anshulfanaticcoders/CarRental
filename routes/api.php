@@ -27,3 +27,5 @@ Route::get('/vehicle-features', [VehicleController::class, 'getFeatures']);
 
 Route::get('/vehicle/{id}', [VehicleController::class, 'show']);
 
+Route::get('/vehicles', [VehicleController::class, 'showAllVendorVehicles']);
+

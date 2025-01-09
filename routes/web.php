@@ -1,6 +1,8 @@
 <?php
 
+use App\Http\Controllers\GeocodingController;
 use App\Http\Controllers\ProfileController;
+use App\Http\Controllers\SearchController;
 use App\Http\Controllers\VendorController;
 use App\Http\Controllers\VendorDocumentController;
 use Illuminate\Foundation\Application;
@@ -52,8 +54,8 @@ Route::middleware(['auth'])->group(function () {
     Route::inertia('review', 'Profile/Review');
     Route::inertia('favourites', 'Profile/Favourites');
     Route::inertia('inbox', 'Profile/Inbox');
-
-    // Vendor Profile Web Routes
+    
+    // vendor Profile Web Routes
     Route::get('/vendor/register', [VendorController::class, 'create'])->name('vendor.register');
     Route::post('/vendor/store', [VendorController::class, 'store'])->name('vendor.store');
     Route::get('/vehicle/{id}', [VehicleController::class, 'show']);
@@ -61,11 +63,10 @@ Route::middleware(['auth'])->group(function () {
 
 
 
-
 Route::post('/documents/upload', [UserDocumentController::class, 'uploadDocuments'])->name('documents.upload');
 
 // Routing for Travel documents
-Route::inertia('single-car', 'SingleCar');
+Route::inertia('single-car/vehicle/{id}', 'SingleCar');
 
 Route::inertia('vehicle-listing', 'Auth/VehicleListing');
 
@@ -77,5 +78,12 @@ Route::post('/vehicles', [VehicleController::class, 'store'])->name('vehicles.st
 
 // Route to display the list of vehicles
 Route::get('/vehicles', [VehicleController::class, 'index'])->name('vehicles.index');
+
+
+// Map api
+Route::get('/s', [SearchController::class, 'search']);
+Route::get('/vehicle/{vehicle}', [SearchController::class, 'show']);
+
+Route::get('/api/geocoding/autocomplete', [GeocodingController::class, 'autocomplete']);
 
 require __DIR__ . '/auth.php';

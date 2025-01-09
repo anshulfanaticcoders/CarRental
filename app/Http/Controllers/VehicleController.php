@@ -6,6 +6,7 @@ use App\Models\Vehicle;
 use App\Models\VehicleFeature;
 use App\Models\VehicleImage;
 use App\Models\VehicleSpecification;
+use App\Providers\RouteServiceProvider;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
@@ -38,6 +39,8 @@ class VehicleController extends Controller
             'horsepower' => 'required|integer|min:0',
             'co2' => 'required|string',
             'location' => 'required|string',
+            'latitude' => 'required|decimal:10,8', // Add latitude validation
+            'longitude' => 'required|decimal:11,8',
             'status' => 'required|in:available,rented,maintenance',
             'features' => 'array',
             'featured' => 'boolean',
@@ -106,7 +109,7 @@ class VehicleController extends Controller
             ]);
         }
 
-        return response()->json(['success' => true, 'message' => 'Vehicle created successfully.']);
+        return redirect(RouteServiceProvider::HOMEPAGE);
     }
 
     public function index()
@@ -129,4 +132,9 @@ class VehicleController extends Controller
             ->findOrFail($id);
         return response()->json($vehicle);
     }
+    public function showAllVendorVehicles()
+{
+    $vehicles = Vehicle::with(['specifications', 'images', 'category', 'user'])->get();
+    return response()->json($vehicles);
+}
 }

@@ -24,6 +24,8 @@ class CreateVehiclesTable extends Migration
             $table->string('color');
             $table->integer('mileage');
             $table->string('location');
+            $table->decimal('latitude', 10, 8);
+            $table->decimal('longitude', 11, 8);
             $table->enum('status', ['available', 'rented', 'maintenance'])->default('available');
             $table->json('features')->nullable();
             $table->boolean('featured')->default(false);
