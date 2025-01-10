@@ -24,7 +24,6 @@ class SearchController extends Controller
 
     public function search(Request $request)
     {
-
         $validated = $request->validate([
             'date_from' => 'required|date',
             'date_to' => 'required|date|after:date_from',
@@ -33,26 +32,44 @@ class SearchController extends Controller
             'longitude' => 'required|numeric',
             'radius' => 'required|numeric',
         ]);
-
+    
         $query = Vehicle::query()
             ->where('status', 'available')
-            ->whereRaw(
-                '(
-                    6371 * acos(
-                        cos(radians(?)) * cos(radians(latitude)) *
-                        cos(radians(longitude) - radians(?)) +
-                        sin(radians(?)) * sin(radians(latitude))
-                    )
-                ) <= ?',
-                [
-                    $validated['latitude'],
-                    $validated['longitude'],
-                    $validated['latitude'],
-                    $validated['radius'] / 1000, // Convert to kilometers
-                ]
-            );
+            // Filter by created_at date range
+            ->whereBetween('created_at', [
+                $validated['date_from'] . ' 00:00:00',
+                $validated['date_to'] . ' 23:59:59'
+            ])
+            // Calculate distance using Haversine formula
+            ->selectRaw('*, ( 6371 * acos( 
+                cos(radians(?)) * cos(radians(latitude)) * 
+                cos(radians(longitude) - radians(?)) + 
+                sin(radians(?)) * sin(radians(latitude)) 
+            ) * 1000 ) AS distance', [
+                $validated['latitude'],
+                $validated['longitude'],
+                $validated['latitude']
+            ])
+            // Filter by radius (in meters)
+            ->havingRaw('distance <= ?', [$validated['radius']]);
+    
+        // Apply location search if 'where' parameter is provided
+        if (!empty($validated['where'])) {
+            $locationParts = array_map('trim', explode(',', $validated['where']));
+            $query->where(function ($q) use ($locationParts) {
+                foreach ($locationParts as $part) {
+                    $searchTerm = '%' . trim($part) . '%';
+                    $q->orWhere('location', 'like', $searchTerm);
+                }
+            });
+        }
         $query->with('images');
-        $vehicles = $query->paginate(12);
+        // Order by distance
+        $query->orderBy('distance');
+    
+        // Get paginated results
+        $vehicles = $query->paginate(3)->withQueryString();
+        
         return Inertia::render('SearchResults', [
             'vehicles' => $vehicles,
             'filters' => $validated,

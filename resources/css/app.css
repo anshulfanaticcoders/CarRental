@@ -40,8 +40,8 @@
         --custom-light-primary: #153b4f1a;
         --custom-overlay: #153b4f99;
         --custom-light-gray: #2b2b2b99;
-        --custom-light-black: #2b2b2b;
-        --custom-dark-black: #000000;
+        --custom-light-black: #2b2b2b33;
+        --custom-dark-black: #2b2b2b;
         --custom-spacing-vertical: 3rem;
         --jakarta-font-family: "Plus Jakarta Sans", sans-serif;
     }
@@ -120,7 +120,10 @@ body{
     align-items: center;
     cursor: pointer;
 }
-
+.full-w-container{
+    width: 90%;
+    margin-inline: auto;
+}
 .custom-checkbox input {
     display: none; /* Hide the default checkbox */
 }
@@ -183,8 +186,8 @@ body{
 }
 
 
-input,textarea,select {
+/* input,textarea,select {
     border-radius: 0.75rem;
-    border: 1px solid rgba(43, 43, 43, 0.50);
+    border: 1px solid rgba(43, 43, 43, 0.50)!important;
     padding: 1rem;
-}
+} */

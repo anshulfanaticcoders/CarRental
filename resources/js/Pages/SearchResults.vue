@@ -5,6 +5,14 @@ import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
 import AuthenticatedHeaderLayout from '@/Layouts/AuthenticatedHeaderLayout.vue'
 import Footer from '@/Components/Footer.vue'
+import FilterSlot from '@/Components/FilterSlot.vue';
+import goIcon from "../../assets/goIcon.svg";
+import carIcon from "../../assets/carIcon.svg";
+import walkIcon from "../../assets/walking.svg";
+import mileageIcon from "../../assets/mileageIcon.svg";
+import Heart from "../../assets/Heart.svg";
+import check from "../../assets/Check.svg";
+import SearchBar from '@/Components/SearchBar.vue'
 
 const props = defineProps({
   vehicles: Object,
@@ -15,128 +23,160 @@ let map = null
 let markers = []
 
 const initMap = () => {
-  // Calculate bounds for all vehicles
-  const bounds = L.latLngBounds(props.vehicles.data.map(vehicle => [
-    vehicle.latitude,
-    vehicle.longitude
-  ]))
 
+if (!props.vehicles.data || props.vehicles.data.length === 0) {
+  console.warn('No vehicles data available to initialize map.');
   map = L.map('map', {
-    zoomSnap: 0.25,
-    markerZoomAnimation: false,
-    preferCanvas: true,
     zoomControl: true,
     maxZoom: 18,
-    minZoom: 4
-  })
+    minZoom: 4,
+  }).setView([0, 0], 2); // Default to world view
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    attribution: '© OpenStreetMap contributors'
+  }).addTo(map);
+  return;
+}
 
-  // Set initial view to fit all markers
+// Calculate bounds for all vehicles
+const bounds = L.latLngBounds(props.vehicles.data.map(vehicle => [
+  vehicle.latitude,
+  vehicle.longitude
+]))
+
+map = L.map('map', {
+  zoomSnap: 0.25,
+  markerZoomAnimation: false,
+  preferCanvas: true,
+  zoomControl: true,
+  maxZoom: 18,
+  minZoom: 4
+})
+
+// Set initial view to fit all markers
+map.fitBounds(bounds, {
+  padding: [50, 50],
+  maxZoom: 12
+})
+
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+  attribution: '© OpenStreetMap contributors'
+}).addTo(map)
+
+// Create a custom pane for markers with high z-index
+map.createPane('markers')
+map.getPane('markers').style.zIndex = 1000
+
+addMarkers()
+
+// Force a map refresh after a short delay
+setTimeout(() => {
+  map.invalidateSize()
   map.fitBounds(bounds, {
     padding: [50, 50],
     maxZoom: 12
   })
-  
-  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-    attribution: '© OpenStreetMap contributors'
-  }).addTo(map)
-
-  // Create a custom pane for markers with high z-index
-  map.createPane('markers')
-  map.getPane('markers').style.zIndex = 1000
-
-  addMarkers()
-
-  // Force a map refresh after a short delay
-  setTimeout(() => {
-    map.invalidateSize()
-    map.fitBounds(bounds, {
-      padding: [50, 50],
-      maxZoom: 12
-    })
-  }, 100)
+}, 100)
 }
 
 const createCustomIcon = (price) => {
-  return L.divIcon({
-    className: 'custom-div-icon',
-    html: `
-      <div class="marker-pin">
-        <span>₹${price}</span>  
-      </div>
-    `,
-    iconSize: [50, 30],
-    iconAnchor: [25, 15],
-    popupAnchor: [0, -15],
-    pane: 'markers'
-  })
+return L.divIcon({
+  className: 'custom-div-icon',
+  html: `
+    <div class="marker-pin">
+      <span>₹${price}</span>
+    </div>
+  `,
+  iconSize: [50, 30],
+  iconAnchor: [25, 15],
+  popupAnchor: [0, -15],
+  pane: 'markers'
+})
 }
 
 const addMarkers = () => {
-  markers.forEach(marker => marker.remove())
-  markers = []
+markers.forEach(marker => marker.remove())
+markers = []
 
-  // Create a feature group for markers
-  const markerGroup = L.featureGroup()
+if (!props.vehicles.data || props.vehicles.data.length === 0) {
+  console.warn('No vehicles data available to add markers.');
+  return;
+}
+// Create a feature group for markers
+const markerGroup = L.featureGroup()
 
-  props.vehicles.data.forEach(vehicle => {
-    const marker = L.marker([vehicle.latitude, vehicle.longitude], {
-      icon: createCustomIcon(vehicle.price_per_day),
-      pane: 'markers'
-    })
-    .bindPopup(`
-      <div class="text-center">
-        <h3 class="font-semibold">${vehicle.brand}</h3>
-        <p class="font-semibold">€${vehicle.price_per_day} /day</p>
-        <a href="/vehicle/${vehicle.id}" 
-           class="text-blue-500 hover:text-blue-700"
-           onclick="window.location.href='/vehicle/${vehicle.id}'; return false;">
-          View Details
-        </a>
-      </div>
-    `)
-    
-    markerGroup.addLayer(marker)
-    markers.push(marker)
+props.vehicles.data.forEach(vehicle => {
+  const marker = L.marker([vehicle.latitude, vehicle.longitude], {
+    icon: createCustomIcon(vehicle.price_per_day),
+    pane: 'markers'
   })
+  .bindPopup(`
+    <div class="text-center">
+      <h3 class="font-semibold">${vehicle.brand}</h3>
+      <a href="/vehicle/${vehicle.id}" 
+         class="text-blue-500 hover:text-blue-700"
+         onclick="window.location.href='/vehicle/${vehicle.id}'; return false;">
+        View Details
+      </a>
+    </div>
+  `)
+  
+  markerGroup.addLayer(marker)
+  markers.push(marker)
+})
 
-  markerGroup.addTo(map)
+markerGroup.addTo(map)
 
-  // Fit bounds after adding markers
-  const groupBounds = markerGroup.getBounds()
-  map.fitBounds(groupBounds, {
-    padding: [50, 50],
-    maxZoom: 12
-  })
+// Fit bounds after adding markers
+const groupBounds = markerGroup.getBounds()
+map.fitBounds(groupBounds, {
+  padding: [50, 50],
+  maxZoom: 12
+})
 }
 
 // Watch for changes in vehicles data
 watch(() => props.vehicles, () => {
-  if (map) {
-    addMarkers()
-  }
+if (map) {
+  addMarkers()
+}
 }, { deep: true })
 
 onMounted(() => {
-  initMap()
+initMap()
 })
 </script>
 
 <template>
   <AuthenticatedHeaderLayout/>
-  <div class="container mx-auto p-4">
+       <section class="bg-customPrimaryColor py-customVerticalSpacing">
+            <div class="container">
+             <SearchBar class="border-[2px] rounded-[20px] border-white mt-0 mb-0"/>
+            </div>
+        </section>
+
+        <section>
+          <div class="container py-customVerticalSpacing">
+            <FilterSlot/>
+          </div>
+        </section>
+
+  <div class=" mx-auto p-4">
       <div class="flex gap-4">
           <!-- Left Column - Vehicle List -->
-          <div class="w-1/2 space-y-4">
+          <div class="w-full grid grid-cols-2 gap-5">
+              <div v-if="!vehicles.data || vehicles.data.length === 0" class="text-center text-gray-500">
+                No vehicles available at the moment.
+              </div>
             <div
             v-for="vehicle in vehicles.data"
             :key="vehicle.id"
-            class="max-w-[370px] p-[2rem] rounded-[12px] border-[1px] border-[#E7E7E7]"
-        >
+            class="p-[1rem] rounded-[12px] border-[1px] border-[#E7E7E7]"
+             >
             <div class="column flex justify-end">
-                <Link href=""><img :src="Heart" alt="" class="w-full" /></Link>
-            </div>
+                <Link href="" class="block"><img :src="Heart" alt="" class="w-full mb-[1rem]" /></Link>
+            </div>  
             <Link :href="`/vehicle/${vehicle.id}`">
-                <div class="column flex flex-col gap-5 items-start h-[20rem]">
+                <div class="column flex flex-col gap-5 items-start">
                     <img
                             v-if="vehicle.images"
                             :src="`/storage/${
@@ -200,17 +240,11 @@ onMounted(() => {
                     </div>
                 </div>
             </Link>
-        </div>
+            </div>
           </div>
-          <!-- Pagination -->
-          <div class="mt-4">
-                  <Pagination :links="vehicles.links" />
-
-          </div>
-
           <!-- Right Column - Map -->
-          <div class="w-1/2 sticky top-4 h-[calc(100vh-2rem)]">
-              <div class="bg-white rounded-lg shadow h-full">
+          <div class="w-full sticky top-4 h-[calc(100vh-2rem)]">
+              <div class="bg-white  h-full">
                   <div id="map" class="h-full rounded-lg"></div>
               </div>
           </div>
@@ -285,5 +319,10 @@ onMounted(() => {
 
 .leaflet-control-container {
   z-index: 2000;
+}
+#map {
+  height: 600px;
+  width: 100%;
+  margin-top: 1rem;
 }
 </style>

@@ -1,7 +1,12 @@
 <script setup>
 import gridLines from "../../../assets/gridLines.png";
 import gridLinesForegroundImage from "../../../assets/gridLineFoegroundimage.jpeg";
-import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/Components/ui/accordion';
+import {
+    Accordion,
+    AccordionContent,
+    AccordionItem,
+    AccordionTrigger,
+} from "@/Components/ui/accordion";
 
 const defaultValue = "item-1";
 
@@ -9,7 +14,8 @@ const accordionItems = [
     {
         value: "item-1",
         title: "Browse And Select",
-        content: "Explore our diverse selection of high-end vehicles, choose your preferred pickup and return dates, and select a location that best fits your needs",
+        content:
+            "Explore our diverse selection of high-end vehicles, choose your preferred pickup and return dates, and select a location that best fits your needs",
     },
     {
         value: "item-2",
@@ -49,20 +55,29 @@ const accordionItems = [
                     </p>
                 </div>
                 <div class="col">
-                    <Accordion type="single" class="w-full" collapsible :default-value="defaultValue">
-    <AccordionItem v-for="item in accordionItems" :key="item.value" :value="item.value">
-      <AccordionTrigger>{{ item.title }}</AccordionTrigger>
-      <AccordionContent>
-        {{ item.content }}
-      </AccordionContent>
-    </AccordionItem>
-  </Accordion>
+                    <Accordion
+                        type="single"
+                        class="w-full"
+                        collapsible
+                        :default-value="defaultValue"
+                    >
+                        <AccordionItem
+                            v-for="item in accordionItems"
+                            :key="item.value"
+                            :value="item.value"
+                        >
+                            <AccordionTrigger>{{
+                                item.title
+                            }}</AccordionTrigger>
+                            <AccordionContent>
+                                {{ item.content }}
+                            </AccordionContent>
+                        </AccordionItem>
+                    </Accordion>
                 </div>
             </div>
         </div>
     </section>
 </template>
 
-<style>
-
-</style>
+<style></style>

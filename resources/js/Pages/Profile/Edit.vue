@@ -21,7 +21,7 @@ defineProps({
         <div class="">
             <h4 class="text-[1.5rem] mb-[2rem] ml-[1rem] text-customPrimaryColor font-medium">My Profile</h4>
             <div class=" mx-auto">
-                <div class=" bg-white shadow sm:rounded-lg">
+                <div class=" bg-white ">
                     <UpdateProfileInformationForm
                         :must-verify-email="mustVerifyEmail"
                         :status="status"

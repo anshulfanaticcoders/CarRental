@@ -47,6 +47,7 @@ Route::middleware(['auth'])->group(function () {
 
     // User Profile routes
     Route::inertia('travel-documents', 'Profile/TravelDocuments');
+    Route::post('/documents/upload', [UserDocumentController::class, 'uploadDocuments'])->name('documents.upload');
     Route::inertia('completed-bookings', 'Profile/CompletedBookings');
     Route::inertia('confirmed-bookings', 'Profile/ConfirmedBookings');
     Route::inertia('pending-bookings', 'Profile/PendingBookings');
@@ -59,16 +60,18 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/vendor/register', [VendorController::class, 'create'])->name('vendor.register');
     Route::post('/vendor/store', [VendorController::class, 'store'])->name('vendor.store');
     Route::get('/vehicle/{id}', [VehicleController::class, 'show']);
+
+    // Vehicle Listing 
+    Route::inertia('vehicle-listing', 'Auth/VehicleListing');
 });
 
 
 
-Route::post('/documents/upload', [UserDocumentController::class, 'uploadDocuments'])->name('documents.upload');
 
 // Routing for Travel documents
 Route::inertia('single-car/vehicle/{id}', 'SingleCar');
 
-Route::inertia('vehicle-listing', 'Auth/VehicleListing');
+
 
 // Route to display the form for creating a new vehicle
 Route::get('/vehicles/create', [VehicleController::class, 'create'])->name('vehicles.create');

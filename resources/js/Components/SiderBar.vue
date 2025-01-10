@@ -83,7 +83,7 @@ onMounted(() => {
 
 <template>
   <div class="sidebar">
-    <div class="user-info bg-gray-50 p-4 border-r border-gray-200 w-full">
+    <div class="user-info p-4 w-full">
       <div class="flex items-center space-x-3">
         <img
           src="https://via.placeholder.com/50"
@@ -165,7 +165,6 @@ a {
   display: flex !important;
 }
 .sidebar {
-  background-color: #f5f5f5;
   padding: 20px;
 }
 

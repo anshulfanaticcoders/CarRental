@@ -39,8 +39,8 @@ class VehicleController extends Controller
             'horsepower' => 'required|integer|min:0',
             'co2' => 'required|string',
             'location' => 'required|string',
-            'latitude' => 'required|decimal:10,8', // Add latitude validation
-            'longitude' => 'required|decimal:11,8',
+            //  'latitude' => 'required|decimal:10,8', // Add latitude validation
+            //  'longitude' => 'required|decimal:11,8',
             'status' => 'required|in:available,rented,maintenance',
             'features' => 'array',
             'featured' => 'boolean',
@@ -56,7 +56,7 @@ class VehicleController extends Controller
             'dealer_cost' => 'required|decimal:0,2|min:0',
             'phone_number' => 'required|string|max:15',
         ]);
-
+    
         // Create the vehicle
         $vehicle = Vehicle::create([
             'vendor_id' => $request->user()->id,
@@ -73,6 +73,8 @@ class VehicleController extends Controller
             'horsepower' => $request->horsepower,
             'co2' => $request->co2,
             'location' => $request->location,
+            'latitude' => $request->latitude, // Save latitude
+           'longitude' => $request->longitude,
             'status' => $request->status,
             'features' => json_encode($request->features),
             'featured' => $request->featured,

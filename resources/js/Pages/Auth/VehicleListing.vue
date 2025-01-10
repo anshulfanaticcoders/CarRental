@@ -1,126 +1,3 @@
-<script setup>
-import { Head, Link, useForm } from "@inertiajs/vue3";
-import vendorBgimage from "../../../assets/vendorRegisterbgImage.png";
-import warningSign from "../../../assets/WhiteWarningCircle.svg";
-import circleImg from "../../../assets/circle.png";
-import SuvCarIcon from "../../../assets/SuvCarIcon.svg";
-import SedanCarIcon from "../../../assets/SedanCarIcon.svg";
-import LuxuryCarIcon from "../../../assets/LuxuryCarIcon.svg";
-import MiniCarIcon from "../../../assets/MiniCarCarIcon.svg";
-import uploadIcon from "../../../assets/uploadIcon.svg";
-import { computed, onMounted, ref } from "vue";
-import PrimaryButton from "@/Components/PrimaryButton.vue";
-import axios from "axios";
-import InputLabel from "@/Components/InputLabel.vue";
-import TextInput from "@/Components/TextInput.vue";
-import ApplicationLogo from "@/Components/ApplicationLogo.vue";
-
-const currentStep = ref(0);
-const nextStep = () => {
-    currentStep.value++;
-};
-
-const prevStep = () => {
-    currentStep.value--;
-};
-
-// Form data
-const form = useForm({
-    category_id: null,
-    brand: "",
-    model: "",
-    color: "",
-    mileage: 0,
-    transmission: "manual",
-    fuel: "petrol",
-    seating_capacity: 1,
-    number_of_doors: 1,
-    luggage_capacity: 0,
-    horsepower: 0,
-    co2: "",
-    location: "",
-    status: "available",
-    features: [],
-    featured: false,
-    security_deposit: 0,
-    payment_method: "",
-    price_per_day: 0,
-
-    // vehicle specifications fields
-    registration_number: "",
-    registration_country: "",
-    registration_date: "",
-    gross_vehicle_mass: 0,
-    vehicle_height: 0,
-    dealer_cost: 0,
-    phone_number: "",
-
-    // vehicle images
-    images: [],
-});
-
-// fetching the vehicle categories from the database thorough api
-const categories = ref([]);
-const fetchCategories = async () => {
-    try {
-        const response = await axios.get("/api/vehicle-categories");
-        categories.value = response.data; // Store the fetched categories
-    } catch (error) {
-        console.error("Error fetching vehicle categories:", error);
-    }
-};
-
-// Submit form data
-const submit = () => {
-    form.post(route("vehicles.store"), {
-        onFinish: () => {
-            form.reset();
-        },
-        onError: (errors) => {
-            console.error(errors);
-        },
-    });
-};
-
-// getting vehicle categories value in Radio Inputs
-const vehicleCategories = [
-    { id: 1, InputLabel: "SUV Car", icon: SuvCarIcon },
-    { id: 2, InputLabel: "Luxury", icon: LuxuryCarIcon },
-    { id: 3, InputLabel: "Sedan Car", icon: SedanCarIcon },
-    { id: 4, InputLabel: "Mini Car", icon: MiniCarIcon },
-];
-
-// For range slider tip value
-const tooltipPosition = computed(() => ({
-    left: `${(form.price_per_day / 70) * 100}%`,
-}));
-
-// Method to handle file uploads
-const handleFileUpload = (event) => {
-    const files = Array.from(event.target.files);
-    form.images = files; // Store the selected files in the form data
-};
-
-// Vehicle Features
-const features = ref([]);
-
-const fetchFeatures = async () => {
-    try {
-        const response = await axios.get("/api/vehicle-features");
-        features.value = response.data;
-    } catch (error) {
-        console.error("Error fetching vehicle features:", error);
-    }
-};
-
-onMounted(() => {
-    fetchCategories();
-    fetchFeatures();
-});
-
-
-</script>
-
 <template>
 
     <Head title="Vehicle Listing" />
@@ -509,13 +386,30 @@ onMounted(() => {
                             closest address that can be geolocated.
                         </p>
                     </div>
-                    <div class="">
-                        <!-- Location -->
+                    <div class="search-container">
                         <div>
                             <InputLabel for="location">Location:</InputLabel>
-                            <TextInput class="w-full" type="text" v-model="form.location" id="location" required />
+                            <input
+                               v-model="form.location"
+                               type="text"
+                               @input="handleSearchInput"
+                               placeholder="Search location"
+                               class="w-full p-2 border rounded"
+                             />
                         </div>
+                        <div v-if="searchResults.length" class="search-results">
+                          <div
+                            v-for="result in searchResults"
+                            :key="result.id"
+                            @click="selectLocation(result)"
+                            class="p-2 hover:bg-gray-100 cursor-pointer"
+                          >
+                            {{ result.properties?.label || 'Unknown Location' }}  
+                          </div>
+                        </div>
+                         <!-- <div id="map" class="w-full h-64 mt-4"></div> -->
                     </div>
+                   
                     <div class="buttons flex justify-between mt-[2rem] pb-[4rem]">
                         <button class="button-secondary w-[40%]" @click="prevStep">
                             Back
@@ -737,6 +631,213 @@ onMounted(() => {
     </div>
 </template>
 
+<script setup>
+import { Head, Link, useForm } from "@inertiajs/vue3";
+import vendorBgimage from "../../../assets/vendorRegisterbgImage.png";
+import warningSign from "../../../assets/WhiteWarningCircle.svg";
+import circleImg from "../../../assets/circle.png";
+import SuvCarIcon from "../../../assets/SuvCarIcon.svg";
+import SedanCarIcon from "../../../assets/SedanCarIcon.svg";
+import LuxuryCarIcon from "../../../assets/LuxuryCarIcon.svg";
+import MiniCarIcon from "../../../assets/MiniCarCarIcon.svg";
+import uploadIcon from "../../../assets/uploadIcon.svg";
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from "vue";
+import PrimaryButton from "@/Components/PrimaryButton.vue";
+import axios from "axios";
+import InputLabel from "@/Components/InputLabel.vue";
+import TextInput from "@/Components/TextInput.vue";
+import ApplicationLogo from "@/Components/ApplicationLogo.vue";
+import L from 'leaflet' // Import Leaflet
+
+
+// Form data
+const form = useForm({
+    category_id: null,
+    brand: "",
+    model: "",
+    color: "",
+    mileage: 0,
+    transmission: "manual",
+    fuel: "petrol",
+    seating_capacity: 1,
+    number_of_doors: 1,
+    luggage_capacity: 0,
+    horsepower: 0,
+    co2: "",
+    location: "",
+    latitude:'null',
+    longitude:'null',
+    status: "available",
+    features: [],
+    featured: false,
+    security_deposit: 0,
+    payment_method: "",
+    price_per_day: 0,
+
+    // vehicle specifications fields
+    registration_number: "",
+    registration_country: "",
+    registration_date: "",
+    gross_vehicle_mass: 0,
+    vehicle_height: 0,
+    dealer_cost: 0,
+    phone_number: "",
+
+    // vehicle images
+    images: [],
+    radius: 831867.4340914232,
+});
+
+// fetching the vehicle categories from the database thorough api
+const categories = ref([]);
+const fetchCategories = async () => {
+    try {
+        const response = await axios.get("/api/vehicle-categories");
+        categories.value = response.data; // Store the fetched categories
+    } catch (error) {
+        console.error("Error fetching vehicle categories:", error);
+    }
+};
+
+// Submit form data
+const submit = () => {
+    form.post(route("vehicles.store"), {
+        onFinish: () => {
+            console.log(form);
+            // form.reset();
+        },
+        onError: (errors) => {
+            console.error(errors);
+        },
+    });
+};
+
+// getting vehicle categories value in Radio Inputs
+const vehicleCategories = [
+    { id: 1, InputLabel: "SUV Car", icon: SuvCarIcon },
+    { id: 2, InputLabel: "Luxury", icon: LuxuryCarIcon },
+    { id: 3, InputLabel: "Sedan Car", icon: SedanCarIcon },
+    { id: 4, InputLabel: "Mini Car", icon: MiniCarIcon },
+];
+
+// For range slider tip value
+const tooltipPosition = computed(() => ({
+    left: `${(form.price_per_day / 70) * 100}%`,
+}));
+
+// Method to handle file uploads
+const handleFileUpload = (event) => {
+    const files = Array.from(event.target.files);
+    form.images = files; // Store the selected files in the form data
+};
+
+// Vehicle Features
+const features = ref([]);
+
+const fetchFeatures = async () => {
+    try {
+        const response = await axios.get("/api/vehicle-features");
+        features.value = response.data;
+    } catch (error) {
+        console.error("Error fetching vehicle features:", error);
+    }
+};
+
+onMounted(() => {
+    fetchCategories();
+    fetchFeatures();
+});
+let map = null;
+let marker = null // Marker instance
+const currentStep = ref(0);
+const nextStep = async() => {
+  if (currentStep.value < 5) {
+    currentStep.value++;
+    await nextTick(); 
+    if (currentStep.value === 3) {
+      initializeMap(); // Initialize the map when step 3 is reached
+    }
+  }
+};
+
+const prevStep = () => {
+  if (currentStep.value > 1) {
+    currentStep.value--;
+  }
+};
+// leaflet map
+const mapform = ref({
+  location: '',
+  latitude: null,
+  longitude: null,
+  radius: 831867.4340914232
+})
+const searchResults = ref([]);
+
+const handleSearchInput = async () => {
+    // Ensure the location input is at least 3 characters long
+    if (form.location.length < 3) {
+        searchResults.value = []; // Clear previous results if input is too short
+        return;
+    }
+
+    try {
+        const response = await axios.get(
+            `/api/geocoding/autocomplete?text=${encodeURIComponent(form.location)}`
+        );
+        searchResults.value = response.data.features; // Store fetched results
+
+        // If you want to automatically select the first result and get its coordinates
+        // if (response.data.features.length > 0) {
+        //     const firstResult = response.data.features[0];
+        //     form.location = firstResult.properties.label; // Update location
+        //     form.latitude = firstResult.geometry.coordinates[1]; // Set latitude
+        //     form.longitude = firstResult.geometry.coordinates[0]; // Set longitude
+        // }
+    } catch (error) {
+        console.error('Error fetching locations:', error);
+    }
+};
+
+const selectLocation = (result) => {
+    mapform.value.location = result.properties?.label || 'Unknown Location'
+    mapform.value.latitude = result.geometry.coordinates[1];
+    mapform.value.longitude = result.geometry.coordinates[0];
+   
+        form.location = mapform.value.location // Update location
+        form.latitude = mapform.value.latitude.toFixed(8); // Set latitude
+        form.longitude = mapform.value.longitude.toFixed(8); // Set longitude
+        searchResults.value = []
+  // Update map with the selected location
+  const latLng = [mapform.value.latitude, mapform.value.longitude]
+  
+  if (map) {
+    map.setView(latLng, 13) // Move the map to the selected location
+    if (marker) {
+      marker.setLatLng(latLng) // Update marker position
+    } else {
+      marker = L.marker(latLng).addTo(map) // Add marker if it doesn't exist
+    }
+  }
+}
+const initializeMap = () => {
+  // Check if the map already exists and remove it
+  if (map) {
+    map.remove(); // Remove the existing map instance
+  }
+  // Initialize the map
+  map = L.map("map").setView([20.5937, 78.9629], 5); // Default to India
+
+  L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+    attribution: "&copy; OpenStreetMap contributors",
+  }).addTo(map);
+};
+
+
+</script>
+
+
+
 <style>
 select {
     width: 100%;
@@ -821,5 +922,82 @@ input[type="range"]::-webkit-slider-runnable-track {
     color: white;
     border: none;
     cursor: pointer;
+}
+
+@import 'leaflet/dist/leaflet.css';
+
+.marker-pin {
+  width: auto;
+  min-width: 50px;
+  height: 30px;
+  background: white;
+  border: 2px solid #666;
+  border-radius: 15px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+  transform: translate3d(0,0,1000px);
+}
+
+.marker-pin span {
+  color: black;
+  font-weight: bold;
+  font-size: 12px;
+  padding: 0 8px;
+}
+
+.custom-div-icon {
+  background: none;
+  border: none;
+}
+
+/* Leaflet pane z-index overrides */
+.leaflet-pane.leaflet-marker-pane,
+.leaflet-pane.leaflet-popup-pane {
+  z-index: 1000 !important;
+}
+
+.leaflet-pane.leaflet-tile-pane {
+  z-index: 200;
+}
+
+.leaflet-pane.leaflet-overlay-pane {
+  z-index: 400;
+}
+
+.leaflet-marker-icon {
+  transform: translate3d(0,0,1000px);
+}
+
+.leaflet-popup {
+  z-index: 1001 !important;
+}
+
+/* Hardware acceleration */
+.leaflet-marker-icon,
+.leaflet-marker-shadow,
+.leaflet-popup {
+  will-change: transform;
+  transform: translate3d(0,0,0);
+}
+
+/* Additional styles to ensure markers are always visible */
+.leaflet-container {
+  z-index: 1;
+}
+
+.leaflet-control-container {
+  z-index: 2000;
+}
+#map {
+  height: 600px;
+  width: 100%;
+  margin-top: 1rem;
+}
+input,textarea,select {
+    border-radius: 0.75rem;
+    border: 1px solid rgba(43, 43, 43, 0.50)!important;
+    padding: 1rem;
 }
 </style>

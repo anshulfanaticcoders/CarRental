@@ -72,6 +72,9 @@ module.exports = {
         customMediumBlackColor: {
          DEFAULT: "var(--custom-light-black)",
         },
+        customDarkBlackColor: {
+         DEFAULT: "var(--custom-dark-black)",
+        },
         jakartaFont:{
           DEFAULT:"var(--jakarta-font-family)",
         }

@@ -1,7 +1,6 @@
 <script setup>
 import { Link } from "@inertiajs/vue3";
 import Heart from "../../assets/Heart.svg";
-import CardCarImage from "../../assets/dummyCarImaage.png";
 import carIcon from "../../assets/carIcon.svg";
 import walkIcon from "../../assets/walking.svg";
 import mileageIcon from "../../assets/mileageIcon.svg";
@@ -33,10 +32,10 @@ onMounted(() => {
         <div
             v-for="vehicle in vehicles"
             :key="vehicle.id"
-            class="max-w-[370px] p-[2rem] rounded-[12px] border-[1px] border-[#E7E7E7]"
+            class=" p-[2rem] rounded-[12px] border-[1px] border-[#E7E7E7]"
         >
             <div class="column flex justify-end">
-                <Link href=""><img :src="Heart" alt="" class="w-full" /></Link>
+                <Link href=""><img :src="Heart" alt="" class="w-full mb-[1rem]" /></Link>
             </div>
             <Link :href="`single-car/vehicle/${vehicle.id}`">
                 <div class="column flex flex-col gap-5 items-start h-[20rem]">
@@ -49,7 +48,7 @@ onMounted(() => {
                                 )?.image_path
                             }`"
                             alt="Primary Image"
-                            class="w-full h-full object-cover rounded-lg"
+                            class="w-full h-[16rem] object-cover rounded-lg"
                         />
                     <span
                         class="bg-[#f5f5f5] inline-block px-8 py-2 text-center rounded-[40px]"
@@ -108,4 +107,7 @@ onMounted(() => {
 </template>
 
 
-<style></style>
+<style>
+
+
+</style>
