@@ -55,37 +55,30 @@ Route::middleware(['auth'])->group(function () {
     Route::inertia('review', 'Profile/Review');
     Route::inertia('favourites', 'Profile/Favourites');
     Route::inertia('inbox', 'Profile/Inbox');
-    
+
     // vendor Profile Web Routes
     Route::get('/vendor/register', [VendorController::class, 'create'])->name('vendor.register');
     Route::post('/vendor/store', [VendorController::class, 'store'])->name('vendor.store');
-    Route::get('/vehicle/{id}', [VehicleController::class, 'show']);
 
     // Vehicle Listing 
     Route::inertia('vehicle-listing', 'Auth/VehicleListing');
+    Route::get('/vehicles/create', [VehicleController::class, 'create'])->name('vehicles.create');
+    Route::post('/vehicles', [VehicleController::class, 'store'])->name('vehicles.store');
+    Route::get('/vehicles', [VehicleController::class, 'index'])->name('vehicles.index');
 });
 
-
+// Open route to get to the single car page
+Route::get('/vehicle/{id}', [VehicleController::class, 'show'])->name('vehicle.show');
 
 
 // Routing for Travel documents
 Route::inertia('single-car/vehicle/{id}', 'SingleCar');
+Route::get('/s', [SearchController::class, 'search']);
 
-
-
-// Route to display the form for creating a new vehicle
-Route::get('/vehicles/create', [VehicleController::class, 'create'])->name('vehicles.create');
-
-// Route to store a new vehicle
-Route::post('/vehicles', [VehicleController::class, 'store'])->name('vehicles.store');
-
-// Route to display the list of vehicles
-Route::get('/vehicles', [VehicleController::class, 'index'])->name('vehicles.index');
 
 
 // Map api
-Route::get('/s', [SearchController::class, 'search']);
-Route::get('/vehicle/{vehicle}', [SearchController::class, 'show']);
+// Route::get('/vehicle/{vehicles}', [SearchController::class, 'show']);
 
 Route::get('/api/geocoding/autocomplete', [GeocodingController::class, 'autocomplete']);
 

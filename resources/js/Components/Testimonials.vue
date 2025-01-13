@@ -1,4 +1,4 @@
-<script setup lang="ts">
+<script setup>
 import { ref, onMounted } from "vue";
 import { Card, CardContent } from "@/Components/ui/card";
 import {
@@ -54,12 +54,6 @@ const testimonials = ref([
     },
 ]);
 
-// Fetch data from backend
-// onMounted(async () => {
-//     const response = await fetch("/api/testimonials"); // Adjust the API endpoint as needed
-//     testimonials.value = await response.json();
-// });
-
 const plugin = Autoplay({
     delay: 2000,
     stopOnMouseEnter: true,
@@ -78,7 +72,7 @@ const plugin = Autoplay({
             </h3>
         </div>
         <Carousel
-            class="relative w-full container"
+            class="relative w-full full-w-container"
             :plugins="[plugin]"
             @mouseenter="plugin.stop"
             @mouseleave="
@@ -93,9 +87,9 @@ const plugin = Autoplay({
                     class="pl-1 md:basis-1/2 lg:basis-1/4"
                 >
                     <div class="p-1">
-                        <Card>
+                        <Card class='h-[19rem]'>
                             <CardContent
-                                class="flex flex-col aspect-square justify-center p-6 gap-10"
+                                class="flex h-full flex-col aspect-square justify-center p-6 gap-10"
                             >
                                 <!-- get testimonials values here -->
                                 <div
@@ -149,5 +143,10 @@ const plugin = Autoplay({
 .testimonials .prev-btn svg,
 .testimonials .next-btn svg{
     color: #2b2b2b!important;
+}
+.testimonials {
+    background-image: url('../../assets/gridlinetestimonials.png');
+    background-size: cover;
+    /* background-position: center center; */
 }
 </style>

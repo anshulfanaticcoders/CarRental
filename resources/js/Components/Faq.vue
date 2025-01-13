@@ -1,4 +1,4 @@
-<script setup lang="ts">
+<script setup >
 import {
     Accordion,
     AccordionContent,
@@ -31,7 +31,7 @@ const accordionItems = [
 </script>
 
 <template>
-    <div class="container min-h-[80vh] bg-[#153B4F1A] rounded-[20px] py-customVerticalSpacing flex flex-col gap-16">
+    <div class="full-w-container min-h-[80vh] bg-[#153B4F1A] rounded-[20px] py-customVerticalSpacing flex flex-col gap-16">
      <div class="flex  items-center justify-center ">
         <div class="column w-[573px] flex flex-col gap-5 text-center">
             <span class="text-customPrimaryColor text-[3rem] font-bold">FAQ's</span>
@@ -46,7 +46,7 @@ const accordionItems = [
         :default-value="defaultValue"
     >
         <AccordionItem
-        class="bg-white p-6 rounded-[16px]"
+        class="bg-white px-6 rounded-[16px]"
             v-for="item in accordionItems"
             :key="item.value"
             :value="item.value"
@@ -55,7 +55,7 @@ const accordionItems = [
                 item.title
             }}</AccordionTriggerVariant>
             <AccordionContent
-                class="text-[1.25rem] text-customMediumBlackColor"
+                class="text-[1.25rem] text-customLightGrayColor"
             >
                 {{ item.content }}
             </AccordionContent>

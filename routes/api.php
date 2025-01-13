@@ -19,13 +19,6 @@ use Illuminate\Support\Facades\Route;
 Route::middleware('auth:sanctum')->get('/user', function (Request $request) {
     return $request->user();
 });
-
-// Get Vehicle Categories from the database added by the Admin 
 Route::get('/vehicle-categories', [VehicleCategoryController::class, 'index']);
-
 Route::get('/vehicle-features', [VehicleController::class, 'getFeatures']);
-
-Route::get('/vehicle/{id}', [VehicleController::class, 'show']);
-
 Route::get('/vehicles', [VehicleController::class, 'showAllVendorVehicles']);
-

@@ -56,7 +56,7 @@ class VehicleController extends Controller
             'dealer_cost' => 'required|decimal:0,2|min:0',
             'phone_number' => 'required|string|max:15',
         ]);
-    
+
         // Create the vehicle
         $vehicle = Vehicle::create([
             'vendor_id' => $request->user()->id,
@@ -74,7 +74,7 @@ class VehicleController extends Controller
             'co2' => $request->co2,
             'location' => $request->location,
             'latitude' => $request->latitude, // Save latitude
-           'longitude' => $request->longitude,
+            'longitude' => $request->longitude,
             'status' => $request->status,
             'features' => json_encode($request->features),
             'featured' => $request->featured,
@@ -132,11 +132,13 @@ class VehicleController extends Controller
     {
         $vehicle = Vehicle::with(['specifications', 'images', 'category', 'user'])
             ->findOrFail($id);
-        return response()->json($vehicle);
+            return Inertia::render('SingleCar', [
+                'vehicle' => $vehicle,
+            ]);
     }
     public function showAllVendorVehicles()
-{
-    $vehicles = Vehicle::with(['specifications', 'images', 'category', 'user'])->get();
-    return response()->json($vehicles);
-}
+    {
+        $vehicles = Vehicle::with(['specifications', 'images', 'category', 'user'])->get();
+        return response()->json($vehicles);
+    }
 }

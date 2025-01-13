@@ -15,5 +15,6 @@ class VehicleCategory extends Model
         'description',
         'icon',
         'status',
+        'image'
     ];
 }

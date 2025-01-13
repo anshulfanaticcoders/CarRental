@@ -15,12 +15,12 @@ class SearchController extends Controller
     // }
 
 
-    public function show(Vehicle $vehicle)
-    {
-        return Inertia::render('VehicleDetail', [
-            'vehicle' => $vehicle
-        ]);
-    }
+    // public function show(Vehicle $vehicle)
+    // {
+    //     return Inertia::render('VehicleDetail', [
+    //         'vehicle' => $vehicle
+    //     ]);
+    // }
 
     public function search(Request $request)
     {

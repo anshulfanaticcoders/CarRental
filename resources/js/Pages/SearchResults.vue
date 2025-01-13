@@ -149,18 +149,18 @@ initMap()
 <template>
   <AuthenticatedHeaderLayout/>
        <section class="bg-customPrimaryColor py-customVerticalSpacing">
-            <div class="container">
-             <SearchBar class="border-[2px] rounded-[20px] border-white mt-0 mb-0"/>
+            <div class="full-w-container">
+              <SearchBar class="border-[2px] rounded-[20px] border-white mt-0 mb-0"/>
             </div>
         </section>
 
         <section>
-          <div class="container py-customVerticalSpacing">
+          <div class="full-w-container py-customVerticalSpacing">
             <FilterSlot/>
           </div>
         </section>
 
-  <div class=" mx-auto p-4">
+  <div class="full-w-container mx-auto">
       <div class="flex gap-4">
           <!-- Left Column - Vehicle List -->
           <div class="w-full grid grid-cols-2 gap-5">
@@ -186,7 +186,7 @@ initMap()
                                 )?.image_path
                             }`"
                             alt="Primary Image"
-                            class="w-full h-full object-cover rounded-lg"
+                            class="w-full max-h-[250px] object-cover rounded-lg"
                         />
                     <span
                         class="bg-[#f5f5f5] inline-block px-8 py-2 text-center rounded-[40px]"
@@ -244,7 +244,7 @@ initMap()
           </div>
           <!-- Right Column - Map -->
           <div class="w-full sticky top-4 h-[calc(100vh-2rem)]">
-              <div class="bg-white  h-full">
+              <div class="bg-white h-full">
                   <div id="map" class="h-full rounded-lg"></div>
               </div>
           </div>
@@ -321,8 +321,7 @@ initMap()
   z-index: 2000;
 }
 #map {
-  height: 600px;
+  height: 100%;
   width: 100%;
-  margin-top: 1rem;
 }
 </style>

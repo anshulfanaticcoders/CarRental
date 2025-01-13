@@ -10,7 +10,7 @@ class VehicleCategoryController extends Controller
     public function index()
     {
         // Fetch all vehicle categories
-        $categories = VehicleCategory::all(['id', 'name']); // Adjust fields as necessary
+        $categories = VehicleCategory::all(['id', 'name','image']); // Adjust fields as necessary
 
         return response()->json($categories);
     }

@@ -22,12 +22,12 @@ import carSideIcon from '../../assets/carSideIcon.svg';
 </script>
 
 <template>
-  <div class="flex justify-between gap-5">
+  <div class="flex justify-between gap-10">
 
     <DropdownMenu>
       <DropdownMenuTrigger as-child>
         <Button
-          class="bg-white text-customPrimaryColor text-[1rem] p-5 rounded-[8px] border-[1px] border-customPrimaryColor  hover:bg-[#153B4F33]">
+          class="w-full bg-white text-customPrimaryColor text-[1rem] px-5 py-8 rounded-[8px] border-[1px] border-customPrimaryColor  hover:bg-[#153B4F33]">
           <img :src="bulbIcon" alt="" class="transition-brightness">
           My Ideal Vehicle
         </Button>
@@ -51,7 +51,7 @@ import carSideIcon from '../../assets/carSideIcon.svg';
     <DropdownMenu>
       <DropdownMenuTrigger as-child>
         <Button
-          class="bg-white text-customPrimaryColor text-[1rem] p-5 rounded-[8px] border-[1px] border-customPrimaryColor  hover:bg-[#153B4F33]">
+          class="w-full bg-white text-customPrimaryColor text-[1rem] px-5 py-8 rounded-[8px] border-[1px] border-customPrimaryColor  hover:bg-[#153B4F33]">
           <img :src="percentageIcon" alt="" class="transition-brightness">
           Price per day
         </Button>
@@ -75,7 +75,7 @@ import carSideIcon from '../../assets/carSideIcon.svg';
     <DropdownMenu>
       <DropdownMenuTrigger as-child>
         <Button
-          class="bg-white text-customPrimaryColor text-[1rem] p-5 rounded-[8px] border-[1px] border-customPrimaryColor  hover:bg-[#153B4F33]">
+          class="w-full bg-white text-customPrimaryColor text-[1rem] px-5 py-8 rounded-[8px] border-[1px] border-customPrimaryColor  hover:bg-[#153B4F33]">
           <img :src="travellerIcon" alt="" class="transition-brightness">
           Travelers
         </Button>
@@ -99,7 +99,7 @@ import carSideIcon from '../../assets/carSideIcon.svg';
     <DropdownMenu>
       <DropdownMenuTrigger as-child>
         <Button
-          class="bg-white text-customPrimaryColor text-[1rem] p-5 rounded-[8px] border-[1px] border-customPrimaryColor  hover:bg-[#153B4F33]">
+          class="w-full bg-white text-customPrimaryColor text-[1rem] px-5 py-8 rounded-[8px] border-[1px] border-customPrimaryColor  hover:bg-[#153B4F33]">
           <img :src="carSideIcon" alt="" class="transition-brightness">
           Type of vehicle
         </Button>
@@ -123,7 +123,7 @@ import carSideIcon from '../../assets/carSideIcon.svg';
     <DropdownMenu>
       <DropdownMenuTrigger as-child>
         <Button
-          class="bg-white text-customPrimaryColor text-[1rem] p-5 rounded-[8px] border-[1px] border-customPrimaryColor  hover:bg-[#153B4F33]">
+          class="w-full bg-white text-customPrimaryColor text-[1rem] px-5 py-8 rounded-[8px] border-[1px] border-customPrimaryColor  hover:bg-[#153B4F33]">
           <img :src="transmitionIcon" alt="" class="transition-brightness">
           Equipment
         </Button>
@@ -147,7 +147,7 @@ import carSideIcon from '../../assets/carSideIcon.svg';
     <DropdownMenu>
       <DropdownMenuTrigger as-child>
         <Button
-          class="bg-white text-customPrimaryColor text-[1rem] p-5 rounded-[8px] border-[1px] border-customPrimaryColor  hover:bg-[#153B4F33]">
+          class="w-full bg-white text-customPrimaryColor text-[1rem] px-5 py-8 rounded-[8px] border-[1px] border-customPrimaryColor  hover:bg-[#153B4F33]">
           <img :src="filterIcon" alt="" class="transition-brightness">
           Preferences
         </Button>

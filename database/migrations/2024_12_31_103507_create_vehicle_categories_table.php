@@ -15,6 +15,7 @@ class CreateVehicleCategoriesTable extends Migration
             $table->text('description')->nullable();
             $table->string('icon')->nullable();
             $table->enum('status', ['active', 'inactive'])->default('active');
+            $table->string('image')->nullable();
             $table->timestamps();
         });
     }

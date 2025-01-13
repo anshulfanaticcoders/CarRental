@@ -38,17 +38,17 @@ const accordionItems = [
         :style="{ backgroundImage: `url(${gridLines})` }"
     >
         <div
-            class="container grid grid-cols-2 gap-20 min-h-[100vh] py-16 items-center"
+            class="full-w-container flex justify-between gap-20 h-[100vh] py-16 items-center"
         >
             <div
-                class="column bg-cover bg-center rounded-[200px] h-full"
+                class="column bg-cover bg-center rounded-[200px] h-full w-[35%]"
                 :style="{ backgroundImage: `url(${gridLinesForegroundImage})` }"
             ></div>
-            <div class="column flex flex-col gap-10">
-                <div class="col">
-                    <span>-How it Works -</span>
+            <div class="column flex flex-col gap-10 w-[55%]">
+                <div class="col flex flex-col gap-5">
+                    <span class="text-cutomPrimaryColor text-[1.25rem]">-How it Works -</span>
                     <h3>Treamlined processes for a hassle-free experience</h3>
-                    <p>
+                    <p class='text-[1.25rem] text-customLightGrayColor'>
                         Our streamlined process ensures a seamless car rental
                         experience from start to finish. With easy online
                         booking, flexible pick-up and drop-off options.
@@ -57,7 +57,7 @@ const accordionItems = [
                 <div class="col">
                     <Accordion
                         type="single"
-                        class="w-full"
+                        class="w-full flex flex-col gap-5"
                         collapsible
                         :default-value="defaultValue"
                     >
@@ -66,10 +66,10 @@ const accordionItems = [
                             :key="item.value"
                             :value="item.value"
                         >
-                            <AccordionTrigger>{{
+                            <AccordionTrigger class="text-[1.5rem] text-customPrimaryColor">{{
                                 item.title
                             }}</AccordionTrigger>
-                            <AccordionContent>
+                            <AccordionContent class="text-[1.25rem] text-customLightGrayColor">
                                 {{ item.content }}
                             </AccordionContent>
                         </AccordionItem>

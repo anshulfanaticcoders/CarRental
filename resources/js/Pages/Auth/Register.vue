@@ -78,7 +78,7 @@ import {
     <Head title="Register" />
     <div class="min-h-[80vh] flex justify-center items-center">
         <form @submit.prevent="currentStep === steps.length - 1 ? submit() : nextStep()" class="w-[40%]">
-            <div>
+            <div class="mb-[4rem]">
                 <Stepper class="flex justify-between">
                     <StepperItem :step="1" :completed="currentStep > 0" :active="currentStep === 0">
                         <StepperTrigger>
@@ -108,7 +108,7 @@ import {
                 </Stepper>
             </div>
             <div v-if="currentStep === 0">
-                <span class="text-[3rem] text-center block font-medium text-customMediumBlackColor">Personal
+                <span class="text-[3rem] text-center block font-medium text-customDarkBlackColor">Personal
                     Information</span>
                 <p class="text-center mb-[3rem] text-customLightGrayColor font-medium">To get started, tell us about
                     yourself.</p>
@@ -138,7 +138,7 @@ import {
 
             <div v-else-if="currentStep === 1">
 
-                <span class="text-[3rem] text-center block font-medium text-customMediumBlackColor">Contact
+                <span class="text-[3rem] text-center block font-medium text-customDarkBlackColor">Contact
                     Details</span>
                 <p class="text-center mb-[3rem] text-customLightGrayColor font-medium">We'll send you relevant info
                     about your bookings.</p>
@@ -160,7 +160,7 @@ import {
 
             <div v-else-if="currentStep === 2">
 
-                <span class="text-[3rem] text-center block font-medium text-customMediumBlackColor">Address</span>
+                <span class="text-[3rem] text-center block font-medium text-customDarkBlackColor">Address</span>
                 <p class="text-center mb-[3rem] text-customLightGrayColor font-medium">We'll use it for billing purposes
                 </p>
                 <div class="grid grid-cols-2 gap-5">
@@ -192,7 +192,7 @@ import {
 
             <div v-else-if="currentStep === 3">
 
-                <span class="text-[3rem] text-center block font-medium text-customMediumBlackColor">Create
+                <span class="text-[3rem] text-center block font-medium text-customDarkBlackColor">Create
                     Password</span>
                 <p class="text-center mb-[3rem] text-customLightGrayColor font-medium">We'll use it for billing purposes
                 </p>
@@ -227,5 +227,13 @@ import {
 <style>
 label {
     margin-bottom: 0.5rem;
+}
+input{
+    border: 1px solid #2B2B2B80;
+    border-radius: 12px;
+    padding: 1rem;
+}
+label{
+    color:#2B2B2BBF;
 }
 </style>

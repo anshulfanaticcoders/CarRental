@@ -1,6 +1,6 @@
 <script setup>
 import { cn } from '@/lib/utils';
-import { ChevronDownIcon } from '@radix-icons/vue';
+import { PlusIcon,MinusIcon} from '@radix-icons/vue';
 import { AccordionHeader, AccordionTrigger } from 'radix-vue';
 import { computed } from 'vue';
 
@@ -12,26 +12,25 @@ const props = defineProps({
 
 const delegatedProps = computed(() => {
   const { class: _, ...delegated } = props;
-
   return delegated;
 });
 </script>
 
 <template>
-  <AccordionHeader class="flex">
+   <AccordionHeader class="flex">
     <AccordionTrigger
       v-bind="delegatedProps"
       :class="
         cn(
-          'flex flex-1 items-center justify-between text-sm font-medium transition-all [&[data-state=open]>svg]:rotate-180',
+          'flex flex-1 items-center justify-between py-4 text-sm font-medium transition-all [&[data-state=open]>svg]:rotate-180',
           props.class,
         )
       "
     >
       <slot />
       <slot name="icon">
-        <ChevronDownIcon
-          class="h-7 w-7 shrink-0 text-customDarkBlackColor transition-transform duration-200"
+        <PlusIcon
+          class="h-8 w-8 shrink-0 [&[data-state=open] text-muted-foreground transition-transform duration-200 bg-[#153B4F1A] rounded-[8px] p-1"
         />
       </slot>
     </AccordionTrigger>

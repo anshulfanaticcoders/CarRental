@@ -42,8 +42,6 @@ class ProfileController extends Controller
 
             // Get the authenticated user
             $user = Auth::user();
-            // Or alternatively:
-            // $user = $request->user();
 
             $validated = $request->validated();
 

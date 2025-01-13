@@ -38,16 +38,15 @@ const submit = () => {
             {{ status }}
         </div>
 
-        <div class="flex justify-between items-center gap-16 h-[100vh] sign_in">
-         <div class="column w-[30%] ml-auto">
-            
+        <div class="ml-[10%] flex justify-between items-center gap-16 h-[100vh] sign_in">
+         <div class="column w-[40%]">
             <div class="text-center mb-[4rem] text-[#111111]">
-                <h3>Sign In</h3>
-                <p>Login for free to access to in any of our products</p>
+                <h3 class="font-medium text-[3rem]">Sign In</h3>
+                <p class='text-customLightGrayColor'>Login for free to access to in any of our products</p>
             </div>
             <form @submit.prevent="submit">
             <div>
-                <InputLabel for="email" value="Email" />
+                <InputLabel for="email" value="Email address" />
 
                 <TextInput
                     id="email"
@@ -100,8 +99,8 @@ const submit = () => {
         </form>
          </div>
 
-         <div class="column overflow-hidden h-full">
-            <img :src = loginBg alt="" class="object-cover repeat-0 object-center">
+         <div class="column overflow-hidden h-full w-[40%]">
+            <img :src = loginBg alt="" class="w-full h-full object-cover repeat-0">
          </div>
         </div>
 

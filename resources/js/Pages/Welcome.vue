@@ -6,12 +6,17 @@ import locationMapIcon from "../../assets/location.svg";
 import chipIcon from "../../assets/chip.svg";
 import phoneIcon from "../../assets/phone.svg";
 import userCoverageIcon from "../../assets/usercoverage.svg";
-import carImage from "../../assets/carImagebgrmoved.png";
+import carImage from "../../assets/carImagebgrmoved.jpeg";
 import AuthenticatedHeaderLayout from "@/Layouts/AuthenticatedHeaderLayout.vue";
 import HowItWorks from "@/Components/ReusableComponents/HowItWorks.vue";
 import SearchBar from "@/Components/SearchBar.vue";
 import goIcon from "../../assets/goIcon.svg";
-import categoryImage from "../../assets/categoryImage.jpeg";
+import Autoplay from 'embla-carousel-autoplay';
+const plugin = Autoplay({
+    delay: 2000,
+    stopOnMouseEnter: true,
+    stopOnInteraction: false,
+});
 
 defineProps({
     canLogin: {
@@ -28,6 +33,27 @@ import {
     CarouselNext,
     CarouselPrevious,
 } from "@/Components/ui/carousel";
+import { onMounted, ref } from "vue";
+import Card from "@/Components/ui/card/Card.vue";
+import CardContent from "@/Components/ui/card/CardContent.vue";
+import Testimonials from "@/Components/Testimonials.vue";
+import Faq from "@/Components/Faq.vue";
+
+
+// Category Carousel
+const categories = ref([]);
+const fetchCategories = async () => {
+    try {
+        const response = await axios.get("/api/vehicle-categories");
+        categories.value = response.data; // Store the fetched categories
+    } catch (error) {
+        console.error("Error fetching vehicle categories:", error);
+    }
+};
+// Fetch categories on component mount
+onMounted(() => {
+    fetchCategories();
+});
 </script>
 
 <template>
@@ -36,7 +62,7 @@ import {
 
     <AuthenticatedHeaderLayout />
 
-    <main>
+    <main class="overflow-x-hidden">
         <section class="hero_section">
             <div class="wrapper flex justify-between w-full">
                 <div
@@ -61,11 +87,8 @@ import {
             <SearchBar />
         </section>
 
-        <!-- <section class="container py-customVerticalSpacing">
-            <CarCard />
-        </section> -->
-
-        <section class="ml-[5%] w-[105%] category-carousel mt-[8rem] min-h-[50vh] py-customVerticalSpacing overflow-x-hidden">
+        <section
+            class="ml-[5%] w-[105%] category-carousel mt-[8rem] min-h-[50vh] py-customVerticalSpacing overflow-hidden">
             <div class="flex min-h-[inherit] items-center gap-24">
                 <div class="column">
                     <h2>
@@ -80,21 +103,21 @@ import {
                             rgba(21, 59, 79, 0) 94.4%
                         );
                     ">
-                    <Carousel class="relative w-full" :opts="{
-                        align: 'start',
-                    }">
+                    <Carousel class="relative w-full" :opts="{ align: 'start' }">
                         <CarouselContent>
-                            <CarouselItem v-for="(_, index) in 5" :key="index" class="md:basis-1/2 lg:basis-1/3">
+                            <CarouselItem v-for="category in categories" :key="category.id"
+                                class="md:basis-1/2 lg:basis-1/3">
                                 <div class="p-1">
-                                    <Link href="">
+                                    <Link :href="`/categories/${category.id}`">
                                     <Card>
                                         <CardContent
                                             class="cardContent flex h-[515px] items-center justify-center p-6 relative">
-                                            <img class="rounded-[20px] h-full w-full object-cover" :src="categoryImage"
-                                                alt="" />
+                                            <img class="rounded-[20px] h-full w-full object-cover"
+                                                :src="`/${category.image}`" alt="" />
                                             <div
                                                 class="category_name absolute bottom-10 left-0 flex justify-between w-full px-8">
-                                                <span class="text-white text-[2rem] font-semibold">Sports</span>
+                                                <span class="text-white text-[2rem] font-semibold">{{ category.name
+                                                    }}</span>
                                                 <img class="" :src="goIcon" alt="" />
                                             </div>
                                         </CardContent>
@@ -109,12 +132,44 @@ import {
                 </div>
             </div>
         </section>
+
+        <!------------------------------- Top Destination Places -------------------------------------->
+        <section class="flex flex-col gap-10 py-customVerticalSpacing">
+            <div class="column ml-[5%]">
+                <span class="text-[1.15rem] text-customPrimaryColor">-Top Destinations -</span>
+                <h3 class="text-customDarkBlackColor mt-[1rem]">Popular places</h3>
+            </div>
+            <div class="column">
+                <Carousel class="relative w-full" :plugins="[plugin]" @mouseenter="plugin.stop"
+                    @mouseleave="[plugin.reset(), plugin.play(), console.log('Running')];">
+                    <CarouselContent>
+                        <CarouselItem v-for="(_, index) in 7" :key="index" class="pl-1 md:basis-1/2 lg:basis-1/5">
+                            <div class="p-1">
+                                <Card>
+                                    <CardContent class="flex aspect-square items-center justify-center p-6">
+                                        <span class="text-4xl font-semibold">{{ index + 1 }}</span>
+                                    </CardContent>
+                                </Card>
+                            </div>
+                        </CarouselItem>
+                    </CarouselContent>
+                    <CarouselPrevious />
+                    <CarouselNext />
+                </Carousel>
+            </div>
+        </section>
+        <!------------------------------ <Start>  -------------------------------------------------->
+        <!------------------------------ <End>  -------------------------------------------------->
+
+
+
+
         <!------------------------------- WHY CHOOSE US -------------------------------------->
         <!------------------------------ <Start>  -------------------------------------------------->
         <section class="py-customVerticalSpacing">
-            <div class="container flex flex-col gap-16">
-                <div class="column text-center flex flex-col items-center">
-                    <span class="text-[1.25rem]">-Why Choose Us-</span>
+            <div class="full-w-container flex flex-col gap-16">
+                <div class="column text-center flex flex-col gap-5 items-center">
+                    <span class="text-[1.25rem] text-customPrimaryColor">-Why Choose Us-</span>
                     <h3 class="max-w-[883px] text-customDarkBlackColor">
                         From luxury sedans to budget-friendly compacts, we've
                         got something for every journey
@@ -125,8 +180,9 @@ import {
                         <div class="info-card flex gap-5 items-start">
                             <img :src="locationMapIcon" alt="" />
                             <div class="flex flex-col gap-3">
-                                <span class="text-[1.5rem] text-customDarkBlackColor font-medium">Convenient Locations</span>
-                                <p>
+                                <span class="text-[1.5rem] text-customDarkBlackColor font-medium">Convenient
+                                    Locations</span>
+                                <p class="text-customLightGrayColor text-[1.15rem]">
                                     With multiple rental locations at airports,
                                     city centers, and popular destinations,
                                     picking up and dropping off your rental is
@@ -137,24 +193,27 @@ import {
                         <div class="info-card flex gap-5 items-start">
                             <img :src="phoneIcon" alt="" />
                             <div class=" flex flex-col gap-3">
-                                <span class="text-[1.5rem] text-customDarkBlackColor font-medium">Fast and Easy Booking Process</span>
-                                <p>
+                                <span class="text-[1.5rem] text-customDarkBlackColor font-medium">Fast and Easy Booking
+                                    Process</span>
+                                <p class="text-customLightGrayColor text-[1.15rem]">
                                     Select your desired pickup and return dates,
                                     along with the time.
                                 </p>
                             </div>
                         </div>
                     </div>
-                    <div class="col">
-                        <img class="rounded-[20px] h-full w-full object-cover" :src="carImage" alt="" />
+                    <div class="col flex justify-center">
+                        <img class="rounded-[20px] h-full object-cover" :src="carImage" alt=""
+                        style="clip-path: polygon(30% 0%, 70% 0%, 100% 30%, 100% 70%, 70% 100%, 30% 100%, 0% 70%, 0% 30%);" />
                     </div>
                     <div class="col flex flex-col gap-10">
                         <div class="info-card flex gap-5 items-start">
                             <img :src="chipIcon" alt="" />
                             <div class=" flex flex-col gap-3">
-                                <span class="text-[1.5rem] text-customDarkBlackColor font-medium">Modern Fleet with the Latest
+                                <span class="text-[1.5rem] text-customDarkBlackColor font-medium">Modern Fleet with the
+                                    Latest
                                     Technology</span>
-                                <p>
+                                <p class="text-customLightGrayColor text-[1.15rem]">
                                     Select your desired pickup and return dates,
                                     along with the time.
                                 </p>
@@ -163,8 +222,9 @@ import {
                         <div class="info-card flex gap-5 items-start">
                             <img :src="userCoverageIcon" alt="" />
                             <div class="flex flex-col gap-3 ">
-                                <span class="text-[1.5rem] text-customDarkBlackColor font-medium">Insurance Coverage</span>
-                                <p>
+                                <span class="text-[1.5rem] text-customDarkBlackColor font-medium">Insurance
+                                    Coverage</span>
+                                <p class="text-customLightGrayColor text-[1.15rem]">
                                     Select your desired pickup and return dates,
                                     along with the time.
                                 </p>
@@ -181,6 +241,21 @@ import {
         <HowItWorks />
         <!------------------------------ <End>  -------------------------------------------------->
 
+
+                    <!-- ------------------------Testimonials Section-------------------------------- -->
+        <!------------------------------ <Start>  -------------------------------------------------->
+        <section class="py-customVerticalSpacing">
+            <Testimonials />
+        </section>
+        <!-- ---------------------------<End>---------------------------------------------------->
+
+
+                    <!-- ------------------------FAQ Section-------------------------------- -->
+        <!------------------------------ <Start>  -------------------------------------------------->
+        <section class="my-customVerticalSpacing">
+            <Faq />
+        </section>
+        <!-- ---------------------------<End>---------------------------------------------------->
     </main>
 
     <Footer />

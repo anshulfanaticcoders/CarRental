@@ -19,7 +19,8 @@ const showingNavigationDropdown = ref(false);
 </script>
 
 <template>
-    <div class="py-[2rem] full-w-container">
+    <div class="border-b-[1px] border-b-customMediumBlackColor">
+        <div class="py-[2rem] full-w-container">
         <!-- Authenticated User Header -->
         <div v-if="$page.props.auth.user" class="">
             <nav class="bg-white border-gray-100">
@@ -149,5 +150,6 @@ const showingNavigationDropdown = ref(false);
                 </div>
             </div>
         </div>
+    </div>
     </div>
 </template>

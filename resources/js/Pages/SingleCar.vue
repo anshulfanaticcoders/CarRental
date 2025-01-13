@@ -9,7 +9,6 @@ import carbonIcon from "../../assets/carbon-emmision.svg";
 import ageIcon from "../../assets/age.svg";
 import enginepowerIcon from "../../assets/enginepower.svg";
 
-
 import ShareIcon from "../../assets/ShareNetwork.svg";
 import Heart from "../../assets/Heart.svg";
 import carIcon from "../../assets/carIcon.svg";
@@ -25,21 +24,10 @@ import { onMounted, ref } from "vue";
 import AuthenticatedHeaderLayout from "@/Layouts/AuthenticatedHeaderLayout.vue";
 
 // Fetching Vehicle Details
-const vehicle = ref(null);
-const vehicleId = 1;
+import { usePage } from "@inertiajs/vue3";
 
-const fetchVehicleData = async () => {
-    try {
-        const response = await axios.get(`/api/vehicle/${vehicleId}`);
-        vehicle.value = response.data;
-    } catch (error) {
-        console.error("Error fetching vehicle data:", error);
-    }
-};
-
-onMounted(() => {
-    fetchVehicleData();
-});
+const { props } = usePage(); // Get the props passed from the controller
+const vehicle = ref(props.vehicle);
 
 // Feature-Icon Mapping
 const featureIconMap = {
@@ -56,51 +44,44 @@ const featureIconMap = {
 
 <template>
     <Head title="Single Car" />
-    <AuthenticatedHeaderLayout/>
+    <AuthenticatedHeaderLayout />
     <main>
         <section>
-            <div class="container py-customVerticalSpacing">
-                <div class="flex gap-5 items-center mb-5">
+            <div class="full-w-container py-customVerticalSpacing">
+                <div class="flex gap-2 items-center mb-2">
                     <h4 class="font-medium">{{ vehicle?.brand }}</h4>
                     <span
                         class="bg-[#f5f5f5] inline-block px-8 py-2 text-center rounded-[40px]"
-                        >{{ vehicle?.category.name }}</span
                     >
+                        {{ vehicle?.category.name }}
+                    </span>
                 </div>
-                <div class="flex gap-5 items-center text-[1.25rem]">
+                <div class="flex gap-2 items-center text-[1.25rem]">
                     <div class="car_ratings">5(1)</div>
-                    <div class="dot_seperator">
-                        <strong>.</strong>
-                    </div>
+                    <div class="dot_seperator"><strong>.</strong></div>
                     <div class="car_location">
                         <span>{{ vehicle?.location }}</span>
                     </div>
                 </div>
-                <div class="gallery w-full mt-[4rem] flex gap-5">
-                    <div class="primary-image mb-4">
+                <div class="w-full mt-[2rem] flex gap-2">
+                    <div class="primary-image w-[60%] max-h-[500px]">
                         <img
                             v-if="vehicle?.images"
                             :src="`/storage/${
                                 vehicle.images.find(
-                                    (image) =>
-                                        image.image_type === 'primary'
+                                    (image) => image.image_type === 'primary'
                                 )?.image_path
                             }`"
                             alt="Primary Image"
-                            class="w-full h-auto object-cover rounded-lg"
+                            class="w-full h-full object-cover rounded-lg"
                         />
                     </div>
 
                     <!-- Display the gallery images -->
-                    <div
-                        class="gallery w-full grid grid-cols-2  gap-4"
-                    >
+                    <div class="gallery w-[50%] grid grid-cols-2 gap-2 max-h-[245px]">
                         <div
-                            v-for="(
-                                image, index
-                            ) in vehicle?.images.filter(
-                                (image) =>
-                                    image.image_type === 'gallery'
+                            v-for="(image, index) in vehicle?.images.filter(
+                                (image) => image.image_type === 'gallery'
                             )"
                             :key="image.id"
                             class="gallery-item"
@@ -108,7 +89,7 @@ const featureIconMap = {
                             <img
                                 :src="`/storage/${image.image_path}`"
                                 :alt="`Gallery Image ${index + 1}`"
-                                class="w-full h-auto object-cover rounded-lg"
+                                class="w-full h-[245px] object-cover rounded-lg"
                             />
                         </div>
                     </div>
@@ -117,86 +98,155 @@ const featureIconMap = {
                     <div class="column w-[50%]">
                         <div class="column flex flex-col gap-10">
                             <!-- Vehicle Features Section -->
-                            <span class="text-[2rem] font-medium">Car Overview</span>
-                               <div class="features grid grid-cols-4 gap-x-[2rem] gap-y-[2rem]">
-                                   <div class="feature-item items-center flex gap-3">
-                                       <img :src="peopleIcon" alt="">
-                                       <div class="flex flex-col">
-                                        <span class="text-customLightGrayColor">People</span>
-                                        <span class="font-medium">0{{ vehicle?.seating_capacity }}</span>
-                                       </div>
-                                   </div>
-                                   <div class="feature-item items-center flex gap-3">
-                                       <img :src="doorIcon" alt="">
-                                       <div class="flex flex-col">
-                                        <span class="text-customLightGrayColor">Doors</span>
-                                        <span class="font-medium">0{{ vehicle?.number_of_doors}}</span>
-                                       </div>
-                                   </div>
-                                   <div class="feature-item items-center flex gap-3">
-                                       <img :src="luggageIcon" alt="">
-                                       <div class="flex flex-col">
-                                        <span class="text-customLightGrayColor">Luggage</span>
-                                        <span class="font-medium">0{{ vehicle?.luggage_capacity}}</span>
-                                       </div>
-                                   </div>
-                                   <div class="feature-item items-center flex gap-3">
-                                       <img :src="transmisionIcon" alt="">
-                                       <div class="flex flex-col">
-                                        <span class="text-customLightGrayColor">Transmission</span>
-                                        <span class="font-medium capitalize">{{ vehicle?.transmission}}</span>
-                                       </div>
-                                   </div>
-                                   <div class="feature-item items-center flex gap-3">
-                                       <img :src="fuelIcon" alt="">
-                                       <div class="flex flex-col">
-                                        <span class="text-customLightGrayColor">Fuel Type</span>
-                                        <span class="font-medium capitalize">{{ vehicle?.fuel}}</span>
-                                       </div>
-                                   </div>
-                                   <div class="feature-item items-center flex gap-3">
-                                       <img :src="enginepowerIcon" alt="">
-                                       <div class="flex flex-col">
-                                        <span class="text-customLightGrayColor">Horsepower</span>
-                                        <span class="font-medium">{{ vehicle?.horsepower}} hp</span>
-                                       </div>
-                                   </div>
-                                   <div class="feature-item items-center flex gap-3">
-                                       <img :src="carbonIcon" alt="">
-                                       <div class="flex flex-col">
-                                        <span class="text-customLightGrayColor">Co2 Emission</span>
-                                        <span class="font-medium">{{ vehicle?.co2}} (g/km)</span>
-                                       </div>
-                                   </div>
-                                   <div class="feature-item items-center flex gap-3">
-                                       <img :src="mileageIcon" alt="">
-                                       <div class="flex flex-col">
-                                        <span class="text-customLightGrayColor">Mileage</span>
-                                        <span class="font-medium">{{ vehicle?.mileage}} km/d</span>
-                                       </div>
-                                   </div>
-                                   <div class="feature-item items-center flex gap-3">
-                                       <img :src="ageIcon" alt="">
-                                       <div class="flex flex-col">
-                                        <span class="text-customLightGrayColor">Minimum Driving Age</span>
-                                        <span class="font-medium">21</span>
-                                       </div>
-                                   </div>
-                               </div>
+                            <span class="text-[2rem] font-medium"
+                                >Car Overview</span
+                            >
+                            <div
+                                class="features grid grid-cols-4 gap-x-[2rem] gap-y-[2rem]"
+                            >
+                                <div
+                                    class="feature-item items-center flex gap-3"
+                                >
+                                    <img :src="peopleIcon" alt="" class='w-[30px] h-[30px]' />
+                                    <div class="flex flex-col">
+                                        <span class="text-customLightGrayColor text-[1rem]"
+                                            >People</span
+                                        >
+                                        <span class="font-medium text-[1.15rem]">{{
+                                            vehicle?.seating_capacity
+                                        }}</span>
+                                    </div>
+                                </div>
+                                <div
+                                    class="feature-item items-center flex gap-3"
+                                >
+                                    <img :src="doorIcon" alt="" class='w-[30px] h-[30px]' />
+                                    <div class="flex flex-col">
+                                        <span class="text-customLightGrayColor text-[1rem]"
+                                            >Doors</span
+                                        >
+                                        <span class="font-medium text-[1.15rem]">{{
+                                            vehicle?.number_of_doors
+                                        }}</span>
+                                    </div>
+                                </div>
+                                <div
+                                    class="feature-item items-center flex gap-3"
+                                >
+                                    <img :src="luggageIcon" alt="" class='w-[30px] h-[30px]' />
+                                    <div class="flex flex-col">
+                                        <span class="text-customLightGrayColor text-[1rem]"
+                                            >Luggage</span
+                                        >
+                                        <span class="font-medium text-[1rem]">{{
+                                            vehicle?.luggage_capacity
+                                        }}</span>
+                                    </div>
+                                </div>
+                                <div
+                                    class="feature-item items-center flex gap-3"
+                                >
+                                    <img :src="transmisionIcon" alt="" class='w-[30px] h-[30px]' />
+                                    <div class="flex flex-col">
+                                        <span class="text-customLightGrayColor text-[1rem]"
+                                            >Transmission</span
+                                        >
+                                        <span class="font-medium capitalize">{{
+                                            vehicle?.transmission
+                                        }}</span>
+                                    </div>
+                                </div>
+                                <div
+                                    class="feature-item items-center flex gap-3"
+                                >
+                                    <img :src="fuelIcon" alt="" class='w-[30px] h-[30px]' />
+                                    <div class="flex flex-col">
+                                        <span class="text-customLightGrayColor text-[1rem]"
+                                            >Fuel Type</span
+                                        >
+                                        <span class="font-medium capitalize">{{
+                                            vehicle?.fuel
+                                        }}</span>
+                                    </div>
+                                </div>
+                                <div
+                                    class="feature-item items-center flex gap-3"
+                                >
+                                    <img :src="enginepowerIcon" alt="" class='w-[30px] h-[30px]' />
+                                    <div class="flex flex-col">
+                                        <span class="text-customLightGrayColor text-[1rem]"
+                                            >Horsepower</span
+                                        >
+                                        <span class="font-medium text-[1rem]"
+                                            >{{ vehicle?.horsepower }} hp</span
+                                        >
+                                    </div>
+                                </div>
+                                <div
+                                    class="feature-item items-center flex gap-3"
+                                >
+                                    <img :src="carbonIcon" alt="" class='w-[30px] h-[30px]' />
+                                    <div class="flex flex-col">
+                                        <span class="text-customLightGrayColor text-[1rem]"
+                                            >Co2 Emission</span
+                                        >
+                                        <span class="font-medium text-[1rem]"
+                                            >{{ vehicle?.co2 }} (g/km)</span
+                                        >
+                                    </div>
+                                </div>
+                                <div
+                                    class="feature-item items-center flex gap-3"
+                                >
+                                    <img :src="mileageIcon" alt="" class='w-[30px] h-[30px]' />
+                                    <div class="flex flex-col">
+                                        <span class="text-customLightGrayColor text-[1rem]"
+                                            >Mileage</span
+                                        >
+                                        <span class="font-medium text-[1rem]"
+                                            >{{ vehicle?.mileage }} km/d</span
+                                        >
+                                    </div>
+                                </div>
+                                <div
+                                    class="feature-item items-center flex gap-3"
+                                >
+                                    <img :src="ageIcon" alt="" class='w-[30px] h-[30px]' />
+                                    <div class="flex flex-col">
+                                        <span class="text-customLightGrayColor text-[1rem]"
+                                            >Minimum Driving Age</span
+                                        >
+                                        <span class="font-medium text-[1rem]">21</span>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
 
                         <div class="features mt-[3rem]">
                             <span class="text-[2rem] font-medium"
                                 >Features</span
                             >
-                            <div class="grid grid-cols-4 mt-[2rem] gap-y-[2rem]">
-                                <div class="flex items-center gap-3" v-if="vehicle?.features" v-for="(feature, index) in JSON.parse(vehicle.features)" :key="index">
-                                    <img :src="featureIconMap[feature]" alt="Feature Icon" class="feature-icon" />
-                                  {{ feature }} 
-                                 </div>
-                                 <div v-else>
-                                     <p>No features available.</p>
-                                 </div>
+                            <div
+                                class="grid grid-cols-4 mt-[2rem] gap-y-[2rem]"
+                            >
+                                <div
+                                    class="flex items-center gap-3"
+                                    v-if="vehicle?.features"
+                                    v-for="(feature, index) in JSON.parse(
+                                        vehicle.features
+                                    )"
+                                    :key="index"
+                                >
+                                    <img
+                                        :src="featureIconMap[feature]"
+                                        alt="Feature Icon"
+                                        class="feature-icon w-[30px] h-[30px]"
+                                    />
+                                    {{ feature }}
+                                </div>
+                                <div v-else>
+                                    <p>No features available.</p>
+                                </div>
                             </div>
                         </div>
 
@@ -208,20 +258,19 @@ const featureIconMap = {
                                 {{ vehicle?.location }}
                             </div>
                         </div>
-
                     </div>
+
                     <div class="column w-[40%]">
-                        <div
-                            class="rounded-[12px] border-[1px] border-[#153B4F] p-5 sticky top-[153px]"
-                        >
+                        <div class="paymentInfoDiv p-5 sticky top-[153px]">
                             <div
                                 class="flex items-center justify-between gap-3"
                             >
                                 <h4>{{ vehicle?.brand }}</h4>
                                 <span
                                     class="bg-[#f5f5f5] inline-block px-8 py-2 text-center rounded-[40px]"
-                                    >{{ vehicle?.category.name }}</span
                                 >
+                                    {{ vehicle?.category.name }}
+                                </span>
                                 <div class="icons flex items-center gap-3">
                                     <Link href="" class="w-full"
                                         ><img :src="ShareIcon" alt=""
@@ -231,11 +280,12 @@ const featureIconMap = {
                                     /></Link>
                                 </div>
                             </div>
-                            <div class="">
-                                <span>Hosted by
+                            <div>
+                                <span
+                                    >Hosted by
                                     <span class="vendorName uppercase">
-                                        {{ vehicle?.user.first_name}}
-                                        {{ vehicle?.user.last_name}}
+                                        {{ vehicle?.user.first_name }}
+                                        {{ vehicle?.user.last_name }}
                                     </span>
                                 </span>
                             </div>
@@ -243,7 +293,9 @@ const featureIconMap = {
                                 <img :src="carIcon" alt="" />
                                 <div class="features">
                                     <span class="text-[1.15rem] capitalize">
-                                        {{ vehicle?.transmission}} . {{ vehicle?.fuel}} . {{ vehicle?.seating_capacity}} Seats
+                                        {{ vehicle?.transmission }} .
+                                        {{ vehicle?.fuel }} .
+                                        {{ vehicle?.seating_capacity }} Seats
                                     </span>
                                 </div>
                             </div>
@@ -257,7 +309,7 @@ const featureIconMap = {
                                 <div class="col flex gap-3">
                                     <img :src="mileageIcon" alt="" /><span
                                         class="text-[1.15rem]"
-                                        >{{ vehicle?.mileage}} km/d</span
+                                        >{{ vehicle?.mileage }} km/d</span
                                     >
                                 </div>
                             </div>
@@ -275,9 +327,8 @@ const featureIconMap = {
                                         <span class="text-[1.25rem] text-medium"
                                             >Zaragoza Railway Station,
                                             Dubai</span
-                                        ><span class=""
-                                            >20 Nov 2023, 02:30 PM</span
                                         >
+                                        <span>20 Nov 2023, 02:30 PM</span>
                                     </div>
                                 </div>
                                 <div
@@ -288,9 +339,8 @@ const featureIconMap = {
                                         <span class="text-[1.25rem] text-medium"
                                             >Zaragoza Railway Station,
                                             Dubai</span
-                                        ><span class=""
-                                            >20 Nov 2023, 02:30 PM</span
                                         >
+                                        <span>20 Nov 2023, 02:30 PM</span>
                                     </div>
                                 </div>
 
@@ -314,7 +364,9 @@ const featureIconMap = {
                                         <div>
                                             <span
                                                 class="text-customPrimaryColor text-[1.875rem] font-medium"
-                                                >€{{ vehicle?.price_per_day}}</span
+                                                >€{{
+                                                    vehicle?.price_per_day
+                                                }}</span
                                             ><span>/day</span>
                                             <br />
                                             <span class="flex gap-3"
@@ -355,4 +407,17 @@ const featureIconMap = {
 .overview .col {
     padding: 2rem;
 }
+.paymentInfoDiv {
+    border-radius: 0.75rem;
+    border: 0.5px solid #ede7e7;
+    background: #fff;
+    box-shadow: 0px 0px 32px 0px rgba(196, 196, 196, 0.24);
+}
+.galley-item {
+    border-radius: 0.75rem;
+    border: 0.5px solid #ede7e7;
+    background: #fff;
+    box-shadow: 0px 0px 32px 0px rgba(196, 196, 196, 0.24);
+}
+
 </style>
