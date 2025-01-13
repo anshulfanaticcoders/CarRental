@@ -54,6 +54,22 @@ const fetchCategories = async () => {
 onMounted(() => {
     fetchCategories();
 });
+
+
+// Popular Places data fetch
+const popularPlaces = ref([]);
+const fetchPopularPlaces = async () => {
+    try {
+        const response = await axios.get("/api/popular-places"); // Adjust the API route as needed
+        popularPlaces.value = response.data;
+    } catch (error) {
+        console.error("Error fetching popular places:", error);
+    }
+};
+
+onMounted(() => {
+    fetchPopularPlaces();
+});
 </script>
 
 <template>
@@ -134,20 +150,30 @@ onMounted(() => {
         </section>
 
         <!------------------------------- Top Destination Places -------------------------------------->
-        <section class="flex flex-col gap-10 py-customVerticalSpacing">
+        <section class="flex flex-col gap-10 py-customVerticalSpacing popular-places">
             <div class="column ml-[5%]">
                 <span class="text-[1.15rem] text-customPrimaryColor">-Top Destinations -</span>
                 <h3 class="text-customDarkBlackColor mt-[1rem]">Popular places</h3>
             </div>
             <div class="column">
                 <Carousel class="relative w-full" :plugins="[plugin]" @mouseenter="plugin.stop"
-                    @mouseleave="[plugin.reset(), plugin.play(), console.log('Running')];">
+                    @mouseleave="[plugin.reset(), plugin.play(), console.log('Running')]">
                     <CarouselContent>
-                        <CarouselItem v-for="(_, index) in 7" :key="index" class="pl-1 md:basis-1/2 lg:basis-1/5">
+                        <CarouselItem v-for="place in popularPlaces" :key="place.id"
+                            class="pl-1 md:basis-1/2 lg:basis-1/5">
                             <div class="p-1">
-                                <Card>
-                                    <CardContent class="flex aspect-square items-center justify-center p-6">
-                                        <span class="text-4xl font-semibold">{{ index + 1 }}</span>
+                                <Card class="h-[18rem] border-0 rounded-[0.75rem]">
+                                    <CardContent class="flex flex-col gap-2 justify-center px-1 h-full">
+                                        <img :src="place.image" alt="place"
+                                            class="rounded-[0.75rem] h-[12rem] w-full object-cover mb-2" />
+                                        <div class="px-3">
+                                            <h3 class="text-lg font-medium">
+                                                {{ place.place_name }}
+                                            </h3>
+                                            <p class="text-sm text-customDarkBlackColor">
+                                                {{ place.city }}
+                                            </p>
+                                        </div>
                                     </CardContent>
                                 </Card>
                             </div>
@@ -204,7 +230,7 @@ onMounted(() => {
                     </div>
                     <div class="col flex justify-center">
                         <img class="rounded-[20px] h-full object-cover" :src="carImage" alt=""
-                        style="clip-path: polygon(30% 0%, 70% 0%, 100% 30%, 100% 70%, 70% 100%, 30% 100%, 0% 70%, 0% 30%);" />
+                            style="clip-path: polygon(30% 0%, 70% 0%, 100% 30%, 100% 70%, 70% 100%, 30% 100%, 0% 70%, 0% 30%);" />
                     </div>
                     <div class="col flex flex-col gap-10">
                         <div class="info-card flex gap-5 items-start">
@@ -242,7 +268,7 @@ onMounted(() => {
         <!------------------------------ <End>  -------------------------------------------------->
 
 
-                    <!-- ------------------------Testimonials Section-------------------------------- -->
+        <!-- ------------------------Testimonials Section-------------------------------- -->
         <!------------------------------ <Start>  -------------------------------------------------->
         <section class="py-customVerticalSpacing">
             <Testimonials />
@@ -250,7 +276,7 @@ onMounted(() => {
         <!-- ---------------------------<End>---------------------------------------------------->
 
 
-                    <!-- ------------------------FAQ Section-------------------------------- -->
+        <!-- ------------------------FAQ Section-------------------------------- -->
         <!------------------------------ <Start>  -------------------------------------------------->
         <section class="my-customVerticalSpacing">
             <Faq />
@@ -278,5 +304,8 @@ onMounted(() => {
 
 .category-carousel .next-btn {
     right: 15% !important;
+}
+.popular-places button{
+  display: none;
 }
 </style>

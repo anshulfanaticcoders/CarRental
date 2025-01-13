@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\VehicleController;
 use App\Http\Controllers\VehicleCategoryController;
+use App\Http\Controllers\PopularPlacesController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
@@ -22,3 +23,5 @@ Route::middleware('auth:sanctum')->get('/user', function (Request $request) {
 Route::get('/vehicle-categories', [VehicleCategoryController::class, 'index']);
 Route::get('/vehicle-features', [VehicleController::class, 'getFeatures']);
 Route::get('/vehicles', [VehicleController::class, 'showAllVendorVehicles']);
+
+Route::get('/popular-places', [PopularPlacesController::class, 'index']);
