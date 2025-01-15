@@ -128,17 +128,28 @@ class VehicleController extends Controller
         return response()->json($features);
     }
 
+    //This is for getting particular vehicle information to the single car page 
     public function show($id)
     {
         $vehicle = Vehicle::with(['specifications', 'images', 'category', 'user'])
             ->findOrFail($id);
-            return Inertia::render('SingleCar', [
-                'vehicle' => $vehicle,
-            ]);
+        return Inertia::render('SingleCar', [
+            'vehicle' => $vehicle,
+        ]);
     }
     public function showAllVendorVehicles()
     {
         $vehicles = Vehicle::with(['specifications', 'images', 'category', 'user'])->get();
         return response()->json($vehicles);
+    }
+
+    //This is for getting particular vehicle information to the booking page 
+    public function booking($id)
+    {
+        $vehicle = Vehicle::with(['specifications', 'images', 'category', 'user'])
+            ->findOrFail($id);
+        return Inertia::render('Booking', [
+            'vehicle' => $vehicle,
+        ]);
     }
 }

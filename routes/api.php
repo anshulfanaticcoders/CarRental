@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\UserDocumentController;
 use App\Http\Controllers\VehicleController;
 use App\Http\Controllers\VehicleCategoryController;
 use App\Http\Controllers\PopularPlacesController;
@@ -25,3 +26,6 @@ Route::get('/vehicle-features', [VehicleController::class, 'getFeatures']);
 Route::get('/vehicles', [VehicleController::class, 'showAllVendorVehicles']);
 
 Route::get('/popular-places', [PopularPlacesController::class, 'index']);
+
+
+Route::get('/documents', [UserDocumentController::class, 'getUserDocuments']);

@@ -20,12 +20,12 @@ const showingNavigationDropdown = ref(false);
 
 <template>
     <div class="border-b-[1px] border-b-customMediumBlackColor">
-        <div class="py-[2rem] full-w-container">
+        <div class="py-[1.5rem] full-w-container">
         <!-- Authenticated User Header -->
         <div v-if="$page.props.auth.user" class="">
-            <nav class="bg-white border-gray-100">
+            <nav class="">
                 <div class="mx-auto">
-                    <div class="flex justify-between h-16">
+                    <div class="flex justify-between">
                         <!-- Logo Section -->
                         <div class="flex">
                             <div class="shrink-0 flex items-center">
@@ -67,6 +67,23 @@ const showingNavigationDropdown = ref(false);
                                     </template>
                                 </Dropdown>
                             </div>
+                            <!-- Mobile Menu -->
+                    <Sheet>
+                        <SheetTrigger as-child>
+                            <img :src="hamburgerIcon" alt="Menu" class="cursor-pointer" />
+                        </SheetTrigger>
+                        <SheetContent>
+                            <div class="mt-[3rem]">
+                                <ul class="flex flex-col gap-[1rem] offcanvasList">
+                                    <li><Link href="/" class="w-full block bg-customPrimaryColor p-[1rem] rounded-lg text-white">Home</Link></li>
+                                    <li><Link href="/about" class="w-full block bg-customPrimaryColor p-[1rem] rounded-lg text-white">About</Link></li>
+                                    <li><Link href="/feature" class="w-full block bg-customPrimaryColor p-[1rem] rounded-lg text-white">Features</Link></li>
+                                    <li><Link href="/login" class="w-full block bg-customPrimaryColor p-[1rem] rounded-lg text-white">Login</Link></li>
+                                    <li><Link href="/register" class="w-full block bg-customPrimaryColor p-[1rem] rounded-lg text-white">Register</Link></li>
+                                </ul>
+                            </div>
+                        </SheetContent>
+                    </Sheet>
                         </div>
 
                         <!-- Mobile Hamburger -->
@@ -106,7 +123,7 @@ const showingNavigationDropdown = ref(false);
         </div>
 
         <!-- Guest User Header -->
-        <div v-else class="column">
+        <div v-else class="column py-[0.5rem]">
             <div class="flex justify-between items-center">
                 <!-- Logo -->
                 <Link href="/">
@@ -138,11 +155,11 @@ const showingNavigationDropdown = ref(false);
                         <SheetContent>
                             <div class="mt-[3rem]">
                                 <ul class="flex flex-col gap-[1rem] offcanvasList">
-                                    <li><Link href="/" class="w-full block">Home</Link></li>
-                                    <li><Link href="/about" class="w-full block">About</Link></li>
-                                    <li><Link href="/feature" class="w-full block">Features</Link></li>
-                                    <li><Link href="/login" class="w-full block">Login</Link></li>
-                                    <li><Link href="/register" class="w-full block">Register</Link></li>
+                                    <li><Link href="/" class="w-full block bg-customPrimaryColor p-[1rem] rounded-lg text-white">Home</Link></li>
+                                    <li><Link href="/about" class="w-full block bg-customPrimaryColor p-[1rem] rounded-lg text-white">About</Link></li>
+                                    <li><Link href="/feature" class="w-full block bg-customPrimaryColor p-[1rem] rounded-lg text-white">Features</Link></li>
+                                    <li><Link href="/login" class="w-full block bg-customPrimaryColor p-[1rem] rounded-lg text-white">Login</Link></li>
+                                    <li><Link href="/register" class="w-full block bg-customPrimaryColor p-[1rem] rounded-lg text-white">Register</Link></li>
                                 </ul>
                             </div>
                         </SheetContent>
@@ -153,3 +170,7 @@ const showingNavigationDropdown = ref(false);
     </div>
     </div>
 </template>
+
+<style scoped>
+
+</style>

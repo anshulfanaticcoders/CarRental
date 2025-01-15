@@ -43,13 +43,13 @@
                     <div class="col border-r-2 border-customMediumBlackColor px-5 flex flex-col justify-center">
                         <label class="block text-sm mb-1 text-customLightGrayColor font-medium">Pick Up Date &
                             Time</label>
-                        <input type="date" v-model="form.date_from"
+                        <input type="date" v-model="form.date_from" :min="getCurrentDate()"
                             class="p-2 rounded border border-customMediumBlackColor w-full text-customPrimaryColor" />
                     </div>
                     <div class="col border-r-2 border-customMediumBlackColor px-5 flex flex-col justify-center">
                         <label class="block text-sm mb-1 text-customLightGrayColor font-medium">Return Date &
                             Time</label>
-                        <input type="date" v-model="form.date_to"
+                        <input type="date" v-model="form.date_to" :min="form.date_from || getCurrentDate()"
                             class="p-2 rounded border border-gray-300 w-full text-customPrimaryColor" />
                     </div>
 
@@ -133,6 +133,9 @@ const submit = () => {
 //         attribution: "&copy; OpenStreetMap contributors",
 //     }).addTo(map);
 // });
+const getCurrentDate = () => {
+    return new Date().toISOString().split('T')[0];
+};
 </script>
 
 <style></style>

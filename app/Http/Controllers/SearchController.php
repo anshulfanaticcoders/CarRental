@@ -34,12 +34,7 @@ class SearchController extends Controller
         ]);
     
         $query = Vehicle::query()
-            ->where('status', 'available')
-            // Filter by created_at date range
-            ->whereBetween('created_at', [
-                $validated['date_from'] . ' 00:00:00',
-                $validated['date_to'] . ' 23:59:59'
-            ])
+        ->where('status', 'available')
             // Calculate distance using Haversine formula
             ->selectRaw('*, ( 6371 * acos( 
                 cos(radians(?)) * cos(radians(latitude)) * 

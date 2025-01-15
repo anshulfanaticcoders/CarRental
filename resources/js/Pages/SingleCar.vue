@@ -15,12 +15,11 @@ import carIcon from "../../assets/carIcon.svg";
 import walkIcon from "../../assets/walking.svg";
 import mileageIcon from "../../assets/mileageIcon.svg";
 import pickupLocationIcon from "../../assets/pickupLocationIcon.svg";
-import returnLocationIcon from "../../assets/returnLocationIcon.svg";
 import pencilIcon from "../../assets/Pencil.svg";
 import partnersIcon from "../../assets/partners.svg";
 import infoIcon from "../../assets/WarningCircle.svg";
 import { Head, Link } from "@inertiajs/vue3";
-import { onMounted, ref } from "vue";
+import { ref } from "vue";
 import AuthenticatedHeaderLayout from "@/Layouts/AuthenticatedHeaderLayout.vue";
 
 // Fetching Vehicle Details
@@ -40,6 +39,70 @@ const featureIconMap = {
     "Voice Control": "/storage/icons/voiceControl.svg",
     "Navigation": "/storage/icons/navigation.svg",
 };
+
+
+// Map Script
+import L from 'leaflet'
+import 'leaflet/dist/leaflet.css'
+import { onMounted } from 'vue'
+
+// Add this after your existing vehicle ref declaration
+let map = null
+
+// Add this function before the template
+const initMap = () => {
+    if (!vehicle.value || !vehicle.value.latitude || !vehicle.value.longitude) {
+        console.warn('No vehicle location data available');
+        return;
+    }
+
+    // Initialize map
+    map = L.map('map', {
+        zoomControl: true,
+        maxZoom: 18,
+        minZoom: 4,
+    }).setView([vehicle.value.latitude, vehicle.value.longitude], 15);
+
+    // Add tile layer
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '© OpenStreetMap contributors'
+    }).addTo(map);
+
+    // Create custom marker icon
+    const customIcon = L.divIcon({
+        className: 'custom-div-icon',
+        html: `
+            <div class="marker-pin">
+                <span>€${vehicle.value.price_per_day}</span>
+            </div>
+        `,
+        iconSize: [50, 30],
+        iconAnchor: [25, 15],
+        popupAnchor: [0, -15]
+    });
+
+    // Add marker
+    const marker = L.marker([vehicle.value.latitude, vehicle.value.longitude], {
+        icon: customIcon
+    })
+        .bindPopup(`
+            <div class="text-center">
+                <p class="font-semibold">${vehicle.value.brand}</p>
+                <p>${vehicle.value.location}</p>
+            </div>
+        `)
+        .addTo(map);
+
+    // Force a map refresh after a short delay
+    setTimeout(() => {
+        map.invalidateSize()
+    }, 100)
+}
+
+// Add this in your script setup
+onMounted(() => {
+    initMap()
+})
 </script>
 
 <template>
@@ -112,7 +175,7 @@ const featureIconMap = {
                                         <span class="text-customLightGrayColor text-[1rem]"
                                             >People</span
                                         >
-                                        <span class="font-medium text-[1.15rem]">{{
+                                        <span class="font-medium text-[1rem]">{{
                                             vehicle?.seating_capacity
                                         }}</span>
                                     </div>
@@ -125,7 +188,7 @@ const featureIconMap = {
                                         <span class="text-customLightGrayColor text-[1rem]"
                                             >Doors</span
                                         >
-                                        <span class="font-medium text-[1.15rem]">{{
+                                        <span class="font-medium text-[1rem]">{{
                                             vehicle?.number_of_doors
                                         }}</span>
                                     </div>
@@ -254,9 +317,10 @@ const featureIconMap = {
                             <span class="text-[2rem] font-medium"
                                 >Car Location</span
                             >
-                            <div class="mt-[2rem] gap-y-[2rem]">
+                            <div class="gap-y-[2rem]">
                                 {{ vehicle?.location }}
                             </div>
+                            <div id="map" class="h-full rounded-lg mt-4"></div>
                         </div>
                     </div>
 
@@ -325,22 +389,9 @@ const featureIconMap = {
                                     <img :src="pickupLocationIcon" alt="" />
                                     <div class="flex flex-col gap-1">
                                         <span class="text-[1.25rem] text-medium"
-                                            >Zaragoza Railway Station,
-                                            Dubai</span
+                                            >{{ vehicle?.location }}</span
                                         >
-                                        <span>20 Nov 2023, 02:30 PM</span>
-                                    </div>
-                                </div>
-                                <div
-                                    class="col flex items-start gap-4 mt-[2.5rem]"
-                                >
-                                    <img :src="returnLocationIcon" alt="" />
-                                    <div class="flex flex-col gap-1">
-                                        <span class="text-[1.25rem] text-medium"
-                                            >Zaragoza Railway Station,
-                                            Dubai</span
-                                        >
-                                        <span>20 Nov 2023, 02:30 PM</span>
+                                        <span>{{ vehicle?.created_at }}</span>
                                     </div>
                                 </div>
 
@@ -376,14 +427,15 @@ const featureIconMap = {
                                         </div>
                                     </div>
                                     <div class="column mt-[2rem]">
-                                        <button
-                                            class="button-primary p-5 w-full"
-                                        >
-                                            Proceed to Pay
-                                        </button>
+                                        <Link 
+                                        :href="`/booking/${vehicle.id}`"
+                                        class="button-primary block text-center p-5 w-full"
+                                    >
+                                        Proceed to Pay
+                                    </Link>
                                     </div>
                                     <div
-                                        class="column text-center mt-[2rem] flex flex-col justify-center gap-5"
+                                        class="column text-center mt-[2rem] flex flex-col justify-center items-center gap-5"
                                     >
                                         <p>Guaranteed safe & secure checkout</p>
                                         <img :src="partnersIcon" alt="" />
@@ -419,5 +471,35 @@ const featureIconMap = {
     background: #fff;
     box-shadow: 0px 0px 32px 0px rgba(196, 196, 196, 0.24);
 }
+@import 'leaflet/dist/leaflet.css';
 
+.marker-pin {
+    width: auto;
+    min-width: 50px;
+    height: 30px;
+    background: white;
+    border: 2px solid #666;
+    border-radius: 15px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+}
+
+.marker-pin span {
+    color: black;
+    font-weight: bold;
+    font-size: 12px;
+    padding: 0 8px;
+}
+
+.custom-div-icon {
+    background: none;
+    border: none;
+}
+
+#map {
+    height: 400px;
+    width: 100%;
+}
 </style>

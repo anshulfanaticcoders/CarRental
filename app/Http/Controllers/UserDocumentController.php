@@ -60,5 +60,12 @@ class UserDocumentController extends Controller
 
         return redirect()->back()->with('success', 'Documents uploaded successfully.');
     }
+    public function getUserDocuments()
+    {
+        $documents = UserDocument::where('user_id', 4) // Dynamically pass user ID
+            ->get();
     
+        return response()->json($documents);
+    }
+
 }

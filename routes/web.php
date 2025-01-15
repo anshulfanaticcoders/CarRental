@@ -67,19 +67,21 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/vehicles', [VehicleController::class, 'index'])->name('vehicles.index');
 });
 
+// Route::middleware('auth')->group(function () {
+//     Route::get('/user-documents', [UserDocumentController::class, 'getUserDocuments']);
+// });
 // Open route to get to the single car page
 Route::get('/vehicle/{id}', [VehicleController::class, 'show'])->name('vehicle.show');
 
+// Route::inertia('single-car/vehicle/{id}', 'SingleCar');
 
-// Routing for Travel documents
-Route::inertia('single-car/vehicle/{id}', 'SingleCar');
+
+// -------------Map Search Routing---------------
 Route::get('/s', [SearchController::class, 'search']);
-
-
-
-// Map api
-// Route::get('/vehicle/{vehicles}', [SearchController::class, 'show']);
-
 Route::get('/api/geocoding/autocomplete', [GeocodingController::class, 'autocomplete']);
+
+
+// Booking Page Routes
+Route::get('/booking/{id}', [VehicleController::class, 'booking'])->name('booking.show');
 
 require __DIR__ . '/auth.php';

@@ -27,6 +27,6 @@ import AuthenticatedHeaderLayout from './AuthenticatedHeaderLayout.vue';
     height: 100vh;
     overflow-y: auto; 
     background-color: white; 
-    z-index: 1000; 
+    z-index: 40; 
 }
 </style>

@@ -175,3 +175,11 @@ watch(() => form.title, (newTitle) => {
         </form>
     </section>
 </template>
+
+<style>
+input,textarea,select {
+    border-radius: 0.75rem;
+    border: 1px solid rgba(43, 43, 43, 0.50)!important;
+    padding: 1rem;
+}
+</style>
