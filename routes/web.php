@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\GeocodingController;
+use App\Http\Controllers\PlanController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\SearchController;
 use App\Http\Controllers\VendorController;
@@ -65,11 +66,12 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/vehicles/create', [VehicleController::class, 'create'])->name('vehicles.create');
     Route::post('/vehicles', [VehicleController::class, 'store'])->name('vehicles.store');
     Route::get('/vehicles', [VehicleController::class, 'index'])->name('vehicles.index');
+
+    // Booking Routes
+    Route::get('/booking/{id}', [VehicleController::class, 'booking'])->name('booking.show');
 });
 
-// Route::middleware('auth')->group(function () {
-//     Route::get('/user-documents', [UserDocumentController::class, 'getUserDocuments']);
-// });
+
 // Open route to get to the single car page
 Route::get('/vehicle/{id}', [VehicleController::class, 'show'])->name('vehicle.show');
 
@@ -82,6 +84,5 @@ Route::get('/api/geocoding/autocomplete', [GeocodingController::class, 'autocomp
 
 
 // Booking Page Routes
-Route::get('/booking/{id}', [VehicleController::class, 'booking'])->name('booking.show');
 
 require __DIR__ . '/auth.php';

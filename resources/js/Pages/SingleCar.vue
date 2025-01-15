@@ -325,7 +325,7 @@ onMounted(() => {
                     </div>
 
                     <div class="column w-[40%]">
-                        <div class="paymentInfoDiv p-5 sticky top-[153px]">
+                        <div class="paymentInfoDiv p-5 sticky top-[3rem]">
                             <div
                                 class="flex items-center justify-between gap-3"
                             >

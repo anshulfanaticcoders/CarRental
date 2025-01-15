@@ -1,5 +1,7 @@
 <?php
 
+use App\Http\Controllers\BookingExtraController;
+use App\Http\Controllers\PlanController;
 use App\Http\Controllers\UserDocumentController;
 use App\Http\Controllers\VehicleController;
 use App\Http\Controllers\VehicleCategoryController;
@@ -27,5 +29,11 @@ Route::get('/vehicles', [VehicleController::class, 'showAllVendorVehicles']);
 
 Route::get('/popular-places', [PopularPlacesController::class, 'index']);
 
-
 Route::get('/documents', [UserDocumentController::class, 'getUserDocuments']);
+
+
+// Booking API's
+
+    Route::get('/plans', [PlanController::class, 'index']);
+    Route::get('/booking-extras', [BookingExtraController::class, 'index']);
+
