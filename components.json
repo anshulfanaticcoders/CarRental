@@ -1,8 +1,8 @@
 {
   "$schema": "https://shadcn-vue.com/schema.json",
   "style": "new-york",
-  "typescript": false,
-  "tsConfigPath": "./jsconfig.json",
+  "typescript": true,
+  "tsConfigPath": "./tsconfig.json",
   "tailwind": {
     "config": "tailwind.config.js",
     "css": "resources/css/app.css",

@@ -60,15 +60,13 @@
                         </button>
                     </div>
                 </form>
-                <!-- Map Container -->
-                <!-- <div id="map" class="hidden w-full h-64 mt-4"></div> -->
             </div>
         </div>
     </section>
 </template>
 
 <script setup>
-import { ref, onMounted } from "vue";
+import { ref} from "vue";
 import axios from "axios";
 import { router } from "@inertiajs/vue3";
 import L from "leaflet"; // Import Leaflet

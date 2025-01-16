@@ -107,7 +107,7 @@ const bookingExtras = ref([]);
 
 const fetchBookingExtras = async () => {
     try {
-        const response = await axios.get("/api/booking-extras");
+        const response = await axios.get("/api/booking-addons");
         bookingExtras.value = response.data;
     } catch (error) {
         console.error("Error fetching booking extras:", error);
@@ -124,6 +124,10 @@ onMounted(() => {
 const ageRange = computed(() =>
     Array.from({ length: 90 - 21 + 1 }, (_, i) => i + 21)
 );
+
+
+
+// stripe payment 
 </script>
 
 <template>
@@ -242,16 +246,21 @@ const ageRange = computed(() =>
                     <div class="flex flex-col gap-10">
                         <form method="" class="booking_form flex flex-col justify-between gap-10">
                             <div class="col">
-                                <h4 class="text-[2rem]">Driver Info</h4>
-                                <div class="formfield mt-[1.5rem]">
-                                    <div class="w-max">
+                                <h4 class="text-[2rem] mb-[1.5rem]">Contact Info</h4>
+                                <div class="grid grid-cols-2 gap-[1.5rem]">
+                                    <div class="w-full">
                                         <InputLabel for="email" value="Email" />
                                         <TextInput id="email" type="email" class="mt-1 block w-full"
                                             v-model="form.email" required />
                                         <InputError class="mt-2" :message="form.errors.email" />
                                     </div>
-                                </div>
-                                <div class="formfield mt-[1.5rem] flex justify-between gap-10">
+                                    <div class="w-full">
+                                        <InputLabel for="phone" value="Phone number" />
+                                        <TextInput id="phone" type="phone" class="mt-1 block w-full"
+                                            v-model="form.phone" required />
+                                        <InputError class="mt-2" :message="form.errors.phone" />
+                                    </div>
+
                                     <div class="w-full">
                                         <InputLabel for="first_name" value="First Name" />
                                         <TextInput id="first_name" type="text" class="mt-1 block w-full"
@@ -264,16 +273,16 @@ const ageRange = computed(() =>
                                             v-model="form.last_name" required />
                                         <InputError class="mt-2" :message="form.errors.last_name" />
                                     </div>
-                                </div>
-                                <div class="formfield mt-[1.5rem]">
-                                    <InputLabel for="driver_age" value="Driver Age" />
-                                    <Select id="driver_age" v-model="driverAge" class="mt-1 block w-full">
-                                        <option value="" disabled>Select Age</option>
-                                        <option v-for="age in ageRange" :key="age" :value="age">{{ age }}</option>
-                                    </Select>
-                                    <InputError class="mt-2" :message="form.errors.driver_age" />
-                                </div>
 
+                                    <div class="w-full">
+                                        <InputLabel for="driver_age" value="Driver Age" />
+                                        <Select id="driver_age" v-model="driverAge" class="mt-1 block w-full">
+                                            <option value="" disabled>Select Age</option>
+                                            <option v-for="age in ageRange" :key="age" :value="age">{{ age }}</option>
+                                        </Select>
+                                        <InputError class="mt-2" :message="form.errors.driver_age" />
+                                    </div>
+                                </div>
 
                             </div>
 
@@ -311,16 +320,20 @@ const ageRange = computed(() =>
                         </p>
                     </div>
 
-                    <div>
-                        <span class="text-[1.75rem] font-medium">Pay Now to Lock in this Deal</span>
-                        <div class="flex justify-between items-center mt-[1.5rem]">
-                            <span class="text-[1.25rem] font-medium">Pay Now</span>
-                            <strong class="text-[1.25rem] ">€150</strong>
-                        </div>
-                        <div class="choose_card">
-                            <span>Choose Card</span>
-                        </div>
-                    </div>
+                    <form @submit.prevent="submitBooking">
+      <!-- Other form fields -->
+  
+      <!-- Stripe Payment Form -->
+      <div class="stripe-card">
+        <div id="card-number" class="stripe-element"></div>
+        <div id="card-expiry" class="stripe-element"></div>
+        <div id="card-cvc" class="stripe-element"></div>
+      </div>
+      <div id="card-errors" role="alert" class="stripe-card-errors"></div>
+  
+      <button type="submit">Book Now</button>
+    </form>
+
                 </div>
 
                 <div class="column w-[35%]">
@@ -379,7 +392,7 @@ const ageRange = computed(() =>
                                         <div>
                                             <strong class="text-[1.5rem] font-medium">€{{
                                                 vehicle?.price_per_day
-                                                }}</strong>
+                                            }}</strong>
                                             <span>/day</span>
                                         </div>
                                     </div>

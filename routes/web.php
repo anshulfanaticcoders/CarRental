@@ -1,11 +1,10 @@
 <?php
 
 use App\Http\Controllers\GeocodingController;
-use App\Http\Controllers\PlanController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\SearchController;
 use App\Http\Controllers\VendorController;
-use App\Http\Controllers\VendorDocumentController;
+use App\Http\Controllers\PaymentController;
 use Illuminate\Foundation\Application;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
@@ -71,6 +70,9 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/booking/{id}', [VehicleController::class, 'booking'])->name('booking.show');
 });
 
+Route::inertia('vendor-approved', 'Vendor/VendorApproved');
+Route::inertia('vendor-pending', 'Vendor/VendorPending');
+Route::inertia('vendor-rejected', 'Vendor/VendorRejected');
 
 // Open route to get to the single car page
 Route::get('/vehicle/{id}', [VehicleController::class, 'show'])->name('vehicle.show');
@@ -83,6 +85,10 @@ Route::get('/s', [SearchController::class, 'search']);
 Route::get('/api/geocoding/autocomplete', [GeocodingController::class, 'autocomplete']);
 
 
-// Booking Page Routes
+// Stripe Routes
 
+Route::get('/payment', [PaymentController::class, 'index'])->name('payment.index');
+Route::post('/payment/charge', [PaymentController::class, 'charge'])->name('payment.charge');
+
+Route::inertia('admin-dashboard', 'AdminDashboard');
 require __DIR__ . '/auth.php';

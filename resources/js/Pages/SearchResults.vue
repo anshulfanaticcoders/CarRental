@@ -18,6 +18,7 @@ import { Switch } from "@/Components/ui/switch";
 const props = defineProps({
     vehicles: Object,
     filters: Object,
+    pagination_links: String,
 });
 
 let map = null;
@@ -196,7 +197,8 @@ const handleMapToggle = (value) => {
     <div class="full-w-container mx-auto mb-[4rem]">
         <div class="flex gap-4">
             <!-- Left Column - Vehicle List -->
-            <div :class="[
+            <div class="w-full">
+              <div :class="[
                'grid gap-5',
                   showMap ? 'w-full grid-cols-2' : 'w-full grid-cols-4'
                 ]">
@@ -306,6 +308,11 @@ const handleMapToggle = (value) => {
                     </Link>
                 </div>
             </div>
+            <!-- Pagination -->
+            <div class="mt-4">
+              <div v-html="pagination_links"></div>
+            </div>
+            </div>
             <!-- Right Column - Map -->
             <div
                 class="w-full sticky top-4 h-[calc(100vh-2rem)]"
@@ -317,6 +324,7 @@ const handleMapToggle = (value) => {
             </div>
         </div>
     </div>
+
     <Footer />
 </template>
 

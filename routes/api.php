@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\BookingAddonController;
 use App\Http\Controllers\BookingExtraController;
 use App\Http\Controllers\PlanController;
 use App\Http\Controllers\UserDocumentController;
@@ -7,6 +8,7 @@ use App\Http\Controllers\VehicleController;
 use App\Http\Controllers\VehicleCategoryController;
 use App\Http\Controllers\PopularPlacesController;
 use Illuminate\Http\Request;
+use App\Models\User;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -34,6 +36,15 @@ Route::get('/documents', [UserDocumentController::class, 'getUserDocuments']);
 
 // Booking API's
 
-    Route::get('/plans', [PlanController::class, 'index']);
-    Route::get('/booking-extras', [BookingExtraController::class, 'index']);
+Route::get('/plans', [PlanController::class, 'index']);
+Route::get('/booking-addons', [BookingAddonController::class, 'index']);
 
+
+Route::get('/user-count', function () {
+    return response()->json(['count' => User::count()]);
+});
+
+Route::get('/users', function () {
+    $users = User::all();
+    return response()->json($users);
+});

@@ -5,11 +5,11 @@ namespace Database\Seeders;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\DB;
 
-class BookingExtraSeeder extends Seeder
+class BookingAddonsSeeder extends Seeder
 {
     public function run(): void
     {
-        DB::table('booking_extras')->insert([
+        DB::table('booking_addons')->insert([
             [
                 'extra_type' => 'child_seat',
                 'extra_name' => 'Infant Seat',

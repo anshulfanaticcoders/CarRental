@@ -97,7 +97,7 @@ const submit = () => {
     <Head title="Vendor Register" />
     <AuthenticatedHeaderLayout />
     <div class="">
-        <div class="container flex justify-between min-h-[88vh]">
+        <div class="ml-[5%] flex justify-between min-h-[88vh]">
             <div class="column flex items-center w-[40%]">
                 <form @submit.prevent="submit" class="w-full">
                     <div v-if="currentStep === 0">
@@ -386,5 +386,10 @@ const submit = () => {
 <style>
 label {
     margin-bottom: 0.5rem;
+}
+input,textarea,select {
+    border-radius: 0.75rem;
+    border: 1px solid rgba(43, 43, 43, 0.50)!important;
+    padding: 1rem;
 }
 </style>

@@ -20,6 +20,6 @@ class DatabaseSeeder extends Seeder
         // ]);
         $this->call(PopularPlacesSeeder::class);
         $this->call([PlanSeeder::class]);
-        $this->call([BookingExtraSeeder::class]);
+        $this->call([BookingAddonsSeeder::class]);
     }
 }

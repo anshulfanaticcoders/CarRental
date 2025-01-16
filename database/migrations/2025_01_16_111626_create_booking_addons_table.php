@@ -8,7 +8,7 @@ return new class extends Migration
 {
     public function up(): void
     {
-        Schema::create('booking_extras', function (Blueprint $table) {
+        Schema::create('booking_addons', function (Blueprint $table) {
             $table->id();
             $table->enum('extra_type', ['booster_seat', 'gps', 'child_seat', 'additional_driver']);
             $table->string('extra_name');
@@ -21,6 +21,6 @@ return new class extends Migration
 
     public function down(): void
     {
-        Schema::dropIfExists('booking_extras');
+        Schema::dropIfExists('booking_addons');
     }
 };

@@ -68,6 +68,7 @@ class SearchController extends Controller
         return Inertia::render('SearchResults', [
             'vehicles' => $vehicles,
             'filters' => $validated,
+            'pagination_links' => $vehicles->links()->toHtml(),
         ]);
     }
 }
