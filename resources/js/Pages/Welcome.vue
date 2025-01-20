@@ -92,7 +92,7 @@ onMounted(() => {
                     </div>
                 </div>
                 <div class="column h-[80vh] w-full relative">
-                    <img class="rounded-bl-[20px] h-full w-full" :src="heroImg" alt="" />
+                    <img class="rounded-bl-[20px] h-full w-full object-cover" :src="heroImg" alt="" />
                     <div class="bg-customOverlayColor absolute top-0 w-full h-full rounded-bl-[20px]"></div>
                 </div>
             </div>

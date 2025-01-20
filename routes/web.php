@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\BookingController;
 use App\Http\Controllers\GeocodingController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\SearchController;
@@ -68,9 +69,19 @@ Route::middleware(['auth'])->group(function () {
 
     // Booking Routes
     Route::get('/booking/{id}', [VehicleController::class, 'booking'])->name('booking.show');
+    Route::get('/booking', [BookingController::class, 'create'])->name('booking.create');
+    Route::post('/booking', [BookingController::class, 'store'])->name('booking.store');
+    // Route::get('/booking-success', [BookingController::class, 'success'])->name('booking.success');
+     Route::get('/booking-success/details', [BookingController::class, 'getBookingDetails'])->name('booking-success.details');
+    Route::get('/booking-success/details', function () {
+        return Inertia::render('Booking/Success', [
+           'payment_intent' => request('payment_intent'), // Pass payment intent ID
+        ]);
+    })->name('booking-success.details');
 });
 
 Route::inertia('vendor-approved', 'Vendor/VendorApproved');
+//Route::inertia('booking-success/details', 'Booking/Success');
 Route::inertia('vendor-pending', 'Vendor/VendorPending');
 Route::inertia('vendor-rejected', 'Vendor/VendorRejected');
 

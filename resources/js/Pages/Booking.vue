@@ -2,14 +2,12 @@
 import pickupLocationIcon from "../../assets/pickupLocationIcon.svg";
 import returnLocationIcon from "../../assets/returnLocationIconLight.svg";
 import infoIcon from "../../assets/WarningCircle.svg";
-import { ref, computed, onMounted } from "vue";
-import TextInput from '@/Components/TextInput.vue';
-import { Head, Link, useForm, usePage } from "@inertiajs/vue3";
-import InputError from '@/Components/InputError.vue';
+import { ref, computed, onMounted, watch, nextTick } from "vue";
+import { Head, Link, usePage } from "@inertiajs/vue3";
 import AuthenticatedHeaderLayout from "@/Layouts/AuthenticatedHeaderLayout.vue";
-import walkIcon from '../../assets/walkingrayIcon.svg'
-import InputLabel from "@/Components/InputLabel.vue";
-
+import walkIcon from "../../assets/walkingrayIcon.svg";
+import PrimaryButton from "@/Components/PrimaryButton.vue";
+import { Inertia } from '@inertiajs/inertia';
 
 // Add these methods to your script section
 const incrementQuantity = (extra) => {
@@ -45,28 +43,14 @@ const calculateTotal = computed(() => {
     total += Number(selectedPlan.value?.plan_value || 0);
 
     // Add extras with quantity multiplication
-    bookingExtras.value.forEach(extra => {
+    bookingExtras.value.forEach((extra) => {
         if (extra.quantity > 0) {
-            total += (Number(extra.price) * Number(extra.quantity));
+            total += Number(extra.price) * Number(extra.quantity);
         }
     });
 
     return total;
 });
-
-
-
-const form = useForm({
-    first_name: '',
-    last_name: '',
-    driver_age: '',
-    phone_number: '',
-    email: '',
-    flight_number: '',
-});
-
-
-
 
 // Multiple step form
 const currentStep = ref(1);
@@ -75,13 +59,11 @@ const moveToNextStep = () => {
     currentStep.value++;
 };
 
-
 // Getting the vehicle data from api
 const { props } = usePage();
 const vehicle = ref(props.vehicle);
 
-
-// this is for protection Plans
+// This is for protection Plans
 const plans = ref([]);
 const selectedPlan = ref(null);
 const fetchPlans = async () => {
@@ -89,7 +71,9 @@ const fetchPlans = async () => {
         const response = await axios.get("/api/plans");
         plans.value = response.data;
         // Select Free plan by default
-        const freePlan = plans.value.find(plan => plan.plan_type === 'Free plan');
+        const freePlan = plans.value.find(
+            (plan) => plan.plan_type === "Free plan"
+        );
         if (freePlan) {
             selectedPlan.value = freePlan;
         }
@@ -102,7 +86,7 @@ const selectPlan = (plan) => {
     selectedPlan.value = plan;
 };
 
-// this is for Extras
+// This is for Extras
 const bookingExtras = ref([]);
 
 const fetchBookingExtras = async () => {
@@ -119,16 +103,312 @@ onMounted(() => {
     fetchPlans();
 });
 
+// Store the selected plan and booking extras in sessionStorage
+const storeSelectionData = () => {
+    const selectionData = {
+        selectedPlan: selectedPlan.value,
+        extras: bookingExtras.value.map(extra => ({ id: extra.id, quantity: extra.quantity, price: extra.price * extra.quantity, extra_name: extra.extra_name, extra_type: extra.extra_type }))
+    };
+    sessionStorage.setItem("selectionData", JSON.stringify(selectionData));
+};
 
-// Age selection
-const ageRange = computed(() =>
-    Array.from({ length: 90 - 21 + 1 }, (_, i) => i + 21)
-);
+// Load saved data from sessionStorage
+const loadSelectionData = () => {
+    const savedSelectionData = sessionStorage.getItem("selectionData");
+    if (savedSelectionData) {
+        const parsedData = JSON.parse(savedSelectionData);
+        selectedPlan.value = parsedData.selectedPlan;
+        parsedData.extras.forEach(savedExtra => {
+            const extra = bookingExtras.value.find(extra => extra.id === savedExtra.id);
+            if (extra) {
+                extra.quantity = savedExtra.quantity;
+            }
+        });
+    }
+};
+
+// Watch for changes in selected plan and booking extras and automatically store them
+watch([selectedPlan, bookingExtras], storeSelectionData, { deep: true });
+
+// Driver Contact info
+const customer = ref({
+    first_name: "",
+    last_name: "",
+    email: "",
+    phone: "",
+    flight_number: "",
+    driver_age: null,
+});
+
+// Example driver age range
+const ageRange = [18, 19, 20, 21, 22, 23, 24, 25, 26];
+
+const isFormSaved = ref(false);
+
+const storeFormData = () => {
+    sessionStorage.setItem("driverInfo", JSON.stringify(customer.value));
+    isFormSaved.value = true;
+};
+
+const loadSavedDriverInfo = () => {
+    const savedDriverInfo = sessionStorage.getItem("driverInfo");
+    if (savedDriverInfo) {
+        customer.value = JSON.parse(savedDriverInfo);
+        isFormSaved.value = true;
+    }
+};
+
+onMounted(() => {
+    loadSavedDriverInfo();
+    loadSelectionData();  // Load selection data when component mounts
+});
+
+// stripe payment
+import { loadStripe } from '@stripe/stripe-js';
+import { router } from '@inertiajs/vue3';
 
 
 
-// stripe payment 
+const pickupDate = ref('');
+const returnDate = ref('');
+const pickupTime = ref('');
+const returnTime = ref('');
+const extras = ref([]);
+
+const loadSessionData = () => {
+
+    // Load driver info
+    const driverInfo = JSON.parse(sessionStorage.getItem('driverInfo'));
+    if (driverInfo) {
+        customer.value = driverInfo;
+    }
+
+    // Load rental dates
+    const rentalDates = JSON.parse(sessionStorage.getItem('rentalDates'));
+    if (rentalDates) {
+        pickupDate.value = rentalDates.date_from;
+        returnDate.value = rentalDates.date_to;
+        pickupTime.value = rentalDates.time_from;
+        returnTime.value = rentalDates.time_to;
+    }
+
+    // Load plan and extras
+    const selectionData = JSON.parse(sessionStorage.getItem('selectionData'));
+    if (selectionData) {
+        selectedPlan.value = selectionData.selectedPlan;
+        extras.value = selectionData.extras;
+
+        // Initialize extraCharges with the plan value
+        let extraCharges = Number(selectedPlan.value.plan_value);  // Add the selected plan's value to extra charges
+
+        // Add the extra charges from the selected extras
+        selectionData.extras.forEach((extra) => {
+            if (extra.quantity > 0) {
+                extraCharges += Number(extra.price) * extra.quantity;  // Add price * quantity for each selected extra
+            }
+        });
+
+        console.log("Total Extra Charges (including plan and extras): ", extraCharges);
+    }
+};
+
+
+
+const stripePromise = loadStripe('pk_test_51KNyHdSDGjAmjQxjhTSx7hrI5uBOE75wqXRZNFdw83XSTU8gvwpFusz2W8FAy7PkV8K0aGHqhC620kbMWTg32ZpS00p3ktAi86'); // Replace with your Stripe publishable key
+let stripe;
+let elements;
+let cardNumber;
+let cardExpiry;
+let cardCvc;
+
+onMounted(async () => {
+    stripe = await stripePromise;
+
+    // Customize the appearance of the card elements
+    const style = {
+        base: {
+            color: '#32325d',
+            fontFamily: '"Helvetica Neue", Helvetica, sans-serif',
+            fontSmoothing: 'antialiased',
+            fontSize: '16px',
+            '::placeholder': {
+                color: '#aab7c4',
+            },
+        },
+        invalid: {
+            color: '#fa755a',
+            iconColor: '#fa755a',
+        },
+    };
+
+    elements = stripe.elements();
+
+    // Ensure the DOM elements are available
+    await nextTick();
+
+    // Retry logic for delayed DOM availability
+    const mountElements = () => {
+        const cardNumberElement = document.querySelector('#card-number');
+        const cardExpiryElement = document.querySelector('#card-expiry');
+        const cardCvcElement = document.querySelector('#card-cvc');
+
+        if (cardNumberElement && cardExpiryElement && cardCvcElement) {
+            // Create and mount the card elements
+            cardNumber = elements.create('cardNumber', { style });
+            cardExpiry = elements.create('cardExpiry', { style });
+            cardCvc = elements.create('cardCvc', { style });
+
+            cardNumber.mount('#card-number');
+            cardExpiry.mount('#card-expiry');
+            cardCvc.mount('#card-cvc');
+
+            // Handle real-time validation errors
+            const displayError = document.getElementById('card-errors');
+            cardNumber.on('change', (event) => {
+                displayError.textContent = event.error ? event.error.message : '';
+            });
+            cardExpiry.on('change', (event) => {
+                displayError.textContent = event.error ? event.error.message : '';
+            });
+            cardCvc.on('change', (event) => {
+                displayError.textContent = event.error ? event.error.message : '';
+            });
+        } else {
+            setTimeout(mountElements, 100); // Retry after 100ms
+        }
+    };
+
+    mountElements();
+});
+const error = ref([]);
+const submitBooking = async () => {
+    // Load session data
+    loadSessionData();
+
+    // Calculate the total days by comparing pickup and return dates
+    const pickupDateObj = new Date(pickupDate.value);
+    const returnDateObj = new Date(returnDate.value);
+    const totalDays = Math.ceil((returnDateObj - pickupDateObj) / (1000 * 3600 * 24)); // Difference in days
+
+    // Calculate extra charges (sum of all selected extras)
+    let extraCharges = 0;
+    bookingExtras.value.forEach((extra) => {
+        if (extra.quantity > 0) {
+            extraCharges += extra.price * extra.quantity;
+        }
+    });
+
+    // Prepare the booking data from session storage and calculated values
+    const bookingData = {
+        customer: customer.value,
+        pickup_date: pickupDate.value,
+        return_date: returnDate.value,
+        pickup_location: vehicle.value?.location,
+        return_location: vehicle.value?.location,
+        total_days: totalDays,
+        base_price: vehicle.value?.price_per_day,
+        extra_charges: extraCharges > 0 ? extraCharges : null,
+        total_amount: calculateTotal.value,
+        extras: extras.value,
+        vehicle_id: vehicle.value?.id,
+    };
+    console.log("Vehicle ID:", vehicle.value?.id);
+    try {
+    // First, create the payment method from Stripe
+    const { error, paymentMethod } = await stripe.createPaymentMethod({
+        type: 'card',
+        card: cardNumber,
+        billing_details: {
+            name: `${customer.value.first_name} ${customer.value.last_name}`,
+            email: customer.value.email,
+            phone: customer.value.phone,
+            address: {
+            line1: 'United states',
+            country: 'US',
+            state:"California",
+        },
+        },
+    });
+
+    if (error) {
+        console.error(error);
+        alert("Payment error: " + error.message);
+        return;
+    }
+
+    // Now send the booking data along with the paymentMethod.id
+    const response = await axios.post('/booking', {
+        ...bookingData,
+        payment_method_id: paymentMethod.id,  // Send the payment method ID to the backend
+    });
+
+    const clientSecret = response.data.clientSecret;
+      // Log the Payment Intent before confirming it
+      console.log('Client Secret:', clientSecret);
+
+// Retrieve the Payment Intent to check its status
+const { paymentIntent } = await stripe.retrievePaymentIntent(clientSecret);
+console.log('Payment Intent Status:', paymentIntent.status);
+
+if (paymentIntent.status === 'succeeded') {
+  // Payment is already successful, no need to confirm again
+  Inertia.visit(`/booking-success/details?payment_intent=${paymentIntent.id}`);
+  return;
+}
+
+if (paymentIntent.status === 'requires_action') {
+  const { error: actionError, paymentIntent: confirmedPaymentIntent } = await stripe.handleCardAction(clientSecret);
+
+  if (actionError) {
+    console.error('Action Error:', actionError);
+    throw new Error(actionError.message);
+  }
+
+  console.log('Confirmed Payment Intent:', confirmedPaymentIntent);
+  Inertia.visit(`/booking-success/details?payment_intent=${paymentIntent.id}`);
+
+  return;
+}
+
+if (paymentIntent.status === 'requires_confirmation') {
+  const { paymentIntent: confirmedPaymentIntent, error: confirmError } = await stripe.confirmCardPayment(clientSecret, {
+    payment_method: paymentMethod.id,
+  });
+
+  if (confirmError) {
+    console.error('Confirm Error:', confirmError);
+    throw new Error(confirmError.message);
+  }
+
+  console.log('Confirmed Payment Intent:', confirmedPaymentIntent);
+  Inertia.visit(`/booking-success/details?payment_intent=${paymentIntent.id}`);
+  return;
+}
+
+throw new Error('Unexpected Payment Intent state: ' + paymentIntent.status);
+    // console.log(clientSecret);
+    // console.log(paymentMethod.id);
+    // const { paymentIntent, error: confirmError } = await stripe.confirmCardPayment(clientSecret, {
+    //     payment_method: paymentMethod.id,
+    // });
+
+    // if (confirmError) {
+    //     console.error(confirmError);
+    //     alert("Payment confirmation error: " + confirmError.message);
+    //     return;
+    // }
+
+    // router.visit(`/booking/success?payment_intent=${paymentIntent.id}`);
+} catch (err) {
+    error.value = err.message || 'An error occurred. Please try again.';
+  }
+   // sessionStorage.clear();
+};
+
+
+
 </script>
+
 
 <template>
 
@@ -140,8 +420,7 @@ const ageRange = computed(() =>
                 <div class="column w-[65%] flex flex-col gap-10" v-if="currentStep === 1">
                     <div class="free_cancellation p-5 bg-[#0099001A] border-[#009900] rounded-[8px] border-[1px]">
                         <p class="text-[1.15rem] text-[#009900] font-medium">
-                            Free Cancellation before pick-up (19Nov 2023,
-                            12:00PM)
+                            Free Cancellation before pick-up (19Nov 2023, 12:00PM)
                         </p>
                     </div>
 
@@ -154,10 +433,11 @@ const ageRange = computed(() =>
                                 class="col w-[50%] rounded-[20px] border-[1px] border-[#153B4F] p-5 flex flex-col gap-5"
                                 :class="{
                                     'border-[#153B4F]': selectedPlan?.id === plan.id,
-                                    'bg-[#153B4F0D]': selectedPlan?.id === plan.id
+                                    'bg-[#153B4F0D]': selectedPlan?.id === plan.id,
+                                }" @click="selectPlan(plan)">
+                                <span class="text-[1.5rem] text-center" :class="{
+                                    'text-[#016501]': plan.plan_type === 'Exclusive plan',
                                 }">
-                                <span class="text-[1.5rem] text-center"
-                                    :class="{ 'text-[#016501]': plan.plan_type === 'Exclusive plan' }">
                                     {{ plan.plan_type }}
                                 </span>
                                 <strong class="text-[3rem] font-medium text-center">
@@ -166,9 +446,10 @@ const ageRange = computed(() =>
                                 <p class="text-[1.25rem] text-[#2B2B2B] text-center">
                                     Access to basic features without any subscription fee.
                                 </p>
-                                <button class="button-primary px-5 py-2" @click="selectPlan(plan)"
-                                    :class="{ 'bg-[#016501]': selectedPlan?.id === plan.id }">
-                                    {{ selectedPlan?.id === plan.id ? 'Selected' : 'Select' }}
+                                <button class="button-primary px-5 py-2" @click="selectPlan(plan)" :class="{
+                                    'bg-[#016501]': selectedPlan?.id === plan.id,
+                                }">
+                                    {{ selectedPlan?.id === plan.id ? "Selected" : "Select" }}
                                 </button>
                                 <div class="checklist features">
                                     <ul
@@ -183,14 +464,12 @@ const ageRange = computed(() =>
                         </div>
 
                         <!-- Additional Equipment -->
-
                         <div class="additional-equipment">
                             <h4 class="text-[2.5rem]">Additional Equipment</h4>
                             <p>
-                                Please note these additional extras are payable
-                                locally and do not form part of the rental price
-                                shown. Prices are displayed by pressing the
-                                title of each extra.
+                                Please note these additional extras are payable locally and do not form part of the
+                                rental price
+                                shown. Prices are displayed by pressing the title of each extra.
                             </p>
                             <div class="equipment-list">
                                 <div v-for="extra in bookingExtras" :key="extra.id"
@@ -239,74 +518,82 @@ const ageRange = computed(() =>
                     <h4 class="text-[2rem] font-medium">Driver Info</h4>
                     <div class="free_cancellation p-5 bg-[#0099001A] border-[#009900] rounded-[8px] border-[1px]">
                         <p class="text-[1.15rem] text-[#009900] font-medium">
-                            Once your info is submitted, it cannot be changed. Please double-check before proceeding.
+                            Once your info is submitted, it cannot be changed.
+                            Please double-check before proceeding.
                         </p>
                     </div>
 
                     <div class="flex flex-col gap-10">
-                        <form method="" class="booking_form flex flex-col justify-between gap-10">
+                        <form @submit.prevent="storeFormData" class="booking_form flex flex-col justify-between gap-10">
                             <div class="col">
-                                <h4 class="text-[2rem] mb-[1.5rem]">Contact Info</h4>
+                                <h4 class="text-[2rem] mb-[1.5rem]">
+                                    Contact Info
+                                </h4>
                                 <div class="grid grid-cols-2 gap-[1.5rem]">
                                     <div class="w-full">
-                                        <InputLabel for="email" value="Email" />
-                                        <TextInput id="email" type="email" class="mt-1 block w-full"
-                                            v-model="form.email" required />
-                                        <InputError class="mt-2" :message="form.errors.email" />
+                                        <label for="email">Email</label>
+                                        <input id="email" type="email" v-model="customer.email" required
+                                            class="mt-1 block w-full" />
                                     </div>
                                     <div class="w-full">
-                                        <InputLabel for="phone" value="Phone number" />
-                                        <TextInput id="phone" type="phone" class="mt-1 block w-full"
-                                            v-model="form.phone" required />
-                                        <InputError class="mt-2" :message="form.errors.phone" />
+                                        <label for="phone">Phone number</label>
+                                        <input id="phone" type="phone" v-model="customer.phone" required
+                                            class="mt-1 block w-full" />
                                     </div>
 
                                     <div class="w-full">
-                                        <InputLabel for="first_name" value="First Name" />
-                                        <TextInput id="first_name" type="text" class="mt-1 block w-full"
-                                            v-model="form.first_name" required />
-                                        <InputError class="mt-2" :message="form.errors.first_name" />
+                                        <label for="first_name">First Name</label>
+                                        <input id="first_name" type="text" v-model="customer.first_name" required
+                                            class="mt-1 block w-full" />
                                     </div>
                                     <div class="w-full">
-                                        <InputLabel for="last_name" value="Last Name" />
-                                        <TextInput id="last_name" type="text" class="mt-1 block w-full"
-                                            v-model="form.last_name" required />
-                                        <InputError class="mt-2" :message="form.errors.last_name" />
+                                        <label for="last_name">Last Name</label>
+                                        <input id="last_name" type="text" v-model="customer.last_name" required
+                                            class="mt-1 block w-full" />
                                     </div>
 
                                     <div class="w-full">
-                                        <InputLabel for="driver_age" value="Driver Age" />
-                                        <Select id="driver_age" v-model="driverAge" class="mt-1 block w-full">
-                                            <option value="" disabled>Select Age</option>
-                                            <option v-for="age in ageRange" :key="age" :value="age">{{ age }}</option>
-                                        </Select>
-                                        <InputError class="mt-2" :message="form.errors.driver_age" />
+                                        <label for="driver_age">Driver Age</label>
+                                        <select v-model="customer.driver_age" id="driver_age" class="mt-1 block w-full">
+                                            <option value="" disabled>
+                                                Select Age
+                                            </option>
+                                            <option v-for="age in ageRange" :key="age" :value="age">
+                                                {{ age }}
+                                            </option>
+                                        </select>
                                     </div>
                                 </div>
-
                             </div>
 
                             <div class="col">
-                                <h4 class="text-[2rem]">Additonal Info</h4>
-                                <p>In case of flight delay, we will hold your car reservation (subject to availability)
+                                <h4 class="text-[2rem]">Additional Info</h4>
+                                <p>
+                                    In case of flight delay, we will hold your
+                                    car reservation (subject to availability).
                                 </p>
                                 <div class="formfield mt-[1.5rem] flex justify-between gap-10">
                                     <div class="w-full">
-                                        <InputLabel for="phone_number" value="Flight Number" />
-                                        <TextInput id="flight_number" type="text" class="mt-1 block w-full"
-                                            v-model="form.flight_number" required />
-                                        <InputError class="mt-2" :message="form.errors.flight_number" />
+                                        <label for="flight_number">Flight Number</label>
+                                        <input id="flight_number" type="text" v-model="customer.flight_number" required
+                                            class="mt-1 block w-full" />
                                     </div>
                                 </div>
+                            </div>
 
+                            <div class="col">
+                                <PrimaryButton type="submit" class="submit_button">Save Info</PrimaryButton>
                             </div>
                         </form>
-
                         <div class="flex justify-between gap-10">
-                            <p>Your booking will be submitted once you go to payment. You can choose your payment method
-                                in the next step.</p>
-                            <button class="button-primary p-5 w-full" @click="moveToNextStep">
-                                Continue payment
+                            <p>
+                                Your booking will be submitted once you go to
+                                payment. You can choose your payment method in
+                                the next step.
+                            </p>
+                            <button type="submit" class="button-primary p-5 w-full" @click="moveToNextStep"
+                                :disabled="!isFormSaved">
+                                Continue to payment
                             </button>
                         </div>
                     </div>
@@ -320,20 +607,23 @@ const ageRange = computed(() =>
                         </p>
                     </div>
 
-                    <form @submit.prevent="submitBooking">
-      <!-- Other form fields -->
-  
-      <!-- Stripe Payment Form -->
-      <div class="stripe-card">
-        <div id="card-number" class="stripe-element"></div>
-        <div id="card-expiry" class="stripe-element"></div>
-        <div id="card-cvc" class="stripe-element"></div>
-      </div>
-      <div id="card-errors" role="alert" class="stripe-card-errors"></div>
-  
-      <button type="submit">Book Now</button>
-    </form>
+                    <div class="stripe-payment-form p-6 border rounded-lg">
+                        <h4 class="text-[2rem] font-medium mb-6">Payment Details</h4>
 
+                        <form @submit.prevent="submitBooking">
+                            <!-- Other form fields -->
+
+                            <!-- Stripe Payment Form -->
+                            <div class="stripe-card">
+                                <div id="card-number" class="stripe-element"></div>
+                                <div id="card-expiry" class="stripe-element"></div>
+                                <div id="card-cvc" class="stripe-element"></div>
+                            </div>
+                            <div id="card-errors" role="alert" class="stripe-card-errors"></div>
+
+                            <button type="submit">Book Now</button>
+                        </form>
+                    </div>
                 </div>
 
                 <div class="column w-[35%]">
@@ -371,15 +661,21 @@ const ageRange = computed(() =>
                             <div class="col flex items-start gap-4">
                                 <img :src="pickupLocationIcon" alt="" />
                                 <div class="flex flex-col gap-1">
-                                    <span class="text-[1.25rem] text-medium">{{ vehicle?.location }}</span><span
-                                        class="">{{ vehicle?.created_at }}</span>
+                                    <span class="text-[1.25rem] text-medium">{{
+                                        vehicle?.location
+                                    }}</span><span class="">{{
+                                            vehicle?.created_at
+                                        }}</span>
                                 </div>
                             </div>
                             <div class="col flex items-start gap-4 mt-[2.5rem]">
                                 <img :src="returnLocationIcon" alt="" />
                                 <div class="flex flex-col gap-1">
-                                    <span class="text-[1.25rem] text-medium">{{ vehicle?.location }}</span><span
-                                        class="">{{ vehicle?.created_at }}</span>
+                                    <span class="text-[1.25rem] text-medium">{{
+                                        vehicle?.location
+                                    }}</span><span class="">{{
+                                            vehicle?.created_at
+                                        }}</span>
                                 </div>
                             </div>
 
@@ -392,15 +688,18 @@ const ageRange = computed(() =>
                                         <div>
                                             <strong class="text-[1.5rem] font-medium">€{{
                                                 vehicle?.price_per_day
-                                            }}</strong>
+                                                }}</strong>
                                             <span>/day</span>
                                         </div>
                                     </div>
                                     <!-- Selected Plan -->
                                     <div v-if="selectedPlan" class="flex justify-between items-center text-[1.15rem]">
-                                        <span>{{ selectedPlan.plan_type }}</span>
+                                        <span>{{
+                                            selectedPlan.plan_type
+                                        }}</span>
                                         <div>
-                                            <strong class="text-[1.5rem] font-medium">€{{ selectedPlan.plan_value
+                                            <strong class="text-[1.5rem] font-medium">€{{
+                                                selectedPlan.plan_value
                                                 }}</strong>
                                             <span>/day</span>
                                         </div>
@@ -409,10 +708,15 @@ const ageRange = computed(() =>
                                     <!-- In the pricing section -->
                                     <div v-for="extra in bookingExtras" :key="extra.id" v-show="extra.quantity > 0"
                                         class="flex justify-between items-center text-[1.15rem]">
-                                        <span>{{ extra.extra_name }} {{ extra.quantity > 1 ? `(x${extra.quantity})` : ''
+                                        <span>{{ extra.extra_name }}
+                                            {{
+                                                extra.quantity > 1
+                                                    ? `(x${extra.quantity})`
+                                                    : ""
                                             }}</span>
                                         <div>
-                                            <strong class="text-[1.5rem] font-medium">€{{ extra.price * extra.quantity
+                                            <strong class="text-[1.5rem] font-medium">€{{
+                                                extra.price * extra.quantity
                                                 }}</strong>
                                             <span>/day</span>
                                         </div>
@@ -499,12 +803,53 @@ const ageRange = computed(() =>
 
 .booking_form input,
 .booking_form select {
-    border: 1px solid #2B2B2B80;
+    border: 1px solid #2b2b2b80;
     border-radius: 12px;
     padding: 0.75rem;
 }
 
 .booking_form label {
-    color: #2B2B2BBF;
+    color: #2b2b2bbf;
+}
+
+.stripe-element-container {
+    background: white;
+    padding: 12px;
+    border-radius: 8px;
+}
+
+.stripe-card {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    margin-bottom: 16px;
+}
+
+.stripe-element {
+    border: 1px solid #e0e0e0;
+    border-radius: 8px;
+    padding: 12px;
+    background-color: #f9f9f9;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.stripe-card-errors {
+    color: #ff3860;
+    font-size: 14px;
+    margin-bottom: 16px;
+}
+
+button {
+    background-color: #4a90e2;
+    color: white;
+    border: none;
+    padding: 12px 24px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 16px;
+}
+
+button:hover {
+    background-color: #357abd;
 }
 </style>

@@ -59,4 +59,15 @@ class Booking extends Model
         
         return $prefix . $year . $month . $random;
     }
+
+    public function payments()
+    {
+        return $this->hasMany(BookingPayment::class);
+    }
+
+    public function extras()
+    {
+        return $this->hasMany(BookingExtra::class);
+    }
+
 }

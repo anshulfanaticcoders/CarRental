@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\BookingAddonController;
+use App\Http\Controllers\BookingController;
 use App\Http\Controllers\BookingExtraController;
 use App\Http\Controllers\PlanController;
 use App\Http\Controllers\UserDocumentController;
@@ -48,3 +49,4 @@ Route::get('/users', function () {
     $users = User::all();
     return response()->json($users);
 });
+Route::get('/booking-success/details', [BookingController::class, 'getBookingDetails'])->name('booking-success.details');
