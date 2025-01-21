@@ -152,4 +152,27 @@ class VehicleController extends Controller
             'vehicle' => $vehicle,
         ]);
     }
+    // public function vendorVehicle($id)
+    // {
+    //     $vehicle = Vehicle::with(['specifications', 'images', 'category', 'user'])
+    //         ->findOrFail($id);
+    //     return Inertia::render('Vendor/VendorVehicles', [
+    //         'vehicle' => $vehicle,
+    //     ]);
+    // }
+
+    public function vendorVehicle()
+{
+    // Get the currently authenticated vendor's ID
+    $vendorId = auth()->id();
+    
+    // Get all vehicles belonging to this vendor
+    $vehicles = Vehicle::with(['specifications', 'images', 'category', 'user'])
+        ->where('vendor_id', $vendorId)
+        ->get();
+
+    return Inertia::render('Vendor/VendorVehicles', [
+        'vehicles' => $vehicles,
+    ]);
+}
 }

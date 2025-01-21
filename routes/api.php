@@ -50,3 +50,5 @@ Route::get('/users', function () {
     return response()->json($users);
 });
 Route::get('/booking-success/details', [BookingController::class, 'getBookingDetails'])->name('booking-success.details');
+
+Route::get('/booking/{vehicle_id}', [BookingController::class, 'showBookingDetails'])->name('booking.show');

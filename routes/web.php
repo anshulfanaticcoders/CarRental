@@ -72,12 +72,28 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/booking', [BookingController::class, 'create'])->name('booking.create');
     Route::post('/booking', [BookingController::class, 'store'])->name('booking.store');
     // Route::get('/booking-success', [BookingController::class, 'success'])->name('booking.success');
-     Route::get('/booking-success/details', [BookingController::class, 'getBookingDetails'])->name('booking-success.details');
+    Route::get('/booking-success/details', [BookingController::class, 'getBookingDetails'])->name('booking-success.details');
+
+    //  this is route is for redirecting to the success page after payment done
     Route::get('/booking-success/details', function () {
         return Inertia::render('Booking/Success', [
-           'payment_intent' => request('payment_intent'), // Pass payment intent ID
+            'payment_intent' => request('payment_intent'), // Pass payment intent ID
         ]);
     })->name('booking-success.details');
+
+    //  this is route is for redirecting to the Confirmed booking page page after payment done
+    // Route::get('/pending-bookings/details', function () {
+    //     return Inertia::render('Profile/PendingBookings', [
+    //         'payment_intent' => request('payment_intent'), // Pass payment intent ID
+    //     ]);
+    // })->name('pending-bookings.details');
+    
+    Route::get('/customer/bookings', [BookingController::class, 'getCustomerBookingData'])->name('customer.bookings');
+    // this is for showing All Booking details of customer in vendor profile
+    Route::get('/vendor/bookings', [BookingController::class, 'getAllBookings'])->name('vendor.bookings');
+    // this is for showing All Vehicles of vendor in vendor profile
+    Route::get('/vendor/vehicles', [VehicleController::class, 'vendorVehicle'])->name('vehicles.index');
+
 });
 
 Route::inertia('vendor-approved', 'Vendor/VendorApproved');

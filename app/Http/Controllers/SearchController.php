@@ -8,19 +8,6 @@ use Inertia\Inertia;
 
 class SearchController extends Controller
 {
-    // public function index()
-    // {
-
-    //     return Inertia::render('Welcome');
-    // }
-
-
-    // public function show(Vehicle $vehicle)
-    // {
-    //     return Inertia::render('VehicleDetail', [
-    //         'vehicle' => $vehicle
-    //     ]);
-    // }
 
     public function search(Request $request)
     {
@@ -71,5 +58,6 @@ class SearchController extends Controller
             'pagination_links' => $vehicles->links()->toHtml(),
         ]);
     }
+    
 }
 

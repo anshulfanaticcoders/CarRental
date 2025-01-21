@@ -23,7 +23,7 @@ import AuthenticatedHeaderLayout from './AuthenticatedHeaderLayout.vue';
 <style>
 .sidebar {
     position: sticky; 
-    top: 3rem; 
+    top: 2rem; 
     height: 100vh;
     overflow-y: auto; 
     background-color: white; 

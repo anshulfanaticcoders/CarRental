@@ -1,17 +1,52 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue';
-import { Link } from '@inertiajs/vue3';
+import { Link, usePage } from '@inertiajs/vue3';
 import chevronIcon from '../../assets/chaveronDown.svg';
 import profileIcon from '../../assets/userDashIcon.svg';
 import bookingsIcon from '../../assets/bookingIcon.svg';
 import inboxIcon from '../../assets/inboxIcon.svg';
 import favoritesIcon from '../../assets/favouriteIcon.svg';
 import reviewsIcon from '../../assets/myreviewIcon.svg';
+import dashboardIcon from '../../assets/vendorDashboarIcon.svg';
+import vehiclesIcon from '../../assets/vehicletypeIcon.svg';
+import avatar from '../../assets/userAvatar.png';
+import clockIcon from '../../assets/clockIcon.svg';
+
+// Existing logic
+const booking = ref(null);
+const payment = ref(null);
+const vehicle = ref(null);
+const error = ref(null);
+onMounted(async () => {
+  const paymentIntentId = usePage().props.payment_intent;
+
+  if (paymentIntentId) {
+    try {
+      const response = await axios.get(
+        `/api/booking-success/details?payment_intent=${paymentIntentId}`
+      );
+
+      booking.value = response.data.booking;
+      payment.value = response.data.payment;
+      vehicle.value = response.data.vehicle;
+    } catch (err) {
+      error.value =
+        'There was an error fetching the booking details. Please try again later.';
+      console.error('Error fetching booking details:', err);
+    }
+  } else {
+    error.value = 'Payment Intent ID is missing from the URL.';
+  }
+});
 
 const activeMenu = ref(null);
 const activeSubmenu = ref(null);
 const activeLink = ref(null);
 
+// Determine user role from props
+const userRole = usePage().props.auth.user.role;
+
+// Menus for "customer" (existing logic)
 const menus = [
   {
     title: 'My Profile',
@@ -29,7 +64,7 @@ const menus = [
     icon: bookingsIcon,
     items: [
       { name: 'Confirmed', path: '/confirmed-bookings' },
-      { name: 'Pending', path: '/pending-bookings' },
+      { name: 'Pending', path: '/customer/bookings' },
       { name: 'Completed', path: '/completed-bookings' },
     ],
   },
@@ -40,6 +75,39 @@ const otherLinks = [
   { name: 'Favorites', path: '/favourites', icon: favoritesIcon },
   { name: 'My Reviews', path: '/review', icon: reviewsIcon },
 ];
+
+// Additional menus for "vendor"
+const vendorMenus = [
+  {
+    title: 'Dashboard',
+    key: 'dashboard',
+    icon: dashboardIcon,
+    items: [
+      { name: 'Overview', path: '/vendor-dashboard' },
+      { name: 'Reports', path: '/vendor-reports' },
+    ],
+  },
+  {
+    title: 'Vehicles',
+    key: 'vehicles',
+    icon: vehiclesIcon,
+    items: [
+      { name: 'All Vehicles', path: '/vendor/vehicles' },
+      { name: 'Add New Vehicle', path: '/add-vehicle' },
+    ],
+  },
+];
+
+const vendorOtherLinks = [
+  { name: 'Payment History', path: '/vendor-payments', icon: clockIcon },
+  { name: 'Bookings', path: '/vendor/bookings', icon: vehiclesIcon },
+  { name: 'Inbox', path: '/vendor-inbox', icon: inboxIcon },
+  { name: 'Customer Reviews', path: '/customer-reviews', icon: reviewsIcon },
+];
+
+// Active menus based on role
+const activeMenus = userRole === 'vendor' ? vendorMenus : menus;
+const activeOtherLinks = userRole === 'vendor' ? vendorOtherLinks : otherLinks;
 
 const toggleMenu = (menuKey) => {
   activeMenu.value = activeMenu.value === menuKey ? null : menuKey;
@@ -58,7 +126,7 @@ const greetingMessage = computed(() => {
 
 const setActiveLinkFromRoute = () => {
   const currentPath = window.location.pathname;
-  const foundLink = otherLinks.find(link => link.path === currentPath);
+  const foundLink = activeOtherLinks.find(link => link.path === currentPath);
   if (foundLink) {
     activeLink.value = foundLink.name;
   }
@@ -66,7 +134,7 @@ const setActiveLinkFromRoute = () => {
 
 const setActiveSubmenuFromRoute = () => {
   const currentPath = window.location.pathname;
-  menus.forEach(menu => {
+  activeMenus.forEach(menu => {
     const foundItem = menu.items.find(item => item.path === currentPath);
     if (foundItem) {
       activeMenu.value = menu.key;
@@ -81,12 +149,13 @@ onMounted(() => {
 });
 </script>
 
+
 <template>
   <div class="sidebar">
     <div class="user-info p-4 w-full">
       <div class="flex items-center space-x-3">
         <img
-          src="https://via.placeholder.com/50"
+          :src= avatar
           alt="User"
           class="w-12 h-12 rounded-full object-cover"
         />
@@ -104,7 +173,7 @@ onMounted(() => {
 
     <!-- Dynamic Menus -->
     <div
-      v-for="menu in menus"
+      v-for="menu in activeMenus"
       :key="menu.key"
       class="menu-item flex flex-col gap-2"
     >
@@ -144,7 +213,7 @@ onMounted(() => {
     </div>
 
     <!-- Other Links -->
-    <div v-for="link in otherLinks" :key="link.name" class="menu-item">
+    <div v-for="link in activeOtherLinks" :key="link.name" class="menu-item">
       <Link
         :href="link.path"
         class="menu-link flex items-center gap-2"
@@ -159,6 +228,7 @@ onMounted(() => {
     </div>
   </div>
 </template>
+
 
 <style scoped>
 a {

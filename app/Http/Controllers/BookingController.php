@@ -30,7 +30,7 @@ class BookingController extends Controller
             'customer.phone' => 'nullable|string|max:20',
             'customer.flight_number' => 'nullable|string|max:50', // Added flight number validation
             'customer.driver_age' => 'nullable|integer|min:18|max:100',
-            'vehicle_id' => 'required|exists:vehicles,id', 
+            'vehicle_id' => 'required|exists:vehicles,id',
 
             // Booking validation
             'pickup_date' => 'required|date',
@@ -74,7 +74,7 @@ class BookingController extends Controller
                 'driver_age' => $request->input('customer.driver_age'),
             ]);
         }
-        
+
 
         // Vehicle logic (unchanged)
         $vehicle = Vehicle::findOrFail($validatedData['vehicle_id']);
@@ -127,12 +127,12 @@ class BookingController extends Controller
                 ];
             }
         }
-        
+
         // Insert all extras at once
         if (!empty($extrasData)) {
             BookingExtra::insert($extrasData);
         }
-        
+
 
         // Initialize Stripe
         Stripe::setApiKey(config('stripe.secret'));
@@ -181,7 +181,7 @@ class BookingController extends Controller
                 'payment_status' => $paymentIntent->status,
             ]);
 
-            
+
             return response()->json([
                 'clientSecret' => $paymentIntent->client_secret,
             ]);
@@ -217,65 +217,86 @@ class BookingController extends Controller
     // {
     //     $paymentIntentId = $request->input('payment_intent');
     //     $payment = BookingPayment::where('transaction_id', $paymentIntentId)->first();
-    
+
     //     if (!$payment) {
     //         return redirect()->route('booking-success')->with('error', 'Payment not found.');
     //     }
-    
+
     //     // Update payment status and booking status
     //     $payment->update([
     //         'payment_status' => 'successful',
     //         'payment_date' => now(),
     //     ]);
-    
+
     //     $booking = $payment->booking; // Lazy load the related booking
-    
+
     //     if ($booking) {
     //         $booking->update([
     //             'payment_status' => 'paid',
     //             'booking_status' => 'confirmed',
     //         ]);
     //     }
-    
+
     //     return redirect()->route('booking-success', [
     //         'booking_number' => $booking ? $booking->booking_number : 'N/A',
     //     ]);
     // }
-    
 
-public function getBookingDetails(Request $request)
-{
-   
-    // Get payment intent from query parameters
-    $paymentIntentId = $request->query('payment_intent');
-   // print_r($paymentIntentId);
-  
-    if (!$paymentIntentId) {
-        return response()->json(['error' => 'Payment Intent ID is required'], 400);
+
+    public function getBookingDetails(Request $request)
+    {
+
+        // Get payment intent from query parameters
+        $paymentIntentId = $request->query('payment_intent');
+        // print_r($paymentIntentId);
+
+        if (!$paymentIntentId) {
+            return response()->json(['error' => 'Payment Intent ID is required'], 400);
+        }
+
+        // Fetch payment details
+        $payment = BookingPayment::where('transaction_id', $paymentIntentId)->first();
+
+        if (!$payment) {
+            return response()->json(['error' => 'Payment not found'], 404);
+        }
+
+        // Fetch booking details
+        $booking = Booking::with(['extras', 'customer'])->find($payment->booking_id);
+        $vehicleId = $booking->vehicle_id;
+        $vehicle = Vehicle::with(['specifications', 'images', 'category', 'user'])->find($vehicleId);
+
+        // Return booking and payment details in JSON format
+        return response()->json([
+            'booking' => $booking,
+            'payment' => $payment,
+            'vehicle' => $vehicle,
+            'extras' => $booking->extras,
+            'customer' => $booking->customer,
+        ]);
     }
 
-    // Fetch payment details
-    $payment = BookingPayment::where('transaction_id', $paymentIntentId)->first();
-    
-    if (!$payment) {
-        return response()->json(['error' => 'Payment not found'], 404);
+    // this si for fetching all the booking details in Pages > Vendor >  Bookings.vue
+    public function getAllBookings()
+    {
+        // Get all bookings with related data
+        $bookings = Booking::with(['customer', 'vehicle', 'payments'])
+            ->orderBy('created_at', 'desc')
+            ->get();
+
+        return Inertia::render('Vendor/Bookings', [
+            'bookings' => $bookings
+        ]);
     }
+    public function getCustomerBookingData()
+    {
+        // Get all bookings with related data
+        $bookings = Booking::with(['customer', 'vehicle', 'payments'])
+            ->orderBy('created_at', 'desc')
+            ->get();
 
-    // Fetch booking details
-    $booking = Booking::with('extras')->find($payment->booking_id);
-
-    $vehicle = $booking->vehicle; 
- 
-    if (!$booking) {
-        return response()->json(['error' => 'Booking not found'], 404);
+        return Inertia::render('Profile/PendingBookings', [
+            'bookings' => $bookings
+        ]);
     }
-
-    // Return booking and payment details in JSON format
-    return response()->json([
-        'booking' => $booking,
-        'payment' => $payment,
-    ]);
-}
-
-
 }
