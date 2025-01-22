@@ -131,11 +131,12 @@ class VehicleController extends Controller
     //This is for getting particular vehicle information to the single car page 
     public function show($id)
     {
-        $vehicle = Vehicle::with(['specifications', 'images', 'category', 'user'])
+        $vehicle = Vehicle::with(['specifications', 'images', 'category', 'user','vendorProfile'])
             ->findOrFail($id);
         return Inertia::render('SingleCar', [
             'vehicle' => $vehicle,
         ]);
+        // return response()->json($vehicle);
     }
     public function showAllVendorVehicles()
     {
@@ -152,14 +153,6 @@ class VehicleController extends Controller
             'vehicle' => $vehicle,
         ]);
     }
-    // public function vendorVehicle($id)
-    // {
-    //     $vehicle = Vehicle::with(['specifications', 'images', 'category', 'user'])
-    //         ->findOrFail($id);
-    //     return Inertia::render('Vendor/VendorVehicles', [
-    //         'vehicle' => $vehicle,
-    //     ]);
-    // }
 
     public function vendorVehicle()
 {

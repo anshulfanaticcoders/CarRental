@@ -290,13 +290,18 @@ class BookingController extends Controller
     }
     public function getCustomerBookingData()
     {
-        // Get all bookings with related data
-        $bookings = Booking::with(['customer', 'vehicle', 'payments'])
-            ->orderBy('created_at', 'desc')
-            ->get();
-
+        // Get all bookings with related data, including vehicle images
+        $bookings = Booking::with([
+            'customer',
+            'vehicle.images',
+            'payments'
+        ])
+        ->orderBy('created_at', 'desc')
+        ->get();
+    
         return Inertia::render('Profile/PendingBookings', [
             'bookings' => $bookings
         ]);
     }
+    
 }

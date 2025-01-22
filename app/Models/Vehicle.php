@@ -67,4 +67,8 @@ class Vehicle extends Model
     {
         return $this->hasMany(VehicleImage::class, 'vehicle_id');
     }
+    public function vendorProfile()
+    {
+        return $this->belongsTo(UserProfile::class, 'vendor_id', 'user_id');
+    }
 }

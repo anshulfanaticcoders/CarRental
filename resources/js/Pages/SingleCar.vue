@@ -8,6 +8,10 @@ import peopleIcon from "../../assets/people.svg";
 import carbonIcon from "../../assets/carbon-emmision.svg";
 import ageIcon from "../../assets/age.svg";
 import enginepowerIcon from "../../assets/enginepower.svg";
+import unlimitedKmIcon from "../../assets/unlimitedKm.svg";
+import cancellationIcon from "../../assets/cancellationAvailable.svg";
+import vendorIcon from "../../assets/vendorIcon.svg";
+
 
 import ShareIcon from "../../assets/ShareNetwork.svg";
 import Heart from "../../assets/Heart.svg";
@@ -105,6 +109,7 @@ onMounted(() => {
 
 import axios from "axios";
 import { router } from "@inertiajs/vue3";
+import Faq from "@/Components/Faq.vue";
 const form = ref({
     where: "",
     date_from: "",
@@ -336,12 +341,50 @@ onMounted(() => {
                             </div>
                         </div>
 
-                        <div class="features mt-[3rem]">
+                        <div class=" mt-[3rem]">
                             <span class="text-[2rem] font-medium">Car Location</span>
                             <div class="gap-y-[2rem]">
                                 {{ vehicle?.location }}
                             </div>
                             <div id="map" class="h-full rounded-lg mt-4"></div>
+                        </div>
+
+                        <div class="mt-[5rem]">
+                            <span class="text-[2rem] font-medium">Banefits</span>
+                            <div class="flex justify-between gap-5">
+                                <div
+                                    class=" flex justify-between gap-5 border-[1px] border-customPrimaryColor rounded-[0.75em] px-[1rem] py-[2rem]">
+                                    <img :src=unlimitedKmIcon alt="">
+                                    <div>
+                                        <h4 class="text-customPrimaryColor text-[1.75rem] font-medium">Unlimited KMs
+                                        </h4>
+                                        <p class="text-customLightGrayColor">Endless kilometres with no extra charge</p>
+                                    </div>
+                                </div>
+                                <div
+                                    class=" flex justify-between gap-5 border-[1px] border-customPrimaryColor rounded-[0.75em] px-[1rem] py-[2rem]">
+                                    <img :src=cancellationIcon alt="">
+                                    <div>
+                                        <h4 class="text-customPrimaryColor text-[1.75rem] font-medium">Cancellation
+                                            Unavailable</h4>
+                                        <p class="text-customLightGrayColor">This booking is non-refundable</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="mt-[5rem]">
+                            <span class="text-[2rem] font-medium">Meet Vehicle Vendor</span>
+                            <div
+                                class="mt-[2rem] flex justify-between gap-5 border-[1px] border-customPrimaryColor rounded-[0.75em] px-[1rem] py-[2rem]">
+                                <img :src=vendorIcon alt="">
+                                <div>
+                                    <h4 class="text-customPrimaryColor text-[1.75rem] font-medium">
+                                        {{ vehicle.user.first_name }} {{ vehicle.user.last_name }}
+                                    </h4>
+                                    <p class="text-customLightGrayColor">{{ vehicle.vendor_profile.about }}</p>
+                                </div>
+                            </div>
                         </div>
                     </div>
 
@@ -482,7 +525,21 @@ onMounted(() => {
             </div>
         </section>
 
-        <section class="py-customVerticalSpacing"></section>
+        <section class="py-customVerticalSpacing">
+            <Faq />
+        </section>
+
+        <section class="full-w-container">
+            <div
+                class="mt-[2rem] flex items-center justify-center gap-5 border-[1px] border-customPrimaryColor rounded-[0.75em] px-[1rem] py-[2rem]">
+                <div class="flex flex-col gap-5">
+                    <img :src=vendorIcon alt="">
+                    <h4 class="text-customPrimaryColor text-[1.75rem] font-medium">
+                        {{ vehicle.user.first_name }} {{ vehicle.user.last_name }}
+                    </h4>
+                </div>
+            </div>
+        </section>
     </main>
 </template>
 

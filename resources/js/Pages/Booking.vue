@@ -314,95 +314,82 @@ const submitBooking = async () => {
     };
     console.log("Vehicle ID:", vehicle.value?.id);
     try {
-    // First, create the payment method from Stripe
-    const { error, paymentMethod } = await stripe.createPaymentMethod({
-        type: 'card',
-        card: cardNumber,
-        billing_details: {
-            name: `${customer.value.first_name} ${customer.value.last_name}`,
-            email: customer.value.email,
-            phone: customer.value.phone,
-            address: {
-            line1: 'United states',
-            country: 'US',
-            state:"California",
-        },
-        },
-    });
+        // First, create the payment method from Stripe
+        const { error, paymentMethod } = await stripe.createPaymentMethod({
+            type: 'card',
+            card: cardNumber,
+            billing_details: {
+                name: `${customer.value.first_name} ${customer.value.last_name}`,
+                email: customer.value.email,
+                phone: customer.value.phone,
+                address: {
+                    line1: 'United states',
+                    country: 'US',
+                    state: "California",
+                },
+            },
+        });
 
-    if (error) {
-        console.error(error);
-        alert("Payment error: " + error.message);
-        return;
+        if (error) {
+            console.error(error);
+            alert("Payment error: " + error.message);
+            return;
+        }
+
+        // Now send the booking data along with the paymentMethod.id
+        const response = await axios.post('/booking', {
+            ...bookingData,
+            payment_method_id: paymentMethod.id,  // Send the payment method ID to the backend
+        });
+
+        const clientSecret = response.data.clientSecret;
+        // Log the Payment Intent before confirming it
+        console.log('Client Secret:', clientSecret);
+
+        // Retrieve the Payment Intent to check its status
+        const { paymentIntent } = await stripe.retrievePaymentIntent(clientSecret);
+        console.log('Payment Intent Status:', paymentIntent.status);
+
+        if (paymentIntent.status === 'succeeded') {
+            // Payment is already successful, no need to confirm again
+            Inertia.visit(`/booking-success/details?payment_intent=${paymentIntent.id}`);
+            return;
+        }
+
+        if (paymentIntent.status === 'requires_action') {
+            const { error: actionError, paymentIntent: confirmedPaymentIntent } = await stripe.handleCardAction(clientSecret);
+
+            if (actionError) {
+                console.error('Action Error:', actionError);
+                throw new Error(actionError.message);
+            }
+
+            console.log('Confirmed Payment Intent:', confirmedPaymentIntent);
+            Inertia.visit(`/booking-success/details?payment_intent=${paymentIntent.id}`);
+
+            return;
+        }
+
+        if (paymentIntent.status === 'requires_confirmation') {
+            const { paymentIntent: confirmedPaymentIntent, error: confirmError } = await stripe.confirmCardPayment(clientSecret, {
+                payment_method: paymentMethod.id,
+            });
+
+            if (confirmError) {
+                console.error('Confirm Error:', confirmError);
+                throw new Error(confirmError.message);
+            }
+
+            console.log('Confirmed Payment Intent:', confirmedPaymentIntent);
+            Inertia.visit(`/booking-success/details?payment_intent=${paymentIntent.id}`);
+            return;
+        }
+
+        throw new Error('Unexpected Payment Intent state: ' + paymentIntent.status);
+    } catch (err) {
+        error.value = err.message || 'An error occurred. Please try again.';
     }
-
-    // Now send the booking data along with the paymentMethod.id
-    const response = await axios.post('/booking', {
-        ...bookingData,
-        payment_method_id: paymentMethod.id,  // Send the payment method ID to the backend
-    });
-
-    const clientSecret = response.data.clientSecret;
-      // Log the Payment Intent before confirming it
-      console.log('Client Secret:', clientSecret);
-
-// Retrieve the Payment Intent to check its status
-const { paymentIntent } = await stripe.retrievePaymentIntent(clientSecret);
-console.log('Payment Intent Status:', paymentIntent.status);
-
-if (paymentIntent.status === 'succeeded') {
-  // Payment is already successful, no need to confirm again
-  Inertia.visit(`/booking-success/details?payment_intent=${paymentIntent.id}`);
-  return;
-}
-
-if (paymentIntent.status === 'requires_action') {
-  const { error: actionError, paymentIntent: confirmedPaymentIntent } = await stripe.handleCardAction(clientSecret);
-
-  if (actionError) {
-    console.error('Action Error:', actionError);
-    throw new Error(actionError.message);
-  }
-
-  console.log('Confirmed Payment Intent:', confirmedPaymentIntent);
-  Inertia.visit(`/booking-success/details?payment_intent=${paymentIntent.id}`);
-
-  return;
-}
-
-if (paymentIntent.status === 'requires_confirmation') {
-  const { paymentIntent: confirmedPaymentIntent, error: confirmError } = await stripe.confirmCardPayment(clientSecret, {
-    payment_method: paymentMethod.id,
-  });
-
-  if (confirmError) {
-    console.error('Confirm Error:', confirmError);
-    throw new Error(confirmError.message);
-  }
-
-  console.log('Confirmed Payment Intent:', confirmedPaymentIntent);
-  Inertia.visit(`/booking-success/details?payment_intent=${paymentIntent.id}`);
-  return;
-}
-
-throw new Error('Unexpected Payment Intent state: ' + paymentIntent.status);
-    // console.log(clientSecret);
-    // console.log(paymentMethod.id);
-    // const { paymentIntent, error: confirmError } = await stripe.confirmCardPayment(clientSecret, {
-    //     payment_method: paymentMethod.id,
-    // });
-
-    // if (confirmError) {
-    //     console.error(confirmError);
-    //     alert("Payment confirmation error: " + confirmError.message);
-    //     return;
-    // }
-
-    // router.visit(`/booking/success?payment_intent=${paymentIntent.id}`);
-} catch (err) {
-    error.value = err.message || 'An error occurred. Please try again.';
-  }
-   // sessionStorage.clear();
+    // sessionStorage.clear();
 };
 
 
@@ -663,7 +650,7 @@ throw new Error('Unexpected Payment Intent state: ' + paymentIntent.status);
                                 <div class="flex flex-col gap-1">
                                     <span class="text-[1.25rem] text-medium">{{
                                         vehicle?.location
-                                    }}</span><span class="">{{
+                                        }}</span><span class="">{{
                                             vehicle?.created_at
                                         }}</span>
                                 </div>
@@ -673,7 +660,7 @@ throw new Error('Unexpected Payment Intent state: ' + paymentIntent.status);
                                 <div class="flex flex-col gap-1">
                                     <span class="text-[1.25rem] text-medium">{{
                                         vehicle?.location
-                                    }}</span><span class="">{{
+                                        }}</span><span class="">{{
                                             vehicle?.created_at
                                         }}</span>
                                 </div>
@@ -688,7 +675,7 @@ throw new Error('Unexpected Payment Intent state: ' + paymentIntent.status);
                                         <div>
                                             <strong class="text-[1.5rem] font-medium">€{{
                                                 vehicle?.price_per_day
-                                                }}</strong>
+                                            }}</strong>
                                             <span>/day</span>
                                         </div>
                                     </div>
@@ -696,11 +683,11 @@ throw new Error('Unexpected Payment Intent state: ' + paymentIntent.status);
                                     <div v-if="selectedPlan" class="flex justify-between items-center text-[1.15rem]">
                                         <span>{{
                                             selectedPlan.plan_type
-                                        }}</span>
+                                            }}</span>
                                         <div>
                                             <strong class="text-[1.5rem] font-medium">€{{
                                                 selectedPlan.plan_value
-                                                }}</strong>
+                                            }}</strong>
                                             <span>/day</span>
                                         </div>
                                     </div>
@@ -717,7 +704,7 @@ throw new Error('Unexpected Payment Intent state: ' + paymentIntent.status);
                                         <div>
                                             <strong class="text-[1.5rem] font-medium">€{{
                                                 extra.price * extra.quantity
-                                                }}</strong>
+                                            }}</strong>
                                             <span>/day</span>
                                         </div>
                                     </div>

@@ -80,14 +80,8 @@ Route::middleware(['auth'])->group(function () {
             'payment_intent' => request('payment_intent'), // Pass payment intent ID
         ]);
     })->name('booking-success.details');
-
-    //  this is route is for redirecting to the Confirmed booking page page after payment done
-    // Route::get('/pending-bookings/details', function () {
-    //     return Inertia::render('Profile/PendingBookings', [
-    //         'payment_intent' => request('payment_intent'), // Pass payment intent ID
-    //     ]);
-    // })->name('pending-bookings.details');
     
+    // this route is to show customer booking in the customer profile
     Route::get('/customer/bookings', [BookingController::class, 'getCustomerBookingData'])->name('customer.bookings');
     // this is for showing All Booking details of customer in vendor profile
     Route::get('/vendor/bookings', [BookingController::class, 'getAllBookings'])->name('vendor.bookings');

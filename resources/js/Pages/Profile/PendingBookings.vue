@@ -68,8 +68,8 @@ const cancelBooking = async (bookingId) => {
                         class="border-[1px] border-[#E7E7E7] rounded-[12px] flex justify-between gap-5 p-5"
                     >
                         <!-- Vehicle Image -->
-                        <div class="column w-[20%]">
-                            <img v-if="booking.vehicle.images" :src="`/storage/${vehicle.images.find(
+                        <div class="column w-[25%]">
+                            <img v-if="booking.vehicle?.images" :src="`/storage/${booking.vehicle.images.find(
                             (image) => image.image_type === 'primary'
                         )?.image_path
                             }`" alt="Primary Image" class="w-full h-full object-cover rounded-lg" />
