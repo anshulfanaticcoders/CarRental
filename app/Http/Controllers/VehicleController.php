@@ -131,7 +131,7 @@ class VehicleController extends Controller
     //This is for getting particular vehicle information to the single car page 
     public function show($id)
     {
-        $vehicle = Vehicle::with(['specifications', 'images', 'category', 'user','vendorProfile'])
+        $vehicle = Vehicle::with(['specifications', 'images', 'category', 'user','vendorProfile','vendorProfileData'])
             ->findOrFail($id);
         return Inertia::render('SingleCar', [
             'vehicle' => $vehicle,

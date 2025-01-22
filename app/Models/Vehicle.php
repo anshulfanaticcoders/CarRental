@@ -71,4 +71,8 @@ class Vehicle extends Model
     {
         return $this->belongsTo(UserProfile::class, 'vendor_id', 'user_id');
     }
+    public function vendorProfileData()
+{
+    return $this->belongsTo(VendorProfile::class, 'vendor_id', 'user_id');
+}
 }

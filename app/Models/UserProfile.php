@@ -23,6 +23,7 @@ class UserProfile extends Model
         'title',
         'languages',
         'currency',
+        'avatar',
     ];
 
     public function user()

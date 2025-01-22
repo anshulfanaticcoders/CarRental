@@ -32,6 +32,7 @@ class ProfileUpdateRequest extends FormRequest
             'title' => ['nullable', 'string', Rule::in(['Mr.', 'Miss'])],
             'gender' => ['nullable', 'string', Rule::in(['male', 'female'])],
             'currency' => ['nullable', 'string', Rule::in(['USD', 'EUR'])],
+            // 'avatar' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'max:2048'],
         ];
     }
     

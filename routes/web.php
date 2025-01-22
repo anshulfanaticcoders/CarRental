@@ -38,8 +38,12 @@ Route::get('/dashboard', function () {
 // -------------web routes for user profile ----------------------
 Route::middleware('auth')->group(function () {
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
-    Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
+    Route::post('/profile', [ProfileController::class, 'update'])->name('profile.update');
     Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
+
+    // this is the route to get user and user profile data you can fetch through axios
+    Route::get('/user', [ProfileController::class, 'show'])->name('user.profile');
+
 });
 
 

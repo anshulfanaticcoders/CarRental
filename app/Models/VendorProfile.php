@@ -23,4 +23,10 @@ class VendorProfile extends Model
     {
         return $this->belongsTo(User::class, 'user_id');
     }
+
+     // Add this relationship
+     public function vehicles()
+     {
+         return $this->hasMany(Vehicle::class, 'vendor_id', 'user_id');
+     }
 }

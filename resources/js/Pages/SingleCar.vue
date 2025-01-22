@@ -10,8 +10,7 @@ import ageIcon from "../../assets/age.svg";
 import enginepowerIcon from "../../assets/enginepower.svg";
 import unlimitedKmIcon from "../../assets/unlimitedKm.svg";
 import cancellationIcon from "../../assets/cancellationAvailable.svg";
-import vendorIcon from "../../assets/vendorIcon.svg";
-
+import MapPin from "../../assets/MapPin.svg";
 
 import ShareIcon from "../../assets/ShareNetwork.svg";
 import Heart from "../../assets/Heart.svg";
@@ -76,7 +75,8 @@ const initMap = () => {
         className: 'custom-div-icon',
         html: `
             <div class="marker-pin">
-                <span>€${vehicle.value.price_per_day}</span>
+                
+                <img src="${MapPin}" alt="Vehicle Location" />
             </div>
         `,
         iconSize: [50, 30],
@@ -110,6 +110,7 @@ onMounted(() => {
 import axios from "axios";
 import { router } from "@inertiajs/vue3";
 import Faq from "@/Components/Faq.vue";
+import Footer from "@/Components/Footer.vue";
 const form = ref({
     where: "",
     date_from: "",
@@ -203,6 +204,34 @@ const loadSavedDates = () => {
 onMounted(() => {
     loadSavedDates();
 });
+
+
+// getting user and user Profile data of current user
+
+const user = ref(null);
+
+const fetchUserProfile = async () => {
+    try {
+        // Make the request to fetch the current user's profile (no need to pass userId as it's dynamically fetched from auth)
+        const response = await axios.get("/user"); // This endpoint fetches the current authenticated user's data
+
+        if (response.data.status === "success") {
+            user.value = response.data.data; // Store the user profile data
+        } else {
+            console.error("Failed to fetch user:", response.data.message);
+        }
+    } catch (error) {
+        console.error("Error fetching user:", error);
+    }
+};
+
+onMounted(fetchUserProfile);
+
+// formatted joined date of vendor
+const formatDate = (dateString) => {
+  const date = new Date(dateString);
+  return date.getFullYear();
+};
 </script>
 
 <template>
@@ -255,7 +284,7 @@ onMounted(() => {
                                         <span class="text-customLightGrayColor text-[1rem]">People</span>
                                         <span class="font-medium text-[1rem]">{{
                                             vehicle?.seating_capacity
-                                        }}</span>
+                                            }}</span>
                                     </div>
                                 </div>
                                 <div class="feature-item items-center flex gap-3">
@@ -264,7 +293,7 @@ onMounted(() => {
                                         <span class="text-customLightGrayColor text-[1rem]">Doors</span>
                                         <span class="font-medium text-[1rem]">{{
                                             vehicle?.number_of_doors
-                                        }}</span>
+                                            }}</span>
                                     </div>
                                 </div>
                                 <div class="feature-item items-center flex gap-3">
@@ -273,7 +302,7 @@ onMounted(() => {
                                         <span class="text-customLightGrayColor text-[1rem]">Luggage</span>
                                         <span class="font-medium text-[1rem]">{{
                                             vehicle?.luggage_capacity
-                                        }}</span>
+                                            }}</span>
                                     </div>
                                 </div>
                                 <div class="feature-item items-center flex gap-3">
@@ -282,7 +311,7 @@ onMounted(() => {
                                         <span class="text-customLightGrayColor text-[1rem]">Transmission</span>
                                         <span class="font-medium capitalize">{{
                                             vehicle?.transmission
-                                        }}</span>
+                                            }}</span>
                                     </div>
                                 </div>
                                 <div class="feature-item items-center flex gap-3">
@@ -291,7 +320,7 @@ onMounted(() => {
                                         <span class="text-customLightGrayColor text-[1rem]">Fuel Type</span>
                                         <span class="font-medium capitalize">{{
                                             vehicle?.fuel
-                                        }}</span>
+                                            }}</span>
                                     </div>
                                 </div>
                                 <div class="feature-item items-center flex gap-3">
@@ -377,7 +406,10 @@ onMounted(() => {
                             <span class="text-[2rem] font-medium">Meet Vehicle Vendor</span>
                             <div
                                 class="mt-[2rem] flex justify-between gap-5 border-[1px] border-customPrimaryColor rounded-[0.75em] px-[1rem] py-[2rem]">
-                                <img :src=vendorIcon alt="">
+                                <img :src="user?.profile.avatar
+                                    ? `/storage/${user?.profile.avatar}`
+                                    : '/storage/avatars/default-avatar.svg'
+                                    " alt="User Avatar" class="w-[100px] h-[100px] rounded-full object-cover" />
                                 <div>
                                     <h4 class="text-customPrimaryColor text-[1.75rem] font-medium">
                                         {{ vehicle.user.first_name }} {{ vehicle.user.last_name }}
@@ -500,7 +532,7 @@ onMounted(() => {
                                         <div>
                                             <span class="text-customPrimaryColor text-[1.875rem] font-medium">€{{
                                                 vehicle?.price_per_day
-                                                }}</span><span>/day</span>
+                                            }}</span><span>/day</span>
                                             <br />
                                             <span class="flex gap-3">incl. VAT
                                                 <img :src="infoIcon" alt="" /></span>
@@ -530,17 +562,45 @@ onMounted(() => {
         </section>
 
         <section class="full-w-container">
+          
+        </section>
+
+        <section class="full-w-container py-customVerticalSpacing">
             <div
                 class="mt-[2rem] flex items-center justify-center gap-5 border-[1px] border-customPrimaryColor rounded-[0.75em] px-[1rem] py-[2rem]">
-                <div class="flex flex-col gap-5">
-                    <img :src=vendorIcon alt="">
+                <div class="flex flex-col items-center gap-5 w-[50%]">
+                    <img :src="user?.profile.avatar
+                    ? `/storage/${user?.profile.avatar}`
+                    : '/storage/avatars/default-avatar.svg'
+                    " alt="User Avatar" class="w-[100px] h-[100px] rounded-full object-cover" />
                     <h4 class="text-customPrimaryColor text-[1.75rem] font-medium">
                         {{ vehicle.user.first_name }} {{ vehicle.user.last_name }}
                     </h4>
+                    <span>On VROOEM since {{ formatDate(vehicle.user.created_at) }}</span>
+                    <div class="flex justify-between w-full">
+                        <div class="col flex flex-col items-center">
+                            <p class="capitalize text-[1.5rem] text-customPrimaryColor font-bold">{{ vehicle?.vendor_profile_data.status }}</p>
+                            <span class="text-customLightGrayColor">Verification Status</span>
+                        </div>
+                        <div class="col flex flex-col items-center">
+                            <p class="capitalize text-[1.5rem] text-customPrimaryColor font-bold">{{ vehicle?.vendor_profile_data.status }}</p>
+                            <span class="text-customLightGrayColor">Verification Status</span>
+                        </div>
+                        <div class="col flex flex-col items-center">
+                            <p class="capitalize text-[1.5rem] text-customPrimaryColor font-bold">{{ vehicle?.vendor_profile_data.status }}</p>
+                            <span class="text-customLightGrayColor">Verification Status</span>
+                        </div>
+                        <div class="col flex flex-col items-center">
+                            <p class="capitalize text-[1.5rem] text-customPrimaryColor font-bold">{{ vehicle?.vendor_profile_data.status }}</p>
+                            <span class="text-customLightGrayColor">Verification Status</span>
+                        </div>
+                    </div>
                 </div>
             </div>
         </section>
     </main>
+
+    <Footer/>
 </template>
 
 <style>

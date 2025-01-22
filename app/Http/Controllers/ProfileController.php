@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Http\Requests\ProfileUpdateRequest;
 use App\Models\UserProfile;
+use App\Models\User;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request; // Make sure to import this
 use Illuminate\Support\Facades\Auth;
@@ -37,6 +38,8 @@ class ProfileController extends Controller
      */
     public function update(ProfileUpdateRequest $request): RedirectResponse
     {
+        // print_r($request->all());
+        // die();
         try {
             DB::beginTransaction();
 
@@ -45,6 +48,10 @@ class ProfileController extends Controller
 
             $validated = $request->validated();
 
+            if ($request->hasFile('avatar')) {
+                $avatarPath = $request->file('avatar')->store('avatars', 'public');
+                $validated['avatar'] = $avatarPath;
+            }
             // Update user basic info
             $userFields = ['first_name', 'last_name', 'email', 'phone'];
             $userInput = array_intersect_key($validated, array_flip($userFields));
@@ -108,6 +115,48 @@ class ProfileController extends Controller
 
             return Redirect::back()
                 ->withErrors(['error' => 'Failed to delete account. Please try again.']);
+        }
+    }
+
+    // public function show($id)
+    // {
+    //     try {
+    //         // Fetch the user by the ID from the route
+    //         $user = User::with('profile')->findOrFail($id); // Will fetch the user by the ID provided in the route
+
+    //         // Return the user data with profile details as JSON
+    //         return response()->json([
+    //             'status' => 'success',
+    //             'data' => $user
+    //         ], 200);
+
+    //     } catch (\Exception $e) {
+    //         // Return error response if something goes wrong
+    //         return response()->json([
+    //             'status' => 'error',
+    //             'message' => 'Failed to fetch user profile. Please try again.',
+    //             'error' => $e->getMessage()
+    //         ], 500);
+    //     }
+    // }
+
+    //this public function is for fetting current user and user profile data
+    public function show(Request $request)
+    {
+        try {
+            $user = $request->user();
+            $userProfile = $user->load('profile');
+
+            return response()->json([
+                'status' => 'success',
+                'data' => $userProfile,
+            ], 200);
+        } catch (\Exception $e) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Failed to fetch user profile.',
+                'error' => $e->getMessage(),
+            ], 500);
         }
     }
 

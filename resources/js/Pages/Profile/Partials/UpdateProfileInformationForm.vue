@@ -7,7 +7,7 @@ import TextInput from '@/Components/TextInput.vue';
 import { useForm, usePage } from '@inertiajs/vue3';
 import { ref, watch } from 'vue';
 
-const user = usePage().props.auth.user; 
+const user = usePage().props.auth.user;
 const profile = usePage().props.auth.user.profile;
 
 const form = useForm({
@@ -27,6 +27,7 @@ const form = useForm({
     title: profile?.title || '',
     gender: profile?.gender || 'male',
     currency: profile?.currency || '',
+    avatar: profile?.avatar || '',
 });
 
 
@@ -42,15 +43,40 @@ watch(() => form.title, (newTitle) => {
 });
 
 
+const avatarPreview = ref(profile?.avatar || '');
+
+function handleAvatarUpload(event) {
+    const file = event.target.files[0];
+    if (file) {
+        avatarPreview.value = URL.createObjectURL(file);
+        form.avatar = file;
+    }
+}
 
 </script>
 
 <template>
     <header>
         <h2 class="text-[1.75rem] font-medium text-gray-900">Personal Details</h2>
+
     </header>
     <section v-bind="$attrs">
-        <form @submit.prevent="form.patch(route('profile.update'))" class="mt-6 space-y-6">
+        <form @submit.prevent="form.post(route('profile.update'))" class="mt-6 space-y-6">
+            <div>
+                <!-- If avatarPreview is not set, show the default avatar or the uploaded avatar -->
+                <div v-if="!avatarPreview" class="mt-4">
+                    <img :src="avatarPreview" alt="Profile Picture" class="w-24 h-24 rounded-full object-cover" />
+                </div>
+                <img v-else
+                    :src="user?.profile.avatar ? `/storage/${user?.profile.avatar}` : '/storage/avatars/default-avatar.svg'"
+                    alt="User Avatar" class="w-24 h-24 rounded-full object-cover" />
+            </div>
+            <div>
+                <InputLabel for="avatar" value="Profile Picture" />
+                <input id="avatar" type="file" accept="image/*" class="mt-1 block w-full"
+                    @change="handleAvatarUpload" />
+                <InputError class="mt-2" :message="form.errors.avatar" />
+            </div>
 
             <div class="grid grid-cols-2 gap-8">
                 <div class="col-span-2 w-[6rem]">
@@ -159,7 +185,7 @@ watch(() => form.title, (newTitle) => {
                     <InputError class="mt-2" :message="form.errors.address_line2" />
                 </div>
 
-                
+
                 <div class="">
                     <h2 class="text-[1.5rem] font-medium text-gray-900">Tax Identification Number</h2>
                     <InputLabel for="tax_identification" value="Tax Identification Number" />
@@ -177,9 +203,11 @@ watch(() => form.title, (newTitle) => {
 </template>
 
 <style>
-input,textarea,select {
+input,
+textarea,
+select {
     border-radius: 0.75rem;
-    border: 1px solid rgba(43, 43, 43, 0.50)!important;
+    border: 1px solid rgba(43, 43, 43, 0.50) !important;
     padding: 1rem;
 }
 </style>
