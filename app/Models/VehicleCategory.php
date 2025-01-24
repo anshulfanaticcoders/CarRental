@@ -13,7 +13,6 @@ class VehicleCategory extends Model
         'name',
         'slug',
         'description',
-        'icon',
         'status',
         'image'
     ];

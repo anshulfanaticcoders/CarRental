@@ -1,9 +1,12 @@
 <?php
 
+use App\Http\Controllers\Admin\UsersController;
+use App\Http\Controllers\Admin\VehicleAddonsController;
 use App\Http\Controllers\BookingController;
 use App\Http\Controllers\GeocodingController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\SearchController;
+use App\Http\Controllers\Admin\VehicleCategoriesController;
 use App\Http\Controllers\VendorController;
 use App\Http\Controllers\PaymentController;
 use Illuminate\Foundation\Application;
@@ -35,21 +38,48 @@ Route::get('/dashboard', function () {
     return Inertia::render('Dashboard');
 })->middleware(['auth', 'verified'])->name('dashboard');
 
-// -------------web routes for user profile ----------------------
-Route::middleware('auth')->group(function () {
-    Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
-    Route::post('/profile', [ProfileController::class, 'update'])->name('profile.update');
-    Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
 
-    // this is the route to get user and user profile data you can fetch through axios
+Route::middleware(['auth'])->group(function () {
     Route::get('/user', [ProfileController::class, 'show'])->name('user.profile');
+    // Vehicle Listing 
+    Route::inertia('vehicle-listing', 'Auth/VehicleListing');
 
+    Route::get('/vehicles', [VehicleController::class, 'index'])->name('vehicles.index');
+
+    // Booking Routes
+    Route::get('/booking/{id}', [VehicleController::class, 'booking'])->name('booking.show');
+
+    // Route::get('/booking-success', [BookingController::class, 'success'])->name('booking.success');
+    Route::get('/booking-success/details', [BookingController::class, 'getBookingDetails'])->name('booking-success.details');
 });
 
 
-// -------------web routes for Vendor profile ----------------------
-Route::middleware(['auth'])->group(function () {
+// Open Routes for non-logged in users
+Route::get('/vehicle/{id}', [VehicleController::class, 'show'])->name('vehicle.show');
+Route::get('/s', [SearchController::class, 'search']);
+Route::get('/api/geocoding/autocomplete', [GeocodingController::class, 'autocomplete']);
 
+
+// Stripe Routes
+Route::get('/payment', [PaymentController::class, 'index'])->name('payment.index');
+
+
+
+
+// These are the Routes for Admin
+Route::middleware(['auth', 'role:admin'])->group(function () {
+    Route::inertia('admin-dashboard', 'AdminDashboard');
+    Route::resource('vehicle-categories', VehicleCategoriesController::class);
+    Route::resource('users', UsersController::class)->middleware(['auth']);
+    Route::resource('booking-addons', VehicleAddonsController::class)->middleware(['auth']);
+});
+
+
+Route::middleware(['auth', 'role:customer'])->group(function () {
+
+    Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
+    Route::post('/profile', [ProfileController::class, 'update'])->name('profile.update');
+    Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
     // User Profile routes
     Route::inertia('travel-documents', 'Profile/TravelDocuments');
     Route::post('/documents/upload', [UserDocumentController::class, 'uploadDocuments'])->name('documents.upload');
@@ -61,59 +91,44 @@ Route::middleware(['auth'])->group(function () {
     Route::inertia('favourites', 'Profile/Favourites');
     Route::inertia('inbox', 'Profile/Inbox');
 
-    // vendor Profile Web Routes
+    // apply for vendor
     Route::get('/vendor/register', [VendorController::class, 'create'])->name('vendor.register');
-    Route::post('/vendor/store', [VendorController::class, 'store'])->name('vendor.store');
-
-    // Vehicle Listing 
-    Route::inertia('vehicle-listing', 'Auth/VehicleListing');
-    Route::get('/vehicles/create', [VehicleController::class, 'create'])->name('vehicles.create');
-    Route::post('/vehicles', [VehicleController::class, 'store'])->name('vehicles.store');
-    Route::get('/vehicles', [VehicleController::class, 'index'])->name('vehicles.index');
-
-    // Booking Routes
-    Route::get('/booking/{id}', [VehicleController::class, 'booking'])->name('booking.show');
+    // Booking routes
     Route::get('/booking', [BookingController::class, 'create'])->name('booking.create');
     Route::post('/booking', [BookingController::class, 'store'])->name('booking.store');
-    // Route::get('/booking-success', [BookingController::class, 'success'])->name('booking.success');
-    Route::get('/booking-success/details', [BookingController::class, 'getBookingDetails'])->name('booking-success.details');
-
+    Route::post('/payment/charge', [PaymentController::class, 'charge'])->name('payment.charge');
+    // this route is to show customer booking in the customer profile
+    Route::get('/customer/bookings', [BookingController::class, 'getCustomerBookingData'])->name('customer.bookings');
     //  this is route is for redirecting to the success page after payment done
     Route::get('/booking-success/details', function () {
         return Inertia::render('Booking/Success', [
             'payment_intent' => request('payment_intent'), // Pass payment intent ID
         ]);
     })->name('booking-success.details');
-    
-    // this route is to show customer booking in the customer profile
-    Route::get('/customer/bookings', [BookingController::class, 'getCustomerBookingData'])->name('customer.bookings');
+});
+
+Route::middleware(['auth', 'role:vendor'])->group(function () {
+
+    Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
+    Route::post('/profile', [ProfileController::class, 'update'])->name('profile.update');
+    Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
+    // vendor Profile Web Routes
+    Route::post('/vendor/store', [VendorController::class, 'store'])->name('vendor.store');
+    Route::inertia('vendor-approved', 'Vendor/VendorApproved');
+    //Route::inertia('booking-success/details', 'Booking/Success');
+    Route::inertia('vendor-pending', 'Vendor/VendorPending');
+    Route::inertia('vendor-rejected', 'Vendor/VendorRejected');
+
+    // creating vehicle routes
+    Route::get('/vehicles/create', [VehicleController::class, 'create'])->name('vehicles.create');
+    Route::post('/vehicles', [VehicleController::class, 'store'])->name('vehicles.store');
+
     // this is for showing All Booking details of customer in vendor profile
     Route::get('/vendor/bookings', [BookingController::class, 'getAllBookings'])->name('vendor.bookings');
     // this is for showing All Vehicles of vendor in vendor profile
     Route::get('/vendor/vehicles', [VehicleController::class, 'vendorVehicle'])->name('vehicles.index');
 
 });
-
-Route::inertia('vendor-approved', 'Vendor/VendorApproved');
-//Route::inertia('booking-success/details', 'Booking/Success');
-Route::inertia('vendor-pending', 'Vendor/VendorPending');
-Route::inertia('vendor-rejected', 'Vendor/VendorRejected');
-
-// Open route to get to the single car page
-Route::get('/vehicle/{id}', [VehicleController::class, 'show'])->name('vehicle.show');
-
-// Route::inertia('single-car/vehicle/{id}', 'SingleCar');
-
-
-// -------------Map Search Routing---------------
-Route::get('/s', [SearchController::class, 'search']);
-Route::get('/api/geocoding/autocomplete', [GeocodingController::class, 'autocomplete']);
-
-
-// Stripe Routes
-
-Route::get('/payment', [PaymentController::class, 'index'])->name('payment.index');
-Route::post('/payment/charge', [PaymentController::class, 'charge'])->name('payment.charge');
-
-Route::inertia('admin-dashboard', 'AdminDashboard');
 require __DIR__ . '/auth.php';
+
+

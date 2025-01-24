@@ -6,8 +6,10 @@ import { ref, computed, onMounted, watch, nextTick } from "vue";
 import { Head, Link, usePage } from "@inertiajs/vue3";
 import AuthenticatedHeaderLayout from "@/Layouts/AuthenticatedHeaderLayout.vue";
 import walkIcon from "../../assets/walkingrayIcon.svg";
-import PrimaryButton from "@/Components/PrimaryButton.vue";
 import { Inertia } from '@inertiajs/inertia';
+import paypal from '../../assets/paypal.svg';
+import mastercard from '../../assets/mastercard.svg';
+import visa from '../../assets/Visa.svg';
 
 // Add these methods to your script section
 const incrementQuantity = (extra) => {
@@ -57,6 +59,9 @@ const currentStep = ref(1);
 
 const moveToNextStep = () => {
     currentStep.value++;
+};
+const moveToPrevStep = () => {
+    currentStep.value--;
 };
 
 // Getting the vehicle data from api
@@ -165,7 +170,8 @@ onMounted(() => {
 
 // stripe payment
 import { loadStripe } from '@stripe/stripe-js';
-import { router } from '@inertiajs/vue3';
+import PrimaryButton from "@/Components/PrimaryButton.vue";
+import Footer from "@/Components/Footer.vue";
 
 
 
@@ -351,6 +357,7 @@ const submitBooking = async () => {
         console.log('Payment Intent Status:', paymentIntent.status);
 
         if (paymentIntent.status === 'succeeded') {
+            sessionStorage.clear();
             // Payment is already successful, no need to confirm again
             Inertia.visit(`/booking-success/details?payment_intent=${paymentIntent.id}`);
             return;
@@ -389,10 +396,13 @@ const submitBooking = async () => {
     } catch (err) {
         error.value = err.message || 'An error occurred. Please try again.';
     }
-    // sessionStorage.clear();
 };
 
+const selectedPaymentMethod = ref('visa'); // To track selected payment method
 
+const selectPaymentMethod = (method) => {
+    selectedPaymentMethod.value = method;
+};
 
 </script>
 
@@ -492,10 +502,10 @@ const submitBooking = async () => {
                             </div>
                         </div>
 
-                        <div class="max-w-[300px]">
-                            <button class="button-primary p-5 w-full" @click="moveToNextStep">
+                        <div class="max-w-[200px]">
+                            <PrimaryButton class="button-primary py-5 w-full" @click="moveToNextStep">
                                 Continue payment
-                            </button>
+                            </PrimaryButton>
                         </div>
                     </div>
                 </div>
@@ -568,20 +578,22 @@ const submitBooking = async () => {
                                 </div>
                             </div>
 
-                            <div class="col">
-                                <PrimaryButton type="submit" class="submit_button">Save Info</PrimaryButton>
-                            </div>
                         </form>
-                        <div class="flex justify-between gap-10">
+                        <div class="flex flex-col justify-between gap-10">
                             <p>
                                 Your booking will be submitted once you go to
                                 payment. You can choose your payment method in
                                 the next step.
                             </p>
-                            <button type="submit" class="button-primary p-5 w-full" @click="moveToNextStep"
-                                :disabled="!isFormSaved">
-                                Continue to payment
-                            </button>
+                            <div class="flex justify-between">
+                                <button class="button-secondary py-4 w-[20%]" @click="moveToPrevStep">
+                                    Back
+                                </button>
+                                <PrimaryButton type="submit" class="button-primary py-4 w-[20%]"
+                                    @click="() => { storeFormData(); moveToNextStep(); }">
+                                    Continue to payment
+                                </PrimaryButton>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -593,22 +605,82 @@ const submitBooking = async () => {
                             Free Cancellation before 48hours
                         </p>
                     </div>
+                    <h3 class="text-[2rem] font-medium">Pay Now to Lock in this Deal</h3>
 
                     <div class="stripe-payment-form p-6 border rounded-lg">
-                        <h4 class="text-[2rem] font-medium mb-6">Payment Details</h4>
+                        <p class="text-[1.5rem] mb-6">Choose Card</p>
 
-                        <form @submit.prevent="submitBooking">
-                            <!-- Other form fields -->
-
-                            <!-- Stripe Payment Form -->
-                            <div class="stripe-card">
-                                <div id="card-number" class="stripe-element"></div>
-                                <div id="card-expiry" class="stripe-element"></div>
-                                <div id="card-cvc" class="stripe-element"></div>
+                        <!-- Payment Method Icons -->
+                        <div class="flex gap-4 mb-6">
+                            <div class="payment-method-card flex justify-center items-center w-[8rem] h-[2.5rem] rounded-[99px] cursor-pointer"
+                                :class="{ 'bg-[#19304D] border-none': selectedPaymentMethod === 'visa', 'border': selectedPaymentMethod !== 'visa' }"
+                                @click="selectPaymentMethod('visa')">
+                                <img :src="visa" alt="Visa" class="h-full w-full" />
                             </div>
-                            <div id="card-errors" role="alert" class="stripe-card-errors"></div>
+                            <div class="payment-method-card flex justify-center items-center w-[8rem] h-[2.5rem] rounded-[99px] cursor-pointer"
+                                :class="{ 'bg-[#19304D] border-none': selectedPaymentMethod === 'mastercard', 'border': selectedPaymentMethod !== 'mastercard' }"
+                                @click="selectPaymentMethod('mastercard')">
+                                <img :src="mastercard" alt="Mastercard" class="h-full w-full" />
+                            </div>
+                            <div class="payment-method-card flex justify-center items-center w-[8rem] h-[2.5rem] rounded-[99px] cursor-pointer"
+                                :class="{ 'bg-[#19304D] border-none': selectedPaymentMethod === 'paypal', 'border': selectedPaymentMethod !== 'paypal' }"
+                                @click="selectPaymentMethod('paypal')">
+                                <img :src="paypal" alt="PayPal" class="h-full w-full" />
+                            </div>
 
-                            <button type="submit">Book Now</button>
+                        </div>
+
+                        <form @submit.prevent="submitBooking" class="flex flex-col gap-6">
+                            <!-- Card Number Field -->
+
+                            <div class="w-[60%] flex flex-col gap-5">
+                                <div class="form-group">
+                                    <label class="block text-sm text-gray-600 mb-2">Card Number</label>
+                                    <div id="card-number" class="stripe-element h-12 border rounded-lg px-4 py-2"></div>
+                                </div>
+
+                                <!-- Expiry and CVV -->
+                                <div class="grid grid-cols-2 gap-4">
+                                    <div class="form-group">
+                                        <label class="block text-sm text-gray-600 mb-2">Expire Date</label>
+                                        <div id="card-expiry" class="stripe-element h-12 border rounded-lg px-4 py-2">
+                                        </div>
+                                    </div>
+                                    <div class="form-group">
+                                        <label class="block text-sm text-gray-600 mb-2">CVV</label>
+                                        <div id="card-cvc" class="stripe-element h-12 border rounded-lg px-4 py-2">
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Terms Checkbox -->
+                                <div class="flex items-center gap-2">
+                                    <input type="checkbox" id="terms" class="rounded border-gray-300" required />
+                                    <label for="terms" class="text-sm">
+                                        I have read, understood, and accepted vroome.com
+                                        <a href="#" class="text-customDarkBlackColor font-bold">Terms & Conditions</a>
+                                        and
+                                        <a href="#" class="text-customDarkBlackColor font-bold">Privacy Policy</a>.
+                                    </label>
+                                </div>
+
+                                <p class="text-gray-600 text-sm">
+                                    Your booking will be submitted once you go to payment. You can choose your payment
+                                    method in the next step.
+                                </p>
+                            </div>
+
+                            <!-- Button Group -->
+                            <div class="flex justify-between gap-4 mt-4">
+                                <button type="button" @click="moveToPrevStep" class="button-secondary w-[20%]">
+                                    Back
+                                </button>
+                                <PrimaryButton type="submit" class=" w-[20%]">
+                                    Book Now
+                                </PrimaryButton>
+                            </div>
+
+                            <div id="card-errors" role="alert" class="text-red-600 text-sm"></div>
                         </form>
                     </div>
                 </div>
@@ -650,7 +722,7 @@ const submitBooking = async () => {
                                 <div class="flex flex-col gap-1">
                                     <span class="text-[1.25rem] text-medium">{{
                                         vehicle?.location
-                                        }}</span><span class="">{{
+                                    }}</span><span class="">{{
                                             vehicle?.created_at
                                         }}</span>
                                 </div>
@@ -660,7 +732,7 @@ const submitBooking = async () => {
                                 <div class="flex flex-col gap-1">
                                     <span class="text-[1.25rem] text-medium">{{
                                         vehicle?.location
-                                        }}</span><span class="">{{
+                                    }}</span><span class="">{{
                                             vehicle?.created_at
                                         }}</span>
                                 </div>
@@ -675,7 +747,7 @@ const submitBooking = async () => {
                                         <div>
                                             <strong class="text-[1.5rem] font-medium">€{{
                                                 vehicle?.price_per_day
-                                            }}</strong>
+                                                }}</strong>
                                             <span>/day</span>
                                         </div>
                                     </div>
@@ -683,11 +755,11 @@ const submitBooking = async () => {
                                     <div v-if="selectedPlan" class="flex justify-between items-center text-[1.15rem]">
                                         <span>{{
                                             selectedPlan.plan_type
-                                            }}</span>
+                                        }}</span>
                                         <div>
                                             <strong class="text-[1.5rem] font-medium">€{{
                                                 selectedPlan.plan_value
-                                            }}</strong>
+                                                }}</strong>
                                             <span>/day</span>
                                         </div>
                                     </div>
@@ -704,7 +776,7 @@ const submitBooking = async () => {
                                         <div>
                                             <strong class="text-[1.5rem] font-medium">€{{
                                                 extra.price * extra.quantity
-                                            }}</strong>
+                                                }}</strong>
                                             <span>/day</span>
                                         </div>
                                     </div>
@@ -729,6 +801,8 @@ const submitBooking = async () => {
             </div>
         </section>
     </main>
+
+    <Footer />
 </template>
 
 <style>
@@ -826,17 +900,21 @@ const submitBooking = async () => {
     margin-bottom: 16px;
 }
 
-button {
-    background-color: #4a90e2;
-    color: white;
-    border: none;
-    padding: 12px 24px;
-    border-radius: 4px;
-    cursor: pointer;
-    font-size: 16px;
+.stripe-element {
+    background-color: white;
+    border: 1px solid #E5E7EB;
 }
 
-button:hover {
-    background-color: #357abd;
+.payment-method-card {
+    transition: all 0.2s ease;
+}
+
+.payment-method-card:hover {
+    border-color: #19304D;
+}
+
+/* Style for selected payment method */
+.payment-method-card.selected {
+    background-color: #19304D;
 }
 </style>

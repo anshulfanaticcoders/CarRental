@@ -288,20 +288,60 @@ class BookingController extends Controller
             'bookings' => $bookings
         ]);
     }
-    public function getCustomerBookingData()
-    {
-        // Get all bookings with related data, including vehicle images
-        $bookings = Booking::with([
-            'customer',
-            'vehicle.images',
-            'payments'
-        ])
-        ->orderBy('created_at', 'desc')
-        ->get();
+    // public function getCustomerBookingData()
+    // {
+    //     // Get all bookings with related data, including vehicle images
+    //     $bookings = Booking::with([
+    //         'customer',
+    //         'vehicle.images',
+    //         'payments'
+    //     ])
+    //     ->orderBy('created_at', 'desc')
+    //     ->get();
     
-        return Inertia::render('Profile/PendingBookings', [
-            'bookings' => $bookings
-        ]);
+    //     return Inertia::render('Profile/PendingBookings', [
+    //         'bookings' => $bookings
+    //     ]);
+    // }
+//     public function getCustomerBookingData()
+// {
+//     // Get bookings for the current authenticated user
+//     $bookings = Booking::with([
+//         'customer',
+//         'vehicle.images',
+//         'payments'
+//     ])
+//     ->where('customer_id', auth()->id())  // Filter directly by auth user id since customer_id references users table
+//     ->orderBy('created_at', 'desc')
+//     ->get();
+
+//     return Inertia::render('Profile/PendingBookings', [
+//         'bookings' => $bookings
+//     ]);
+// }
+
+public function getCustomerBookingData()
+{
+    // Get the current authenticated user's ID
+    $userId = auth()->id();
+
+    // Find the customer associated with the current user
+    $customer = Customer::where('user_id', $userId)->first();
+
+    if (!$customer) {
+        return response()->json([
+            'message' => 'No customer found for the current user.',
+        ], 404);
     }
-    
+
+    // Retrieve all bookings for the customer
+    $bookings = Booking::where('customer_id', $customer->id)->get();
+  
+    // Optionally, you can load related data (e.g., extras, payments)
+    $bookings->load('customer','vehicle.images', 'payments');
+
+       return Inertia::render('Profile/PendingBookings', [
+        'bookings' => $bookings
+    ]);
+}
 }

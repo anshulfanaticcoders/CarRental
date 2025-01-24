@@ -10,7 +10,7 @@ return new class extends Migration
     {
         Schema::create('booking_addons', function (Blueprint $table) {
             $table->id();
-            $table->enum('extra_type', ['booster_seat', 'gps', 'child_seat', 'additional_driver']);
+            $table->string('extra_type');
             $table->string('extra_name');
             $table->text('description');
             $table->integer('quantity');

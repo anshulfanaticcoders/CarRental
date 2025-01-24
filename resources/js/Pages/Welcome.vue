@@ -25,6 +25,10 @@ defineProps({
     canRegister: {
         type: Boolean,
     },
+    categories: {
+        type: Array,
+        default: () => []
+    },
 });
 import {
     Carousel,
@@ -129,7 +133,7 @@ onMounted(() => {
                                         <CardContent
                                             class="cardContent flex h-[515px] items-center justify-center p-6 relative">
                                             <img class="rounded-[20px] h-full w-full object-cover"
-                                                :src="`/${category.image}`" alt="" />
+                                                :src="`/storage/${category.image}`" alt="" />
                                             <div
                                                 class="category_name absolute bottom-10 left-0 flex justify-between w-full px-8">
                                                 <span class="text-white text-[2rem] font-semibold">{{ category.name

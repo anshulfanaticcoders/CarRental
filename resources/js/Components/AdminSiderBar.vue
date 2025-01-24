@@ -111,7 +111,7 @@ const data = {
         },
         {
           title: 'Add Users',
-          url: '#',
+          url: '/users',
         },
         {
           title: 'Blocked Users',
@@ -133,15 +133,15 @@ const data = {
           url: '#',
         },
         {
-          title: 'Add Cars',
-          url: '#',
-        },
-        {
           title: 'Categories',
-          url: '#',
+          url: '/vehicle-categories',
         },
         {
-          title: 'Documents',
+          title: 'Addons',
+          url: 'addons',
+        },
+        {
+          title: 'Plans',
           url: '#',
         },
       ],
@@ -279,8 +279,6 @@ onMounted(() => {
 </script>
 
 <template>
-
-  <Head></Head>
   <SidebarProvider>
     <Sidebar collapsible="icon" class="bg-customPrimaryColor text-white">
       <SidebarHeader>

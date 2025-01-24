@@ -13,7 +13,7 @@ return new class extends Migration {
         Schema::create('booking_extras', function (Blueprint $table) {
             $table->id();
             $table->foreignId('booking_id')->constrained('bookings')->onDelete('cascade');
-            $table->enum('extra_type', ['child_seat', 'booster_seat', 'additional_driver', 'gps']);
+            $table->string('extra_type');
             $table->string('extra_name');
             $table->integer('quantity');
             $table->decimal('price', 10, 2);
