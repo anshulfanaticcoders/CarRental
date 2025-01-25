@@ -44,4 +44,17 @@ class User extends Authenticatable
     {
         return $this->hasMany(Vehicle::class, 'vendor_id', 'user_id');
     }
+    public function vendorProfile()
+    {
+        return $this->hasOne(VendorProfile::class);
+    }
+
+    /**
+     * Get the vendor document associated with the user.
+     */
+    public function vendorDocument()
+    {
+        return $this->hasOne(VendorDocument::class);
+    }
+    
 }

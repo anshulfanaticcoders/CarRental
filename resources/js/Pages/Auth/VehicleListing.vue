@@ -66,12 +66,13 @@
                     </div>
                     <!-- Vehicle Category Dropdown -->
                     <div class="grid grid-cols-3 gap-5">
-                        <div v-for="category in vehicleCategories" :key="category.id" class="relative">
+                        <div v-for="category in categories" :key="category.id" class="relative flex flex-col justify-center items-center">
                             <input type="radio" :id="category.id" v-model="form.category_id" :value="category.id"
                                 class="peer sr-only" />
                             <InputLabel :for="category.id"
                                 class="flex flex-col items-center p-4 cursor-pointer rounded-lg border-2 border-gray-200 hover:border-customPrimaryColor transition-colors peer-checked:border-customPrimaryColor peer-checked:bg-blue-50">
-                                <img :src="category.icon" :alt="category.InputLabel" class="p-5" />
+                                <img :src="`/storage/${category.image}`" :alt="category.InputLabel" class="p-2 w-[200px] h-[150px] object-cover" />
+                                <p class="text-center">{{ category.name }}</p>
                                 <span class="text-[1.5rem] text-center block font-medium text-gray-700">{{
                                     category.InputLabel }}</span>
                             </InputLabel>
@@ -151,6 +152,7 @@
                             <select v-model="form.number_of_doors" id="number_of_doors" required>
                                 <option value="2">2</option>
                                 <option value="4">4</option>
+                                <option value="6">6</option>
                             </select>
                         </div>
 
@@ -162,6 +164,8 @@
                                 <option value="1">1</option>
                                 <option value="2">2</option>
                                 <option value="3">3</option>
+                                <option value="4">4</option>
+                                <option value="5">5</option>
                             </select>
                         </div>
 
@@ -660,7 +664,7 @@ const form = useForm({
     transmission: "manual",
     fuel: "petrol",
     seating_capacity: 1,
-    number_of_doors: 1,
+    number_of_doors: 2,
     luggage_capacity: 0,
     horsepower: 0,
     co2: "",
@@ -750,18 +754,90 @@ onMounted(() => {
 let map = null;
 let marker = null // Marker instance
 const currentStep = ref(0);
-const nextStep = async() => {
-  if (currentStep.value < 5) {
-    currentStep.value++;
-    await nextTick(); 
-    if (currentStep.value === 3) {
-      initializeMap(); // Initialize the map when step 3 is reached
+// const nextStep = async() => {
+//   if (currentStep.value < 5) {
+//     currentStep.value++;
+//     await nextTick(); 
+//     if (currentStep.value === 3) {
+//       initializeMap(); // Initialize the map when step 3 is reached
+//     }
+//   }
+// };
+const nextStep = () => {
+  let isValid = true;
+
+  // Step-specific validation
+  switch (currentStep.value) {
+    case 1: // Vehicle Category and Details
+      if (!form.category_id) {
+        isValid = false;
+        alert('Please select a vehicle category');
+      } else if (
+        !form.brand || 
+        !form.model || 
+        !form.color || 
+        !form.mileage ||
+        !form.horsepower ||
+        !form.co2
+      ) {
+        isValid = false;
+        alert('Please fill in all vehicle details');
+      }
+      break;
+
+    case 2: // Technical Specifications
+      if (
+        !form.registration_number ||
+        !form.registration_country ||
+        !form.registration_date ||
+        !form.gross_vehicle_mass ||
+        !form.vehicle_height ||
+        !form.dealer_cost ||
+        !form.phone_number
+      ) {
+        isValid = false;
+        alert('Please fill in all technical specification details');
+      }
+      break;
+
+    case 3: // Location
+      if (!form.location || !form.latitude || !form.longitude) {
+        isValid = false;
+        alert('Please select a valid location');
+      }
+      break;
+
+    case 4: // Pricing
+      if (
+        form.price_per_day <= 0 ||
+        !form.security_deposit ||
+        !form.payment_method
+      ) {
+        isValid = false;
+        alert('Please fill in all pricing details');
+      }
+      break;
+
+    case 5: // Image Upload
+      if (form.images.length < 5) {
+        isValid = false;
+        alert('Please upload at least 5 images');
+      }
+      break;
+  }
+
+  // If validation passes, move to next step
+  if (isValid) {
+    if (currentStep.value < 5) {
+      currentStep.value++;
+      if (currentStep.value === 3) {
+        initializeMap();
+      }
     }
   }
 };
-
 const prevStep = () => {
-  if (currentStep.value > 1) {
+  if (currentStep.value > 0) {
     currentStep.value--;
   }
 };

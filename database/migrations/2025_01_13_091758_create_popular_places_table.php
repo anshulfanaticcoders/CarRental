@@ -14,15 +14,14 @@ return new class extends Migration
         Schema::create('popular_places', function (Blueprint $table) {
             $table->id();
             $table->string('place_name');
-            $table->string('city');
-            $table->string('state');
-            $table->string('country');
+            $table->string('city')->default('');
+            $table->string('state')->default('');
+            $table->string('country')->default('');
             $table->decimal('latitude', 10, 6);
             $table->decimal('longitude', 10, 6);
             $table->string('image')->nullable();
             $table->timestamps();
         });
-        
     }
 
     /**

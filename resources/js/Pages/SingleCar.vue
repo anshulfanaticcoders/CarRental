@@ -10,6 +10,7 @@ import ageIcon from "../../assets/age.svg";
 import enginepowerIcon from "../../assets/enginepower.svg";
 import unlimitedKmIcon from "../../assets/unlimitedKm.svg";
 import cancellationIcon from "../../assets/cancellationAvailable.svg";
+import starIcon from "../../assets/stars.svg";
 import MapPin from "../../assets/MapPin.svg";
 
 import ShareIcon from "../../assets/ShareNetwork.svg";
@@ -39,7 +40,7 @@ const featureIconMap = {
     "Key Lock": "/storage/icons/lock.svg",
     "Back Camera": "/storage/icons/camera.svg",
     "Voice Control": "/storage/icons/voiceControl.svg",
-    "Navigation": "/storage/icons/navigation.svg",
+    "Navigation": "/storage/icons/gps-navigation.png",
 };
 
 
@@ -229,8 +230,38 @@ onMounted(fetchUserProfile);
 
 // formatted joined date of vendor
 const formatDate = (dateString) => {
-  const date = new Date(dateString);
-  return date.getFullYear();
+    const date = new Date(dateString);
+    return date.getFullYear();
+};
+
+
+const validateRentalDetails = () => {
+    if (!form.value.date_from) {
+        alert("Please select a pickup date.");
+        return false;
+    }
+    if (!form.value.time_from) {
+        alert("Please select a pickup time.");
+        return false;
+    }
+    if (!form.value.date_to) {
+        alert("Please select a return date.");
+        return false;
+    }
+    if (!form.value.time_to) {
+        alert("Please select a return time.");
+        return false;
+    }
+    return true;
+};
+const proceedToPayment = () => {
+    // Validate rental details before proceeding
+    if (!validateRentalDetails()) {
+        return; // Stop the function if validation fails
+    }
+
+    // Proceed to payment page
+    router.get(`/booking/${vehicle.value.id}`);
 };
 </script>
 
@@ -241,20 +272,23 @@ const formatDate = (dateString) => {
     <main>
         <section>
             <div class="full-w-container py-customVerticalSpacing">
-                <div class="flex gap-2 items-center mb-2">
+                <div class="flex gap-2 items-center mb-1">
                     <h4 class="font-medium">{{ vehicle?.brand }}</h4>
                     <span class="bg-[#f5f5f5] inline-block px-8 py-2 text-center rounded-[40px]">
                         {{ vehicle?.category.name }}
                     </span>
                 </div>
                 <div class="flex gap-2 items-center text-[1.25rem]">
-                    <div class="car_ratings">5(1)</div>
+                    <div class="car_ratings flex gap-2 items-center">
+                    <img :src=starIcon alt="">
+                        <span>5(1)</span>
+                    </div>
                     <div class="dot_seperator"><strong>.</strong></div>
                     <div class="car_location">
                         <span>{{ vehicle?.location }}</span>
                     </div>
                 </div>
-                <div class="w-full mt-[2rem] flex gap-2">
+                <div class="w-full mt-[1rem] flex gap-2">
                     <div class="primary-image w-[60%] max-h-[500px]">
                         <img v-if="vehicle?.images" :src="`/storage/${vehicle.images.find(
                             (image) => image.image_type === 'primary'
@@ -405,7 +439,7 @@ const formatDate = (dateString) => {
                         <div class="mt-[5rem]">
                             <span class="text-[2rem] font-medium">Meet Vehicle Vendor</span>
                             <div
-                                class="mt-[2rem] flex justify-between gap-5 border-[1px] border-customPrimaryColor rounded-[0.75em] px-[1rem] py-[2rem]">
+                                class="mt-[2rem] flex gap-5 border-[1px] border-customPrimaryColor rounded-[0.75em] px-[1rem] py-[2rem]">
                                 <img :src="user?.profile.avatar
                                     ? `/storage/${user?.profile.avatar}`
                                     : '/storage/avatars/default-avatar.svg'
@@ -538,11 +572,11 @@ const formatDate = (dateString) => {
                                                 <img :src="infoIcon" alt="" /></span>
                                         </div>
                                     </div>
-                                    <div class="column mt-[2rem]">
-                                        <Link :href="`/booking/${vehicle.id}`"
+                                    <div v-if="props.auth.user.role === 'customer'" class="column mt-[2rem]">
+                                        <button @click="proceedToPayment"
                                             class="button-primary block text-center p-5 w-full">
-                                        Proceed to Pay
-                                        </Link>
+                                            Proceed to Pay
+                                        </button>
                                     </div>
                                     <div
                                         class="column text-center mt-[2rem] flex flex-col justify-center items-center gap-5">
@@ -562,7 +596,7 @@ const formatDate = (dateString) => {
         </section>
 
         <section class="full-w-container">
-          
+
         </section>
 
         <section class="full-w-container py-customVerticalSpacing">
@@ -570,28 +604,32 @@ const formatDate = (dateString) => {
                 class="mt-[2rem] flex items-center justify-center gap-5 border-[1px] border-customPrimaryColor rounded-[0.75em] px-[1rem] py-[2rem]">
                 <div class="flex flex-col items-center gap-5 w-[50%]">
                     <img :src="user?.profile.avatar
-                    ? `/storage/${user?.profile.avatar}`
-                    : '/storage/avatars/default-avatar.svg'
-                    " alt="User Avatar" class="w-[100px] h-[100px] rounded-full object-cover" />
+                        ? `/storage/${user?.profile.avatar}`
+                        : '/storage/avatars/default-avatar.svg'
+                        " alt="User Avatar" class="w-[100px] h-[100px] rounded-full object-cover" />
                     <h4 class="text-customPrimaryColor text-[1.75rem] font-medium">
                         {{ vehicle.user.first_name }} {{ vehicle.user.last_name }}
                     </h4>
                     <span>On VROOEM since {{ formatDate(vehicle.user.created_at) }}</span>
                     <div class="flex justify-between w-full">
                         <div class="col flex flex-col items-center">
-                            <p class="capitalize text-[1.5rem] text-customPrimaryColor font-bold">{{ vehicle?.vendor_profile_data.status }}</p>
+                            <p class="capitalize text-[1.5rem] text-customPrimaryColor font-bold">{{
+                                vehicle?.vendor_profile_data.status }}</p>
                             <span class="text-customLightGrayColor">Verification Status</span>
                         </div>
                         <div class="col flex flex-col items-center">
-                            <p class="capitalize text-[1.5rem] text-customPrimaryColor font-bold">{{ vehicle?.vendor_profile_data.status }}</p>
+                            <p class="capitalize text-[1.5rem] text-customPrimaryColor font-bold">{{
+                                vehicle?.vendor_profile_data.status }}</p>
                             <span class="text-customLightGrayColor">Verification Status</span>
                         </div>
                         <div class="col flex flex-col items-center">
-                            <p class="capitalize text-[1.5rem] text-customPrimaryColor font-bold">{{ vehicle?.vendor_profile_data.status }}</p>
+                            <p class="capitalize text-[1.5rem] text-customPrimaryColor font-bold">{{
+                                vehicle?.vendor_profile_data.status }}</p>
                             <span class="text-customLightGrayColor">Verification Status</span>
                         </div>
                         <div class="col flex flex-col items-center">
-                            <p class="capitalize text-[1.5rem] text-customPrimaryColor font-bold">{{ vehicle?.vendor_profile_data.status }}</p>
+                            <p class="capitalize text-[1.5rem] text-customPrimaryColor font-bold">{{
+                                vehicle?.vendor_profile_data.status }}</p>
                             <span class="text-customLightGrayColor">Verification Status</span>
                         </div>
                     </div>
@@ -600,7 +638,7 @@ const formatDate = (dateString) => {
         </section>
     </main>
 
-    <Footer/>
+    <Footer />
 </template>
 
 <style>

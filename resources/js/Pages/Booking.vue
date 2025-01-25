@@ -56,9 +56,28 @@ const calculateTotal = computed(() => {
 
 // Multiple step form
 const currentStep = ref(1);
+const validateSteps = () => {
+    if (!selectedPlan.value) {
+        alert("Please select a protection plan before proceeding.");
+        return false;
+    }
+
+    if (currentStep.value === 2) {
+        // Add any additional validation for Step 2 here
+        if (!customer.value.first_name || !customer.value.last_name || !customer.value.email) {
+            alert("Please fill in all required fields in Step 2.");
+            return false;
+        }
+    }
+
+    return true;
+};
+
 
 const moveToNextStep = () => {
-    currentStep.value++;
+    if (validateSteps()) {
+        currentStep.value++;
+    }
 };
 const moveToPrevStep = () => {
     currentStep.value--;
@@ -201,7 +220,7 @@ const loadSessionData = () => {
     // Load plan and extras
     const selectionData = JSON.parse(sessionStorage.getItem('selectionData'));
     if (selectionData) {
-        selectedPlan.value = selectionData.selectedPlan;
+        selectedPlan.value = selectionData.selectedPlan.plan_type;
         extras.value = selectionData.extras;
 
         // Initialize extraCharges with the plan value
@@ -288,6 +307,9 @@ onMounted(async () => {
 });
 const error = ref([]);
 const submitBooking = async () => {
+    if (!validateSteps()) {
+        return; 
+    }
     // Load session data
     loadSessionData();
 
@@ -311,10 +333,13 @@ const submitBooking = async () => {
         return_date: returnDate.value,
         pickup_location: vehicle.value?.location,
         return_location: vehicle.value?.location,
+        pickup_time: pickupTime.value, 
+        return_time: returnTime.value,
         total_days: totalDays,
         base_price: vehicle.value?.price_per_day,
         extra_charges: extraCharges > 0 ? extraCharges : null,
         total_amount: calculateTotal.value,
+        plan: selectedPlan.value,
         extras: extras.value,
         vehicle_id: vehicle.value?.id,
     };
@@ -403,6 +428,7 @@ const selectedPaymentMethod = ref('visa'); // To track selected payment method
 const selectPaymentMethod = (method) => {
     selectedPaymentMethod.value = method;
 };
+
 
 </script>
 

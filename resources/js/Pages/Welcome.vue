@@ -166,9 +166,10 @@ onMounted(() => {
                         <CarouselItem v-for="place in popularPlaces" :key="place.id"
                             class="pl-1 md:basis-1/2 lg:basis-1/5">
                             <div class="p-1">
+                                <Link :href="`/s?where=${encodeURIComponent(place.place_name)}&latitude=${place.latitude}&longitude=${place.longitude}&radius=10000`">
                                 <Card class="h-[18rem] border-0 rounded-[0.75rem]">
                                     <CardContent class="flex flex-col gap-2 justify-center px-1 h-full">
-                                        <img :src="place.image" alt="place"
+                                        <img :src="`/storage/${place.image}`" alt=""
                                             class="rounded-[0.75rem] h-[12rem] w-full object-cover mb-2" />
                                         <div class="px-3">
                                             <h3 class="text-lg font-medium">
@@ -180,6 +181,7 @@ onMounted(() => {
                                         </div>
                                     </CardContent>
                                 </Card>
+                            </Link>
                             </div>
                         </CarouselItem>
                     </CarouselContent>

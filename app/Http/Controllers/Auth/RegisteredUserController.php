@@ -72,4 +72,22 @@ class RegisteredUserController extends Controller
 
         return redirect(RouteServiceProvider::HOME);
     }
+
+    public function getUserWithRelations()
+{
+    $user = Auth::user();
+    
+    $userWithRelations = User::with([
+        'profile', 
+        'vendorProfile', 
+        'vendorDocument', 
+        'vehicles'
+    ])->find($user->id);
+
+    return response()->json([
+        'status' => 'success',
+        'data' => $userWithRelations
+    ]);
+}
+    
 }

@@ -13,17 +13,16 @@ class CheckUserRole
      *
      * @param  \Illuminate\Http\Request  $request
      * @param  \Closure  $next
-     * @param  mixed  ...$roles
      * @return mixed
-     */
-    public function handle(Request $request, Closure $next, ...$roles)
+    */
+    public function handle(Request $request, Closure $next)
     {
-        // Check if the user is authenticated and has a valid role
-        if (Auth::check() && in_array(Auth::user()->role, $roles)) {
+        // Check if the user is authenticated and has one of the allowed roles
+        if (Auth::check() && in_array(Auth::user()->role, ['admin', 'vendor', 'customer'])) {
             return $next($request);
         }
 
-        // Redirect unauthorized users
-        return redirect('/')->with('error', 'You are not authorized to access this page.');
+        // Redirect or abort if the user does not have the required role
+        return redirect('/'); // Change this to your desired redirect
     }
 }

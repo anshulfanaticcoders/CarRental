@@ -34,13 +34,11 @@ class VehicleController extends Controller
             'transmission' => 'required|string',
             'fuel' => 'required|string',
             'seating_capacity' => 'required|integer|min:1',
-            'number_of_doors' => 'required|integer|min:1',
+            'number_of_doors' => 'required|integer|min:2',
             'luggage_capacity' => 'required|integer|min:0',
             'horsepower' => 'required|integer|min:0',
             'co2' => 'required|string',
             'location' => 'required|string',
-            //  'latitude' => 'required|decimal:10,8', // Add latitude validation
-            //  'longitude' => 'required|decimal:11,8',
             'status' => 'required|in:available,rented,maintenance',
             'features' => 'array',
             'featured' => 'boolean',
@@ -111,7 +109,7 @@ class VehicleController extends Controller
             ]);
         }
 
-        return redirect(RouteServiceProvider::HOMEPAGE);
+        return redirect(RouteServiceProvider::HOME);
     }
 
     public function index()

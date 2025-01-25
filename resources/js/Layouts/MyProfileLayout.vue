@@ -2,6 +2,7 @@
 import SiderBar from '@/Components/SiderBar.vue';
 import { Head } from '@inertiajs/vue3';
 import AuthenticatedHeaderLayout from './AuthenticatedHeaderLayout.vue';
+
 </script>
 
 <template>

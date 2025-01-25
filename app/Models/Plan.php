@@ -12,7 +12,7 @@ class Plan extends Model
     protected $fillable = [
         'plan_type', 
         'plan_value',
-        'features'
+        'features',
     ];
 
     protected $casts = [

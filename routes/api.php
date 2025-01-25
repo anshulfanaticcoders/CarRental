@@ -4,7 +4,6 @@ use App\Http\Controllers\BookingAddonController;
 use App\Http\Controllers\BookingController;
 use App\Http\Controllers\BookingExtraController;
 use App\Http\Controllers\PlanController;
-use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\UserDocumentController;
 use App\Http\Controllers\VehicleController;
 use App\Http\Controllers\VehicleCategoryController;
@@ -51,5 +50,3 @@ Route::get('/users', function () {
     return response()->json($users);
 });
 Route::get('/booking-success/details', [BookingController::class, 'getBookingDetails'])->name('booking-success.details');
-
-Route::get('/booking/{vehicle_id}', [BookingController::class, 'showBookingDetails'])->name('booking.show');

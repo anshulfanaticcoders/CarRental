@@ -52,7 +52,7 @@ class VehicleCategoriesController extends Controller
 
         VehicleCategory::create($data);
 
-        return redirect()->route('vehicle-categories.index')->with('success', 'Vehicle Category created successfully.');
+        return redirect()->route('vehicles-categories.index')->with('success', 'Vehicle Category created successfully.');
     }
 
     /**
@@ -96,7 +96,7 @@ class VehicleCategoriesController extends Controller
 
         $vehicleCategory->update($data);
 
-        return redirect()->route('vehicle-categories.index')->with('success', 'Vehicle Category updated successfully.');
+        return redirect()->route('vehicles-categories.index')->with('success', 'Vehicle Category updated successfully.');
     }
 
     /**
@@ -105,7 +105,7 @@ class VehicleCategoriesController extends Controller
     public function destroy(VehicleCategory $vehicleCategory)
     {
         $vehicleCategory->delete();
-        return redirect()->route('vehicle-categories.index')->with('success', 'Vehicle Category deleted successfully.');
+        return redirect()->route('vehicles-categories.index')->with('success', 'Vehicle Category deleted successfully.');
     }
 
     // this is to show categories on home page

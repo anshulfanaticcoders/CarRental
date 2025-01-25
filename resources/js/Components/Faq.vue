@@ -11,21 +11,33 @@ const defaultValue = "item-1";
 const accordionItems = [
     {
         value: "item-1",
-        title: "Why is Webflow the best nocode tool?",
+        title: "What documents do I need to rent a car?",
         content:
-            "Ut enim ad minim veniam quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat aute irure dolor",
+            "You will need a valid driver's license, a government-issued photo ID (e.g., passport or national ID), and a credit or debit card for the security deposit. International renters may also need an International Driving Permit (IDP).",
     },
     {
         value: "item-2",
-        title: "When did Webflow was founded?",
+        title: "Can I rent a car without a credit card?",
         content:
-            "Explore our diverse selection of high-end vehicles, choose your preferred pickup and return dates, and select a location that best fits your needs",
+            "Yes, some locations allow debit cards, but additional requirements may apply, such as proof of insurance, return travel plans, or a larger deposit. Please check with the specific branch for details.",
     },
     {
         value: "item-3",
-        title: "Book And Enjoy",
+        title: "Is there a minimum or maximum age to rent a car?",
         content:
-            "Explore our diverse selection of high-end vehicles, choose your preferred pickup and return dates, and select a location that best fits your needs",
+            "The minimum age is typically 21 years old, but this may vary by location and car type. Renters under 25 may incur a young driver surcharge. There is generally no maximum age, but some restrictions may apply for senior drivers in certain regions.",
+    },
+    {
+        value: "item-4",
+        title: "What happens if I return the car late?",
+        content:
+            "Returning the car late may result in additional charges. Typically, there is a grace period of 30 minutes to 1 hour. Beyond that, you may be charged for an extra day. Please review the terms of your rental agreement for specific policies",
+    },
+    {
+        value: "item-5",
+        title: "Are there mileage limits on rentals?",
+        content:
+            "Most rentals include unlimited mileage, but some car categories (e.g., luxury or specialty vehicles) may have mileage restrictions. Be sure to check your rental agreement for details on mileage limits and additional charges for exceeding them.",
     },
 ];
 </script>

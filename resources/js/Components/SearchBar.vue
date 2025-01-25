@@ -1,13 +1,13 @@
 <template>
-    <section class="">
-        <div class="full-w-container">
+    <section class="full-w-container">
+        <div class="">
             <div class="flex relative">
                 <div
                     class="column w-[20%] bg-customPrimaryColor text-customPrimaryColor-foreground p-[2rem] rounded-tl-[20px] rounded-bl-[20px]">
                     <span class="text-[1.75rem] font-medium">Do you need a rental car?</span>
                 </div>
                 <form @submit.prevent="submit"
-                    class="column w-[80%] px-[2rem] py-[1rem] rounded-tr-[20px] rounded-br-[20px] bg-white grid grid-cols-5">
+                    class="column w-[80%] px-[2rem] py-[1rem] rounded-tr-[16px] rounded-br-[16px] bg-white grid grid-cols-5">
                     <div class="col col-span-2 flex flex-col justify-center">
                         <div class="flex flex-col">
                             <div class="col">

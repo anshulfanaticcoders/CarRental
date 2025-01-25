@@ -114,6 +114,7 @@ const addMarkers = () => {
         }).bindPopup(`
     <div class="text-center">
       <p class="font-semibold">${vehicle.brand}</p>
+      <p class="">${vehicle.location}</p>
       <a href="/vehicle/${vehicle.id}" 
          class="text-blue-500 hover:text-blue-700"
          onclick="window.location.href='/vehicle/${vehicle.id}'; return false;">
@@ -229,7 +230,7 @@ const handleMapToggle = (value) => {
                                     )?.image_path
                                 }`"
                                 alt="Primary Image"
-                                class="w-full max-h-[250px] object-cover rounded-lg"
+                                class="w-full h-[250px] object-cover rounded-lg"
                             />
                             <span
                                 class="bg-[#f5f5f5] inline-block px-8 py-2 text-center rounded-[40px]"

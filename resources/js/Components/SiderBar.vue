@@ -9,7 +9,7 @@ import favoritesIcon from "../../assets/favouriteIcon.svg";
 import reviewsIcon from "../../assets/myreviewIcon.svg";
 import dashboardIcon from "../../assets/vendorDashboarIcon.svg";
 import vehiclesIcon from "../../assets/vehicletypeIcon.svg";
-import avatar from "../../assets/userAvatar.png";
+import verificationIcon from "../../assets/verification.svg";
 import clockIcon from "../../assets/clockIcon.svg";
 
 // Existing logic
@@ -63,9 +63,9 @@ const menus = [
     key: "bookings",
     icon: bookingsIcon,
     items: [
-      { name: "Confirmed", path: "/confirmed-bookings" },
-      { name: "Pending", path: "/customer/bookings" },
-      { name: "Completed", path: "/completed-bookings" },
+      { name: "Confirmed", path: "/profile/bookings/confirmed" },
+      { name: "Pending", path: "/profile/bookings/pending" },
+      { name: "Completed", path: "/profile/bookings/completed" },
     ],
   },
 ];
@@ -101,6 +101,7 @@ const vendorMenus = [
 const vendorOtherLinks = [
   { name: "Payment History", path: "/vendor-payments", icon: clockIcon },
   { name: "Bookings", path: "/vendor/bookings", icon: vehiclesIcon },
+  { name: "Verification Status", path: "/vendor/bookings", icon: verificationIcon },
   { name: "Inbox", path: "/vendor-inbox", icon: inboxIcon },
   { name: "Customer Reviews", path: "/customer-reviews", icon: reviewsIcon },
 ];
@@ -218,7 +219,7 @@ onMounted(fetchUserProfile);
     <div v-for="link in activeOtherLinks" :key="link.name" class="menu-item">
       <Link :href="link.path" class="menu-link flex items-center gap-2" :class="{ active: activeLink === link.name }"
         @click="activeLink = link.name">
-      <img :src="link.icon" alt="" class="icon" :class="{ 'brightness-active': activeLink === link.name }" />
+      <img :src="link.icon" alt="" class="icon w-[24px] h-[24px]" :class="{ 'brightness-active': activeLink === link.name }" />
       {{ link.name }}
       </Link>
     </div>

@@ -1,8 +1,8 @@
 <template>
     <AdminDashboardLayout>
-        <div class="flex flex-col gap-4">
-            <div class="flex items-center justify-between">
-                <h4 class="font-semibold">Vehicle Categories</h4>
+        <div class="flex flex-col gap-4 w-[95%] ml-[1.5rem]">
+            <div class="flex items-center justify-between mt-[2rem]">
+                <span class="text-[1.5rem] font-semibold">Vehicle Categories</span>
                 <Dialog>
                     <DialogTrigger as-child>
                         <Button>Create New Category</Button>
@@ -95,7 +95,7 @@
                 </DialogContent>
             </Dialog>
 
-            <div class="rounded-md border">
+            <div class="rounded-md border p-5 h-[80vh] mt-[1rem] bg-[#153B4F0D]">
                 <Table>
                     <TableHeader>
                         <TableRow>
@@ -195,7 +195,7 @@ const submitForm = () => {
     formData.append('description', form.value.description);
     formData.append('image', form.value.image);
 
-    router.post("/vehicle-categories", formData, {
+    router.post("/vehicles-categories", formData, {
         onSuccess: () => {
             form.value = { name: "", description: "", image: null };
         },
@@ -223,7 +223,7 @@ const updateCategory = () => {
         formData.append('image', editForm.value.image);
     }
 
-    router.post(`/vehicle-categories/${editForm.value.id}`, formData, {
+    router.post(`/vehicles-categories/${editForm.value.id}`, formData, {
         onSuccess: () => {
             isEditDialogOpen.value = false;
             editForm.value = { 
@@ -238,7 +238,7 @@ const updateCategory = () => {
 };
 
 const deleteCategory = (id) => {
-    router.delete(`/vehicle-categories/${id}`, {
+    router.delete(`/vehicles-categories/${id}`, {
         onSuccess: () => {
             router.reload();
         },

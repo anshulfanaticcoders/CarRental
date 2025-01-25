@@ -65,7 +65,7 @@ function handleAvatarUpload(event) {
             <div>
                 <!-- If avatarPreview is not set, show the default avatar or the uploaded avatar -->
                 <div v-if="!avatarPreview" class="mt-4">
-                    <img :src="avatarPreview" alt="Profile Picture" class="w-24 h-24 rounded-full object-cover" />
+                    <img :src="'/storage/avatars/default-avatar.svg'" alt="Profile Picture" class="w-24 h-24 rounded-full object-cover" />
                 </div>
                 <img v-else
                     :src="user?.profile.avatar ? `/storage/${user?.profile.avatar}` : '/storage/avatars/default-avatar.svg'"

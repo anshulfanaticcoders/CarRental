@@ -12,7 +12,7 @@ use Stripe\Stripe;
 use Stripe\PaymentIntent;
 use Stripe\Customer as StripeCustomer;
 use Inertia\Inertia;
-
+use Illuminate\Support\Facades\Auth;
 class BookingController extends Controller
 {
     public function create()
@@ -22,6 +22,8 @@ class BookingController extends Controller
 
     public function store(Request $request)
     {
+        // print_r($request->all());
+        // die();
         $validatedData = $request->validate([
             // Customer validation
             'customer.first_name' => 'required|string|max:255',
@@ -35,6 +37,8 @@ class BookingController extends Controller
             // Booking validation
             'pickup_date' => 'required|date',
             'return_date' => 'required|date|after:pickup_date',
+            'pickup_time' => 'required|string|max:10', // Added pickup time validation
+            'return_time' => 'required|string|max:10', 
             'pickup_location' => 'required|string|max:255',
             'return_location' => 'required|string|max:255',
             'total_days' => 'required|integer|min:1',
@@ -42,7 +46,7 @@ class BookingController extends Controller
             'extra_charges' => 'nullable|numeric|min:0',
             'total_amount' => 'required|numeric|min:0',
             'payment_method_id' => 'required|string',
-
+            'plan' => 'required|string|max:255',
             // Extras validation
             'extras' => 'nullable|array',
             'extras.*.extra_type' => 'required|string|max:255',
@@ -86,6 +90,8 @@ class BookingController extends Controller
             'vehicle_id' => $vehicle->id,
             'pickup_date' => $request->input('pickup_date'),
             'return_date' => $request->input('return_date'),
+            'pickup_time' => $request->input('pickup_time'),
+            'return_time' => $request->input('return_time'), 
             'pickup_location' => $request->input('pickup_location'),
             'return_location' => $request->input('return_location'),
             'total_days' => $request->input('total_days'),
@@ -95,23 +101,8 @@ class BookingController extends Controller
             'total_amount' => $request->input('total_amount'),
             'payment_status' => 'pending',
             'booking_status' => 'pending',
+            'plan' => $request->input('plan'),
         ]);
-
-        // Store extras
-        // if (!empty($validatedData['extras'])) {
-        //     foreach ($validatedData['extras'] as $extra) {
-        //         if ($extra['quantity'] > 0) {
-        //             \Log::info('Saving extra:', $extra); 
-        //             BookingExtra::create([
-        //                 'booking_id' => $booking->id,
-        //                 'extra_type' => $extra['extra_type'],
-        //                 'extra_name' => $extra['extra_name'],
-        //                 'quantity' => $extra['quantity'],
-        //                 'price' => $extra['price'],
-        //             ]);
-        //         }
-        //     }
-        // }
 
         $extrasData = [];
         foreach ($validatedData['extras'] as $extra) {
@@ -194,55 +185,6 @@ class BookingController extends Controller
         }
     }
 
-    // public function success(Request $request)
-    // {
-    //     $paymentIntentId = $request->input('payment_intent');
-    //     $payment = BookingPayment::where('transaction_id', $paymentIntentId)->first();
-
-    //     if ($payment) {
-    //         $payment->update([
-    //             'payment_status' => 'successful',
-    //             'payment_date' => now(),
-    //         ]);
-
-    //         $payment->booking->update([
-    //             'payment_status' => 'paid',
-    //             'booking_status' => 'confirmed',
-    //         ]);
-    //     }
-
-    //     return Inertia::render('Booking/Success');
-    // }
-    // public function success(Request $request)
-    // {
-    //     $paymentIntentId = $request->input('payment_intent');
-    //     $payment = BookingPayment::where('transaction_id', $paymentIntentId)->first();
-
-    //     if (!$payment) {
-    //         return redirect()->route('booking-success')->with('error', 'Payment not found.');
-    //     }
-
-    //     // Update payment status and booking status
-    //     $payment->update([
-    //         'payment_status' => 'successful',
-    //         'payment_date' => now(),
-    //     ]);
-
-    //     $booking = $payment->booking; // Lazy load the related booking
-
-    //     if ($booking) {
-    //         $booking->update([
-    //             'payment_status' => 'paid',
-    //             'booking_status' => 'confirmed',
-    //         ]);
-    //     }
-
-    //     return redirect()->route('booking-success', [
-    //         'booking_number' => $booking ? $booking->booking_number : 'N/A',
-    //     ]);
-    // }
-
-
     public function getBookingDetails(Request $request)
     {
 
@@ -288,60 +230,87 @@ class BookingController extends Controller
             'bookings' => $bookings
         ]);
     }
-    // public function getCustomerBookingData()
-    // {
-    //     // Get all bookings with related data, including vehicle images
-    //     $bookings = Booking::with([
-    //         'customer',
-    //         'vehicle.images',
-    //         'payments'
-    //     ])
-    //     ->orderBy('created_at', 'desc')
-    //     ->get();
-    
-    //     return Inertia::render('Profile/PendingBookings', [
-    //         'bookings' => $bookings
-    //     ]);
-    // }
-//     public function getCustomerBookingData()
-// {
-//     // Get bookings for the current authenticated user
-//     $bookings = Booking::with([
-//         'customer',
-//         'vehicle.images',
-//         'payments'
-//     ])
-//     ->where('customer_id', auth()->id())  // Filter directly by auth user id since customer_id references users table
-//     ->orderBy('created_at', 'desc')
-//     ->get();
 
-//     return Inertia::render('Profile/PendingBookings', [
+// public function getCustomerBookingData()
+// {
+//     // Get the current authenticated user's ID
+//     $userId = auth()->id();
+
+//     // Find the customer associated with the current user
+//     $customer = Customer::where('user_id', $userId)->first();
+
+//     if (!$customer) {
+//         return response()->json([
+//             'message' => 'No customer found for the current user.',
+//         ], 404);
+//     }
+
+//     // Retrieve all bookings for the customer
+//     $bookings = Booking::where('customer_id', $customer->id)->get();
+  
+//     // Optionally, you can load related data (e.g., extras, payments)
+//     $bookings->load('customer','vehicle.images', 'payments');
+
+//        return Inertia::render('Profile/PendingBookings', [
 //         'bookings' => $bookings
 //     ]);
 // }
-
-public function getCustomerBookingData()
+// Method for Pending Bookings
+public function getPendingBookings()
 {
-    // Get the current authenticated user's ID
-    $userId = auth()->id();
+    $userId = Auth::id();
 
-    // Find the customer associated with the current user
     $customer = Customer::where('user_id', $userId)->first();
 
-    if (!$customer) {
-        return response()->json([
-            'message' => 'No customer found for the current user.',
-        ], 404);
-    }
+    $pendingBookings = $customer ? 
+        Booking::where('customer_id', $customer->id)
+            ->where('booking_status', 'pending')
+            ->with('vehicle.images', 'payments')
+            ->orderBy('created_at', 'desc')
+            ->get() : 
+        collect();
 
-    // Retrieve all bookings for the customer
-    $bookings = Booking::where('customer_id', $customer->id)->get();
-  
-    // Optionally, you can load related data (e.g., extras, payments)
-    $bookings->load('customer','vehicle.images', 'payments');
+    return Inertia::render('Profile/PendingBookings', [
+        'bookings' => $pendingBookings
+    ]);
+}
 
-       return Inertia::render('Profile/PendingBookings', [
-        'bookings' => $bookings
+// Method for Confirmed Bookings
+public function getConfirmedBookings()
+{
+    $userId = Auth::id();
+
+    $customer = Customer::where('user_id', $userId)->first();
+
+    $confirmedBookings = $customer ? 
+        Booking::where('customer_id', $customer->id)
+            ->where('booking_status', 'confirmed')
+            ->with('vehicle.images', 'payments')
+            ->orderBy('created_at', 'desc')
+            ->get() : 
+        collect();
+
+    return Inertia::render('Profile/ConfirmedBookings', [
+        'bookings' => $confirmedBookings
+    ]);
+}
+
+public function getCompletedBookings()
+{
+    $userId = Auth::id();
+
+    $customer = Customer::where('user_id', $userId)->first();
+
+    $completedBookings = $customer ? 
+        Booking::where('customer_id', $customer->id)
+            ->where('booking_status', 'completed')
+            ->with('vehicle.images', 'payments')
+            ->orderBy('created_at', 'desc')
+            ->get() : 
+        collect();
+
+    return Inertia::render('Profile/CompletedBookings', [
+        'bookings' => $completedBookings
     ]);
 }
 }

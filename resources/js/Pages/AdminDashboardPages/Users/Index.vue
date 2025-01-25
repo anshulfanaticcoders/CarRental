@@ -1,8 +1,8 @@
 <template>
     <AdminDashboardLayout>
-        <div class="flex flex-col gap-4">
-            <div class="flex items-center justify-between">
-                <h4 class="font-semibold">Users Management</h4>
+        <div class="flex flex-col gap-4 w-[95%] ml-[1.5rem]">
+            <div class="flex items-center justify-between mt-[2rem]">
+                <span class="text-[1.5rem] font-semibold">Users Management</span>
                 <Dialog>
                     <DialogTrigger as-child>
                         <Button>Create New User</Button>
@@ -75,63 +75,63 @@
             </div>
 
             <Dialog v-model:open="isEditDialogOpen">
-    <DialogContent>
-        <DialogHeader>
-            <DialogTitle>Edit User</DialogTitle>
-        </DialogHeader>
-        <form @submit.prevent="updateUser" class="space-y-4">
-            <div class="grid grid-cols-2 gap-4">
-                <div>
-                    <InputLabel for="first_name" value="First Name *" />
-                    <Input v-model="editForm.first_name" required />
-                </div>
-                <div>
-                    <InputLabel for="last_name" value="Last Name *" />
-                    <Input v-model="editForm.last_name" required />
-                </div>
-            </div>
-            <div>
-                <InputLabel for="email" value="Email *" />
-                <Input v-model="editForm.email" type="email" required />
-            </div>
-            <div>
-                <InputLabel for="phone" value="Phone *" />
-                <Input v-model="editForm.phone" required />
-            </div>
-            <div>
-                <InputLabel for="role" value="Role *" />
-                <Select v-model="editForm.role" required>
-                    <SelectTrigger>
-                        <SelectValue placeholder="Select Role" />
-                    </SelectTrigger>
-                    <SelectContent>
-                        <SelectItem value="customer">Customer</SelectItem>
-                        <SelectItem value="vendor">Vendor</SelectItem>
-                        <SelectItem value="admin">Admin</SelectItem>
-                    </SelectContent>
-                </Select>
-            </div>
-            <div>
-                <InputLabel for="status" value="Status *" />
-                <Select v-model="editForm.status" required>
-                    <SelectTrigger>
-                        <SelectValue placeholder="Select Status" />
-                    </SelectTrigger>
-                    <SelectContent>
-                        <SelectItem value="active">Active</SelectItem>
-                        <SelectItem value="inactive">Inactive</SelectItem>
-                        <SelectItem value="suspended">Suspended</SelectItem>
-                    </SelectContent>
-                </Select>
-            </div>
-            <DialogFooter>
-                <Button type="submit">Update User</Button>
-            </DialogFooter>
-        </form>
-    </DialogContent>
-</Dialog>
+                <DialogContent>
+                    <DialogHeader>
+                        <DialogTitle>Edit User</DialogTitle>
+                    </DialogHeader>
+                    <form @submit.prevent="updateUser" class="space-y-4">
+                        <div class="grid grid-cols-2 gap-4">
+                            <div>
+                                <InputLabel for="first_name" value="First Name *" />
+                                <Input v-model="editForm.first_name" required />
+                            </div>
+                            <div>
+                                <InputLabel for="last_name" value="Last Name *" />
+                                <Input v-model="editForm.last_name" required />
+                            </div>
+                        </div>
+                        <div>
+                            <InputLabel for="email" value="Email *" />
+                            <Input v-model="editForm.email" type="email" required />
+                        </div>
+                        <div>
+                            <InputLabel for="phone" value="Phone *" />
+                            <Input v-model="editForm.phone" required />
+                        </div>
+                        <div>
+                            <InputLabel for="role" value="Role *" />
+                            <Select v-model="editForm.role" required>
+                                <SelectTrigger>
+                                    <SelectValue placeholder="Select Role" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="customer">Customer</SelectItem>
+                                    <SelectItem value="vendor">Vendor</SelectItem>
+                                    <SelectItem value="admin">Admin</SelectItem>
+                                </SelectContent>
+                            </Select>
+                        </div>
+                        <div>
+                            <InputLabel for="status" value="Status *" />
+                            <Select v-model="editForm.status" required>
+                                <SelectTrigger>
+                                    <SelectValue placeholder="Select Status" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="active">Active</SelectItem>
+                                    <SelectItem value="inactive">Inactive</SelectItem>
+                                    <SelectItem value="suspended">Suspended</SelectItem>
+                                </SelectContent>
+                            </Select>
+                        </div>
+                        <DialogFooter>
+                            <Button type="submit">Update User</Button>
+                        </DialogFooter>
+                    </form>
+                </DialogContent>
+            </Dialog>
 
-            <div class="rounded-md border">
+            <div class="rounded-md border p-5 h-[80vh] mt-[1rem] bg-[#153B4F0D]">
                 <Table>
                     <TableHeader>
                         <TableRow>
@@ -160,7 +160,7 @@
                                 <div class="flex justify-end gap-2">
                                     <Button size="sm" variant="outline" @click="openEditDialog(user)">
                                         Edit
-                                    <img :src=editIcon alt="">
+                                        <img :src=editIcon alt="">
                                     </Button>
                                     <Button size="sm" variant="destructive" @click="deleteUser(user.id)">Delete</Button>
                                 </div>
@@ -185,6 +185,13 @@ import TableCell from "@/Components/ui/table/TableCell.vue";
 import Button from "@/Components/ui/button/Button.vue";
 import Badge from "@/Components/ui/badge/Badge.vue";
 import editIcon from "../../../../assets/Pencil.svg";
+import {
+  Breadcrumb,
+  BreadcrumbItem,
+  BreadcrumbLink,
+  BreadcrumbList,
+  BreadcrumbSeparator,
+} from '@/components/ui/breadcrumb'
 import {
     Dialog,
     DialogContent,
@@ -257,7 +264,7 @@ const deleteUser = (id) => {
 };
 
 const getRoleBadgeVariant = (role) => {
-    switch(role) {
+    switch (role) {
         case 'admin': return 'destructive';
         case 'vendor': return 'secondary';
         default: return 'default';
@@ -265,7 +272,7 @@ const getRoleBadgeVariant = (role) => {
 };
 
 const getStatusBadgeVariant = (status) => {
-    switch(status) {
+    switch (status) {
         case 'active': return 'default';
         case 'inactive': return 'secondary';
         case 'suspended': return 'destructive';

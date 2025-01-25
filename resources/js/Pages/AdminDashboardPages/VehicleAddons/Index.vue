@@ -1,8 +1,8 @@
 <template>
     <AdminDashboardLayout>
-        <div class="flex flex-col gap-4">
-            <div class="flex items-center justify-between">
-                <h4 class="font-semibold">Booking Addons Management</h4>
+        <div class="flex flex-col gap-4 w-[95%] ml-[1.5rem]">
+            <div class="flex items-center justify-between mt-[2rem]">
+                <span class="text-[1.5rem] font-semibold">Booking Addons Management</span>
                 <Dialog>
                     <DialogTrigger as-child>
                         <Button>Create New Addon</Button>
@@ -77,7 +77,7 @@
                 </DialogContent>
             </Dialog>
 
-            <div class="rounded-md border">
+            <div class="rounded-md border p-5 h-[80vh] mt-[1rem] bg-[#153B4F0D]">
                 <Table>
                     <TableHeader>
                         <TableRow>
