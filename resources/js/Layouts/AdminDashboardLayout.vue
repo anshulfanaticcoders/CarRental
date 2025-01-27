@@ -6,9 +6,9 @@ import {
   BreadcrumbItem,
   BreadcrumbLink,
   BreadcrumbList,
-  BreadcrumbSeparator,
+//   BreadcrumbSeparator,
 } from '@/components/ui/breadcrumb'
-import { ChevronRightSquareIcon } from 'lucide-vue-next'
+// import { ChevronRightSquareIcon } from 'lucide-vue-next'
 </script>
 
 <template>
