@@ -1,14 +1,14 @@
 <script setup>
 import AdminSiderBar from '@/Components/AdminSiderBar.vue';
 import { Head } from '@inertiajs/vue3';
-import {
-  Breadcrumb,
-  BreadcrumbItem,
-  BreadcrumbLink,
-  BreadcrumbList,
-//   BreadcrumbSeparator,
-} from '@/components/ui/breadcrumb'
-// import { ChevronRightSquareIcon } from 'lucide-vue-next'
+// import {
+//   Breadcrumb,
+//   BreadcrumbItem,
+//   BreadcrumbLink,
+//   BreadcrumbList,
+// //   BreadcrumbSeparator,
+// } from '@/components/ui/breadcrumb'
+// // import { ChevronRightSquareIcon } from 'lucide-vue-next'
 </script>
 
 <template>
@@ -19,31 +19,7 @@ import {
         <!-- Content  -->
           <div class="column w-full py-[1rem] flex flex-col" >
             <div class="mt-[0.75rem] ml-[1.5rem]">
-                <Breadcrumb>
-                <BreadcrumbList>
-                    <BreadcrumbItem>
-                        <BreadcrumbLink href="/">
-                            Dashboard
-                        </BreadcrumbLink>
-                    </BreadcrumbItem>
-                    <!-- <BreadcrumbSeparator>
-                        <ChevronRightSquareIcon/>
-                    </BreadcrumbSeparator>
-                    <BreadcrumbItem>
-                        <BreadcrumbLink href="/components">
-                            User Management
-                        </BreadcrumbLink>
-                    </BreadcrumbItem>
-                    <BreadcrumbSeparator>
-                        <ChevronRightSquareIcon/>
-                    </BreadcrumbSeparator>
-                    <BreadcrumbItem>
-                        <BreadcrumbLink href="/components">
-                            Add Users
-                        </BreadcrumbLink>
-                    </BreadcrumbItem> -->
-                </BreadcrumbList>
-            </Breadcrumb>
+                <p>Dashboard</p>
             </div>
               <slot/>
          </div>
