@@ -9,7 +9,7 @@ import walkIcon from "../../assets/walkingrayIcon.svg";
 import { Inertia } from '@inertiajs/inertia';
 import paypal from '../../assets/paypal.svg';
 import mastercard from '../../assets/mastercard.svg';
-import visa from '../../assets/Visa.svg';
+// import visa from '../../assets/Visa.svg';
 
 // Add these methods to your script section
 const incrementQuantity = (extra) => {
@@ -423,11 +423,11 @@ const submitBooking = async () => {
     }
 };
 
-const selectedPaymentMethod = ref('visa'); // To track selected payment method
+// const selectedPaymentMethod = ref('visa'); // To track selected payment method
 
-const selectPaymentMethod = (method) => {
-    selectedPaymentMethod.value = method;
-};
+// const selectPaymentMethod = (method) => {
+//     selectedPaymentMethod.value = method;
+// };
 
 const currencies = ref([]); // To store the currency data
 
@@ -660,19 +660,17 @@ onMounted(() => {
 
                         <!-- Payment Method Icons -->
                         <div class="flex gap-4 mb-6">
-                            <div class="payment-method-card flex justify-center items-center w-[8rem] h-[2.5rem] rounded-[99px] cursor-pointer"
+                            <!-- <div class="payment-method-card flex justify-center items-center w-[8rem] h-[2.5rem] rounded-[99px] cursor-pointer"
                                 :class="{ 'bg-[#19304D] border-none': selectedPaymentMethod === 'visa', 'border': selectedPaymentMethod !== 'visa' }"
                                 @click="selectPaymentMethod('visa')">
                                 <img :src="visa" alt="Visa" class="h-full w-full" />
-                            </div>
+                            </div> -->
                             <div class="payment-method-card flex justify-center items-center w-[8rem] h-[2.5rem] rounded-[99px] cursor-pointer"
-                                :class="{ 'bg-[#19304D] border-none': selectedPaymentMethod === 'mastercard', 'border': selectedPaymentMethod !== 'mastercard' }"
-                                @click="selectPaymentMethod('mastercard')">
+                                :class="{ 'bg-[#19304D] border-none': selectedPaymentMethod === 'mastercard', 'border': selectedPaymentMethod !== 'mastercard' }">
                                 <img :src="mastercard" alt="Mastercard" class="h-full w-full" />
                             </div>
                             <div class="payment-method-card flex justify-center items-center w-[8rem] h-[2.5rem] rounded-[99px] cursor-pointer"
-                                :class="{ 'bg-[#19304D] border-none': selectedPaymentMethod === 'paypal', 'border': selectedPaymentMethod !== 'paypal' }"
-                                @click="selectPaymentMethod('paypal')">
+                                :class="{ 'bg-[#19304D] border-none': selectedPaymentMethod === 'paypal', 'border': selectedPaymentMethod !== 'paypal' }">
                                 <img :src="paypal" alt="PayPal" class="h-full w-full" />
                             </div>
 
