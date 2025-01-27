@@ -13,12 +13,13 @@ class CheckUserRole
      *
      * @param  \Illuminate\Http\Request  $request
      * @param  \Closure  $next
+     * @param  string  $role
      * @return mixed
-    */
-    public function handle(Request $request, Closure $next)
+     */
+    public function handle(Request $request, Closure $next, $role)
     {
-        // Check if the user is authenticated and has one of the allowed roles
-        if (Auth::check() && in_array(Auth::user()->role, ['admin', 'vendor', 'customer'])) {
+        // Check if the user is authenticated and has the required role
+        if (Auth::check() && Auth::user()->role === $role) {
             return $next($request);
         }
 

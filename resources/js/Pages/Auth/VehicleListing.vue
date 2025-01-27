@@ -716,14 +716,6 @@ const submit = () => {
     });
 };
 
-// getting vehicle categories value in Radio Inputs
-const vehicleCategories = [
-    { id: 1, InputLabel: "SUV Car", icon: SuvCarIcon },
-    { id: 2, InputLabel: "Luxury", icon: LuxuryCarIcon },
-    { id: 3, InputLabel: "Sedan Car", icon: SedanCarIcon },
-    { id: 4, InputLabel: "Mini Car", icon: MiniCarIcon },
-];
-
 // For range slider tip value
 const tooltipPosition = computed(() => ({
     left: `${(form.price_per_day / 70) * 100}%`,

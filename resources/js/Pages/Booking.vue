@@ -429,6 +429,28 @@ const selectPaymentMethod = (method) => {
     selectedPaymentMethod.value = method;
 };
 
+const currencies = ref([]); // To store the currency data
+
+// Fetch currency data from the API
+const fetchCurrencies = async () => {
+    try {
+        const response = await axios.get('/api/currencies'); // Adjust the API endpoint as necessary
+        currencies.value = response.data;
+    } catch (error) {
+        console.error('Error fetching currencies:', error);
+    }
+};
+
+// Get currency symbol based on vendor's profile currency
+const getCurrencySymbol = (currencyCode) => {
+    const currency = currencies.value.find(c => c.code === currencyCode);
+    return currency ? currency.symbol : ''; // Return symbol or empty string if not found
+};
+
+// Call the fetch function on component mount
+onMounted(() => {
+    fetchCurrencies();
+});
 
 </script>
 

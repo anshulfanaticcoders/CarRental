@@ -265,7 +265,7 @@ public function getPendingBookings()
     $pendingBookings = $customer ? 
         Booking::where('customer_id', $customer->id)
             ->where('booking_status', 'pending')
-            ->with('vehicle.images', 'payments')
+            ->with('vehicle.images','vehicle.category', 'payments')
             ->orderBy('created_at', 'desc')
             ->get() : 
         collect();
