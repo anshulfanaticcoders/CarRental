@@ -711,7 +711,7 @@ const proceedToPayment = () => {
 }
 
 #map {
-    height: 400px;
+    height: 410px;
     width: 100%;
 }
 </style>
