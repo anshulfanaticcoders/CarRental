@@ -186,13 +186,6 @@ import Button from "@/Components/ui/button/Button.vue";
 import Badge from "@/Components/ui/badge/Badge.vue";
 import editIcon from "../../../../assets/Pencil.svg";
 import {
-  Breadcrumb,
-  BreadcrumbItem,
-  BreadcrumbLink,
-  BreadcrumbList,
-  BreadcrumbSeparator,
-} from '@/components/ui/breadcrumb'
-import {
     Dialog,
     DialogContent,
     DialogHeader,
