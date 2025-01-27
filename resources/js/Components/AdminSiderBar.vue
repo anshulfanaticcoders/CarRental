@@ -155,7 +155,7 @@ const data = {
         },
         {
           title: 'Setting',
-          url: '#',
+          url: '/settings',
         },
       ],
     },
