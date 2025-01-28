@@ -18,3 +18,7 @@ const props = defineProps<{
     <slot />
   </main>
 </template>
+
+<style>
+
+</style>

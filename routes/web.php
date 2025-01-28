@@ -68,7 +68,6 @@ Route::get('/payment', [PaymentController::class, 'index'])->name('payment.index
 
 
 
-
 // These are the Routes for ---------*****ADMIN****-------------
 Route::middleware(['auth', 'role:admin'])->group(function () {
     Route::inertia('admin-dashboard', 'AdminDashboard');
@@ -99,6 +98,7 @@ Route::middleware(['auth', 'role:vendor'])->group(function () {
     Route::get('/vehicle-categories', [VehicleController::class, 'getCategories'])->name('vehicle.categories');
     // this is for showing All Booking details of customer in vendor profile
     Route::get('/vendor/bookings', [BookingController::class, 'getAllBookings'])->name('vendor.bookings');
+    Route::get('/vendor/payments', [BookingController::class, 'getVendorPaymentHistory'])->name('vendor.payments');
     // this is for showing All Vehicles of vendor in vendor profile
     Route::get('/vendor/vehicles', [VehicleController::class, 'vendorVehicle'])->name('vehicles.index');
 
@@ -122,7 +122,7 @@ Route::middleware(['auth', 'role:customer'])->group(function () {
     // apply for vendor
     Route::post('/vendor/store', [VendorController::class, 'store'])->name('vendor.store');
     Route::get('/vendor/register', [VendorController::class, 'create'])->name('vendor.register');
-    // Booking routes
+  
     // Booking Routes
     Route::get('/booking/{id}', [VehicleController::class, 'booking'])->name('booking.show');
     // Route::get('/booking-success', [BookingController::class, 'success'])->name('booking.success');

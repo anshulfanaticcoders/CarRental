@@ -220,16 +220,47 @@ class BookingController extends Controller
 
     // this si for fetching all the booking details in Pages > Vendor >  Bookings.vue
     public function getAllBookings()
-    {
-        // Get all bookings with related data
-        $bookings = Booking::with(['customer', 'vehicle', 'payments'])
-            ->orderBy('created_at', 'desc')
-            ->get();
+{
+    $vendorId = auth()->id();
 
-        return Inertia::render('Vendor/Bookings', [
-            'bookings' => $bookings
+    // Get all bookings where the vehicle belongs to the current vendor
+    $bookings = Booking::with(['customer', 'vehicle', 'payments'])
+        ->whereHas('vehicle', function ($query) use ($vendorId) {
+            // Filter bookings based on vehicle vendor
+            $query->where('vendor_id', $vendorId); 
+        })
+        ->orderBy('created_at', 'desc')
+        ->get();
+
+    return Inertia::render('Vendor/Bookings', [
+        'bookings' => $bookings
+    ]);
+}
+public function getVendorPaymentHistory()
+{
+    $vendorId = auth()->id();
+
+    $payments = BookingPayment::with(['booking.customer', 'booking.vehicle'])
+        ->join('bookings', 'booking_payments.booking_id', '=', 'bookings.id')
+        ->join('vehicles', 'bookings.vehicle_id', '=', 'vehicles.id')
+        ->where('vehicles.vendor_id', $vendorId)
+        ->select('booking_payments.*')  // Important to select only from booking_payments table
+        ->orderBy('booking_payments.created_at', 'desc')
+        ->get();
+
+    if ($payments->isEmpty()) {
+        return response()->json([
+            'message' => 'No payments found for this vendor.'
         ]);
     }
+
+    return Inertia::render('Vendor/Payments', [
+        'payments' => $payments
+    ]);
+}
+
+
+
 
 // public function getCustomerBookingData()
 // {

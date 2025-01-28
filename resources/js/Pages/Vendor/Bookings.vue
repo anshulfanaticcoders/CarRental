@@ -1,6 +1,6 @@
 <script setup>
 import MyProfileLayout from '@/Layouts/MyProfileLayout.vue';
-import { ref} from 'vue';
+import { ref } from 'vue';
 
 const props = defineProps({
     bookings: {
@@ -55,14 +55,15 @@ const cancelBooking = async (bookingId) => {
                             <th class="px-4 py-2 text-left text-sm font-bold text-customPrimaryColor">Vehicle</th>
                             <th class="px-4 py-2 text-left text-sm font-bold text-customPrimaryColor">Booking Date</th>
                             <th class="px-4 py-2 text-left text-sm font-bold text-customPrimaryColor">Return Date</th>
-                            <th class="px-4 py-2 text-left text-sm font-bold text-customPrimaryColor">Payment Status</th>
+                            <th class="px-4 py-2 text-left text-sm font-bold text-customPrimaryColor">Payment Status
+                            </th>
+                            <th class="px-4 py-2 text-left text-sm font-bold text-customPrimaryColor">Booking Status
+                            </th>
                             <th class="px-4 py-2 text-left text-sm font-bold text-customPrimaryColor">Actions</th>
                         </tr>
                     </thead>
                     <tbody>
-                        <tr v-for="booking in bookings" 
-                            :key="booking.id" 
-                            class="border-b hover:bg-gray-50">
+                        <tr v-for="booking in bookings" :key="booking.id" class="border-b hover:bg-gray-50">
                             <td class="px-4 py-2 text-sm text-gray-700">#{{ booking.booking_number }}</td>
                             <td class="px-4 py-2 text-sm text-gray-700">
                                 {{ booking.customer?.first_name }} {{ booking.customer?.last_name }}
@@ -74,6 +75,16 @@ const cancelBooking = async (bookingId) => {
                             <td class="px-4 py-2 text-sm text-gray-700">{{ formatDate(booking.return_date) }}</td>
                             <td class="px-4 py-2 text-sm">
                                 <span :class="{
+                                    'text-green-600 font-semibold': booking.payments[0]?.payment_status === 'succeeded',
+                                    'text-yellow-500 font-semibold': booking.payments[0]?.payment_status === 'pending',
+                                    'text-red-500 font-semibold': booking.payments[0]?.payment_status === 'failed',
+                                    'text-gray-500 font-semibold': !booking.payments.length
+                                }">
+                                    {{ booking.payments[0]?.payment_status || 'No Payment' }}
+                                </span>
+                            </td>
+                            <td class="px-4 py-2 text-sm">
+                                <span :class="{
                                     'text-green-600 font-semibold capitalize': booking.booking_status === 'completed',
                                     'text-green-600 font-semibold capitalize': booking.booking_status === 'confirmed',
                                     'text-yellow-500 font-semibold capitalize': booking.booking_status === 'pending',
@@ -83,11 +94,9 @@ const cancelBooking = async (bookingId) => {
                                 </span>
                             </td>
                             <td class="px-4 py-2 text-sm">
-                                <button 
-                                    v-if="booking.booking_status !== 'cancelled'"
+                                <button v-if="booking.booking_status !== 'cancelled'"
                                     class="text-red-600 font-semibold hover:underline"
-                                    @click="cancelBooking(booking.id)"
-                                >
+                                    @click="cancelBooking(booking.id)">
                                     Cancel
                                 </button>
                             </td>

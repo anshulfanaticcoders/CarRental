@@ -165,7 +165,7 @@ const customer = ref({
 });
 
 // Example driver age range
-const ageRange = [18, 19, 20, 21, 22, 23, 24, 25, 26];
+const ageRange = [21, 22, 23, 24, 25, 26];
 
 const isFormSaved = ref(false);
 

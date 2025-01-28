@@ -52,3 +52,4 @@ Route::get('/users', function () {
 });
 Route::get('/booking-success/details', [BookingController::class, 'getBookingDetails'])->name('booking-success.details');
 Route::get('/currencies', [CurrencyController::class, 'index']);
+// Route::get('/vendor/payments', [BookingController::class, 'getVendorPaymentHistory'])->name('vendor.payments');

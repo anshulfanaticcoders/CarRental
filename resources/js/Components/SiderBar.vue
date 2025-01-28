@@ -83,6 +83,7 @@ const vendorMenus = [
     key: "dashboard",
     icon: dashboardIcon,
     items: [
+      { name: "Profile", path: "/profile" },
       { name: "Overview", path: "/vendor-dashboard" },
       { name: "Reports", path: "/vendor-reports" },
     ],
@@ -99,7 +100,7 @@ const vendorMenus = [
 ];
 
 const vendorOtherLinks = [
-  { name: "Payment History", path: "/vendor-payments", icon: clockIcon },
+  { name: "Payment History", path: "/vendor/payments", icon: clockIcon },
   { name: "Bookings", path: "/vendor/bookings", icon: vehiclesIcon },
   { name: "Verification Status", path: "/vendor/bookings", icon: verificationIcon },
   { name: "Inbox", path: "/vendor-inbox", icon: inboxIcon },
