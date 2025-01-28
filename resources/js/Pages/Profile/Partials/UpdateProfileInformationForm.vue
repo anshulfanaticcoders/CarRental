@@ -6,7 +6,9 @@ import TextArea from '@/Components/TextArea.vue';
 import TextInput from '@/Components/TextInput.vue';
 import { useForm, usePage } from '@inertiajs/vue3';
 import { ref, watch } from 'vue';
+import { useToast } from 'vue-toastification'; // Add this import
 
+const toast = useToast(); // Initialize toast
 const user = usePage().props.auth.user;
 const profile = usePage().props.auth.user.profile;
 
@@ -52,7 +54,19 @@ function handleAvatarUpload(event) {
         form.avatar = file;
     }
 }
-
+const handleSubmit = () => {
+    form.post(route('profile.update'), {
+        onSuccess: () => {
+            toast.success('Profile updated successfully!', {
+                position: 'top-right',
+                timeout: 3000,
+                closeOnClick: true,
+                pauseOnHover: true,
+                draggable: true,
+            });
+        },
+    });
+};
 </script>
 
 <template>
@@ -61,7 +75,7 @@ function handleAvatarUpload(event) {
 
     </header>
     <section v-bind="$attrs">
-        <form @submit.prevent="form.post(route('profile.update'))" class="mt-6 space-y-6">
+        <form @submit.prevent="handleSubmit" class="mt-6 space-y-6">
             <div>
                 <!-- If avatarPreview is not set, show the default avatar or the uploaded avatar -->
                 <div v-if="!avatarPreview" class="mt-4">

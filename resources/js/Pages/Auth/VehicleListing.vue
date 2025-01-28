@@ -640,12 +640,8 @@ import { Head, Link, useForm } from "@inertiajs/vue3";
 import vendorBgimage from "../../../assets/vendorRegisterbgImage.png";
 import warningSign from "../../../assets/WhiteWarningCircle.svg";
 import circleImg from "../../../assets/circle.png";
-import SuvCarIcon from "../../../assets/SuvCarIcon.svg";
-import SedanCarIcon from "../../../assets/SedanCarIcon.svg";
-import LuxuryCarIcon from "../../../assets/LuxuryCarIcon.svg";
-import MiniCarIcon from "../../../assets/MiniCarCarIcon.svg";
 import uploadIcon from "../../../assets/uploadIcon.svg";
-import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from "vue";
+import { computed, onMounted, ref } from "vue";
 import PrimaryButton from "@/Components/PrimaryButton.vue";
 import axios from "axios";
 import InputLabel from "@/Components/InputLabel.vue";
@@ -653,7 +649,8 @@ import TextInput from "@/Components/TextInput.vue";
 import ApplicationLogo from "@/Components/ApplicationLogo.vue";
 import L from 'leaflet' // Import Leaflet
 
-
+import { useToast } from 'vue-toastification'; // Add this import
+const toast = useToast(); // Initialize toast
 // Form data
 const form = useForm({
     category_id: null,
@@ -706,11 +703,23 @@ const fetchCategories = async () => {
 // Submit form data
 const submit = () => {
     form.post(route("vehicles.store"), {
-        onFinish: () => {
-            console.log(form);
-            // form.reset();
+        onSuccess: () => {
+            toast.success('Vendor registration completed successfully! Wait for confimation', {
+                position: 'top-right',
+                timeout: 3000,
+                closeOnClick: true,
+                pauseOnHover: true,
+                draggable: true,
+            });
         },
         onError: (errors) => {
+            toast.error('Something went wrong. Please check your inputs.', {
+                position: 'top-right',
+                timeout: 3000,
+                closeOnClick: true,
+                pauseOnHover: true,
+                draggable: true,
+            });
             console.error(errors);
         },
     });

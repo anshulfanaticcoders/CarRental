@@ -4,9 +4,7 @@ import { Link } from "@inertiajs/vue3";
 import facebookLogo from "../../assets/Facebook.svg";
 import twitterLogo from "../../assets/Twitter.svg";
 import instagramLogo from "../../assets/Instagram.svg";
-import paypalLogo from "../../assets/paypal.svg";
-import visaLogo from "../../assets/visa.svg";
-import mastercardLogo from "../../assets/mastercard.svg";
+import paypalLogos from "../../assets/paymentIcons.svg";
 </script>
 
 <template>
@@ -118,17 +116,7 @@ import mastercardLogo from "../../assets/mastercard.svg";
             <span class="text-[1.25rem] font-[jakartaFont]">Copyright @ 2024 Vrooem, All rights reserved.</span>
         </div>
         <div class="column">
-            <ul class="flex gap-5">
-                <li>
-                    <Link href=""><img class="" :src = paypalLogo alt=""/></Link>
-                </li>
-                <li>
-                    <Link href=""><img class="" :src = visaLogo alt=""/></Link>
-                </li>
-                <li>
-                    <Link href=""><img class="" :src = mastercardLogo alt=""/></Link>
-                </li>
-            </ul>
+            <img :src=paypalLogos alt="">
         </div>
      </div>
     </div>

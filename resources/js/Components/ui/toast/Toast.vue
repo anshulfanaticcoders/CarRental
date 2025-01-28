@@ -1,40 +1,20 @@
-<script setup>
-import { cn } from '@/lib/utils';
-import { ToastRoot, useForwardPropsEmits } from 'radix-vue';
-import { computed } from 'vue';
-import { toastVariants } from '.';
+<script setup lang="ts">
+import { cn } from '@/lib/utils'
+import { ToastRoot, type ToastRootEmits, useForwardPropsEmits } from 'radix-vue'
+import { computed } from 'vue'
+import { type ToastProps, toastVariants } from '.'
 
-const props = defineProps({
-  class: { type: null, required: false },
-  variant: { type: null, required: false },
-  onOpenChange: { type: Function, required: false, skipCheck: true },
-  defaultOpen: { type: Boolean, required: false },
-  forceMount: { type: Boolean, required: false },
-  type: { type: String, required: false },
-  open: { type: Boolean, required: false },
-  duration: { type: Number, required: false },
-  asChild: { type: Boolean, required: false },
-  as: { type: null, required: false },
-});
+const props = defineProps<ToastProps>()
 
-const emits = defineEmits([
-  'escapeKeyDown',
-  'pause',
-  'resume',
-  'swipeStart',
-  'swipeMove',
-  'swipeCancel',
-  'swipeEnd',
-  'update:open',
-]);
+const emits = defineEmits<ToastRootEmits>()
 
 const delegatedProps = computed(() => {
-  const { class: _, ...delegated } = props;
+  const { class: _, ...delegated } = props
 
-  return delegated;
-});
+  return delegated
+})
 
-const forwarded = useForwardPropsEmits(delegatedProps, emits);
+const forwarded = useForwardPropsEmits(delegatedProps, emits)
 </script>
 
 <template>

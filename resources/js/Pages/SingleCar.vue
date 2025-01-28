@@ -224,28 +224,6 @@ onMounted(() => {
     loadSavedDates();
 });
 
-
-// getting user and user Profile data of current user
-
-const user = ref(null);
-
-const fetchUserProfile = async () => {
-    try {
-        // Make the request to fetch the current user's profile (no need to pass userId as it's dynamically fetched from auth)
-        const response = await axios.get("/user"); // This endpoint fetches the current authenticated user's data
-
-        if (response.data.status === "success") {
-            user.value = response.data.data; // Store the user profile data
-        } else {
-            console.error("Failed to fetch user:", response.data.message);
-        }
-    } catch (error) {
-        console.error("Error fetching user:", error);
-    }
-};
-
-onMounted(fetchUserProfile);
-
 // formatted joined date of vendor
 const formatDate = (dateString) => {
     const date = new Date(dateString);
@@ -458,8 +436,8 @@ const proceedToPayment = () => {
                             <span class="text-[2rem] font-medium">Meet Vehicle Vendor</span>
                             <div
                                 class="mt-[2rem] flex gap-5 border-[1px] border-customPrimaryColor rounded-[0.75em] px-[1rem] py-[2rem]">
-                                <img :src="user?.profile.avatar
-                                    ? `/storage/${user?.profile.avatar}`
+                                <img :src="vehicle?.user?.profile?.avatar 
+                                    ? `/storage/${vehicle?.user?.profile?.avatar }`
                                     : '/storage/avatars/default-avatar.svg'
                                     " alt="User Avatar" class="w-[100px] h-[100px] rounded-full object-cover" />
                                 <div>
@@ -591,7 +569,7 @@ const proceedToPayment = () => {
                                                 <img :src="infoIcon" alt="" /></span>
                                         </div>
                                     </div>
-                                    <div v-if="props.auth.user.role === 'customer'" class="column mt-[2rem]">
+                                    <div class="column mt-[2rem]">
                                         <button @click="proceedToPayment"
                                             class="button-primary block text-center p-5 w-full">
                                             Proceed to Pay
@@ -622,8 +600,8 @@ const proceedToPayment = () => {
             <div
                 class="mt-[2rem] flex items-center justify-center gap-5 border-[1px] border-customPrimaryColor rounded-[0.75em] px-[1rem] py-[2rem]">
                 <div class="flex flex-col items-center gap-5 w-[50%]">
-                    <img :src="user?.profile.avatar
-                        ? `/storage/${user?.profile.avatar}`
+                    <img :src="vehicle?.user?.profile?.avatar 
+                        ? `/storage/${vehicle?.user?.profile?.avatar }`
                         : '/storage/avatars/default-avatar.svg'
                         " alt="User Avatar" class="w-[100px] h-[100px] rounded-full object-cover" />
                     <h4 class="text-customPrimaryColor text-[1.75rem] font-medium">

@@ -54,8 +54,8 @@ Route::middleware(['auth'])->group(function () {
 
     Route::get('/vehicles', [VehicleController::class, 'index'])->name('vehicles.index');
 });
-
-
+Route::post('/vehicles', [VehicleController::class, 'store'])->name('vehicles.store');
+Route::get('/vehicles', [VehicleController::class, 'index'])->name('vehicles.index');
 // Open Routes for non-logged in users
 Route::get('/vehicles', [VehicleController::class, 'index'])->name('vehicles.index');
 Route::get('/vehicle/{id}', [VehicleController::class, 'show'])->name('vehicle.show');

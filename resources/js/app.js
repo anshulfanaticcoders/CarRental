@@ -1,5 +1,7 @@
 import './bootstrap';
 import '../css/app.css';
+import Toast from "vue-toastification";
+import "vue-toastification/dist/index.css";
 
 import { createApp, h } from 'vue';
 import { createInertiaApp } from '@inertiajs/vue3';
@@ -21,6 +23,7 @@ createInertiaApp({
             components: { ScrollToTop}
         })
             .use(plugin)
+            .use(Toast)
             .use(ZiggyVue)
             .mount(el);
     },

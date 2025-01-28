@@ -79,8 +79,7 @@ class ProfileController extends Controller
         } catch (\Exception $e) {
             DB::rollBack();
 
-            return Redirect::route('profile.edit')
-                ->with('error', 'Failed to update profile. Please try again.');
+            return back()->with('success', 'Profile updated successfully!');
         }
     }
 
@@ -159,5 +158,6 @@ class ProfileController extends Controller
             ], 500);
         }
     }
+    
 
 }

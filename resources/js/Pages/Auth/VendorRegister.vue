@@ -1,8 +1,8 @@
 <script setup>
 import { ref, defineProps, onMounted } from "vue";
 import { Head, useForm } from "@inertiajs/vue3";
-import { useToast } from "@/Components/ui/toast/use-toast";
-const { toast } = useToast();
+import { useToast } from 'vue-toastification'; // Add this import
+const toast = useToast(); // Initialize toast
 import TextInput from "@/Components/TextInput.vue";
 import InputLabel from "@/Components/InputLabel.vue";
 import PrimaryButton from "@/Components/PrimaryButton.vue";
@@ -78,15 +78,25 @@ const handleFileChange = (field, event) => {
 
 const submit = () => {
     form.post(route("vendor.store"), {
-        onFinish: () => {
-            toast({
-                title: "Huraahhhh!!!",
-                description: "You are registered as a vendor Successfully",
+        onSuccess: () => {
+            toast.success('Vendor registration completed successfully! Wait for confimation', {
+                position: 'top-right',
+                timeout: 3000,
+                closeOnClick: true,
+                pauseOnHover: true,
+                draggable: true,
             });
             localStorage.removeItem("vendorFileData");
             form.reset();
         },
         onError: (errors) => {
+            toast.error('Something went wrong. Please check your inputs.', {
+                position: 'top-right',
+                timeout: 3000,
+                closeOnClick: true,
+                pauseOnHover: true,
+                draggable: true,
+            });
             console.error(errors);
         },
     });

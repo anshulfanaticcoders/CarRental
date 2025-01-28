@@ -109,7 +109,10 @@ class VehicleController extends Controller
             ]);
         }
 
-        return redirect(RouteServiceProvider::HOME);
+        return redirect('/vendor/vehicles')->with([
+            'message' => 'Vehicle added successfully!',
+            'type' => 'success'
+        ]);
     }
 
     public function index()
