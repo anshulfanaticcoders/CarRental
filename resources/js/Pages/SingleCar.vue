@@ -30,23 +30,7 @@ import { usePage } from "@inertiajs/vue3";
 
 const { props } = usePage(); // Get the props passed from the controller
 const vehicle = ref(props.vehicle);
-const currencies = ref([]); // To store the currency data
 
-// Fetch currency data from the JSON file
-const fetchCurrencies = async () => {
-    try {
-        const response = await axios.get('/api/currencies'); // Adjust the path as necessary
-        currencies.value = response.data;
-    } catch (error) {
-        console.error('Error fetching currencies:', error);
-    }
-};
-
-// Get currency symbol based on vendor's profile currency
-const getCurrencySymbol = (currencyCode) => {
-    const currency = currencies.value.find(c => c.code === currencyCode);
-    return currency ? currency.symbol : ''; // Return symbol or empty string if not found
-};
 
 // Feature-Icon Mapping
 const featureIconMap = {
@@ -561,7 +545,7 @@ const proceedToPayment = () => {
                                         <span class="text-[1.25rem]">Total Price</span>
                                         <div>
                                             <span class="text-customPrimaryColor text-[1.875rem] font-medium">
-                                {{ getCurrencySymbol(vehicle.vendor_profile.currency) }}{{ vehicle?.price_per_day }}
+                                {{ vehicle.vendor_profile.currency }}{{ vehicle?.price_per_day }}
                             </span>
                                             
                                             <br />
