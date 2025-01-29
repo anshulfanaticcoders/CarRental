@@ -63,7 +63,7 @@ const plugin = Autoplay({
 
 <template>
     <div
-        class="testimonials bg-customPrimaryColor min-h-[90vh] flex flex-col gap-10 items-center py-customVerticalSpacing my-customVerticalSpacing"
+        class="testimonials bg-customPrimaryColor min-h-[90vh] flex flex-col gap-10 items-center py-customVerticalSpacing mt-[4rem]"
     >
         <div class="column text-center flex flex-col items-center text-customPrimaryColor-foreground w-[573px] py-[2rem]">
             <span class="text-[1.25rem]">-Testimonials-</span>

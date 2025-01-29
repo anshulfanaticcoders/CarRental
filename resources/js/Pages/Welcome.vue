@@ -12,6 +12,10 @@ import HowItWorks from "@/Components/ReusableComponents/HowItWorks.vue";
 import SearchBar from "@/Components/SearchBar.vue";
 import goIcon from "../../assets/goIcon.svg";
 import Autoplay from 'embla-carousel-autoplay';
+import calendarIcon from '../../assets/CalendarBlank.svg';
+import whiteGoIcon from '../../assets/whiteGoIcon.svg';
+import calendarWhiteIcon from '../../assets/CalendarWhite.svg';
+
 const plugin = Autoplay({
     delay: 2000,
     stopOnMouseEnter: true,
@@ -29,7 +33,17 @@ defineProps({
         type: Array,
         default: () => []
     },
+    blogs: Array
 });
+
+
+const formatDate = (date) => {
+    return new Date(date).toLocaleDateString('en-US', {
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric'
+    });
+};
 import {
     Carousel,
     CarouselContent,
@@ -166,7 +180,8 @@ onMounted(() => {
                         <CarouselItem v-for="place in popularPlaces" :key="place.id"
                             class="pl-1 md:basis-1/2 lg:basis-1/5">
                             <div class="p-1">
-                                <Link :href="`/s?where=${encodeURIComponent(place.place_name)}&latitude=${place.latitude}&longitude=${place.longitude}&radius=10000`">
+                                <Link
+                                    :href="`/s?where=${encodeURIComponent(place.place_name)}&latitude=${place.latitude}&longitude=${place.longitude}&radius=10000`">
                                 <Card class="h-[18rem] border-0 rounded-[0.75rem]">
                                     <CardContent class="flex flex-col gap-2 justify-center px-1 h-full">
                                         <img :src="`/storage/${place.image}`" alt=""
@@ -181,7 +196,7 @@ onMounted(() => {
                                         </div>
                                     </CardContent>
                                 </Card>
-                            </Link>
+                                </Link>
                             </div>
                         </CarouselItem>
                     </CarouselContent>
@@ -282,6 +297,61 @@ onMounted(() => {
         <!-- ---------------------------<End>---------------------------------------------------->
 
 
+        <!-- ------------------------Blogs Section-------------------------------- -->
+        <!------------------------------ <Start>  -------------------------------------------------->
+        <section class="blogs min-h-[80vh] flex flex-col gap-10 items-center py-customVerticalSpacing">
+            <div class="column text-center flex flex-col items-center w-[650px] py-8">
+                <span class="text-[1.25rem] text-customPrimaryColor">-Latest Articles-</span>
+                <h3 class="max-w-[883px] text-[3rem] font-bold text-customDarkBlackColor">
+                    Stay informed and inspired for your next journey
+                </h3>
+            </div>
+
+            <!-- Blog Section -->
+            <div class="flex gap-6 w-full full-w-container">
+                <!-- First Blog (Large Left) -->
+                <div v-if="blogs.length > 0" class="w-1/2 h-[574px] relative rounded-lg overflow-hidden shadow-md">
+                    <img :src="blogs[0].image" :alt="blogs[0].title" class="w-full h-full object-cover rounded-lg">
+
+                    <div class="absolute bottom-0 bg-gradient-to-t from-black/70 to-transparent p-4 text-white">
+                        <p class="text-[1.25rem] flex items-center gap-1">
+                            <img :src=calendarWhiteIcon alt=""> {{ formatDate(blogs[0].created_at) }}
+                        </p>
+                        <h4 class="font-semibold text-[2rem]">{{ blogs[0].title }}</h4>
+                        <Link :href="route('blogs.show', blogs[0].id)" class="inline-flex items-center mt-2 text-blue-400">
+                        <img :src=whiteGoIcon alt="">
+                        </Link>
+                    </div>
+                </div>
+
+                <!-- Other Blogs (Stacked Right, Dividing Height) -->
+                <div class="flex flex-col gap-6 w-1/2">
+                    <div v-for="(blog, index) in blogs.slice(1, 4)" :key="blog.id"
+                        class="relative rounded-lg h-[175px] flex justify-between gap-5 items-center">
+
+                        <img :src="blog.image" :alt="blog.title" class="w-[15rem] h-full object-cover rounded-lg">
+
+                        <div class="">
+                            <p class="text-sm flex items-center gap-1 text-customLightGrayColor">
+                                <img :src=calendarIcon alt=""> {{ formatDate(blog.created_at) }}
+                            </p>
+                            <h4 class="font-semibold text-[1.5rem] text-customDarkBlackColor">{{ blog.title }}</h4>
+                            <Link :href="route('blogs.show', blog.id)" class="inline-flex items-center mt-2 text-customPrimaryColor">
+                                Read Story 
+                                <img :src=goIcon alt="" class="w-[1.5rem] ml-[0.75rem]">
+                            </Link>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <button class="button-secondary w-[10rem] mt-6">More</button>
+        </section>
+
+
+        <!------------------------------ <Ends>  -------------------------------------------------->
+
+
         <!-- ------------------------FAQ Section-------------------------------- -->
         <!------------------------------ <Start>  -------------------------------------------------->
         <section class="my-customVerticalSpacing">
@@ -311,7 +381,8 @@ onMounted(() => {
 .category-carousel .next-btn {
     right: 15% !important;
 }
-.popular-places button{
-  display: none;
+
+.popular-places button {
+    display: none;
 }
 </style>

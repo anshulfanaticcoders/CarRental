@@ -4,15 +4,6 @@ import {
   CollapsibleContent,
   CollapsibleTrigger,
 } from '@/Components/ui/collapsible'
-// import {
-//   DropdownMenu,
-//   DropdownMenuContent,
-//   DropdownMenuGroup,
-//   DropdownMenuItem,
-//   DropdownMenuLabel,
-//   DropdownMenuSeparator,
-//   DropdownMenuTrigger,
-// } from '@/Components/ui/dropdown-menu'
 import {
   Sidebar,
   SidebarContent,
@@ -40,6 +31,7 @@ import {
   GalleryVerticalEnd,
   SquareKanban,
   Proportions,
+  Notebook,
 } from 'lucide-vue-next'
 import { onMounted, ref } from 'vue'
 
@@ -179,21 +171,21 @@ const data = {
         },
       ],
     },
-    // {
-    //   title: 'Settings',
-    //   url: '#',
-    //   icon: Settings,
-    //   items: [
-    //     {
-    //       title: 'General',
-    //       url: '#',
-    //     },
-    //     {
-    //       title: 'Security',
-    //       url: '#',
-    //     },
-    //   ],
-    // },
+    {
+      title: 'Blogs',
+      url: '#',
+      icon: Notebook,
+      items: [
+        {
+          title: 'All Blogs',
+          url: '/blogs',
+        },
+        {
+          title: 'Add Blogs',
+          url: '/blogs',
+        },
+      ],
+    },
     // {
     //   title: 'Support',
     //   url: '#',
@@ -216,6 +208,7 @@ const data = {
 
 import axios from "axios";
 import { Link } from '@inertiajs/vue3'
+
 
 const userCount = ref<number>(0); // Reactive variable for the user count
 const users = ref<Array<Record<string, any>>>([]);

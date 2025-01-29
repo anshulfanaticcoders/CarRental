@@ -185,12 +185,7 @@ const editForm = ref({});
 
 // Leaflet map variables
 let map = null;
-let marker = null;
 
-// Initialize map on component mount
-onMounted(() => {
-    initializeMap();
-});
 
 // Clean up map on unmount
 onUnmounted(() => {
@@ -199,23 +194,7 @@ onUnmounted(() => {
     }
 });
 
-// Initialize Leaflet map
-const initializeMap = () => {
-    if (map) {
-        map.remove();
-    }
-    
-    map = L.map("map").setView([20.5937, 78.9629], 5);
-    L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
-        attribution: "&copy; OpenStreetMap contributors",
-    }).addTo(map);
 
-    // Add click event to map
-    map.on('click', (e) => {
-        const { lat, lng } = e.latlng;
-        updateMarkerAndForm(lat, lng);
-    });
-};
 
 // Update marker and form with selected coordinates
 const updateMarkerAndForm = (lat, lng) => {

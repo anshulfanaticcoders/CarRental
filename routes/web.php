@@ -1,10 +1,12 @@
 <?php
 
+use App\Http\Controllers\Admin\BlogController;
 use App\Http\Controllers\Admin\PlansController;
 use App\Http\Controllers\Admin\PopularPlacesController;
 use App\Http\Controllers\Admin\UsersController;
 use App\Http\Controllers\Admin\VehicleAddonsController;
 use App\Http\Controllers\Auth\RegisteredUserController;
+
 use App\Http\Controllers\BookingController;
 use App\Http\Controllers\GeocodingController;
 use App\Http\Controllers\ProfileController;
@@ -61,6 +63,7 @@ Route::get('/vehicles', [VehicleController::class, 'index'])->name('vehicles.ind
 Route::get('/vehicle/{id}', [VehicleController::class, 'show'])->name('vehicle.show');
 Route::get('/s', [SearchController::class, 'search']);
 Route::get('/api/geocoding/autocomplete', [GeocodingController::class, 'autocomplete']);
+Route::get('/', [BlogController::class, 'show'])->name('welcome');
 
 
 // Stripe Routes
@@ -80,6 +83,7 @@ Route::middleware(['auth', 'role:admin'])->group(function () {
     Route::resource('booking-addons', VehicleAddonsController::class)->middleware(['auth']);
     Route::resource('popular-places', PopularPlacesController::class)->middleware(['auth']);
     Route::resource('plans', PlansController::class)->middleware(['auth']);
+    Route::resource('blogs', BlogController::class);
 });
 
 
