@@ -5,8 +5,24 @@
                 <span class="text-[1.5rem] font-semibold">All Bookings</span>
                 <div class="flex items-center gap-4">
                     <Input v-model="search" placeholder="Search bookings..." class="w-[300px]" @input="handleSearch" />
+                    <div class="flex gap-2">
+                        <Button class="" :variant="currentStatus === 'all' ? 'primary' : 'secondary'" @click="navigateTo('all')">All</Button>
+                        <Button class="bg-[#FFC633]" :variant="currentStatus === 'pending' ? 'primary' : 'secondary'" @click="navigateTo('pending')">Pending</Button>
+                        <Button class="bg-[#0099001A]" :variant="currentStatus === 'confirmed' ? 'primary' : 'secondary'" @click="navigateTo('confirmed')">Confirmed</Button>
+                        <Button class="bg-[#009900]" :variant="currentStatus === 'completed' ? 'primary' : 'secondary'" @click="navigateTo('completed')">Completed</Button>
+                        <Button class="bg-[#EA3C3C]" :variant="currentStatus === 'cancelled' ? 'primary' : 'secondary'" @click="navigateTo('cancelled')">Cancelled</Button>
+
+                    </div>
                 </div>
             </div>
+
+            <Dialog v-model:open="isEditDialogOpen">
+                <EditUser :user="editForm" @close="isEditDialogOpen = false" />
+            </Dialog>
+
+            <Dialog v-model:open="isViewDialogOpen">
+                <ViewUser :user="viewForm" @close="isViewDialogOpen = false" />
+            </Dialog>
 
             <div v-if="users.data.length > 0" class="rounded-md border p-5 mt-[1rem] bg-[#153B4F0D]">
                 <Table>
@@ -63,7 +79,7 @@
                         </TableRow>
                     </TableBody>
                 </Table>
-                 <div class="mt-4 flex justify-end">
+                <div class="mt-4 flex justify-end">
                     <Pagination :current-page="users.current_page" :total-pages="users.last_page"
                         @page-change="handlePageChange" />
                 </div>
@@ -88,7 +104,7 @@ import TableCell from "@/Components/ui/table/TableCell.vue";
 import Button from "@/Components/ui/button/Button.vue";
 import Badge from "@/Components/ui/badge/Badge.vue";
 import { Input } from "@/Components/ui/input";
-import { Dialog} from "@/Components/ui/dialog";
+import { Dialog } from "@/Components/ui/dialog";
 import AdminDashboardLayout from "@/Layouts/AdminDashboardLayout.vue";
 import ViewUser from "@/Pages/AdminDashboardPages/Bookings/ViewUser.vue";
 import Pagination from "@/Pages/AdminDashboardPages/Bookings/Pagination.vue";
@@ -97,13 +113,16 @@ import Pagination from "@/Pages/AdminDashboardPages/Bookings/Pagination.vue";
 const props = defineProps({
     users: Object,
     filters: Object,
+    currentStatus: String,
 });
 
-const search = ref(props.filters.search || ''); // Initialize search with the filter value
+const search = ref(props.filters.search || '');
+const currentStatus = ref(props.currentStatus || 'all');
 const isViewDialogOpen = ref(false);
 const viewForm = ref({});
+const isEditDialogOpen = ref(false);
+const editForm = ref({});
 
-// Handle search input
 const handleSearch = () => {
     router.get('/customer-bookings', { search: search.value }, {
         preserveState: true,
@@ -112,7 +131,6 @@ const handleSearch = () => {
 };
 
 const openViewDialog = (user) => {
-
     viewForm.value = { ...user };
     isViewDialogOpen.value = true;
 };
@@ -122,8 +140,20 @@ const deleteUser = (id) => {
 };
 
 const handlePageChange = (page) => {
-    router.get(`/customer-bookings?page=${page}`);
+    router.get(route(currentStatus === 'all' ? 'customer-bookings.index' : `customer-bookings.${currentStatus}`), { page: page, search: search.value }, {
+        preserveState: true,
+        replace: true,
+    });
 };
+
+const navigateTo = (status) => {
+    currentStatus.value = status;
+    router.get(route(status === 'all' ? 'customer-bookings.index' : `customer-bookings.${status}`), { search: search.value }, {
+        preserveState: true,
+        replace: true,
+    });
+};
+
 const getStatusBadgeVariant = (status) => {
     switch (status) {
         case 'available':
@@ -136,6 +166,7 @@ const getStatusBadgeVariant = (status) => {
             return 'default';
     }
 };
+
 const getStatusBadgeBooking = (status) => {
     switch (status) {
         case 'completed':
@@ -149,17 +180,3 @@ const getStatusBadgeBooking = (status) => {
     }
 };
 </script>
-<style>
-.search-box {
-    width: 300px;
-    padding: 0.5rem;
-    border: 1px solid #e9ecef;
-    border-radius: 4px;
-    outline: none;
-}
-
-.search-box:focus {
-    border-color: #3b82f6;
-    box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2);
-}
-</style>
