@@ -92,11 +92,12 @@ Route::middleware(['auth', 'role:admin'])->group(function () {
     // Route::inertia('vendors', 'AdminDashboardPages/Vendors/Index');
     Route::resource('customer-bookings', BookingDashboardController::class)->except(['create', 'edit', 'show']);
     Route::get('/customer-bookings/pending', [BookingDashboardController::class, 'pending'])->name('customer-bookings.pending');
-Route::get('/customer-bookings/confirmed', [BookingDashboardController::class, 'confirmed'])->name('customer-bookings.confirmed');
-Route::get('/customer-bookings/completed', [BookingDashboardController::class, 'completed'])->name('customer-bookings.completed');
-Route::get('/customer-bookings/cancelled', [BookingDashboardController::class, 'cancelled'])->name('customer-bookings.cancelled');
+    Route::get('/customer-bookings/confirmed', [BookingDashboardController::class, 'confirmed'])->name('customer-bookings.confirmed');
+    Route::get('/customer-bookings/completed', [BookingDashboardController::class, 'completed'])->name('customer-bookings.completed');
+    Route::get('/customer-bookings/cancelled', [BookingDashboardController::class, 'cancelled'])->name('customer-bookings.cancelled');
     Route::resource('booking-addons', VehicleAddonsController::class)->middleware(['auth']);
-    Route::resource('popular-places', PopularPlacesController::class)->except(['show']);;
+    Route::resource('popular-places', PopularPlacesController::class)->except(['show']);
+    ;
     Route::resource('plans', PlansController::class);
     Route::resource('blogs', BlogController::class);
 });
@@ -145,7 +146,7 @@ Route::middleware(['auth', 'role:customer'])->group(function () {
     // apply for vendor
     Route::post('/vendor/store', [VendorController::class, 'store'])->name('vendor.store');
     Route::get('/vendor/register', [VendorController::class, 'create'])->name('vendor.register');
-  
+
     // Booking Routes
     Route::get('/booking/{id}', [VehicleController::class, 'booking'])->name('booking.show');
     // Route::get('/booking-success', [BookingController::class, 'success'])->name('booking.success');
@@ -163,13 +164,13 @@ Route::middleware(['auth', 'role:customer'])->group(function () {
     })->name('booking-success.details');
 
     Route::get('/profile/bookings/pending', [BookingController::class, 'getPendingBookings'])
-    ->name('profile.bookings.pending');
+        ->name('profile.bookings.pending');
 
-Route::get('/profile/bookings/confirmed', [BookingController::class, 'getConfirmedBookings'])
-    ->name('profile.bookings.confirmed');
+    Route::get('/profile/bookings/confirmed', [BookingController::class, 'getConfirmedBookings'])
+        ->name('profile.bookings.confirmed');
 
     Route::get('/profile/bookings/completed', [BookingController::class, 'getCompletedBookings'])
-    ->name('profile.bookings.completed');
+        ->name('profile.bookings.completed');
 });
 
 Route::middleware(['auth', 'vendor.status'])->group(function () {

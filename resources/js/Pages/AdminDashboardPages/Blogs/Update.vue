@@ -34,7 +34,7 @@
                 </label>
                 <div v-if="blog.image" class="mb-2">
                     <img 
-                        :src="blog.image" 
+                        :src="`/${blog.image}`" 
                         alt="Current image"
                         class="w-32 h-32 object-cover rounded"
                     >
@@ -50,17 +50,17 @@
             <div class="flex justify-end space-x-2">
                 <Link 
                     :href="route('blogs.index')"
-                    class="px-4 py-2 bg-gray-500 text-white rounded hover:bg-gray-600"
+                    class="px-4 py-2 bg-[#EA3C3C] text-white rounded"
                 >
                     Cancel
                 </Link>
-                <button 
+                <Button 
                     type="submit"
-                    class="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
+                    class="px-4 py-5 bg-customPrimaryColor"
                     :disabled="form.processing"
                 >
                     Update Blog
-                </button>
+                </Button>
             </div>
         </form>
     </div>
@@ -68,6 +68,7 @@
 </template>
 
 <script setup>
+import { Button } from '@/Components/ui/button';
 import AdminDashboardLayout from '@/Layouts/AdminDashboardLayout.vue';
 import { Link, useForm } from '@inertiajs/vue3';
 

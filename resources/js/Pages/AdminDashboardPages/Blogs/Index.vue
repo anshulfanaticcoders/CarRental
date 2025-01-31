@@ -44,7 +44,7 @@
             </div>
 
             <!-- Blogs Table -->
-            <div class="rounded-md border p-5 h-[80vh] mt-[1rem] bg-[#153B4F0D]">
+            <div class="rounded-md border p-5 mt-[1rem] bg-[#153B4F0D]">
                 <Table>
                     <TableHeader>
                         <TableRow>
@@ -79,7 +79,7 @@
 
 <script setup>
 import { ref } from 'vue';
-import { router } from '@inertiajs/vue3';
+import { router, useForm } from '@inertiajs/vue3';
 
 // Import UI components
 import Table from "@/Components/ui/table/Table.vue";
