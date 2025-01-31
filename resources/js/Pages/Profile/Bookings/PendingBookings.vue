@@ -10,32 +10,6 @@
                 </div>
             </div>
 
-            <!-- <div v-else class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        <div v-for="booking in bookings" :key="booking.id" class="bg-white shadow-md rounded-lg p-6">
-          <div class="mb-4">
-            <img 
-            v-if="booking.vehicle?.images" 
-            :src="`/storage/${booking.vehicle.images.find(
-              (image) => image.image_type === 'primary'
-            )?.image_path}`" 
-            alt="Primary Vehicle Image" 
-            class="w-full h-full object-cover rounded-md"
-          />
-          </div>
-          <div>
-            <h2 class="text-xl font-semibold mb-2">{{ booking.vehicle.brand }}</h2>
-            <p><strong>Booking Number:</strong> {{ booking.booking_number }}</p>
-            <p><strong>Pickup Date:</strong> {{ formatDate(booking.pickup_date) }}</p>
-            <p><strong>Pickup Date:</strong> {{ booking.pickup_time }}</p>
-            <p><strong>Return Date:</strong> {{ formatDate(booking.return_date) }}</p>
-            <p><strong>Return Date:</strong> {{ booking.return_time }}</p>
-            <p><strong>Total Amount:</strong> ${{ booking.total_amount }}</p>
-            <span class="inline-block bg-yellow-100 text-yellow-800 px-2 py-1 rounded mt-2">
-                {{ booking.booking_status }}
-            </span>
-          </div>
-        </div>
-      </div> -->
             <div v-else class="">
                 <div v-for="booking in bookings" :key="booking.id"
                     class="bg-white shadow-md rounded-lg p-6 gap-10 flex justify-between">
@@ -47,7 +21,7 @@
                     <div class="w-[67%] flex flex-col gap-5">
                         <div class="flex justify-between items-center">
                             <div class="flex justify-between items-center gap-10"><span
-                                    class="text-[2rem] font-medium text-customPrimaryColor">{{ booking.vehicle.model
+                                    class="text-[2rem] font-medium text-customPrimaryColor">{{ booking.vehicle.brand
                                     }}</span> <span
                                     class="bg-customLightPrimaryColor p-3 rounded-[99px] text-[1rem]">{{ booking.vehicle?.category.name
                                     }}</span></div>
@@ -101,9 +75,9 @@
 
 <script setup>
 import MyProfileLayout from '@/Layouts/MyProfileLayout.vue';
-import bookingstatusIcon from '../../../assets/bookingstatusIcon.svg';
-import carIcon from '../../../assets/carIcon.svg';
-import walkIcon from '../../../assets/walking.svg';
+import bookingstatusIcon from '../../../../assets/bookingstatusIcon.svg';
+import carIcon from '../../../../assets/carIcon.svg';
+import walkIcon from '../../../../assets/walking.svg';
 import { defineProps } from 'vue'
 
 // Define props to receive bookings from server-side

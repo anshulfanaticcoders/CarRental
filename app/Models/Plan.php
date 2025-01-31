@@ -19,4 +19,5 @@ class Plan extends Model
         'plan_value' => 'decimal:2',
         'features' => 'array'
     ];
+    
 }

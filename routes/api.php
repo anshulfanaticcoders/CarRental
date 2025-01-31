@@ -5,6 +5,7 @@ use App\Http\Controllers\BookingController;
 use App\Http\Controllers\BookingExtraController;
 use App\Http\Controllers\CurrencyController;
 use App\Http\Controllers\PlanController;
+use App\Http\Controllers\ReviewController;
 use App\Http\Controllers\UserDocumentController;
 use App\Http\Controllers\VehicleController;
 use App\Http\Controllers\VehicleCategoryController;
@@ -53,3 +54,6 @@ Route::get('/users', function () {
 Route::get('/booking-success/details', [BookingController::class, 'getBookingDetails'])->name('booking-success.details');
 Route::get('/currencies', [CurrencyController::class, 'index']);
 // Route::get('/vendor/payments', [BookingController::class, 'getVendorPaymentHistory'])->name('vendor.payments');
+// In your api.php routes file
+Route::get('/vehicles/{vehicle}/reviews', [ReviewController::class, 'getApprovedReviews']);
+Route::get('/booking-success/details', [BookingController::class, 'getBookingDetails'])->name('booking-success.details');

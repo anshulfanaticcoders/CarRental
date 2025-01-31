@@ -1,0 +1,121 @@
+<template>
+    <MyProfileLayout>
+        <div class="p-6">
+            <h1 class="text-xl font-semibold mb-4">Booking Details</h1>
+
+            <div v-if="bookings.length" class="bg-white rounded-lg shadow overflow-x-auto">
+                <table class="min-w-full divide-y divide-gray-200">
+                    <thead class="bg-gray-50">
+                        <tr>
+                            <th class="px-4 py-2 text-left text-sm font-bold">Booking ID</th>
+                            <th class="px-4 py-2 text-left text-sm font-bold">Customer Name</th>
+                            <th class="px-4 py-2 text-left text-sm font-bold">Vehicle</th>
+                            <th class="px-4 py-2 text-left text-sm font-bold">Booking Date</th>
+                            <th class="px-4 py-2 text-left text-sm font-bold">Return Date</th>
+                            <th class="px-4 py-2 text-left text-sm font-bold">Payment Status</th>
+                            <th class="px-4 py-2 text-left text-sm font-bold">Booking Status</th>
+                            <th class="px-4 py-2 text-left text-sm font-bold">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr v-for="booking in bookings" :key="booking.id" class="border-b hover:bg-gray-50">
+                            <td class="px-4 py-2 text-sm text-gray-700">#{{ booking.booking_number }}</td>
+                            <td class="px-4 py-2 text-sm text-gray-700">
+                                {{ booking.customer?.first_name }} {{ booking.customer?.last_name }}
+                            </td>
+                            <td class="px-4 py-2 text-sm text-gray-700">
+                                {{ booking.vehicle?.brand }} {{ booking.vehicle?.model }}
+                            </td>
+                            <td class="px-4 py-2 text-sm text-gray-700">{{ formatDate(booking.pickup_date) }}</td>
+                            <td class="px-4 py-2 text-sm text-gray-700">{{ formatDate(booking.return_date) }}</td>
+                            <td class="px-4 py-2 text-sm">
+                                <span :class="{
+                                    'text-green-600 font-semibold': booking.payments[0]?.payment_status === 'succeeded',
+                                    'text-yellow-500 font-semibold': booking.payments[0]?.payment_status === 'pending',
+                                    'text-red-500 font-semibold': booking.payments[0]?.payment_status === 'failed',
+                                    'text-gray-500 font-semibold': !booking.payments.length
+                                }">
+                                    {{ booking.payments[0]?.payment_status || 'No Payment' }}
+                                </span>
+                            </td>
+                            <td class="px-4 py-2 text-sm">
+                                <select 
+                                    v-model="booking.booking_status"
+                                    @change="updateStatus(booking)"
+                                    class="w-full p-2 border rounded"
+                                    :class="{
+                                        'text-green-600 font-medium': booking.booking_status === 'completed' || booking.booking_status === 'confirmed',
+                                        'text-yellow-500 font-medium': booking.booking_status === 'pending',
+                                        'text-red-500 font-medium': booking.booking_status === 'cancelled'
+                                    }"
+                                >
+                                    <option value="pending" class="text-yellow-500 font-medium">Pending</option>
+                                    <option value="confirmed" class="text-green-600 font-medium">Confirmed</option>
+                                    <option value="completed" class="text-green-600 font-medium">Completed</option>
+                                    <option value="cancelled" class="text-red-500 font-medium">Cancelled</option>
+                                </select>
+                            </td>
+                            <td class="px-4 py-2 text-sm">
+                                <button v-if="booking.booking_status !== 'cancelled'"
+                                    class="text-red-600 font-semibold hover:underline"
+                                    @click="cancelBooking(booking.id)">
+                                    Cancel
+                                </button>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+            <div v-else class="text-center py-6">
+                <span class="text-gray-500">No bookings found.</span>
+            </div>
+        </div>
+    </MyProfileLayout>
+</template>
+
+<script setup>
+import MyProfileLayout from '@/Layouts/MyProfileLayout.vue';
+import { ref } from 'vue';
+import { Link, router } from '@inertiajs/vue3';
+import axios from 'axios';
+
+const props = defineProps({
+    bookings: {
+        type: Array,
+        required: true
+    }
+});
+
+const formatDate = (dateStr) => {
+    const date = new Date(dateStr);
+    return `${String(date.getMonth() + 1).padStart(2, '0')}/${String(date.getDate()).padStart(2, '0')}/${date.getFullYear()}`;
+};
+
+const updateStatus = async (booking) => {
+    try {
+        const response = await axios.put(`/bookings/${booking.id}`, {
+            booking_status: booking.booking_status
+        });
+        
+        // Optionally refresh the page or show a success message
+        router.reload();
+    } catch (error) {
+        console.error("Error updating status:", error);
+        alert("Failed to update booking status. Please try again.");
+        // Reset the status back in case of error
+        router.reload();
+    }
+};
+
+const cancelBooking = async (bookingId) => {
+    if (confirm('Are you sure you want to cancel this booking?')) {
+        try {
+            await axios.post(`/api/bookings/${bookingId}/cancel`);
+            router.reload();
+        } catch (err) {
+            console.error("Error canceling booking:", err);
+            alert("Failed to cancel booking. Please try again.");
+        }
+    }
+};
+</script>

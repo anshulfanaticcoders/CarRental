@@ -2,123 +2,31 @@
     <AdminDashboardLayout>
         <div class="flex flex-col gap-4 w-[95%] ml-[1.5rem]">
             <div class="flex items-center justify-between mt-[2rem]">
-                <h4 class="font-semibold">Vehicle Plans Management</h4>
-                <Dialog>
+                <span class="text-[1.5rem] font-semibold">All Plans</span>
+                <div class="flex items-center gap-4">
+                    <Input v-model="search" placeholder="Search plan..." class="w-[300px]" @input="handleSearch" />
+                </div>
+                <Dialog v-model:open="isCreateDialogOpen">
                     <DialogTrigger as-child>
                         <Button>Create New Plan</Button>
                     </DialogTrigger>
-                    <DialogContent>
-                        <DialogHeader>
-                            <DialogTitle>Create New Vehicle Plan</DialogTitle>
-                        </DialogHeader>
-                        <form @submit.prevent="submitForm" class="space-y-4">
-                            <div>
-                                <InputLabel for="plan_type" value="Plan Type *" />
-                                <Input v-model="form.plan_type" required />
-                            </div>
-                            <div>
-                                <InputLabel for="plan_value" value="Plan Value *" />
-                                <Input 
-                                    v-model="form.plan_value" 
-                                    type="number" 
-                                    step="0.01" 
-                                    required 
-                                />
-                            </div>
-                            <div>
-                                <InputLabel value="Plan Features" />
-                                <div 
-                                    v-for="(feature, index) in form.features" 
-                                    :key="index" 
-                                    class="flex items-center gap-2 mb-2"
-                                >
-                                    <Input 
-                                        v-model="form.features[index]" 
-                                        placeholder="Enter feature"
-                                    />
-                                    <Button 
-                                        type="button" 
-                                        variant="destructive" 
-                                        size="sm"
-                                        @click="removeFeature(index)"
-                                    >
-                                        Remove
-                                    </Button>
-                                </div>
-                                <Button 
-                                    type="button" 
-                                    variant="outline" 
-                                    @click="addFeature"
-                                >
-                                    Add Feature
-                                </Button>
-                            </div>
-                            <DialogFooter>
-                                <Button type="submit">Create Plan</Button>
-                            </DialogFooter>
-                        </form>
-                    </DialogContent>
+                    <CreateUser @close="isCreateDialogOpen = false" />
                 </Dialog>
             </div>
 
             <Dialog v-model:open="isEditDialogOpen">
-                <DialogContent>
-                    <DialogHeader>
-                        <DialogTitle>Edit Vehicle Plan</DialogTitle>
-                    </DialogHeader>
-                    <form @submit.prevent="updatePlan" class="space-y-4">
-                        <div>
-                            <InputLabel for="plan_type" value="Plan Type *" />
-                            <Input v-model="editForm.plan_type" required />
-                        </div>
-                        <div>
-                            <InputLabel for="plan_value" value="Plan Value *" />
-                            <Input 
-                                v-model="editForm.plan_value" 
-                                type="number" 
-                                step="0.01" 
-                                required 
-                            />
-                        </div>
-                        <div>
-                            <InputLabel value="Plan Features" />
-                            <div 
-                                v-for="(feature, index) in editForm.features" 
-                                :key="index" 
-                                class="flex items-center gap-2 mb-2"
-                            >
-                                <Input 
-                                    v-model="editForm.features[index]" 
-                                    placeholder="Enter feature"
-                                />
-                                <Button 
-                                    type="button" 
-                                    variant="destructive" 
-                                    size="sm"
-                                    @click="removeEditFeature(index)"
-                                >
-                                    Remove
-                                </Button>
-                            </div>
-                            <Button 
-                                type="button" 
-                                variant="outline" 
-                                @click="addEditFeature"
-                            >
-                                Add Feature
-                            </Button>
-                        </div>
-                        <DialogFooter>
-                            <Button type="submit">Update Plan</Button>
-                        </DialogFooter>
-                    </form>
-                </DialogContent>
+                <EditUser :user="editForm" @close="isEditDialogOpen = false" />
             </Dialog>
 
-            <div class="rounded-md border">
+            <Dialog v-model:open="isViewDialogOpen">
+                <ViewUser :user="viewForm" @close="isViewDialogOpen = false" />
+            </Dialog>
+
+            <div class="rounded-md border p-5  mt-[1rem] bg-[#153B4F0D]">
                 <Table>
                     <TableHeader>
                         <TableRow>
+                            <TableHead>ID</TableHead>
                             <TableHead>Plan Type</TableHead>
                             <TableHead>Plan Value</TableHead>
                             <TableHead>Features</TableHead>
@@ -126,13 +34,14 @@
                         </TableRow>
                     </TableHeader>
                     <TableBody>
-                        <TableRow v-for="plan in plans.data" :key="plan.id">
-                            <TableCell>{{ plan.plan_type }}</TableCell>
-                            <TableCell>${{ Number(plan.plan_value).toFixed(2) }}</TableCell>
+                        <TableRow v-for="(user, index) in users.data" :key="user.id">
+                            <TableCell>{{ (users.current_page - 1) * users.per_page + index + 1 }}</TableCell>
+                            <TableCell>{{ user.plan_type }}</TableCell>
+                            <TableCell>${{ Number(user.plan_value).toFixed(2) }}</TableCell>
                             <TableCell>
-                                <div v-if="plan.features && plan.features.length">
+                                <div v-if="user.features && user.features.length">
                                     <ul class="list-disc list-inside">
-                                        <li v-for="(feature, index) in plan.features" :key="index">
+                                        <li v-for="(feature, index) in user.features" :key="index">
                                             {{ feature }}
                                         </li>
                                     </ul>
@@ -141,24 +50,31 @@
                             </TableCell>
                             <TableCell class="text-right">
                                 <div class="flex justify-end gap-2">
-                                    <Button size="sm" variant="outline" @click="openEditDialog(plan)">
+                                    <Button size="sm" variant="outline" @click="openViewDialog(user)">
+                                        View
+                                    </Button>
+                                    <Button size="sm" variant="outline" @click="openEditDialog(user)">
                                         Edit
+                                        <img :src=editIcon alt="">
                                     </Button>
-                                    <Button size="sm" variant="destructive" @click="deletePlan(plan.id)">
-                                        Delete
-                                    </Button>
+                                    <Button size="sm" variant="destructive" @click="deleteUser(user.id)">Delete</Button>
                                 </div>
                             </TableCell>
                         </TableRow>
                     </TableBody>
                 </Table>
+                <!-- Pagination -->
+                <div class="mt-4 flex justify-end">
+                    <Pagination :current-page="users.current_page" :total-pages="users.last_page"
+                        @page-change="handlePageChange" />
+                </div>
             </div>
         </div>
     </AdminDashboardLayout>
 </template>
 
 <script setup>
-import { ref, computed } from "vue";
+import { ref } from "vue";
 import { router } from "@inertiajs/vue3";
 import Table from "@/Components/ui/table/Table.vue";
 import TableHeader from "@/Components/ui/table/TableHeader.vue";
@@ -167,76 +83,65 @@ import TableHead from "@/Components/ui/table/TableHead.vue";
 import TableBody from "@/Components/ui/table/TableBody.vue";
 import TableCell from "@/Components/ui/table/TableCell.vue";
 import Button from "@/Components/ui/button/Button.vue";
-import {
-    Dialog,
-    DialogContent,
-    DialogHeader,
-    DialogTitle,
-    DialogFooter,
-    DialogTrigger,
-} from "@/Components/ui/dialog";
-import Input from "@/Components/ui/input/Input.vue";
-import InputLabel from "@/Components/InputLabel.vue";
+import { Input } from "@/Components/ui/input";
+import editIcon from "../../../../assets/Pencil.svg";
+import { Dialog, DialogTrigger } from "@/Components/ui/dialog";
 import AdminDashboardLayout from "@/Layouts/AdminDashboardLayout.vue";
+import CreateUser from "@/Pages/AdminDashboardPages/Plans/CreateUser.vue";
+import EditUser from "@/Pages/AdminDashboardPages/Plans/EditUser.vue";
+import ViewUser from "@/Pages/AdminDashboardPages/Plans/ViewUser.vue";
+import Pagination from "@/Pages/AdminDashboardPages/Plans/Pagination.vue";
+
 
 const props = defineProps({
-    plans: Object, // Accept paginated plans object
+    users: Object,
+    filters: Object,
 });
-
-const form = ref({
-    plan_type: '',
-    plan_value: null,
-    features: []
-});
-
+const search = ref(props.filters.search || ''); // Initialize search with the filter value
+const isCreateDialogOpen = ref(false);
 const isEditDialogOpen = ref(false);
+const isViewDialogOpen = ref(false);
 const editForm = ref({});
+const viewForm = ref({});
 
-const addFeature = () => {
-    form.value.features.push('');
-};
-
-const removeFeature = (index) => {
-    form.value.features.splice(index, 1);
-};
-
-const addEditFeature = () => {
-    editForm.value.features.push('');
-};
-
-const removeEditFeature = (index) => {
-    editForm.value.features.splice(index, 1);
-};
-
-const submitForm = () => {
-    router.post("/plans", form.value, {
-        onSuccess: () => {
-            form.value = {
-                plan_type: '',
-                plan_value: null,
-                features: []
-            };
-        },
+// Handle search input
+const handleSearch = () => {
+    router.get('/plans', { search: search.value }, {
+        preserveState: true,
+        replace: true,
     });
 };
 
-const openEditDialog = (plan) => {
-    editForm.value = { 
-        ...plan,
-        features: plan.features || []
-    };
+const openEditDialog = (user) => {
+    editForm.value = { ...user };
     isEditDialogOpen.value = true;
 };
 
-const updatePlan = () => {
-    router.put(`/plans/${editForm.value.id}`, editForm.value, {
-        onSuccess: () => {
-            isEditDialogOpen.value = false;
-        },
-    });
+const openViewDialog = (user) => {
+    viewForm.value = { ...user };
+    isViewDialogOpen.value = true;
 };
 
-const deletePlan = (id) => {
+const deleteUser = (id) => {
     router.delete(`/plans/${id}`);
 };
+
+const handlePageChange = (page) => {
+    router.get(`/plans?page=${page}`);
+};
+
 </script>
+<style>
+.search-box {
+    width: 300px;
+    padding: 0.5rem;
+    border: 1px solid #e9ecef;
+    border-radius: 4px;
+    outline: none;
+}
+
+.search-box:focus {
+    border-color: #3b82f6;
+    box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2);
+}
+</style>

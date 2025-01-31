@@ -109,7 +109,7 @@ class VehicleController extends Controller
             ]);
         }
 
-        return redirect('/vendor/vehicles')->with([
+        return redirect('/vehicles')->with([
             'message' => 'Vehicle added successfully!',
             'type' => 'success'
         ]);
@@ -131,19 +131,29 @@ class VehicleController extends Controller
 
     //This is for getting particular vehicle information to the single car page 
     public function show($id)
-    {
-        $vehicle = Vehicle::with(['specifications', 'images', 'category', 'user','vendorProfile','vendorProfileData'])
-            ->findOrFail($id);
-        return Inertia::render('SingleCar', [
-            'vehicle' => $vehicle,
-        ]);
-        // return response()->json($vehicle);
-    }
-    public function showAllVendorVehicles()
-    {
-        $vehicles = Vehicle::with(['specifications', 'images', 'category', 'user'])->get();
-        return response()->json($vehicles);
-    }
+{
+    $vehicle = Vehicle::with([
+        'specifications', 
+        'images', 
+        'category', 
+        'user',
+        'vendorProfile',
+        'vendorProfileData',
+        'bookings' => function ($query) {
+            $query->select('vehicle_id', 'pickup_date', 'return_date');
+        }
+    ])->findOrFail($id);
+
+    return Inertia::render('SingleCar', [
+        'vehicle' => $vehicle,
+        'booked_dates' => $vehicle->bookings->map(function ($booking) {
+            return [
+                'pickup_date' => $booking->pickup_date->format('Y-m-d'),
+                'return_date' => $booking->return_date->format('Y-m-d'),
+            ];
+        })
+    ]);
+}
 
     //This is for getting particular vehicle information to the booking page 
     public function booking($id)
@@ -155,18 +165,18 @@ class VehicleController extends Controller
         ]);
     }
 
-    public function vendorVehicle()
-{
-    // Get the currently authenticated vendor's ID
-    $vendorId = auth()->id();
+//     public function vendorVehicle()
+// {
+//     // Get the currently authenticated vendor's ID
+//     $vendorId = auth()->id();
     
-    // Get all vehicles belonging to this vendor
-    $vehicles = Vehicle::with(['specifications', 'images', 'category', 'user'])
-        ->where('vendor_id', $vendorId)
-        ->get();
+//     // Get all vehicles belonging to this vendor
+//     $vehicles = Vehicle::with(['specifications', 'images', 'category', 'user'])
+//         ->where('vendor_id', $vendorId)
+//         ->get();
 
-    return Inertia::render('Vendor/VendorVehicles', [
-        'vehicles' => $vehicles,
-    ]);
-}
+//     return Inertia::render('Vendor/VendorVehicles', [
+//         'vehicles' => $vehicles,
+//     ]);
+// }
 }

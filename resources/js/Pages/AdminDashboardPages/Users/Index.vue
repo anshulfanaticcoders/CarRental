@@ -2,150 +2,50 @@
     <AdminDashboardLayout>
         <div class="flex flex-col gap-4 w-[95%] ml-[1.5rem]">
             <div class="flex items-center justify-between mt-[2rem]">
-                <span class="text-[1.5rem] font-semibold">Users Management</span>
-                <Dialog>
+                <span class="text-[1.5rem] font-semibold">All Users</span>
+                <div class="flex items-center gap-4">
+                    <Input
+                        v-model="search"
+                        placeholder="Search users..."
+                        class="w-[300px]"
+                        @input="handleSearch"
+                    />
+                </div>
+                <Dialog v-model:open="isCreateDialogOpen">
                     <DialogTrigger as-child>
                         <Button>Create New User</Button>
                     </DialogTrigger>
-                    <DialogContent>
-                        <DialogHeader>
-                            <DialogTitle>Create New User</DialogTitle>
-                        </DialogHeader>
-                        <form @submit.prevent="submitForm" class="space-y-4">
-                            <div class="grid grid-cols-2 gap-4">
-                                <div>
-                                    <InputLabel for="first_name" value="First Name *" />
-                                    <Input v-model="form.first_name" required />
-                                </div>
-                                <div>
-                                    <InputLabel for="last_name" value="Last Name *" />
-                                    <Input v-model="form.last_name" required />
-                                </div>
-                            </div>
-                            <div>
-                                <InputLabel for="email" value="Email *" />
-                                <Input v-model="form.email" type="email" required />
-                            </div>
-                            <div>
-                                <InputLabel for="phone" value="Phone *" />
-                                <Input v-model="form.phone" required />
-                            </div>
-                            <div>
-                                <InputLabel for="password" value="Password *" />
-                                <Input v-model="form.password" type="password" required />
-                            </div>
-                            <div>
-                                <InputLabel for="password_confirmation" value="Confirm Password *" />
-                                <Input v-model="form.password_confirmation" type="password" required />
-                            </div>
-                            <div class="grid grid-cols-2 gap-4">
-                                <div>
-                                    <InputLabel for="role" value="Role *" />
-                                    <Select v-model="form.role" required>
-                                        <SelectTrigger>
-                                            <SelectValue placeholder="Select Role" />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                            <SelectItem value="customer">Customer</SelectItem>
-                                            <SelectItem value="vendor">Vendor</SelectItem>
-                                            <SelectItem value="admin">Admin</SelectItem>
-                                        </SelectContent>
-                                    </Select>
-                                </div>
-                                <div>
-                                    <InputLabel for="status" value="Status *" />
-                                    <Select v-model="form.status" required>
-                                        <SelectTrigger>
-                                            <SelectValue placeholder="Select Status" />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                            <SelectItem value="active">Active</SelectItem>
-                                            <SelectItem value="inactive">Inactive</SelectItem>
-                                            <SelectItem value="suspended">Suspended</SelectItem>
-                                        </SelectContent>
-                                    </Select>
-                                </div>
-                            </div>
-                            <DialogFooter>
-                                <Button type="submit">Create User</Button>
-                            </DialogFooter>
-                        </form>
-                    </DialogContent>
+                    <CreateUser @close="isCreateDialogOpen = false" />
                 </Dialog>
             </div>
 
             <Dialog v-model:open="isEditDialogOpen">
-                <DialogContent>
-                    <DialogHeader>
-                        <DialogTitle>Edit User</DialogTitle>
-                    </DialogHeader>
-                    <form @submit.prevent="updateUser" class="space-y-4">
-                        <div class="grid grid-cols-2 gap-4">
-                            <div>
-                                <InputLabel for="first_name" value="First Name *" />
-                                <Input v-model="editForm.first_name" required />
-                            </div>
-                            <div>
-                                <InputLabel for="last_name" value="Last Name *" />
-                                <Input v-model="editForm.last_name" required />
-                            </div>
-                        </div>
-                        <div>
-                            <InputLabel for="email" value="Email *" />
-                            <Input v-model="editForm.email" type="email" required />
-                        </div>
-                        <div>
-                            <InputLabel for="phone" value="Phone *" />
-                            <Input v-model="editForm.phone" required />
-                        </div>
-                        <div>
-                            <InputLabel for="role" value="Role *" />
-                            <Select v-model="editForm.role" required>
-                                <SelectTrigger>
-                                    <SelectValue placeholder="Select Role" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    <SelectItem value="customer">Customer</SelectItem>
-                                    <SelectItem value="vendor">Vendor</SelectItem>
-                                    <SelectItem value="admin">Admin</SelectItem>
-                                </SelectContent>
-                            </Select>
-                        </div>
-                        <div>
-                            <InputLabel for="status" value="Status *" />
-                            <Select v-model="editForm.status" required>
-                                <SelectTrigger>
-                                    <SelectValue placeholder="Select Status" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    <SelectItem value="active">Active</SelectItem>
-                                    <SelectItem value="inactive">Inactive</SelectItem>
-                                    <SelectItem value="suspended">Suspended</SelectItem>
-                                </SelectContent>
-                            </Select>
-                        </div>
-                        <DialogFooter>
-                            <Button type="submit">Update User</Button>
-                        </DialogFooter>
-                    </form>
-                </DialogContent>
+                <EditUser :user="editForm" @close="isEditDialogOpen = false" />
             </Dialog>
 
-            <div class="rounded-md border p-5 h-[80vh] mt-[1rem] bg-[#153B4F0D]">
+            <Dialog v-model:open="isViewDialogOpen">
+                <ViewUser :user="viewForm" @close="isViewDialogOpen = false" />
+            </Dialog>
+
+            <div class="rounded-md border p-5  mt-[1rem] bg-[#153B4F0D]">
                 <Table>
                     <TableHeader>
                         <TableRow>
+                            <TableHead>ID</TableHead>
                             <TableHead>Name</TableHead>
                             <TableHead>Email</TableHead>
+                            <TableHead>Phone</TableHead>
                             <TableHead>Role</TableHead>
                             <TableHead>Status</TableHead>
                             <TableHead class="text-right">Actions</TableHead>
                         </TableRow>
                     </TableHeader>
                     <TableBody>
-                        <TableRow v-for="user in users.data" :key="user.id">
+                        <TableRow v-for="(user,index) in users.data" :key="user.id">
+                            <TableCell>{{ (users.current_page - 1) * users.per_page + index + 1 }}</TableCell>
                             <TableCell>{{ user.first_name }} {{ user.last_name }}</TableCell>
                             <TableCell>{{ user.email }}</TableCell>
+                            <TableCell>{{ user.phone }}</TableCell>
                             <TableCell>
                                 <Badge :variant="getRoleBadgeVariant(user.role)">
                                     {{ user.role }}
@@ -158,6 +58,9 @@
                             </TableCell>
                             <TableCell class="text-right">
                                 <div class="flex justify-end gap-2">
+                                    <Button size="sm" variant="outline" @click="openViewDialog(user)">
+                                        View
+                                    </Button>
                                     <Button size="sm" variant="outline" @click="openEditDialog(user)">
                                         Edit
                                         <img :src=editIcon alt="">
@@ -168,6 +71,11 @@
                         </TableRow>
                     </TableBody>
                 </Table>
+                <!-- Pagination -->
+                <div class="mt-4 flex justify-end">
+                    <Pagination :current-page="users.current_page" :total-pages="users.last_page"
+                        @page-change="handlePageChange" />
+                </div>
             </div>
         </div>
     </AdminDashboardLayout>
@@ -184,58 +92,32 @@ import TableBody from "@/Components/ui/table/TableBody.vue";
 import TableCell from "@/Components/ui/table/TableCell.vue";
 import Button from "@/Components/ui/button/Button.vue";
 import Badge from "@/Components/ui/badge/Badge.vue";
+import { Input } from "@/Components/ui/input";
 import editIcon from "../../../../assets/Pencil.svg";
-import {
-    Dialog,
-    DialogContent,
-    DialogHeader,
-    DialogTitle,
-    DialogFooter,
-    DialogTrigger,
-} from "@/Components/ui/dialog";
-import Input from "@/Components/ui/input/Input.vue";
-import InputLabel from "@/Components/InputLabel.vue";
+import { Dialog, DialogTrigger } from "@/Components/ui/dialog";
 import AdminDashboardLayout from "@/Layouts/AdminDashboardLayout.vue";
-import SelectContent from "@/Components/ui/select/SelectContent.vue";
-import SelectItem from "@/Components/ui/select/SelectItem.vue";
-import SelectTrigger from "@/Components/ui/select/SelectTrigger.vue";
-import Select from "@/Components/ui/select/Select.vue";
-import SelectValue from "@/Components/ui/select/SelectValue.vue";
+import CreateUser from "@/Pages/AdminDashboardPages/Users/CreateUser.vue";
+import EditUser from "@/Pages/AdminDashboardPages/Users/EditUser.vue";
+import ViewUser from "@/Pages/AdminDashboardPages/Users/ViewUser.vue";
+import Pagination from "@/Pages/AdminDashboardPages/Users/Pagination.vue";
 
-// (Import your UI components here)
 
 const props = defineProps({
-    users: Array,
+    users: Object,
+    filters: Object, 
 });
-
-const form = ref({
-    first_name: '',
-    last_name: '',
-    email: '',
-    phone: '',
-    password: '',
-    password_confirmation: '',
-    role: '',
-    status: ''
-});
-
+const search = ref(props.filters.search || ''); // Initialize search with the filter value
+const isCreateDialogOpen = ref(false);
 const isEditDialogOpen = ref(false);
+const isViewDialogOpen = ref(false);
 const editForm = ref({});
+const viewForm = ref({});
 
-const submitForm = () => {
-    router.post("/users", form.value, {
-        onSuccess: () => {
-            form.value = {
-                first_name: '',
-                last_name: '',
-                email: '',
-                phone: '',
-                password: '',
-                password_confirmation: '',
-                role: '',
-                status: ''
-            };
-        },
+// Handle search input
+const handleSearch = () => {
+    router.get('/users', { search: search.value }, {
+        preserveState: true,
+        replace: true,
     });
 };
 
@@ -244,12 +126,9 @@ const openEditDialog = (user) => {
     isEditDialogOpen.value = true;
 };
 
-const updateUser = () => {
-    router.put(`/users/${editForm.value.id}`, editForm.value, {
-        onSuccess: () => {
-            isEditDialogOpen.value = false;
-        },
-    });
+const openViewDialog = (user) => {
+    viewForm.value = { ...user };
+    isViewDialogOpen.value = true;
 };
 
 const deleteUser = (id) => {
@@ -263,7 +142,9 @@ const getRoleBadgeVariant = (role) => {
         default: return 'default';
     }
 };
-
+const handlePageChange = (page) => {
+    router.get(`/users?page=${page}`);
+};
 const getStatusBadgeVariant = (status) => {
     switch (status) {
         case 'active': return 'default';
@@ -272,3 +153,17 @@ const getStatusBadgeVariant = (status) => {
     }
 };
 </script>
+<style>
+.search-box {
+    width: 300px;
+    padding: 0.5rem;
+    border: 1px solid #e9ecef;
+    border-radius: 4px;
+    outline: none;
+}
+
+.search-box:focus {
+    border-color: #3b82f6;
+    box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2);
+}
+</style>

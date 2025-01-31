@@ -7,28 +7,29 @@ use App\Models\VehicleCategory;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
 use Inertia\Inertia;
+use Illuminate\Support\Facades\Storage;
 
 class VehicleCategoriesController extends Controller
 {
     /**
      * Display a listing of the resource.
      */
-    public function index()
+    public function index(Request $request)
     {
-        $categories = VehicleCategory::paginate(10); // Add pagination
-        
+        $search = $request->query('search');
+        $categories = VehicleCategory::when($search, function ($query, $search) {
+            return $query->where(function ($query) use ($search) {
+                $query->where('name', 'like', "%{$search}%")
+                    ->orWhere('description', 'like', "%{$search}%")
+                    ->orWhere('status', 'like', "%{$search}%");
+            });
+        })
+            ->paginate(10); // Add pagination
+
         return Inertia::render('AdminDashboardPages/VehicleCategories/Index', [
-            'categories' => $categories
+            'users' => $categories,
+            'filters' => $request->only(['search']),
         ]);
-    }
-
-    /**
-     * Show the form for creating a new resource.
-     */
-    public function create()
-    {
-        return Inertia::render('AdminDashboardPages/VehicleCategories/Create');
-
     }
 
     /**
@@ -38,14 +39,13 @@ class VehicleCategoriesController extends Controller
     {
         $request->validate([
             'name' => 'required|string|max:255',
-            'slug' => 'nullable|string|max:255|unique:vehicle_categories',
             'description' => 'nullable|string',
             'image' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048',
         ]);
 
         $data = $request->all();
         $data['slug'] = $request->slug ?? Str::slug($request->name);
-        
+
         if ($request->hasFile('image')) {
             $data['image'] = $request->file('image')->store('categoryImages', 'public');
         }
@@ -56,41 +56,29 @@ class VehicleCategoriesController extends Controller
     }
 
     /**
-     * Display the specified resource.
-     */
-    public function show(VehicleCategory $vehicleCategory)
-    {
-        return Inertia::render('AdminDashboardPages/VehicleCategories/Show', [
-            'category' => $vehicleCategory,
-        ]);
-    }
-
-    /**
-     * Show the form for editing the specified resource.
-     */
-    public function edit(VehicleCategory $vehicleCategory)
-    {
-        return Inertia::render('VehicleCategories/Edit', [
-            'category' => $vehicleCategory
-        ]);
-    }
-
-    /**
      * Update the specified resource in storage.
      */
     public function update(Request $request,  VehicleCategory $vehicleCategory)
     {
+
         $request->validate([
             'name' => 'required|string|max:255',
-            'slug' => 'nullable|string|max:255|unique:vehicle_categories,slug,' . $vehicleCategory->id,
             'description' => 'nullable|string',
             'image' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048',
         ]);
 
-        $data = $request->all();
-        $data['slug'] = $request->slug ?? Str::slug($request->name);
-        
+        $data = [
+            'name' => $request->name,
+            'description' => $request->description,
+            'slug' => $request->slug ?? Str::slug($request->name)
+        ];
+
         if ($request->hasFile('image')) {
+            // Delete old image if exists
+            if ($vehicleCategory->image && Storage::disk('public')->exists($vehicleCategory->image)) {
+                Storage::disk('public')->delete($vehicleCategory->image);
+            }
+
             $data['image'] = $request->file('image')->store('categoryImages', 'public');
         }
 
@@ -106,15 +94,5 @@ class VehicleCategoriesController extends Controller
     {
         $vehicleCategory->delete();
         return redirect()->route('vehicles-categories.index')->with('success', 'Vehicle Category deleted successfully.');
-    }
-
-    // this is to show categories on home page
-    public function getActiveCategories()
-    {
-        $categories = VehicleCategory::where('status', true)->get();
-        
-        return Inertia::render('Welcome', [
-            'categories' => $categories
-        ]);
     }
 }

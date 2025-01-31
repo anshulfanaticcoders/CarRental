@@ -73,12 +73,12 @@ class SearchController extends Controller
         ->where('status', 'available');
 
     // Conditionally filter by created_at date range if date_from and date_to are provided
-    if (!empty($validated['date_from']) && !empty($validated['date_to'])) {
-        $query->whereBetween('created_at', [
-            $validated['date_from'] . ' 00:00:00',
-            $validated['date_to'] . ' 23:59:59'
-        ]);
-    }
+    // if (!empty($validated['date_from']) && !empty($validated['date_to'])) {
+    //     $query->whereBetween('created_at', [
+    //         $validated['date_from'] . ' 00:00:00',
+    //         $validated['date_to'] . ' 23:59:59'
+    //     ]);
+    // }
 
     // Calculate distance using Haversine formula
     $query->selectRaw('*, ( 6371 * acos( 

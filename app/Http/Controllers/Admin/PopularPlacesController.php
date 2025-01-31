@@ -10,74 +10,111 @@ use Illuminate\Support\Facades\Storage;
 
 class PopularPlacesController extends Controller
 {
-    public function index()
+    public function index(Request $request)
     {
-        $places = PopularPlace::paginate(10);
-        
+        $search = $request->query('search');
+        $places = PopularPlace::when($search, function ($query, $search) {
+            return $query->where(function ($query) use ($search) {
+                $query->where('place_name', 'like', "%{$search}%")
+                    ->orWhere('state', 'like', "%{$search}%")
+                    ->orWhere('city', 'like', "%{$search}%")
+                    ->orWhere('country', 'like', "%{$search}%");
+            });
+        })
+            ->paginate(10); // Add pagination
+
         return Inertia::render('AdminDashboardPages/PopularPlaces/Index', [
-            'places' => $places
+            'places' => $places,
+            'filters' => $request->only(['search']),
+            'status' => session('status') ?? null
         ]);
+    }
+    
+
+    public function create()
+    {
+        return Inertia::render('AdminDashboardPages/PopularPlaces/Create');
     }
 
     public function store(Request $request)
     {
-        $validated = $request->validate([
+        $request->validate([
             'place_name' => 'required|string|max:255',
             'city' => 'required|string|max:255',
             'state' => 'required|string|max:255',
             'country' => 'required|string|max:255',
             'latitude' => 'required|numeric',
             'longitude' => 'required|numeric',
-            'image' => 'nullable|image|max:2048'
+            'image' => 'required|image|mimes:jpeg,png,jpg,gif|max:2048'
         ]);
 
-        // Handle image upload
+        $place = new PopularPlace();
+        $place->place_name = $request->place_name;
+        $place->city = $request->city;
+        $place->state = $request->state;
+        $place->country = $request->country;
+        $place->latitude = $request->latitude;
+        $place->longitude = $request->longitude;
+
         if ($request->hasFile('image')) {
-            $imagePath = $request->file('image')->store('popularPlaces', 'public');
-            $validated['image'] = $imagePath;
+            $place->image = $request->file('image')->store('popularPlaces', 'public');
         }
 
-        PopularPlace::create($validated);
+        $place->save();
 
-        return redirect()->route('popular-places.index')->with('success', 'Place created successfully.');
+        return redirect()->route('popular-places.index')
+            ->with('status', 'Place created successfully');
+    }
+
+    public function edit(PopularPlace $popularPlace)
+    {
+        return Inertia::render('AdminDashboardPages/PopularPlaces/Edit', [
+            'place' => $popularPlace
+        ]);
     }
 
     public function update(Request $request, PopularPlace $popularPlace)
     {
-        $validated = $request->validate([
+        $request->validate([
             'place_name' => 'required|string|max:255',
             'city' => 'required|string|max:255',
             'state' => 'required|string|max:255',
             'country' => 'required|string|max:255',
             'latitude' => 'required|numeric',
             'longitude' => 'required|numeric',
-            'image' => 'nullable|image|max:2048'
+            'image' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048'
         ]);
 
-        // Handle image upload
+        $popularPlace->place_name = $request->place_name;
+        $popularPlace->city = $request->city;
+        $popularPlace->state = $request->state;
+        $popularPlace->country = $request->country;
+        $popularPlace->latitude = $request->latitude;
+        $popularPlace->longitude = $request->longitude;
+
         if ($request->hasFile('image')) {
-            // Delete old image if exists
+            // Delete old image
             if ($popularPlace->image) {
                 Storage::disk('public')->delete($popularPlace->image);
             }
-
-            $imagePath = $request->file('image')->store('popularPlaces', 'public');
-            $validated['image'] = $imagePath;
+            $popularPlace->image = $request->file('image')->store('popularPlaces', 'public');
         }
 
-        $popularPlace->update($validated);
+        $popularPlace->save();
 
-        return redirect()->route('popular-places.index')->with('success', 'Place updated successfully.');
+        return redirect()->route('popular-places.index')
+            ->with('status', 'Place updated successfully');
     }
 
     public function destroy(PopularPlace $popularPlace)
     {
-        // Delete image if exists
         if ($popularPlace->image) {
             Storage::disk('public')->delete($popularPlace->image);
         }
 
         $popularPlace->delete();
-        return redirect()->route('popular-places.index')->with('success', 'Place deleted successfully.');
+
+        return redirect()->route('popular-places.index')
+            ->with('status', 'Place deleted successfully');
     }
 }

@@ -9,12 +9,23 @@ use Inertia\Inertia;
 
 class VehicleAddonsController extends Controller
 {
-    public function index()
+    /**
+     * Display a listing of the resource.
+     */
+    public function index(Request $request)
     {
-        $addons = BookingAddon::paginate(10);
-        
+        $search = $request->query('search');
+        $addons = BookingAddon::when($search, function ($query, $search) {
+            return $query->where(function ($query) use ($search) {
+                $query->where('extra_type', 'like', "%{$search}%")
+                    ->orWhere('extra_name', 'like', "%{$search}%")
+                    ->orWhere('quantity', 'like', "%{$search}%");
+            });
+        })
+            ->paginate(10); // Add pagination
         return Inertia::render('AdminDashboardPages/VehicleAddons/Index', [
-            'addons' => $addons
+            'users' => $addons,
+            'filters' => $request->only(['search']),
         ]);
     }
 

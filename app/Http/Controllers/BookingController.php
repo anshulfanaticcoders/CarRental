@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Plan;
 use App\Models\Vehicle;
 use Illuminate\Http\Request;
 use App\Models\Booking;
@@ -207,6 +208,7 @@ class BookingController extends Controller
         $booking = Booking::with(['extras', 'customer'])->find($payment->booking_id);
         $vehicleId = $booking->vehicle_id;
         $vehicle = Vehicle::with(['specifications', 'images', 'category', 'user'])->find($vehicleId);
+        $plan = Plan::where('plan_type', $booking->plan)->first();
 
         // Return booking and payment details in JSON format
         return response()->json([
@@ -215,6 +217,7 @@ class BookingController extends Controller
             'vehicle' => $vehicle,
             'extras' => $booking->extras,
             'customer' => $booking->customer,
+            'plan' => $plan,
         ]);
     }
 
@@ -260,32 +263,6 @@ public function getVendorPaymentHistory()
 }
 
 
-
-
-// public function getCustomerBookingData()
-// {
-//     // Get the current authenticated user's ID
-//     $userId = auth()->id();
-
-//     // Find the customer associated with the current user
-//     $customer = Customer::where('user_id', $userId)->first();
-
-//     if (!$customer) {
-//         return response()->json([
-//             'message' => 'No customer found for the current user.',
-//         ], 404);
-//     }
-
-//     // Retrieve all bookings for the customer
-//     $bookings = Booking::where('customer_id', $customer->id)->get();
-  
-//     // Optionally, you can load related data (e.g., extras, payments)
-//     $bookings->load('customer','vehicle.images', 'payments');
-
-//        return Inertia::render('Profile/PendingBookings', [
-//         'bookings' => $bookings
-//     ]);
-// }
 // Method for Pending Bookings
 public function getPendingBookings()
 {
@@ -301,7 +278,7 @@ public function getPendingBookings()
             ->get() : 
         collect();
 
-    return Inertia::render('Profile/PendingBookings', [
+    return Inertia::render('Profile/Bookings/PendingBookings', [
         'bookings' => $pendingBookings
     ]);
 }
@@ -316,12 +293,12 @@ public function getConfirmedBookings()
     $confirmedBookings = $customer ? 
         Booking::where('customer_id', $customer->id)
             ->where('booking_status', 'confirmed')
-            ->with('vehicle.images', 'payments')
+            ->with('vehicle.images','vehicle.category', 'payments')
             ->orderBy('created_at', 'desc')
             ->get() : 
         collect();
 
-    return Inertia::render('Profile/ConfirmedBookings', [
+    return Inertia::render('Profile/Bookings/ConfirmedBookings', [
         'bookings' => $confirmedBookings
     ]);
 }
@@ -335,12 +312,12 @@ public function getCompletedBookings()
     $completedBookings = $customer ? 
         Booking::where('customer_id', $customer->id)
             ->where('booking_status', 'completed')
-            ->with('vehicle.images', 'payments')
+            ->with('vehicle.images','vehicle.category', 'payments')
             ->orderBy('created_at', 'desc')
             ->get() : 
         collect();
 
-    return Inertia::render('Profile/CompletedBookings', [
+    return Inertia::render('Profile/Bookings/CompletedBookings', [
         'bookings' => $completedBookings
     ]);
 }

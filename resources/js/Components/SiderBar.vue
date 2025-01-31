@@ -93,7 +93,7 @@ const vendorMenus = [
     key: "vehicles",
     icon: vehiclesIcon,
     items: [
-      { name: "All Vehicles", path: "/vendor/vehicles" },
+      { name: "All Vehicles", path: "/vehicles" },
       { name: "Add New Vehicle", path: "/vehicle-listing" },
     ],
   },
@@ -101,8 +101,8 @@ const vendorMenus = [
 
 const vendorOtherLinks = [
   { name: "Payment History", path: "/vendor/payments", icon: clockIcon },
-  { name: "Bookings", path: "/vendor/bookings", icon: vehiclesIcon },
-  { name: "Verification Status", path: "/vendor/bookings", icon: verificationIcon },
+  { name: "Bookings", path: "/bookings", icon: vehiclesIcon },
+  { name: "Favourites", path: "/favourites", icon: verificationIcon },
   { name: "Inbox", path: "/vendor-inbox", icon: inboxIcon },
   { name: "Customer Reviews", path: "/customer-reviews", icon: reviewsIcon },
 ];

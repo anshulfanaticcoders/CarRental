@@ -2,85 +2,31 @@
     <AdminDashboardLayout>
         <div class="flex flex-col gap-4 w-[95%] ml-[1.5rem]">
             <div class="flex items-center justify-between mt-[2rem]">
-                <span class="text-[1.5rem] font-semibold">Booking Addons Management</span>
-                <Dialog>
+                <span class="text-[1.5rem] font-semibold">All Addons</span>
+                <div class="flex items-center gap-4">
+                    <Input v-model="search" placeholder="Search addons..." class="w-[300px]" @input="handleSearch" />
+                </div>
+                <Dialog v-model:open="isCreateDialogOpen">
                     <DialogTrigger as-child>
-                        <Button>Create New Addon</Button>
+                        <Button>Create New Addons</Button>
                     </DialogTrigger>
-                    <DialogContent>
-                        <DialogHeader>
-                            <DialogTitle>Create New Booking Addon</DialogTitle>
-                        </DialogHeader>
-                        <form @submit.prevent="submitForm" class="space-y-4">
-                            <div>
-                                <InputLabel for="extra_type" value="Extra Type *" />
-                                <Input v-model="form.extra_type" required />
-                            </div>
-                            <div>
-                                <InputLabel for="extra_name" value="Extra Name *" />
-                                <Input v-model="form.extra_name" required />
-                            </div>
-                            <div>
-                                <InputLabel for="description" value="Description *" />
-                                <textarea v-model="form.description" class="w-full border rounded p-2" required></textarea>
-                            </div>
-                            <div class="grid grid-cols-2 gap-4">
-                                <div>
-                                    <InputLabel for="quantity" value="Quantity *" />
-                                    <Input v-model="form.quantity" type="number" required />
-                                </div>
-                                <div>
-                                    <InputLabel for="price" value="Price *" />
-                                    <Input v-model="form.price" type="number" step="0.01" required />
-                                </div>
-                            </div>
-                            <DialogFooter>
-                                <Button type="submit">Create Addon</Button>
-                            </DialogFooter>
-                        </form>
-                    </DialogContent>
+                    <CreateUser @close="isCreateDialogOpen = false" />
                 </Dialog>
             </div>
 
             <Dialog v-model:open="isEditDialogOpen">
-                <DialogContent>
-                    <DialogHeader>
-                        <DialogTitle>Edit Booking Addon</DialogTitle>
-                    </DialogHeader>
-                    <form @submit.prevent="updateAddon" class="space-y-4">
-                        <div>
-                            <InputLabel for="extra_type" value="Extra Type *" />
-                            <Input v-model="editForm.extra_type" required />
-                        </div>
-                        <div>
-                            <InputLabel for="extra_name" value="Extra Name *" />
-                            <Input v-model="editForm.extra_name" required />
-                        </div>
-                        <div>
-                            <InputLabel for="description" value="Description *" />
-                            <textarea v-model="editForm.description" class="w-full border rounded p-2" required></textarea>
-                        </div>
-                        <div class="grid grid-cols-2 gap-4">
-                            <div>
-                                <InputLabel for="quantity" value="Quantity *" />
-                                <Input v-model="editForm.quantity" type="number" required />
-                            </div>
-                            <div>
-                                <InputLabel for="price" value="Price *" />
-                                <Input v-model="editForm.price" type="number" step="0.01" required />
-                            </div>
-                        </div>
-                        <DialogFooter>
-                            <Button type="submit">Update Addon</Button>
-                        </DialogFooter>
-                    </form>
-                </DialogContent>
+                <EditUser :user="editForm" @close="isEditDialogOpen = false" />
             </Dialog>
 
-            <div class="rounded-md border p-5 h-[80vh] mt-[1rem] bg-[#153B4F0D]">
+            <Dialog v-model:open="isViewDialogOpen">
+                <ViewUser :user="viewForm" @close="isViewDialogOpen = false" />
+            </Dialog>
+
+            <div class="rounded-md border p-5  mt-[1rem] bg-[#153B4F0D]">
                 <Table>
                     <TableHeader>
                         <TableRow>
+                            <TableHead>ID</TableHead>
                             <TableHead>Extra Type</TableHead>
                             <TableHead>Extra Name</TableHead>
                             <TableHead>Quantity</TableHead>
@@ -89,22 +35,32 @@
                         </TableRow>
                     </TableHeader>
                     <TableBody>
-                        <TableRow v-for="addon in addons.data" :key="addon.id">
-                            <TableCell>{{ addon.extra_type }}</TableCell>
-                            <TableCell>{{ addon.extra_name }}</TableCell>
-                            <TableCell>{{ addon.quantity }}</TableCell>
-                            <TableCell>${{ Number(addon.price).toFixed(2) }}</TableCell>
+                        <TableRow v-for="(user, index) in users.data" :key="user.id">
+                            <TableCell>{{ (users.current_page - 1) * users.per_page + index + 1 }}</TableCell>
+                            <TableCell>{{ user.extra_type }}</TableCell>
+                            <TableCell>{{ user.extra_name }}</TableCell>
+                            <TableCell>{{ user.quantity }}</TableCell>
+                            <TableCell>${{ Number(user.price).toFixed(2) }}</TableCell>
                             <TableCell class="text-right">
                                 <div class="flex justify-end gap-2">
-                                    <Button size="sm" variant="outline" @click="openEditDialog(addon)">
-                                        Edit
+                                    <Button size="sm" variant="outline" @click="openViewDialog(user)">
+                                        View
                                     </Button>
-                                    <Button size="sm" variant="destructive" @click="deleteAddon(addon.id)">Delete</Button>
+                                    <Button size="sm" variant="outline" @click="openEditDialog(user)">
+                                        Edit
+                                        <img :src=editIcon alt="">
+                                    </Button>
+                                    <Button size="sm" variant="destructive" @click="deleteUser(user.id)">Delete</Button>
                                 </div>
                             </TableCell>
                         </TableRow>
                     </TableBody>
                 </Table>
+                <!-- Pagination -->
+                <div class="mt-4 flex justify-end">
+                    <Pagination :current-page="users.current_page" :total-pages="users.last_page"
+                        @page-change="handlePageChange" />
+                </div>
             </div>
         </div>
     </AdminDashboardLayout>
@@ -120,61 +76,65 @@ import TableHead from "@/Components/ui/table/TableHead.vue";
 import TableBody from "@/Components/ui/table/TableBody.vue";
 import TableCell from "@/Components/ui/table/TableCell.vue";
 import Button from "@/Components/ui/button/Button.vue";
-import {
-    Dialog,
-    DialogContent,
-    DialogHeader,
-    DialogTitle,
-    DialogFooter,
-    DialogTrigger,
-} from "@/Components/ui/dialog";
-import Input from "@/Components/ui/input/Input.vue";
-import InputLabel from "@/Components/InputLabel.vue";
+import { Input } from "@/Components/ui/input";
+import editIcon from "../../../../assets/Pencil.svg";
+import { Dialog, DialogTrigger } from "@/Components/ui/dialog";
 import AdminDashboardLayout from "@/Layouts/AdminDashboardLayout.vue";
+import CreateUser from "@/Pages/AdminDashboardPages/VehicleAddons/CreateUser.vue";
+import EditUser from "@/Pages/AdminDashboardPages/VehicleAddons/EditUser.vue";
+import ViewUser from "@/Pages/AdminDashboardPages/VehicleAddons/ViewUser.vue";
+import Pagination from "@/Pages/AdminDashboardPages/VehicleAddons/Pagination.vue";
+
 
 const props = defineProps({
-    addons: Array,
+    users: Object,
+    filters: Object,
 });
-
-const form = ref({
-    extra_type: '',
-    extra_name: '',
-    description: '',
-    quantity: null,
-    price: null
-});
-
+const search = ref(props.filters.search || ''); // Initialize search with the filter value
+const isCreateDialogOpen = ref(false);
 const isEditDialogOpen = ref(false);
+const isViewDialogOpen = ref(false);
 const editForm = ref({});
+const viewForm = ref({});
 
-const submitForm = () => {
-    router.post("/booking-addons", form.value, {
-        onSuccess: () => {
-            form.value = {
-                extra_type: '',
-                extra_name: '',
-                description: '',
-                quantity: null,
-                price: null
-            };
-        },
+// Handle search input
+const handleSearch = () => {
+    router.get('/booking-addons', { search: search.value }, {
+        preserveState: true,
+        replace: true,
     });
 };
 
-const openEditDialog = (addon) => {
-    editForm.value = { ...addon };
+const openEditDialog = (user) => {
+    editForm.value = { ...user };
     isEditDialogOpen.value = true;
 };
 
-const updateAddon = () => {
-    router.put(`/booking-addons/${editForm.value.id}`, editForm.value, {
-        onSuccess: () => {
-            isEditDialogOpen.value = false;
-        },
-    });
+const openViewDialog = (user) => {
+    viewForm.value = { ...user };
+    isViewDialogOpen.value = true;
 };
 
-const deleteAddon = (id) => {
+const deleteUser = (id) => {
     router.delete(`/booking-addons/${id}`);
 };
+
+const handlePageChange = (page) => {
+    router.get(`/booking-addons?page=${page}`);
+};
+
 </script>
+<style>
+.search-box {
+    width: 300px;
+    padding: 0.5rem;
+    border: 1px solid #e9ecef;
+    border-radius: 4px;
+    outline: none;
+}
+
+.search-box:focus {
+    border-color: #3b82f6;
+    box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2);
+}
+</style>

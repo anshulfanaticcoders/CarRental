@@ -391,7 +391,7 @@
                         </p>
                     </div>
                     <div class="search-container">
-                        <div>
+                        <!-- <div>
                             <InputLabel for="location">Location:</InputLabel>
                             <input
                                v-model="form.location"
@@ -410,8 +410,9 @@
                           >
                             {{ result.properties?.label || 'Unknown Location' }}  
                           </div>
-                        </div>
+                        </div> -->
                          <!-- <div id="map" class="w-full h-64 mt-4"></div> -->
+                         <LocationPicker :onLocationSelect="selectLocation" />
                     </div>
                    
                     <div class="buttons flex justify-between mt-[2rem] pb-[4rem]">
@@ -643,6 +644,7 @@ import circleImg from "../../../assets/circle.png";
 import uploadIcon from "../../../assets/uploadIcon.svg";
 import { computed, onMounted, ref } from "vue";
 import PrimaryButton from "@/Components/PrimaryButton.vue";
+import LocationPicker from "@/Components/LocationPicker.vue";
 import axios from "axios";
 import InputLabel from "@/Components/InputLabel.vue";
 import TextInput from "@/Components/TextInput.vue";
@@ -755,15 +757,7 @@ onMounted(() => {
 let map = null;
 let marker = null // Marker instance
 const currentStep = ref(0);
-// const nextStep = async() => {
-//   if (currentStep.value < 5) {
-//     currentStep.value++;
-//     await nextTick(); 
-//     if (currentStep.value === 3) {
-//       initializeMap(); // Initialize the map when step 3 is reached
-//     }
-//   }
-// };
+
 const nextStep = () => {
   let isValid = true;
 
@@ -863,40 +857,17 @@ const handleSearchInput = async () => {
             `/api/geocoding/autocomplete?text=${encodeURIComponent(form.location)}`
         );
         searchResults.value = response.data.features; // Store fetched results
-
-        // If you want to automatically select the first result and get its coordinates
-        // if (response.data.features.length > 0) {
-        //     const firstResult = response.data.features[0];
-        //     form.location = firstResult.properties.label; // Update location
-        //     form.latitude = firstResult.geometry.coordinates[1]; // Set latitude
-        //     form.longitude = firstResult.geometry.coordinates[0]; // Set longitude
-        // }
     } catch (error) {
         console.error('Error fetching locations:', error);
     }
 };
 
-const selectLocation = (result) => {
-    mapform.value.location = result.properties?.label || 'Unknown Location'
-    mapform.value.latitude = result.geometry.coordinates[1];
-    mapform.value.longitude = result.geometry.coordinates[0];
-   
-        form.location = mapform.value.location // Update location
-        form.latitude = mapform.value.latitude.toFixed(8); // Set latitude
-        form.longitude = mapform.value.longitude.toFixed(8); // Set longitude
-        searchResults.value = []
-  // Update map with the selected location
-  const latLng = [mapform.value.latitude, mapform.value.longitude]
-  
-  if (map) {
-    map.setView(latLng, 13) // Move the map to the selected location
-    if (marker) {
-      marker.setLatLng(latLng) // Update marker position
-    } else {
-      marker = L.marker(latLng).addTo(map) // Add marker if it doesn't exist
-    }
-  }
-}
+const selectLocation = (location) => {
+  form.location = location.address;
+  form.latitude = location.latitude;
+  form.longitude = location.longitude;
+};
+
 const initializeMap = () => {
   // Check if the map already exists and remove it
   if (map) {

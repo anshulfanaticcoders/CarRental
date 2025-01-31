@@ -12,6 +12,9 @@ import unlimitedKmIcon from "../../assets/unlimitedKm.svg";
 import cancellationIcon from "../../assets/cancellationAvailable.svg";
 import starIcon from "../../assets/stars.svg";
 import MapPin from "../../assets/MapPin.svg";
+import fullStar from "../../assets/fullstar.svg";
+import halfStar from "../../assets/halfstar.svg";
+import blankStar from "../../assets/blankstar.svg";
 
 import ShareIcon from "../../assets/ShareNetwork.svg";
 import Heart from "../../assets/Heart.svg";
@@ -24,13 +27,78 @@ import infoIcon from "../../assets/WarningCircle.svg";
 import { Head, Link } from "@inertiajs/vue3";
 import { ref } from "vue";
 import AuthenticatedHeaderLayout from "@/Layouts/AuthenticatedHeaderLayout.vue";
-
+import {
+    Carousel,
+    CarouselContent,
+    CarouselItem,
+    CarouselNext,
+    CarouselPrevious,
+} from "@/Components/ui/carousel";
+import Card from "@/Components/ui/card/Card.vue";
+import CardContent from "@/Components/ui/card/CardContent.vue";
+import Autoplay from 'embla-carousel-autoplay';
 // Fetching Vehicle Details
 import { usePage } from "@inertiajs/vue3";
 
 const { props } = usePage(); // Get the props passed from the controller
 const vehicle = ref(props.vehicle);
+const reviews = ref([]);
+const isLoading = ref(true);
+const showAllReviews = ref(false); // Toggle for testing - REMOVE IN PRODUCTION
+const plugin = Autoplay({
+    delay: 2000,
+    stopOnMouseEnter: true,
+    stopOnInteraction: false,
+});
+const getStarIcon = (rating, starNumber) => {
+    const fullStars = Math.floor(rating);
+    const hasHalfStar = rating % 1 !== 0;
 
+    if (starNumber <= fullStars) {
+        return fullStar;
+    } else if (starNumber === fullStars + 1 && hasHalfStar) {
+        return halfStar;
+    } else {
+        return blankStar;
+    }
+};
+const getStarAltText = (rating, starNumber) => {
+    const fullStars = Math.floor(rating);
+    const hasHalfStar = rating % 1 !== 0;
+
+    if (starNumber <= fullStars) {
+        return "Full Star";
+    } else if (starNumber === fullStars + 1 && hasHalfStar) {
+        return "Half Star";
+    } else {
+        return "Blank Star";
+    }
+};
+onMounted(async () => {
+    await fetchReviews();
+});
+
+const fetchReviews = async () => {
+    isLoading.value = true;
+    try {
+        const endpoint = showAllReviews.value
+            ? `/api/vehicles/${props.vehicle.id}/reviews/all`
+            : `/api/vehicles/${props.vehicle.id}/reviews`;
+
+        const response = await axios.get(endpoint);
+        reviews.value = response.data.reviews;
+    } catch (error) {
+        console.error("Error fetching reviews:", error);
+    } finally {
+        isLoading.value = false;
+    }
+};
+
+// Toggle for testing - REMOVE IN PRODUCTION
+const toggleShowAllReviews = () => {
+    showAllReviews.value = !showAllReviews.value;
+    fetchReviews();
+};
 
 // Feature-Icon Mapping
 const featureIconMap = {
@@ -107,7 +175,6 @@ const initMap = () => {
 // Add this in your script setup
 onMounted(() => {
     initMap();
-    fetchCurrencies();
 });
 
 import axios from "axios";
@@ -180,15 +247,15 @@ const updateDateTimeSelection = () => {
     }));
 
     // Update URL with new parameters
-    const params = new URLSearchParams(window.location.search);
-    params.set('date_from', form.value.date_from);
-    params.set('date_to', form.value.date_to);
-    params.set('time_from', form.value.time_from);
-    params.set('time_to', form.value.time_to);
+    // const params = new URLSearchParams(window.location.search);
+    // params.set('date_from', form.value.date_from);
+    // params.set('date_to', form.value.date_to);
+    // params.set('time_from', form.value.time_from);
+    // params.set('time_to', form.value.time_to);
 
-    // Update URL without reloading the page
-    const newUrl = `${window.location.pathname}?${params.toString()}`;
-    window.history.pushState({}, '', newUrl);
+    // // Update URL without reloading the page
+    // const newUrl = `${window.location.pathname}?${params.toString()}`;
+    // window.history.pushState({}, '', newUrl);
 };
 
 // Function to load saved dates from session storage
@@ -243,6 +310,7 @@ const proceedToPayment = () => {
     // Proceed to payment page
     router.get(`/booking/${vehicle.value.id}`);
 };
+
 </script>
 
 <template>
@@ -260,7 +328,7 @@ const proceedToPayment = () => {
                 </div>
                 <div class="flex gap-2 items-center text-[1.25rem]">
                     <div class="car_ratings flex gap-2 items-center">
-                    <img :src=starIcon alt="">
+                        <img :src=starIcon alt="">
                         <span>5(1)</span>
                     </div>
                     <div class="dot_seperator"><strong>.</strong></div>
@@ -298,7 +366,7 @@ const proceedToPayment = () => {
                                         <span class="text-customLightGrayColor text-[1rem]">People</span>
                                         <span class="font-medium text-[1rem]">{{
                                             vehicle?.seating_capacity
-                                            }}</span>
+                                        }}</span>
                                     </div>
                                 </div>
                                 <div class="feature-item items-center flex gap-3">
@@ -307,7 +375,7 @@ const proceedToPayment = () => {
                                         <span class="text-customLightGrayColor text-[1rem]">Doors</span>
                                         <span class="font-medium text-[1rem]">{{
                                             vehicle?.number_of_doors
-                                            }}</span>
+                                        }}</span>
                                     </div>
                                 </div>
                                 <div class="feature-item items-center flex gap-3">
@@ -316,7 +384,7 @@ const proceedToPayment = () => {
                                         <span class="text-customLightGrayColor text-[1rem]">Luggage</span>
                                         <span class="font-medium text-[1rem]">{{
                                             vehicle?.luggage_capacity
-                                            }}</span>
+                                        }}</span>
                                     </div>
                                 </div>
                                 <div class="feature-item items-center flex gap-3">
@@ -325,7 +393,7 @@ const proceedToPayment = () => {
                                         <span class="text-customLightGrayColor text-[1rem]">Transmission</span>
                                         <span class="font-medium capitalize">{{
                                             vehicle?.transmission
-                                            }}</span>
+                                        }}</span>
                                     </div>
                                 </div>
                                 <div class="feature-item items-center flex gap-3">
@@ -334,7 +402,7 @@ const proceedToPayment = () => {
                                         <span class="text-customLightGrayColor text-[1rem]">Fuel Type</span>
                                         <span class="font-medium capitalize">{{
                                             vehicle?.fuel
-                                            }}</span>
+                                        }}</span>
                                     </div>
                                 </div>
                                 <div class="feature-item items-center flex gap-3">
@@ -420,8 +488,8 @@ const proceedToPayment = () => {
                             <span class="text-[2rem] font-medium">Meet Vehicle Vendor</span>
                             <div
                                 class="mt-[2rem] flex gap-5 border-[1px] border-customPrimaryColor rounded-[0.75em] px-[1rem] py-[2rem]">
-                                <img :src="vehicle?.user?.profile?.avatar 
-                                    ? `/storage/${vehicle?.user?.profile?.avatar }`
+                                <img :src="vehicle?.user?.profile?.avatar
+                                    ? `/storage/${vehicle?.user?.profile?.avatar}`
                                     : '/storage/avatars/default-avatar.svg'
                                     " alt="User Avatar" class="w-[100px] h-[100px] rounded-full object-cover" />
                                 <div>
@@ -545,9 +613,9 @@ const proceedToPayment = () => {
                                         <span class="text-[1.25rem]">Total Price</span>
                                         <div>
                                             <span class="text-customPrimaryColor text-[1.875rem] font-medium">
-                                {{ vehicle.vendor_profile.currency }}{{ vehicle?.price_per_day }}
-                            </span>
-                                            
+                                                {{ vehicle.vendor_profile.currency }}{{ vehicle?.price_per_day }}
+                                            </span>
+
                                             <br />
                                             <span class="flex gap-3">incl. VAT
                                                 <img :src="infoIcon" alt="" /></span>
@@ -576,16 +644,66 @@ const proceedToPayment = () => {
             <Faq />
         </section>
 
-        <section class="full-w-container">
+        <section class=""  style="
+                        background: linear-gradient(to bottom, #FFFFFF, #F8F8F8); 
+                    ">
+            <div class="reviews-section mt-[3rem] full-w-container">
+                <span class="text-[2rem] font-bold">Overall Rating</span>
 
+                <div v-if="isLoading">Loading reviews...</div>
+                <div v-else-if="reviews && reviews.length > 0">
+                    <Carousel class="relative w-full py-[4rem] px-[2rem]" :plugins="[plugin]" @mouseenter="plugin.stop"
+                        @mouseleave="[plugin.reset(), plugin.play(), console.log('Running')]">
+                        <CarouselContent>
+                            <CarouselItem v-for="review in reviews" :key="review.id"  class="pl-1 md:basis-1/2 lg:basis-1/3">
+                                <Card>
+                                    <CardContent>
+                                        <div class="review-item  px-[1rem] py-[2rem] h-full">
+                                            <div class="flex items-center gap-3">
+                                                <img :src="review.user.profile?.avatar ? `/storage/${review.user.profile?.avatar}` : '/storage/avatars/default-avatar.svg'"
+                                                    alt="User Avatar"
+                                                    class="w-[50px] h-[50px] rounded-full object-cover" />
+                                                <div>
+                                                    <h4 class="text-customPrimaryColor font-medium">{{
+                                                        review.user.first_name }} {{ review.user.last_name }}</h4>
+                                                    <div class="flex items-center gap-1">
+                                                        <div class="star-rating">
+                                                            <img v-for="n in 5" :key="n"
+                                                                :src="getStarIcon(review.rating, n)"
+                                                                :alt="getStarAltText(review.rating, n)"
+                                                                class="w-[20px] h-[20px]" />
+                                                        </div>
+                                                        <span>{{ review.rating }}</span>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <p class="mt-2">{{ review.review_text }}</p>
+                                            <div v-if="review.reply_text"
+                                                class="mt-2 reply-text border-[1px] rounded-[0.75em] px-[1rem] py-[1rem] bg-[#f5f5f5]">
+                                                <p class="text-gray-600">Vendor Reply:</p>
+                                                <p>{{ review.reply_text }}</p>
+                                            </div>
+                                        </div>
+                                    </CardContent>
+                                </Card>
+                            </CarouselItem>
+                        </CarouselContent>
+                        <CarouselPrevious />
+                        <CarouselNext />
+                    </Carousel>
+                </div>
+                <div v-else class="mt-[2rem]">
+                    <p>No reviews yet.</p>
+                </div>
+            </div>
         </section>
 
         <section class="full-w-container py-customVerticalSpacing">
             <div
                 class="mt-[2rem] flex items-center justify-center gap-5 border-[1px] border-customPrimaryColor rounded-[0.75em] px-[1rem] py-[2rem]">
                 <div class="flex flex-col items-center gap-5 w-[50%]">
-                    <img :src="vehicle?.user?.profile?.avatar 
-                        ? `/storage/${vehicle?.user?.profile?.avatar }`
+                    <img :src="vehicle?.user?.profile?.avatar
+                        ? `/storage/${vehicle?.user?.profile?.avatar}`
                         : '/storage/avatars/default-avatar.svg'
                         " alt="User Avatar" class="w-[100px] h-[100px] rounded-full object-cover" />
                     <h4 class="text-customPrimaryColor text-[1.75rem] font-medium">
@@ -675,5 +793,21 @@ const proceedToPayment = () => {
 #map {
     height: 400px;
     width: 100%;
+}
+
+.star-rating {
+    display: flex;
+    /* Ensure stars are displayed horizontally */
+}
+.reviews-section .next-btn {
+    top: 0;
+    justify-content: center;
+    z-index: 99;
+}
+.reviews-section .prev-btn {
+    top: 0;
+    left: 90% !important;
+    justify-content: center;
+    z-index: 99;
 }
 </style>

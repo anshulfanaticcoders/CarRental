@@ -9,12 +9,14 @@ use Inertia\Inertia;
 
 class PlansController extends Controller
 {
-    public function index()
+    public function index(Request $request)
     {
+        $search = $request->query('search');
         $plans = Plan::paginate(10);
-        
+
         return Inertia::render('AdminDashboardPages/Plans/Index', [
-            'plans' => $plans,
+            'users' => $plans,
+            'filters' => $request->only(['search']),
         ]);
     }
 

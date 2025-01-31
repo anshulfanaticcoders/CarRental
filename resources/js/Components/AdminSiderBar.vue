@@ -98,7 +98,7 @@ const data = {
       items: [
         {
           title: 'All Cars',
-          url: '#',
+          url: '/vendor-vehicles',
         },
         {
           title: 'Categories',
@@ -140,7 +140,7 @@ const data = {
       items: [
         {
           title: 'All Bookings',
-          url: '#',
+          url: '/bookings',
         },
         {
           title: 'Active',

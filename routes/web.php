@@ -1,17 +1,22 @@
 <?php
 
 use App\Http\Controllers\Admin\BlogController;
+use App\Http\Controllers\Admin\BookingDashboardController;
 use App\Http\Controllers\Admin\PlansController;
 use App\Http\Controllers\Admin\PopularPlacesController;
 use App\Http\Controllers\Admin\UsersController;
 use App\Http\Controllers\Admin\VehicleAddonsController;
+use App\Http\Controllers\Admin\VehicleDashboardController;
 use App\Http\Controllers\Auth\RegisteredUserController;
 
 use App\Http\Controllers\BookingController;
 use App\Http\Controllers\GeocodingController;
 use App\Http\Controllers\ProfileController;
+use App\Http\Controllers\ReviewController;
 use App\Http\Controllers\SearchController;
 use App\Http\Controllers\Admin\VehicleCategoriesController;
+use App\Http\Controllers\Vendor\VendorBookingController;
+use App\Http\Controllers\Vendor\VendorVehicleController;
 use App\Http\Controllers\VendorController;
 use App\Http\Controllers\PaymentController;
 use App\Http\Controllers\Admin\VendorsDashboardController;
@@ -63,7 +68,11 @@ Route::get('/vehicles', [VehicleController::class, 'index'])->name('vehicles.ind
 Route::get('/vehicle/{id}', [VehicleController::class, 'show'])->name('vehicle.show');
 Route::get('/s', [SearchController::class, 'search']);
 Route::get('/api/geocoding/autocomplete', [GeocodingController::class, 'autocomplete']);
-Route::get('/', [BlogController::class, 'show'])->name('welcome');
+
+// Show Blogs on Home page
+// Route::get('/', [BlogController::class, 'show'])->name('welcome');
+Route::get('/', [BlogController::class, 'homeBlogs'])->name('welcome');
+Route::get('blog/{blog}', [BlogController::class, 'show'])->name('blog.show');
 
 
 // Stripe Routes
@@ -74,15 +83,17 @@ Route::get('/payment', [PaymentController::class, 'index'])->name('payment.index
 // These are the Routes for ---------*****ADMIN****-------------
 Route::middleware(['auth', 'role:admin'])->group(function () {
     Route::inertia('admin-dashboard', 'AdminDashboard');
-    Route::resource('vehicles-categories', VehicleCategoriesController::class);
+    Route::resource('vehicles-categories', VehicleCategoriesController::class)->parameters(['vehicles-categories' => 'vehicleCategory']);
     Route::resource('vendors', VendorsDashboardController::class);
     Route::put('/vendors/{vendorProfile}/status', [VendorsDashboardController::class, 'updateStatus'])->name('vendors.updateStatus');
 
-    Route::resource('users', UsersController::class)->middleware(['auth']);
+    Route::resource('users', UsersController::class)->except(['create', 'edit', 'show']);
+    Route::resource('vendor-vehicles', VehicleDashboardController::class)->except(['create', 'edit', 'show']);
     // Route::inertia('vendors', 'AdminDashboardPages/Vendors/Index');
+    Route::resource('bookings', BookingDashboardController::class)->except(['create', 'edit', 'show']);
     Route::resource('booking-addons', VehicleAddonsController::class)->middleware(['auth']);
-    Route::resource('popular-places', PopularPlacesController::class)->middleware(['auth']);
-    Route::resource('plans', PlansController::class)->middleware(['auth']);
+    Route::resource('popular-places', PopularPlacesController::class)->except(['show']);;
+    Route::resource('plans', PlansController::class);
     Route::resource('blogs', BlogController::class);
 });
 
@@ -101,10 +112,13 @@ Route::middleware(['auth', 'role:vendor'])->group(function () {
     Route::post('/vehicles', [VehicleController::class, 'store'])->name('vehicles.store');
     Route::get('/vehicle-categories', [VehicleController::class, 'getCategories'])->name('vehicle.categories');
     // this is for showing All Booking details of customer in vendor profile
-    Route::get('/vendor/bookings', [BookingController::class, 'getAllBookings'])->name('vendor.bookings');
+    Route::resource('bookings', VendorBookingController::class);
+    Route::post('api/bookings/{booking}/cancel', [VendorBookingController::class, 'cancel'])->name('bookings.cancel');
     Route::get('/vendor/payments', [BookingController::class, 'getVendorPaymentHistory'])->name('vendor.payments');
     // this is for showing All Vehicles of vendor in vendor profile
-    Route::get('/vendor/vehicles', [VehicleController::class, 'vendorVehicle'])->name('vehicles.index');
+    Route::resource('vehicles', VendorVehicleController::class);
+    Route::delete('vehicles/{vehicle}/images/{image}', [VendorVehicleController::class, 'deleteImage'])
+        ->name('vehicles.deleteImage');
 
 });
 
@@ -122,6 +136,7 @@ Route::middleware(['auth', 'role:customer'])->group(function () {
     Route::inertia('review', 'Profile/Review');
     Route::inertia('favourites', 'Profile/Favourites');
     Route::inertia('inbox', 'Profile/Inbox');
+    Route::post('/reviews', [ReviewController::class, 'store'])->name('reviews.store');
 
     // apply for vendor
     Route::post('/vendor/store', [VendorController::class, 'store'])->name('vendor.store');
@@ -155,12 +170,7 @@ Route::get('/profile/bookings/confirmed', [BookingController::class, 'getConfirm
 
 Route::middleware(['auth', 'vendor.status'])->group(function () {
     Route::get('/vehicles/create', [VehicleController::class, 'create'])->name('vehicles.create');
-    Route::post('/vehicles', [VehicleController::class, 'store'])->name('vehicles.store');
-
-    // this is for showing All Booking details of customer in vendor profile
-    Route::get('/vendor/bookings', [BookingController::class, 'getAllBookings'])->name('vendor.bookings');
-    // this is for showing All Vehicles of vendor in vendor profile
-    Route::get('/vendor/vehicles', [VehicleController::class, 'vendorVehicle'])->name('vehicles.index');
+    // Route::get('/vendor/bookings', [BookingController::class, 'getAllBookings'])->name('vendor.bookings');
     Route::inertia('vehicle-listing', 'Auth/VehicleListing');
 });
 require __DIR__ . '/auth.php';

@@ -14,21 +14,25 @@ class UsersController extends Controller
     /**
      * Display a listing of the resource.
      */
-    public function index()
+    public function index(Request $request)
     {
-        $users = User::paginate(10);
-        
-        return Inertia::render('AdminDashboardPages/Users/Index', [
-            'users' => $users
-        ]);
-    }
+        $search = $request->query('search');
+        $users = User::where('role', '!=', 'admin')
+            ->when($search, function ($query, $search) {
+                return $query->where(function ($query) use ($search) {
+                    $query->where('first_name', 'like', "%{$search}%")
+                        ->orWhere('last_name', 'like', "%{$search}%")
+                        ->orWhere('email', 'like', "%{$search}%")
+                        ->orWhere('role', 'like', "%{$search}%")
+                        ->orWhere('status', 'like', "%{$search}%");
+                });
+            })
+            ->paginate(4);
 
-    /**
-     * Show the form for creating a new resource.
-     */
-    public function create()
-    {
-        return Inertia::render('AdminDashboardPages/Users/Create');
+        return Inertia::render('AdminDashboardPages/Users/Index', [
+            'users' => $users,
+            'filters' => $request->only(['search']),
+        ]);
     }
 
     /**
@@ -55,26 +59,6 @@ class UsersController extends Controller
     }
 
     /**
-     * Display the specified resource.
-     */
-    public function show(User $user)
-    {
-        return Inertia::render('AdminDashboardPages/Users/Show', [
-            'user' => $user,
-        ]);
-    }
-
-    /**
-     * Show the form for editing the specified resource.
-     */
-    public function edit(User $user)
-    {
-        return Inertia::render('AdminDashboardPages/Users/Edit', [
-            'user' => $user
-        ]);
-    }
-
-    /**
      * Update the specified resource in storage.
      */
     public function update(Request $request, User $user)
@@ -90,7 +74,7 @@ class UsersController extends Controller
         ]);
 
         $data = $request->all();
-        
+
         if ($request->filled('password')) {
             $data['password'] = Hash::make($request->password);
         } else {
@@ -110,16 +94,5 @@ class UsersController extends Controller
         $user->delete();
         return redirect()->route('users.index')->with('success', 'User deleted successfully.');
     }
-
-    /**
-     * Get active users for frontend rendering
-     */
-    public function getActiveUsers()
-    {
-        $activeUsers = User::where('status', 'active')->get();
-        
-        return Inertia::render('Welcome', [
-            'activeUsers' => $activeUsers
-        ]);
-    }
 }
+    

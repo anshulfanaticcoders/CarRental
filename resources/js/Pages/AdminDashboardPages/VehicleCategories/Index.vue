@@ -2,134 +2,74 @@
     <AdminDashboardLayout>
         <div class="flex flex-col gap-4 w-[95%] ml-[1.5rem]">
             <div class="flex items-center justify-between mt-[2rem]">
-                <span class="text-[1.5rem] font-semibold">Vehicle Categories</span>
-                <Dialog>
+                <span class="text-[1.5rem] font-semibold">All Categories</span>
+                <div class="flex items-center gap-4">
+                    <Input
+                        v-model="search"
+                        placeholder="Search category..."
+                        class="w-[300px]"
+                        @input="handleSearch"
+                    />
+                </div>
+                <Dialog v-model:open="isCreateDialogOpen">
                     <DialogTrigger as-child>
                         <Button>Create New Category</Button>
                     </DialogTrigger>
-                    <DialogContent>
-                        <DialogHeader>
-                            <DialogTitle>Create Vehicle Category</DialogTitle>
-                            <DialogDescription>
-                                Add a new vehicle category to your system
-                            </DialogDescription>
-                        </DialogHeader>
-                        <form @submit.prevent="submitForm" class="space-y-4">
-                            <div>
-                                <InputLabel for="name" value="Name *" />
-                                <Input 
-                                    v-model="form.name" 
-                                    placeholder="Name" 
-                                    required 
-                                />
-                            </div>
-                            <div>
-                                <InputLabel for="description" value="Description *" />
-                                <Textarea 
-                                    v-model="form.description" 
-                                    placeholder="Description" 
-                                    required 
-                                />
-                            </div>
-                            <div>
-                                <InputLabel for="image" value="Image *" />
-                                <input
-                                    class="border-[2px] rounded-[10px] border-customPrimaryColor p-5 border-dotted"
-                                    type="file"
-                                    @change="handleFileUpload"
-                                    accept="image/jpeg,image/png,image/jpg,image/gif"
-                                    required
-                                />
-                            </div>
-                            <DialogFooter>
-                                <Button type="submit">Create</Button>
-                            </DialogFooter>
-                        </form>
-                    </DialogContent>
+                    <CreateUser @close="isCreateDialogOpen = false" />
                 </Dialog>
             </div>
-            
+
             <Dialog v-model:open="isEditDialogOpen">
-                <DialogContent>
-                    <DialogHeader>
-                        <DialogTitle>Edit Vehicle Category</DialogTitle>
-                    </DialogHeader>
-                    <form @submit.prevent="updateCategory" class="space-y-4">
-                        <div>
-                            <InputLabel for="name" value="Name *" />
-                            <Input 
-                                v-model="editForm.name" 
-                                placeholder="Name" 
-                                required 
-                            />
-                        </div>
-                        <div>
-                            <InputLabel for="description" value="Description *" />
-                            <Textarea class="h-[5rem]"
-                                v-model="editForm.description" 
-                                placeholder="Description" 
-                                required 
-                            />
-                        </div>
-                        <div>
-                            <InputLabel for="image" value="Image" class="mb-2" />
-                            <div v-if="editForm.existing_image" class="mb-2">
-                                <img 
-                                    :src="`/storage/${editForm.existing_image}`" 
-                                    alt="Existing Category Image" 
-                                    class="w-[200px] h-[150px] object-cover mb-2"
-                                />
-                                <span class="text-sm text-gray-500">Current Image</span>
-                            </div>
-                            <input
-                                class="border-[2px] rounded-[10px] border-customPrimaryColor p-5 border-dotted"
-                                type="file"
-                                @change="handleEditFileUpload"
-                                accept="image/jpeg,image/png,image/jpg,image/gif"
-                            />
-                        </div>
-                        <DialogFooter>
-                            <Button type="submit">Update</Button>
-                        </DialogFooter>
-                    </form>
-                </DialogContent>
+                <EditUser :user="editForm" @close="isEditDialogOpen = false" />
             </Dialog>
 
-            <div class="rounded-md border p-5 h-[80vh] mt-[1rem] bg-[#153B4F0D]">
+            <Dialog v-model:open="isViewDialogOpen">
+                <ViewUser :user="viewForm" @close="isViewDialogOpen = false" />
+            </Dialog>
+
+            <div class="rounded-md border p-5  mt-[1rem] bg-[#153B4F0D]">
                 <Table>
                     <TableHeader>
                         <TableRow>
+                            <TableHead>ID</TableHead>
                             <TableHead>Image</TableHead>
                             <TableHead>Name</TableHead>
-                            <TableHead>Slug</TableHead>
                             <TableHead>Status</TableHead>
                             <TableHead class="text-right">Actions</TableHead>
                         </TableRow>
                     </TableHeader>
                     <TableBody>
-                        <TableRow v-for="category in categories.data" :key="category.id">
+                        <TableRow v-for="(user,index) in users.data" :key="user.id">
+                            <TableCell>{{ (users.current_page - 1) * users.per_page + index + 1 }}</TableCell>
                             <TableCell class="font-medium">
-                                <img :src="`/storage/${category.image}`" alt="" class="w-[100px] h-[70px] rounded-[10px]">
+                                <img :src="`/storage/${user.image}`" alt="" class="w-[100px] h-[70px] rounded-[10px]">
                             </TableCell>
-                            <TableCell class="font-medium">{{ category.name }}</TableCell>
-                            <TableCell>{{ category.slug }}</TableCell>
+                            <TableCell class="font-medium">{{ user.name }}</TableCell>
                             <TableCell>
-                                <Badge :variant="category.status ? 'default' : 'secondary'">
-                                    {{ category.status ? "Active" : "Inactive" }}
+                                <Badge :variant="user.status ? 'default' : 'secondary'">
+                                    {{ user.status ? "Active" : "Inactive" }}
                                 </Badge>
                             </TableCell>
                             <TableCell class="text-right">
                                 <div class="flex justify-end gap-2">
-                                    <Button size="sm" variant="outline" @click="openEditDialog(category)">
-                                        <img :src=editIcon alt="">
-                                        Edit
+                                    <Button size="sm" variant="outline" @click="openViewDialog(user)">
+                                        View
                                     </Button>
-                                    <Button size="sm" variant="destructive" @click="deleteCategory(category.id)">Delete</Button>
+                                    <Button size="sm" variant="outline" @click="openEditDialog(user)">
+                                        Edit
+                                        <img :src=editIcon alt="">
+                                    </Button>
+                                    <Button size="sm" variant="destructive" @click="deleteUser(user.id)">Delete</Button>
                                 </div>
                             </TableCell>
                         </TableRow>
                     </TableBody>
                 </Table>
+                <!-- Pagination -->
+                <div class="mt-4 flex justify-end">
+                    <Pagination :current-page="users.current_page" :total-pages="users.last_page"
+                        @page-change="handlePageChange" />
+                </div>
             </div>
         </div>
     </AdminDashboardLayout>
@@ -145,103 +85,66 @@ import TableHead from "@/Components/ui/table/TableHead.vue";
 import TableBody from "@/Components/ui/table/TableBody.vue";
 import TableCell from "@/Components/ui/table/TableCell.vue";
 import Button from "@/Components/ui/button/Button.vue";
-import AdminDashboardLayout from "@/Layouts/AdminDashboardLayout.vue";
 import Badge from "@/Components/ui/badge/Badge.vue";
+import { Input } from "@/Components/ui/input";
 import editIcon from "../../../../assets/Pencil.svg";
-import {
-    Dialog,
-    DialogContent,
-    DialogDescription,
-    DialogHeader,
-    DialogTitle,
-    DialogFooter,
-    DialogTrigger,
-} from "@/Components/ui/dialog";
-import Input from "@/Components/ui/input/Input.vue";
-import Textarea from "@/Components/ui/textarea/Textarea.vue";
-import InputLabel from "@/Components/InputLabel.vue";
+import { Dialog, DialogTrigger } from "@/Components/ui/dialog";
+import AdminDashboardLayout from "@/Layouts/AdminDashboardLayout.vue";
+import CreateUser from "@/Pages/AdminDashboardPages/VehicleCategories/CreateUser.vue";
+import EditUser from "@/Pages/AdminDashboardPages/VehicleCategories/EditUser.vue";
+import ViewUser from "@/Pages/AdminDashboardPages/VehicleCategories/ViewUser.vue";
+import Pagination from "@/Pages/AdminDashboardPages/VehicleCategories/Pagination.vue";
+
 
 const props = defineProps({
-    categories: Array,
+    users: Object,
+    filters: Object, 
 });
-
-const form = ref({
-    name: "",
-    description: "",
-    image: null,
-});
-
-const editForm = ref({
-    id: null,
-    name: "",
-    description: "",
-    image: null,
-    existing_image: null,
-});
-
+const search = ref(props.filters.search || ''); // Initialize search with the filter value
+const isCreateDialogOpen = ref(false);
 const isEditDialogOpen = ref(false);
+const isViewDialogOpen = ref(false);
+const editForm = ref({});
+const viewForm = ref({});
 
-const handleFileUpload = (event) => {
-    form.value.image = event.target.files[0];
-};
-
-const handleEditFileUpload = (event) => {
-    editForm.value.image = event.target.files[0];
-};
-
-const submitForm = () => {
-    const formData = new FormData();
-    formData.append('name', form.value.name);
-    formData.append('description', form.value.description);
-    formData.append('image', form.value.image);
-
-    router.post("/vehicles-categories", formData, {
-        onSuccess: () => {
-            form.value = { name: "", description: "", image: null };
-        },
+// Handle search input
+const handleSearch = () => {
+    router.get('/vehicles-categories', { search: search.value }, {
+        preserveState: true,
+        replace: true,
     });
 };
 
-const openEditDialog = (category) => {
-    editForm.value = {
-        id: category.id,
-        name: category.name,
-        description: category.description,
-        image: null,
-        existing_image: category.image,
-    };
+const openEditDialog = (user) => {
+    editForm.value = { ...user };
     isEditDialogOpen.value = true;
 };
 
-const updateCategory = () => {
-    const formData = new FormData();
-    formData.append('_method', 'PUT');
-    formData.append('name', editForm.value.name);
-    formData.append('description', editForm.value.description);
-    
-    if (editForm.value.image) {
-        formData.append('image', editForm.value.image);
-    }
-
-    router.post(`/vehicles-categories/${editForm.value.id}`, formData, {
-        onSuccess: () => {
-            isEditDialogOpen.value = false;
-            editForm.value = { 
-                id: null, 
-                name: "", 
-                description: "", 
-                image: null, 
-                existing_image: null 
-            };
-        },
-    });
+const openViewDialog = (user) => {
+    viewForm.value = { ...user };
+    isViewDialogOpen.value = true;
 };
 
-const deleteCategory = (id) => {
-    router.delete(`/vehicles-categories/${id}`, {
-        onSuccess: () => {
-            router.reload();
-        },
-    });
+const deleteUser = (id) => {
+    router.delete(`/vehicles-categories/${id}`);
 };
+
+const handlePageChange = (page) => {
+    router.get(`/vehicles-categories?page=${page}`);
+};
+
 </script>
+<style>
+.search-box {
+    width: 300px;
+    padding: 0.5rem;
+    border: 1px solid #e9ecef;
+    border-radius: 4px;
+    outline: none;
+}
+
+.search-box:focus {
+    border-color: #3b82f6;
+    box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2);
+}
+</style>

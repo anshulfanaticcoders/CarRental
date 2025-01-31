@@ -14,6 +14,7 @@ const payment = ref(null);
 const vehicle = ref(null);
 const error = ref(null);
 const map = ref(null);
+const plan = ref(null);
 
 // Map initialization function
 const initMap = () => {
@@ -84,6 +85,7 @@ onMounted(async () => {
       booking.value = response.data.booking;
       payment.value = response.data.payment;
       vehicle.value = response.data.vehicle;
+      plan.value = response.data.plan;
 
       // Initialize map after data is loaded
       nextTick(() => {
@@ -235,6 +237,10 @@ const formatCurrency = (amount) => {
                   </li>
                 </ul>
               </div>
+              <div class="flex justify-between">
+                <span>{{plan.plan_type }}</span>
+                <span>{{formatCurrency (plan.plan_value )}}</span>
+              </div>
             </div>
           </div>
           <div v-if="booking"
@@ -243,7 +249,7 @@ const formatCurrency = (amount) => {
               <span class="text-[1.25rem] font-medium">Paid Payment (incl. VAT)</span>
               <img :src="infoIcon" alt="" class="w-[25px] h[25px]" />
             </div>
-            <span class="text-customPrimaryColor text-[1.875rem] font-medium">{{ formatCurrency(payment.amount)
+            <span class="text-customPrimaryColor text-[1.875rem] font-medium">{{ formatCurrency(booking.total_amount)
               }}</span>
 
           </div>

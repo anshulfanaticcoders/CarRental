@@ -91,7 +91,7 @@ class BlogController extends Controller
 
         return redirect()->route('blogs.index')->with('success', 'Blog deleted successfully');
     }
-    public function show()
+    public function homeBlogs()
     {
         $blogs = Blog::latest()->take(4)->get()->map(function ($blog) {
             if ($blog->image) {
@@ -104,4 +104,16 @@ class BlogController extends Controller
             'blogs' => $blogs
         ]);
     }
+
+    public function show(Blog $blog)
+{
+    if ($blog->image) {
+        $blog->image = asset($blog->image); // Ensure full URL
+    }
+
+    return Inertia::render('SingleBlog', [
+        'blog' => $blog
+    ]);
+}
+
 }

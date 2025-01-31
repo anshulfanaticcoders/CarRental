@@ -59,7 +59,7 @@ class Booking extends Model
         $year = date('Y');
         $month = date('m');
         $random = str_pad(mt_rand(1, 9999), 4, '0', STR_PAD_LEFT);
-        
+
         return $prefix . $year . $month . $random;
     }
 
@@ -71,6 +71,11 @@ class Booking extends Model
     public function extras()
     {
         return $this->hasMany(BookingExtra::class);
+    }
+
+    public function plan(): BelongsTo
+    {
+        return $this->belongsTo(Plan::class); // No need to specify foreign key if it's plan_id
     }
 
 }

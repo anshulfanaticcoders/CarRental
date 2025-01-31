@@ -181,7 +181,7 @@ onMounted(() => {
                             class="pl-1 md:basis-1/2 lg:basis-1/5">
                             <div class="p-1">
                                 <Link
-                                    :href="`/s?where=${encodeURIComponent(place.place_name)}&latitude=${place.latitude}&longitude=${place.longitude}&radius=10000`">
+                                :href="`/s?where=${encodeURIComponent(`${place.place_name}, ${place.city}, ${place.country}`)}&latitude=${place.latitude}&longitude=${place.longitude}&radius=10000`">
                                 <Card class="h-[18rem] border-0 rounded-[0.75rem]">
                                     <CardContent class="flex flex-col gap-2 justify-center px-1 h-full">
                                         <img :src="`/storage/${place.image}`" alt=""
@@ -318,7 +318,7 @@ onMounted(() => {
                             <img :src=calendarWhiteIcon alt=""> {{ formatDate(blogs[0].created_at) }}
                         </p>
                         <h4 class="font-semibold text-[2rem]">{{ blogs[0].title }}</h4>
-                        <Link :href="route('blogs.show', blogs[0].id)" class="inline-flex items-center mt-2 text-blue-400">
+                        <Link :href="route('blog.show', blogs[0].id)" class="inline-flex items-center mt-2 text-blue-400">
                         <img :src=whiteGoIcon alt="">
                         </Link>
                     </div>
@@ -336,7 +336,7 @@ onMounted(() => {
                                 <img :src=calendarIcon alt=""> {{ formatDate(blog.created_at) }}
                             </p>
                             <h4 class="font-semibold text-[1.5rem] text-customDarkBlackColor">{{ blog.title }}</h4>
-                            <Link :href="route('blogs.show', blog.id)" class="inline-flex items-center mt-2 text-customPrimaryColor">
+                            <Link :href="route('blog.show', blog.id)" class="inline-flex items-center mt-2 text-customPrimaryColor">
                                 Read Story 
                                 <img :src=goIcon alt="" class="w-[1.5rem] ml-[0.75rem]">
                             </Link>

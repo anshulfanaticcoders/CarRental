@@ -8,7 +8,7 @@ use Illuminate\Database\Eloquent\Model;
 
 class Vehicle extends Model
 {
-    
+
     use HasFactory;
 
     protected $fillable = [
@@ -29,12 +29,12 @@ class Vehicle extends Model
         'latitude',
         'longitude',
         'status',
-        'features', 
+        'features',
         'featured',
         'security_deposit',
         'payment_method',
         'price_per_day',
-        
+
         // vehicle specifications fillables
         'registration_number',
         'registration_country',
@@ -43,7 +43,7 @@ class Vehicle extends Model
         'vehicle_height',
         'dealer_cost',
         'phone_number',
-        
+
     ];
 
     public function category()
@@ -56,13 +56,13 @@ class Vehicle extends Model
         return $this->belongsTo(User::class, 'vendor_id');
     }
 
-     // Relationship with VehicleSpecification
-     public function specifications()
-     {
-         return $this->hasOne(VehicleSpecification::class, 'vehicle_id');
-     }
+    // Relationship with VehicleSpecification
+    public function specifications()
+    {
+        return $this->hasOne(VehicleSpecification::class, 'vehicle_id');
+    }
 
-      // Relationship with VehicleImage
+    // Relationship with VehicleImage
     public function images()
     {
         return $this->hasMany(VehicleImage::class, 'vehicle_id');
@@ -72,7 +72,15 @@ class Vehicle extends Model
         return $this->belongsTo(UserProfile::class, 'vendor_id', 'user_id');
     }
     public function vendorProfileData()
-{
-    return $this->belongsTo(VendorProfile::class, 'vendor_id', 'user_id');
-}
+    {
+        return $this->belongsTo(VendorProfile::class, 'vendor_id', 'user_id');
+    }
+    public function bookings()
+    {
+        return $this->hasMany(Booking::class, 'vehicle_id');
+    }
+    public function reviews()
+    {
+        return $this->hasMany(Review::class);
+    }
 }
