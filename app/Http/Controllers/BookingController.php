@@ -317,6 +317,7 @@ public function getCompletedBookings()
             ->get() : 
         collect();
 
+        // it renders
     return Inertia::render('Profile/Bookings/CompletedBookings', [
         'bookings' => $completedBookings
     ]);
