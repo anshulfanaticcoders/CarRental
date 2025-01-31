@@ -6,18 +6,9 @@
                 <div class="flex items-center gap-4">
                     <Input v-model="search" placeholder="Search bookings..." class="w-[300px]" @input="handleSearch" />
                 </div>
-
             </div>
 
-            <Dialog v-model:open="isEditDialogOpen">
-                <EditUser :user="editForm" @close="isEditDialogOpen = false" />
-            </Dialog>
-
-            <Dialog v-model:open="isViewDialogOpen">
-                <ViewUser :user="viewForm" @close="isViewDialogOpen = false" />
-            </Dialog>
-
-            <div class="rounded-md border p-5  mt-[1rem] bg-[#153B4F0D]">
+            <div v-if="users.data.length > 0" class="rounded-md border p-5 mt-[1rem] bg-[#153B4F0D]">
                 <Table>
                     <TableHeader>
                         <TableRow>
@@ -34,7 +25,6 @@
                             <TableHead>Total Amount</TableHead>
                             <TableHead>Payment Status</TableHead>
                             <TableHead>Booking Status</TableHead>
-
                             <TableHead class="text-right">Actions</TableHead>
                         </TableRow>
                     </TableHeader>
@@ -73,12 +63,15 @@
                         </TableRow>
                     </TableBody>
                 </Table>
-                <!-- Pagination -->
-                <div class="mt-4 flex justify-end">
+                 <div class="mt-4 flex justify-end">
                     <Pagination :current-page="users.current_page" :total-pages="users.last_page"
                         @page-change="handlePageChange" />
                 </div>
             </div>
+            <div v-else class="rounded-md border p-5 mt-[1rem] bg-[#153B4F0D] text-center">
+                No bookings found.
+            </div>
+
         </div>
     </AdminDashboardLayout>
 </template>
@@ -112,7 +105,7 @@ const viewForm = ref({});
 
 // Handle search input
 const handleSearch = () => {
-    router.get('/bookings', { search: search.value }, {
+    router.get('/customer-bookings', { search: search.value }, {
         preserveState: true,
         replace: true,
     });
@@ -125,11 +118,11 @@ const openViewDialog = (user) => {
 };
 
 const deleteUser = (id) => {
-    router.delete(`/bookings/${id}`);
+    router.delete(`/customer-bookings/${id}`);
 };
 
 const handlePageChange = (page) => {
-    router.get(`/bookings?page=${page}`);
+    router.get(`/customer-bookings?page=${page}`);
 };
 const getStatusBadgeVariant = (status) => {
     switch (status) {

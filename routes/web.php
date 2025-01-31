@@ -84,13 +84,17 @@ Route::get('/payment', [PaymentController::class, 'index'])->name('payment.index
 Route::middleware(['auth', 'role:admin'])->group(function () {
     Route::inertia('admin-dashboard', 'AdminDashboard');
     Route::resource('vehicles-categories', VehicleCategoriesController::class)->parameters(['vehicles-categories' => 'vehicleCategory']);
-    Route::resource('vendors', VendorsDashboardController::class);
+    Route::resource('vendors', VendorsDashboardController::class)->except(['create', 'edit', 'show']);
     Route::put('/vendors/{vendorProfile}/status', [VendorsDashboardController::class, 'updateStatus'])->name('vendors.updateStatus');
 
     Route::resource('users', UsersController::class)->except(['create', 'edit', 'show']);
     Route::resource('vendor-vehicles', VehicleDashboardController::class)->except(['create', 'edit', 'show']);
     // Route::inertia('vendors', 'AdminDashboardPages/Vendors/Index');
-    Route::resource('bookings', BookingDashboardController::class)->except(['create', 'edit', 'show']);
+    Route::resource('customer-bookings', BookingDashboardController::class)->except(['create', 'edit', 'show']);
+    Route::get('/customer-bookings/pending', [BookingDashboardController::class, 'pending'])->name('customer-bookings.pending');
+Route::get('/customer-bookings/confirmed', [BookingDashboardController::class, 'confirmed'])->name('customer-bookings.confirmed');
+Route::get('/customer-bookings/completed', [BookingDashboardController::class, 'completed'])->name('customer-bookings.completed');
+Route::get('/customer-bookings/cancelled', [BookingDashboardController::class, 'cancelled'])->name('customer-bookings.cancelled');
     Route::resource('booking-addons', VehicleAddonsController::class)->middleware(['auth']);
     Route::resource('popular-places', PopularPlacesController::class)->except(['show']);;
     Route::resource('plans', PlansController::class);

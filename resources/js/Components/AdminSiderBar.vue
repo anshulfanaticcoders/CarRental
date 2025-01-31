@@ -85,6 +85,17 @@ const data = {
           title: 'Add Users',
           url: '/users',
         },
+      ],
+    },
+    {
+      title: 'Vendor Management',
+      url: '#',
+      icon: User,
+      items: [
+        {
+          title: 'All Vendors',
+          url: '/vendors',
+        },
         {
           title: 'Verifications',
           url: '/vendors',
@@ -140,19 +151,23 @@ const data = {
       items: [
         {
           title: 'All Bookings',
-          url: '/bookings',
+          url: '/customer-bookings',
+        },
+        {
+          title: 'Pending',
+          url: '/customer-bookings/pending',
         },
         {
           title: 'Active',
-          url: '#',
+          url: '/customer-bookings/confirmed',
         },
         {
           title: 'Completed',
-          url: '#',
+          url: '/customer-bookings/completed',
         },
         {
           title: 'Cancelled',
-          url: '#',
+          url: '/customer-bookings/cancelled',
         },
       ],
     },
