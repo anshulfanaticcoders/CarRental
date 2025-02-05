@@ -48,7 +48,7 @@
                     </td>
                     <td class="h-[5rem] p-3 flex items-center justify-center space-x-2">
                       <Link 
-                        :href="route('vendor-vehicles.edit', vehicle.id)"
+                        :href="route('current-vendor-vehicles.edit', vehicle.id)"
                         class="px-3 py-1 bg-gray-600 text-white rounded hover:bg-gray-700"
                       >
                         Edit
@@ -132,7 +132,7 @@
   }
   
   const deleteVehicle = () => {
-    router.delete(route('vendor-vehicles.destroy', vehicleToDelete.value.id), {
+    router.delete(route('current-vendor-vehicles.destroy', vehicleToDelete.value.id), {
       onSuccess: () => {
         showDeleteModal.value = false
         vehicleToDelete.value = null

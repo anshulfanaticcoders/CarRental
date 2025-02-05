@@ -93,7 +93,7 @@ const vendorMenus = [
     key: "vehicles",
     icon: vehiclesIcon,
     items: [
-      { name: "All Vehicles", path: "/vendor-vehicles" },
+      { name: "All Vehicles", path: "/current-vendor-vehicles" },
       { name: "Add New Vehicle", path: "/vehicle-listing" },
     ],
   },

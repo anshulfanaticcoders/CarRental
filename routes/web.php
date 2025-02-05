@@ -123,8 +123,8 @@ Route::middleware(['auth', 'role:vendor'])->group(function () {
     Route::post('api/bookings/{booking}/cancel', [VendorBookingController::class, 'cancel'])->name('bookings.cancel');
     Route::get('/vendor/payments', [BookingController::class, 'getVendorPaymentHistory'])->name('vendor.payments');
     // this is for showing All Vehicles of vendor in vendor profile
-    Route::resource('vendor-vehicles', VendorVehicleController::class);
-    Route::delete('vendor-vehicles/{vehicle}/images/{image}', [VendorVehicleController::class, 'deleteImage'])
+    Route::resource('current-vendor-vehicles', VendorVehicleController::class);
+    Route::delete('current-vendor-vehicles/{vehicle}/images/{image}', [VendorVehicleController::class, 'deleteImage'])
         ->name('vehicles.deleteImage');
 
 });
