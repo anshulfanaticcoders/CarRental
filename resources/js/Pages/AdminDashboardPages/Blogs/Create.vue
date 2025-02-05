@@ -1,6 +1,6 @@
 <template>
 <AdminDashboardLayout>
-    <div class="p-6">
+    <div class="p-5">
         <h1 class="text-3xl font-bold mb-6">Create New Blog</h1>
 
         <form @submit.prevent="submit" class="max-w-2xl">
