@@ -6,9 +6,9 @@ import TextArea from '@/Components/TextArea.vue';
 import TextInput from '@/Components/TextInput.vue';
 import { useForm, usePage } from '@inertiajs/vue3';
 import { ref, watch } from 'vue';
-import { useToast } from 'vue-toastification'; // Add this import
+import { useToast } from 'vue-toastification';
 
-const toast = useToast(); // Initialize toast
+const toast = useToast();
 const user = usePage().props.auth.user;
 const profile = usePage().props.auth.user.profile;
 

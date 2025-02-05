@@ -63,6 +63,9 @@
 <script setup>
 import AdminDashboardLayout from '@/Layouts/AdminDashboardLayout.vue';
 import { Link, useForm } from '@inertiajs/vue3';
+import { useToast } from 'vue-toastification';
+
+const toast = useToast();
 
 const form = useForm({
     title: '',
@@ -71,6 +74,29 @@ const form = useForm({
 });
 
 const submit = () => {
-    form.post(route('blogs.store'));
+    form.post(route('blogs.store'), {
+        onSuccess: () => {
+            toast.success('Blog created successfully!', {
+                position: 'top-right',
+                timeout: 3000, 
+                closeOnClick: true,
+                pauseOnHover: true,
+                draggable: true,
+            });
+            form.reset();
+        },
+        onError: (errors) => {
+            
+             Object.values(errors).forEach(error => {
+                toast.error(error[0], { 
+                    position: 'top-right',
+                    timeout: 5000,
+                    closeOnClick: true,
+                    pauseOnHover: true,
+                    draggable: true,
+                });
+            });
+        }
+    });
 };
 </script>
