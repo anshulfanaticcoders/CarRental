@@ -201,21 +201,6 @@ const data = {
         },
       ],
     },
-    // {
-    //   title: 'Support',
-    //   url: '#',
-    //   icon: HeartHandshake,
-    //   items: [
-    //     {
-    //       title: 'Tickets',
-    //       url: '#',
-    //     },
-    //     {
-    //       title: 'Logs',
-    //       url: '#',
-    //     },
-    //   ],
-    // },
   ],
 }
 
@@ -261,11 +246,6 @@ onMounted(() => {
 <template>
   <SidebarProvider>
     <Sidebar collapsible="icon" class="bg-customPrimaryColor text-white">
-      <SidebarHeader>
-        <SidebarMenu>
-
-        </SidebarMenu>
-      </SidebarHeader>
       <SidebarContent>
         <SidebarGroup>
         <Link href="/">

@@ -66,12 +66,14 @@
                     </div>
                     <!-- Vehicle Category Dropdown -->
                     <div class="grid grid-cols-3 gap-5">
-                        <div v-for="category in categories" :key="category.id" class="relative flex flex-col justify-center items-center">
+                        <div v-for="category in categories" :key="category.id"
+                            class="relative flex flex-col justify-center items-center">
                             <input type="radio" :id="category.id" v-model="form.category_id" :value="category.id"
                                 class="peer sr-only" />
                             <InputLabel :for="category.id"
                                 class="flex flex-col items-center p-4 cursor-pointer rounded-lg border-2 border-gray-200 hover:border-customPrimaryColor transition-colors peer-checked:border-customPrimaryColor peer-checked:bg-blue-50">
-                                <img :src="`/storage/${category.image}`" :alt="category.InputLabel" class="p-2 w-[200px] h-[150px] object-cover" />
+                                <img :src="`/storage/${category.image}`" :alt="category.InputLabel"
+                                    class="p-2 w-[200px] h-[150px] object-cover" />
                                 <p class="text-center">{{ category.name }}</p>
                                 <span class="text-[1.5rem] text-center block font-medium text-gray-700">{{
                                     category.InputLabel }}</span>
@@ -411,10 +413,10 @@
                             {{ result.properties?.label || 'Unknown Location' }}  
                           </div>
                         </div> -->
-                         <!-- <div id="map" class="w-full h-64 mt-4"></div> -->
-                         <LocationPicker :onLocationSelect="selectLocation" />
+                        <!-- <div id="map" class="w-full h-64 mt-4"></div> -->
+                        <LocationPicker :onLocationSelect="selectLocation" />
                     </div>
-                   
+
                     <div class="buttons flex justify-between mt-[2rem] pb-[4rem]">
                         <button class="button-secondary w-[40%]" @click="prevStep">
                             Back
@@ -602,17 +604,20 @@
                         <p>Drag & Drop to Upload Photos</p>
                         <p class="text-customLightGrayColor font-medium">or</p>
                         <input type="file" id="images" @change="handleFileUpload" multiple />
-                        <p v-if="form.images.length < 5" class="text-red-500 mt-2">
-            Please select at least 5 images.
-          </p>
+                        <div v-if="form.images.length" class="image-preview-container">
+      <div v-for="(image, index) in form.images" :key="index" class="image-preview">
+        <img :src="getImageUrl(image)" alt="Vehicle Image" />
+        <button class="remove-btn" @click="removeImage(index)">✖</button>
+      </div>
+    </div>
                     </div>
 
                     <div class="buttons flex justify-between mt-[2rem] pb-[4rem]">
                         <button class="button-secondary w-[40%]" @click="prevStep">
                             Back
                         </button>
-                        <PrimaryButton class="w-[40%]" type="button" @click="submit"
-                        :disabled="form.images.length < 5">Submit</PrimaryButton>
+                        <PrimaryButton class="w-[40%]" type="button" @click="submit" :disabled="form.images.length < 5">
+                            Submit</PrimaryButton>
                     </div>
                 </div>
             </div>
@@ -672,8 +677,8 @@ const form = useForm({
     horsepower: 0,
     co2: "",
     location: "",
-    latitude:'null',
-    longitude:'null',
+    latitude: 'null',
+    longitude: 'null',
     status: "available",
     features: [],
     featured: false,
@@ -708,7 +713,7 @@ const fetchCategories = async () => {
 
 // Submit form data
 const submit = () => {
-    if (form.images.length < 5) return; 
+    if (form.images.length < 5) return;
     form.post(route("vehicles.store"), {
         onSuccess: () => {
             toast.success('Vendor registration completed successfully! Wait for confimation', {
@@ -739,10 +744,19 @@ const tooltipPosition = computed(() => ({
 
 // Method to handle file uploads
 const handleFileUpload = (event) => {
-    const files = Array.from(event.target.files);
-    form.images = files; // Store the selected files in the form data
+  const files = Array.from(event.target.files);
+  form.images = [...form.images, ...files]; // Append new images instead of resetting
 };
 
+// Generate image preview URL
+const getImageUrl = (image) => {
+  return URL.createObjectURL(image);
+};
+
+// Remove image from preview
+const removeImage = (index) => {
+  form.images.splice(index, 1);
+};
 // Vehicle Features
 const features = ref([]);
 
@@ -764,89 +778,89 @@ let marker = null // Marker instance
 const currentStep = ref(0);
 
 const nextStep = () => {
-  let isValid = true;
+    let isValid = true;
 
-  // Step-specific validation
-  switch (currentStep.value) {
-    case 1: // Vehicle Category and Details
-      if (!form.category_id) {
-        isValid = false;
-        alert('Please select a vehicle category');
-      } else if (
-        !form.brand || 
-        !form.model || 
-        !form.color || 
-        !form.mileage ||
-        !form.horsepower ||
-        !form.co2
-      ) {
-        isValid = false;
-        alert('Please fill in all vehicle details');
-      }
-      break;
+    // Step-specific validation
+    switch (currentStep.value) {
+        case 1: // Vehicle Category and Details
+            if (!form.category_id) {
+                isValid = false;
+                alert('Please select a vehicle category');
+            } else if (
+                !form.brand ||
+                !form.model ||
+                !form.color ||
+                !form.mileage ||
+                !form.horsepower ||
+                !form.co2
+            ) {
+                isValid = false;
+                alert('Please fill in all vehicle details');
+            }
+            break;
 
-    case 2: // Technical Specifications
-      if (
-        !form.registration_number ||
-        !form.registration_country ||
-        !form.registration_date ||
-        !form.gross_vehicle_mass ||
-        !form.vehicle_height ||
-        !form.dealer_cost ||
-        !form.phone_number
-      ) {
-        isValid = false;
-        alert('Please fill in all technical specification details');
-      }
-      break;
+        case 2: // Technical Specifications
+            if (
+                !form.registration_number ||
+                !form.registration_country ||
+                !form.registration_date ||
+                !form.gross_vehicle_mass ||
+                !form.vehicle_height ||
+                !form.dealer_cost ||
+                !form.phone_number
+            ) {
+                isValid = false;
+                alert('Please fill in all technical specification details');
+            }
+            break;
 
-    case 3: // Location
-      if (!form.location || !form.latitude || !form.longitude) {
-        isValid = false;
-        alert('Please select a valid location');
-      }
-      break;
+        case 3: // Location
+            if (!form.location || !form.latitude || !form.longitude) {
+                isValid = false;
+                alert('Please select a valid location');
+            }
+            break;
 
-    case 4: // Pricing
-      if (
-        form.price_per_day <= 0 ||
-        !form.security_deposit ||
-        !form.payment_method
-      ) {
-        isValid = false;
-        alert('Please fill in all pricing details');
-      }
-      break;
+        case 4: // Pricing
+            if (
+                form.price_per_day <= 0 ||
+                !form.security_deposit ||
+                !form.payment_method
+            ) {
+                isValid = false;
+                alert('Please fill in all pricing details');
+            }
+            break;
 
-    case 5: // Image Upload
-      if (form.images.length < 5) {
-        isValid = false;
-        alert('Please upload at least 5 images');
-      }
-      break;
-  }
-
-  // If validation passes, move to next step
-  if (isValid) {
-    if (currentStep.value < 5) {
-      currentStep.value++;
-      if (currentStep.value === 3) {
-        initializeMap();
-      }
+        case 5: // Image Upload
+            if (form.images.length < 5) {
+                isValid = false;
+                alert('Please upload at least 5 images');
+            }
+            break;
     }
-  }
+
+    // If validation passes, move to next step
+    if (isValid) {
+        if (currentStep.value < 5) {
+            currentStep.value++;
+            if (currentStep.value === 3) {
+                initializeMap();
+            }
+        }
+    }
 };
 const prevStep = () => {
-  if (currentStep.value > 0) {
-    currentStep.value--;
-  }
+    if (currentStep.value > 0) {
+        currentStep.value--;
+    }
 };
 // leaflet map
 const mapform = ref({
-  location: '',
-  latitude: null,
-  longitude: null,
-  radius: 831867.4340914232
+    location: '',
+    latitude: null,
+    longitude: null,
+    radius: 831867.4340914232
 })
 const searchResults = ref([]);
 
@@ -868,22 +882,22 @@ const handleSearchInput = async () => {
 };
 
 const selectLocation = (location) => {
-  form.location = location.address;
-  form.latitude = location.latitude;
-  form.longitude = location.longitude;
+    form.location = location.address;
+    form.latitude = location.latitude;
+    form.longitude = location.longitude;
 };
 
 const initializeMap = () => {
-  // Check if the map already exists and remove it
-  if (map) {
-    map.remove(); // Remove the existing map instance
-  }
-  // Initialize the map
-  map = L.map("map").setView([20.5937, 78.9629], 5); // Default to India
+    // Check if the map already exists and remove it
+    if (map) {
+        map.remove(); // Remove the existing map instance
+    }
+    // Initialize the map
+    map = L.map("map").setView([20.5937, 78.9629], 5); // Default to India
 
-  L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
-    attribution: "&copy; OpenStreetMap contributors",
-  }).addTo(map);
+    L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+        attribution: "&copy; OpenStreetMap contributors",
+    }).addTo(map);
 };
 
 
@@ -980,77 +994,120 @@ input[type="range"]::-webkit-slider-runnable-track {
 @import 'leaflet/dist/leaflet.css';
 
 .marker-pin {
-  width: auto;
-  min-width: 50px;
-  height: 30px;
-  background: white;
-  border: 2px solid #666;
-  border-radius: 15px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  box-shadow: 0 2px 4px rgba(0,0,0,0.2);
-  transform: translate3d(0,0,1000px);
+    width: auto;
+    min-width: 50px;
+    height: 30px;
+    background: white;
+    border: 2px solid #666;
+    border-radius: 15px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+    transform: translate3d(0, 0, 1000px);
 }
 
 .marker-pin span {
-  color: black;
-  font-weight: bold;
-  font-size: 12px;
-  padding: 0 8px;
+    color: black;
+    font-weight: bold;
+    font-size: 12px;
+    padding: 0 8px;
 }
 
 .custom-div-icon {
-  background: none;
-  border: none;
+    background: none;
+    border: none;
 }
 
 /* Leaflet pane z-index overrides */
 .leaflet-pane.leaflet-marker-pane,
 .leaflet-pane.leaflet-popup-pane {
-  z-index: 1000 !important;
+    z-index: 1000 !important;
 }
 
 .leaflet-pane.leaflet-tile-pane {
-  z-index: 200;
+    z-index: 200;
 }
 
 .leaflet-pane.leaflet-overlay-pane {
-  z-index: 400;
+    z-index: 400;
 }
 
 .leaflet-marker-icon {
-  transform: translate3d(0,0,1000px);
+    transform: translate3d(0, 0, 1000px);
 }
 
 .leaflet-popup {
-  z-index: 1001 !important;
+    z-index: 1001 !important;
 }
 
 /* Hardware acceleration */
 .leaflet-marker-icon,
 .leaflet-marker-shadow,
 .leaflet-popup {
-  will-change: transform;
-  transform: translate3d(0,0,0);
+    will-change: transform;
+    transform: translate3d(0, 0, 0);
 }
 
 /* Additional styles to ensure markers are always visible */
 .leaflet-container {
-  z-index: 1;
+    z-index: 1;
 }
 
 .leaflet-control-container {
-  z-index: 2000;
+    z-index: 2000;
 }
+
 #map {
-  height: 600px;
-  width: 100%;
-  margin-top: 1rem;
+    height: 600px;
+    width: 100%;
+    margin-top: 1rem;
 }
-input,textarea,select {
+
+input,
+textarea,
+select {
     border-radius: 0.75rem;
-    border: 1px solid rgba(43, 43, 43, 0.50)!important;
+    border: 1px solid rgba(43, 43, 43, 0.50) !important;
     padding: 1rem;
+}
+
+.image-preview-container {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 10px;
+}
+
+.image-preview {
+  position: relative;
+  width: 100px;
+  height: 100px;
+  border-radius: 5px;
+  overflow: hidden;
+}
+
+.image-preview img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: 5px;
+}
+
+.remove-btn {
+  position: absolute;
+  top: 5px;
+  right: 5px;
+  background: rgba(255, 0, 0, 0.8);
+  color: white;
+  border: none;
+  border-radius: 50%;
+  width: 20px;
+  height: 20px;
+  cursor: pointer;
+  font-size: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 </style>

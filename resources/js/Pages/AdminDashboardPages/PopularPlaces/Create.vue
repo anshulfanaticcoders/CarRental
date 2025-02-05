@@ -4,9 +4,23 @@
             <div class="flex items-center justify-between mt-[2rem]">
                 <span class="text-[1.5rem] font-semibold">Create New Popular Place</span>
             </div>
-            
+
             <div class="rounded-md border p-5 bg-[#153B4F0D]">
                 <form @submit.prevent="submitForm" class="space-y-4">
+                    <div>
+                        <InputLabel for="location" value="Search Location *" />
+                        <div class="relative">
+                            <Input v-model="mapform.location" @input="handleSearchInput"
+                                placeholder="Search for a location" />
+                            <div v-if="searchResults.length"
+                                class="absolute z-10 bg-white border rounded mt-1 max-h-60 overflow-y-auto">
+                                <div v-for="result in searchResults" :key="result.properties.id"
+                                    @click="selectLocation(result)" class="p-2 hover:bg-gray-100 cursor-pointer">
+                                    {{ result.properties.label }}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
                     <div class="grid grid-cols-2 gap-4">
                         <div>
                             <InputLabel for="place_name" value="Place Name *" />
@@ -27,27 +41,7 @@
                             <Input v-model="form.country" required />
                         </div>
                     </div>
-                    
-                    <div>
-                        <InputLabel for="location" value="Search Location *" />
-                        <div class="relative">
-                            <Input 
-                                v-model="mapform.location" 
-                                @input="handleSearchInput"
-                                placeholder="Search for a location"
-                            />
-                            <div v-if="searchResults.length" class="absolute z-10 bg-white border rounded mt-1 max-h-60 overflow-y-auto">
-                                <div 
-                                    v-for="result in searchResults" 
-                                    :key="result.properties.id"
-                                    @click="selectLocation(result)"
-                                    class="p-2 hover:bg-gray-100 cursor-pointer"
-                                >
-                                    {{ result.properties.label }}
-                                </div>
-                            </div>
-                        </div>
-                    </div>
+
 
                     <div class="grid grid-cols-2 gap-4">
                         <div>
@@ -61,8 +55,9 @@
                     </div>
 
                     <div>
-                        <InputLabel for="image" value="Place Image" />
+                        <InputLabel for="image" value="Place Image *" />
                         <Input type="file" @change="handleFileUpload" accept="image/*" />
+                        <p v-if="imageError" class="text-red-500 text-sm">{{ imageError }}</p>
                     </div>
 
                     <div id="map" class="h-[400px] w-full"></div>
@@ -154,26 +149,34 @@ const selectLocation = (result) => {
     updateMarkerAndForm(lat, lng);
 };
 
+
+const imageError = ref("");
 const handleFileUpload = (event) => {
-    form.value.image = event.target.files[0];
+    const file = event.target.files[0];
+    if (file) {
+        form.value.image = file;
+        imageError.value = "";
+    }
 };
 
 const submitForm = () => {
+    if (!form.value.image) {
+        imageError.value = "Please upload an image.";
+        return;
+    }
+
     const formData = new FormData();
     Object.keys(form.value).forEach(key => {
         if (form.value[key] !== null && form.value[key] !== undefined) {
             formData.append(key, form.value[key]);
         }
     });
+
     router.post("/popular-places", formData, {
         forceFormData: true,
         onSuccess: () => {
             form.value = { place_name: '', city: '', state: '', country: '', latitude: null, longitude: null, image: null };
             mapform.value.location = '';
-            if (marker) {
-                map.removeLayer(marker);
-                marker = null;
-            }
         },
     });
 };
