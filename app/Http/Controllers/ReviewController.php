@@ -40,7 +40,11 @@ class ReviewController extends Controller
 
     public function getApprovedReviews(Vehicle $vehicle)
     {
-        $reviews = $vehicle->reviews()->with(['user.profile'])->where('status', 'approved')->get();
-        return response()->json(['reviews' => $reviews]);
+        $approvedReviews = $vehicle->reviews()
+            ->with(['user.profile'])
+            ->where('status', 'approved')
+            ->get();
+    
+        return response()->json(['reviews' => $approvedReviews]);
     }
 }

@@ -1,7 +1,7 @@
 <template>
     <MyProfileLayout>
-      <div class="container mx-auto px-4 py-8">
-        <h1 class="text-2xl font-bold mb-6">Confirmed Bookings</h1>
+      <div class="container mx-auto px-4">
+        <p class="text-[1.5rem] text-customPrimaryColor font-bold mb-[2rem] bg-[#154D6A0D] rounded-[12px] px-[1rem] py-[1rem]">Confirmed Bookings</p>
   
         <div v-if="bookings.length === 0" class="text-center text-gray-500">
           <div class="flex flex-col justify-center items-center">

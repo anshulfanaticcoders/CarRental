@@ -601,14 +601,18 @@
                         <img :src="uploadIcon" alt="" />
                         <p>Drag & Drop to Upload Photos</p>
                         <p class="text-customLightGrayColor font-medium">or</p>
-                        <input type="file" id="images" @change="handleFileUpload" multiple required />
+                        <input type="file" id="images" @change="handleFileUpload" multiple />
+                        <p v-if="form.images.length < 5" class="text-red-500 mt-2">
+            Please select at least 5 images.
+          </p>
                     </div>
 
                     <div class="buttons flex justify-between mt-[2rem] pb-[4rem]">
                         <button class="button-secondary w-[40%]" @click="prevStep">
                             Back
                         </button>
-                        <PrimaryButton class="w-[40%]" type="button" @click="submit">Submit</PrimaryButton>
+                        <PrimaryButton class="w-[40%]" type="button" @click="submit"
+                        :disabled="form.images.length < 5">Submit</PrimaryButton>
                     </div>
                 </div>
             </div>
@@ -704,6 +708,7 @@ const fetchCategories = async () => {
 
 // Submit form data
 const submit = () => {
+    if (form.images.length < 5) return; 
     form.post(route("vehicles.store"), {
         onSuccess: () => {
             toast.success('Vendor registration completed successfully! Wait for confimation', {

@@ -56,15 +56,15 @@ function handleAvatarUpload(event) {
 }
 const handleSubmit = () => {
     form.post(route('profile.update'), {
-        onSuccess: () => {
-            toast.success('Profile updated successfully!', {
-                position: 'top-right',
-                timeout: 3000,
-                closeOnClick: true,
-                pauseOnHover: true,
-                draggable: true,
-            });
-        },
+            onSuccess: () => {
+                toast.success('Profile updated successfully!', {
+                    position: 'top-right',
+                    timeout: 3000,
+                    closeOnClick: true,
+                    pauseOnHover: true,
+                    draggable: true,
+                });
+            },
     });
 };
 </script>

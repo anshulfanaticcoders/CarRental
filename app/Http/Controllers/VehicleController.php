@@ -109,7 +109,7 @@ class VehicleController extends Controller
             ]);
         }
 
-        return redirect('/vehicles')->with([
+        return redirect('/profile')->with([
             'message' => 'Vehicle added successfully!',
             'type' => 'success'
         ]);

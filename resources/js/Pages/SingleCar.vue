@@ -44,7 +44,6 @@ const { props } = usePage(); // Get the props passed from the controller
 const vehicle = ref(props.vehicle);
 const reviews = ref([]);
 const isLoading = ref(true);
-const showAllReviews = ref(false); // Toggle for testing - REMOVE IN PRODUCTION
 const plugin = Autoplay({
     delay: 2000,
     stopOnMouseEnter: true,
@@ -81,11 +80,7 @@ onMounted(async () => {
 const fetchReviews = async () => {
     isLoading.value = true;
     try {
-        const endpoint = showAllReviews.value
-            ? `/api/vehicles/${props.vehicle.id}/reviews/all`
-            : `/api/vehicles/${props.vehicle.id}/reviews`;
-
-        const response = await axios.get(endpoint);
+        const response = await axios.get(`/api/vehicles/${props.vehicle.id}/reviews`);
         reviews.value = response.data.reviews;
     } catch (error) {
         console.error("Error fetching reviews:", error);
@@ -94,11 +89,6 @@ const fetchReviews = async () => {
     }
 };
 
-// Toggle for testing - REMOVE IN PRODUCTION
-const toggleShowAllReviews = () => {
-    showAllReviews.value = !showAllReviews.value;
-    fetchReviews();
-};
 
 // Feature-Icon Mapping
 const featureIconMap = {

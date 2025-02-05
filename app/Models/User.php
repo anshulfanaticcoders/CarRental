@@ -60,4 +60,10 @@ class User extends Authenticatable
     {
         return $this->hasMany(Review::class);
     }
+
+    public function favorites()
+    {
+        return $this->belongsToMany(Vehicle::class, 'user_vehicle', 'user_id', 'vehicle_id')->withTimestamps();
+    }
+
 }

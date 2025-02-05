@@ -58,7 +58,7 @@ const fetchCategories = async () => {
 };
 
 const submit = () => {
-    form.post(route("vehicles.store"), {
+    form.post(route("vendor-vehicles.store"), {
         onSuccess: () => {
             toast.success('Vendor registration completed successfully! Wait for confirmation', {
                 position: 'top-right',
@@ -179,7 +179,7 @@ const initializeMap = () => {
             <div class="flex items-center justify-between mt-[2rem]">
                 <span class="text-[1.5rem] font-semibold">Edit Vehicle</span>
                 <Link 
-                    :href="route('vehicles.index')" 
+                    :href="route('vendor-vehicles.index')" 
                     class="px-4 py-2 bg-gray-500 text-white rounded hover:bg-gray-600"
                 >
                     Back to List
@@ -474,7 +474,7 @@ const initializeMap = () => {
 
                     <div class="flex justify-end gap-2">
                         <Link
-                            :href="route('vehicles.index')"
+                            :href="route('vendor-vehicles.index')"
                             class="px-4 py-2 bg-gray-500 text-white rounded hover:bg-gray-600"
                         >
                             Cancel

@@ -2,14 +2,15 @@
 
 use App\Http\Controllers\Admin\BlogController;
 use App\Http\Controllers\Admin\BookingDashboardController;
+use App\Http\Controllers\Admin\DashboardController;
 use App\Http\Controllers\Admin\PlansController;
 use App\Http\Controllers\Admin\PopularPlacesController;
 use App\Http\Controllers\Admin\UsersController;
 use App\Http\Controllers\Admin\VehicleAddonsController;
 use App\Http\Controllers\Admin\VehicleDashboardController;
-use App\Http\Controllers\Auth\RegisteredUserController;
 
 use App\Http\Controllers\BookingController;
+use App\Http\Controllers\FavoriteController;
 use App\Http\Controllers\GeocodingController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\ReviewController;
@@ -100,6 +101,7 @@ Route::middleware(['auth', 'role:admin'])->group(function () {
     ;
     Route::resource('plans', PlansController::class);
     Route::resource('blogs', BlogController::class);
+    Route::get('/admin-dashboard', [DashboardController::class, 'index']);
 });
 
 
@@ -121,8 +123,8 @@ Route::middleware(['auth', 'role:vendor'])->group(function () {
     Route::post('api/bookings/{booking}/cancel', [VendorBookingController::class, 'cancel'])->name('bookings.cancel');
     Route::get('/vendor/payments', [BookingController::class, 'getVendorPaymentHistory'])->name('vendor.payments');
     // this is for showing All Vehicles of vendor in vendor profile
-    Route::resource('vehicles', VendorVehicleController::class);
-    Route::delete('vehicles/{vehicle}/images/{image}', [VendorVehicleController::class, 'deleteImage'])
+    Route::resource('vendor-vehicles', VendorVehicleController::class);
+    Route::delete('vendor-vehicles/{vehicle}/images/{image}', [VendorVehicleController::class, 'deleteImage'])
         ->name('vehicles.deleteImage');
 
 });
@@ -171,6 +173,11 @@ Route::middleware(['auth', 'role:customer'])->group(function () {
 
     Route::get('/profile/bookings/completed', [BookingController::class, 'getCompletedBookings'])
         ->name('profile.bookings.completed');
+
+    //  ADD to favourite routes
+    Route::post('/vehicles/{vehicle}/favourite', [FavoriteController::class, 'favourite'])->name('vehicles.favourite');
+    Route::post('/vehicles/{vehicle}/unfavourite', [FavoriteController::class, 'unfavourite'])->name('vehicles.unfavourite');
+    Route::get('/favorites', [FavoriteController::class, 'getFavorites']);
 });
 
 Route::middleware(['auth', 'vendor.status'])->group(function () {

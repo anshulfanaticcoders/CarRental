@@ -60,7 +60,7 @@ class VendorVehicleController extends Controller
         }
     
     
-        return redirect()->route('vehicles.index')
+        return redirect()->route('vendor-vehicles.index')
             ->with('success', 'Vehicle ' . ($id ? 'updated' : 'created') . ' successfully');
     }
 
@@ -130,7 +130,7 @@ class VendorVehicleController extends Controller
             }
         }
 
-        return redirect()->route('vehicles.index')
+        return redirect()->route('vendor-vehicles.index')
             ->with('success', 'Vehicle updated successfully');
     }
 
@@ -146,7 +146,7 @@ class VendorVehicleController extends Controller
 
         $vehicle->delete();
 
-        return redirect()->route('vehicles.index')
+        return redirect()->route('vendor-vehicles.index')
             ->with('success', 'Vehicle deleted successfully');
     }
 

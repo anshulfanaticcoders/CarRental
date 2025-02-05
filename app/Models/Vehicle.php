@@ -83,4 +83,8 @@ class Vehicle extends Model
     {
         return $this->hasMany(Review::class);
     }
+    public function favoritedBy()
+    {
+        return $this->belongsToMany(User::class, 'user_vehicle', 'vehicle_id', 'user_id');
+    }
 }
