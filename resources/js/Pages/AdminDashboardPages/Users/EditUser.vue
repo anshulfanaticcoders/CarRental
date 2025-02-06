@@ -22,7 +22,7 @@
                 <InputLabel for="phone" value="Phone *" />
                 <Input v-model="editForm.phone" required />
             </div>
-            <div>
+            <!-- <div>
                 <InputLabel for="role" value="Role *" />
                 <Select v-model="editForm.role" required>
                     <SelectTrigger>
@@ -32,7 +32,7 @@
                         <SelectItem value="customer">Customer</SelectItem>
                     </SelectContent>
                 </Select>
-            </div>
+            </div> -->
             <div>
                 <InputLabel for="status" value="Status *" />
                 <Select v-model="editForm.status" required>

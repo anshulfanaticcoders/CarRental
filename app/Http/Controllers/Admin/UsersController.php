@@ -71,7 +71,7 @@ class UsersController extends Controller
             'last_name' => 'required|string|max:255',
             'email' => 'required|email|unique:users,email,' . $user->id,
             'phone' => 'required|unique:users,phone,' . $user->id,
-            'role' => 'required|in:admin,vendor,customer',
+            // 'role' => 'required|in:admin,vendor,customer',
             'status' => 'required|in:active,inactive,suspended',
             'password' => 'nullable|min:8|confirmed'
         ]);
@@ -97,7 +97,7 @@ class UsersController extends Controller
     public function destroy(User $user)
     {
         // Log the activity
-        ActivityLogHelper::logActivity('delete', 'Deleted a user', $user);
+        ActivityLogHelper::logActivity('delete', 'User Deleted', $user);
         $user->delete();
         return redirect()->route('users.index')->with('success', 'User deleted successfully.');
     }

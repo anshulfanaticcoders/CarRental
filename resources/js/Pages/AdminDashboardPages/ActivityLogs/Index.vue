@@ -13,34 +13,6 @@
                 </div>
             </div>
 
-            <!-- Activity Type Filter Buttons -->
-            <div class="flex gap-2 mt-2">
-                <Button 
-                    :variant="!currentActivityType ? 'default' : 'outline'"
-                    @click="handleActivityTypeChange('')"
-                >
-                    All
-                </Button>
-                <Button 
-                    :variant="currentActivityType === 'create' ? 'default' : 'outline'"
-                    @click="handleActivityTypeChange('create')"
-                >
-                    Create
-                </Button>
-                <Button 
-                    :variant="currentActivityType === 'update' ? 'default' : 'outline'"
-                    @click="handleActivityTypeChange('update')"
-                >
-                    Update
-                </Button>
-                <Button 
-                    :variant="currentActivityType === 'delete' ? 'default' : 'outline'"
-                    @click="handleActivityTypeChange('delete')"
-                >
-                    Delete
-                </Button>
-            </div>
-
             <div class="rounded-md border p-5 mt-[1rem] bg-[#153B4F0D]">
                 <Table>
                     <TableHeader>
@@ -94,42 +66,25 @@ import TableHead from "@/Components/ui/table/TableHead.vue";
 import TableBody from "@/Components/ui/table/TableBody.vue";
 import TableCell from "@/Components/ui/table/TableCell.vue";
 import Badge from "@/Components/ui/badge/Badge.vue";
-import Button from "@/Components/ui/button/Button.vue";
 import { Input } from "@/Components/ui/input";
 import Pagination from "@/Pages/AdminDashboardPages/Users/Pagination.vue";
 
 const props = defineProps({
     logs: Object,
     filters: Object,
-    currentActivityType: String,
 });
 
 const search = ref(props.filters.search || '');
-const currentActivityType = ref(props.currentActivityType || '');
 
 const handleSearch = () => {
-    router.get('/activity-logs', { 
-        search: search.value,
-        activity_type: currentActivityType.value 
-    }, {
-        preserveState: true,
-        replace: true,
-    });
-};
-
-const handleActivityTypeChange = (type) => {
-    currentActivityType.value = type;
-    router.get('/activity-logs', { 
-        activity_type: type,
-        search: search.value 
-    }, {
+    router.get('/activity-logs', { search: search.value }, {
         preserveState: true,
         replace: true,
     });
 };
 
 const handlePageChange = (page) => {
-    router.get(`/activity-logs?page=${page}&activity_type=${currentActivityType.value}`);
+    router.get(`/activity-logs?page=${page}`);
 };
 
 const getActivityTypeBadgeVariant = (type) => {

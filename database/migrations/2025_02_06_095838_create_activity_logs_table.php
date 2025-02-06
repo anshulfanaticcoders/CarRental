@@ -22,7 +22,7 @@ return new class extends Migration
             $table->timestamps();
 
             // Indexes for faster queries
-            $table->index(['user_id', 'activity_type', 'logable_type', 'logable_id']);
+            $table->index(['user_id', 'activity_type', 'logable_type', 'logable_id'], 'activity_logs_idx');
         });
     }
 

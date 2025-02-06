@@ -12,31 +12,6 @@ use Carbon\Carbon;
 
 class DashboardController extends Controller
 {
-    // public function index()
-    // {
-    //     // Fetch total users
-    //     $totalCustomers = User::where('role', 'customer')->count();
-    //     $totalVendors = User::where('role', 'vendor')->count();
-
-    //     // Fetch total vehicles
-    //     $totalVehicles = Vehicle::count();
-
-    //     // Fetch active bookings (assuming 'active' status is stored in the bookings table)
-    //     $activeBookings = Booking::where('booking_status', 'pending')->count();
-
-    //     // Fetch total revenue (assuming revenue is stored in the bookings table)
-    //     $totalRevenue = Booking::sum('total_amount');
-
-    //     return Inertia::render('AdminDashboardPages/Dashboard/Index', [
-    //         'totalUsers' => $totalCustomers,
-    //         'totalVendors' => $totalVendors,
-    //         'totalVehicles' => $totalVehicles,
-    //         'activeBookings' => $activeBookings,
-    //         'totalRevenue' => $totalRevenue,
-    //     ]);
-    // }
-
-
     public function index()
     {
         // Current and previous month

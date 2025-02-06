@@ -12,7 +12,6 @@ class ActivityLogsController extends Controller
     public function index(Request $request)
     {
         $search = $request->query('search');
-        $activityType = $request->query('activity_type'); // New filter parameter
         
         $logs = ActivityLog::with('user')
             ->when($search, function ($query, $search) {
@@ -26,16 +25,12 @@ class ActivityLogsController extends Controller
                         });
                 });
             })
-            ->when($activityType, function ($query, $activityType) {
-                return $query->where('activity_type', $activityType);
-            })
             ->orderBy('created_at', 'desc')
             ->paginate(10);
 
         return Inertia::render('AdminDashboardPages/ActivityLogs/Index', [
             'logs' => $logs,
-            'filters' => $request->only(['search', 'activity_type']),
-            'currentActivityType' => $activityType,
+            'filters' => $request->only(['search']),
         ]);
     }
 }

@@ -81,10 +81,6 @@ const data = {
           title: 'All Users',
           url: '/users',
         },
-        {
-          title: 'Add Users',
-          url: '/users',
-        },
       ],
     },
     {
@@ -94,10 +90,6 @@ const data = {
       items: [
         {
           title: 'All Vendors',
-          url: '/vendors',
-        },
-        {
-          title: 'Verifications',
           url: '/vendors',
         },
       ],
@@ -133,14 +125,6 @@ const data = {
         {
           title: 'All Locations',
           url: '/popular-places',
-        },
-        {
-          title: 'Add Locations',
-          url: '/popular-places',
-        },
-        {
-          title: 'Setting',
-          url: '/settings',
         },
       ],
     },
@@ -189,10 +173,6 @@ const data = {
       items: [
         {
           title: 'All Blogs',
-          url: '/blogs',
-        },
-        {
-          title: 'Add Blogs',
           url: '/blogs',
         },
       ],
