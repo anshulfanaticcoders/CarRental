@@ -33,7 +33,8 @@ import { DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/Compon
 import Input from "@/Components/ui/input/Input.vue";
 import InputLabel from "@/Components/InputLabel.vue";
 import Button from "@/Components/ui/button/Button.vue";
-
+import { useToast } from 'vue-toastification';
+const toast = useToast();
 const form = ref({
     name: '',
     description: '',
@@ -52,6 +53,13 @@ const submitForm = () => {
                 image: "",
             };
             emit('close');
+            toast.success('Vehicle Category added successfully!', {
+                position: 'top-right',
+                timeout: 3000,
+                closeOnClick: true,
+                pauseOnHover: true,
+                draggable: true,
+            });
         },
     });
 };

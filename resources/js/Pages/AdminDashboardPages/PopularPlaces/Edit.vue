@@ -129,6 +129,8 @@ import AdminDashboardLayout from '@/Layouts/AdminDashboardLayout.vue';
 import InputLabel from '@/Components/InputLabel.vue';
 import { Input } from '@/Components/ui/input';
 import { Button } from '@/Components/ui/button';
+import { useToast } from 'vue-toastification';
+const toast = useToast();
 
 const props = defineProps({
     place: {
@@ -150,7 +152,25 @@ const form = ref({
 
 const submit = () => {
     router.post(route('popular-places.update', props.place.id), form.value, {
-        forceFormData: true
+        forceFormData: true,
+        onSuccess: () => {
+            toast.success('Popular place updated successfully!', {
+                position: 'top-right',
+                timeout: 3000,
+                closeOnClick: true,
+                pauseOnHover: true,
+                draggable: true,
+            });
+        },
+        onError: (errors) => {
+            toast.error('Error updating popular place. Please check your inputs.', {
+                position: 'top-right',
+                timeout: 3000,
+                closeOnClick: true,
+                pauseOnHover: true,
+                draggable: true,
+            });
+        }
     });
 };
 </script>

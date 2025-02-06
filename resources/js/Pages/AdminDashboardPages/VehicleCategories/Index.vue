@@ -34,6 +34,7 @@
                             <TableHead>ID</TableHead>
                             <TableHead>Image</TableHead>
                             <TableHead>Name</TableHead>
+                            <TableHead>Description</TableHead>
                             <TableHead>Status</TableHead>
                             <TableHead class="text-right">Actions</TableHead>
                         </TableRow>
@@ -45,6 +46,7 @@
                                 <img :src="`/storage/${user.image}`" alt="" class="w-[100px] h-[70px] rounded-[10px]">
                             </TableCell>
                             <TableCell class="font-medium">{{ user.name }}</TableCell>
+                            <TableCell class="font-medium">{{ user.description }}</TableCell>
                             <TableCell>
                                 <Badge :variant="user.status ? 'default' : 'secondary'">
                                     {{ user.status ? "Active" : "Inactive" }}

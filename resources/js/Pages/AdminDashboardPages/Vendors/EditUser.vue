@@ -54,7 +54,8 @@ import SelectTrigger from "@/Components/ui/select/SelectTrigger.vue";
 import Select from "@/Components/ui/select/Select.vue";
 import SelectValue from "@/Components/ui/select/SelectValue.vue";
 import Button from "@/Components/ui/button/Button.vue";
-
+import { useToast } from 'vue-toastification';
+const toast = useToast();
 const props = defineProps({
     user: Object,
 });
@@ -74,6 +75,13 @@ const updateUser = () => {
     router.put(`/vendors/${editForm.value.vendor_profile.id}`, payload, {
         onSuccess: () => {
             emit('close');
+            toast.success('Vendor status updated successfully!', {
+                position: 'top-right',
+                timeout: 3000,
+                closeOnClick: true,
+                pauseOnHover: true,
+                draggable: true,
+            });
         },
     });
 };

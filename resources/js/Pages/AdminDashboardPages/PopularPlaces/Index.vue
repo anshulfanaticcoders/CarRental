@@ -84,6 +84,7 @@ import { Button } from '@/Components/ui/button';
 import Pagination from "@/Pages/AdminDashboardPages/PopularPlaces/Pagination.vue";
 import { ref } from 'vue';
 import { Input } from '@/Components/ui/input';
+
 const props = defineProps({
     places: Object,
     filters: Object,

@@ -15,9 +15,9 @@
           <Tabs default-value="overview" class="space-y-4">
             <TabsList>
               <TabsTrigger value="overview">Overview</TabsTrigger>
-              <TabsTrigger value="analytics" disabled>Analytics</TabsTrigger>
-              <TabsTrigger value="reports" disabled>Reports</TabsTrigger>
-              <TabsTrigger value="notifications" disabled>Notifications</TabsTrigger>
+              <TabsTrigger value="analytics" disabled>Bookings</TabsTrigger>
+              <TabsTrigger value="reports" disabled>Payments</TabsTrigger>
+              <TabsTrigger value="notifications" disabled>Revenue</TabsTrigger>
             </TabsList>
             <TabsContent value="overview" class="space-y-4">
               <div class="grid gap-4 md:grid-cols-2 lg:grid-cols-4">

@@ -71,6 +71,8 @@
 import { Button } from '@/Components/ui/button';
 import AdminDashboardLayout from '@/Layouts/AdminDashboardLayout.vue';
 import { Link, useForm } from '@inertiajs/vue3';
+import { useToast } from 'vue-toastification';
+const toast = useToast();
 
 const props = defineProps({
     blog: Object
@@ -85,5 +87,12 @@ const form = useForm({
 
 const submit = () => {
     form.post(route('blogs.update', props.blog.id));
+    toast.success('Blog updated successfully!', {
+                position: 'top-right',
+                timeout: 3000,
+                closeOnClick: true,
+                pauseOnHover: true,
+                draggable: true,
+            });
 };
 </script>

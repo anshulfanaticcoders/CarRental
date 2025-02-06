@@ -79,6 +79,8 @@ import InputLabel from "@/Components/InputLabel.vue";
 import Input from "@/Components/ui/input/Input.vue";
 import Button from "@/Components/ui/button/Button.vue";
 import AdminDashboardLayout from "@/Layouts/AdminDashboardLayout.vue";
+import { useToast } from 'vue-toastification';
+const toast = useToast();
 
 const form = ref({
     place_name: '',
@@ -162,6 +164,13 @@ const handleFileUpload = (event) => {
 const submitForm = () => {
     if (!form.value.image) {
         imageError.value = "Please upload an image.";
+        toast.error('Please upload an image.', {
+            position: 'top-right',
+            timeout: 3000,
+            closeOnClick: true,
+            pauseOnHover: true,
+            draggable: true,
+        });
         return;
     }
 
@@ -175,8 +184,24 @@ const submitForm = () => {
     router.post("/popular-places", formData, {
         forceFormData: true,
         onSuccess: () => {
+            toast.success('Popular place created successfully!', {
+                position: 'top-right',
+                timeout: 3000,
+                closeOnClick: true,
+                pauseOnHover: true,
+                draggable: true,
+            });
             form.value = { place_name: '', city: '', state: '', country: '', latitude: null, longitude: null, image: null };
             mapform.value.location = '';
+        },
+        onError: (errors) => {
+            toast.error('Error creating popular place. Please check your inputs.', {
+                position: 'top-right',
+                timeout: 3000,
+                closeOnClick: true,
+                pauseOnHover: true,
+                draggable: true,
+            });
         },
     });
 };

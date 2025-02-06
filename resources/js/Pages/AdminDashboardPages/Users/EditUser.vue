@@ -65,6 +65,8 @@ import SelectTrigger from "@/Components/ui/select/SelectTrigger.vue";
 import Select from "@/Components/ui/select/Select.vue";
 import SelectValue from "@/Components/ui/select/SelectValue.vue";
 import Button from "@/Components/ui/button/Button.vue";
+import { useToast } from 'vue-toastification';
+const toast = useToast();
 
 const props = defineProps({
     user: Object,
@@ -82,6 +84,13 @@ const updateUser = () => {
     router.put(`/users/${editForm.value.id}`, editForm.value, {
         onSuccess: () => {
             emit('close');
+            toast.success('User updated successfully!', {
+                position: 'top-right',
+                timeout: 3000,
+                closeOnClick: true,
+                pauseOnHover: true,
+                draggable: true,
+            });
         },
     });
 };
