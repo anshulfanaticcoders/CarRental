@@ -47,13 +47,13 @@
                 >
                     Cancel
                 </Link>
-                <button 
+                <Button 
                     type="submit"
                     class="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
                     :disabled="form.processing"
                 >
                     Create Blog
-                </button>
+                </Button>
             </div>
         </form>
     </div>
@@ -61,6 +61,7 @@
 </template>
 
 <script setup>
+import Button from '@/Components/ui/button/Button.vue';
 import AdminDashboardLayout from '@/Layouts/AdminDashboardLayout.vue';
 import { Link, useForm } from '@inertiajs/vue3';
 import { useToast } from 'vue-toastification';

@@ -64,7 +64,7 @@
                                     <Button size="sm" variant="outline" @click="editBlog(blog)">
                                         Edit
                                     </Button>
-                                    <Button size="sm" variant="destructive" @click="deleteBlog(blog.id)">
+                                    <Button size="sm" variant="destructive"  @click="confirmDeleteBlog(blog)">
                                         Delete
                                     </Button>
                                 </div>
@@ -100,7 +100,8 @@ import {
 import Input from "@/Components/ui/input/Input.vue";
 import InputLabel from "@/Components/InputLabel.vue";
 import AdminDashboardLayout from '@/Layouts/AdminDashboardLayout.vue';
-
+import { useToast } from 'vue-toastification';
+const toast = useToast();
 const props = defineProps({
     blogs: Array
 });
@@ -123,7 +124,19 @@ const submit = () => {
     form.post(route('blogs.store'), {
         onSuccess: () => {
             form.reset();
+            toast.success('Blog created successfully!', {
+                position: 'top-right',
+                timeout: 3000,
+            });
         },
+        onError: (errors) => {
+            Object.values(errors).forEach(error => {
+                toast.error(error[0], {
+                    position: 'top-right',
+                    timeout: 5000,
+                });
+            });
+        }
     });
 };
 
@@ -131,9 +144,28 @@ const editBlog = (blog) => {
     router.get(route('blogs.edit', blog.id));
 };
 
+const confirmDeleteBlog = (blog) => {
+  if (confirm('Are you sure you want to delete this blog?')) {
+    deleteBlog(blog.id);
+  }
+};
+
 const deleteBlog = (id) => {
-    if (confirm('Are you sure you want to delete this blog?')) {
-        router.delete(route('blogs.destroy', id));
-    }
+    router.delete(route('blogs.destroy', id), {
+        onSuccess: () => {
+            toast.success('Blog deleted successfully!', {  // Toast on success
+                position: 'top-right',
+                timeout: 3000,
+            });
+        },
+        onError: (errors) => {
+            Object.values(errors).forEach(error => { // Toast on error
+                toast.error(error[0], {
+                    position: 'top-right',
+                    timeout: 5000,
+                });
+            });
+        }
+    });
 };
 </script>

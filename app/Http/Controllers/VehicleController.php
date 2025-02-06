@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Helpers\ActivityLogHelper;
 use App\Models\Vehicle;
 use App\Models\VehicleFeature;
 use App\Models\VehicleImage;
@@ -108,7 +109,7 @@ class VehicleController extends Controller
                 'image_type' => $imageType,
             ]);
         }
-
+        ActivityLogHelper::logActivity('create', 'Created a new vehicle', $vehicle, $request);
         return redirect('/profile')->with([
             'message' => 'Vehicle added successfully!',
             'type' => 'success'

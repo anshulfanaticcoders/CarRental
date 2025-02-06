@@ -1,7 +1,7 @@
 <?php
 
 namespace App\Http\Controllers\Admin;
-
+use App\Helpers\ActivityLogHelper;
 use App\Http\Controllers\Controller;
 use App\Models\User;
 use Illuminate\Http\Request;
@@ -53,7 +53,10 @@ class UsersController extends Controller
         $data = $request->all();
         $data['password'] = Hash::make($request->password);
 
-        User::create($data);
+        $user = User::create($data);
+
+        // Log the activity
+        ActivityLogHelper::logActivity('create', 'Created a new user', $user, $request);
 
         return redirect()->route('users.index')->with('success', 'User created successfully.');
     }
@@ -82,6 +85,8 @@ class UsersController extends Controller
         }
 
         $user->update($data);
+        // Log the activity
+        ActivityLogHelper::logActivity('update', 'Updated a user', $user, $request);
 
         return redirect()->route('users.index')->with('success', 'User updated successfully.');
     }
@@ -91,8 +96,9 @@ class UsersController extends Controller
      */
     public function destroy(User $user)
     {
+        // Log the activity
+        ActivityLogHelper::logActivity('delete', 'Deleted a user', $user);
         $user->delete();
         return redirect()->route('users.index')->with('success', 'User deleted successfully.');
     }
 }
-    

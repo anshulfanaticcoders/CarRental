@@ -8,7 +8,6 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/Components/ui/dropdown-menu'
-import { ref } from 'vue'
 
 import bulbIcon from '../../assets/bulb.svg';
 import percentageIcon from '../../assets/percent.svg';

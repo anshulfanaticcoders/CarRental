@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Admin\BlogController;
 use App\Http\Controllers\BookingAddonController;
 use App\Http\Controllers\BookingController;
 use App\Http\Controllers\BookingExtraController;
@@ -57,3 +58,7 @@ Route::get('/currencies', [CurrencyController::class, 'index']);
 // In your api.php routes file
 Route::get('/vehicles/{vehicle}/reviews', [ReviewController::class, 'getApprovedReviews']);
 Route::get('/booking-success/details', [BookingController::class, 'getBookingDetails'])->name('booking-success.details');
+
+
+// this is for recent blogs
+Route::get('/recent-blogs', [BlogController::class, 'getRecentBlogs']);

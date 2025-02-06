@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Helpers\ActivityLogHelper;
 use App\Http\Requests\ProfileUpdateRequest;
 use App\Models\UserProfile;
 use App\Models\User;
@@ -73,6 +74,8 @@ class ProfileController extends Controller
 
             DB::commit();
 
+            // Log the activity
+            ActivityLogHelper::logActivity('update', 'Updated User Profile', $user, $request);
             return Redirect::route('profile.edit')
                 ->with('status', 'Profile updated successfully.');
 
@@ -106,7 +109,8 @@ class ProfileController extends Controller
             $request->session()->regenerateToken();
 
             DB::commit();
-
+            // Log the activity
+            ActivityLogHelper::logActivity('delete', 'User Deleted', $user, $request);
             return Redirect::to('/');
 
         } catch (\Exception $e) {
@@ -158,6 +162,6 @@ class ProfileController extends Controller
             ], 500);
         }
     }
-    
+
 
 }

@@ -1,11 +1,10 @@
 <script setup>
-import { Link } from "@inertiajs/vue3";
+import { Link, useForm, usePage } from "@inertiajs/vue3";
 import { onMounted, ref, watch } from "vue";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import AuthenticatedHeaderLayout from "@/Layouts/AuthenticatedHeaderLayout.vue";
 import Footer from "@/Components/Footer.vue";
-import FilterSlot from "@/Components/FilterSlot.vue";
 import goIcon from "../../assets/goIcon.svg";
 import carIcon from "../../assets/carIcon.svg";
 import walkIcon from "../../assets/walking.svg";
@@ -21,7 +20,53 @@ const props = defineProps({
     filters: Object,
     pagination_links: String,
 });
+// Debounce function
+const debounce = (fn, delay) => {
+  let timeoutId;
+  return (...args) => {
+    clearTimeout(timeoutId);
+    timeoutId = setTimeout(() => fn(...args), delay);
+  };
+};
 
+// Use Inertia's form handling
+const form = useForm({
+  seating_capacity: usePage().props.filters.seating_capacity || [],
+  brand: usePage().props.filters.brand || '',
+  transmission: usePage().props.filters.transmission || '',
+  fuel: usePage().props.filters.fuel || '',
+  price_range: usePage().props.filters.price_range || '',
+  color: usePage().props.filters.color || '',
+  mileage: usePage().props.filters.mileage || '',
+  date_from: usePage().props.filters.date_from || '',
+  date_to: usePage().props.filters.date_to || '',
+  where: usePage().props.filters.where || '',
+  latitude: usePage().props.filters.latitude || '',
+  longitude: usePage().props.filters.longitude || '',
+  radius: usePage().props.filters.radius || '',
+});
+
+// Debounced filter submission
+const submitFilters = debounce(() => {
+  form.get('/s', {
+    preserveState: true,
+    preserveScroll: true,
+    onSuccess: (response) => {
+      console.log('Filter response:', response.props.vehicles);
+    },
+    onError: (errors) => {
+      console.error('Filter errors:', errors);
+    },
+  });
+}, 300);
+
+watch(
+  () => form.data(),
+  () => {
+    submitFilters();
+  },
+  { deep: true }
+);
 let map = null;
 let markers = [];
 
@@ -217,7 +262,86 @@ const toggleFavourite = async (vehicle) => {
 
     <section>
         <div class="full-w-container py-customVerticalSpacing">
-            <FilterSlot />
+            <form>
+      <div class="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-4">
+
+        <!-- Seating Capacity Filter -->
+        <div>
+          <label for="seating_capacity" class="block text-sm font-medium text-gray-700">Seating Capacity</label>
+          <select v-model="form.seating_capacity" id="seating_capacity"
+            class="mt-1 block w-full rounded-md border-gray-300 shadow-sm">
+            <option value="">Any</option>
+            <option v-for="capacity in $page.props.seatingCapacities" :key="capacity" :value="capacity">{{ capacity }}
+            </option>
+          </select>
+        </div>
+
+        <!-- Brand Filter -->
+        <div>
+          <label for="brand" class="block text-sm font-medium text-gray-700">Brand</label>
+          <select v-model="form.brand" id="brand" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm">
+            <option value="">All Brands</option>
+            <option v-for="brand in $page.props.brands" :key="brand" :value="brand">{{ brand }}</option>
+          </select>
+        </div>
+
+        <!-- Transmission Filter -->
+        <div>
+          <label for="transmission" class="block text-sm font-medium text-gray-700">Transmission</label>
+          <select v-model="form.transmission" id="transmission"
+            class="mt-1 block w-full rounded-md border-gray-300 shadow-sm">
+            <option value="">Any</option>
+            <option value="automatic">Automatic</option>
+            <option value="manual">Manual</option>
+          </select>
+        </div>
+
+        <!-- Fuel Filter -->
+        <div>
+          <label for="fuel" class="block text-sm font-medium text-gray-700">Fuel</label>
+          <select v-model="form.fuel" id="fuel" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm">
+            <option value="">Any</option>
+            <option value="petrol">Petrol</option>
+            <option value="diesel">Diesel</option>
+            <option value="electric">Electric</option>
+          </select>
+        </div>
+
+        <!-- Price Range Filter -->
+        <div>
+          <label for="price_range" class="block text-sm font-medium text-gray-700">Price Range</label>
+          <select v-model="form.price_range" id="price_range"
+            class="mt-1 block w-full rounded-md border-gray-300 shadow-sm">
+            <option value="">Any</option>
+            <option value="0-1000">₹0 - ₹1000</option>
+            <option value="1000-5000">₹1000 - ₹5000</option>
+            <option value="5000-10000">₹5000 - ₹10000</option>
+            <option value="10000-20000">₹10000 - ₹20000</option>
+          </select>
+        </div>
+
+        <!-- Color Filter -->
+        <div>
+          <label for="color" class="block text-sm font-medium text-gray-700">Color</label>
+          <select v-model="form.color" id="color" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm">
+            <option value="">Any</option>
+            <option v-for="color in $page.props.colors" :key="color" :value="color">{{ color }}</option>
+          </select>
+        </div>
+
+        <!-- Mileage Filter -->
+        <div>
+          <label for="mileage" class="block text-sm font-medium text-gray-700">Mileage</label>
+          <select v-model="form.mileage" id="mileage" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm">
+            <option value="">Any</option>
+            <option value="0-10">0 - 10 km/l</option>
+            <option value="10-20">10 - 20 km/l</option>
+            <option value="20-30">20 - 30 km/l</option>
+            <option value="30-40">30 - 40 km/l</option>
+          </select>
+        </div>
+      </div>
+    </form>
         </div>
     </section>
 

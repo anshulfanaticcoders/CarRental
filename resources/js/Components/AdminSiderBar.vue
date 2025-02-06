@@ -172,17 +172,13 @@ const data = {
       ],
     },
     {
-      title: 'Reports',
+      title: 'Activity Logs',
       url: '#',
       icon: Proportions,
       items: [
         {
-          title: 'Business',
-          url: '#',
-        },
-        {
-          title: 'Users',
-          url: '#',
+          title: 'All Activities',
+          url: '/activity-logs',
         },
       ],
     },

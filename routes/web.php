@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Admin\ActivityLogsController;
 use App\Http\Controllers\Admin\BlogController;
 use App\Http\Controllers\Admin\BookingDashboardController;
 use App\Http\Controllers\Admin\DashboardController;
@@ -69,6 +70,7 @@ Route::get('/vehicles', [VehicleController::class, 'index'])->name('vehicles.ind
 Route::get('/vehicle/{id}', [VehicleController::class, 'show'])->name('vehicle.show');
 Route::get('/s', [SearchController::class, 'search']);
 Route::get('/api/geocoding/autocomplete', [GeocodingController::class, 'autocomplete']);
+Route::get('/blogs-page', [BlogController::class, 'showBlogPage'])->name('blogs-page');
 
 // Show Blogs on Home page
 // Route::get('/', [BlogController::class, 'show'])->name('welcome');
@@ -98,10 +100,12 @@ Route::middleware(['auth', 'role:admin'])->group(function () {
     Route::get('/customer-bookings/cancelled', [BookingDashboardController::class, 'cancelled'])->name('customer-bookings.cancelled');
     Route::resource('booking-addons', VehicleAddonsController::class)->middleware(['auth']);
     Route::resource('popular-places', PopularPlacesController::class)->except(['show']);
-    ;
     Route::resource('plans', PlansController::class);
     Route::resource('blogs', BlogController::class);
     Route::get('/admin-dashboard', [DashboardController::class, 'index']);
+
+    // activity logs
+    Route::get('/activity-logs', [ActivityLogsController::class, 'index'])->name('activity-logs.index');
 });
 
 

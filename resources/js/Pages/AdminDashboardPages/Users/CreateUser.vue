@@ -39,8 +39,6 @@
                         </SelectTrigger>
                         <SelectContent>
                             <SelectItem value="customer">Customer</SelectItem>
-                        <SelectItem value="vendor">Vendor</SelectItem>
-                        <SelectItem value="admin">Admin</SelectItem>
                         </SelectContent>
                     </Select>
                 </div>

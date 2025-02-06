@@ -33,7 +33,7 @@ class BlogController extends Controller
         $blog = new Blog();
         $blog->title = $request->title;
         $blog->content = $request->content;
-        
+
         if ($request->hasFile('image')) {
             $image = $request->file('image');
             $imageName = time() . '.' . $image->getClientOriginalExtension();
@@ -63,13 +63,13 @@ class BlogController extends Controller
 
         $blog->title = $request->title;
         $blog->content = $request->content;
-        
+
         if ($request->hasFile('image')) {
             // Delete old image if exists
             if ($blog->image && file_exists(public_path($blog->image))) {
                 unlink(public_path($blog->image));
             }
-            
+
             $image = $request->file('image');
             $imageName = time() . '.' . $image->getClientOriginalExtension();
             $image->move(public_path('images/blogs'), $imageName);
@@ -86,7 +86,7 @@ class BlogController extends Controller
         if ($blog->image && file_exists(public_path($blog->image))) {
             unlink(public_path($blog->image));
         }
-        
+
         $blog->delete();
 
         return redirect()->route('blogs.index')->with('success', 'Blog deleted successfully');
@@ -106,14 +106,28 @@ class BlogController extends Controller
     }
 
     public function show(Blog $blog)
-{
-    if ($blog->image) {
-        $blog->image = asset($blog->image); // Ensure full URL
+    {
+        if ($blog->image) {
+            $blog->image = asset($blog->image);
+        }
+
+        return Inertia::render('SingleBlog', [
+            'blog' => $blog
+        ]);
     }
 
-    return Inertia::render('SingleBlog', [
-        'blog' => $blog
-    ]);
-}
+    public function showBlogPage(Request $request)
+    {
+        $blogs = Blog::latest()->paginate(10);
 
+        return Inertia::render('BlogPage', [
+            'blogs' => $blogs,
+        ]);
+    }
+    public function getRecentBlogs()
+    {
+        $recentBlogs = Blog::latest()->take(5)->get();
+
+        return response()->json($recentBlogs);
+    }
 }

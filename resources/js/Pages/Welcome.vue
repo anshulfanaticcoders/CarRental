@@ -345,7 +345,7 @@ onMounted(() => {
                 </div>
             </div>
 
-            <button class="button-secondary w-[10rem] mt-6">More</button>
+            <Link href="/blogs-page" class="button-secondary w-[10rem] mt-6">More</Link>
         </section>
 
 

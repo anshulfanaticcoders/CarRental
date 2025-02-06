@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Auth;
 
+use App\Helpers\ActivityLogHelper;
 use App\Http\Controllers\Controller;
 use App\Models\User;
 use App\Models\UserProfile;
@@ -70,6 +71,8 @@ class RegisteredUserController extends Controller
 
         Auth::login($user);
 
+        // Log the activity
+        ActivityLogHelper::logActivity('create', 'Created a new user', $user, $request);
         return redirect(RouteServiceProvider::HOME);
     }
 
