@@ -345,7 +345,7 @@ onMounted(() => {
                 </div>
             </div>
 
-            <Link href="/blogs-page" class="button-secondary w-[10rem] mt-6">More</Link>
+            <Link href="/blogs-page" class="button-secondary text-center w-[10rem] mt-6 hover:bg-customPrimaryColor hover:text-white">More</Link>
         </section>
 
 
@@ -360,7 +360,7 @@ onMounted(() => {
         <!-- ---------------------------<End>---------------------------------------------------->
     </main>
 
-    <Footer />
+    <Footer/>
 </template>
 
 <style>

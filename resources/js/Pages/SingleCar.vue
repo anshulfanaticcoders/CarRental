@@ -18,6 +18,7 @@ import blankStar from "../../assets/blankstar.svg";
 
 import ShareIcon from "../../assets/ShareNetwork.svg";
 import Heart from "../../assets/Heart.svg";
+import FilledHeart from "../../assets/FilledHeart.svg";
 import carIcon from "../../assets/carIcon.svg";
 import walkIcon from "../../assets/walking.svg";
 import mileageIcon from "../../assets/mileageIcon.svg";
@@ -301,6 +302,41 @@ const proceedToPayment = () => {
     router.get(`/booking/${vehicle.value.id}`);
 };
 
+// Function to toggle favourite status
+import { useToast } from 'vue-toastification'; 
+const toast = useToast(); 
+const toggleFavourite = async (vehicle) => {
+    const action = vehicle.is_favourite ? 'removed from' : 'added to';
+    const endpoint = vehicle.is_favourite
+        ? `/vehicles/${vehicle.id}/unfavourite`
+        : `/vehicles/${vehicle.id}/favourite`;
+
+    try {
+        await axios.post(endpoint);
+        vehicle.is_favourite = !vehicle.is_favourite; 
+
+        // Show toast notification
+        toast.success(`Vehicle ${action} favorites!`, {
+            position: 'top-right', 
+            timeout: 3000, 
+            closeOnClick: true, 
+            pauseOnHover: true,
+            draggable: true,
+            icon: vehicle.is_favourite ? '❤️' : '💔',
+        });
+
+    } catch (error) {
+        toast.error('Failed to update favorites', {
+            position: 'top-right',
+            timeout: 3000, 
+            closeOnClick: true, 
+            pauseOnHover: true,
+            draggable: true,
+        });
+        console.error('Error:', error);
+    }
+};
+
 </script>
 
 <template>
@@ -500,8 +536,12 @@ const proceedToPayment = () => {
                                     {{ vehicle?.category.name }}
                                 </span>
                                 <div class="icons flex items-center gap-3">
-                                    <Link href="" class="w-full"><img :src="ShareIcon" alt="" /></Link>
-                                    <Link href="" class="w-full"><img :src="Heart" alt="" /></Link>
+                                    <Link href="" class=""><img :src="ShareIcon" alt="" /></Link>
+                                    <button @click.stop="toggleFavourite(vehicle)" class="heart-icon"
+                                :class="{ 'filled-heart': vehicle.is_favourite }">
+                                <img :src="vehicle.is_favourite ? FilledHeart : Heart" alt="Favorite"
+                                    class="w-[2rem] transition-colors duration-300" />
+                            </button>
                                 </div>
                             </div>
                             <div>

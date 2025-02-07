@@ -138,20 +138,28 @@ const openViewDialog = (user) => {
 const deleteUser = (id) => {
     router.delete(`/customer-bookings/${id}`);
 };
-
+const status = ref(props.currentStatus || 'all');
 const handlePageChange = (page) => {
-    router.get(route(currentStatus === 'all' ? 'customer-bookings.index' : `customer-bookings.${currentStatus}`), { page: page, search: search.value }, {
-        preserveState: true,
-        replace: true,
-    });
+  let routeName = 'customer-bookings.index'; // Default
+  const params = { page: page, search: search.value }; // Common params
+
+  if (status.value !== 'all') {
+    routeName = `customer-bookings.${status.value}`;
+  }
+
+  router.get(route(routeName, params), { preserveState: true, replace: true });
 };
 
-const navigateTo = (status) => {
-    currentStatus.value = status;
-    router.get(route(status === 'all' ? 'customer-bookings.index' : `customer-bookings.${status}`), { search: search.value }, {
-        preserveState: true,
-        replace: true,
-    });
+const navigateTo = (newStatus) => {
+  status.value = newStatus; // Update status ref
+  let routeName = 'customer-bookings.index'; // Default
+  const params = { search: search.value }; // Common params
+
+  if (newStatus !== 'all') {
+    routeName = `customer-bookings.${newStatus}`;
+  }
+
+  router.get(route(routeName, params), { preserveState: true, replace: true });
 };
 
 const getStatusBadgeVariant = (status) => {

@@ -340,7 +340,7 @@ const submit = () => {
                             </Button>
                             <PrimaryButton 
                                 v-if="stepIndex === 4"
-                                class="w-[30%]"
+                                class="w-[100%]"
                                 :disabled="form.processing || !isStepValid"
                                 @click="submit"
                             >

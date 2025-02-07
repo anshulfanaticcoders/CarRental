@@ -37,6 +37,7 @@
         "embla-carousel-autoplay": "^8.5.1",
         "embla-carousel-vue": "^8.5.2",
         "leaflet": "^1.9.4",
+        "lodash": "^4.17.21",
         "lottie-web": "^5.12.2",
         "lucide-vue-next": "^0.469.0",
         "material-design-icons-iconfont": "^6.7.0",

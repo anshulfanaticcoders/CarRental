@@ -17,6 +17,17 @@
                 <ViewUser :user="viewForm" @close="isViewDialogOpen = false" />
             </Dialog>
 
+            <!-- Image Preview Dialog -->
+            <Dialog v-model:open="isImageModalOpen">
+                <DialogContent class="sm:max-w-[80%]">
+                    <div class="flex justify-center">
+                        <img :src="selectedImage" alt="Document preview" class="max-w-full max-h-[80vh] object-contain">
+                    </div>
+                    <DialogFooter>
+                        <Button variant="outline" @click="isImageModalOpen = false">Close</Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
             <div class="rounded-md border p-5  mt-[1rem] bg-[#153B4F0D]">
                 <Table>
                     <TableHeader>
@@ -33,7 +44,7 @@
                         </TableRow>
                     </TableHeader>
                     <TableBody>
-                        <TableRow v-for="(user,index) in users.data" :key="user.id">
+                        <TableRow v-for="(user, index) in users.data" :key="user.id">
                             <TableCell>{{ (users.current_page - 1) * users.per_page + index + 1 }}</TableCell>
                             <TableCell>{{ user.first_name }} {{ user.last_name }}</TableCell>
                             <TableCell>{{ user.vendor_profile?.company_name }}</TableCell>
@@ -96,7 +107,7 @@ import Button from "@/Components/ui/button/Button.vue";
 import Badge from "@/Components/ui/badge/Badge.vue";
 import { Input } from "@/Components/ui/input";
 import editIcon from "../../../../assets/Pencil.svg";
-import { Dialog, DialogTrigger } from "@/Components/ui/dialog";
+import { Dialog, DialogContent, DialogFooter, DialogTrigger } from "@/Components/ui/dialog";
 import AdminDashboardLayout from "@/Layouts/AdminDashboardLayout.vue";
 import EditUser from "@/Pages/AdminDashboardPages/Vendors/EditUser.vue";
 import ViewUser from "@/Pages/AdminDashboardPages/Vendors/ViewUser.vue";
@@ -110,6 +121,8 @@ const props = defineProps({
 const search = ref(props.filters.search || ''); // Initialize search with the filter value
 const isEditDialogOpen = ref(false);
 const isViewDialogOpen = ref(false);
+const isImageModalOpen = ref(false)
+const selectedImage = ref('')
 const editForm = ref({});
 const viewForm = ref({});
 
@@ -127,11 +140,14 @@ const openEditDialog = (user) => {
 };
 
 const openViewDialog = (user) => {
-
     viewForm.value = { ...user };
     isViewDialogOpen.value = true;
 };
 
+const openImageModal = (imageUrl) => {
+    selectedImage.value = imageUrl
+    isImageModalOpen.value = true
+}
 const deleteUser = (id) => {
     router.delete(`/vendors/${id}`);
 };
@@ -141,16 +157,16 @@ const handlePageChange = (page) => {
 };
 const getStatusBadgeVariant = (status) => {
     switch (status) {
-      case 'approved':
-        return 'default';
-      case 'pending':
-        return 'secondary';
-      case 'rejected':
-        return 'destructive';
-      default:
-        return 'default';
+        case 'approved':
+            return 'default';
+        case 'pending':
+            return 'secondary';
+        case 'rejected':
+            return 'destructive';
+        default:
+            return 'default';
     }
-  };
+};
 </script>
 <style>
 .search-box {

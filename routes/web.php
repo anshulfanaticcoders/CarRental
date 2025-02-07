@@ -4,6 +4,7 @@ use App\Http\Controllers\Admin\ActivityLogsController;
 use App\Http\Controllers\Admin\BlogController;
 use App\Http\Controllers\Admin\BookingDashboardController;
 use App\Http\Controllers\Admin\DashboardController;
+use App\Http\Controllers\Admin\PaymentDashboardController;
 use App\Http\Controllers\Admin\PlansController;
 use App\Http\Controllers\Admin\PopularPlacesController;
 use App\Http\Controllers\Admin\UsersController;
@@ -106,6 +107,10 @@ Route::middleware(['auth', 'role:admin'])->group(function () {
 
     // activity logs
     Route::get('/activity-logs', [ActivityLogsController::class, 'index'])->name('activity-logs.index');
+
+    // payments
+    Route::get('/admin/payments', [PaymentDashboardController::class, 'index'])
+        ->name('admin.payments.index');
 });
 
 

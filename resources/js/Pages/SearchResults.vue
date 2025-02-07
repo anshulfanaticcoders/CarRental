@@ -12,6 +12,14 @@ import mileageIcon from "../../assets/mileageIcon.svg";
 import Heart from "../../assets/Heart.svg";
 import FilledHeart from "../../assets/FilledHeart.svg";
 import check from "../../assets/Check.svg";
+import priceIcon from "../../assets/percent.svg";
+import fuelIcon from "../../assets/fuel.svg";
+import transmissionIcon from "../../assets/transmittionIcon.svg";
+import mileageIcon2 from "../../assets/unlimitedKm.svg";
+import seatingIcon from "../../assets/travellerIcon.svg";
+import brandIcon from "../../assets/SedanCarIcon.svg";
+import colorIcon from "../../assets/color-palette.svg";
+import filterIcon from "../../assets/filterIcon.svg";
 import SearchBar from "@/Components/SearchBar.vue";
 import { Label } from "@/Components/ui/label";
 import { Switch } from "@/Components/ui/switch";
@@ -22,50 +30,50 @@ const props = defineProps({
 });
 // Debounce function
 const debounce = (fn, delay) => {
-  let timeoutId;
-  return (...args) => {
-    clearTimeout(timeoutId);
-    timeoutId = setTimeout(() => fn(...args), delay);
-  };
+    let timeoutId;
+    return (...args) => {
+        clearTimeout(timeoutId);
+        timeoutId = setTimeout(() => fn(...args), delay);
+    };
 };
 
 // Use Inertia's form handling
 const form = useForm({
-  seating_capacity: usePage().props.filters.seating_capacity || [],
-  brand: usePage().props.filters.brand || '',
-  transmission: usePage().props.filters.transmission || '',
-  fuel: usePage().props.filters.fuel || '',
-  price_range: usePage().props.filters.price_range || '',
-  color: usePage().props.filters.color || '',
-  mileage: usePage().props.filters.mileage || '',
-  date_from: usePage().props.filters.date_from || '',
-  date_to: usePage().props.filters.date_to || '',
-  where: usePage().props.filters.where || '',
-  latitude: usePage().props.filters.latitude || '',
-  longitude: usePage().props.filters.longitude || '',
-  radius: usePage().props.filters.radius || '',
+    seating_capacity: usePage().props.filters.seating_capacity || [],
+    brand: usePage().props.filters.brand || '',
+    transmission: usePage().props.filters.transmission || '',
+    fuel: usePage().props.filters.fuel || '',
+    price_range: usePage().props.filters.price_range || '',
+    color: usePage().props.filters.color || '',
+    mileage: usePage().props.filters.mileage || '',
+    date_from: usePage().props.filters.date_from || '',
+    date_to: usePage().props.filters.date_to || '',
+    where: usePage().props.filters.where || '',
+    latitude: usePage().props.filters.latitude || '',
+    longitude: usePage().props.filters.longitude || '',
+    radius: usePage().props.filters.radius || '',
 });
 
 // Debounced filter submission
 const submitFilters = debounce(() => {
-  form.get('/s', {
-    preserveState: true,
-    preserveScroll: true,
-    onSuccess: (response) => {
-      console.log('Filter response:', response.props.vehicles);
-    },
-    onError: (errors) => {
-      console.error('Filter errors:', errors);
-    },
-  });
+    form.get('/s', {
+        preserveState: true,
+        preserveScroll: true,
+        onSuccess: (response) => {
+            console.log('Filter response:', response.props.vehicles);
+        },
+        onError: (errors) => {
+            console.error('Filter errors:', errors);
+        },
+    });
 }, 300);
 
 watch(
-  () => form.data(),
-  () => {
-    submitFilters();
-  },
-  { deep: true }
+    () => form.data(),
+    () => {
+        submitFilters();
+    },
+    { deep: true }
 );
 let map = null;
 let markers = [];
@@ -217,8 +225,8 @@ const handleMapToggle = (value) => {
 // add to favourite vehicle functionality
 
 // Function to toggle favourite status
-import { useToast } from 'vue-toastification'; // Reuse your existing import
-const toast = useToast(); // Initialize toast
+import { useToast } from 'vue-toastification'; 
+const toast = useToast(); 
 const toggleFavourite = async (vehicle) => {
     const action = vehicle.is_favourite ? 'removed from' : 'added to';
     const endpoint = vehicle.is_favourite
@@ -227,23 +235,23 @@ const toggleFavourite = async (vehicle) => {
 
     try {
         await axios.post(endpoint);
-        vehicle.is_favourite = !vehicle.is_favourite; // Toggle the favorite state
+        vehicle.is_favourite = !vehicle.is_favourite; 
 
         // Show toast notification
         toast.success(`Vehicle ${action} favorites!`, {
-            position: 'top-right', // Match your existing toast position
-            timeout: 3000, // Match your existing timeout
-            closeOnClick: true, // Match your existing settings
+            position: 'top-right', 
+            timeout: 3000, 
+            closeOnClick: true,
             pauseOnHover: true,
             draggable: true,
-            icon: vehicle.is_favourite ? '❤️' : '💔', // Add emoji icons
+            icon: vehicle.is_favourite ? '❤️' : '💔', 
         });
 
     } catch (error) {
         toast.error('Failed to update favorites', {
-            position: 'top-right', // Match your existing toast position
-            timeout: 3000, // Match your existing timeout
-            closeOnClick: true, // Match your existing settings
+            position: 'top-right',
+            timeout: 3000, 
+            closeOnClick: true,
             pauseOnHover: true,
             draggable: true,
         });
@@ -255,93 +263,123 @@ const toggleFavourite = async (vehicle) => {
 <template>
     <AuthenticatedHeaderLayout />
     <section class="bg-customPrimaryColor py-customVerticalSpacing">
-        <div class="full-w-container">
+        <div class="">
             <SearchBar class="border-[2px] rounded-[20px] border-white mt-0 mb-0" />
         </div>
     </section>
 
     <section>
-        <div class="full-w-container py-customVerticalSpacing">
+        <div class="full-w-container py-[2rem]">
+            <div class="flex items-center gap-3 mb-[2rem]">
+                <img :src=filterIcon alt="">
+            <span class="text-[1.5rem]">Filters</span>
+            </div>
             <form>
-      <div class="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                <div class="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-6 gap-8">
 
-        <!-- Seating Capacity Filter -->
-        <div>
-          <label for="seating_capacity" class="block text-sm font-medium text-gray-700">Seating Capacity</label>
-          <select v-model="form.seating_capacity" id="seating_capacity"
-            class="mt-1 block w-full rounded-md border-gray-300 shadow-sm">
-            <option value="">Any</option>
-            <option v-for="capacity in $page.props.seatingCapacities" :key="capacity" :value="capacity">{{ capacity }}
-            </option>
-          </select>
-        </div>
+                    <!-- Seating Capacity Filter -->
+                    <div class="flex flex-col p-2 border-[1px] border-customPrimaryColor rounded-[12px] hover:bg-customLightPrimaryColor">
+                        <div class="flex gap-2">
+                            <img :src=seatingIcon alt="">
+                            <label for="seating_capacity" class="block text-[1rem] font-medium">Seating Capacity</label>
+                        </div>
+                        <select v-model="form.seating_capacity" id="seating_capacity"
+                            class="mt-1 block w-full rounded-md border-[1px] border-white shadow-sm text-white cursor-pointer bg-customPrimaryColor p-2">
+                            <option value="">Any</option>
+                            <option v-for="capacity in $page.props.seatingCapacities" :key="capacity" :value="capacity">
+                                {{ capacity }}
+                            </option>
+                        </select>
+                    </div>
 
-        <!-- Brand Filter -->
-        <div>
-          <label for="brand" class="block text-sm font-medium text-gray-700">Brand</label>
-          <select v-model="form.brand" id="brand" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm">
-            <option value="">All Brands</option>
-            <option v-for="brand in $page.props.brands" :key="brand" :value="brand">{{ brand }}</option>
-          </select>
-        </div>
+                    <!-- Brand Filter -->
+                    <div class="flex flex-col p-2 border-[1px] border-customPrimaryColor rounded-[12px] hover:bg-customLightPrimaryColor">
+                        <div class="flex gap-2">
+                            <img :src=brandIcon alt="" class="w-[3rem]">
+                            <label for="brand" class="block text-[1rem] font-medium">Brand</label>
+                        </div>
+                        <select v-model="form.brand" id="brand"
+                            class="mt-1 block w-full rounded-md border-[1px] border-white shadow-sm text-white cursor-pointer bg-customPrimaryColor p-2">
+                            <option value="">All Brands</option>
+                            <option v-for="brand in $page.props.brands" :key="brand" :value="brand">{{ brand }}</option>
+                        </select>
+                    </div>
 
-        <!-- Transmission Filter -->
-        <div>
-          <label for="transmission" class="block text-sm font-medium text-gray-700">Transmission</label>
-          <select v-model="form.transmission" id="transmission"
-            class="mt-1 block w-full rounded-md border-gray-300 shadow-sm">
-            <option value="">Any</option>
-            <option value="automatic">Automatic</option>
-            <option value="manual">Manual</option>
-          </select>
-        </div>
+                    <!-- Transmission Filter -->
+                    <div class="flex flex-col p-2 border-[1px] border-customPrimaryColor rounded-[12px] hover:bg-customLightPrimaryColor">
+                        <div class="flex gap-2">
+                            <img :src=transmissionIcon alt="">
+                            <label for="transmission" class="block text-[1rem] font-medium">Transmission</label>
+                        </div>
+                        <select v-model="form.transmission" id="transmission"
+                            class="mt-1 block w-full rounded-md border-[1px] border-white shadow-sm text-white cursor-pointer bg-customPrimaryColor p-2">
+                            <option value="">Any</option>
+                            <option value="automatic">Automatic</option>
+                            <option value="manual">Manual</option>
+                        </select>
+                    </div>
 
-        <!-- Fuel Filter -->
-        <div>
-          <label for="fuel" class="block text-sm font-medium text-gray-700">Fuel</label>
-          <select v-model="form.fuel" id="fuel" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm">
-            <option value="">Any</option>
-            <option value="petrol">Petrol</option>
-            <option value="diesel">Diesel</option>
-            <option value="electric">Electric</option>
-          </select>
-        </div>
+                    <!-- Fuel Filter -->
+                    <div class="flex flex-col p-2 border-[1px] border-customPrimaryColor rounded-[12px] hover:bg-customLightPrimaryColor">
+                        <div class="flex gap-2">
+                            <img :src=fuelIcon alt="">
+                            <label for="fuel" class="block text-[1rem] font-medium">Fuel</label>
+                        </div>
+                        <select v-model="form.fuel" id="fuel"
+                            class="mt-1 block w-full rounded-md border-[1px] border-white shadow-sm text-white cursor-pointer bg-customPrimaryColor p-2">
+                            <option value="">Any</option>
+                            <option value="petrol">Petrol</option>
+                            <option value="diesel">Diesel</option>
+                            <option value="electric">Electric</option>
+                        </select>
+                    </div>
 
-        <!-- Price Range Filter -->
-        <div>
-          <label for="price_range" class="block text-sm font-medium text-gray-700">Price Range</label>
-          <select v-model="form.price_range" id="price_range"
-            class="mt-1 block w-full rounded-md border-gray-300 shadow-sm">
-            <option value="">Any</option>
-            <option value="0-1000">₹0 - ₹1000</option>
-            <option value="1000-5000">₹1000 - ₹5000</option>
-            <option value="5000-10000">₹5000 - ₹10000</option>
-            <option value="10000-20000">₹10000 - ₹20000</option>
-          </select>
-        </div>
+                    <!-- Price Range Filter -->
+                    <div class="flex flex-col p-2 border-[1px] border-customPrimaryColor rounded-[12px] hover:bg-customLightPrimaryColor">
+                        <div class="flex gap-2">
+                            <img :src=priceIcon alt="">
+                            <label for="price_range" class="block text-[1rem] font-medium">Price Range</label>
+                        </div>
+                        <select v-model="form.price_range" id="price_range"
+                            class="mt-1 block w-full rounded-md border-[1px] border-white shadow-sm text-white cursor-pointer bg-customPrimaryColor p-2">
+                            <option value="">Any</option>
+                            <option value="0-1000">₹0 - ₹1000</option>
+                            <option value="1000-5000">₹1000 - ₹5000</option>
+                            <option value="5000-10000">₹5000 - ₹10000</option>
+                            <option value="10000-20000">₹10000 - ₹20000</option>
+                        </select>
+                    </div>
 
-        <!-- Color Filter -->
-        <div>
-          <label for="color" class="block text-sm font-medium text-gray-700">Color</label>
-          <select v-model="form.color" id="color" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm">
-            <option value="">Any</option>
-            <option v-for="color in $page.props.colors" :key="color" :value="color">{{ color }}</option>
-          </select>
-        </div>
+                    <!-- Color Filter -->
+                    <div class="flex flex-col p-2 border-[1px] border-customPrimaryColor rounded-[12px] hover:bg-customLightPrimaryColor">
+                        <div class="flex gap-2">
+                            <img :src=colorIcon alt="" class="w-[1.5rem]">
+                            <label for="color" class="block text-sm font-medium">Color</label>
+                        </div>
+                        <select v-model="form.color" id="color"
+                            class="mt-1 block w-full rounded-md border-[1px] border-white shadow-sm text-white cursor-pointer bg-customPrimaryColor p-2">
+                            <option value="">Any</option>
+                            <option v-for="color in $page.props.colors" :key="color" :value="color">{{ color }}</option>
+                        </select>
+                    </div>
 
-        <!-- Mileage Filter -->
-        <div>
-          <label for="mileage" class="block text-sm font-medium text-gray-700">Mileage</label>
-          <select v-model="form.mileage" id="mileage" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm">
-            <option value="">Any</option>
-            <option value="0-10">0 - 10 km/l</option>
-            <option value="10-20">10 - 20 km/l</option>
-            <option value="20-30">20 - 30 km/l</option>
-            <option value="30-40">30 - 40 km/l</option>
-          </select>
-        </div>
-      </div>
-    </form>
+                    <!-- Mileage Filter -->
+                    <div class="flex flex-col p-2 border-[1px] border-customPrimaryColor rounded-[12px] hover:bg-customLightPrimaryColor">
+                        <div class="flex gap-2">
+                            <img :src=mileageIcon2 alt="" class="w-[1.5rem]">
+                            <label for="mileage" class="block text-[1rem] font-medium">Mileage</label>
+                        </div>
+                        <select v-model="form.mileage" id="mileage"
+                            class="mt-1 block w-full rounded-md border-[1px] border-white shadow-sm text-white cursor-pointer bg-customPrimaryColor p-2">
+                            <option value="">Any</option>
+                            <option value="0-10">0 - 10 km/l</option>
+                            <option value="10-20">10 - 20 km/l</option>
+                            <option value="20-30">20 - 30 km/l</option>
+                            <option value="30-40">30 - 40 km/l</option>
+                        </select>
+                    </div>
+                </div>
+            </form>
         </div>
     </section>
 
@@ -369,7 +407,7 @@ const toggleFavourite = async (vehicle) => {
                             <button @click.stop="toggleFavourite(vehicle)" class="heart-icon"
                                 :class="{ 'filled-heart': vehicle.is_favourite }">
                                 <img :src="vehicle.is_favourite ? FilledHeart : Heart" alt="Favorite"
-                                    class="w-full mb-[1rem] transition-colors duration-300" />
+                                    class="w-[2rem] mb-[1rem] transition-colors duration-300" />
                             </button>
                         </div>
                         <Link :href="`/vehicle/${vehicle.id}`">

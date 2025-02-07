@@ -32,6 +32,7 @@ import {
   SquareKanban,
   Proportions,
   Notebook,
+  DollarSign
 } from 'lucide-vue-next'
 import { onMounted, ref } from 'vue'
 
@@ -174,6 +175,17 @@ const data = {
         {
           title: 'All Blogs',
           url: '/blogs',
+        },
+      ],
+    },
+    {
+      title: 'Payments',
+      url: '#',
+      icon: DollarSign,
+      items: [
+        {
+          title: 'All Payments',
+          url: '/admin/payments',
         },
       ],
     },

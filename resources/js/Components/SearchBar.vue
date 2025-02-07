@@ -1,6 +1,6 @@
 <template>
-    <section class="full-w-container">
-        <div class="">
+    <section class="full-w-container" @click="closeSearchResults">
+        <div class="search_bar rounded-[20px]">
             <div class="flex relative">
                 <div
                     class="column w-[20%] bg-customPrimaryColor text-customPrimaryColor-foreground p-[2rem] rounded-tl-[20px] rounded-bl-[20px]">
@@ -24,17 +24,6 @@
                                     <input type="text" v-model="form.where" @input="handleSearchInput"
                                         placeholder="Choose Pickup Location"
                                         class="px-3 border-b border-customLightGrayColor focus:outline-none w-[80%]" />
-                                    <div v-if="searchResults.length"
-                                        class="search-results absolute h-[15rem] bottom-[-135%] w-[50%] bg-customPrimaryColor text-white">
-                                        <div v-for="result in searchResults" :key="result.id" @click="
-                                            selectLocation(result, 'pickupLocation')
-                                            " class="p-2 hover:bg-white hover:text-customPrimaryColor cursor-pointer">
-                                            {{
-                                                result.properties?.label ||
-                                                "Unknown Location"
-                                            }}
-                                        </div>
-                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -60,16 +49,26 @@
                         </button>
                     </div>
                 </form>
+                <div v-if="searchResults.length"
+                    class="search-results absolute z-20 top-[105%] w-[50%] rounded-[12px] border-[1px] border-white left-[20%] p-5 bg-customPrimaryColor text-white">
+                    <div v-for="result in searchResults" :key="result.id" @click="
+                        selectLocation(result, 'pickupLocation')
+                        " class="p-2 hover:bg-white hover:text-customPrimaryColor cursor-pointer">
+                        {{
+                            result.properties?.label ||
+                            "Unknown Location"
+                        }}
+                    </div>
+                </div>
             </div>
         </div>
     </section>
 </template>
 
 <script setup>
-import { ref} from "vue";
+import { onMounted, onUnmounted, ref } from "vue";
 import axios from "axios";
 import { router } from "@inertiajs/vue3";
-import L from "leaflet"; // Import Leaflet
 
 const form = ref({
     where: "",
@@ -107,33 +106,35 @@ const selectLocation = (result) => {
 
     // Update map with the selected location
     const latLng = [form.value.latitude, form.value.longitude];
-
-    // if (map) {
-    //     map.setView(latLng, 13); // Move the map to the selected location
-    //     if (marker) {
-    //         marker.setLatLng(latLng); // Update marker position
-    //     } else {
-    //         marker = L.marker(latLng).addTo(map); // Add marker if it doesn't exist
-    //     }
-    // }
 };
 
 const submit = () => {
     router.get("/s", form.value);
 };
-
-// onMounted(() => {
-//     // Initialize the map
-//     map = L.map("map").setView([20.5937, 78.9629], 5); // Default to India
-
-//     // Add tile layer (OpenStreetMap)
-//     L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
-//         attribution: "&copy; OpenStreetMap contributors",
-//     }).addTo(map);
-// });
 const getCurrentDate = () => {
     return new Date().toISOString().split('T')[0];
 };
+
+const closeSearchResults = (event) => {
+  if (searchResults.value.length && !event.target.closest('.search-results')) {
+    searchResults.value = [];
+  }
+};
+onMounted(() => {
+  document.addEventListener('click', closeSearchResults);
+});
+
+// Clean up the event listener when the component is unmounted to prevent memory leaks.
+onUnmounted(() => {
+  document.removeEventListener('click', closeSearchResults);
+});
 </script>
 
-<style></style>
+<style>
+.search_bar {
+    box-shadow: 5px 5px 10px rgba(0, 0, 0, 0.2);
+}
+.search-results{
+    box-shadow: 5px 5px 10px rgba(0, 0, 0, 0.349);
+}
+</style>

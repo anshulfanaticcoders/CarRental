@@ -26,7 +26,7 @@ class BookingPayment extends Model
 
     // Define payment status constants
     public const STATUS_PENDING = 'pending';
-    public const STATUS_COMPLETED = 'completed';
+    public const STATUS_SUCCEEDED = 'succeeded';
     public const STATUS_FAILED = 'failed';
 
     // Define payment methods
@@ -49,7 +49,7 @@ class BookingPayment extends Model
     // Check if payment is completed
     public function isCompleted(): bool
     {
-        return $this->payment_status === self::STATUS_COMPLETED;
+        return $this->payment_status === self::STATUS_SUCCEEDED;
     }
 
     // Check if payment is pending
@@ -73,7 +73,7 @@ class BookingPayment extends Model
     // Mark payment as completed
     public function markAsCompleted(): void
     {
-        $this->updateStatus(self::STATUS_COMPLETED);
+        $this->updateStatus(self::STATUS_SUCCEEDED);
     }
 
     // Mark payment as failed

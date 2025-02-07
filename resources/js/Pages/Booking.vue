@@ -34,25 +34,7 @@ const validateQuantity = (extra) => {
     }
 };
 
-// Update your total calculation
-const calculateTotal = computed(() => {
-    let total = 0;
 
-    // Base price per day
-    total += Number(vehicle.value?.price_per_day || 0);
-
-    // Add plan value
-    total += Number(selectedPlan.value?.plan_value || 0);
-
-    // Add extras with quantity multiplication
-    bookingExtras.value.forEach((extra) => {
-        if (extra.quantity > 0) {
-            total += Number(extra.price) * Number(extra.quantity);
-        }
-    });
-
-    return total;
-});
 
 // Multiple step form
 const currentStep = ref(1);
@@ -220,7 +202,7 @@ const loadSessionData = () => {
     // Load plan and extras
     const selectionData = JSON.parse(sessionStorage.getItem('selectionData'));
     if (selectionData) {
-        selectedPlan.value = selectionData.selectedPlan.plan_type;
+        selectedPlan.value = selectionData.selectedPlan;
         extras.value = selectionData.extras;
 
         // Initialize extraCharges with the plan value
@@ -237,6 +219,30 @@ const loadSessionData = () => {
     }
 };
 
+// Update your total calculation
+const calculateTotal = computed(() => {
+
+    loadSessionData();
+    const pickupDateObject = new Date(pickupDate.value);
+    const returnDateObject = new Date(returnDate.value);
+    const totalrentalDays = Math.ceil((returnDateObject - pickupDateObject) / (1000 * 3600 * 24));
+    let total = 0;
+
+    // Base price per day
+    total += Number(vehicle.value?.price_per_day || 0) * totalrentalDays;
+
+    // Add plan value
+    total += Number(selectedPlan.value?.plan_value || 0);
+
+    // Add extras with quantity multiplication
+    bookingExtras.value.forEach((extra) => {
+        if (extra.quantity > 0) {
+            total += Number(extra.price) * Number(extra.quantity);
+        }
+    });
+
+    return total;
+});
 
 
 const stripePromise = loadStripe('pk_test_51KNyHdSDGjAmjQxjhTSx7hrI5uBOE75wqXRZNFdw83XSTU8gvwpFusz2W8FAy7PkV8K0aGHqhC620kbMWTg32ZpS00p3ktAi86'); // Replace with your Stripe publishable key
@@ -339,7 +345,7 @@ const submitBooking = async () => {
         base_price: vehicle.value?.price_per_day,
         extra_charges: extraCharges > 0 ? extraCharges : null,
         total_amount: calculateTotal.value,
-        plan: selectedPlan.value,
+        plan: selectedPlan.value.plan_type, 
         extras: extras.value,
         vehicle_id: vehicle.value?.id,
     };
