@@ -7,7 +7,9 @@ use App\Http\Controllers\Admin\DashboardController;
 use App\Http\Controllers\Admin\PaymentDashboardController;
 use App\Http\Controllers\Admin\PlansController;
 use App\Http\Controllers\Admin\PopularPlacesController;
+use App\Http\Controllers\Admin\UserReportDownloadController;
 use App\Http\Controllers\Admin\UsersController;
+use App\Http\Controllers\Admin\UsersReportController;
 use App\Http\Controllers\Admin\VehicleAddonsController;
 use App\Http\Controllers\Admin\VehicleDashboardController;
 
@@ -111,6 +113,12 @@ Route::middleware(['auth', 'role:admin'])->group(function () {
     // payments
     Route::get('/admin/payments', [PaymentDashboardController::class, 'index'])
         ->name('admin.payments.index');
+
+    // User reports
+    Route::get('/users-report', [UsersReportController::class, 'index']);
+
+    Route::get('/admin/reports/users/download', [UserReportDownloadController::class, 'downloadXML']);
+
 });
 
 
@@ -135,6 +143,9 @@ Route::middleware(['auth', 'role:vendor'])->group(function () {
     Route::resource('current-vendor-vehicles', VendorVehicleController::class);
     Route::delete('current-vendor-vehicles/{vehicle}/images/{image}', [VendorVehicleController::class, 'deleteImage'])
         ->name('vehicles.deleteImage');
+        
+        // customer reviews
+        
 
 });
 

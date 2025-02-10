@@ -55,6 +55,11 @@ class RegisteredUserController extends Controller
             'password' => Hash::make($validated['password']),
             'role' => 'customer',
             'status' => 'active',
+            'email_verified_at' => now(),
+            'phone_verified_at' => now(),
+            'last_login_at' => now(),
+            'created_at' => now(),
+            'updated_at' => now(),
         ]);
 
         // Create user profile
@@ -72,25 +77,25 @@ class RegisteredUserController extends Controller
         Auth::login($user);
 
         // Log the activity
-        ActivityLogHelper::logActivity('create', 'Created a new user', $user, $request);
+        ActivityLogHelper::logActivity('create', 'New User Created', $user, $request);
         return redirect(RouteServiceProvider::HOME);
     }
 
     public function getUserWithRelations()
-{
-    $user = Auth::user();
-    
-    $userWithRelations = User::with([
-        'profile', 
-        'vendorProfile', 
-        'vendorDocument', 
-        'vehicles'
-    ])->find($user->id);
+    {
+        $user = Auth::user();
 
-    return response()->json([
-        'status' => 'success',
-        'data' => $userWithRelations
-    ]);
-}
-    
+        $userWithRelations = User::with([
+            'profile',
+            'vendorProfile',
+            'vendorDocument',
+            'vehicles'
+        ])->find($user->id);
+
+        return response()->json([
+            'status' => 'success',
+            'data' => $userWithRelations
+        ]);
+    }
+
 }

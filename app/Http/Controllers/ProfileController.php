@@ -75,7 +75,7 @@ class ProfileController extends Controller
             DB::commit();
 
             // Log the activity
-            ActivityLogHelper::logActivity('update', 'Updated User Profile', $user, $request);
+            ActivityLogHelper::logActivity('update', 'User Updates Profile', $user, $request);
             return Redirect::route('profile.edit')
                 ->with('status', 'Profile updated successfully.');
 

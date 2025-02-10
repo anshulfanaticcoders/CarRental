@@ -66,4 +66,8 @@ class User extends Authenticatable
         return $this->belongsToMany(Vehicle::class, 'user_vehicle', 'user_id', 'vehicle_id')->withTimestamps();
     }
 
+    public function activityLogs()
+{
+    return $this->hasMany(ActivityLog::class);
+}
 }

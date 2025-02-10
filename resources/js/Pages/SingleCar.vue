@@ -686,7 +686,7 @@ const toggleFavourite = async (vehicle) => {
                         @mouseleave="[plugin.reset(), plugin.play(), console.log('Running')]">
                         <CarouselContent>
                             <CarouselItem v-for="review in reviews" :key="review.id"  class="pl-1 md:basis-1/2 lg:basis-1/3">
-                                <Card>
+                                <Card class="h-[15rem]">
                                     <CardContent>
                                         <div class="review-item  px-[1rem] py-[2rem] h-full">
                                             <div class="flex items-center gap-3">

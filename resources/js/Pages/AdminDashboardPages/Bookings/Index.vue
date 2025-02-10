@@ -33,10 +33,9 @@
                             <TableHead>Plan</TableHead>
                             <TableHead>Name</TableHead>
                             <TableHead>Email</TableHead>
-                            <TableHead>Pickup Location</TableHead>
-                            <TableHead>Return Location</TableHead>
+                            <TableHead>Pickup & Return Location</TableHead>
                             <TableHead>Brand</TableHead>
-                            <TableHead>Model</TableHead>
+                            <TableHead>Date</TableHead>
                             <TableHead>Total Days</TableHead>
                             <TableHead>Total Amount</TableHead>
                             <TableHead>Payment Status</TableHead>
@@ -52,9 +51,8 @@
                             <TableCell>{{ user.customer.first_name }} {{ user.customer.last_name }}</TableCell>
                             <TableCell>{{ user.customer.email }}</TableCell>
                             <TableCell>{{ user.pickup_location }}</TableCell>
-                            <TableCell>{{ user.return_location }}</TableCell>
                             <TableCell>{{ user.vehicle.brand }}</TableCell>
-                            <TableCell>{{ user.vehicle.model }}</TableCell>
+                            <TableCell>{{formatDate( user.vehicle.created_at) }}</TableCell>
                             <TableCell>{{ user.total_days }}</TableCell>
                             <TableCell>{{ user.total_amount }}</TableCell>
                             <TableCell>
@@ -186,5 +184,9 @@ const getStatusBadgeBooking = (status) => {
         default:
             return 'default';
     }
+};
+const formatDate = (dateStr) => {
+    const date = new Date(dateStr);
+    return `${String(date.getMonth() + 1).padStart(2, '0')}/${String(date.getDate()).padStart(2, '0')}/${date.getFullYear()}`;
 };
 </script>
