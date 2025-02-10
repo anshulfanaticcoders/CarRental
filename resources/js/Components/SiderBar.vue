@@ -103,7 +103,7 @@ const vendorOtherLinks = [
   { name: "Payment History", path: "/vendor/payments", icon: clockIcon },
   { name: "Bookings", path: "/bookings", icon: vehiclesIcon },
   { name: "Inbox", path: "/vendor-inbox", icon: inboxIcon },
-  { name: "Customer Reviews", path: "/customer-reviews", icon: reviewsIcon },
+  { name: "Customer Reviews", path: "/customer-review", icon: reviewsIcon },
 ];
 
 // Active menus based on role
