@@ -25,6 +25,9 @@ class VehicleController extends Controller
 
     public function store(Request $request)
     {
+
+        // print_r($request->all());
+        // die();
         // Validate incoming request data
         $request->validate([
             'category_id' => 'required|exists:vehicle_categories,id',
@@ -44,7 +47,9 @@ class VehicleController extends Controller
             'features' => 'array',
             'featured' => 'boolean',
             'security_deposit' => 'required|decimal:0,2|min:0',
-            'payment_method' => 'required|string',
+            // 'payment_method' => 'required|string',
+            'payment_method' => 'required|array', 
+            'payment_method.*' => 'string|in:credit_card,cheque,bank_wire,cryptocurrency,other',
             'price_per_day' => 'required|decimal:0,2|min:0',
 
             'registration_number' => 'required|string|max:50',
@@ -72,13 +77,14 @@ class VehicleController extends Controller
             'horsepower' => $request->horsepower,
             'co2' => $request->co2,
             'location' => $request->location,
-            'latitude' => $request->latitude, // Save latitude
+            'latitude' => $request->latitude,
             'longitude' => $request->longitude,
             'status' => $request->status,
             'features' => json_encode($request->features),
             'featured' => $request->featured,
             'security_deposit' => $request->security_deposit,
-            'payment_method' => $request->payment_method,
+            // 'payment_method' => $request->payment_method,
+            'payment_method' => json_encode($request->payment_method),
             'price_per_day' => $request->price_per_day,
         ]);
 

@@ -21,6 +21,7 @@ use App\Http\Controllers\ReviewController;
 use App\Http\Controllers\SearchController;
 use App\Http\Controllers\Admin\VehicleCategoriesController;
 use App\Http\Controllers\Vendor\VendorBookingController;
+use App\Http\Controllers\Vendor\VendorOverviewController;
 use App\Http\Controllers\Vendor\VendorVehicleController;
 use App\Http\Controllers\VendorController;
 use App\Http\Controllers\PaymentController;
@@ -136,7 +137,7 @@ Route::middleware(['auth', 'role:vendor'])->group(function () {
     Route::post('/vehicles', [VehicleController::class, 'store'])->name('vehicles.store');
     Route::get('/vehicle-categories', [VehicleController::class, 'getCategories'])->name('vehicle.categories');
     // this is for showing All Booking details of customer in vendor profile
-    Route::resource('bookings', VendorBookingController::class);
+    Route::resource('bookings', VendorBookingController::class)->names('bookings');
     Route::post('api/bookings/{booking}/cancel', [VendorBookingController::class, 'cancel'])->name('bookings.cancel');
     Route::get('/vendor/payments', [BookingController::class, 'getVendorPaymentHistory'])->name('vendor.payments');
     // this is for showing All Vehicles of vendor in vendor profile
@@ -144,8 +145,14 @@ Route::middleware(['auth', 'role:vendor'])->group(function () {
     Route::delete('current-vendor-vehicles/{vehicle}/images/{image}', [VendorVehicleController::class, 'deleteImage'])
         ->name('vehicles.deleteImage');
         
-        // customer reviews
-        
+        // Customer review in Vendor Profile
+        Route::get('/customer-reviews', [ReviewController::class, 'vendorReviews'])
+        ->name('vendor.reviews');
+        Route::patch('/reviews/{review}/status', [ReviewController::class, 'updateStatus'])
+    ->name('reviews.update-status');
+
+    // Vendor Overview
+    Route::get('/overview', [VendorOverviewController::class, 'index'])->name('vendor.overview');
 
 });
 

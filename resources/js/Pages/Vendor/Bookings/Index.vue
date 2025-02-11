@@ -1,12 +1,13 @@
 <template>
     <MyProfileLayout>
-        <div class="p-6">
-            <h1 class="text-xl font-semibold mb-4">Booking Details</h1>
+        <div class="">
+            <p class="text-[1.75rem] font-bold text-gray-800 bg-customLightPrimaryColor p-4 rounded-[12px] mb-[1rem]">Booking Details</p>
 
             <div v-if="bookings.length" class="bg-white rounded-lg shadow overflow-x-auto">
                 <table class="min-w-full divide-y divide-gray-200">
                     <thead class="bg-gray-50">
                         <tr>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">ID</th>
                             <th class="px-4 py-2 text-left text-sm font-bold">Booking ID</th>
                             <th class="px-4 py-2 text-left text-sm font-bold">Customer Name</th>
                             <th class="px-4 py-2 text-left text-sm font-bold">Vehicle</th>
@@ -18,17 +19,20 @@
                         </tr>
                     </thead>
                     <tbody>
-                        <tr v-for="booking in bookings" :key="booking.id" class="border-b hover:bg-gray-50">
-                            <td class="px-4 py-2 text-sm text-gray-700">#{{ booking.booking_number }}</td>
+                        <tr v-for="(booking, index) in bookings" :key="booking.id" class="border-b hover:bg-gray-50">
+                            <td class="px-6 py-4 whitespace-nowrap">{{ index + 1 }}</td>
+                            <td class="px-4 py-2 text-sm text-gray-700">{{ booking.booking_number }}</td>
                             <td class="px-4 py-2 text-sm text-gray-700">
                                 {{ booking.customer?.first_name }} {{ booking.customer?.last_name }}
                             </td>
                             <td class="px-4 py-2 text-sm text-gray-700">
-                                {{ booking.vehicle?.brand }} {{ booking.vehicle?.model }}
+                                {{ booking.vehicle?.brand }} <span
+                                    class="bg-customLightPrimaryColor ml-2 p-1 rounded-[12px]">{{ booking.vehicle?.model
+                                    }}</span>
                             </td>
                             <td class="px-4 py-2 text-sm text-gray-700">{{ formatDate(booking.pickup_date) }}</td>
                             <td class="px-4 py-2 text-sm text-gray-700">{{ formatDate(booking.return_date) }}</td>
-                            <td class="px-4 py-2 text-sm">
+                            <td class="px-4 py-2 text-sm capitalize">
                                 <span :class="{
                                     'text-green-600 font-semibold': booking.payments[0]?.payment_status === 'succeeded',
                                     'text-yellow-500 font-semibold': booking.payments[0]?.payment_status === 'pending',
@@ -39,16 +43,12 @@
                                 </span>
                             </td>
                             <td class="px-4 py-2 text-sm">
-                                <select 
-                                    v-model="booking.booking_status"
-                                    @change="updateStatus(booking)"
-                                    class="w-full p-2 border rounded"
-                                    :class="{
+                                <select v-model="booking.booking_status" @change="updateStatus(booking)"
+                                    class="w-full p-2 border rounded" :class="{
                                         'text-green-600 font-medium': booking.booking_status === 'completed' || booking.booking_status === 'confirmed',
                                         'text-yellow-500 font-medium': booking.booking_status === 'pending',
                                         'text-red-500 font-medium': booking.booking_status === 'cancelled'
-                                    }"
-                                >
+                                    }">
                                     <option value="pending" class="text-yellow-500 font-medium">Pending</option>
                                     <option value="confirmed" class="text-green-600 font-medium">Confirmed</option>
                                     <option value="completed" class="text-green-600 font-medium">Completed</option>
@@ -66,8 +66,14 @@
                     </tbody>
                 </table>
             </div>
+
             <div v-else class="text-center py-6">
                 <span class="text-gray-500">No bookings found.</span>
+            </div>
+            <!-- Pagination -->
+            <div class="mt-[1rem] flex justify-end">
+                <Pagination :current-page="pagination.current_page" :total-pages="pagination.last_page"
+                @page-change="handlePageChange" />
             </div>
         </div>
     </MyProfileLayout>
@@ -75,17 +81,25 @@
 
 <script setup>
 import MyProfileLayout from '@/Layouts/MyProfileLayout.vue';
-import { ref } from 'vue';
-import { Link, router } from '@inertiajs/vue3';
+import {router } from '@inertiajs/vue3';
 import axios from 'axios';
+import Pagination from './Pagination.vue';
 
 const props = defineProps({
     bookings: {
         type: Array,
+        filters: Object,
+        required: true
+    },
+    pagination: { 
+        type: Object,
         required: true
     }
 });
+const handlePageChange = (page) => {
+    router.get(route('bookings.index'), { ...props.filters, page }, { preserveState: true, preserveScroll: true });
 
+};
 const formatDate = (dateStr) => {
     const date = new Date(dateStr);
     return `${String(date.getMonth() + 1).padStart(2, '0')}/${String(date.getDate()).padStart(2, '0')}/${date.getFullYear()}`;
@@ -96,7 +110,7 @@ const updateStatus = async (booking) => {
         const response = await axios.put(`/bookings/${booking.id}`, {
             booking_status: booking.booking_status
         });
-        
+
         // Optionally refresh the page or show a success message
         router.reload();
     } catch (error) {

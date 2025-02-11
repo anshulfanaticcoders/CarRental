@@ -14,7 +14,7 @@ import AuthenticatedHeaderLayout from './AuthenticatedHeaderLayout.vue';
             <SiderBar/>
         </div>
         <!-- Content  -->
-          <div class="column w-[70%]" >
+          <div class="column w-[72%]" >
               <slot/>
          </div>
         <!-- Content  -->

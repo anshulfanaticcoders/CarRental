@@ -44,7 +44,52 @@ class ReviewController extends Controller
             ->with(['user.profile'])
             ->where('status', 'approved')
             ->get();
-    
+
         return response()->json(['reviews' => $approvedReviews]);
+    }
+
+    public function vendorReviews(Request $request)
+    {
+        $vendor = auth()->user();
+
+        // Get all reviews for the vendor's vehicles
+        $reviews = Review::whereHas('vehicle', function ($query) use ($vendor) {
+            $query->where('vendor_id', $vendor->id);
+        })
+            ->with(['user.profile', 'vehicle', 'booking'])
+            ->orderBy('created_at', 'desc')
+            ->paginate(8);
+
+        return Inertia::render('Vendor/Review/Index', [
+            'reviews' => $reviews,
+            'statistics' => [
+                'total_reviews' => $reviews->total(),
+                'average_rating' => Review::whereHas('vehicle', function ($query) use ($vendor) {
+                    $query->where('vendor_id', $vendor->id);
+                })->avg('rating') ?? 0,
+            ]
+        ]);
+    }
+
+    public function updateStatus(Review $review, Request $request)
+    {
+        $request->validate([
+            'status' => 'required|in:approved,rejected'
+        ]);
+
+        // Verify the review belongs to one of the vendor's vehicles
+        $isVendorReview = $review->vehicle->vendor_id === auth()->id();
+
+        if (!$isVendorReview) {
+            return response()->json([
+                'message' => 'Unauthorized action.'
+            ], 403);
+        }
+
+        $review->update([
+            'status' => $request->status
+        ]);
+
+        return back()->with('success', 'Review status updated successfully');
     }
 }

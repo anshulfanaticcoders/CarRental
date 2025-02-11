@@ -244,22 +244,21 @@ public function getVendorPaymentHistory()
     $vendorId = auth()->id();
 
     $payments = BookingPayment::with(['booking.customer', 'booking.vehicle'])
-        ->join('bookings', 'booking_payments.booking_id', '=', 'bookings.id')
-        ->join('vehicles', 'bookings.vehicle_id', '=', 'vehicles.id')
-        ->where('vehicles.vendor_id', $vendorId)
-        ->select('booking_payments.*')  // Important to select only from booking_payments table
-        ->orderBy('booking_payments.created_at', 'desc')
-        ->get();
+    ->join('bookings', 'booking_payments.booking_id', '=', 'bookings.id')
+    ->join('vehicles', 'bookings.vehicle_id', '=', 'vehicles.id')
+    ->where('vehicles.vendor_id', $vendorId)
+    ->select('booking_payments.*')
+    ->orderBy('booking_payments.created_at', 'desc')
+    ->paginate(8);
 
-    if ($payments->isEmpty()) {
-        return response()->json([
-            'message' => 'No payments found for this vendor.'
-        ]);
-    }
+return Inertia::render('Vendor/Payments/Index', [
+    'payments' => $payments->items(), 
+    'pagination' => [
+        'current_page' => $payments->currentPage(),
+        'last_page' => $payments->lastPage(),
+    ]
+]);
 
-    return Inertia::render('Vendor/Payments', [
-        'payments' => $payments
-    ]);
 }
 
 

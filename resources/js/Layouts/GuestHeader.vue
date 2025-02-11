@@ -37,26 +37,7 @@ const isRegisterPage = url.includes('/register');
                         class="button-secondary ms-4 font-semibold text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white focus:outline focus:outline-2 focus:rounded-sm focus:outline-red-500"
                     >Create an Account</Link>
                 </div>
-                <Sheet>
-                    <SheetTrigger as-child>
-                        <img
-                            :src="hamburgerIcon"
-                            alt=""
-                            class="cursor-pointer"
-                        />
-                    </SheetTrigger>
-                    <SheetContent>
-                        <div class="mt-[3rem]">
-                            <ul class="flex flex-col gap-[1rem] offcanvasList">
-                                <li><Link href="/" class="w-full block"> Home </Link></li>
-                                <li><Link href="/about" class="w-full block"> About </Link></li>
-                                <li><Link href="/feature" class="w-full block"> Features </Link></li>
-                                <li><Link href="/login" class="w-full block"> Login </Link></li>
-                                <li><Link href="/register" class="w-full block"> Register </Link></li>
-                            </ul>
-                        </div>
-                    </SheetContent>
-                </Sheet>
+                
             </div>
         </div>
     </div>

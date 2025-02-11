@@ -12,18 +12,23 @@ class VendorBookingController extends Controller
     public function index()
     {
         $vendorId = auth()->id();
-
+    
         $bookings = Booking::with(['customer', 'vehicle', 'payments'])
             ->whereHas('vehicle', function ($query) use ($vendorId) {
                 $query->where('vendor_id', $vendorId);
             })
             ->orderBy('created_at', 'desc')
-            ->get();
-
+            ->paginate(8);
+    
         return Inertia::render('Vendor/Bookings/Index', [
-            'bookings' => $bookings
+            'bookings' => $bookings->items(),
+            'pagination' => [
+        'current_page' => $bookings->currentPage(),
+        'last_page' => $bookings->lastPage(),
+    ]
         ]);
     }
+    
 
     public function update(Request $request, Booking $booking)
     {

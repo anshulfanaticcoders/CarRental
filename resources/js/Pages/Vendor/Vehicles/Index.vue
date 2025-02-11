@@ -13,43 +13,45 @@
       <div class="py-12">
         <div class=" mx-auto">
           <div class="rounded-[12px]">
-            <div v-if="vehicles.length" class="overflow-x-auto bg-[#153B4F0D]">
-              <table class="w-full border-collapse rounded-[12px] border border-gray-200">
-                <thead>
-                  <tr class="bg-gray-100">
-                    <th class="border p-3 text-left">Image</th>
-                    <th class="border p-3 text-left">Brand & Model</th>
-                    <th class="border p-3 text-left">Transmission</th>
-                    <th class="border p-3 text-left">Fuel</th>
-                    <th class="border p-3 text-left">Location</th>
-                    <th class="border p-3 text-left">Price/Day</th>
-                    <th class="border p-3 text-left">Status</th>
-                    <th class="border p-3 text-left">Actions</th>
+            <div v-if="vehicles.length" class="overflow-x-auto">
+              <table class="min-w-full divide-y divide-gray-200">
+                <thead class="bg-gray-50">
+                  <tr class="">
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">ID</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Image</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Brand & Model</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Transmission</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Fuel</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Location</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Price/Day</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
                   </tr>
                 </thead>
                 <tbody>
-                  <tr v-for="vehicle in vehicles" :key="vehicle.id" class="border-b">
-                    <td class="border p-3">
+                  <tr v-for="(vehicle, index) in vehicles" :key="vehicle.id" class="border-b">
+                    <td class="px-6 py-4 whitespace-nowrap">{{ index + 1 }}</td>
+                    <td class="px-6 py-4 whitespace-nowrap">
                       <img 
                         :src="getPrimaryImage(vehicle)" 
                         :alt="`${vehicle.brand} ${vehicle.model}`" 
                         class="h-16 w-24 object-cover rounded"
                       >
                     </td>
-                    <td class="border p-3">{{ vehicle.brand }} {{ vehicle.model }}</td>
-                    <td class="border p-3">{{ vehicle.transmission }}</td>
-                    <td class="border p-3">{{ vehicle.fuel }}</td>
-                    <td class="border p-3">{{ vehicle.location }}</td>
-                    <td class="border p-3 text-customPrimaryColor font-bold">${{ vehicle.price_per_day }}/day</td>
-                    <td class="border p-3">
-                      <span :class="getStatusBadgeClass(vehicle.status)" class="px-2 py-1 rounded text-sm">
+                    <td class="px-6 py-4 whitespace-nowrap">{{ vehicle.brand }} {{ vehicle.model }}</td>
+                    <td class="px-6 py-4 whitespace-nowrap capitalize">{{ vehicle.transmission }}</td>
+                    <td class="px-6 py-4 whitespace-nowrap capitalize">{{ vehicle.fuel }}</td>
+                    <td class="px-6 py-4 whitespace-nowrap">{{ vehicle.location }}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-customPrimaryColor font-bold">${{ vehicle.price_per_day }}/day</td>
+                    <td class="px-6 py-4 whitespace-nowrap">
+                      <span :class="getStatusBadgeClass(vehicle.status)" class="px-2 py-1 rounded text-sm capitalize">
                         {{ vehicle.status }}
                       </span>
                     </td>
-                    <td class="h-[5rem] p-3 flex items-center justify-center space-x-2">
+                    <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
                       <Link 
                         :href="route('current-vendor-vehicles.edit', vehicle.id)"
-                        class="px-3 py-1 bg-gray-600 text-white rounded hover:bg-gray-700"
+                        class="px-3 mr-2 py-1 bg-gray-600 text-white rounded hover:bg-gray-700"
                       >
                         Edit
                       </Link>

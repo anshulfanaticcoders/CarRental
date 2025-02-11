@@ -84,7 +84,7 @@ const vendorMenus = [
     icon: dashboardIcon,
     items: [
       { name: "Profile", path: "/profile" },
-      { name: "Overview", path: "/vendor-dashboard" },
+      { name: "Overview", path: "/overview" },
       { name: "Reports", path: "/vendor-reports" },
     ],
   },

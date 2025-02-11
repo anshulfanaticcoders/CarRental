@@ -81,7 +81,7 @@
                         </div>
                     </div>
 
-                    <div class="mt-[3rem]">
+                    <div class="mt-[1rem]">
                         <span class="text-[3rem] font-medium">Vehicle Details</span>
                         <p class="text-customLightGrayColor text-[1.15rem]">
                             Please provide vehicle details .
@@ -460,7 +460,7 @@
                     <Link class="w-[5rem] mt-[2rem]" href="/">
                     <ApplicationLogo />
                     </Link>
-                    <div class="mt-[5rem] mb-[2rem]">
+                    <div class="mt-[5rem]">
                         <span class="text-[1.75rem] font-medium">Hire Cost of Your Vehicle</span>
                         <div class="mt-[2rem]">
                             <span class="text-[0.875rem] text-black font-medium">Basic daily rate</span>
@@ -506,33 +506,45 @@
 
                     <!-- Payment Method -->
                     <div class="mt-[2rem]">
-                        <InputLabel class="text-black">Payment method(s) for the security
-                            deposit</InputLabel>
-                        <span class="text-[0.75rem] font-medium mb-[1rem] inline-block text-customLightGrayColor">Select
-                            the payment method(s) you accept (the
-                            “Credit Card” mode means that you have your own
-                            payment terminal)</span>
-                        <div class="flex gap-[2rem]">
+                        <InputLabel class="text-black text-[1.15rem]">Payment methods for the security deposit
+                        </InputLabel>
+                        <span class="text-[0.75rem] font-medium mb-[1rem] inline-block text-customLightGrayColor">
+                            Select the payment method(s) you accept
+                        </span>
+                        <div class="flex gap-[1rem]">
                             <InputLabel>
-                                <input type="radio" v-model="form.payment_method" value="credit_card" />
-                                Credit Card
+                                <input type="checkbox" v-model="form.payment_method" value="credit_card"
+                                    id="credit_card" />
+                                <label class="ml-2" for="credit_card">Credit Card</label>
                             </InputLabel>
                             <InputLabel>
-                                <input type="radio" v-model="form.payment_method" value="cheque" />
-                                Cheque
+                                <input type="checkbox" v-model="form.payment_method" value="cheque" id="cheque" />
+                                <label class="ml-2" for="cheque">Cheque</label>
                             </InputLabel>
                             <InputLabel>
-                                <input type="radio" v-model="form.payment_method" value="cash" />
-                                Cash
+                                <input type="checkbox" v-model="form.payment_method" value="bank_wire" id="bank_wire" />
+                                <label class="ml-2" for="bank_wire">Bank Wire</label>
                             </InputLabel>
                             <InputLabel>
-                                <input type="radio" v-model="form.payment_method" value="bank_wire" />
-                                Bank Wire
+                                <input type="checkbox" v-model="form.payment_method" value="cryptocurrency"
+                                    id="cryptocurrency" />
+                                <label class="ml-2" for="cryptocurrency">Cryptocurrency</label>
                             </InputLabel>
                             <InputLabel>
-                                <input type="radio" v-model="form.payment_method" value="other" />
-                                Other
+                                <input type="checkbox" v-model="form.payment_method" value="other" id="other" />
+                                <label class="ml-2" for="other">Other</label>
                             </InputLabel>
+                        </div>
+
+                        <div v-if="paymentMethodsArray.length > 0">
+                            <p class="text-[0.85rem] text-green-400">Selected Payment Methods:</p>
+                            <ul class="mt-2 flex items-center gap-3">
+                                <li class="bg-green-200 px-2 rounded-[12px]" v-for="method in paymentMethodsArray"
+                                    :key="method">{{ method }}</li>
+                            </ul>
+                        </div>
+                        <div v-else>
+                            <p class="text-[0.85rem] text-red-500">No payment methods selected yet</p>
                         </div>
                     </div>
 
@@ -605,11 +617,11 @@
                         <p class="text-customLightGrayColor font-medium">or</p>
                         <input type="file" id="images" @change="handleFileUpload" multiple />
                         <div v-if="form.images.length" class="image-preview-container">
-      <div v-for="(image, index) in form.images" :key="index" class="image-preview">
-        <img :src="getImageUrl(image)" alt="Vehicle Image" />
-        <button class="remove-btn" @click="removeImage(index)">✖</button>
-      </div>
-    </div>
+                            <div v-for="(image, index) in form.images" :key="index" class="image-preview">
+                                <img :src="getImageUrl(image)" alt="Vehicle Image" />
+                                <button class="remove-btn" @click="removeImage(index)">✖</button>
+                            </div>
+                        </div>
                     </div>
 
                     <div class="buttons flex justify-between mt-[2rem] pb-[4rem]">
@@ -683,7 +695,8 @@ const form = useForm({
     features: [],
     featured: false,
     security_deposit: 0,
-    payment_method: "",
+    // payment_method: "",
+    payment_method: [],
     price_per_day: 0,
 
     // vehicle specifications fields
@@ -699,6 +712,13 @@ const form = useForm({
     images: [],
     radius: 831867.4340914232,
 });
+const props = defineProps({
+    vehicle: {
+        type: Object,
+        required: false, // If the prop is not always passed
+        default: null // Provide a default value
+    },
+});
 
 // fetching the vehicle categories from the database thorough api
 const categories = ref([]);
@@ -710,7 +730,19 @@ const fetchCategories = async () => {
         console.error("Error fetching vehicle categories:", error);
     }
 };
-
+const paymentMethodsArray = computed(() => {
+    if (props.vehicle && props.vehicle.payment_method) {
+        try {
+            return JSON.parse(props.vehicle.payment_method);
+        } catch (error) {
+            console.error("Error parsing payment methods:", error);
+            return [];
+        }
+    } else if (form.payment_method) {
+        return form.payment_method;
+    }
+    return [];
+});
 // Submit form data
 const submit = () => {
     if (form.images.length < 5) return;
@@ -744,18 +776,18 @@ const tooltipPosition = computed(() => ({
 
 // Method to handle file uploads
 const handleFileUpload = (event) => {
-  const files = Array.from(event.target.files);
-  form.images = [...form.images, ...files]; // Append new images instead of resetting
+    const files = Array.from(event.target.files);
+    form.images = [...form.images, ...files]; // Append new images instead of resetting
 };
 
 // Generate image preview URL
 const getImageUrl = (image) => {
-  return URL.createObjectURL(image);
+    return URL.createObjectURL(image);
 };
 
 // Remove image from preview
 const removeImage = (index) => {
-  form.images.splice(index, 1);
+    form.images.splice(index, 1);
 };
 // Vehicle Features
 const features = ref([]);
@@ -1073,41 +1105,41 @@ select {
 }
 
 .image-preview-container {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 10px;
-  margin-top: 10px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin-top: 10px;
 }
 
 .image-preview {
-  position: relative;
-  width: 100px;
-  height: 100px;
-  border-radius: 5px;
-  overflow: hidden;
+    position: relative;
+    width: 100px;
+    height: 100px;
+    border-radius: 5px;
+    overflow: hidden;
 }
 
 .image-preview img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  border-radius: 5px;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: 5px;
 }
 
 .remove-btn {
-  position: absolute;
-  top: 5px;
-  right: 5px;
-  background: rgba(255, 0, 0, 0.8);
-  color: white;
-  border: none;
-  border-radius: 50%;
-  width: 20px;
-  height: 20px;
-  cursor: pointer;
-  font-size: 14px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
+    position: absolute;
+    top: 5px;
+    right: 5px;
+    background: rgba(255, 0, 0, 0.8);
+    color: white;
+    border: none;
+    border-radius: 50%;
+    width: 20px;
+    height: 20px;
+    cursor: pointer;
+    font-size: 14px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
 }
 </style>

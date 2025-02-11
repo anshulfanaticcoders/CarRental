@@ -5,28 +5,34 @@ import Dropdown from "@/Components/Dropdown.vue";
 import DropdownLink from "@/Components/DropdownLink.vue";
 import ResponsiveNavLink from "@/Components/ResponsiveNavLink.vue";
 import { Link, usePage } from "@inertiajs/vue3";
-import hamburgerIcon from "../../assets/hamburgerMenu.svg";
-import {
-  Sheet,
-  SheetClose,
-  SheetContent,
-  SheetDescription,
-  SheetFooter,
-  SheetHeader,
-  SheetTitle,
-  SheetTrigger,
-} from '@/Components/ui/sheet'
-
 const { url } = usePage();
-// const isLoginPage = url.includes('/login');
-// const isRegisterPage = url.includes('/register');
 const showingNavigationDropdown = ref(false);
 
+import axios from "axios";
+
+const user = ref(null);
+
+const fetchUserProfile = async () => {
+  try {
+    // Make the request to fetch the current user's profile (no need to pass userId as it's dynamically fetched from auth)
+    const response = await axios.get("/user"); // This endpoint fetches the current authenticated user's data
+
+    if (response.data.status === "success") {
+      user.value = response.data.data; // Store the user profile data
+    } else {
+      console.error("Failed to fetch user:", response.data.message);
+    }
+  } catch (error) {
+    console.error("Error fetching user:", error);
+  }
+};
+
+onMounted(fetchUserProfile);
 </script>
 
 <template>
     <div class="border-b-[1px] border-b-customMediumBlackColor">
-        <div class="py-[1.5rem] full-w-container">
+        <div class="py-[1rem] full-w-container">
             <!-- Authenticated User Header -->
             <div v-if="$page.props.auth.user" class="">
                 <nav class="">
@@ -61,7 +67,16 @@ const showingNavigationDropdown = ref(false);
                                         <template #trigger>
                                             <button type="button"
                                                 class="inline-flex items-center px-3 py-2 border border-transparent text-sm leading-4 font-medium rounded-md text-gray-500 bg-white hover:text-gray-700 focus:outline-none transition ease-in-out duration-150">
-                                                Hey!! {{ $page.props.auth.user.first_name }}
+                                                <div v-if="user?.profile?.avatar">
+                                                    <img :src="user?.profile.avatar
+                                                    ? `/storage/${user?.profile.avatar}`
+                                                    : '/storage/avatars/default-avatar.svg'
+                                                    " alt="User Avatar" class="w-8 h-8 rounded-full object-cover" />
+                                                </div>
+                                                <div v-else>
+                                                    {{ $page.props.auth.user.first_name }}
+                                                </div>
+                                                
                                                 <svg class="ms-2 -me-0.5 h-4 w-4" xmlns="http://www.w3.org/2000/svg"
                                                     viewBox="0 0 20 20" fill="currentColor">
                                                     <path fill-rule="evenodd"
@@ -78,45 +93,8 @@ const showingNavigationDropdown = ref(false);
                                         </template>
                                     </Dropdown>
                                 </div>
-                                <!-- Mobile Menu -->
-                                <Sheet>
-                                    <SheetTrigger as-child>
-                                        <img :src="hamburgerIcon" alt="Menu" class="cursor-pointer" />
-                                    </SheetTrigger>
-                                    <SheetContent>
-                                        <div class="mt-[3rem]">
-                                            <ul class="flex flex-col gap-[1rem] offcanvasList">
-                                                <li>
-                                                    <Link href="/"
-                                                        class="w-full block bg-customPrimaryColor p-[1rem] rounded-lg text-white">
-                                                    Home</Link>
-                                                </li>
-                                                <li>
-                                                    <Link href="/about"
-                                                        class="w-full block bg-customPrimaryColor p-[1rem] rounded-lg text-white">
-                                                    About
-                                                    </Link>
-                                                </li>
-                                                <li>
-                                                    <Link href="/feature"
-                                                        class="w-full block bg-customPrimaryColor p-[1rem] rounded-lg text-white">
-                                                    Features</Link>
-                                                </li>
-                                                <li>
-                                                    <Link href="/login"
-                                                        class="w-full block bg-customPrimaryColor p-[1rem] rounded-lg text-white">
-                                                    Login
-                                                    </Link>
-                                                </li>
-                                                <li>
-                                                    <Link href="/register"
-                                                        class="w-full block bg-customPrimaryColor p-[1rem] rounded-lg text-white">
-                                                    Register</Link>
-                                                </li>
-                                            </ul>
-                                        </div>
-                                    </SheetContent>
-                                </Sheet>
+
+
                             </div>
 
                             <!-- Mobile Hamburger -->
@@ -149,7 +127,8 @@ const showingNavigationDropdown = ref(false);
 
                         <div class="pt-4 pb-1 border-t border-gray-200">
                             <div class="px-4">
-                                <div class="font-medium text-base text-gray-800">{{ $page.props.auth.user.first_name }}</div>
+                                <div class="font-medium text-base text-gray-800">{{ $page.props.auth.user.first_name }}
+                                </div>
                                 <div class="font-medium text-sm text-gray-500">{{ $page.props.auth.user.email }}</div>
                             </div>
 
@@ -185,49 +164,6 @@ const showingNavigationDropdown = ref(false);
                             Create an Account
                             </Link>
                         </div>
-
-                        <!-- Mobile Menu -->
-                        <Sheet>
-                            <SheetTrigger as-child>
-                                <img :src="hamburgerIcon" alt="Menu" class="cursor-pointer" />
-                            </SheetTrigger>
-                            <SheetContent>
-                                <div class="mt-[3rem]">
-                                    <ul class="flex flex-col gap-[1rem] offcanvasList">
-                                        <li>
-                                            <Link href="/"
-                                                class="w-full block bg-customPrimaryColor p-[1rem] rounded-lg text-white">
-                                            Home
-                                            </Link>
-                                        </li>
-                                        <li>
-                                            <Link href="/about"
-                                                class="w-full block bg-customPrimaryColor p-[1rem] rounded-lg text-white">
-                                            About
-                                            </Link>
-                                        </li>
-                                        <li>
-                                            <Link href="/feature"
-                                                class="w-full block bg-customPrimaryColor p-[1rem] rounded-lg text-white">
-                                            Features
-                                            </Link>
-                                        </li>
-                                        <li>
-                                            <Link href="/login"
-                                                class="w-full block bg-customPrimaryColor p-[1rem] rounded-lg text-white">
-                                            Login
-                                            </Link>
-                                        </li>
-                                        <li>
-                                            <Link href="/register"
-                                                class="w-full block bg-customPrimaryColor p-[1rem] rounded-lg text-white">
-                                            Register
-                                            </Link>
-                                        </li>
-                                    </ul>
-                                </div>
-                            </SheetContent>
-                        </Sheet>
                     </div>
                 </div>
             </div>
