@@ -32,6 +32,9 @@ class CreateVehiclesTable extends Migration
             $table->decimal('security_deposit', 10, 2);
             $table->string('payment_method');
             $table->decimal('price_per_day', 10, 2);
+            $table->decimal('price_per_week', 10, 2)->nullable();
+            $table->decimal('price_per_month', 10, 2)->nullable();
+            $table->string('preferred_price_type')->default('day');
             $table->timestamps();
         });
     }

@@ -42,7 +42,11 @@
                     <td class="px-6 py-4 whitespace-nowrap capitalize">{{ vehicle.transmission }}</td>
                     <td class="px-6 py-4 whitespace-nowrap capitalize">{{ vehicle.fuel }}</td>
                     <td class="px-6 py-4 whitespace-nowrap">{{ vehicle.location }}</td>
-                    <td class="px-6 py-4 whitespace-nowrap text-customPrimaryColor font-bold">${{ vehicle.price_per_day }}/day</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-customPrimaryColor font-bold">$
+                      <span v-if="vehicle.preferred_price_type === 'day'">{{ vehicle.price_per_day }}/day</span>
+                    <span v-if="vehicle.preferred_price_type === 'week'">{{ vehicle.price_per_week }}/week</span>
+                    <span v-if="vehicle.preferred_price_type === 'month'">{{ vehicle.price_per_month }}/month</span>  
+                    </td>
                     <td class="px-6 py-4 whitespace-nowrap">
                       <span :class="getStatusBadgeClass(vehicle.status)" class="px-2 py-1 rounded text-sm capitalize">
                         {{ vehicle.status }}

@@ -9,7 +9,6 @@ import walkIcon from "../../assets/walkingrayIcon.svg";
 import { Inertia } from '@inertiajs/inertia';
 import paypal from '../../assets/paypal.svg';
 import mastercard from '../../assets/mastercard.svg';
-// import visa from '../../assets/Visa.svg';
 
 // Add these methods to your script section
 const incrementQuantity = (extra) => {
@@ -221,15 +220,22 @@ const loadSessionData = () => {
 
 // Update your total calculation
 const calculateTotal = computed(() => {
-
     loadSessionData();
     const pickupDateObject = new Date(pickupDate.value);
     const returnDateObject = new Date(returnDate.value);
     const totalrentalDays = Math.ceil((returnDateObject - pickupDateObject) / (1000 * 3600 * 24));
     let total = 0;
 
-    // Base price per day
-    total += Number(vehicle.value?.price_per_day || 0) * totalrentalDays;
+    // Dynamically calculate base price based on preferred_price_type
+    if (vehicle.value?.preferred_price_type === 'day') {
+        total += Number(vehicle.value?.price_per_day || 0) * totalrentalDays;
+    } else if (vehicle.value?.preferred_price_type === 'week') {
+        const totalRentalWeeks = Math.ceil(totalrentalDays / 7); // Calculate total weeks
+        total += Number(vehicle.value?.price_per_week || 0) * totalRentalWeeks;
+    } else if (vehicle.value?.preferred_price_type === 'month') {
+        const totalRentalMonths = Math.ceil(totalrentalDays / 30); // Approximate total months (adjust as needed)
+        total += Number(vehicle.value?.price_per_month || 0) * totalRentalMonths;
+    }
 
     // Add plan value
     total += Number(selectedPlan.value?.plan_value || 0);
@@ -314,7 +320,7 @@ onMounted(async () => {
 const error = ref([]);
 const submitBooking = async () => {
     if (!validateSteps()) {
-        return; 
+        return;
     }
     // Load session data
     loadSessionData();
@@ -339,13 +345,13 @@ const submitBooking = async () => {
         return_date: returnDate.value,
         pickup_location: vehicle.value?.location,
         return_location: vehicle.value?.location,
-        pickup_time: pickupTime.value, 
+        pickup_time: pickupTime.value,
         return_time: returnTime.value,
         total_days: totalDays,
         base_price: vehicle.value?.price_per_day,
         extra_charges: extraCharges > 0 ? extraCharges : null,
         total_amount: calculateTotal.value,
-        plan: selectedPlan.value.plan_type, 
+        plan: selectedPlan.value.plan_type,
         extras: extras.value,
         vehicle_id: vehicle.value?.id,
     };
@@ -774,7 +780,7 @@ onMounted(() => {
                                 <div class="flex flex-col gap-1">
                                     <span class="text-[1.25rem] text-medium">{{
                                         vehicle?.location
-                                    }}</span><span class="">{{
+                                        }}</span><span class="">{{
                                             vehicle?.created_at
                                         }}</span>
                                 </div>
@@ -784,7 +790,7 @@ onMounted(() => {
                                 <div class="flex flex-col gap-1">
                                     <span class="text-[1.25rem] text-medium">{{
                                         vehicle?.location
-                                    }}</span><span class="">{{
+                                        }}</span><span class="">{{
                                             vehicle?.created_at
                                         }}</span>
                                 </div>
@@ -795,23 +801,30 @@ onMounted(() => {
                                     <span class="text-[1.5rem]">Payment Details</span>
 
                                     <div class="flex justify-between items-center text-[1.15rem]">
-                                        <span>Price Per Day</span>
+                                        <span v-if="vehicle.preferred_price_type === 'day'">Price Per Day</span>
+                                        <span v-if="vehicle.preferred_price_type === 'week'">Price Per Week</span>
+                                        <span v-if="vehicle.preferred_price_type === 'month'">Price Per Month</span>
                                         <div>
-                                            <strong class="text-[1.5rem] font-medium">€{{
-                                                vehicle?.price_per_day
-                                                }}</strong>
-                                            <span>/day</span>
+                                            <srong v-if="vehicle.preferred_price_type === 'day'"
+                                                class="text-[1.5rem] font-medium">{{ vehicle.price_per_day }}/day
+                                            </srong>
+                                            <srong v-if="vehicle.preferred_price_type === 'week'"
+                                                class="text-[1.5rem] font-medium">{{ vehicle.price_per_week }}/week
+                                            </srong>
+                                            <srong v-if="vehicle.preferred_price_type === 'month'"
+                                                class="text-[1.5rem] font-medium">{{ vehicle.price_per_month }}/month
+                                            </srong>
                                         </div>
                                     </div>
                                     <!-- Selected Plan -->
                                     <div v-if="selectedPlan" class="flex justify-between items-center text-[1.15rem]">
                                         <span>{{
                                             selectedPlan.plan_type
-                                        }}</span>
+                                            }}</span>
                                         <div>
                                             <strong class="text-[1.5rem] font-medium">€{{
                                                 selectedPlan.plan_value
-                                                }}</strong>
+                                            }}</strong>
                                             <span>/day</span>
                                         </div>
                                     </div>
@@ -828,7 +841,7 @@ onMounted(() => {
                                         <div>
                                             <strong class="text-[1.5rem] font-medium">€{{
                                                 extra.price * extra.quantity
-                                                }}</strong>
+                                            }}</strong>
                                             <span>/day</span>
                                         </div>
                                     </div>

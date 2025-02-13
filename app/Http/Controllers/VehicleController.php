@@ -51,6 +51,9 @@ class VehicleController extends Controller
             'payment_method' => 'required|array', 
             'payment_method.*' => 'string|in:credit_card,cheque,bank_wire,cryptocurrency,other',
             'price_per_day' => 'required|decimal:0,2|min:0',
+            'price_per_week' => 'nullable|decimal:0,2|min:0',
+            'price_per_month' => 'nullable|decimal:0,2|min:0',
+            'preferred_price_type' => 'required|in:day,week,month',
 
             'registration_number' => 'required|string|max:50',
             'registration_country' => 'required|string|max:50',
@@ -86,6 +89,9 @@ class VehicleController extends Controller
             // 'payment_method' => $request->payment_method,
             'payment_method' => json_encode($request->payment_method),
             'price_per_day' => $request->price_per_day,
+            'price_per_week' => $request->price_per_week,
+            'price_per_month' => $request->price_per_month,
+            'preferred_price_type' => $request->preferred_price_type,
         ]);
 
         // Create the vehicle specifications

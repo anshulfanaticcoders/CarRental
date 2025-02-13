@@ -274,23 +274,47 @@ const formatDate = (dateString) => {
 
 
 const validateRentalDetails = () => {
-    if (!form.value.date_from) {
-        alert("Please select a pickup date.");
-        return false;
+  if (!form.value.date_from) {
+    alert("Please select a pickup date.");
+    return false;
+  }
+  if (!form.value.time_from) {
+    alert("Please select a pickup time.");
+    return false;
+  }
+  if (!form.value.date_to) {
+    alert("Please select a return date.");
+    return false;
+  }
+  if (!form.value.time_to) {
+    alert("Please select a return time.");
+    return false;
+  }
+
+  const fromDate = new Date(form.value.date_from);
+  const toDate = new Date(form.value.date_to);
+  const timeDiff = Math.abs(toDate.getTime() - fromDate.getTime());
+  const diffDays = Math.ceil(timeDiff / (1000 * 3600 * 24));
+
+  if (vehicle.value.preferred_price_type === "week") {
+    if (diffDays % 7 !== 0) {
+      alert("For weekly rentals, the return date must be 7, 14, 21, or any multiple of 7 days after the pickup date.");
+      return false;
     }
-    if (!form.value.time_from) {
-        alert("Please select a pickup time.");
-        return false;
+
+  } else if (vehicle.value.preferred_price_type === 'month') {
+    const fromMonth = fromDate.getMonth();
+    const toMonth = toDate.getMonth();
+    const toYear = toDate.getFullYear();
+    const fromYear = fromDate.getFullYear();
+
+    if (toYear < fromYear || (toYear === fromYear && toMonth < fromMonth + 1 && !(toMonth === 0 && fromMonth === 11))) {
+      alert("For monthly rentals, the return date must be in the following month.");
+      return false;
     }
-    if (!form.value.date_to) {
-        alert("Please select a return date.");
-        return false;
-    }
-    if (!form.value.time_to) {
-        alert("Please select a return time.");
-        return false;
-    }
-    return true;
+  }
+
+  return true;
 };
 const proceedToPayment = () => {
     // Validate rental details before proceeding
@@ -592,12 +616,8 @@ const toggleFavourite = async (vehicle) => {
 
                                         <!-- Date Selection -->
                                         <div class="col px-5 flex flex-col justify-center">
-                                            <label class="block text-sm mb-1 text-customLightGrayColor font-medium">
-                                                Pick Up Date
-                                            </label>
-                                            <input type="date" v-model="form.date_from" :min="getCurrentDate()"
-                                                @change="updateDateTimeSelection"
-                                                class="p-2 rounded border border-customMediumBlackColor w-full text-customPrimaryColor" />
+                                             <label class="block text-sm mb-1 text-customLightGrayColor font-medium">Pick Up Date</label>
+        <input type="date" v-model="form.date_from" :min="getCurrentDate()" @change="updateDateTimeSelection" class="p-2 rounded border border-customMediumBlackColor w-full text-customPrimaryColor" />
                                             <!-- Time Dropdown -->
                                             <label
                                                 class="block text-sm mt-3 mb-1 text-customLightGrayColor font-medium">
@@ -614,13 +634,8 @@ const toggleFavourite = async (vehicle) => {
                                         </div>
 
                                         <div class="col px-5 flex flex-col justify-center">
-                                            <label class="block text-sm mb-1 text-customLightGrayColor font-medium">
-                                                Return Date
-                                            </label>
-                                            <input type="date" v-model="form.date_to"
-                                                :min="form.date_from || getCurrentDate()"
-                                                @change="updateDateTimeSelection"
-                                                class="p-2 rounded border border-gray-300 w-full text-customPrimaryColor" />
+                                            <label class="block text-sm mb-1 text-customLightGrayColor font-medium">Return Date</label>
+        <input type="date" v-model="form.date_to" :min="form.date_from || getCurrentDate()" @change="updateDateTimeSelection" class="p-2 rounded border border-gray-300 w-full text-customPrimaryColor" />
                                             <!-- Time Dropdown -->
                                             <label
                                                 class="block text-sm mt-3 mb-1 text-customLightGrayColor font-medium">
@@ -643,8 +658,11 @@ const toggleFavourite = async (vehicle) => {
                                         <span class="text-[1.25rem]">Total Price</span>
                                         <div>
                                             <span class="text-customPrimaryColor text-[1.875rem] font-medium">
-                                                {{ vehicle.vendor_profile.currency }}{{ vehicle?.price_per_day }}
-                                            </span>
+                    {{ vehicle.vendor_profile.currency }}
+                    <span v-if="vehicle.preferred_price_type === 'day'">{{ vehicle.price_per_day }}/day</span>
+                    <span v-if="vehicle.preferred_price_type === 'week'">{{ vehicle.price_per_week }}/week</span>
+                    <span v-if="vehicle.preferred_price_type === 'month'">{{ vehicle.price_per_month }}/month</span>
+                  </span>
 
                                             <br />
                                             <span class="flex gap-3">incl. VAT
