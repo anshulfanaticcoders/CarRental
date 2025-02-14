@@ -225,8 +225,8 @@ const handleMapToggle = (value) => {
 // add to favourite vehicle functionality
 
 // Function to toggle favourite status
-import { useToast } from 'vue-toastification'; 
-const toast = useToast(); 
+import { useToast } from 'vue-toastification'; // Reuse your existing import
+const toast = useToast(); // Initialize toast
 const toggleFavourite = async (vehicle) => {
     const action = vehicle.is_favourite ? 'removed from' : 'added to';
     const endpoint = vehicle.is_favourite
@@ -235,23 +235,23 @@ const toggleFavourite = async (vehicle) => {
 
     try {
         await axios.post(endpoint);
-        vehicle.is_favourite = !vehicle.is_favourite; 
+        vehicle.is_favourite = !vehicle.is_favourite; // Toggle the favorite state
 
         // Show toast notification
         toast.success(`Vehicle ${action} favorites!`, {
-            position: 'top-right', 
-            timeout: 3000, 
-            closeOnClick: true,
+            position: 'top-right', // Match your existing toast position
+            timeout: 3000, // Match your existing timeout
+            closeOnClick: true, // Match your existing settings
             pauseOnHover: true,
             draggable: true,
-            icon: vehicle.is_favourite ? '❤️' : '💔', 
+            icon: vehicle.is_favourite ? '❤️' : '💔', // Add emoji icons
         });
 
     } catch (error) {
         toast.error('Failed to update favorites', {
-            position: 'top-right',
-            timeout: 3000, 
-            closeOnClick: true,
+            position: 'top-right', // Match your existing toast position
+            timeout: 3000, // Match your existing timeout
+            closeOnClick: true, // Match your existing settings
             pauseOnHover: true,
             draggable: true,
         });
@@ -407,7 +407,7 @@ const toggleFavourite = async (vehicle) => {
                             <button @click.stop="toggleFavourite(vehicle)" class="heart-icon"
                                 :class="{ 'filled-heart': vehicle.is_favourite }">
                                 <img :src="vehicle.is_favourite ? FilledHeart : Heart" alt="Favorite"
-                                    class="w-[2rem] mb-[1rem] transition-colors duration-300" />
+                                    class="w-full mb-[1rem] transition-colors duration-300" />
                             </button>
                         </div>
                         <Link :href="`/vehicle/${vehicle.id}`">

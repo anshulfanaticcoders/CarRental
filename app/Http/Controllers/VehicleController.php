@@ -51,9 +51,9 @@ class VehicleController extends Controller
             'payment_method' => 'required|array', 
             'payment_method.*' => 'string|in:credit_card,cheque,bank_wire,cryptocurrency,other',
             'price_per_day' => 'required|decimal:0,2|min:0',
-            'price_per_week' => 'nullable|decimal:0,2|min:0',
-            'price_per_month' => 'nullable|decimal:0,2|min:0',
-            'preferred_price_type' => 'required|in:day,week,month',
+            'discounts' => 'required|array',
+            'discounts.*.days' => 'required|string',
+            'discounts.*.price' => 'required|numeric|min:0',
 
             'registration_number' => 'required|string|max:50',
             'registration_country' => 'required|string|max:50',
@@ -89,9 +89,8 @@ class VehicleController extends Controller
             // 'payment_method' => $request->payment_method,
             'payment_method' => json_encode($request->payment_method),
             'price_per_day' => $request->price_per_day,
-            'price_per_week' => $request->price_per_week,
-            'price_per_month' => $request->price_per_month,
-            'preferred_price_type' => $request->preferred_price_type,
+            'discounts' => json_encode($request->discounts),
+            
         ]);
 
         // Create the vehicle specifications
@@ -157,6 +156,8 @@ class VehicleController extends Controller
         }
     ])->findOrFail($id);
 
+    $discounts = json_decode($vehicle->discounts, true);
+
     return Inertia::render('SingleCar', [
         'vehicle' => $vehicle,
         'booked_dates' => $vehicle->bookings->map(function ($booking) {
@@ -164,7 +165,8 @@ class VehicleController extends Controller
                 'pickup_date' => $booking->pickup_date->format('Y-m-d'),
                 'return_date' => $booking->return_date->format('Y-m-d'),
             ];
-        })
+        }),
+        'discounts' => $discounts,
     ]);
 }
 
