@@ -34,7 +34,11 @@ class Vehicle extends Model
         'security_deposit',
         'payment_method',
         'price_per_day',
-        'discounts',
+        'price_per_week',
+        'weekly_discount',
+        'price_per_month',
+        'monthly_discount',
+        'preferred_price_type',
 
         // vehicle specifications fillables
         'registration_number',

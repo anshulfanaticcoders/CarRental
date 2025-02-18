@@ -25,6 +25,7 @@ class Booking extends Model
         'base_price',
         'extra_charges',
         'tax_amount',
+        'discount_amount',
         'total_amount',
         'payment_status',
         'booking_status',

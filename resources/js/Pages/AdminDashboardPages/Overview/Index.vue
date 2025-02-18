@@ -121,7 +121,7 @@
 
                   <BarChart :data="props.bookingOverview"
                     :categories="['completed', 'confirmed', 'pending', 'cancelled']" index="name"
-                    :colors="['#10B981', '#3B82F6', '#EF4444']" :stacked="true" :rounded-corners="4" />
+                    :colors="['#10B981', '#153B4F', '#FFC633','#EA3C3C']" :stacked="true" :rounded-corners="4" />
                 </CardContent>
               </Card>
               <Card class="col-span-2">

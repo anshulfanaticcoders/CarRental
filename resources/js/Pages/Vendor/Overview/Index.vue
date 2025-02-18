@@ -27,7 +27,7 @@
                     <CardHeader><CardTitle>Booking Overview</CardTitle></CardHeader>
                     <CardContent>
                         <BarChart :data="bookingOverview" :categories="['completed', 'confirmed', 'pending', 'cancelled']"
-                            index="name" :colors="['#10B981', '#3B82F6', '#EF4444', '#9CA3AF']" stacked rounded-corners="4" />
+                            index="name" :colors="['#10B981', '#153B4F', '#FFC633', '#EA3C3C']" stacked rounded-corners="4" />
                     </CardContent>
                 </Card>
 

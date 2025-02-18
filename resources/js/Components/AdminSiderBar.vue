@@ -199,6 +199,14 @@ const data = {
           title: 'Users Report',
           url: '/users-report',
         },
+        {
+          title: 'Vendors Report',
+          url: '/vendors-report',
+        },
+        {
+          title: 'Business Report',
+          url: '/business-report',
+        },
       ],
     },
   ],

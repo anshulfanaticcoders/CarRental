@@ -205,7 +205,7 @@ const loadSessionData = () => {
         extras.value = selectionData.extras;
 
         // Initialize extraCharges with the plan value
-        let extraCharges = Number(selectedPlan.value.plan_value);  // Add the selected plan's value to extra charges
+        let extraCharges = Number(selectedPlan.value?.plan_value ?? 0);
 
         // Add the extra charges from the selected extras
         selectionData.extras.forEach((extra) => {
@@ -218,25 +218,48 @@ const loadSessionData = () => {
     }
 };
 
+
+const rentalData = ref(null); // Make rentalData reactive
+
+onMounted(() => {
+    const storedData = localStorage.getItem('rentalData');
+    rentalData.value = storedData ? JSON.parse(storedData) : null;
+});
+
+  const totalPrice = rentalData.totalPrice;
+const displayedPrice = computed(() => {
+    if (rentalData.value) {
+        // Determine which price to display based on packageType
+        switch (rentalData.value.packageType) {
+            case 'day':
+                return `${rentalData.value.vehicleDetails.price_per_day}/day`;
+            case 'week':
+                return `${rentalData.value.vehicleDetails.price_per_week}/week`;
+            case 'month':
+                return `${rentalData.value.vehicleDetails.price_per_month}/month`;
+            default: // Or handle other cases if needed
+                return `${rentalData.value.vehicleDetails.price_per_day}/day`; // Default to day
+        }
+    } else {
+        return 'Loading...'; // Or a default message
+    }
+});
+
+const priceNumber = ref(0);
+watch(displayedPrice, (newValue) => {
+    const priceString = newValue;
+    priceNumber.value = Number(priceString.replace(/[^0-9.]/g, '')) || 0; // Update the ref
+});
+
 // Update your total calculation
 const calculateTotal = computed(() => {
     loadSessionData();
     const pickupDateObject = new Date(pickupDate.value);
     const returnDateObject = new Date(returnDate.value);
-    const totalrentalDays = Math.ceil((returnDateObject - pickupDateObject) / (1000 * 3600 * 24));
+    // const totalrentalDays = Math.ceil((returnDateObject - pickupDateObject) / (1000 * 3600 * 24));
     let total = 0;
 
-    // Dynamically calculate base price based on preferred_price_type
-    if (vehicle.value?.preferred_price_type === 'day') {
-        total += Number(vehicle.value?.price_per_day || 0) * totalrentalDays;
-    } else if (vehicle.value?.preferred_price_type === 'week') {
-        const totalRentalWeeks = Math.ceil(totalrentalDays / 7); // Calculate total weeks
-        total += Number(vehicle.value?.price_per_week || 0) * totalRentalWeeks;
-    } else if (vehicle.value?.preferred_price_type === 'month') {
-        const totalRentalMonths = Math.ceil(totalrentalDays / 30); // Approximate total months (adjust as needed)
-        total += Number(vehicle.value?.price_per_month || 0) * totalRentalMonths;
-    }
-
+    total += totalPrice; 
     // Add plan value
     total += Number(selectedPlan.value?.plan_value || 0);
 
@@ -801,20 +824,11 @@ onMounted(() => {
                                     <span class="text-[1.5rem]">Payment Details</span>
 
                                     <div class="flex justify-between items-center text-[1.15rem]">
-                                        <span v-if="vehicle.preferred_price_type === 'day'">Price Per Day</span>
-                                        <span v-if="vehicle.preferred_price_type === 'week'">Price Per Week</span>
-                                        <span v-if="vehicle.preferred_price_type === 'month'">Price Per Month</span>
-                                        <div>
-                                            <srong v-if="vehicle.preferred_price_type === 'day'"
-                                                class="text-[1.5rem] font-medium">{{ vehicle.price_per_day }}/day
-                                            </srong>
-                                            <srong v-if="vehicle.preferred_price_type === 'week'"
-                                                class="text-[1.5rem] font-medium">{{ vehicle.price_per_week }}/week
-                                            </srong>
-                                            <srong v-if="vehicle.preferred_price_type === 'month'"
-                                                class="text-[1.5rem] font-medium">{{ vehicle.price_per_month }}/month
-                                            </srong>
-                                        </div>
+
+                                        <span>Price</span>
+                                        <strong class="text-[1.5rem] font-medium">
+                                            {{ displayedPrice }} </strong>
+
                                     </div>
                                     <!-- Selected Plan -->
                                     <div v-if="selectedPlan" class="flex justify-between items-center text-[1.15rem]">

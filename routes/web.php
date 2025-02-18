@@ -3,6 +3,7 @@
 use App\Http\Controllers\Admin\ActivityLogsController;
 use App\Http\Controllers\Admin\BlogController;
 use App\Http\Controllers\Admin\BookingDashboardController;
+use App\Http\Controllers\Admin\BusinessReportsController;
 use App\Http\Controllers\Admin\DashboardController;
 use App\Http\Controllers\Admin\PaymentDashboardController;
 use App\Http\Controllers\Admin\PlansController;
@@ -13,6 +14,7 @@ use App\Http\Controllers\Admin\UsersReportController;
 use App\Http\Controllers\Admin\VehicleAddonsController;
 use App\Http\Controllers\Admin\VehicleDashboardController;
 
+use App\Http\Controllers\Admin\VendorsReportController;
 use App\Http\Controllers\BookingController;
 use App\Http\Controllers\FavoriteController;
 use App\Http\Controllers\GeocodingController;
@@ -117,6 +119,8 @@ Route::middleware(['auth', 'role:admin'])->group(function () {
 
     // User reports
     Route::get('/users-report', [UsersReportController::class, 'index']);
+    Route::get('/vendors-report', [VendorsReportController::class, 'index']);
+    Route::get('/business-report', [BusinessReportsController::class, 'index']);
 
     Route::get('/admin/reports/users/download', [UserReportDownloadController::class, 'downloadXML']);
 

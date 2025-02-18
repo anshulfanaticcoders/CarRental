@@ -12,16 +12,14 @@
             <TabsTrigger value="reports" disabled>Analytics</TabsTrigger>
             <TabsTrigger value="notifications" disabled>Reports</TabsTrigger>
             <div class="flex flex-col items-end">
-      <Button @click="downloadReport" :disabled="isDownloading" variant="outline" class="ml-4">
-        <template v-if="!isDownloading">
-          <DownloadIcon class="mr-2 h-4 w-4" />
-          Download XML Report
-        </template>
-        <template v-else>
-          <ReloadIcon class="mr-2 h-4 w-4 animate-spin" />
-          Downloading...
-        </template>
-      </Button>
+              <div>
+            <select v-model="exportFormat" class="p-2 border rounded">
+              <option value="pdf">Export as PDF</option>
+              <option value="excel">Export as Excel</option>
+              <option value="csv">Export as CSV</option>
+            </select>
+            <button @click="exportData" class="ml-2 p-2 bg-blue-500 text-white rounded">Export</button>
+          </div>
       <div v-if="error" class="text-sm text-red-500 mt-2">
         {{ error }}
       </div>
@@ -98,7 +96,7 @@
                 <CardContent class="pl-2">
 
                   <BarChart :data="monthlyData" :categories="['total', 'active']" :index="'name'"
-                    :rounded-corners="4" />
+                    :rounded-corners="4" :colors="['#153B4F','#10B981']"/>
 
                 </CardContent>
               </Card>
@@ -134,7 +132,6 @@
                       </div>
                       <div class="ml-auto font-medium">
                         {{ activity.activity_description }} </div>
-                      <! -- Displaying the specific activity description -->
                     </div>
                     <div v-if="recentActivities.length === 0">No recent activity.</div>
                   </div>
@@ -161,7 +158,14 @@ import TabsContent from "@/Components/ui/tabs/TabsContent.vue";
 import TabsList from "@/Components/ui/tabs/TabsList.vue";
 import TabsTrigger from "@/Components/ui/tabs/TabsTrigger.vue";
 import AdminDashboardLayout from "@/Layouts/AdminDashboardLayout.vue";
+import jsPDF from 'jspdf';
+import 'jspdf-autotable';
+import { utils, writeFile } from 'xlsx';
+import { unparse } from 'papaparse';
+import { ref } from "vue";
 
+const exportFormat = ref('pdf');
+const error = ref('');
 const props = defineProps([
   'totalCustomers',
   'totalCustomersGrowth',
@@ -172,53 +176,99 @@ const props = defineProps([
   'monthlyData',
   'recentActivities'
 ]);
+// Prepare data for export
+const prepareExportData = () => {
+  try {
+    return props.monthlyData.map(item => ({
+      Month: item.name,
+      'Total Users': item.total,
+      'Active Users': item.active,
+      'New Users': item.new || 0
+    }));
+  } catch (err) {
+    error.value = 'Error preparing data for export';
+    throw err;
+  }
+};
 
+const exportToPDF = async () => {
+  try {
+    const doc = new jsPDF();
+    const data = prepareExportData();
+    
+    // Add title
+    doc.setFontSize(16);
+    doc.text('User Analytics Report', 15, 15);
+    
+    // Add date
+    doc.setFontSize(10);
+    doc.text(`Generated on: ${new Date().toLocaleDateString()}`, 15, 25);
+    
+    // Add data as text
+    let yPosition = 40;
+    data.forEach(row => {
+      Object.entries(row).forEach(([key, value]) => {
+        doc.text(`${key}: ${value}`, 15, yPosition);
+        yPosition += 10;
+      });
+      yPosition += 5;
+    });
+    
+    doc.save('user_analytics.pdf');
+    error.value = '';
+  } catch (err) {
+    error.value = 'Failed to export PDF';
+    console.error('PDF export error:', err);
+  }
+};
+
+const exportToExcel = async () => {
+  try {
+    const data = prepareExportData();
+    const ws = utils.json_to_sheet(data);
+    const wb = utils.book_new();
+    utils.book_append_sheet(wb, ws, 'User Analytics');
+    writeFile(wb, 'user_analytics.xlsx');
+    error.value = '';
+  } catch (err) {
+    error.value = 'Failed to export Excel file';
+    console.error('Excel export error:', err);
+  }
+};
+
+const exportToCSV = async () => {
+  try {
+    const data = prepareExportData();
+    const csv = unparse(data);
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    link.download = 'user_analytics.csv';
+    link.click();
+    URL.revokeObjectURL(link.href);
+    error.value = '';
+  } catch (err) {
+    error.value = 'Failed to export CSV file';
+    console.error('CSV export error:', err);
+  }
+};
+
+const exportData = async () => {
+  try {
+    if (exportFormat.value === 'pdf') {
+      await exportToPDF();
+    } else if (exportFormat.value === 'excel') {
+      await exportToExcel();
+    } else if (exportFormat.value === 'csv') {
+      await exportToCSV();
+    }
+  } catch (err) {
+    error.value = `Failed to export data: ${err.message}`;
+    console.error('Export error:', err);
+  }
+};
 const getInitials = (firstName, lastName) => {
   return `${firstName?.[0] || ''}${lastName?.[0] || ''}`;
 };
-import Button from "@/Components/ui/button/Button.vue";
-import axios from 'axios';
-import { ref } from "vue";
 
-const isDownloading = ref(false);
-const error = ref('');
-
-const downloadReport = async () => {
-  error.value = ''; // Clear previous errors
-  
-  try {
-    isDownloading.value = true;
-    
-    const response = await axios.get('/admin/reports/users/download', {
-      responseType: 'blob'
-    });
-    
-    // Check if the response is an error message in JSON format
-    if (response.data.type === 'application/json') {
-      const reader = new FileReader();
-      reader.onload = () => {
-        const errorResponse = JSON.parse(reader.result);
-        error.value = errorResponse.message || 'Error downloading report';
-      };
-      reader.readAsText(response.data);
-      return;
-    }
-    
-    // Create download link for successful response
-    const url = window.URL.createObjectURL(new Blob([response.data]));
-    const link = document.createElement('a');
-    link.href = url;
-    link.setAttribute('download', `user-report-${new Date().toISOString().split('T')[0]}.xml`);
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    window.URL.revokeObjectURL(url);
-    
-  } catch (error) {
-    console.error('Error downloading report:', error);
-    error.value = error.response?.data?.message || 'Error downloading report. Please try again.';
-  } finally {
-    isDownloading.value = false;
-  }
-};
 </script>

@@ -75,6 +75,7 @@ class UsersReportController extends Controller
             $activeUsers = User::where('role', 'customer')
                 ->whereYear('last_login_at', $date->year)
                 ->whereMonth('last_login_at', $date->month)
+                ->whereDay('last_login_at', $date->day)
                 ->count();
 
             return [

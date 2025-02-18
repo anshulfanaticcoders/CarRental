@@ -223,21 +223,12 @@ const formatCurrency = (amount) => {
             <div class="column flex flex-col justify-between gap-4">
               <span class="text-[1.5rem]">Payment Details</span>
               <div class="flex justify-between items-center text-[1.15rem]">
-                                        <span v-if="vehicle.preferred_price_type === 'day'">Price Per Day</span>
-                                        <span v-if="vehicle.preferred_price_type === 'week'">Price Per Week</span>
-                                        <span v-if="vehicle.preferred_price_type === 'month'">Price Per Month</span>
-                                        <div>
-                                            <srong v-if="vehicle.preferred_price_type === 'day'"
-                                                class="text-[1.5rem] font-medium">{{ vehicle.price_per_day }}/day
-                                            </srong>
-                                            <srong v-if="vehicle.preferred_price_type === 'week'"
-                                                class="text-[1.5rem] font-medium">{{ vehicle.price_per_week }}/week
-                                            </srong>
-                                            <srong v-if="vehicle.preferred_price_type === 'month'"
-                                                class="text-[1.5rem] font-medium">{{ vehicle.price_per_month }}/month
-                                            </srong>
-                                        </div>
-                                    </div>
+                <span>Price Per Day</span>
+                <div>
+                  <strong class="text-[1.5rem] font-medium">€{{ vehicle?.price_per_day }}</strong>
+                  <span>/day</span>
+                </div>
+              </div>
               <div class="">
                 <ul class="list-none pl-0">
                   <li v-for="extra in booking.extras" :key="extra.id" class="flex justify-between mb-2">
@@ -280,13 +271,10 @@ const formatCurrency = (amount) => {
   width: auto;
   min-width: 100px;
   height: 30px;
-  background: white;
-  border: 2px solid #666;
   border-radius: 15px;
   display: flex;
   align-items: center;
   justify-content: center;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
 }
 
 .marker-pin span {

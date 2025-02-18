@@ -99,6 +99,7 @@ class BookingController extends Controller
             'base_price' => $request->input('base_price'),
             'extra_charges' => $request->input('extra_charges', 0),
             'tax_amount' => $request->input('tax_amount', 0),
+            'discount_amount' => $request->input('discount_amount', 0),
             'total_amount' => $request->input('total_amount'),
             'payment_status' => 'pending',
             'booking_status' => 'pending',

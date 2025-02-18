@@ -105,16 +105,10 @@ module.exports = {
           from: { height: 'var(--radix-collapsible-content-height)' },
           to: { height: 0 },
         },
-        'pop': {
-          '0%': { transform: 'scale(0)', opacity: 0 },
-          '50%': { transform: 'scale(1.2)', opacity: 1 },
-          '100%': { transform: 'scale(0)', opacity: 0 },
-        },
       },
       animation: {
         'accordion-down': 'accordion-down 0.2s ease-out',
         'accordion-up': 'accordion-up 0.2s ease-out',
-        'pop': 'pop 0.6s ease-out forwards',
       },
       animation: {
         "accordion-down": "accordion-down 0.2s ease-out",

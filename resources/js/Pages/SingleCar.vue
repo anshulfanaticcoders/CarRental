@@ -18,6 +18,7 @@ import blankStar from "../../assets/blankstar.svg";
 
 import ShareIcon from "../../assets/ShareNetwork.svg";
 import Heart from "../../assets/Heart.svg";
+import FilledHeart from "../../assets/FilledHeart.svg";
 import carIcon from "../../assets/carIcon.svg";
 import walkIcon from "../../assets/walking.svg";
 import mileageIcon from "../../assets/mileageIcon.svg";
@@ -88,7 +89,6 @@ const fetchReviews = async () => {
         isLoading.value = false;
     }
 };
-
 
 
 // Feature-Icon Mapping
@@ -302,92 +302,245 @@ const proceedToPayment = () => {
     router.get(`/booking/${vehicle.value.id}`);
 };
 
+// Function to toggle favourite status
+import { useToast } from 'vue-toastification';
+const toast = useToast();
+const toggleFavourite = async (vehicle) => {
+    const action = vehicle.is_favourite ? 'removed from' : 'added to';
+    const endpoint = vehicle.is_favourite
+        ? `/vehicles/${vehicle.id}/unfavourite`
+        : `/vehicles/${vehicle.id}/favourite`;
 
-// Computed property to calculate the rental days
-const rentalDays = computed(() => {
-    if (form.value.date_from && form.value.date_to) {
-        const startDate = new Date(form.value.date_from);
-        const endDate = new Date(form.value.date_to);
-        const diffInDays = (endDate - startDate) / (1000 * 60 * 60 * 24);
-        return diffInDays;
+    try {
+        await axios.post(endpoint);
+        vehicle.is_favourite = !vehicle.is_favourite;
+
+        // Show toast notification
+        toast.success(`Vehicle ${action} favorites!`, {
+            position: 'top-right',
+            timeout: 3000,
+            closeOnClick: true,
+            pauseOnHover: true,
+            draggable: true,
+            icon: vehicle.is_favourite ? '❤️' : '💔',
+        });
+
+    } catch (error) {
+        toast.error('Failed to update favorites', {
+            position: 'top-right',
+            timeout: 3000,
+            closeOnClick: true,
+            pauseOnHover: true,
+            draggable: true,
+        });
+        console.error('Error:', error);
     }
-    return 0;
+};
+
+
+import { Calendar, Clock } from 'lucide-vue-next';
+
+import { Alert, AlertDescription } from '@/Components/ui/alert';
+import { CardHeader, CardTitle } from "@/Components/ui/card";
+
+const selectedPackage = ref('day');
+const dateError = ref('');
+
+const pricingPackages = computed(() => [
+    {
+        id: 'day',
+        label: 'Daily Package',
+        description: 'Flexible daily rates',
+        price: vehicle.value.price_per_day,
+        icon: Clock,
+        priceLabel: '/day'
+    },
+    {
+        id: 'week',
+        label: 'Weekly Package',
+        description: 'Discounted weekly rates',
+        price: vehicle.value.price_per_week,
+        discount: vehicle.value.weekly_discount,
+        icon: Calendar,
+        priceLabel: '/week'
+    },
+    {
+        id: 'month',
+        label: 'Monthly Package',
+        description: 'Best value for long-term',
+        price: vehicle.value.price_per_month,
+        discount: vehicle.value.monthly_discount,
+        icon: Calendar,
+        priceLabel: '/month'
+    }
+].filter(pkg => pkg.price)); // Only show packages with valid prices
+
+const rentalDuration = computed(() => {
+    if (!form.value.date_from || !form.value.date_to) return 0;
+    const pickupDate = new Date(form.value.date_from);
+    const returnDate = new Date(form.value.date_to);
+    const diffTime = Math.abs(returnDate - pickupDate);
+    return Math.ceil(diffTime / (1000 * 60 * 60 * 24));
 });
 
+const calculateTotalPrice = computed(() => {
+    if (!form.value.date_from || !form.value.date_to) return 0;
 
-// discount functionality
-import { useToast } from 'vue-toastification'; // Add this import
-const toast = useToast();
-const discounts = ref(props.discounts || []);
-const isDiscountApplied = ref(false);
+    const duration = rentalDuration.value;
+    let totalPrice = 0;
 
+    switch (selectedPackage.value) {
+        case 'week':
+            totalPrice = (duration / 7) * vehicle.value.price_per_week;
+            if(vehicle.value.weekly_discount) {
+                totalPrice = totalPrice - vehicle.value.weekly_discount ;
+            }
+            break;
+        case 'month':
+            totalPrice = vehicle.value.price_per_month;
+            if(vehicle.value.monthly_discount) {
+                totalPrice = totalPrice - vehicle.value.monthly_discount;
+            }
+            break;
+        default:
+            totalPrice = duration * vehicle.value.price_per_day;
+    }
+
+    return totalPrice;
+});
+
+const formatPrice = (price) => {
+    return new Intl.NumberFormat('en-US', {
+        style: 'currency',
+        currency: 'USD'
+    }).format(price);
+};
+
+
+const validateDates = () => {
+    if (!form.value.date_from || !form.value.date_to) return;
+
+    const pickupDate = new Date(form.value.date_from);
+    const returnDate = new Date(form.value.date_to);
+    const diffDays = rentalDuration.value;
+
+    dateError.value = '';
+
+    switch (selectedPackage.value) {
+        case 'week':
+            if (diffDays % 7 !== 0 || diffDays > 28) {
+                dateError.value = 'Weekly rentals must be for 7, 14, 21, or 28 days';
+                form.value.date_to = '';
+                toast.error(dateError.value);
+            }
+            break;
+
+        case 'month':
+            const monthDiff = (returnDate.getMonth() - pickupDate.getMonth()) +
+                (12 * (returnDate.getFullYear() - pickupDate.getFullYear()));
+            if (monthDiff !== 1) {
+                dateError.value = 'Monthly rentals must be for exactly one month';
+                form.value.date_to = '';
+                toast.error(dateError.value);
+            }
+            break;
+
+        case 'day':
+            if (diffDays > 30) {
+                dateError.value = 'Daily rentals cannot exceed 30 days';
+                form.value.date_to = '';
+                toast.error(dateError.value);
+            }
+            break;
+    }
+};
+
+const minReturnDate = computed(() => {
+    if (!form.value.date_from) return getCurrentDate();
+
+    const pickupDate = new Date(form.value.date_from);
+    const minDate = new Date(pickupDate);
+
+    switch (selectedPackage.value) {
+        case 'week':
+            minDate.setDate(pickupDate.getDate() + 7);
+            break;
+        case 'month':
+            minDate.setMonth(pickupDate.getMonth() + 1);
+            break;
+        default:
+            minDate.setDate(pickupDate.getDate() + 1);
+    }
+
+    return minDate.toISOString().split('T')[0];
+});
+
+const maxReturnDate = computed(() => {
+    if (!form.value.date_from) return '';
+
+    const pickupDate = new Date(form.value.date_from);
+    const maxDate = new Date(pickupDate);
+
+    switch (selectedPackage.value) {
+        case 'week':
+            maxDate.setDate(pickupDate.getDate() + 28); // Max 4 weeks
+            break;
+        case 'month':
+            maxDate.setMonth(pickupDate.getMonth() + 1); // Exactly 1 month
+            break;
+        default:
+            maxDate.setDate(pickupDate.getDate() + 30); // Max 30 days
+    }
+
+    return maxDate.toISOString().split('T')[0];
+});
+
+// Watch for package changes
+watch(selectedPackage, () => {
+    form.value.date_to = ''; // Reset return date when package changes
+    dateError.value = '';
+    localStorage.removeItem('rentalData');
+});
+
+// Watch for date changes
 watch([() => form.value.date_from, () => form.value.date_to], () => {
     if (form.value.date_from && form.value.date_to) {
-        const startDate = new Date(form.value.date_from);
-        const endDate = new Date(form.value.date_to);
-        rentalDays.value = (endDate - startDate) / (1000 * 60 * 60 * 24);
-    } else {
-        rentalDays.value = 0;
-    }
-    isDiscountApplied.value = false; // Reset discount when dates change
-});
-
-const applicableDiscount = computed(() => {
-    if (!rentalDays.value || !discounts.value.length) return null;
-
-    return discounts.value.find((discount) => {
-        const range = discount.days.split('-').map(Number);
-        const minDays = Math.min(...range);
-        const maxDays = Math.max(...range);
-        return rentalDays.value >= minDays && rentalDays.value <= maxDays;
-    }) || null;
-});
-
-// Compute total price, apply discount only if isDiscountApplied is true
-const totalPrice = computed(() => {
-    let price = parseFloat(vehicle.value.price_per_day);
-
-    if (isDiscountApplied.value && applicableDiscount.value) {
-        const discountAmount = parseFloat(applicableDiscount.value.price);
-        if (!isNaN(discountAmount)) {
-            price -= discountAmount;
+        validateDates();
+        if (!dateError.value) {
+            storeRentalData();
         }
     }
-
-    return price;
 });
-// Function to apply the discount
-const applyDiscount = () => {
-    if (!isDiscountApplied.value) {
-        isDiscountApplied.value = true; // Mark the discount as applied
-
-        // Show a success toast
-        toast.success('Discount Applied Successfully! 🎉', {
-            position: 'top-right',
-            timeout: 3000,
-            closeOnClick: true,
-            pauseOnHover: true,
-            draggable: true,
-        });
-    }
+// Function to store rental data in localStorage
+const storeRentalData = () => {
+    const rentalData = {
+        packageType: selectedPackage.value,
+        dateFrom: form.value.date_from,
+        dateTo: form.value.date_to,
+        duration: rentalDuration.value,
+        totalPrice: calculateTotalPrice.value,
+        selectedPackageDetails: pricingPackages.value.find(pkg => pkg.id === selectedPackage.value),
+        vehicleDetails: {
+            id: vehicle.value.id,
+            name: vehicle.value.name,
+            price_per_day: vehicle.value.price_per_day,
+            price_per_week: vehicle.value.price_per_week,
+            price_per_month: vehicle.value.price_per_month
+        }
+    };
+    
+    localStorage.setItem('rentalData', JSON.stringify(rentalData));
 };
-
-// Function to remove the discount
-const removeDiscount = () => {
-    if (isDiscountApplied.value) {
-        isDiscountApplied.value = false; // Mark the discount as removed
-
-        // Show a success toast for removing the discount
-        toast.success('Discount Removed Successfully! 🎉', {
-            position: 'top-right',
-            timeout: 3000,
-            closeOnClick: true,
-            pauseOnHover: true,
-            draggable: true,
-        });
+watch([
+    selectedPackage,
+    () => form.value.date_from,
+    () => form.value.date_to,
+    calculateTotalPrice
+], () => {
+    if (form.value.date_from && form.value.date_to && !dateError.value) {
+        storeRentalData();
     }
-};
-
+});
 </script>
 
 <template>
@@ -443,7 +596,7 @@ const removeDiscount = () => {
                                         <span class="text-customLightGrayColor text-[1rem]">People</span>
                                         <span class="font-medium text-[1rem]">{{
                                             vehicle?.seating_capacity
-                                        }}</span>
+                                            }}</span>
                                     </div>
                                 </div>
                                 <div class="feature-item items-center flex gap-3">
@@ -452,7 +605,7 @@ const removeDiscount = () => {
                                         <span class="text-customLightGrayColor text-[1rem]">Doors</span>
                                         <span class="font-medium text-[1rem]">{{
                                             vehicle?.number_of_doors
-                                        }}</span>
+                                            }}</span>
                                     </div>
                                 </div>
                                 <div class="feature-item items-center flex gap-3">
@@ -461,7 +614,7 @@ const removeDiscount = () => {
                                         <span class="text-customLightGrayColor text-[1rem]">Luggage</span>
                                         <span class="font-medium text-[1rem]">{{
                                             vehicle?.luggage_capacity
-                                        }}</span>
+                                            }}</span>
                                     </div>
                                 </div>
                                 <div class="feature-item items-center flex gap-3">
@@ -470,7 +623,7 @@ const removeDiscount = () => {
                                         <span class="text-customLightGrayColor text-[1rem]">Transmission</span>
                                         <span class="font-medium capitalize">{{
                                             vehicle?.transmission
-                                        }}</span>
+                                            }}</span>
                                     </div>
                                 </div>
                                 <div class="feature-item items-center flex gap-3">
@@ -479,7 +632,7 @@ const removeDiscount = () => {
                                         <span class="text-customLightGrayColor text-[1rem]">Fuel Type</span>
                                         <span class="font-medium capitalize">{{
                                             vehicle?.fuel
-                                        }}</span>
+                                            }}</span>
                                     </div>
                                 </div>
                                 <div class="feature-item items-center flex gap-3">
@@ -587,8 +740,12 @@ const removeDiscount = () => {
                                     {{ vehicle?.category.name }}
                                 </span>
                                 <div class="icons flex items-center gap-3">
-                                    <Link href="" class="w-full"><img :src="ShareIcon" alt="" /></Link>
-                                    <Link href="" class="w-full"><img :src="Heart" alt="" /></Link>
+                                    <Link href="" class=""><img :src="ShareIcon" alt="" /></Link>
+                                    <button @click.stop="toggleFavourite(vehicle)" class="heart-icon"
+                                        :class="{ 'filled-heart': vehicle.is_favourite }">
+                                        <img :src="vehicle.is_favourite ? FilledHeart : Heart" alt="Favorite"
+                                            class="w-[2rem] transition-colors duration-300" />
+                                    </button>
                                 </div>
                             </div>
                             <div>
@@ -631,114 +788,113 @@ const removeDiscount = () => {
                                     </div>
                                 </div>
 
-                                <div class="edit mt-[1rem] border-[1px] rounded-[12px] border-[#2b2b2b40] py-[1rem]">
-                                    <form @submit.prevent="submit"
-                                        class="column px-[2rem] py-[1rem] rounded-tr-[20px] rounded-br-[20px] bg-white grid grid-cols-2">
-                                        <div class="col col-span-2 flex flex-col justify-center">
-                                        </div>
-
-                                        <!-- Date Selection -->
-                                        <div class="col px-5 flex flex-col justify-center">
-                                            <label class="block text-sm mb-1 text-customLightGrayColor font-medium">
-                                                Pick Up Date
-                                            </label>
-                                            <input type="date" v-model="form.date_from" :min="getCurrentDate()"
-                                                @change="updateDateTimeSelection"
-                                                class="p-2 rounded border border-customMediumBlackColor w-full text-customPrimaryColor" />
-                                            <!-- Time Dropdown -->
-                                            <label
-                                                class="block text-sm mt-3 mb-1 text-customLightGrayColor font-medium">
-                                                Departure Time
-                                            </label>
-                                            <select v-model="form.time_from" @change="updateDateTimeSelection"
-                                                class="p-2 rounded border border-customMediumBlackColor w-full text-customPrimaryColor">
-                                                <option value="">Select time</option>
-                                                <option v-for="option in departureTimeOptions" :key="option.value"
-                                                    :value="option.value">
-                                                    {{ option.label }}
-                                                </option>
-                                            </select>
-                                        </div>
-
-                                        <div class="col px-5 flex flex-col justify-center">
-                                            <label class="block text-sm mb-1 text-customLightGrayColor font-medium">
-                                                Return Date
-                                            </label>
-                                            <input type="date" v-model="form.date_to"
-                                                :min="form.date_from || getCurrentDate()"
-                                                @change="updateDateTimeSelection"
-                                                class="p-2 rounded border border-gray-300 w-full text-customPrimaryColor" />
-                                            <!-- Time Dropdown -->
-                                            <label
-                                                class="block text-sm mt-3 mb-1 text-customLightGrayColor font-medium">
-                                                Return Time
-                                            </label>
-                                            <select v-model="form.time_to" @change="updateDateTimeSelection"
-                                                class="p-2 rounded border border-customMediumBlackColor w-full text-customPrimaryColor">
-                                                <option value="">Select time</option>
-                                                <option v-for="option in returnTimeOptions" :key="option.value"
-                                                    :value="option.value">
-                                                    {{ option.label }}
-                                                </option>
-                                            </select>
-                                        </div>
-                                    </form>
-                                </div>
+                               
 
                                 <div class="pricing py-5">
-                                    <div class="column flex items-center justify-between">
-                                        <span class="text-[1.25rem]">Total Price</span>
-                                        <div class="flex flex-col items-end">
-                                            <span class="text-customPrimaryColor text-[1.875rem] font-medium">
-                                                €{{ totalPrice }}/day
-                                            </span>
-                                            <span class="flex gap-3">
-                                                incl. VAT
-                                                <img :src="infoIcon" alt="" />
-                                            </span>
-                                            <!-- Show discount details only if applied -->
-                                            <div v-if="isDiscountApplied && applicableDiscount">
-                                                Discount Applied: for {{ applicableDiscount.days }} days
-                                                <span class="font-bold">(€{{ applicableDiscount.price }})</span>
-                                            </div>
-                                        </div>
-                                    </div>
+    <div class="column flex items-center justify-between">
+        <div class="mx-auto px-6">
+            <Card>
+                <CardHeader>
+                    <CardTitle class="inline-block text-[1rem]">Choose Your Rental Package</CardTitle>
+                </CardHeader>
+                <CardContent>
+                    <!-- Package Selection -->
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
+                        <div v-for="pkg in pricingPackages" :key="pkg.id"
+                            @click="selectedPackage = pkg.id" :class="[
+                                'cursor-pointer rounded-lg border p-4 transition-all duration-200 hover:shadow-md',
+                                selectedPackage === pkg.id
+                                    ? 'border-blue-500 bg-blue-50'
+                                    : 'border-gray-200 hover:border-blue-200'
+                            ]">
+                            <div class="flex items-center gap-3 mb-2">
+                                <component :is="pkg.icon" class="w-6 h-6" />
+                                <span class="font-semibold text-[1rem]">{{ pkg.label }}</span>
+                            </div>
+                            <p class="text-sm text-gray-600 mb-2">{{ pkg.description }}</p>
+                            <p class="text-lg font-bold text-blue-600">
+                                {{ formatPrice(pkg.price) }}
+                                <span class="text-sm font-normal text-gray-600">{{ pkg.priceLabel }}</span>
+                            </p>
+                            <p v-if="pkg.discount" class="text-sm text-green-600">
+                                Discount: {{ pkg.discount }}%
+                            </p>
+                        </div>
+                    </div>
 
-                                    <!-- Show Apply Discount button only if a discount is available and not applied -->
-                                    <div>
-                                        <!-- Button to apply discount -->
-                                        <div v-if="applicableDiscount && !isDiscountApplied" class="mt-4">
-                                            <fieldset class="border-[1px] border-gray-300 rounded-[8px] p-4">
-                                                <legend class="px-2 text-customPrimaryColor font-semibold">Discount
-                                                    Available</legend>
-                                                <div class="flex justify-between items-center">
-                                                    <span class="text-customPrimaryColor font-bold">Discount Value: €{{
-                                                        applicableDiscount.price }}</span>
-                                                    <p @click="applyDiscount"
-                                                        class="text-orange-400 font-bold cursor-pointer hover:text-orange-600">
-                                                        Apply Discount
-                                                    </p>
-                                                </div>
-                                            </fieldset>
-                                        </div>
+                    <!-- Date Selection -->
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">Pickup Date</label>
+                            <input type="date" v-model="form.date_from" :min="getCurrentDate()"
+                                @change="updateDateTimeSelection"
+                                class="w-full p-2 border rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500" />
+                        </div>
 
-                                        <!-- Button to remove discount -->
-                                        <div v-if="isDiscountApplied" class="mt-4 border-[1px] border-gray-300 rounded-[8px] p-4">
-                                            <p @click="removeDiscount"
-                                                class="text-red-400 text-right font-bold cursor-pointer hover:text-red-600">
-                                                Remove Discount
-                                            </p>
-                                        </div>
-                                    </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">Return Date</label>
+                            <input type="date" v-model="form.date_to" :min="minReturnDate" :max="maxReturnDate"
+                                @change="updateDateTimeSelection"
+                                class="w-full p-2 border rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500" />
+                        </div>
+                        <div>
+                            <!-- Time Dropdown -->
+                            <label class="block text-sm mt-3 mb-1 text-customLightGrayColor font-medium">Departure Time</label>
+                            <select v-model="form.time_from" @change="updateDateTimeSelection"
+                                class="p-2 rounded border border-customMediumBlackColor w-full text-customPrimaryColor">
+                                <option value="">Select time</option>
+                                <option v-for="option in departureTimeOptions" :key="option.value" :value="option.value">
+                                    {{ option.label }}
+                                </option>
+                            </select>
+                        </div>
 
-                                    <div class="column mt-[2rem]">
-                                        <button @click="proceedToPayment"
-                                            class="button-primary block text-center p-5 w-full">
-                                            Proceed to Pay
-                                        </button>
-                                    </div>
-                                </div>
+                        <div>
+                            <!-- Time Dropdown -->
+                            <label class="block text-sm mt-3 mb-1 text-customLightGrayColor font-medium">Return Time</label>
+                            <select v-model="form.time_to" @change="updateDateTimeSelection"
+                                class="p-2 rounded border border-customMediumBlackColor w-full text-customPrimaryColor">
+                                <option value="">Select time</option>
+                                <option v-for="option in returnTimeOptions" :key="option.value" :value="option.value">
+                                    {{ option.label }}
+                                </option>
+                            </select>
+                        </div>
+                    </div>
 
+                    <!-- Show Total Price -->
+                    <div v-if="form.date_from && form.date_to && !dateError"
+                        class="mt-6 p-4 bg-blue-50 rounded-lg">
+                        <p class="text-lg font-semibold">
+                            Current Price: {{ formatPrice(pricingPackages.find(pkg => pkg.id === selectedPackage).price) }}
+                        </p>
+                        <p v-if="pricingPackages.find(pkg => pkg.id === selectedPackage).discount" class="text-lg text-green-600">
+                            Discount: -{{formatPrice(pricingPackages.find(pkg => pkg.id === selectedPackage).discount)}}
+                        </p>
+                        <p class="text-[1.75rem] font-semibold">
+                            Total Price: {{ formatPrice(calculateTotalPrice) }}
+                        </p>
+                        <p class="text-sm text-gray-600">
+                            for {{ rentalDuration }} days of rental
+                        </p>
+                    </div>
+
+                    <!-- Error Message -->
+                    <Alert v-if="dateError" class="mt-4" variant="destructive">
+                        <AlertDescription>{{ dateError }}</AlertDescription>
+                    </Alert>
+                </CardContent>
+            </Card>
+        </div>
+    </div>
+    <div class="column mt-[2rem]">
+        <button @click="proceedToPayment" class="button-primary block text-center p-5 w-full">Proceed to Pay</button>
+    </div>
+    <div class="column text-center mt-[2rem] flex flex-col justify-center items-center gap-5">
+        <p>Guaranteed safe & secure checkout</p>
+        <img :src="partnersIcon" alt="" />
+    </div>
+</div>
                             </div>
                         </div>
                     </div>
@@ -876,13 +1032,10 @@ const removeDiscount = () => {
     width: auto;
     min-width: 50px;
     height: 30px;
-    background: white;
-    border: 2px solid #666;
     border-radius: 15px;
     display: flex;
     align-items: center;
     justify-content: center;
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
 }
 
 .marker-pin span {

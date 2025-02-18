@@ -81,7 +81,7 @@
                         </div>
                     </div>
 
-                    <div class="mt-[3rem]">
+                    <div class="mt-[1rem]">
                         <span class="text-[3rem] font-medium">Vehicle Details</span>
                         <p class="text-customLightGrayColor text-[1.15rem]">
                             Please provide vehicle details .
@@ -460,7 +460,7 @@
                     <Link class="w-[5rem] mt-[2rem]" href="/">
                     <ApplicationLogo />
                     </Link>
-                    <div class="mt-[5rem] mb-[2rem]">
+                    <div class="mt-[5rem]">
                         <span class="text-[1.75rem] font-medium">Hire Cost of Your Vehicle</span>
                         <div class="mt-[2rem]">
                             <span class="text-[0.875rem] text-black font-medium">Basic daily rate</span>
@@ -471,44 +471,87 @@
                         </div>
                     </div>
                     <div class="">
-                        <div class="border-[1px] flex justify-center items-center">
-                            <div class="price-slider">
-                                <label for="price_per_day">Price Per Day:</label>
-                                <div class="slider-container">
-                                    <input type="range" v-model="form.price_per_day" id="price_per_day" min="0" max="2000"
-                                        step="1" class="p-1" />
-                                    <div class="price-tooltip" :style="tooltipPosition">
-                                        €{{ form.price_per_day }}/day
+                        <div class="border-[1px] p-8 flex flex-col gap-8">
+                            <div class="price-section">
+                                <h3 class="text-lg font-semibold mb-4">Select Your Pricing Options</h3>
+
+                                <!-- Price Type Selection -->
+                                <div class="mb-8">
+                                    <InputLabel class="text-black mb-2">Preferred Price Types:</InputLabel>
+                                    <div class="flex gap-4">
+                                        <label class="flex items-center">
+                                            <input type="checkbox" v-model="selectedTypes.day" class="mr-2" />
+                                            Daily
+                                        </label>
+                                        <label class="flex items-center">
+                                            <input type="checkbox" v-model="selectedTypes.week" class="mr-2" />
+                                            Weekly
+                                        </label>
+                                        <label class="flex items-center">
+                                            <input type="checkbox" v-model="selectedTypes.month" class="mr-2" />
+                                            Monthly
+                                        </label>
                                     </div>
-                                </div>
-                                <div class="mt-[5rem] flex flex-col items-end gap-2">
-                                    <span class="font-medium">Ideal daily rate: between 67 and
-                                        €74!</span>
-                                    <p class="text-[0.675rem]">
-                                        Keeping this rate will give you a better
-                                        chance of renting your vehicle.
-                                    </p>
                                 </div>
 
-                                <div class="mt-4">
-                                    <label class="text-customDarkBlackColor font-medium mb-2 inline-block">Discounts:</label>
-                                    <div v-for="(discount, index) in form.discounts" :key="index"
-                                        class="border p-2 mb-2">
-                                        <div class="grid grid-cols-2 gap-4">
-                                            <div class="flex flex-col">
-                                                <label for="days" class="text-customPrimaryColor font-bold">Total Days:</label>
-                                                <input type="text" v-model="discount.days" id="days" required class="p-1" />
-                                            </div>
-                                            <div class="flex flex-col">
-                                                <label for="price" class="text-customPrimaryColor font-bold">Discount Price:</label>
-                                                <input type="number" v-model="discount.price" id="price" required class="p-1" />
-                                            </div>
+                                <!-- Daily Price Slider -->
+                                <div v-if="selectedTypes.day" class="price-slider mb-8">
+                                    <label for="price_per_day" class="font-medium">Daily Rate:</label>
+                                    <div class="slider-container">
+                                        <input type="range" v-model="form.price_per_day" id="price_per_day" min="0"
+                                            max="200" step="1" class="p-1" />
+                                        <div class="price-tooltip" :style="dailyTooltipPosition">
+                                            €{{ form.price_per_day }}/day
                                         </div>
-                                        <button type="button" @click="removeDiscount(index)"
-                                            class="text-red-500">Remove</button>
                                     </div>
-                                    <button type="button" @click="addDiscount" class="text-blue-500">Add
-                                        Discount</button>
+                                    <div class="mt-2 flex flex-col items-end gap-1">
+                                        <span class="text-sm text-gray-600">Recommended: €67-€74/day</span>
+                                    </div>
+                                </div>
+
+                                <!-- Weekly Price Slider -->
+                                <div v-if="selectedTypes.week" class="price-slider mb-8">
+                                    <label for="price_per_week" class="font-medium">Weekly Rate:</label>
+                                    <div class="slider-container">
+                                        <input type="range" v-model="form.price_per_week" id="price_per_week" min="0"
+                                            max="1000" step="10" class="p-1" />
+                                        <div class="price-tooltip" :style="weeklyTooltipPosition">
+                                            €{{ form.price_per_week }}/week
+                                        </div>
+                                    </div>
+                                    <div class="mt-2 flex flex-col items-end gap-1">
+                                        <span class="text-sm text-gray-600">Recommended: €400-€450/week</span>
+                                    </div>
+                                    <div class="mt-2 flex flex-col justify-end items-end">
+                                        <label for="weekly_discount" class="text-sm font-medium mb-0">Weekly Discount
+                                            (%):</label>
+                                        <input type="number" v-model="form.weekly_discount" id="weekly_discount"
+                                            class="mt-1 block w-32 rounded-md border-gray-300 shadow-sm p-1 text-center" />
+                                    </div>
+
+                                </div>
+
+                                <!-- Monthly Price Slider -->
+                                <div v-if="selectedTypes.month" class="price-slider mb-8">
+                                    <label for="price_per_month" class="font-medium">Monthly Rate:</label>
+                                    <div class="slider-container">
+                                        <input type="range" v-model="form.price_per_month" id="price_per_month" min="0"
+                                            max="3000" step="50" class="p-1" />
+                                        <div class="price-tooltip" :style="monthlyTooltipPosition">
+                                            €{{ form.price_per_month }}/month
+                                        </div>
+                                    </div>
+                                    <div class="mt-2 flex flex-col items-end gap-1">
+                                        <span class="text-sm text-gray-600">Recommended: €1500-€1800/month</span>
+                                    </div>
+                                    <div class="mt-2 flex flex-col justify-end items-end">
+                                        <label for="monthly_discount" class="text-sm font-medium mb-0">Monthly Discount
+                                            (%):</label>
+                                        <input type="number" v-model="form.monthly_discount" id="monthly_discount"
+                                            
+                                            class="mt-1 block w-32 rounded-md border-gray-300 shadow-sm p-1 text-center" />
+                                    </div>
+
                                 </div>
                             </div>
                         </div>
@@ -684,7 +727,7 @@ import vendorBgimage from "../../../assets/vendorRegisterbgImage.png";
 import warningSign from "../../../assets/WhiteWarningCircle.svg";
 import circleImg from "../../../assets/circle.png";
 import uploadIcon from "../../../assets/uploadIcon.svg";
-import { computed, onMounted, ref } from "vue";
+import { computed, onMounted, reactive, ref } from "vue";
 import PrimaryButton from "@/Components/PrimaryButton.vue";
 import LocationPicker from "@/Components/LocationPicker.vue";
 import axios from "axios";
@@ -716,9 +759,14 @@ const form = useForm({
     features: [],
     featured: false,
     security_deposit: 0,
+    // payment_method: "",
     payment_method: [],
     price_per_day: 0,
-    discounts: [],
+    price_per_week: 0,
+    price_per_month: 0,
+    weekly_discount: 0,
+    monthly_discount: 0,
+    preferred_price_type: 'day',
 
     // vehicle specifications fields
     registration_number: "",
@@ -740,6 +788,11 @@ const props = defineProps({
         default: null // Provide a default value
     },
 });
+const selectedTypes = reactive({
+    day: true, // Daily is selected by default
+    week: false,
+    month: false
+})
 // fetching the vehicle categories from the database thorough api
 const categories = ref([]);
 const fetchCategories = async () => {
@@ -750,15 +803,6 @@ const fetchCategories = async () => {
         console.error("Error fetching vehicle categories:", error);
     }
 };
-const addDiscount = () => {
-    form.discounts.push({ days: '', price: '' })
-}
-
-const removeDiscount = (index) => {
-    form.discounts.splice(index, 1)
-}
-
-
 const paymentMethodsArray = computed(() => {
     if (props.vehicle && props.vehicle.payment_method) {
         try {
@@ -772,7 +816,6 @@ const paymentMethodsArray = computed(() => {
     }
     return [];
 });
-
 // Submit form data
 const submit = () => {
     if (form.images.length < 5) return;
@@ -800,8 +843,16 @@ const submit = () => {
 };
 
 // For range slider tip value
-const tooltipPosition = computed(() => ({
-    left: `${(form.price_per_day / 2000) * 100}%`,
+const dailyTooltipPosition = computed(() => ({
+    left: `${(form.price_per_day / 200) * 100}%`,
+}));
+
+const weeklyTooltipPosition = computed(() => ({
+    left: `${(form.price_per_week / 1000) * 100}%`,
+}));
+
+const monthlyTooltipPosition = computed(() => ({
+    left: `${(form.price_per_month / 3000) * 100}%`,
 }));
 
 // Method to handle file uploads
@@ -885,12 +936,15 @@ const nextStep = () => {
 
         case 4: // Pricing
             if (
-                form.price_per_day <= 0 ||
+                !form.preferred_price_type ||
+                (form.preferred_price_type === 'day' && form.price_per_day <= 0) ||
+                (form.preferred_price_type === 'week' && form.price_per_week <= 0) ||
+                (form.preferred_price_type === 'month' && form.price_per_month <= 0) ||
                 !form.security_deposit ||
                 !form.payment_method
             ) {
                 isValid = false;
-                alert('Please fill in all pricing details');
+                alert('Please fill in all required pricing details');
             }
             break;
 
@@ -1018,16 +1072,23 @@ input[type="range"]::-webkit-slider-runnable-track {
 
 .price-tooltip {
     position: absolute;
-    bottom: 100;
+    bottom: -90%;
     transform: translateX(-50%);
     background: white;
     color: #153b4f;
     font-weight: 600;
     border: 1px solid #153b4f;
-    padding: 1rem 4rem;
+    padding: 0.5rem 1rem;
     border-radius: 8px;
     box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
     font-size: 1rem;
+    white-space: nowrap;
+}
+
+.price-section {
+    background: white;
+    border-radius: 8px;
+    padding: 1.5rem;
 }
 
 .selected-features {
