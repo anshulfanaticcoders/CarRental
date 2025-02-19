@@ -3,7 +3,7 @@
     <div class="container mx-auto px-4">
       <p class="text-[1.5rem] text-customPrimaryColor font-bold mb-[2rem] bg-[#154D6A0D] rounded-[12px] px-[1rem] py-[1rem]">Completed Bookings</p>
 
-      <div v-if="bookings.length === 0" class="text-center text-gray-500">
+      <div v-if="bookings.data.length === 0" class="text-center text-gray-500">
         <div class="flex flex-col justify-center items-center">
           <img :src="bookingstatusIcon" alt="" class="w-[30rem]">
           <p>No completed bookings found.</p>
@@ -11,8 +11,9 @@
       </div>
 
       <div v-else>
-        <div v-for="booking in bookings" :key="booking.id"
+        <div v-for="booking in bookings.data" :key="booking.id"
              class="bg-white shadow-md rounded-lg p-6 gap-10 flex justify-between mb-6">
+             <Link :href="`/vehicle/${booking.vehicle.id}`">
           <div class="w-20%">
             <img v-if="booking.vehicle?.images"
                  :src="`/storage/${booking.vehicle.images.find(image => image.image_type === 'primary')?.image_path}`"
@@ -20,6 +21,7 @@
                  class="w-full h-[250px] object-cover rounded-md" />
             <img v-else src="/path/to/placeholder-image.jpg" alt="Placeholder Image" class="w-full h-[250px] object-cover rounded-md" />
           </div>
+        </Link>
           <div class="w-[67%] flex flex-col gap-5">
             <div class="flex justify-between items-center">
               <div class="flex justify-between items-center gap-10">
@@ -76,6 +78,15 @@
             </div>
           </div>
         </div>
+
+        <!-- Pagination -->
+        <div class="mt-4 flex justify-end">
+          <Pagination 
+            :current-page="bookings.current_page" 
+            :total-pages="bookings.last_page" 
+            @page-change="handlePageChange" 
+          />
+        </div>
       </div>
 
       <Dialog v-model:open="isReviewModalOpen">
@@ -109,15 +120,20 @@ import MyProfileLayout from '@/Layouts/MyProfileLayout.vue';
 import bookingstatusIcon from '../../../../assets/bookingstatusIcon.svg';
 import carIcon from '../../../../assets/carIcon.svg';
 import { defineProps, ref, onMounted } from 'vue';
-import { usePage } from '@inertiajs/vue3';
+import { Link, usePage } from '@inertiajs/vue3';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/Components/ui/dialog";
 import FormReview from '@/Components/ReviewForm.vue';
 import { CheckCircle } from 'lucide-vue-next';
+import Pagination from './Pagination.vue';
 
 const props = defineProps({
   bookings: {
-    type: Array,
-    default: () => []
+    type: Object,
+    default: () => ({
+      data: [],
+      current_page: 1,
+      last_page: 1,
+    })
   }
 });
 
@@ -168,11 +184,19 @@ const handleReviewSubmitted = () => {
   
   // Update the local booking to show review submitted
   if (selectedBooking.value) {
-    const bookingIndex = props.bookings.findIndex(b => b.id === selectedBooking.value.id);
+    const bookingIndex = props.bookings.data.findIndex(b => b.id === selectedBooking.value.id);
     if (bookingIndex !== -1) {
-      props.bookings[bookingIndex].review = true;
+      props.bookings.data[bookingIndex].review = true;
     }
   }
+};
+
+// Handle pagination
+const handlePageChange = (page) => {
+  router.get('/profile/bookings/completedbookings', { page }, {
+    preserveState: true,
+    replace: true,
+  });
 };
 
 // Watch for flash messages from the backend

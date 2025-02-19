@@ -9,6 +9,11 @@ import walkIcon from "../../assets/walkingrayIcon.svg";
 import { Inertia } from '@inertiajs/inertia';
 import paypal from '../../assets/paypal.svg';
 import mastercard from '../../assets/mastercard.svg';
+import axios from 'axios';
+import { loadStripe } from '@stripe/stripe-js';
+import PrimaryButton from "@/Components/PrimaryButton.vue";
+import Footer from "@/Components/Footer.vue";
+import loader from "../../assets/loader.gif";
 
 // Add these methods to your script section
 const incrementQuantity = (extra) => {
@@ -33,8 +38,6 @@ const validateQuantity = (extra) => {
     }
 };
 
-
-
 // Multiple step form
 const currentStep = ref(1);
 const validateSteps = () => {
@@ -54,7 +57,6 @@ const validateSteps = () => {
     return true;
 };
 
-
 const moveToNextStep = () => {
     if (validateSteps()) {
         currentStep.value++;
@@ -67,6 +69,9 @@ const moveToPrevStep = () => {
 // Getting the vehicle data from api
 const { props } = usePage();
 const vehicle = ref(props.vehicle);
+const packageType = ref(props.query?.packageType || 'day');
+const totalPrice = ref(Number(props.query?.totalPrice) || 0);
+const discountAmount = ref(Number(props.query?.discountAmount) || 0);
 
 // This is for protection Plans
 const plans = ref([]);
@@ -169,11 +174,12 @@ onMounted(() => {
 });
 
 // stripe payment
-import { loadStripe } from '@stripe/stripe-js';
-import PrimaryButton from "@/Components/PrimaryButton.vue";
-import Footer from "@/Components/Footer.vue";
-
-
+const stripePromise = loadStripe('pk_test_51KNyHdSDGjAmjQxjhTSx7hrI5uBOE75wqXRZNFdw83XSTU8gvwpFusz2W8FAy7PkV8K0aGHqhC620kbMWTg32ZpS00p3ktAi86'); // Replace with your Stripe publishable key
+let stripe;
+let elements;
+let cardNumber;
+let cardExpiry;
+let cardCvc;
 
 const pickupDate = ref('');
 const returnDate = ref('');
@@ -182,7 +188,6 @@ const returnTime = ref('');
 const extras = ref([]);
 
 const loadSessionData = () => {
-
     // Load driver info
     const driverInfo = JSON.parse(sessionStorage.getItem('driverInfo'));
     if (driverInfo) {
@@ -218,48 +223,18 @@ const loadSessionData = () => {
     }
 };
 
-
-const rentalData = ref(null); // Make rentalData reactive
-
-onMounted(() => {
-    const storedData = localStorage.getItem('rentalData');
-    rentalData.value = storedData ? JSON.parse(storedData) : null;
-});
-
-  const totalPrice = rentalData.totalPrice;
-const displayedPrice = computed(() => {
-    if (rentalData.value) {
-        // Determine which price to display based on packageType
-        switch (rentalData.value.packageType) {
-            case 'day':
-                return `${rentalData.value.vehicleDetails.price_per_day}/day`;
-            case 'week':
-                return `${rentalData.value.vehicleDetails.price_per_week}/week`;
-            case 'month':
-                return `${rentalData.value.vehicleDetails.price_per_month}/month`;
-            default: // Or handle other cases if needed
-                return `${rentalData.value.vehicleDetails.price_per_day}/day`; // Default to day
-        }
-    } else {
-        return 'Loading...'; // Or a default message
-    }
-});
-
-const priceNumber = ref(0);
-watch(displayedPrice, (newValue) => {
-    const priceString = newValue;
-    priceNumber.value = Number(priceString.replace(/[^0-9.]/g, '')) || 0; // Update the ref
-});
+const formatPrice = (price) => {
+    return new Intl.NumberFormat('en-US', {
+        style: 'currency',
+        currency: 'USD'
+    }).format(price);
+};
 
 // Update your total calculation
 const calculateTotal = computed(() => {
-    loadSessionData();
-    const pickupDateObject = new Date(pickupDate.value);
-    const returnDateObject = new Date(returnDate.value);
-    // const totalrentalDays = Math.ceil((returnDateObject - pickupDateObject) / (1000 * 3600 * 24));
     let total = 0;
 
-    total += totalPrice; 
+    total += Number(totalPrice.value);
     // Add plan value
     total += Number(selectedPlan.value?.plan_value || 0);
 
@@ -272,14 +247,6 @@ const calculateTotal = computed(() => {
 
     return total;
 });
-
-
-const stripePromise = loadStripe('pk_test_51KNyHdSDGjAmjQxjhTSx7hrI5uBOE75wqXRZNFdw83XSTU8gvwpFusz2W8FAy7PkV8K0aGHqhC620kbMWTg32ZpS00p3ktAi86'); // Replace with your Stripe publishable key
-let stripe;
-let elements;
-let cardNumber;
-let cardExpiry;
-let cardCvc;
 
 onMounted(async () => {
     stripe = await stripePromise;
@@ -340,153 +307,123 @@ onMounted(async () => {
 
     mountElements();
 });
+
 const error = ref([]);
+const isLoading = ref(false);
+watch(isLoading, (newValue) => {
+    if (newValue) {
+        document.body.style.overflow = 'hidden';
+    } else {
+        document.body.style.overflow = '';
+    }
+});
+
 const submitBooking = async () => {
     if (!validateSteps()) {
         return;
     }
-    // Load session data
-    loadSessionData();
-
-    // Calculate the total days by comparing pickup and return dates
-    const pickupDateObj = new Date(pickupDate.value);
-    const returnDateObj = new Date(returnDate.value);
-    const totalDays = Math.ceil((returnDateObj - pickupDateObj) / (1000 * 3600 * 24)); // Difference in days
-
-    // Calculate extra charges (sum of all selected extras)
-    let extraCharges = 0;
-    bookingExtras.value.forEach((extra) => {
-        if (extra.quantity > 0) {
-            extraCharges += extra.price * extra.quantity;
-        }
-    });
-
-    // Prepare the booking data from session storage and calculated values
-    const bookingData = {
-        customer: customer.value,
-        pickup_date: pickupDate.value,
-        return_date: returnDate.value,
-        pickup_location: vehicle.value?.location,
-        return_location: vehicle.value?.location,
-        pickup_time: pickupTime.value,
-        return_time: returnTime.value,
-        total_days: totalDays,
-        base_price: vehicle.value?.price_per_day,
-        extra_charges: extraCharges > 0 ? extraCharges : null,
-        total_amount: calculateTotal.value,
-        plan: selectedPlan.value.plan_type,
-        extras: extras.value,
-        vehicle_id: vehicle.value?.id,
-    };
-    console.log("Vehicle ID:", vehicle.value?.id);
+    isLoading.value = true; // Show loader
+    
     try {
-        // First, create the payment method from Stripe
-        const { error, paymentMethod } = await stripe.createPaymentMethod({
-            type: 'card',
-            card: cardNumber,
-            billing_details: {
-                name: `${customer.value.first_name} ${customer.value.last_name}`,
-                email: customer.value.email,
-                phone: customer.value.phone,
-                address: {
-                    line1: 'United states',
-                    country: 'US',
-                    state: "California",
-                },
-            },
-        });
+        // Load session data
+        loadSessionData();
 
-        if (error) {
-            console.error(error);
-            alert("Payment error: " + error.message);
-            return;
-        }
+        // Calculate the total days by comparing pickup and return dates
+        const pickupDateObj = new Date(pickupDate.value);
+        const returnDateObj = new Date(returnDate.value);
+        const totalDays = Math.ceil((returnDateObj - pickupDateObj) / (1000 * 3600 * 24)); // Difference in days
 
-        // Now send the booking data along with the paymentMethod.id
-        const response = await axios.post('/booking', {
-            ...bookingData,
-            payment_method_id: paymentMethod.id,  // Send the payment method ID to the backend
-        });
-
-        const clientSecret = response.data.clientSecret;
-        // Log the Payment Intent before confirming it
-        console.log('Client Secret:', clientSecret);
-
-        // Retrieve the Payment Intent to check its status
-        const { paymentIntent } = await stripe.retrievePaymentIntent(clientSecret);
-        console.log('Payment Intent Status:', paymentIntent.status);
-
-        if (paymentIntent.status === 'succeeded') {
-            sessionStorage.clear();
-            // Payment is already successful, no need to confirm again
-            Inertia.visit(`/booking-success/details?payment_intent=${paymentIntent.id}`);
-            return;
-        }
-
-        if (paymentIntent.status === 'requires_action') {
-            const { error: actionError, paymentIntent: confirmedPaymentIntent } = await stripe.handleCardAction(clientSecret);
-
-            if (actionError) {
-                console.error('Action Error:', actionError);
-                throw new Error(actionError.message);
+        // Calculate extra charges (sum of all selected extras)
+        let extraCharges = 0;
+        bookingExtras.value.forEach((extra) => {
+            if (extra.quantity > 0) {
+                extraCharges += extra.price * extra.quantity;
             }
+        });
 
-            console.log('Confirmed Payment Intent:', confirmedPaymentIntent);
-            Inertia.visit(`/booking-success/details?payment_intent=${paymentIntent.id}`);
-
-            return;
-        }
-
-        if (paymentIntent.status === 'requires_confirmation') {
-            const { paymentIntent: confirmedPaymentIntent, error: confirmError } = await stripe.confirmCardPayment(clientSecret, {
-                payment_method: paymentMethod.id,
+        // Prepare the booking data from session storage and calculated values
+        const bookingData = {
+            customer: customer.value,
+            pickup_date: pickupDate.value,
+            return_date: returnDate.value,
+            pickup_location: vehicle.value?.location,
+            return_location: vehicle.value?.location,
+            pickup_time: pickupTime.value,
+            return_time: returnTime.value,
+            total_days: totalDays,
+            base_price: Number(totalPrice.value),
+            preferred_day:packageType.value,
+            extra_charges: extraCharges > 0 ? extraCharges : null,
+            total_amount: calculateTotal.value,
+            discount_amount: Number(discountAmount.value),
+            plan: selectedPlan.value.plan_type,
+            extras: extras.value,
+            vehicle_id: vehicle.value?.id,
+        };
+        console.log("Vehicle ID:", vehicle.value?.id);
+        try {
+            // First, create the payment method from Stripe
+            const { error, paymentMethod } = await stripe.createPaymentMethod({
+                type: 'card',
+                card: cardNumber,
+                billing_details: {
+                    name: `${customer.value.first_name} ${customer.value.last_name}`,
+                    email: customer.value.email,
+                    phone: customer.value.phone,
+                    address: {
+                        line1: 'United states',
+                        country: 'US',
+                        state: "California",
+                    },
+                },
             });
 
-            if (confirmError) {
-                console.error('Confirm Error:', confirmError);
-                throw new Error(confirmError.message);
+            if (error) {
+                console.error(error);
+                alert("Payment error: " + error.message);
+                return;
             }
 
-            console.log('Confirmed Payment Intent:', confirmedPaymentIntent);
-            Inertia.visit(`/booking-success/details?payment_intent=${paymentIntent.id}`);
-            return;
+            // Now send the booking data along with the paymentMethod.id
+            const response = await axios.post('/booking', {
+                ...bookingData,
+                payment_method_id: paymentMethod.id,  // Send the payment method ID to the backend
+            });
+
+            const clientSecret = response.data.clientSecret;
+            // Log the Payment Intent before confirming it
+            console.log('Client Secret:', clientSecret);
+
+            // Retrieve the Payment Intent to check its status
+            const { paymentIntent } = await stripe.retrievePaymentIntent(clientSecret);
+            console.log('Payment Intent Status:', paymentIntent.status);
+
+            if (paymentIntent.status === 'succeeded') {
+                sessionStorage.clear();
+                // Payment is already successful, no need to confirm again
+                Inertia.visit(`/booking-success/details?payment_intent=${paymentIntent.id}`);
+                return;
+            }
+
+            if (paymentIntent.status === 'requires_action') {
+                const { error: actionError, paymentIntent: confirmedPaymentIntent } = await stripe.handleCardAction(clientSecret);
+
+                if (actionError) {
+                    console.error('Action Error:', actionError);
+                    throw new Error(actionError.message);
+                }
+
+                console.log('Confirmed Payment Intent:', confirmedPaymentIntent);
+                Inertia.visit(`/booking-success/details?payment_intent=${paymentIntent.id}`);
+                return;
+            }
+        } catch (err) {
+            error.value = err.message || 'An error occurred. Please try again.';
         }
-
-        throw new Error('Unexpected Payment Intent state: ' + paymentIntent.status);
-    } catch (err) {
-        error.value = err.message || 'An error occurred. Please try again.';
+    } finally {
+        isLoading.value = false; // Hide loader
     }
 };
-
-// const selectedPaymentMethod = ref('visa'); // To track selected payment method
-
-// const selectPaymentMethod = (method) => {
-//     selectedPaymentMethod.value = method;
-// };
-
-const currencies = ref([]); // To store the currency data
-
-// Fetch currency data from the API
-const fetchCurrencies = async () => {
-    try {
-        const response = await axios.get('/api/currencies'); // Adjust the API endpoint as necessary
-        currencies.value = response.data;
-    } catch (error) {
-        console.error('Error fetching currencies:', error);
-    }
-};
-
-// Get currency symbol based on vendor's profile currency
-const getCurrencySymbol = (currencyCode) => {
-    const currency = currencies.value.find(c => c.code === currencyCode);
-    return currency ? currency.symbol : ''; // Return symbol or empty string if not found
-};
-
-// Call the fetch function on component mount
-onMounted(() => {
-    fetchCurrencies();
-});
-
 </script>
 
 
@@ -695,74 +632,73 @@ onMounted(() => {
 
                         <!-- Payment Method Icons -->
                         <div class="flex gap-4 mb-6">
-                            <!-- <div class="payment-method-card flex justify-center items-center w-[8rem] h-[2.5rem] rounded-[99px] cursor-pointer"
-                                :class="{ 'bg-[#19304D] border-none': selectedPaymentMethod === 'visa', 'border': selectedPaymentMethod !== 'visa' }"
-                                @click="selectPaymentMethod('visa')">
-                                <img :src="visa" alt="Visa" class="h-full w-full" />
-                            </div> -->
-                            <div class="payment-method-card flex justify-center items-center w-[8rem] h-[2.5rem] rounded-[99px] cursor-pointer"
-                                :class="{ 'bg-[#19304D] border-none': selectedPaymentMethod === 'mastercard', 'border': selectedPaymentMethod !== 'mastercard' }">
+                            <div
+                                class="payment-method-card flex justify-center items-center w-[8rem] h-[2.5rem] rounded-[99px] cursor-pointer">
                                 <img :src="mastercard" alt="Mastercard" class="h-full w-full" />
                             </div>
-                            <div class="payment-method-card flex justify-center items-center w-[8rem] h-[2.5rem] rounded-[99px] cursor-pointer"
-                                :class="{ 'bg-[#19304D] border-none': selectedPaymentMethod === 'paypal', 'border': selectedPaymentMethod !== 'paypal' }">
+                            <div
+                                class="payment-method-card flex justify-center items-center w-[8rem] h-[2.5rem] rounded-[99px] cursor-pointer">
                                 <img :src="paypal" alt="PayPal" class="h-full w-full" />
                             </div>
 
                         </div>
 
                         <form @submit.prevent="submitBooking" class="flex flex-col gap-6">
-                            <!-- Card Number Field -->
+      <!-- Card Number Field -->
+      <div class="w-[60%] flex flex-col gap-5">
+        <div class="form-group">
+          <label class="block text-sm text-gray-600 mb-2">Card Number</label>
+          <div id="card-number" class="stripe-element h-12 border rounded-lg px-4 py-2"></div>
+        </div>
 
-                            <div class="w-[60%] flex flex-col gap-5">
-                                <div class="form-group">
-                                    <label class="block text-sm text-gray-600 mb-2">Card Number</label>
-                                    <div id="card-number" class="stripe-element h-12 border rounded-lg px-4 py-2"></div>
-                                </div>
+        <!-- Expiry and CVV -->
+        <div class="grid grid-cols-2 gap-4">
+          <div class="form-group">
+            <label class="block text-sm text-gray-600 mb-2">Expire Date</label>
+            <div id="card-expiry" class="stripe-element h-12 border rounded-lg px-4 py-2"></div>
+          </div>
+          <div class="form-group">
+            <label class="block text-sm text-gray-600 mb-2">CVV</label>
+            <div id="card-cvc" class="stripe-element h-12 border rounded-lg px-4 py-2"></div>
+          </div>
+        </div>
 
-                                <!-- Expiry and CVV -->
-                                <div class="grid grid-cols-2 gap-4">
-                                    <div class="form-group">
-                                        <label class="block text-sm text-gray-600 mb-2">Expire Date</label>
-                                        <div id="card-expiry" class="stripe-element h-12 border rounded-lg px-4 py-2">
-                                        </div>
-                                    </div>
-                                    <div class="form-group">
-                                        <label class="block text-sm text-gray-600 mb-2">CVV</label>
-                                        <div id="card-cvc" class="stripe-element h-12 border rounded-lg px-4 py-2">
-                                        </div>
-                                    </div>
-                                </div>
+        <!-- Terms Checkbox -->
+        <div class="flex items-center gap-2">
+          <input type="checkbox" id="terms" class="rounded border-gray-300" required />
+          <label for="terms" class="text-sm">
+            I have read, understood, and accepted vroome.com
+            <a href="#" class="text-customDarkBlackColor font-bold">Terms & Conditions</a>
+            and
+            <a href="#" class="text-customDarkBlackColor font-bold">Privacy Policy</a>.
+          </label>
+        </div>
 
-                                <!-- Terms Checkbox -->
-                                <div class="flex items-center gap-2">
-                                    <input type="checkbox" id="terms" class="rounded border-gray-300" required />
-                                    <label for="terms" class="text-sm">
-                                        I have read, understood, and accepted vroome.com
-                                        <a href="#" class="text-customDarkBlackColor font-bold">Terms & Conditions</a>
-                                        and
-                                        <a href="#" class="text-customDarkBlackColor font-bold">Privacy Policy</a>.
-                                    </label>
-                                </div>
+        <p class="text-gray-600 text-sm">
+          Your booking will be submitted once you go to payment. You can choose your payment
+          method in the next step.
+        </p>
+      </div>
 
-                                <p class="text-gray-600 text-sm">
-                                    Your booking will be submitted once you go to payment. You can choose your payment
-                                    method in the next step.
-                                </p>
-                            </div>
+      <!-- Button Group -->
+      <div class="flex justify-between gap-4 mt-4">
+        <button type="button" @click="moveToPrevStep" class="button-secondary w-[20%]">
+          Back
+        </button>
+        <PrimaryButton type="submit" class=" w-[20%]">
+          Book Now
+        </PrimaryButton>
+      </div>
 
-                            <!-- Button Group -->
-                            <div class="flex justify-between gap-4 mt-4">
-                                <button type="button" @click="moveToPrevStep" class="button-secondary w-[20%]">
-                                    Back
-                                </button>
-                                <PrimaryButton type="submit" class=" w-[20%]">
-                                    Book Now
-                                </PrimaryButton>
-                            </div>
+      <div id="card-errors" role="alert" class="text-red-600 text-sm"></div>
+    </form>
+                    </div>
+                </div>
 
-                            <div id="card-errors" role="alert" class="text-red-600 text-sm"></div>
-                        </form>
+                <div v-if="isLoading" class="fixed z-50 h-full w-full top-0 left-0 bg-[#0000009e]">
+                    <div  class="flex justify-center flex-col items-center h-full w-full">
+                        <img :src=loader alt="" class="w-[200px]">
+                        <p class="text-[white] text-[1.5rem]">Please do not refresh the page..waiting for payment</p>
                     </div>
                 </div>
 
@@ -803,7 +739,7 @@ onMounted(() => {
                                 <div class="flex flex-col gap-1">
                                     <span class="text-[1.25rem] text-medium">{{
                                         vehicle?.location
-                                        }}</span><span class="">{{
+                                    }}</span><span class="">{{
                                             vehicle?.created_at
                                         }}</span>
                                 </div>
@@ -813,7 +749,7 @@ onMounted(() => {
                                 <div class="flex flex-col gap-1">
                                     <span class="text-[1.25rem] text-medium">{{
                                         vehicle?.location
-                                        }}</span><span class="">{{
+                                    }}</span><span class="">{{
                                             vehicle?.created_at
                                         }}</span>
                                 </div>
@@ -827,19 +763,19 @@ onMounted(() => {
 
                                         <span>Price</span>
                                         <strong class="text-[1.5rem] font-medium">
-                                            {{ displayedPrice }} </strong>
+                                            {{ formatPrice(totalPrice) }} / {{ packageType }} </strong>
 
                                     </div>
                                     <!-- Selected Plan -->
                                     <div v-if="selectedPlan" class="flex justify-between items-center text-[1.15rem]">
                                         <span>{{
                                             selectedPlan.plan_type
-                                            }}</span>
+                                        }}</span>
                                         <div>
                                             <strong class="text-[1.5rem] font-medium">€{{
                                                 selectedPlan.plan_value
-                                            }}</strong>
-                                            <span>/day</span>
+                                                }}</strong>
+                                            
                                         </div>
                                     </div>
                                     <!-- Selected Extras -->
@@ -855,8 +791,8 @@ onMounted(() => {
                                         <div>
                                             <strong class="text-[1.5rem] font-medium">€{{
                                                 extra.price * extra.quantity
-                                            }}</strong>
-                                            <span>/day</span>
+                                                }}</strong>
+                                            
                                         </div>
                                     </div>
                                 </div>
@@ -871,7 +807,7 @@ onMounted(() => {
                                         Total Payment (incl. VAT)
                                         <img :src="infoIcon" alt="" />
                                     </p>
-                                    <span class="text-[1.25rem] font-bold">€{{ calculateTotal }}</span>
+                                    <span class="text-[1.25rem] font-bold">{{ formatPrice(calculateTotal) }}</span>
                                 </div>
                             </div>
                         </div>

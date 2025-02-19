@@ -236,17 +236,6 @@ const updateDateTimeSelection = () => {
         time_from: form.value.time_from,
         time_to: form.value.time_to
     }));
-
-    // Update URL with new parameters
-    // const params = new URLSearchParams(window.location.search);
-    // params.set('date_from', form.value.date_from);
-    // params.set('date_to', form.value.date_to);
-    // params.set('time_from', form.value.time_from);
-    // params.set('time_to', form.value.time_to);
-
-    // // Update URL without reloading the page
-    // const newUrl = `${window.location.pathname}?${params.toString()}`;
-    // window.history.pushState({}, '', newUrl);
 };
 
 // Function to load saved dates from session storage
@@ -292,15 +281,7 @@ const validateRentalDetails = () => {
     }
     return true;
 };
-const proceedToPayment = () => {
-    // Validate rental details before proceeding
-    if (!validateRentalDetails()) {
-        return; // Stop the function if validation fails
-    }
 
-    // Proceed to payment page
-    router.get(`/booking/${vehicle.value.id}`);
-};
 
 // Function to toggle favourite status
 import { useToast } from 'vue-toastification';
@@ -409,6 +390,12 @@ const calculateTotalPrice = computed(() => {
     return totalPrice;
 });
 
+const discountAmount = computed(() => {
+    const packageDetails = pricingPackages.value.find(pkg => pkg.id === selectedPackage.value);
+    return Number(packageDetails?.discount || 0);
+});
+
+
 const formatPrice = (price) => {
     return new Intl.NumberFormat('en-US', {
         style: 'currency',
@@ -502,15 +489,7 @@ watch(selectedPackage, () => {
     localStorage.removeItem('rentalData');
 });
 
-// Watch for date changes
-watch([() => form.value.date_from, () => form.value.date_to], () => {
-    if (form.value.date_from && form.value.date_to) {
-        validateDates();
-        if (!dateError.value) {
-            storeRentalData();
-        }
-    }
-});
+
 // Function to store rental data in localStorage
 const storeRentalData = () => {
     const rentalData = {
@@ -519,6 +498,7 @@ const storeRentalData = () => {
         dateTo: form.value.date_to,
         duration: rentalDuration.value,
         totalPrice: calculateTotalPrice.value,
+        discountAmount: discountAmount.value,
         selectedPackageDetails: pricingPackages.value.find(pkg => pkg.id === selectedPackage.value),
         vehicleDetails: {
             id: vehicle.value.id,
@@ -531,6 +511,17 @@ const storeRentalData = () => {
     
     localStorage.setItem('rentalData', JSON.stringify(rentalData));
 };
+
+// Watch for date changes
+watch([() => form.value.date_from, () => form.value.date_to], () => {
+    if (form.value.date_from && form.value.date_to) {
+        validateDates();
+        if (!dateError.value) {
+            storeRentalData();
+        }
+    }
+});
+
 watch([
     selectedPackage,
     () => form.value.date_from,
@@ -541,6 +532,25 @@ watch([
         storeRentalData();
     }
 });
+
+
+const proceedToPayment = () => {
+    // Validate rental details before proceeding
+    if (!validateRentalDetails()) {
+        return; // Stop the function if validation fails
+    }
+    storeRentalData();
+    // Proceed to payment page with query parameters
+    router.get(`/booking/${vehicle.value.id}`, {
+        packageType: selectedPackage.value,
+        dateFrom: form.value.date_from,
+        dateTo: form.value.date_to,
+        timeFrom: form.value.time_from,
+        timeTo: form.value.time_to,
+        totalPrice: calculateTotalPrice.value,
+        discountAmount: discountAmount.value,
+    });
+};
 </script>
 
 <template>
@@ -817,7 +827,7 @@ watch([
                                 <span class="text-sm font-normal text-gray-600">{{ pkg.priceLabel }}</span>
                             </p>
                             <p v-if="pkg.discount" class="text-sm text-green-600">
-                                Discount: {{ pkg.discount }}%
+                                Discount: {{ pkg.discount }}
                             </p>
                         </div>
                     </div>

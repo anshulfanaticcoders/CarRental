@@ -84,6 +84,9 @@ import MyProfileLayout from '@/Layouts/MyProfileLayout.vue';
 import {router } from '@inertiajs/vue3';
 import axios from 'axios';
 import Pagination from './Pagination.vue';
+import { useToast } from 'vue-toastification';
+const toast = useToast();
+
 
 const props = defineProps({
     bookings: {
@@ -106,19 +109,34 @@ const formatDate = (dateStr) => {
 };
 
 const updateStatus = async (booking) => {
-    try {
-        const response = await axios.put(`/bookings/${booking.id}`, {
-            booking_status: booking.booking_status
-        });
-
-        // Optionally refresh the page or show a success message
-        router.reload();
-    } catch (error) {
-        console.error("Error updating status:", error);
-        alert("Failed to update booking status. Please try again.");
-        // Reset the status back in case of error
-        router.reload();
-    }
+  try {
+    await axios.put(`/bookings/${booking.id}`, {
+      booking_status: booking.booking_status
+    });
+    
+    const statusMessages = {
+      pending: 'Status changed to Pending!',
+      confirmed: 'Status changed to Confirmed!',
+      completed: 'Status changed to Completed!',
+      cancelled: 'Status changed to Cancelled!'
+    };
+    
+    toast.success(statusMessages[booking.booking_status], {
+      position: 'top-right',
+      timeout: 3000,
+      closeOnClick: true,
+      pauseOnHover: true,
+      draggable: true,
+    });
+    
+    // Optionally refresh the page or show a success message
+    router.reload();
+  } catch (error) {
+    console.error("Error updating status:", error);
+    alert("Failed to update booking status. Please try again.");
+    // Reset the status back in case of error
+    router.reload();
+  }
 };
 
 const cancelBooking = async (bookingId) => {

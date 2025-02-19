@@ -97,6 +97,7 @@ class BookingController extends Controller
             'return_location' => $request->input('return_location'),
             'total_days' => $request->input('total_days'),
             'base_price' => $request->input('base_price'),
+            'preferred_day' => $request->input('preferred_day'),
             'extra_charges' => $request->input('extra_charges', 0),
             'tax_amount' => $request->input('tax_amount', 0),
             'discount_amount' => $request->input('discount_amount', 0),
@@ -265,23 +266,23 @@ return Inertia::render('Vendor/Payments/Index', [
 
 // Method for Pending Bookings
 public function getPendingBookings()
-{
-    $userId = Auth::id();
+    {
+        $userId = Auth::id();
 
-    $customer = Customer::where('user_id', $userId)->first();
+        $customer = Customer::where('user_id', $userId)->first();
 
-    $pendingBookings = $customer ? 
-        Booking::where('customer_id', $customer->id)
-            ->where('booking_status', 'pending')
-            ->with('vehicle.images','vehicle.category', 'payments')
-            ->orderBy('created_at', 'desc')
-            ->get() : 
-        collect();
+        $pendingBookings = $customer ? 
+            Booking::where('customer_id', $customer->id)
+                ->where('booking_status', 'pending')
+                ->with('vehicle.images','vehicle.category', 'payments')
+                ->orderBy('created_at', 'desc')
+                ->paginate(3) : 
+            collect();
 
-    return Inertia::render('Profile/Bookings/PendingBookings', [
-        'bookings' => $pendingBookings
-    ]);
-}
+        return Inertia::render('Profile/Bookings/PendingBookings', [
+            'bookings' => $pendingBookings,
+        ]);
+    }
 
 // Method for Confirmed Bookings
 public function getConfirmedBookings()
@@ -314,12 +315,11 @@ public function getCompletedBookings()
             ->where('booking_status', 'completed')
             ->with('vehicle.images','vehicle.category', 'payments')
             ->orderBy('created_at', 'desc')
-            ->get() : 
+            ->paginate(3) : 
         collect();
 
-        // it renders
     return Inertia::render('Profile/Bookings/CompletedBookings', [
-        'bookings' => $completedBookings
+        'bookings' => $completedBookings,
     ]);
 }
 }

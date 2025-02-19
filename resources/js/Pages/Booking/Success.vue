@@ -220,26 +220,38 @@ const formatCurrency = (amount) => {
           </div>
 
           <div class="pricing py-5 mt-[1rem] px-5">
-            <div class="column flex flex-col justify-between gap-4">
+            <div class="column flex flex-col justify-between gap-3">
               <span class="text-[1.5rem]">Payment Details</span>
               <div class="flex justify-between items-center text-[1.15rem]">
-                <span>Price Per Day</span>
+                <span class="capitalize">{{booking.preferred_day}} Price</span>
                 <div>
-                  <strong class="text-[1.5rem] font-medium">€{{ vehicle?.price_per_day }}</strong>
-                  <span>/day</span>
+                  <!-- <strong class="text-[1.5rem] font-medium">€{{ booking.base_price }}</strong> -->
+                   <strong class="text-[1.5rem] font-medium" v-if="booking.preferred_day==='day'">{{ vehicle.price_per_day }}</strong>
+                   <strong class="text-[1.5rem] font-medium" v-if="booking.preferred_day==='week'">{{ vehicle.price_per_week }}</strong>
+                   <strong class="text-[1.5rem] font-medium" v-if="booking.preferred_day==='month'">{{ vehicle.price_per_month }}</strong>
                 </div>
               </div>
+              <div v-if="booking.discount_amount" class="flex justify-between items-center text-[1.1rem] mt-[-1rem] border-b-[1px] pb-[0.5rem]">
+                <span class="capitalize">Discount Price</span>
+                <strong class="text-[1.1rem] font-medium">- {{booking.discount_amount}}</strong>
+              </div>
+
+              <div class="flex justify-between">
+                <span>Final Price</span>
+                <strong class="text-[1.1rem] font-medium">{{ booking.base_price }}</strong>
+              </div>
+              
               <div class="">
                 <ul class="list-none pl-0">
                   <li v-for="extra in booking.extras" :key="extra.id" class="flex justify-between mb-2">
                     <span>{{ extra.extra_name }} x ({{ extra.quantity }})</span>
-                    <span>{{ formatCurrency(extra.price * extra.quantity) }}</span>
+                    <span>+ {{ formatCurrency(extra.price) }}</span>
                   </li>
                 </ul>
               </div>
               <div class="flex justify-between">
                 <span>{{plan.plan_type }}</span>
-                <span>{{formatCurrency (plan.plan_value )}}</span>
+                <span>+ {{formatCurrency (plan.plan_value )}}</span>
               </div>
             </div>
           </div>

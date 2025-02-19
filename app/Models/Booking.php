@@ -23,6 +23,7 @@ class Booking extends Model
         'plan',
         'total_days',
         'base_price',
+        'preferred_day',
         'extra_charges',
         'tax_amount',
         'discount_amount',
