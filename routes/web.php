@@ -22,6 +22,7 @@ use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\ReviewController;
 use App\Http\Controllers\SearchController;
 use App\Http\Controllers\Admin\VehicleCategoriesController;
+use App\Http\Controllers\Vendor\BlockingDateController;
 use App\Http\Controllers\Vendor\VendorBookingController;
 use App\Http\Controllers\Vendor\VendorOverviewController;
 use App\Http\Controllers\Vendor\VendorVehicleController;
@@ -148,7 +149,7 @@ Route::middleware(['auth', 'role:vendor'])->group(function () {
     Route::resource('current-vendor-vehicles', VendorVehicleController::class);
     Route::delete('current-vendor-vehicles/{vehicle}/images/{image}', [VendorVehicleController::class, 'deleteImage'])
         ->name('vehicles.deleteImage');
-        
+        Route::resource('blocking-dates', BlockingDateController::class)->names('vendor.blocking-dates');
         // Customer review in Vendor Profile
         Route::get('/customer-reviews', [ReviewController::class, 'vendorReviews'])
         ->name('vendor.reviews');

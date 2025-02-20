@@ -25,6 +25,7 @@ class SearchController extends Controller
             'latitude' => 'required|numeric',
             'longitude' => 'required|numeric',
             'radius' => 'required|numeric',
+            'package_type' => 'nullable|string|in:day,week,month',
         ]);
 
         // Fetch filter options
@@ -87,6 +88,21 @@ class SearchController extends Controller
             ])
             ->havingRaw('distance_in_km <= ?', [$radiusInKm])
             ->orderBy('distance_in_km');
+        }
+
+        // Package type filter
+        if (!empty($validated['package_type'])) {
+            switch ($validated['package_type']) {
+                case 'week':
+                    $query->whereNotNull('price_per_week')->orderBy('price_per_week');
+                    break;
+                case 'month':
+                    $query->whereNotNull('price_per_month')->orderBy('price_per_month');
+                    break;
+                default:
+                    $query->whereNotNull('price_per_day')->orderBy('price_per_day');
+                    break;
+            }
         }
 
         // Paginate results

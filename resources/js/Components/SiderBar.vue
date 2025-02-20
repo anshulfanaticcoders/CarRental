@@ -9,8 +9,8 @@ import favoritesIcon from "../../assets/favouriteIcon.svg";
 import reviewsIcon from "../../assets/myreviewIcon.svg";
 import dashboardIcon from "../../assets/vendorDashboarIcon.svg";
 import vehiclesIcon from "../../assets/vehicletypeIcon.svg";
-import verificationIcon from "../../assets/verification.svg";
 import clockIcon from "../../assets/clockIcon.svg";
+import dateblockingIcon from "../../assets/dateblockingIcon.svg";
 
 // Existing logic
 const booking = ref(null);
@@ -102,6 +102,7 @@ const vendorMenus = [
 const vendorOtherLinks = [
   { name: "Payment History", path: "/vendor/payments", icon: clockIcon },
   { name: "Bookings", path: "/bookings", icon: vehiclesIcon },
+  { name: "Date Blocking", path: "/blocking-dates", icon: dateblockingIcon },
   { name: "Inbox", path: "/vendor-inbox", icon: inboxIcon },
   { name: "Customer Reviews", path: "/customer-reviews", icon: reviewsIcon },
 ];

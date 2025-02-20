@@ -1,6 +1,6 @@
 <script setup>
 import { Link, useForm, usePage } from "@inertiajs/vue3";
-import { onMounted, ref, watch } from "vue";
+import { computed, onMounted, ref, watch } from "vue";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import AuthenticatedHeaderLayout from "@/Layouts/AuthenticatedHeaderLayout.vue";
@@ -52,6 +52,7 @@ const form = useForm({
     latitude: usePage().props.filters.latitude || '',
     longitude: usePage().props.filters.longitude || '',
     radius: usePage().props.filters.radius || '',
+    package_type: usePage().props.filters.package_type || 'day',
 });
 
 // Debounced filter submission
@@ -258,6 +259,28 @@ const toggleFavourite = async (vehicle) => {
         console.error('Error:', error);
     }
 };
+
+const priceField = computed(() => {
+    switch (form.package_type) {
+        case 'week':
+            return 'price_per_week';
+        case 'month':
+            return 'price_per_month';
+        default:
+            return 'price_per_day';
+    }
+});
+
+const priceUnit = computed(() => {
+    switch (form.package_type) {
+        case 'week':
+            return 'week';
+        case 'month':
+            return 'month';
+        default:
+            return 'day';
+    }
+});
 </script>
 
 <template>
@@ -378,6 +401,19 @@ const toggleFavourite = async (vehicle) => {
                             <option value="30-40">30 - 40 km/l</option>
                         </select>
                     </div>
+
+                    <!-- Package Type Filter -->
+                    <div class="flex flex-col p-2 border-[1px] border-customPrimaryColor rounded-[12px] hover:bg-customLightPrimaryColor">
+                        <div class="flex gap-2">
+                            <label for="package_type" class="block text-[1rem] font-medium">Package Type</label>
+                        </div>
+                        <select v-model="form.package_type" id="package_type"
+                            class="mt-1 block w-full rounded-md border-[1px] border-white shadow-sm text-white cursor-pointer bg-customPrimaryColor p-2">
+                            <option value="day">Price Per Day</option>
+                            <option value="week">Price Per Week</option>
+                            <option value="month">Price Per Month</option>
+                        </select>
+                    </div>
                 </div>
             </form>
         </div>
@@ -403,14 +439,19 @@ const toggleFavourite = async (vehicle) => {
                     </div>
                     <div v-for="vehicle in vehicles.data" :key="vehicle.id"
                         class="p-[1rem] rounded-[12px] border-[1px] border-[#E7E7E7]">
-                        <div class="column flex justify-end">
+                        <div class="flex justify-between">
+                            <div>
+                                <span class="capitalize bg-green-200 text-customPrimaryColor rounded-[99px] py-1 px-3 font-medium">Available</span>
+                            </div>
+                            <div class="column flex justify-end">
                             <button @click.stop="toggleFavourite(vehicle)" class="heart-icon"
                                 :class="{ 'filled-heart': vehicle.is_favourite }">
                                 <img :src="vehicle.is_favourite ? FilledHeart : Heart" alt="Favorite"
                                     class="w-full mb-[1rem] transition-colors duration-300" />
                             </button>
                         </div>
-                        <Link :href="`/vehicle/${vehicle.id}`">
+                        </div>
+                        <Link :href="`/vehicle/${vehicle.id}?package=${form.package_type}`">
                         <div class="column flex flex-col gap-5 items-start">
                             <img v-if="vehicle.images" :src="`/storage/${vehicle.images.find(
                                 (image) =>
@@ -463,7 +504,7 @@ const toggleFavourite = async (vehicle) => {
                             <div class="mt-[2rem] flex justify-between items-center">
                                 <div>
                                     <span class="text-customPrimaryColor text-[1.875rem] font-medium">€{{
-                                        vehicle.price_per_day }}</span><span>/day</span>
+                                        vehicle[priceField] }}</span><span>/{{ priceUnit }}</span>
                                 </div>
                                 <img :src="goIcon" alt="" />
                             </div>

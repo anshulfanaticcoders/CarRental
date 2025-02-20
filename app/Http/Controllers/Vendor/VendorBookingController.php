@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Vendor;
 
 use App\Http\Controllers\Controller;
 use App\Models\Booking;
+use App\Models\Vehicle;
 use Inertia\Inertia;
 use Illuminate\Http\Request;
 
@@ -42,6 +43,14 @@ class VendorBookingController extends Controller
         ]);
 
         $booking->update($validated);
+
+        if ($request->booking_status === 'confirmed') {
+            $vehicle = Vehicle::find($booking->vehicle_id);
+            $vehicle->update(['status' => 'rented']);
+        }else if($request->booking_status === 'completed' || $request->booking_status === 'cancelled') {
+            $vehicle = Vehicle::find($booking->vehicle_id);
+            $vehicle->update(['status' => 'available']);
+        }
 
         return response()->json([
             'message' => 'Booking status updated successfully',

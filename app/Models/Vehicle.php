@@ -49,6 +49,10 @@ class Vehicle extends Model
         'dealer_cost',
         'phone_number',
 
+        // Blocking dates
+        'blocking_start_date',
+        'blocking_end_date',
+
     ];
 
     public function category()
@@ -96,4 +100,5 @@ class Vehicle extends Model
     {
         return $this->belongsToMany(User::class, 'user_vehicle', 'vehicle_id', 'user_id');
     }
+
 }

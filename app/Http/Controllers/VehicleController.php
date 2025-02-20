@@ -147,7 +147,7 @@ class VehicleController extends Controller
     }
 
     //This is for getting particular vehicle information to the single car page 
-    public function show($id)
+    public function show($id, Request $request)
 {
     $vehicle = Vehicle::with([
         'specifications', 

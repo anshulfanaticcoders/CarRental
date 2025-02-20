@@ -373,13 +373,13 @@ const calculateTotalPrice = computed(() => {
     switch (selectedPackage.value) {
         case 'week':
             totalPrice = (duration / 7) * vehicle.value.price_per_week;
-            if(vehicle.value.weekly_discount) {
-                totalPrice = totalPrice - vehicle.value.weekly_discount ;
+            if (vehicle.value.weekly_discount) {
+                totalPrice = totalPrice - vehicle.value.weekly_discount;
             }
             break;
         case 'month':
             totalPrice = vehicle.value.price_per_month;
-            if(vehicle.value.monthly_discount) {
+            if (vehicle.value.monthly_discount) {
                 totalPrice = totalPrice - vehicle.value.monthly_discount;
             }
             break;
@@ -508,7 +508,7 @@ const storeRentalData = () => {
             price_per_month: vehicle.value.price_per_month
         }
     };
-    
+
     localStorage.setItem('rentalData', JSON.stringify(rentalData));
 };
 
@@ -551,6 +551,11 @@ const proceedToPayment = () => {
         discountAmount: discountAmount.value,
     });
 };
+
+// Get package type from query parameter
+const urlParams = new URLSearchParams(window.location.search);
+const initialPackageType = urlParams.get('package') || 'day';
+selectedPackage.value = initialPackageType;
 </script>
 
 <template>
@@ -606,7 +611,7 @@ const proceedToPayment = () => {
                                         <span class="text-customLightGrayColor text-[1rem]">People</span>
                                         <span class="font-medium text-[1rem]">{{
                                             vehicle?.seating_capacity
-                                            }}</span>
+                                        }}</span>
                                     </div>
                                 </div>
                                 <div class="feature-item items-center flex gap-3">
@@ -615,7 +620,7 @@ const proceedToPayment = () => {
                                         <span class="text-customLightGrayColor text-[1rem]">Doors</span>
                                         <span class="font-medium text-[1rem]">{{
                                             vehicle?.number_of_doors
-                                            }}</span>
+                                        }}</span>
                                     </div>
                                 </div>
                                 <div class="feature-item items-center flex gap-3">
@@ -624,7 +629,7 @@ const proceedToPayment = () => {
                                         <span class="text-customLightGrayColor text-[1rem]">Luggage</span>
                                         <span class="font-medium text-[1rem]">{{
                                             vehicle?.luggage_capacity
-                                            }}</span>
+                                        }}</span>
                                     </div>
                                 </div>
                                 <div class="feature-item items-center flex gap-3">
@@ -633,7 +638,7 @@ const proceedToPayment = () => {
                                         <span class="text-customLightGrayColor text-[1rem]">Transmission</span>
                                         <span class="font-medium capitalize">{{
                                             vehicle?.transmission
-                                            }}</span>
+                                        }}</span>
                                     </div>
                                 </div>
                                 <div class="feature-item items-center flex gap-3">
@@ -642,7 +647,7 @@ const proceedToPayment = () => {
                                         <span class="text-customLightGrayColor text-[1rem]">Fuel Type</span>
                                         <span class="font-medium capitalize">{{
                                             vehicle?.fuel
-                                            }}</span>
+                                        }}</span>
                                     </div>
                                 </div>
                                 <div class="feature-item items-center flex gap-3">
@@ -798,113 +803,136 @@ const proceedToPayment = () => {
                                     </div>
                                 </div>
 
-                               
+
 
                                 <div class="pricing py-5">
-    <div class="column flex items-center justify-between">
-        <div class="mx-auto px-6">
-            <Card>
-                <CardHeader>
-                    <CardTitle class="inline-block text-[1rem]">Choose Your Rental Package</CardTitle>
-                </CardHeader>
-                <CardContent>
-                    <!-- Package Selection -->
-                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
-                        <div v-for="pkg in pricingPackages" :key="pkg.id"
-                            @click="selectedPackage = pkg.id" :class="[
-                                'cursor-pointer rounded-lg border p-4 transition-all duration-200 hover:shadow-md',
-                                selectedPackage === pkg.id
-                                    ? 'border-blue-500 bg-blue-50'
-                                    : 'border-gray-200 hover:border-blue-200'
-                            ]">
-                            <div class="flex items-center gap-3 mb-2">
-                                <component :is="pkg.icon" class="w-6 h-6" />
-                                <span class="font-semibold text-[1rem]">{{ pkg.label }}</span>
-                            </div>
-                            <p class="text-sm text-gray-600 mb-2">{{ pkg.description }}</p>
-                            <p class="text-lg font-bold text-blue-600">
-                                {{ formatPrice(pkg.price) }}
-                                <span class="text-sm font-normal text-gray-600">{{ pkg.priceLabel }}</span>
-                            </p>
-                            <p v-if="pkg.discount" class="text-sm text-green-600">
-                                Discount: {{ pkg.discount }}
-                            </p>
-                        </div>
-                    </div>
+                                    <div class="column flex items-center justify-between">
+                                        <div class="mx-auto px-6">
+                                            <Card>
+                                                <CardHeader>
+                                                    <CardTitle class="inline-block text-[1rem]">Choose Your Rental
+                                                        Package</CardTitle>
+                                                </CardHeader>
+                                                <CardContent>
+                                                    <!-- Package Selection -->
+                                                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
+                                                        <div v-for="pkg in pricingPackages" :key="pkg.id"
+                                                            @click="selectedPackage = pkg.id" :class="[
+                                                                'cursor-pointer rounded-lg border p-4 transition-all duration-200 hover:shadow-md',
+                                                                selectedPackage === pkg.id
+                                                                    ? 'border-blue-500 bg-blue-50'
+                                                                    : 'border-gray-200 hover:border-blue-200'
+                                                            ]">
+                                                            <div class="flex items-center gap-3 mb-2">
+                                                                <component :is="pkg.icon" class="w-6 h-6" />
+                                                                <span class="font-semibold text-[1rem]">{{ pkg.label
+                                                                    }}</span>
+                                                            </div>
+                                                            <p class="text-sm text-gray-600 mb-2">{{ pkg.description }}
+                                                            </p>
+                                                            <p class="text-lg font-bold text-blue-600">
+                                                                {{ formatPrice(pkg.price) }}
+                                                                <span class="text-sm font-normal text-gray-600">{{
+                                                                    pkg.priceLabel }}</span>
+                                                            </p>
+                                                            <p v-if="pkg.discount" class="text-sm text-green-600">
+                                                                Discount: {{ pkg.discount }}
+                                                            </p>
+                                                        </div>
+                                                    </div>
 
-                    <!-- Date Selection -->
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        <div>
-                            <label class="block text-sm font-medium text-gray-700 mb-2">Pickup Date</label>
-                            <input type="date" v-model="form.date_from" :min="getCurrentDate()"
-                                @change="updateDateTimeSelection"
-                                class="w-full p-2 border rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500" />
-                        </div>
+                                                    <!-- Date Selection -->
+                                                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                                        <div>
+                                                            <label
+                                                                class="block text-sm font-medium text-gray-700 mb-2">Pickup
+                                                                Date</label>
+                                                            <input type="date" v-model="form.date_from"
+                                                                :min="getCurrentDate()"
+                                                                @change="updateDateTimeSelection"
+                                                                class="w-full p-2 border rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500" />
+                                                        </div>
 
-                        <div>
-                            <label class="block text-sm font-medium text-gray-700 mb-2">Return Date</label>
-                            <input type="date" v-model="form.date_to" :min="minReturnDate" :max="maxReturnDate"
-                                @change="updateDateTimeSelection"
-                                class="w-full p-2 border rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500" />
-                        </div>
-                        <div>
-                            <!-- Time Dropdown -->
-                            <label class="block text-sm mt-3 mb-1 text-customLightGrayColor font-medium">Departure Time</label>
-                            <select v-model="form.time_from" @change="updateDateTimeSelection"
-                                class="p-2 rounded border border-customMediumBlackColor w-full text-customPrimaryColor">
-                                <option value="">Select time</option>
-                                <option v-for="option in departureTimeOptions" :key="option.value" :value="option.value">
-                                    {{ option.label }}
-                                </option>
-                            </select>
-                        </div>
+                                                        <div>
+                                                            <label
+                                                                class="block text-sm font-medium text-gray-700 mb-2">Return
+                                                                Date</label>
+                                                            <input type="date" v-model="form.date_to"
+                                                                :min="minReturnDate" :max="maxReturnDate"
+                                                                @change="updateDateTimeSelection"
+                                                                class="w-full p-2 border rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500" />
+                                                        </div>
+                                                        <div>
+                                                            <!-- Time Dropdown -->
+                                                            <label
+                                                                class="block text-sm mt-3 mb-1 text-customLightGrayColor font-medium">Departure
+                                                                Time</label>
+                                                            <select v-model="form.time_from"
+                                                                @change="updateDateTimeSelection"
+                                                                class="p-2 rounded border border-customMediumBlackColor w-full text-customPrimaryColor">
+                                                                <option value="">Select time</option>
+                                                                <option v-for="option in departureTimeOptions"
+                                                                    :key="option.value" :value="option.value">
+                                                                    {{ option.label }}
+                                                                </option>
+                                                            </select>
+                                                        </div>
 
-                        <div>
-                            <!-- Time Dropdown -->
-                            <label class="block text-sm mt-3 mb-1 text-customLightGrayColor font-medium">Return Time</label>
-                            <select v-model="form.time_to" @change="updateDateTimeSelection"
-                                class="p-2 rounded border border-customMediumBlackColor w-full text-customPrimaryColor">
-                                <option value="">Select time</option>
-                                <option v-for="option in returnTimeOptions" :key="option.value" :value="option.value">
-                                    {{ option.label }}
-                                </option>
-                            </select>
-                        </div>
-                    </div>
+                                                        <div>
+                                                            <!-- Time Dropdown -->
+                                                            <label
+                                                                class="block text-sm mt-3 mb-1 text-customLightGrayColor font-medium">Return
+                                                                Time</label>
+                                                            <select v-model="form.time_to"
+                                                                @change="updateDateTimeSelection"
+                                                                class="p-2 rounded border border-customMediumBlackColor w-full text-customPrimaryColor">
+                                                                <option value="">Select time</option>
+                                                                <option v-for="option in returnTimeOptions"
+                                                                    :key="option.value" :value="option.value">
+                                                                    {{ option.label }}
+                                                                </option>
+                                                            </select>
+                                                        </div>
+                                                    </div>
 
-                    <!-- Show Total Price -->
-                    <div v-if="form.date_from && form.date_to && !dateError"
-                        class="mt-6 p-4 bg-blue-50 rounded-lg">
-                        <p class="text-lg font-semibold">
-                            Current Price: {{ formatPrice(pricingPackages.find(pkg => pkg.id === selectedPackage).price) }}
-                        </p>
-                        <p v-if="pricingPackages.find(pkg => pkg.id === selectedPackage).discount" class="text-lg text-green-600">
-                            Discount: -{{formatPrice(pricingPackages.find(pkg => pkg.id === selectedPackage).discount)}}
-                        </p>
-                        <p class="text-[1.75rem] font-semibold">
-                            Total Price: {{ formatPrice(calculateTotalPrice) }}
-                        </p>
-                        <p class="text-sm text-gray-600">
-                            for {{ rentalDuration }} days of rental
-                        </p>
-                    </div>
+                                                    <!-- Show Total Price -->
+                                                    <div v-if="form.date_from && form.date_to && !dateError"
+                                                        class="mt-6 p-4 bg-blue-50 rounded-lg">
+                                                        <p class="text-lg font-semibold">
+                                                            Current Price: {{formatPrice(pricingPackages.find(pkg =>
+                                                            pkg.id === selectedPackage).price) }}
+                                                        </p>
+                                                        <p v-if="pricingPackages.find(pkg => pkg.id === selectedPackage).discount"
+                                                            class="text-lg text-green-600">
+                                                            Discount: -{{formatPrice(pricingPackages.find(pkg => pkg.id
+                                                            === selectedPackage).discount)}}
+                                                        </p>
+                                                        <p class="text-[1.75rem] font-semibold">
+                                                            Total Price: {{ formatPrice(calculateTotalPrice) }}
+                                                        </p>
+                                                        <p class="text-sm text-gray-600">
+                                                            for {{ rentalDuration }} days of rental
+                                                        </p>
+                                                    </div>
 
-                    <!-- Error Message -->
-                    <Alert v-if="dateError" class="mt-4" variant="destructive">
-                        <AlertDescription>{{ dateError }}</AlertDescription>
-                    </Alert>
-                </CardContent>
-            </Card>
-        </div>
-    </div>
-    <div class="column mt-[2rem]">
-        <button @click="proceedToPayment" class="button-primary block text-center p-5 w-full">Proceed to Pay</button>
-    </div>
-    <div class="column text-center mt-[2rem] flex flex-col justify-center items-center gap-5">
-        <p>Guaranteed safe & secure checkout</p>
-        <img :src="partnersIcon" alt="" />
-    </div>
-</div>
+                                                    <!-- Error Message -->
+                                                    <Alert v-if="dateError" class="mt-4" variant="destructive">
+                                                        <AlertDescription>{{ dateError }}</AlertDescription>
+                                                    </Alert>
+                                                </CardContent>
+                                            </Card>
+                                        </div>
+                                    </div>
+                                    <div class="column mt-[2rem]">
+                                        <button @click="proceedToPayment"
+                                            class="button-primary block text-center p-5 w-full">Proceed to Pay</button>
+                                    </div>
+                                    <div
+                                        class="column text-center mt-[2rem] flex flex-col justify-center items-center gap-5">
+                                        <p>Guaranteed safe & secure checkout</p>
+                                        <img :src="partnersIcon" alt="" />
+                                    </div>
+                                </div>
                             </div>
                         </div>
                     </div>

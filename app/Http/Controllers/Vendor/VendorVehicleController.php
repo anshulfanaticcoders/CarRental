@@ -4,32 +4,46 @@ namespace App\Http\Controllers\Vendor;
 
 use App\Http\Controllers\Controller;
 use App\Models\Vehicle;
-use App\Models\VehicleSpecification;
 use App\Models\VehicleImage;
+use App\Models\VehicleSpecification;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Inertia\Inertia;
-use Illuminate\Support\Facades\DB;
 
 class VendorVehicleController extends Controller
 {
     public function index()
+{
+    $vendorId = auth()->id();
+
+    $vehicles = Vehicle::with(['specifications', 'images', 'category', 'user'])
+        ->where('vendor_id', $vendorId)
+        ->latest()
+        ->paginate(8); // Paginate with 10 items per page
+
+    return Inertia::render('Vendor/Vehicles/Index', [
+        'vehicles' => $vehicles->items(),  // Get only the vehicle data
+        'pagination' => [
+            'current_page' => $vehicles->currentPage(),
+            'last_page' => $vehicles->lastPage(),
+            'per_page' => $vehicles->perPage(),
+            'total' => $vehicles->total(),
+        ],
+    ]);
+}
+
+
+    public function edit($id)
     {
-        $vendorId = auth()->id();
+        $vehicle = Vehicle::with(['specifications', 'images'])->findOrFail($id);
         
-        $vehicles = Vehicle::with(['specifications', 'images', 'category', 'user'])
-            ->where('vendor_id', $vendorId)
-            ->latest()
-            ->get();
-
-        return Inertia::render('Vendor/Vehicles/Index', [
-            'vehicles' => $vehicles,
-        ]);
-    }
-
-    public function edit(Vehicle $vehicle)
-    {
-        // $this->authorize('update', $vehicle);
+        // Check if the vehicle belongs to the authenticated vendor
+        if ($vehicle->vendor_id !== auth()->id()) {
+            return redirect()->route('current-vendor-vehicles.index')
+                ->with('error', 'You do not have permission to edit this vehicle');
+        }
+        
         $features = [
             'Bluetooth',
             'Music System',
@@ -42,20 +56,31 @@ class VendorVehicleController extends Controller
         ];
 
         return Inertia::render('Vendor/Vehicles/Edit', [
-            'vehicle' => $vehicle->load(['specifications', 'images']),
-            'categories' => DB::table('vehicle_categories')->get(),
+            'vehicle' => $vehicle,
+            'categories' => DB::table('vehicle_categories')->select('id', 'name')->get(),
             'features' => array_map(function($feature) {
                 return ['id' => $feature, 'name' => $feature];
             }, $features)
         ]);
     }
 
-    public function update(Request $request, Vehicle $vehicle)
+    public function update(Request $request, $id)
     {
-        // $this->authorize('update', $vehicle);
 
+        // echo "<pre>";
+        // print_r($id);
+        // print_r($request->all());
+        // die();
+        $vehicle = Vehicle::findOrFail($id);
+        
+        // Check if the vehicle belongs to the authenticated vendor
+        if ($vehicle->vendor_id !== auth()->id()) {
+            return redirect()->route('current-vendor-vehicles.index')
+                ->with('error', 'You do not have permission to update this vehicle');
+        }
+
+        // Validate incoming request data
         $validated = $request->validate([
-            // Vehicle fields
             'category_id' => 'required|exists:vehicle_categories,id',
             'brand' => 'required|string|max:50',
             'model' => 'required|string|max:50',
@@ -68,56 +93,102 @@ class VendorVehicleController extends Controller
             'luggage_capacity' => 'required|integer|min:0',
             'horsepower' => 'required|integer|min:0',
             'co2' => 'required|string',
-            'location' => 'required|string',
-            'latitude' => 'required|numeric',
-            'longitude' => 'required|numeric',
+            'location' => 'nullable|string',
             'status' => 'required|in:available,rented,maintenance',
-            'features' => 'array',
+            'features' => 'nullable|array',
             'featured' => 'boolean',
             'security_deposit' => 'required|numeric|min:0',
             'payment_method' => 'required|array',
+            'payment_method.*' => 'string|in:credit_card,cheque,bank_wire,cryptocurrency,other',
             'price_per_day' => 'required|numeric|min:0',
-
-            // Specifications
+            'price_per_week' => 'nullable|numeric|min:0',
+            'weekly_discount' => 'nullable|numeric|min:0|max:1000',
+            'price_per_month' => 'nullable|numeric|min:0',
+            'monthly_discount' => 'nullable|numeric|min:0|max:10000',
+            'preferred_price_type' => 'required|in:day,week,month',
             'registration_number' => 'required|string|max:50',
             'registration_country' => 'required|string|max:50',
             'registration_date' => 'required|date',
             'gross_vehicle_mass' => 'required|integer|min:0',
-            'vehicle_height' => 'required|integer|min:0',
+            'vehicle_height' => 'required|numeric|min:0',
             'dealer_cost' => 'required|numeric|min:0',
             'phone_number' => 'required|string|max:15',
-
-            // Images
-            'images' => 'nullable|array',
-            'images.*' => 'image|mimes:jpeg,png,jpg|max:2048',
         ]);
 
+        // Set default values for nullable fields
+        $latitude = $request->latitude ?? 0;
+        $longitude = $request->longitude ?? 0;
+        $features = $request->features ?? [];
+        
         // Update vehicle
         $vehicle->update([
-            ...$validated,
-            'features' => json_encode($validated['features']),
-            'payment_method' => json_encode($validated['payment_method']),
+            'category_id' => $request->category_id,
+            'brand' => $request->brand,
+            'model' => $request->model,
+            'color' => $request->color,
+            'mileage' => $request->mileage,
+            'transmission' => $request->transmission,
+            'fuel' => $request->fuel,
+            'seating_capacity' => $request->seating_capacity,
+            'number_of_doors' => $request->number_of_doors,
+            'luggage_capacity' => $request->luggage_capacity,
+            'horsepower' => $request->horsepower,
+            'co2' => $request->co2,
+            'location' => $request->location ?? '',
+            'latitude' => $latitude,
+            'longitude' => $longitude,
+            'status' => $request->status,
+            'features' => json_encode($features),
+            'featured' => (bool)$request->featured,
+            'security_deposit' => $request->security_deposit,
+            'payment_method' => json_encode($request->payment_method),
+            'price_per_day' => $request->price_per_day,
+            'price_per_week' => $request->price_per_week ?? 0,
+            'weekly_discount' => $request->weekly_discount ?? 0,
+            'price_per_month' => $request->price_per_month ?? 0,
+            'monthly_discount' => $request->monthly_discount ?? 0,
+            'preferred_price_type' => $request->preferred_price_type,
         ]);
 
-        // Update specifications
-        $vehicle->specifications()->update([
-            'registration_number' => $validated['registration_number'],
-            'registration_country' => $validated['registration_country'],
-            'registration_date' => $validated['registration_date'],
-            'gross_vehicle_mass' => $validated['gross_vehicle_mass'],
-            'vehicle_height' => $validated['vehicle_height'],
-            'dealer_cost' => $validated['dealer_cost'],
-            'phone_number' => $validated['phone_number'],
-        ]);
+        // Update or create specifications
+        if ($vehicle->specifications) {
+            $vehicle->specifications()->update([
+                'registration_number' => $request->registration_number,
+                'registration_country' => $request->registration_country,
+                'registration_date' => $request->registration_date,
+                'gross_vehicle_mass' => $request->gross_vehicle_mass,
+                'vehicle_height' => $request->vehicle_height,
+                'dealer_cost' => $request->dealer_cost,
+                'phone_number' => $request->phone_number,
+            ]);
+        } else {
+            VehicleSpecification::create([
+                'vehicle_id' => $vehicle->id,
+                'registration_number' => $request->registration_number,
+                'registration_country' => $request->registration_country,
+                'registration_date' => $request->registration_date,
+                'gross_vehicle_mass' => $request->gross_vehicle_mass,
+                'vehicle_height' => $request->vehicle_height,
+                'dealer_cost' => $request->dealer_cost,
+                'phone_number' => $request->phone_number,
+            ]);
+        }
 
-
+        // Handle vehicle images if included in the request
         if ($request->hasFile('images')) {
-            foreach ($request->file('images') as $image) {
-                $path = $image->store('vehicle_images', 'public');
+            foreach ($request->file('images') as $index => $image) {
+                $imagePath = $image->store('vehicle_images', 'public');
+
+                // Determine image type
+                $imageType = ($index === 0 && !$vehicle->images()->where('image_type', 'primary')->exists()) 
+                    ? 'primary' 
+                    : 'gallery';
+
+                // Create vehicle image record
                 VehicleImage::create([
                     'vehicle_id' => $vehicle->id,
-                    'image_path' => $path,
-                    'image_type' => 'gallery'
+                    'image_path' => $imagePath,
+                    'image_type' => $imageType,
                 ]);
             }
         }

@@ -129,6 +129,11 @@ const updateStatus = async (booking) => {
       draggable: true,
     });
     
+    if (booking.booking_status === 'confirmed') {
+      await axios.put(`/vehicles/${booking.vehicle_id}`, {
+        status: 'rented'
+      });
+    }
     // Optionally refresh the page or show a success message
     router.reload();
   } catch (error) {
