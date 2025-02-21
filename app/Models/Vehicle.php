@@ -39,6 +39,9 @@ class Vehicle extends Model
         'price_per_month',
         'monthly_discount',
         'preferred_price_type',
+        'limited_km',
+        'cancellation_available',
+        'price_per_km',
 
         // vehicle specifications fillables
         'registration_number',

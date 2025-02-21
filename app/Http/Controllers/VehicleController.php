@@ -48,7 +48,7 @@ class VehicleController extends Controller
             'featured' => 'boolean',
             'security_deposit' => 'required|decimal:0,2|min:0',
             // 'payment_method' => 'required|string',
-            'payment_method' => 'required|array', 
+            'payment_method' => 'required|array',
             'payment_method.*' => 'string|in:credit_card,cheque,bank_wire,cryptocurrency,other',
             'price_per_day' => 'required|decimal:0,2|min:0',
             'price_per_week' => 'nullable|decimal:0,2|min:0',
@@ -56,6 +56,9 @@ class VehicleController extends Controller
             'price_per_month' => 'nullable|decimal:0,2|min:0',
             'monthly_discount' => 'nullable|decimal:0,2|min:0|max:10000',
             'preferred_price_type' => 'required|in:day,week,month',
+            'limited_km' => 'boolean',
+            'cancellation_available' => 'boolean',
+            'price_per_km' => 'nullable|decimal:0,2|min:0',
 
             'registration_number' => 'required|string|max:50',
             'registration_country' => 'required|string|max:50',
@@ -96,6 +99,9 @@ class VehicleController extends Controller
             'price_per_month' => $request->price_per_month,
             'monthly_discount' => $request->monthly_discount,
             'preferred_price_type' => $request->preferred_price_type,
+            'limited_km' => $request->limited_km ?? false,
+            'cancellation_available' => $request->cancellation_available ?? false,
+            'price_per_km' => $request->price_per_km,
         ]);
 
         // Create the vehicle specifications
@@ -148,55 +154,55 @@ class VehicleController extends Controller
 
     //This is for getting particular vehicle information to the single car page 
     public function show($id, Request $request)
-{
-    $vehicle = Vehicle::with([
-        'specifications', 
-        'images', 
-        'category', 
-        'user',
-        'vendorProfile',
-        'vendorProfileData',
-        'bookings' => function ($query) {
-            $query->select('vehicle_id', 'pickup_date', 'return_date');
-        }
-    ])->findOrFail($id);
+    {
+        $vehicle = Vehicle::with([
+            'specifications',
+            'images',
+            'category',
+            'user',
+            'vendorProfile',
+            'vendorProfileData',
+            'bookings' => function ($query) {
+                $query->select('vehicle_id', 'pickup_date', 'return_date');
+            }
+        ])->findOrFail($id);
 
-    return Inertia::render('SingleCar', [
-        'vehicle' => $vehicle,
-        'booked_dates' => $vehicle->bookings->map(function ($booking) {
-            return [
-                'pickup_date' => $booking->pickup_date->format('Y-m-d'),
-                'return_date' => $booking->return_date->format('Y-m-d'),
-            ];
-        })
-    ]);
-}
+        return Inertia::render('SingleCar', [
+            'vehicle' => $vehicle,
+            'booked_dates' => $vehicle->bookings->map(function ($booking) {
+                return [
+                    'pickup_date' => $booking->pickup_date->format('Y-m-d'),
+                    'return_date' => $booking->return_date->format('Y-m-d'),
+                ];
+            })
+        ]);
+    }
 
     //This is for getting particular vehicle information to the booking page 
     public function booking(Request $request, $id)
-{
-    $vehicle = Vehicle::with(['specifications', 'images', 'category', 'user'])
-        ->findOrFail($id);
+    {
+        $vehicle = Vehicle::with(['specifications', 'images', 'category', 'user'])
+            ->findOrFail($id);
 
-    return Inertia::render('Booking', [
-        'vehicle' => $vehicle,
-        'query' => $request->all(),
-    ]);
-}
+        return Inertia::render('Booking', [
+            'vehicle' => $vehicle,
+            'query' => $request->all(),
+        ]);
+    }
 
-    
 
-//     public function vendorVehicle()
+
+    //     public function vendorVehicle()
 // {
 //     // Get the currently authenticated vendor's ID
 //     $vendorId = auth()->id();
-    
-//     // Get all vehicles belonging to this vendor
+
+    //     // Get all vehicles belonging to this vendor
 //     $vehicles = Vehicle::with(['specifications', 'images', 'category', 'user'])
 //         ->where('vendor_id', $vendorId)
 //         ->get();
 
-//     return Inertia::render('Vendor/VendorVehicles', [
+    //     return Inertia::render('Vendor/VendorVehicles', [
 //         'vehicles' => $vehicles,
 //     ]);
 // }

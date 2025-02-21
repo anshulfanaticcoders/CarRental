@@ -92,25 +92,32 @@
                         <!-- Brand -->
                         <div>
                             <InputLabel for="brand">Brand:</InputLabel>
-                            <TextInput type="text" v-model="form.brand" id="brand" required />
+                            <input type="text" v-model="form.brand" id="brand" required
+                                placeholder="Enter vehicle brand" />
                         </div>
 
                         <!-- Model -->
                         <div>
                             <InputLabel for="model">Model:</InputLabel>
-                            <TextInput type="text" v-model="form.model" id="model" required />
+                            <input type="text" v-model="form.model" id="model" required
+                                placeholder="Enter vehicle model" />
                         </div>
 
                         <!-- Color -->
                         <div>
                             <InputLabel for="color">Color:</InputLabel>
-                            <TextInput type="text" v-model="form.color" id="color" required />
+                            <input type="text" v-model="form.color" id="color" required
+                                placeholder="Enter vehicle color" />
                         </div>
 
                         <!-- Mileage -->
                         <div>
                             <InputLabel for="mileage">Mileage:</InputLabel>
-                            <TextInput type="number" v-model="form.mileage" id="mileage" required />
+                            <div class="relative">
+                                <input type="number" v-model="form.mileage" id="mileage" required />
+                                <span
+                                    class="absolute text-[0.875rem] top-[50%] right-3 translate-y-[-50%] text-customLightGrayColor font-medium">(km/d)</span>
+                            </div>
                         </div>
 
                         <!-- Transmission -->
@@ -174,13 +181,21 @@
                         <!-- Horsepower -->
                         <div>
                             <InputLabel for="horsepower">Horsepower:</InputLabel>
-                            <TextInput type="number" v-model="form.horsepower" id="horsepower" required min="0" />
+                            <div class="relative">
+                                <input type="number" v-model="form.horsepower" id="horsepower" required min="0" />
+                                <span
+                                    class="absolute text-[0.875rem] top-[50%] right-3 translate-y-[-50%] text-customLightGrayColor font-medium">hp</span>
+                            </div>
                         </div>
 
                         <!-- CO2 Emissions -->
                         <div>
                             <InputLabel for="co2">CO2 Emissions:</InputLabel>
-                            <TextInput type="text" v-model="form.co2" id="co2" required />
+                            <div class="relative">
+                                <input type="text" v-model="form.co2" id="co2" required />
+                                <span
+                                    class="absolute text-[0.875rem] top-[50%] right-3 translate-y-[-50%] text-customLightGrayColor font-medium">(g/km)</span>
+                            </div>
                         </div>
 
                         <!-- Status -->
@@ -284,42 +299,68 @@
                             <span class="text-[0.675rem] mb-[1rem] inline-block">As mentioned on your vehicle's
                                 registration
                                 certificate.</span>
-                            <TextInput class="w-full" type="text" v-model="form.registration_number"
-                                id="registration_number" required />
+                            <input class="w-full" type="text" v-model="form.registration_number"
+                                id="registration_number" required
+                                placeholder="Enter your vehicle registration number" />
                         </div>
 
                         <!-- Registration Country -->
-                        <div>
+                        <div class="relative w-full">
                             <InputLabel class="text-black" for="registration_country">Registration Country:</InputLabel>
-                            <TextInput class="w-full" type="text" v-model="form.registration_country"
-                                id="registration_country" required />
+
+                            <div class="relative">
+                                <select v-model="form.registration_country"
+                                    class="w-full  appearance-none" id="registration_country">
+                                    <option value="" disabled>Select a country</option>
+                                    <option v-for="country in countries" :key="country.code" :value="country.code">
+                                        {{ country.name }}
+                                    </option>
+                                </select>
+
+                                <!-- Dynamic Flag -->
+                                <img v-if="form.registration_country" :src="getFlagUrl(form.registration_country)"
+                                    alt="Country Flag"
+                                    class="absolute right-3 top-1/2 transform -translate-y-1/2 w-[2.1rem] h-[1.5rem] rounded" />
+                            </div>
                         </div>
+
 
                         <!-- Registration Date -->
                         <div>
                             <InputLabel class="text-black" for="registration_date">Registration Date:</InputLabel>
-                            <TextInput class="w-full" type="date" v-model="form.registration_date"
-                                id="registration_date" required />
+                            <input class="w-full" type="date" v-model="form.registration_date" id="registration_date"
+                                required />
                         </div>
 
                         <!-- Gross Vehicle Mass -->
                         <div>
                             <InputLabel class="text-black" for="gross_vehicle_mass">Gross Vehicle Mass:</InputLabel>
-                            <TextInput class="w-full" type="number" v-model="form.gross_vehicle_mass"
-                                id="gross_vehicle_mass" required />
+                            <div class="relative">
+                                <input class="w-full" type="number" v-model="form.gross_vehicle_mass"
+                                    id="gross_vehicle_mass" required />
+                                <span
+                                    class="absolute text-[0.875rem] top-[50%] right-3 translate-y-[-50%] text-customLightGrayColor font-medium">in
+                                    (lb's)</span>
+                            </div>
                         </div>
 
                         <!-- Vehicle Height -->
                         <div>
                             <InputLabel class="text-black" for="vehicle_height">Vehicle Height:</InputLabel>
-                            <TextInput class="w-full" type="number" v-model="form.vehicle_height" id="vehicle_height"
-                                required />
+                            <div class="relative">
+                                <input class="w-full" type="number" v-model="form.vehicle_height" id="vehicle_height"
+                                    required />
+                                <span
+                                    class="absolute text-[0.875rem] top-[50%] right-3 translate-y-[-50%] text-customLightGrayColor font-medium">in
+                                    m(meters)</span>
+                            </div>
+
                         </div>
 
                         <!-- Dealer Cost -->
                         <div class="col-span-2">
                             <InputLabel class="text-black" for="dealer_cost">Dealer Cost:</InputLabel>
-                            <TextInput class="" type="number" v-model="form.dealer_cost" id="dealer_cost" required />
+                            <input class="" type="number" v-model="form.dealer_cost" id="dealer_cost" required />
                         </div>
 
                         <!-- Phone Number -->
@@ -328,8 +369,8 @@
                             <span class="text-[0.675rem] mb-[1rem] inline-block">Indicate the telephone number on which
                                 you wish
                                 to receive your requests</span>
-                            <TextInput class="w-full" type="text" v-model="form.phone_number" id="phone_number"
-                                required />
+                            <input class="w-full" type="text" v-model="form.phone_number" id="phone_number" required
+                                placeholder="+91" />
                         </div>
                     </div>
                     <div class="buttons flex justify-between mt-[2rem] pb-[4rem]">
@@ -548,7 +589,6 @@
                                         <label for="monthly_discount" class="text-sm font-medium mb-0">Monthly Discount
                                             (%):</label>
                                         <input type="number" v-model="form.monthly_discount" id="monthly_discount"
-                                            
                                             class="mt-1 block w-32 rounded-md border-gray-300 shadow-sm p-1 text-center" />
                                     </div>
 
@@ -563,8 +603,8 @@
                                 is the deposit that the renter must give
                                 you no later than the first day of the rental
                                 period.</span>
-                            <TextInput type="number" v-model="form.security_deposit" id="security_deposit" required
-                                min="0" step="0.01" />
+                            <input type="number" v-model="form.security_deposit" id="security_deposit" required min="0"
+                                step="0.01" />
                         </div>
                     </div>
 
@@ -612,12 +652,27 @@
                         </div>
                     </div>
 
-                    <!-- Featured -->
-                    <div class="flex gap-[0.5rem] items-center">
-                        <InputLabel class="mb-0" for="featured">Featured:</InputLabel>
-                        <input type="checkbox" v-model="form.featured" id="featured" />
-                    </div>
 
+                    <!-- Unlimited Kilometers and Featured-->
+                    <div class="flex items items-center gap-5">
+                        <div class="flex gap-[0.5rem] items-center">
+                            <input type="checkbox" v-model="form.limited_km" id="limited_km" />
+                            <InputLabel for="limited_km" class="mb-0">Limited Kilometer</InputLabel>
+                        </div>
+
+                        <div class="flex gap-[0.5rem] items-center">
+                            <input type="checkbox" v-model="form.cancellation_available" id="cancellation_available" />
+                            <InputLabel for="cancellation_available" class="mb-0">Cancellation Available</InputLabel>
+                        </div>
+                        <div class="flex gap-[0.5rem] items-center">
+                            <input type="checkbox" v-model="form.featured" id="featured" />
+                            <InputLabel class="mb-0" for="featured">Featured:</InputLabel>
+                        </div>
+                    </div>
+                    <div v-if="form.limited_km">
+                        <InputLabel for="price_per_km">Price per Kilometer</InputLabel>
+                        <input type="number" v-model="form.price_per_km" id="price_per_km" />
+                    </div>
                     <div class="buttons flex justify-between mt-[2rem] pb-[4rem]">
                         <button class="button-secondary w-[40%]" @click="prevStep">
                             Back
@@ -732,10 +787,10 @@ import PrimaryButton from "@/Components/PrimaryButton.vue";
 import LocationPicker from "@/Components/LocationPicker.vue";
 import axios from "axios";
 import InputLabel from "@/Components/InputLabel.vue";
-import TextInput from "@/Components/TextInput.vue";
+// import input from "@/Components/input.vue";
 import ApplicationLogo from "@/Components/ApplicationLogo.vue";
 import L from 'leaflet' // Import Leaflet
-
+import 'leaflet/dist/leaflet.css';
 import { useToast } from 'vue-toastification'; // Add this import
 const toast = useToast(); // Initialize toast
 // Form data
@@ -750,7 +805,7 @@ const form = useForm({
     seating_capacity: 1,
     number_of_doors: 2,
     luggage_capacity: 0,
-    horsepower: 0,
+    horsepower: 70,
     co2: "",
     location: "",
     latitude: 'null',
@@ -767,6 +822,9 @@ const form = useForm({
     weekly_discount: 0,
     monthly_discount: 0,
     preferred_price_type: 'day',
+    limited_km: false,
+    price_per_km: null,
+    cancellation_available: false,
 
     // vehicle specifications fields
     registration_number: "",
@@ -888,7 +946,7 @@ onMounted(() => {
 });
 let map = null;
 let marker = null // Marker instance
-const currentStep = ref(0);
+const currentStep = ref(2);
 
 const nextStep = () => {
     let isValid = true;
@@ -1016,6 +1074,26 @@ const initializeMap = () => {
     }).addTo(map);
 };
 
+const countries = ref([]);
+const selectedCountry = ref("");
+
+// Fetch countries.json dynamically
+const fetchCountries = async () => {
+    try {
+        const response = await fetch('/countries.json'); // Make sure it's in /public
+        countries.value = await response.json();
+    } catch (error) {
+        console.error("Error loading countries:", error);
+    }
+};
+
+// Run on component mount
+onMounted(fetchCountries);
+
+// Generate flag URL dynamically
+const getFlagUrl = (countryCode) => {
+    return `https://flagcdn.com/w40/${countryCode.toLowerCase()}.png`;
+};
 
 </script>
 

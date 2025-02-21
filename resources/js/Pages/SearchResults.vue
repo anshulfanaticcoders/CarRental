@@ -39,7 +39,7 @@ const debounce = (fn, delay) => {
 
 // Use Inertia's form handling
 const form = useForm({
-    seating_capacity: usePage().props.filters.seating_capacity || [],
+    seating_capacity: usePage().props.filters.seating_capacity || '',
     brand: usePage().props.filters.brand || '',
     transmission: usePage().props.filters.transmission || '',
     fuel: usePage().props.filters.fuel || '',
@@ -281,6 +281,13 @@ const priceUnit = computed(() => {
             return 'day';
     }
 });
+
+
+const formatDate = (dateStr) => {
+    const date = new Date(dateStr);
+    return `${String(date.getMonth() + 1).padStart(2, '0')}/${String(date.getDate()).padStart(2, '0')}/${date.getFullYear()}`;
+};
+const showRentalDates = ref(false);
 </script>
 
 <template>
@@ -295,19 +302,20 @@ const priceUnit = computed(() => {
         <div class="full-w-container py-[2rem]">
             <div class="flex items-center gap-3 mb-[2rem]">
                 <img :src=filterIcon alt="">
-            <span class="text-[1.5rem]">Filters</span>
+                <span class="text-[1.5rem]">Filters</span>
             </div>
             <form>
                 <div class="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-6 gap-8">
 
                     <!-- Seating Capacity Filter -->
-                    <div class="flex flex-col p-2 border-[1px] border-customPrimaryColor rounded-[12px] hover:bg-customLightPrimaryColor">
+                    <div
+                        class="flex flex-col p-2 shadow-lg rounded-[12px] hover:bg-customLightPrimaryColor">
                         <div class="flex gap-2">
                             <img :src=seatingIcon alt="">
                             <label for="seating_capacity" class="block text-[1rem] font-medium">Seating Capacity</label>
                         </div>
                         <select v-model="form.seating_capacity" id="seating_capacity"
-                            class="mt-1 block w-full rounded-md border-[1px] border-white shadow-sm text-white cursor-pointer bg-customPrimaryColor p-2">
+                            class="mt-1 block w-full rounded-md border-[1px] border-customLightGrayColor shadow-sm text-customPrimaryColor cursor-pointer p-2">
                             <option value="">Any</option>
                             <option v-for="capacity in $page.props.seatingCapacities" :key="capacity" :value="capacity">
                                 {{ capacity }}
@@ -316,26 +324,28 @@ const priceUnit = computed(() => {
                     </div>
 
                     <!-- Brand Filter -->
-                    <div class="flex flex-col p-2 border-[1px] border-customPrimaryColor rounded-[12px] hover:bg-customLightPrimaryColor">
+                    <div
+                        class="flex flex-col p-2 shadow-lg rounded-[12px] hover:bg-customLightPrimaryColor">
                         <div class="flex gap-2">
                             <img :src=brandIcon alt="" class="w-[3rem]">
                             <label for="brand" class="block text-[1rem] font-medium">Brand</label>
                         </div>
                         <select v-model="form.brand" id="brand"
-                            class="mt-1 block w-full rounded-md border-[1px] border-white shadow-sm text-white cursor-pointer bg-customPrimaryColor p-2">
+                            class="mt-1 block w-full rounded-md border-[1px] border-customLightGrayColor shadow-sm text-customPrimaryColor cursor-pointer p-2">
                             <option value="">All Brands</option>
                             <option v-for="brand in $page.props.brands" :key="brand" :value="brand">{{ brand }}</option>
                         </select>
                     </div>
 
                     <!-- Transmission Filter -->
-                    <div class="flex flex-col p-2 border-[1px] border-customPrimaryColor rounded-[12px] hover:bg-customLightPrimaryColor">
+                    <div
+                        class="flex flex-col p-2 shadow-lg rounded-[12px] hover:bg-customLightPrimaryColor">
                         <div class="flex gap-2">
                             <img :src=transmissionIcon alt="">
                             <label for="transmission" class="block text-[1rem] font-medium">Transmission</label>
                         </div>
                         <select v-model="form.transmission" id="transmission"
-                            class="mt-1 block w-full rounded-md border-[1px] border-white shadow-sm text-white cursor-pointer bg-customPrimaryColor p-2">
+                            class="mt-1 block w-full rounded-md border-[1px] border-customLightGrayColor shadow-sm text-customPrimaryColor cursor-pointer p-2">
                             <option value="">Any</option>
                             <option value="automatic">Automatic</option>
                             <option value="manual">Manual</option>
@@ -343,13 +353,14 @@ const priceUnit = computed(() => {
                     </div>
 
                     <!-- Fuel Filter -->
-                    <div class="flex flex-col p-2 border-[1px] border-customPrimaryColor rounded-[12px] hover:bg-customLightPrimaryColor">
+                    <div
+                        class="flex flex-col p-2 shadow-lg rounded-[12px] hover:bg-customLightPrimaryColor">
                         <div class="flex gap-2">
                             <img :src=fuelIcon alt="">
                             <label for="fuel" class="block text-[1rem] font-medium">Fuel</label>
                         </div>
                         <select v-model="form.fuel" id="fuel"
-                            class="mt-1 block w-full rounded-md border-[1px] border-white shadow-sm text-white cursor-pointer bg-customPrimaryColor p-2">
+                            class="mt-1 block w-full rounded-md border-[1px] border-customLightGrayColor shadow-sm text-customPrimaryColor cursor-pointer p-2">
                             <option value="">Any</option>
                             <option value="petrol">Petrol</option>
                             <option value="diesel">Diesel</option>
@@ -358,13 +369,14 @@ const priceUnit = computed(() => {
                     </div>
 
                     <!-- Price Range Filter -->
-                    <div class="flex flex-col p-2 border-[1px] border-customPrimaryColor rounded-[12px] hover:bg-customLightPrimaryColor">
+                    <div
+                        class="flex flex-col p-2 shadow-lg rounded-[12px] hover:bg-customLightPrimaryColor">
                         <div class="flex gap-2">
                             <img :src=priceIcon alt="">
                             <label for="price_range" class="block text-[1rem] font-medium">Price Range</label>
                         </div>
                         <select v-model="form.price_range" id="price_range"
-                            class="mt-1 block w-full rounded-md border-[1px] border-white shadow-sm text-white cursor-pointer bg-customPrimaryColor p-2">
+                            class="mt-1 block w-full rounded-md border-[1px] border-customLightGrayColor shadow-sm text-customPrimaryColor cursor-pointer p-2">
                             <option value="">Any</option>
                             <option value="0-1000">₹0 - ₹1000</option>
                             <option value="1000-5000">₹1000 - ₹5000</option>
@@ -374,26 +386,28 @@ const priceUnit = computed(() => {
                     </div>
 
                     <!-- Color Filter -->
-                    <div class="flex flex-col p-2 border-[1px] border-customPrimaryColor rounded-[12px] hover:bg-customLightPrimaryColor">
+                    <div
+                        class="flex flex-col p-2 shadow-lg rounded-[12px] hover:bg-customLightPrimaryColor">
                         <div class="flex gap-2">
                             <img :src=colorIcon alt="" class="w-[1.5rem]">
                             <label for="color" class="block text-sm font-medium">Color</label>
                         </div>
                         <select v-model="form.color" id="color"
-                            class="mt-1 block w-full rounded-md border-[1px] border-white shadow-sm text-white cursor-pointer bg-customPrimaryColor p-2">
+                            class="mt-1 block w-full rounded-md border-[1px] border-customLightGrayColor shadow-sm text-customPrimaryColor cursor-pointer p-2">
                             <option value="">Any</option>
                             <option v-for="color in $page.props.colors" :key="color" :value="color">{{ color }}</option>
                         </select>
                     </div>
 
                     <!-- Mileage Filter -->
-                    <div class="flex flex-col p-2 border-[1px] border-customPrimaryColor rounded-[12px] hover:bg-customLightPrimaryColor">
+                    <div
+                        class="flex flex-col p-2 shadow-lg rounded-[12px] hover:bg-customLightPrimaryColor">
                         <div class="flex gap-2">
                             <img :src=mileageIcon2 alt="" class="w-[1.5rem]">
                             <label for="mileage" class="block text-[1rem] font-medium">Mileage</label>
                         </div>
                         <select v-model="form.mileage" id="mileage"
-                            class="mt-1 block w-full rounded-md border-[1px] border-white shadow-sm text-white cursor-pointer bg-customPrimaryColor p-2">
+                            class="mt-1 block w-full rounded-md border-[1px] border-customLightGrayColor shadow-sm text-customPrimaryColor cursor-pointer p-2">
                             <option value="">Any</option>
                             <option value="0-10">0 - 10 km/l</option>
                             <option value="10-20">10 - 20 km/l</option>
@@ -403,12 +417,13 @@ const priceUnit = computed(() => {
                     </div>
 
                     <!-- Package Type Filter -->
-                    <div class="flex flex-col p-2 border-[1px] border-customPrimaryColor rounded-[12px] hover:bg-customLightPrimaryColor">
+                    <div
+                        class="flex flex-col p-2 shadow-lg rounded-[12px] hover:bg-customLightPrimaryColor">
                         <div class="flex gap-2">
                             <label for="package_type" class="block text-[1rem] font-medium">Package Type</label>
                         </div>
                         <select v-model="form.package_type" id="package_type"
-                            class="mt-1 block w-full rounded-md border-[1px] border-white shadow-sm text-white cursor-pointer bg-customPrimaryColor p-2">
+                            class="mt-1 block w-full rounded-md border-[1px] border-customLightGrayColor shadow-sm text-customPrimaryColor cursor-pointer p-2">
                             <option value="day">Price Per Day</option>
                             <option value="week">Price Per Week</option>
                             <option value="month">Price Per Month</option>
@@ -441,15 +456,36 @@ const priceUnit = computed(() => {
                         class="p-[1rem] rounded-[12px] border-[1px] border-[#E7E7E7]">
                         <div class="flex justify-between">
                             <div>
-                                <span class="capitalize bg-green-200 text-customPrimaryColor rounded-[99px] py-1 px-3 font-medium">Available</span>
+                                <span v-if="vehicle.status === 'available'"
+                                    class="capitalize bg-green-200 text-customPrimaryColor rounded-[99px] py-1 px-3 font-medium">
+                                    Available
+                                </span>
+
+                                <div v-if="vehicle.status === 'rented'">
+                                    <span
+                                        class="capitalize bg-[#906F001A] text-[#906F00] rounded-[99px] py-1 px-3 font-medium">
+                                        Rented
+                                    </span>
+                                    <button @click="showRentalDates = !showRentalDates"
+                                        class="ml-2 text-customPrimaryColor underline cursor-pointer">
+                                        {{ showRentalDates ? 'Hide Rental Dates' : 'View Rental Dates' }}
+                                    </button>
+
+                                    <div v-if="showRentalDates" class="mt-2 bg-gray-100 p-2 rounded-lg shadow-md mb-2">
+                                        <span v-for="booking in vehicle.bookings" :key="booking.id">
+                                            {{ formatDate(booking.pickup_date) }} To {{ formatDate(booking.return_date)
+                                            }}
+                                        </span>
+                                    </div>
+                                </div>
                             </div>
                             <div class="column flex justify-end">
-                            <button @click.stop="toggleFavourite(vehicle)" class="heart-icon"
-                                :class="{ 'filled-heart': vehicle.is_favourite }">
-                                <img :src="vehicle.is_favourite ? FilledHeart : Heart" alt="Favorite"
-                                    class="w-full mb-[1rem] transition-colors duration-300" />
-                            </button>
-                        </div>
+                                <button @click.stop="toggleFavourite(vehicle)" class="heart-icon"
+                                    :class="{ 'filled-heart': vehicle.is_favourite }">
+                                    <img :src="vehicle.is_favourite ? FilledHeart : Heart" alt="Favorite"
+                                        class="w-full mb-[1rem] transition-colors duration-300" />
+                                </button>
+                            </div>
                         </div>
                         <Link :href="`/vehicle/${vehicle.id}?package=${form.package_type}`">
                         <div class="column flex flex-col gap-5 items-start">
@@ -484,7 +520,7 @@ const priceUnit = computed(() => {
                                 </div>
                                 <div class="col flex gap-3">
                                     <img :src="mileageIcon" alt="" /><span class="text-[1.15rem]">{{ vehicle.mileage
-                                        }}km/d</span>
+                                    }}km/d</span>
                                 </div>
                             </div>
 

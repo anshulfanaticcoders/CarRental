@@ -34,7 +34,7 @@ class SearchController extends Controller
         $seatingCapacities = Vehicle::distinct('seating_capacity')->pluck('seating_capacity');
 
         // Base query
-        $query = Vehicle::query()->where('status', 'available');
+        $query = Vehicle::query()->whereIn('status', ['available', 'rented']);
 
         // Apply filters
         if (!empty($validated['seating_capacity'])) {
@@ -73,7 +73,7 @@ class SearchController extends Controller
                 }
             });
         }
-        $query->with('images');
+        $query->with('images','bookings');
         // Distance filter (Haversine formula)
         if (!empty($validated['latitude']) && !empty($validated['longitude']) && !empty($validated['radius'])) {
             $radiusInKm = $validated['radius'] / 1000; // Convert meters to kilometers
@@ -106,7 +106,7 @@ class SearchController extends Controller
         }
 
         // Paginate results
-        $vehicles = $query->paginate(3)->withQueryString();
+        $vehicles = $query->paginate(4)->withQueryString();
 
         // Transform distance_in_km to integer
         $vehicles->getCollection()->transform(function ($vehicle) {

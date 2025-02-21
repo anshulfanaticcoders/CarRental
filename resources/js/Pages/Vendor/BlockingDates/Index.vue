@@ -3,7 +3,7 @@
         <div class="flex justify-between items-center mb-4">
             <h2 class="font-semibold text-xl text-gray-800">Manage Blocking Dates</h2>
             <Dialog>
-                <DialogTrigger class="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700">
+                <DialogTrigger class="px-4 py-2 bg-customPrimaryColor text-white rounded hover:bg-[#153b4fdc]">
                     Add Blocking Date
                 </DialogTrigger>
                 <DialogContent>
@@ -120,8 +120,16 @@ const form = ref({ vehicle_id: '', blocking_start_date: '', blocking_end_date: '
 const submitForm = async () => {
     try {
         await axios.post(route('vendor.blocking-dates.store'), form.value);
-        toast.success('Blocking date added successfully.');
-        window.location.reload();
+        toast.success('Blocking date added successfully!', {
+                position: 'top-right',
+                timeout: 1000,
+                closeOnClick: true,
+                pauseOnHover: true,
+                draggable: true,
+            });
+        setTimeout(() => {
+            window.location.reload();
+        }, 1000);
     } catch (error) {
         toast.error('Failed to add blocking date. Please try again.');
     }
@@ -133,8 +141,16 @@ const updateBlockingDate = async (vehicleId) => {
             blocking_start_date: vehicles.value.find(v => v.id === vehicleId).blocking_start_date,
             blocking_end_date: vehicles.value.find(v => v.id === vehicleId).blocking_end_date,
         });
-        toast.success('Blocking date updated successfully.');
-        window.location.reload();
+        toast.success('Blocking date updated successfully!', {
+                position: 'top-right',
+                timeout: 1000,
+                closeOnClick: true,
+                pauseOnHover: true,
+                draggable: true,
+            });
+        setTimeout(() => {
+            window.location.reload();
+        }, 1000);
     } catch (error) {
         toast.error('Failed to update blocking date. Please try again.');
     }
@@ -144,8 +160,16 @@ const removeBlockingDates = async (vehicleId) => {
     if (confirm('Are you sure you want to remove blocking dates for this vehicle?')) {
         try {
             await axios.delete(route('vendor.blocking-dates.destroy', vehicleId));
-            toast.success('Blocking dates removed successfully.');
-            window.location.reload();
+            toast.success('Blocking date removed successfully!', {
+                position: 'top-right',
+                timeout: 1000,
+                closeOnClick: true,
+                pauseOnHover: true,
+                draggable: true,
+            });
+            setTimeout(() => {
+                window.location.reload();
+            }, 1000);
         } catch (error) {
             toast.error('Failed to remove blocking dates. Please try again.');
         }

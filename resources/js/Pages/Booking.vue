@@ -69,6 +69,7 @@ const moveToPrevStep = () => {
 // Getting the vehicle data from api
 const { props } = usePage();
 const vehicle = ref(props.vehicle);
+const user = ref(props.auth?.user || null);
 const packageType = ref(props.query?.packageType || 'day');
 const totalPrice = ref(Number(props.query?.totalPrice) || 0);
 const discountAmount = ref(Number(props.query?.discountAmount) || 0);
@@ -142,13 +143,14 @@ watch([selectedPlan, bookingExtras], storeSelectionData, { deep: true });
 
 // Driver Contact info
 const customer = ref({
-    first_name: "",
-    last_name: "",
-    email: "",
-    phone: "",
+    first_name: user.value?.first_name || "",
+    last_name: user.value?.last_name || "",
+    email: user.value?.email || "",
+    phone: user.value?.phone || "",
     flight_number: "",
     driver_age: null,
 });
+
 
 // Example driver age range
 const ageRange = [21, 22, 23, 24, 25, 26];
@@ -323,7 +325,7 @@ const submitBooking = async () => {
         return;
     }
     isLoading.value = true; // Show loader
-    
+
     try {
         // Load session data
         loadSessionData();
@@ -352,7 +354,7 @@ const submitBooking = async () => {
             return_time: returnTime.value,
             total_days: totalDays,
             base_price: Number(totalPrice.value),
-            preferred_day:packageType.value,
+            preferred_day: packageType.value,
             extra_charges: extraCharges > 0 ? extraCharges : null,
             total_amount: calculateTotal.value,
             discount_amount: Number(discountAmount.value),
@@ -549,7 +551,7 @@ const submitBooking = async () => {
                                 <div class="grid grid-cols-2 gap-[1.5rem]">
                                     <div class="w-full">
                                         <label for="email">Email</label>
-                                        <input id="email" type="email" v-model="customer.email" required
+                                        <input id="email" type="email" v-model="customer.email" required disabled
                                             class="mt-1 block w-full" />
                                     </div>
                                     <div class="w-full">
@@ -644,59 +646,61 @@ const submitBooking = async () => {
                         </div>
 
                         <form @submit.prevent="submitBooking" class="flex flex-col gap-6">
-      <!-- Card Number Field -->
-      <div class="w-[60%] flex flex-col gap-5">
-        <div class="form-group">
-          <label class="block text-sm text-gray-600 mb-2">Card Number</label>
-          <div id="card-number" class="stripe-element h-12 border rounded-lg px-4 py-2"></div>
-        </div>
+                            <!-- Card Number Field -->
+                            <div class="w-[60%] flex flex-col gap-5">
+                                <div class="form-group">
+                                    <label class="block text-sm text-gray-600 mb-2">Card Number</label>
+                                    <div id="card-number" class="stripe-element h-12 border rounded-lg px-4 py-2"></div>
+                                </div>
 
-        <!-- Expiry and CVV -->
-        <div class="grid grid-cols-2 gap-4">
-          <div class="form-group">
-            <label class="block text-sm text-gray-600 mb-2">Expire Date</label>
-            <div id="card-expiry" class="stripe-element h-12 border rounded-lg px-4 py-2"></div>
-          </div>
-          <div class="form-group">
-            <label class="block text-sm text-gray-600 mb-2">CVV</label>
-            <div id="card-cvc" class="stripe-element h-12 border rounded-lg px-4 py-2"></div>
-          </div>
-        </div>
+                                <!-- Expiry and CVV -->
+                                <div class="grid grid-cols-2 gap-4">
+                                    <div class="form-group">
+                                        <label class="block text-sm text-gray-600 mb-2">Expire Date</label>
+                                        <div id="card-expiry" class="stripe-element h-12 border rounded-lg px-4 py-2">
+                                        </div>
+                                    </div>
+                                    <div class="form-group">
+                                        <label class="block text-sm text-gray-600 mb-2">CVV</label>
+                                        <div id="card-cvc" class="stripe-element h-12 border rounded-lg px-4 py-2">
+                                        </div>
+                                    </div>
+                                </div>
 
-        <!-- Terms Checkbox -->
-        <div class="flex items-center gap-2">
-          <input type="checkbox" id="terms" class="rounded border-gray-300" required />
-          <label for="terms" class="text-sm">
-            I have read, understood, and accepted vroome.com
-            <a href="#" class="text-customDarkBlackColor font-bold">Terms & Conditions</a>
-            and
-            <a href="#" class="text-customDarkBlackColor font-bold">Privacy Policy</a>.
-          </label>
-        </div>
+                                <!-- Terms Checkbox -->
+                                <div class="flex items-center gap-2">
+                                    <input type="checkbox" id="terms" class="rounded border-gray-300" required />
+                                    <label for="terms" class="text-sm">
+                                        I have read, understood, and accepted vroome.com
+                                        <a href="#" class="text-customDarkBlackColor font-bold">Terms & Conditions</a>
+                                        and
+                                        <a href="#" class="text-customDarkBlackColor font-bold">Privacy Policy</a>.
+                                    </label>
+                                </div>
 
-        <p class="text-gray-600 text-sm">
-          Your booking will be submitted once you go to payment. You can choose your payment
-          method in the next step.
-        </p>
-      </div>
+                                <p class="text-gray-600 text-sm">
+                                    Your booking will be submitted once you go to payment. You can choose your payment
+                                    method in the next step.
+                                </p>
+                            </div>
 
-      <!-- Button Group -->
-      <div class="flex justify-between gap-4 mt-4">
-        <button type="button" @click="moveToPrevStep" class="button-secondary w-[20%]">
-          Back
-        </button>
-        <PrimaryButton type="submit" class=" w-[20%]">
-          Book Now
-        </PrimaryButton>
-      </div>
+                            <!-- Button Group -->
+                            <div class="flex justify-between gap-4 mt-4">
+                                <button type="button" @click="moveToPrevStep" class="button-secondary w-[20%]">
+                                    Back
+                                </button>
+                                <PrimaryButton type="submit" class=" w-[20%]">
+                                    Book Now
+                                </PrimaryButton>
+                            </div>
 
-      <div id="card-errors" role="alert" class="text-red-600 text-sm"></div>
-    </form>
+                            <div id="card-errors" role="alert" class="text-red-600 text-sm"></div>
+                        </form>
                     </div>
                 </div>
 
                 <div v-if="isLoading" class="fixed z-50 h-full w-full top-0 left-0 bg-[#0000009e]">
-                    <div  class="flex justify-center flex-col items-center h-full w-full">
+                    <div class="flex justify-center flex-col items-center h-full w-full">
                         <img :src=loader alt="" class="w-[200px]">
                         <p class="text-[white] text-[1.5rem]">Please do not refresh the page..waiting for payment</p>
                     </div>
@@ -739,7 +743,7 @@ const submitBooking = async () => {
                                 <div class="flex flex-col gap-1">
                                     <span class="text-[1.25rem] text-medium">{{
                                         vehicle?.location
-                                    }}</span><span class="">{{
+                                        }}</span><span class="">{{
                                             vehicle?.created_at
                                         }}</span>
                                 </div>
@@ -749,7 +753,7 @@ const submitBooking = async () => {
                                 <div class="flex flex-col gap-1">
                                     <span class="text-[1.25rem] text-medium">{{
                                         vehicle?.location
-                                    }}</span><span class="">{{
+                                        }}</span><span class="">{{
                                             vehicle?.created_at
                                         }}</span>
                                 </div>
@@ -770,12 +774,12 @@ const submitBooking = async () => {
                                     <div v-if="selectedPlan" class="flex justify-between items-center text-[1.15rem]">
                                         <span>{{
                                             selectedPlan.plan_type
-                                        }}</span>
+                                            }}</span>
                                         <div>
                                             <strong class="text-[1.5rem] font-medium">€{{
                                                 selectedPlan.plan_value
-                                                }}</strong>
-                                            
+                                            }}</strong>
+
                                         </div>
                                     </div>
                                     <!-- Selected Extras -->
@@ -791,8 +795,8 @@ const submitBooking = async () => {
                                         <div>
                                             <strong class="text-[1.5rem] font-medium">€{{
                                                 extra.price * extra.quantity
-                                                }}</strong>
-                                            
+                                            }}</strong>
+
                                         </div>
                                     </div>
                                 </div>

@@ -248,6 +248,9 @@ const loadSavedDates = () => {
         form.value.time_from = dates.time_from || '';
         form.value.time_to = dates.time_to || '';
     }
+
+    // Load booked dates from props
+    bookedDates.value = props.booked_dates || [];
 };
 
 // Call this in onMounted
@@ -411,7 +414,6 @@ const validateDates = () => {
     const returnDate = new Date(form.value.date_to);
     const diffDays = rentalDuration.value;
 
-    dateError.value = '';
 
     switch (selectedPackage.value) {
         case 'week':
@@ -442,6 +444,98 @@ const validateDates = () => {
     }
 };
 
+const bookedDates = ref(props.booked_dates || []);
+// Create a function to check if a date is booked
+const isDateBooked = (dateStr) => {
+    if (!dateStr || !bookedDates.value.length) return false;
+
+    const checkDate = new Date(dateStr);
+
+    return bookedDates.value.some(({ pickup_date, return_date }) => {
+        const pickupDate = new Date(pickup_date);
+        const returnDate = new Date(return_date);
+
+        // Set times to beginning of day for consistent comparison
+        pickupDate.setHours(0, 0, 0, 0);
+        returnDate.setHours(0, 0, 0, 0);
+        checkDate.setHours(0, 0, 0, 0);
+
+        // Check if the date falls within a booked period
+        return checkDate >= pickupDate && checkDate <= returnDate;
+    });
+};
+
+// Create a function that returns all disabled dates as an array
+const getDisabledDates = () => {
+    if (!bookedDates.value.length) return [];
+
+    const disabledDates = [];
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    bookedDates.value.forEach(({ pickup_date, return_date }) => {
+        const start = new Date(pickup_date);
+        const end = new Date(return_date);
+
+        // For each booking, add all dates between pickup and return
+        for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
+            if (d >= today) { // Only include future dates
+                disabledDates.push(new Date(d).toISOString().split('T')[0]);
+            }
+        }
+    });
+
+    return disabledDates;
+};
+const disabledDates = computed(() => getDisabledDates());
+const maxPickupDate = computed(() => {
+    // Find the furthest future date that isn't booked
+    const today = new Date();
+    const futureDate = new Date(today);
+    futureDate.setMonth(today.getMonth() + 3); // Look 3 months ahead
+    return futureDate.toISOString().split('T')[0];
+});
+
+const handleDateInput = (event, type) => {
+    const selectedDate = event.target.value;
+
+    if (isDateBooked(selectedDate)) {
+        // If the date is booked, prevent selection
+        // toast.error('This date is already booked');
+
+        if (type === 'pickup') {
+            form.value.date_from = '';
+        } else {
+            form.value.date_to = '';
+        }
+
+        // Find next available date
+        const availableDates = findNextAvailableDates(selectedDate);
+        if (availableDates.length) {
+            toast.info(`Next available date: ${availableDates[0]}`);
+        }
+    } else if (type === 'pickup') {
+        // Clear return date when pickup date changes
+        form.value.date_to = '';
+    }
+};
+
+const findNextAvailableDates = (fromDate, count = 5) => {
+    const startDate = new Date(fromDate);
+    const availableDates = [];
+
+    // Look 30 days ahead
+    for (let i = 1; i <= 30 && availableDates.length < count; i++) {
+        startDate.setDate(startDate.getDate() + 1);
+        const dateStr = startDate.toISOString().split('T')[0];
+
+        if (!isDateBooked(dateStr)) {
+            availableDates.push(dateStr);
+        }
+    }
+
+    return availableDates;
+};
 const minReturnDate = computed(() => {
     if (!form.value.date_from) return getCurrentDate();
 
@@ -458,6 +552,14 @@ const minReturnDate = computed(() => {
         default:
             minDate.setDate(pickupDate.getDate() + 1);
     }
+
+    // Ensure minDate is after all booked dates
+    bookedDates.value.forEach(({ return_date }) => {
+        const bookedReturnDate = new Date(return_date);
+        if (bookedReturnDate >= minDate) {
+            minDate.setDate(bookedReturnDate.getDate() + 1);
+        }
+    });
 
     return minDate.toISOString().split('T')[0];
 });
@@ -611,7 +713,7 @@ selectedPackage.value = initialPackageType;
                                         <span class="text-customLightGrayColor text-[1rem]">People</span>
                                         <span class="font-medium text-[1rem]">{{
                                             vehicle?.seating_capacity
-                                        }}</span>
+                                            }}</span>
                                     </div>
                                 </div>
                                 <div class="feature-item items-center flex gap-3">
@@ -620,7 +722,7 @@ selectedPackage.value = initialPackageType;
                                         <span class="text-customLightGrayColor text-[1rem]">Doors</span>
                                         <span class="font-medium text-[1rem]">{{
                                             vehicle?.number_of_doors
-                                        }}</span>
+                                            }}</span>
                                     </div>
                                 </div>
                                 <div class="feature-item items-center flex gap-3">
@@ -629,7 +731,7 @@ selectedPackage.value = initialPackageType;
                                         <span class="text-customLightGrayColor text-[1rem]">Luggage</span>
                                         <span class="font-medium text-[1rem]">{{
                                             vehicle?.luggage_capacity
-                                        }}</span>
+                                            }}</span>
                                     </div>
                                 </div>
                                 <div class="feature-item items-center flex gap-3">
@@ -638,7 +740,7 @@ selectedPackage.value = initialPackageType;
                                         <span class="text-customLightGrayColor text-[1rem]">Transmission</span>
                                         <span class="font-medium capitalize">{{
                                             vehicle?.transmission
-                                        }}</span>
+                                            }}</span>
                                     </div>
                                 </div>
                                 <div class="feature-item items-center flex gap-3">
@@ -647,7 +749,7 @@ selectedPackage.value = initialPackageType;
                                         <span class="text-customLightGrayColor text-[1rem]">Fuel Type</span>
                                         <span class="font-medium capitalize">{{
                                             vehicle?.fuel
-                                        }}</span>
+                                            }}</span>
                                     </div>
                                 </div>
                                 <div class="feature-item items-center flex gap-3">
@@ -826,7 +928,7 @@ selectedPackage.value = initialPackageType;
                                                             <div class="flex items-center gap-3 mb-2">
                                                                 <component :is="pkg.icon" class="w-6 h-6" />
                                                                 <span class="font-semibold text-[1rem]">{{ pkg.label
-                                                                    }}</span>
+                                                                }}</span>
                                                             </div>
                                                             <p class="text-sm text-gray-600 mb-2">{{ pkg.description }}
                                                             </p>
@@ -848,7 +950,8 @@ selectedPackage.value = initialPackageType;
                                                                 class="block text-sm font-medium text-gray-700 mb-2">Pickup
                                                                 Date</label>
                                                             <input type="date" v-model="form.date_from"
-                                                                :min="getCurrentDate()"
+                                                                :min="getCurrentDate()" :max="maxPickupDate"
+                                                                @input="handleDateInput($event, 'pickup')"
                                                                 @change="updateDateTimeSelection"
                                                                 class="w-full p-2 border rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500" />
                                                         </div>
@@ -859,6 +962,7 @@ selectedPackage.value = initialPackageType;
                                                                 Date</label>
                                                             <input type="date" v-model="form.date_to"
                                                                 :min="minReturnDate" :max="maxReturnDate"
+                                                                @input="handleDateInput($event, 'return')"
                                                                 @change="updateDateTimeSelection"
                                                                 class="w-full p-2 border rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500" />
                                                         </div>
@@ -900,12 +1004,12 @@ selectedPackage.value = initialPackageType;
                                                         class="mt-6 p-4 bg-blue-50 rounded-lg">
                                                         <p class="text-lg font-semibold">
                                                             Current Price: {{formatPrice(pricingPackages.find(pkg =>
-                                                            pkg.id === selectedPackage).price) }}
+                                                                pkg.id === selectedPackage).price)}}
                                                         </p>
                                                         <p v-if="pricingPackages.find(pkg => pkg.id === selectedPackage).discount"
                                                             class="text-lg text-green-600">
                                                             Discount: -{{formatPrice(pricingPackages.find(pkg => pkg.id
-                                                            === selectedPackage).discount)}}
+                                                                === selectedPackage).discount)}}
                                                         </p>
                                                         <p class="text-[1.75rem] font-semibold">
                                                             Total Price: {{ formatPrice(calculateTotalPrice) }}

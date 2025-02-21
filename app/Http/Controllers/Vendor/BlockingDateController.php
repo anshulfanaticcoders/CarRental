@@ -20,43 +20,40 @@ class BlockingDateController extends Controller
     }
 
     public function store(Request $request)
-    {
-        $validated = $request->validate([
-            'vehicle_id' => 'required|exists:vehicles,id',
-            'blocking_start_date' => 'required|date',
-            'blocking_end_date' => 'required|date|after_or_equal:blocking_start_date',
-        ]);
+{
+    $validated = $request->validate([
+        'vehicle_id' => 'required|exists:vehicles,id',
+        'blocking_start_date' => 'required|date',
+        'blocking_end_date' => 'required|date|after_or_equal:blocking_start_date',
+    ]);
 
-        $vehicle = Vehicle::findOrFail($request->vehicle_id);
-        $vehicle->update($validated);
+    $vehicle = Vehicle::findOrFail($request->vehicle_id);
+    $vehicle->update($validated);
 
-        return redirect()->route('vendor.blocking-dates.index')
-            ->with('success', 'Blocking dates added successfully.');
-    }
+    return response()->json(['message' => 'Blocking dates added successfully.']);
+}
 
-    public function update(Request $request, $id)
-    {
-        $validated = $request->validate([
-            'blocking_start_date' => 'required|date',
-            'blocking_end_date' => 'required|date|after_or_equal:blocking_start_date',
-        ]);
+public function update(Request $request, $id)
+{
+    $validated = $request->validate([
+        'blocking_start_date' => 'required|date',
+        'blocking_end_date' => 'required|date|after_or_equal:blocking_start_date',
+    ]);
 
-        $vehicle = Vehicle::where('vendor_id', auth()->id())->findOrFail($id);
-        $vehicle->update($validated);
+    $vehicle = Vehicle::where('vendor_id', auth()->id())->findOrFail($id);
+    $vehicle->update($validated);
 
-        return redirect()->route('vendor.blocking-dates.index')
-            ->with('success', 'Blocking dates updated successfully.');
-    }
+    return response()->json(['message' => 'Blocking dates updated successfully.']);
+}
 
-    public function destroy($id)
-    {
-        $vehicle = Vehicle::where('vendor_id', auth()->id())->findOrFail($id);
-        $vehicle->update([
-            'blocking_start_date' => null,
-            'blocking_end_date' => null,
-        ]);
+public function destroy($id)
+{
+    $vehicle = Vehicle::where('vendor_id', auth()->id())->findOrFail($id);
+    $vehicle->update([
+        'blocking_start_date' => null,
+        'blocking_end_date' => null,
+    ]);
 
-        return redirect()->route('vendor.blocking-dates.index')
-            ->with('success', 'Blocking dates removed successfully.');
-    }
+    return response()->json(['message' => 'Blocking dates removed successfully.']);
+}
 }

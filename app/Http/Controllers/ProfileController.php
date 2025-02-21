@@ -163,5 +163,13 @@ class ProfileController extends Controller
         }
     }
 
+// Add this method to fetch the current user data and render the Booking/Create page
+public function getUserForBooking()
+{
+    $user = Auth::user()->load('profile');
 
+    return Inertia::render('Booking', [
+        'user' => $user,
+    ]);
+}
 }
