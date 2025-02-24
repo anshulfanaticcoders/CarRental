@@ -1,5 +1,5 @@
 <script setup>
-import { ref, computed, onMounted } from "vue";
+import { ref, computed, onMounted, watch } from "vue";
 import { Link, usePage } from "@inertiajs/vue3";
 import chevronIcon from "../../assets/chaveronDown.svg";
 import profileIcon from "../../assets/userDashIcon.svg";
@@ -13,10 +13,13 @@ import clockIcon from "../../assets/clockIcon.svg";
 import dateblockingIcon from "../../assets/dateblockingIcon.svg";
 
 // Existing logic
+const user = ref(null);
 const booking = ref(null);
 const payment = ref(null);
 const vehicle = ref(null);
 const error = ref(null);
+const userId = usePage().props.auth.user.id;
+
 onMounted(async () => {
   const paymentIntentId = usePage().props.payment_intent;
 
@@ -71,7 +74,7 @@ const menus = [
 ];
 
 const otherLinks = [
-  { name: "Inbox", path: "/inbox", icon: inboxIcon },
+  { name: "Inbox", path: `/messages/${userId}`, icon: inboxIcon },
   { name: "Favorites", path: "/favourites", icon: favoritesIcon },
   { name: "My Reviews", path: "/review", icon: reviewsIcon },
 ];
@@ -103,7 +106,7 @@ const vendorOtherLinks = [
   { name: "Payment History", path: "/vendor/payments", icon: clockIcon },
   { name: "Bookings", path: "/bookings", icon: vehiclesIcon },
   { name: "Date Blocking", path: "/blocking-dates", icon: dateblockingIcon },
-  { name: "Inbox", path: "/vendor-inbox", icon: inboxIcon },
+  { name: "Inbox", path: `/messages/${userId}`, icon: inboxIcon },
   { name: "Customer Reviews", path: "/customer-reviews", icon: reviewsIcon },
 ];
 
@@ -154,7 +157,7 @@ onMounted(() => {
 
 import axios from "axios";
 
-const user = ref(null);
+
 
 const fetchUserProfile = async () => {
   try {
@@ -172,6 +175,8 @@ const fetchUserProfile = async () => {
 };
 
 onMounted(fetchUserProfile);
+
+
 </script>
 
 <template>

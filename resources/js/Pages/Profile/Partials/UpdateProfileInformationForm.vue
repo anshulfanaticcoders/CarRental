@@ -45,7 +45,7 @@ watch(() => form.title, (newTitle) => {
 });
 
 
-const avatarPreview = ref(profile?.avatar || '');
+const avatarPreview = ref(profile?.avatar ? `/storage/${profile.avatar}` : '/storage/avatars/default-avatar.svg');
 
 function handleAvatarUpload(event) {
     const file = event.target.files[0];
@@ -56,15 +56,16 @@ function handleAvatarUpload(event) {
 }
 const handleSubmit = () => {
     form.post(route('profile.update'), {
-            onSuccess: () => {
-                toast.success('Profile updated successfully!', {
-                    position: 'top-right',
-                    timeout: 3000,
-                    closeOnClick: true,
-                    pauseOnHover: true,
-                    draggable: true,
-                });
-            },
+        onSuccess: () => {
+            toast.success('Profile updated successfully!', {
+                position: 'top-right',
+                timeout: 3000,
+                closeOnClick: true,
+                pauseOnHover: true,
+                draggable: true,
+            });
+            window.location.reload();
+        },
     });
 };
 </script>
@@ -77,21 +78,21 @@ const handleSubmit = () => {
     <section v-bind="$attrs">
         <form @submit.prevent="handleSubmit" class="mt-6 space-y-6">
             <div>
-                <!-- If avatarPreview is not set, show the default avatar or the uploaded avatar -->
-                <div v-if="!avatarPreview" class="mt-4">
-                    <img :src="'/storage/avatars/default-avatar.svg'" alt="Profile Picture" class="w-24 h-24 rounded-full object-cover" />
+                <!-- Avatar preview with edit button -->
+                <div class="relative w-24 h-24">
+                    <img :src="avatarPreview" alt="User Avatar" class="w-24 h-24 rounded-full object-cover" />
+                    <button type="button" @click="() => $refs.avatarInput.click()"
+                        class="absolute bottom-0 right-0 bg-gray-700 text-white p-1 rounded-full">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                            <path
+                                d="M17.414 2.586a2 2 0 00-2.828 0L6 11.172V14h2.828l8.586-8.586a2 2 0 000-2.828zM5 15v1a2 2 0 002 2h1a2 2 0 002-2v-1H5z" />
+                        </svg>
+                    </button>
                 </div>
-                <img v-else
-                    :src="user?.profile.avatar ? `/storage/${user?.profile.avatar}` : '/storage/avatars/default-avatar.svg'"
-                    alt="User Avatar" class="w-24 h-24 rounded-full object-cover" />
-            </div>
-            <div>
-                <InputLabel for="avatar" value="Profile Picture" />
-                <input id="avatar" type="file" accept="image/*" class="mt-1 block w-full"
+                <input ref="avatarInput" id="avatar" type="file" accept="image/*" class="hidden"
                     @change="handleAvatarUpload" />
                 <InputError class="mt-2" :message="form.errors.avatar" />
             </div>
-
             <div class="grid grid-cols-2 gap-8">
                 <div class="col-span-2 w-[6rem]">
                     <InputLabel for="title" value="Title" />

@@ -10,7 +10,7 @@ class GeocodingController extends Controller
     public function autocomplete(Request $request)
     {
         $response = Http::get('https://api.stadiamaps.com/geocoding/v1/autocomplete', [
-            'api_key' => '44ebd3d8-2401-4dab-825b-ea0c5e59294b',
+            'api_key' => '9ea15dfe-b025-47ac-9a0e-cc35cc26891f',
             'text' => $request->query('text')
         ]);
         

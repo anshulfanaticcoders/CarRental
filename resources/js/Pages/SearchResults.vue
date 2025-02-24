@@ -227,36 +227,44 @@ const handleMapToggle = (value) => {
 
 // Function to toggle favourite status
 import { useToast } from 'vue-toastification'; // Reuse your existing import
+import { Inertia } from "@inertiajs/inertia";
 const toast = useToast(); // Initialize toast
 const toggleFavourite = async (vehicle) => {
-    const action = vehicle.is_favourite ? 'removed from' : 'added to';
+    if (!props.auth?.user) {
+        // Redirect to login if user is not authenticated
+        return Inertia.visit('/login');
+    }
+
     const endpoint = vehicle.is_favourite
         ? `/vehicles/${vehicle.id}/unfavourite`
         : `/vehicles/${vehicle.id}/favourite`;
 
     try {
         await axios.post(endpoint);
-        vehicle.is_favourite = !vehicle.is_favourite; // Toggle the favorite state
+        vehicle.is_favourite = !vehicle.is_favourite;
 
-        // Show toast notification
-        toast.success(`Vehicle ${action} favorites!`, {
-            position: 'top-right', // Match your existing toast position
-            timeout: 3000, // Match your existing timeout
-            closeOnClick: true, // Match your existing settings
+        toast.success(`Vehicle ${vehicle.is_favourite ? 'added to' : 'removed from'} favorites!`, {
+            position: 'top-right',
+            timeout: 3000,
+            closeOnClick: true,
             pauseOnHover: true,
             draggable: true,
-            icon: vehicle.is_favourite ? '❤️' : '💔', // Add emoji icons
+            icon: vehicle.is_favourite ? '❤️' : '💔',
         });
 
     } catch (error) {
-        toast.error('Failed to update favorites', {
-            position: 'top-right', // Match your existing toast position
-            timeout: 3000, // Match your existing timeout
-            closeOnClick: true, // Match your existing settings
-            pauseOnHover: true,
-            draggable: true,
-        });
-        console.error('Error:', error);
+        if (error.response && error.response.status === 401) {
+            // If user is not authenticated, redirect to login
+            Inertia.visit('/login');
+        } else {
+            toast.error('Failed to update favorites', {
+                position: 'top-right',
+                timeout: 3000,
+                closeOnClick: true,
+                pauseOnHover: true,
+                draggable: true,
+            });
+        }
     }
 };
 
@@ -487,7 +495,7 @@ const showRentalDates = ref(false);
                                 </button>
                             </div>
                         </div>
-                        <Link :href="`/vehicle/${vehicle.id}?package=${form.package_type}`">
+                        <a :href="`/vehicle/${vehicle.id}?package=${form.package_type}`">
                         <div class="column flex flex-col gap-5 items-start">
                             <img v-if="vehicle.images" :src="`/storage/${vehicle.images.find(
                                 (image) =>
@@ -545,7 +553,7 @@ const showRentalDates = ref(false);
                                 <img :src="goIcon" alt="" />
                             </div>
                         </div>
-                        </Link>
+                        </a>
                     </div>
                 </div>
                 <!-- Pagination -->

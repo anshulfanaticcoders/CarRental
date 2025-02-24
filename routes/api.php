@@ -6,6 +6,7 @@ use App\Http\Controllers\BookingController;
 use App\Http\Controllers\BookingExtraController;
 use App\Http\Controllers\CurrencyController;
 use App\Http\Controllers\PlanController;
+use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\ReviewController;
 use App\Http\Controllers\UserDocumentController;
 use App\Http\Controllers\VehicleController;

@@ -18,6 +18,8 @@ use App\Http\Controllers\Admin\VendorsReportController;
 use App\Http\Controllers\BookingController;
 use App\Http\Controllers\FavoriteController;
 use App\Http\Controllers\GeocodingController;
+use App\Http\Controllers\MessageController;
+use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\ReviewController;
 use App\Http\Controllers\SearchController;
@@ -69,6 +71,16 @@ Route::middleware(['auth'])->group(function () {
     // Route::inertia('vehicle-listing', 'Auth/VehicleListing');
 
     Route::get('/vehicles', [VehicleController::class, 'index'])->name('vehicles.index');
+
+    // Messages Routes
+    Route::get('/messages', [MessageController::class, 'index'])->name('messages.index');
+    Route::get('/messages/{receiverId}', [MessageController::class, 'show'])->name('messages.show');
+    Route::post('/messages', [MessageController::class, 'store'])->name('messages.store');
+    Route::post('/messages/{message}/read', [MessageController::class, 'markAsRead'])->name('messages.read');
+    
+    // Notifications Routes
+    Route::get('/notifications', [NotificationController::class, 'index'])->name('notifications.index');
+    Route::post('/notifications/{notification}/read', [NotificationController::class, 'markAsRead'])->name('notifications.read');
 });
 Route::post('/vehicles', [VehicleController::class, 'store'])->name('vehicles.store');
 Route::get('/vehicles', [VehicleController::class, 'index'])->name('vehicles.index');
@@ -214,7 +226,6 @@ Route::middleware(['auth', 'role:customer'])->group(function () {
 
 Route::middleware(['auth', 'vendor.status'])->group(function () {
     Route::get('/vehicles/create', [VehicleController::class, 'create'])->name('vehicles.create');
-    // Route::get('/vendor/bookings', [BookingController::class, 'getAllBookings'])->name('vendor.bookings');
     Route::inertia('vehicle-listing', 'Auth/VehicleListing');
 });
 require __DIR__ . '/auth.php';

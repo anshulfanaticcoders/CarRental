@@ -11,6 +11,9 @@ class FavoriteController extends Controller
     // Add a vehicle to favorites
     public function favourite(Vehicle $vehicle)
     {
+        if (!Auth::check()) {
+            return response()->json(['message' => 'Unauthorized'], 401);
+        }
         $user = Auth::user();
         $user->favorites()->syncWithoutDetaching([$vehicle->id]);
 
@@ -20,6 +23,9 @@ class FavoriteController extends Controller
     // Remove a vehicle from favorites
     public function unfavourite(Vehicle $vehicle)
     {
+        if (!Auth::check()) {
+            return response()->json(['message' => 'Unauthorized'], 401);
+        }
         $user = Auth::user();
         $user->favorites()->detach($vehicle->id);
 

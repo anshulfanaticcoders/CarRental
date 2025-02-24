@@ -123,59 +123,98 @@
                         <!-- Transmission -->
                         <div>
                             <InputLabel for="transmission">Transmission:</InputLabel>
-                            <select v-model="form.transmission" id="transmission" required>
-                                <option value="manual">Manual</option>
-                                <option value="automatic">Automatic</option>
-                            </select>
+                            <Select v-model="form.transmission">
+                                <SelectTrigger class="w-full p-[1.5rem] border-customLightGrayColor rounded-[12px]">
+                                    <SelectValue :placeholder="form.transmission || 'Select transmission type'" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectGroup>
+                                        <SelectLabel>Transmission</SelectLabel>
+                                        <SelectItem value="manual">Manual</SelectItem>
+                                        <SelectItem value="automatic">Automatic</SelectItem>
+                                    </SelectGroup>
+                                </SelectContent>
+                            </Select>
                         </div>
+
 
                         <!-- Fuel -->
                         <div>
                             <InputLabel for="fuel">Fuel:</InputLabel>
-                            <select v-model="form.fuel" id="fuel" required>
-                                <option value="petrol">Petrol</option>
-                                <option value="diesel">Diesel</option>
-                                <option value="electric">Electric</option>
-                                <option value="hybrid">Hybrid</option>
-                            </select>
+                            <Select v-model="form.fuel">
+                                <SelectTrigger class="w-full p-[1.5rem] border-customLightGrayColor rounded-[12px]">
+                                    <SelectValue :placeholder="form.fuel || 'Select fuel type'" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectGroup>
+                                        <SelectLabel>Fuel Type</SelectLabel>
+                                        <SelectItem value="petrol">Petrol</SelectItem>
+                                        <SelectItem value="diesel">Diesel</SelectItem>
+                                        <SelectItem value="electric">Electric</SelectItem>
+                                        <SelectItem value="hybrid">Hybrid</SelectItem>
+                                    </SelectGroup>
+                                </SelectContent>
+                            </Select>
                         </div>
+
 
                         <!-- Seating Capacity -->
                         <div>
-                            <InputLabel for="seating_capacity">Seating Capacity:</InputLabel>
-                            <select v-model="form.seating_capacity" id="seating_capacity" required>
-                                <option value="1">1</option>
-                                <option value="2">2</option>
-                                <option value="3">3</option>
-                                <option value="4">4</option>
-                                <option value="5">5</option>
-                                <option value="6">6</option>
-                                <option value="7">7</option>
-                                <option value="8">8</option>
-                            </select>
+                            <Label for="seating_capacity">Seating Capacity:</Label>
+                            <Select v-model="form.seating_capacity">
+                                <SelectTrigger class="w-full p-[1.5rem] border-customLightGrayColor rounded-[12px]">
+                                    <SelectValue :placeholder="form.seating_capacity || 'Select seating capacity'" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectGroup>
+                                        <SelectLabel>Seating Capacity</SelectLabel>
+                                        <SelectItem v-for="capacity in [1, 2, 3, 4, 5, 6, 7, 8]" :key="capacity"
+                                            :value="capacity">
+                                            {{ capacity }}
+                                        </SelectItem>
+                                    </SelectGroup>
+                                </SelectContent>
+                            </Select>
                         </div>
+
 
                         <!-- Number of Doors -->
                         <div>
                             <InputLabel for="number_of_doors">Number of Doors:</InputLabel>
-                            <select v-model="form.number_of_doors" id="number_of_doors" required>
-                                <option value="2">2</option>
-                                <option value="4">4</option>
-                                <option value="6">6</option>
-                            </select>
+                            <Select v-model="form.number_of_doors">
+                                <SelectTrigger class="w-full p-[1.5rem] border-customLightGrayColor rounded-[12px]">
+                                    <SelectValue :placeholder="form.number_of_doors || 'Select number of doors'" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectGroup>
+                                        <SelectLabel>Number of Doors</SelectLabel>
+                                        <SelectItem v-for="doors in [2, 4, 6]" :key="doors" :value="doors">
+                                            {{ doors }}
+                                        </SelectItem>
+                                    </SelectGroup>
+                                </SelectContent>
+                            </Select>
                         </div>
+
 
                         <!-- Luggage Capacity -->
                         <div>
                             <InputLabel for="luggage_capacity">Luggage Capacity:</InputLabel>
-                            <select v-model="form.luggage_capacity" id="luggage_capacity" required>
-                                <option value="0">0</option>
-                                <option value="1">1</option>
-                                <option value="2">2</option>
-                                <option value="3">3</option>
-                                <option value="4">4</option>
-                                <option value="5">5</option>
-                            </select>
+                            <Select v-model="form.luggage_capacity">
+                                <SelectTrigger class="w-full p-[1.5rem] border-customLightGrayColor rounded-[12px]">
+                                    <SelectValue placeholder="Select luggage capacity" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectGroup>
+                                        <SelectLabel>Luggage Capacity</SelectLabel>
+                                        <SelectItem v-for="capacity in [0, 1, 2, 3, 4, 5]" :key="capacity"
+                                            :value="capacity">
+                                            {{ capacity }}
+                                        </SelectItem>
+                                    </SelectGroup>
+                                </SelectContent>
+                            </Select>
+
                         </div>
 
                         <!-- Horsepower -->
@@ -201,11 +240,20 @@
                         <!-- Status -->
                         <div>
                             <InputLabel for="status">Status:</InputLabel>
-                            <select v-model="form.status" id="status" required>
-                                <option value="available">Available</option>
-                                <option value="rented">Rented</option>
-                                <option value="maintenance">Maintenance</option>
-                            </select>
+                            <Select v-model="form.status">
+                                <SelectTrigger class="w-full p-[1.5rem] border-customLightGrayColor rounded-[12px]">
+                                    <SelectValue placeholder="Select status" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectGroup>
+                                        <SelectLabel>Status</SelectLabel>
+                                        <SelectItem value="available">Available</SelectItem>
+                                        <SelectItem value="rented">Rented</SelectItem>
+                                        <SelectItem value="maintenance">Maintenance</SelectItem>
+                                    </SelectGroup>
+                                </SelectContent>
+                            </Select>
+
                         </div>
                     </div>
 
@@ -309,13 +357,21 @@
                             <InputLabel class="text-black" for="registration_country">Registration Country:</InputLabel>
 
                             <div class="relative">
-                                <select v-model="form.registration_country"
-                                    class="w-full  appearance-none" id="registration_country">
-                                    <option value="" disabled>Select a country</option>
-                                    <option v-for="country in countries" :key="country.code" :value="country.code">
-                                        {{ country.name }}
-                                    </option>
-                                </select>
+                                <Select v-model="form.registration_country">
+                                    <SelectTrigger class="w-full p-[1.5rem] border-customLightGrayColor rounded-[12px]">
+                                        <SelectValue placeholder="Select a country" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        <SelectGroup>
+                                            <SelectLabel>Countries</SelectLabel>
+                                            <SelectItem v-for="country in countries" :key="country.code"
+                                                :value="country.code">
+                                                {{ country.name }}
+                                            </SelectItem>
+                                        </SelectGroup>
+                                    </SelectContent>
+                                </Select>
+
 
                                 <!-- Dynamic Flag -->
                                 <img v-if="form.registration_country" :src="getFlagUrl(form.registration_country)"
@@ -782,7 +838,7 @@ import vendorBgimage from "../../../assets/vendorRegisterbgImage.png";
 import warningSign from "../../../assets/WhiteWarningCircle.svg";
 import circleImg from "../../../assets/circle.png";
 import uploadIcon from "../../../assets/uploadIcon.svg";
-import { computed, onMounted, reactive, ref } from "vue";
+import { computed, onMounted, reactive, ref, watch } from "vue";
 import PrimaryButton from "@/Components/PrimaryButton.vue";
 import LocationPicker from "@/Components/LocationPicker.vue";
 import axios from "axios";
@@ -792,6 +848,9 @@ import ApplicationLogo from "@/Components/ApplicationLogo.vue";
 import L from 'leaflet' // Import Leaflet
 import 'leaflet/dist/leaflet.css';
 import { useToast } from 'vue-toastification'; // Add this import
+import Select from "@/Components/ui/select/Select.vue";
+import SelectItem from "@/Components/ui/select/SelectItem.vue";
+import { SelectContent, SelectGroup, SelectLabel, SelectTrigger, SelectValue } from "@/Components/ui/select";
 const toast = useToast(); // Initialize toast
 // Form data
 const form = useForm({
@@ -946,7 +1005,7 @@ onMounted(() => {
 });
 let map = null;
 let marker = null // Marker instance
-const currentStep = ref(2);
+const currentStep = ref(0);
 
 const nextStep = () => {
     let isValid = true;
@@ -1077,23 +1136,35 @@ const initializeMap = () => {
 const countries = ref([]);
 const selectedCountry = ref("");
 
-// Fetch countries.json dynamically
+
 const fetchCountries = async () => {
     try {
-        const response = await fetch('/countries.json'); // Make sure it's in /public
+        const response = await fetch('/countries.json'); // Ensure it's in /public
         countries.value = await response.json();
     } catch (error) {
         console.error("Error loading countries:", error);
     }
 };
 
-// Run on component mount
 onMounted(fetchCountries);
 
-// Generate flag URL dynamically
+// Get flag URL
 const getFlagUrl = (countryCode) => {
     return `https://flagcdn.com/w40/${countryCode.toLowerCase()}.png`;
 };
+
+// Get phone code based on selected country
+const selectedPhoneCode = computed(() => {
+    const country = countries.value.find(c => c.code === form.registration_country);
+    return country ? `${country.phone_code} ` : "";
+});
+
+// Watch for country changes and update phone number prefix
+watch(() => form.registration_country, (newVal) => {
+    if (newVal) {
+        form.phone_number = selectedPhoneCode.value; // Update phone number with code
+    }
+});
 
 </script>
 
@@ -1270,7 +1341,7 @@ textarea,
 select {
     border-radius: 0.75rem;
     border: 1px solid rgba(43, 43, 43, 0.50) !important;
-    padding: 1rem;
+    padding: 0.95rem;
 }
 
 .image-preview-container {

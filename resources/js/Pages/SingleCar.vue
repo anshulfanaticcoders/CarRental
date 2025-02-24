@@ -43,6 +43,7 @@ import { usePage } from "@inertiajs/vue3";
 
 const { props } = usePage(); // Get the props passed from the controller
 const vehicle = ref(props.vehicle);
+const user = ref(null);
 const reviews = ref([]);
 const isLoading = ref(true);
 const plugin = Autoplay({
@@ -231,6 +232,7 @@ const returnTimeOptions = [
 const updateDateTimeSelection = () => {
     // Save to session storage
     sessionStorage.setItem('rentalDates', JSON.stringify({
+        vehicle_id: vehicle.value.id, // Include vehicle ID in the stored data
         date_from: form.value.date_from,
         date_to: form.value.date_to,
         time_from: form.value.time_from,
@@ -238,21 +240,35 @@ const updateDateTimeSelection = () => {
     }));
 };
 
+watch(() => vehicle.value.id, (newId, oldId) => {
+    if (newId !== oldId) {
+        clearStoredRentalDates();
+    }
+});
+const clearStoredRentalDates = () => {
+    sessionStorage.removeItem('rentalDates');
+    form.value.date_from = '';
+    form.value.date_to = '';
+    form.value.time_from = '';
+    form.value.time_to = '';
+};
+
 // Function to load saved dates from session storage
 const loadSavedDates = () => {
     const savedDates = sessionStorage.getItem('rentalDates');
     if (savedDates) {
         const dates = JSON.parse(savedDates);
-        form.value.date_from = dates.date_from || '';
-        form.value.date_to = dates.date_to || '';
-        form.value.time_from = dates.time_from || '';
-        form.value.time_to = dates.time_to || '';
+        if (dates.vehicle_id === vehicle.value.id) { // Check if the saved data matches the current vehicle ID
+            form.value.date_from = dates.date_from || '';
+            form.value.date_to = dates.date_to || '';
+            form.value.time_from = dates.time_from || '';
+            form.value.time_to = dates.time_to || '';
+        }
     }
 
     // Load booked dates from props
     bookedDates.value = props.booked_dates || [];
 };
-
 // Call this in onMounted
 onMounted(() => {
     loadSavedDates();
@@ -290,7 +306,11 @@ const validateRentalDetails = () => {
 import { useToast } from 'vue-toastification';
 const toast = useToast();
 const toggleFavourite = async (vehicle) => {
-    const action = vehicle.is_favourite ? 'removed from' : 'added to';
+    if (!props.auth?.user) {
+        // Redirect to login if user is not authenticated
+        return Inertia.visit('/login');
+    }
+
     const endpoint = vehicle.is_favourite
         ? `/vehicles/${vehicle.id}/unfavourite`
         : `/vehicles/${vehicle.id}/favourite`;
@@ -299,8 +319,7 @@ const toggleFavourite = async (vehicle) => {
         await axios.post(endpoint);
         vehicle.is_favourite = !vehicle.is_favourite;
 
-        // Show toast notification
-        toast.success(`Vehicle ${action} favorites!`, {
+        toast.success(`Vehicle ${vehicle.is_favourite ? 'added to' : 'removed from'} favorites!`, {
             position: 'top-right',
             timeout: 3000,
             closeOnClick: true,
@@ -310,14 +329,18 @@ const toggleFavourite = async (vehicle) => {
         });
 
     } catch (error) {
-        toast.error('Failed to update favorites', {
-            position: 'top-right',
-            timeout: 3000,
-            closeOnClick: true,
-            pauseOnHover: true,
-            draggable: true,
-        });
-        console.error('Error:', error);
+        if (error.response && error.response.status === 401) {
+            // If user is not authenticated, redirect to login
+            Inertia.visit('/login');
+        } else {
+            toast.error('Failed to update favorites', {
+                position: 'top-right',
+                timeout: 3000,
+                closeOnClick: true,
+                pauseOnHover: true,
+                draggable: true,
+            });
+        }
     }
 };
 
@@ -326,6 +349,7 @@ import { Calendar, Clock } from 'lucide-vue-next';
 
 import { Alert, AlertDescription } from '@/Components/ui/alert';
 import { CardHeader, CardTitle } from "@/Components/ui/card";
+import { Inertia } from "@inertiajs/inertia";
 
 const selectedPackage = ref('day');
 const dateError = ref('');
@@ -444,50 +468,87 @@ const validateDates = () => {
     }
 };
 
+
+const blockedStartDate = props.vehicle.blocking_start_date;
+const blockedEndDate = props.vehicle.blocking_end_date;
 const bookedDates = ref(props.booked_dates || []);
+const blockedDates = ref([]);
+// Add blocked dates to blockedDates array
+if (blockedStartDate && blockedEndDate) {
+    blockedDates.value.push({
+        blocking_start_date: blockedStartDate,
+        blocking_end_date: blockedEndDate
+    });
+}
+
 // Create a function to check if a date is booked
 const isDateBooked = (dateStr) => {
-    if (!dateStr || !bookedDates.value.length) return false;
+    if (!dateStr || (!bookedDates.value.length && !blockedDates.value.length)) return false;
 
     const checkDate = new Date(dateStr);
+    checkDate.setHours(0, 0, 0, 0);
 
     return bookedDates.value.some(({ pickup_date, return_date }) => {
         const pickupDate = new Date(pickup_date);
         const returnDate = new Date(return_date);
-
-        // Set times to beginning of day for consistent comparison
         pickupDate.setHours(0, 0, 0, 0);
         returnDate.setHours(0, 0, 0, 0);
-        checkDate.setHours(0, 0, 0, 0);
-
-        // Check if the date falls within a booked period
         return checkDate >= pickupDate && checkDate <= returnDate;
+    }) || blockedDates.value.some(({ blocking_start_date, blocking_end_date }) => {
+        const startDate = new Date(blocking_start_date);
+        const endDate = new Date(blocking_end_date);
+        startDate.setHours(0, 0, 0, 0);
+        endDate.setHours(0, 0, 0, 0);
+        return checkDate >= startDate && checkDate <= endDate;
+    });
+};
+
+const isDateRangeBooked = (startDateStr, endDateStr) => {
+    const startDate = new Date(startDateStr);
+    const endDate = new Date(endDateStr);
+    startDate.setHours(0, 0, 0, 0);
+    endDate.setHours(0, 0, 0, 0);
+
+    return bookedDates.value.some(({ pickup_date, return_date }) => {
+        const pickupDate = new Date(pickup_date);
+        const returnDate = new Date(return_date);
+        pickupDate.setHours(0, 0, 0, 0);
+        returnDate.setHours(0, 0, 0, 0);
+        return (startDate <= returnDate && endDate >= pickupDate);
+    }) || blockedDates.value.some(({ blocking_start_date, blocking_end_date }) => {
+        const blockStartDate = new Date(blocking_start_date);
+        const blockEndDate = new Date(blocking_end_date);
+        blockStartDate.setHours(0, 0, 0, 0);
+        blockEndDate.setHours(0, 0, 0, 0);
+        return (startDate <= blockEndDate && endDate >= blockStartDate);
     });
 };
 
 // Create a function that returns all disabled dates as an array
 const getDisabledDates = () => {
-    if (!bookedDates.value.length) return [];
-
     const disabledDates = [];
     const today = new Date();
     today.setHours(0, 0, 0, 0);
 
-    bookedDates.value.forEach(({ pickup_date, return_date }) => {
-        const start = new Date(pickup_date);
-        const end = new Date(return_date);
-
-        // For each booking, add all dates between pickup and return
-        for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
-            if (d >= today) { // Only include future dates
-                disabledDates.push(new Date(d).toISOString().split('T')[0]);
+    const addDisabledDates = (dates, startProp, endProp) => {
+        dates.forEach(dateRange => {
+            const start = new Date(dateRange[startProp]);
+            const end = new Date(dateRange[endProp]);
+            for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
+                if (d >= today) {
+                    disabledDates.push(new Date(d).toISOString().split('T')[0]);
+                }
             }
-        }
-    });
+        });
+    };
+
+    addDisabledDates(bookedDates.value, 'pickup_date', 'return_date');
+    addDisabledDates(blockedDates.value, 'blocking_start_date', 'blocking_end_date');
 
     return disabledDates;
 };
 const disabledDates = computed(() => getDisabledDates());
+
 const maxPickupDate = computed(() => {
     // Find the furthest future date that isn't booked
     const today = new Date();
@@ -498,24 +559,26 @@ const maxPickupDate = computed(() => {
 
 const handleDateInput = (event, type) => {
     const selectedDate = event.target.value;
+    const endDate = type === 'pickup' ? form.value.date_to : form.value.date_from;
 
-    if (isDateBooked(selectedDate)) {
-        // If the date is booked, prevent selection
-        // toast.error('This date is already booked');
-
+    if (type === 'pickup' && endDate && isDateRangeBooked(selectedDate, endDate)) {
+        form.value.date_from = '';
+        toast.error(`Vehicle already booked from ${blockedStartDate} to ${blockedEndDate}.`);
+    } else if (type === 'return' && endDate && isDateRangeBooked(endDate, selectedDate)) {
+        form.value.date_to = '';
+        toast.error(`Vehicle already booked from ${blockedStartDate} to ${blockedEndDate}.`);
+    } else if (isDateBooked(selectedDate)) {
         if (type === 'pickup') {
             form.value.date_from = '';
         } else {
             form.value.date_to = '';
         }
 
-        // Find next available date
         const availableDates = findNextAvailableDates(selectedDate);
         if (availableDates.length) {
             toast.info(`Next available date: ${availableDates[0]}`);
         }
     } else if (type === 'pickup') {
-        // Clear return date when pickup date changes
         form.value.date_to = '';
     }
 };
@@ -524,7 +587,6 @@ const findNextAvailableDates = (fromDate, count = 5) => {
     const startDate = new Date(fromDate);
     const availableDates = [];
 
-    // Look 30 days ahead
     for (let i = 1; i <= 30 && availableDates.length < count; i++) {
         startDate.setDate(startDate.getDate() + 1);
         const dateStr = startDate.toISOString().split('T')[0];
@@ -536,6 +598,7 @@ const findNextAvailableDates = (fromDate, count = 5) => {
 
     return availableDates;
 };
+
 const minReturnDate = computed(() => {
     if (!form.value.date_from) return getCurrentDate();
 
@@ -553,11 +616,10 @@ const minReturnDate = computed(() => {
             minDate.setDate(pickupDate.getDate() + 1);
     }
 
-    // Ensure minDate is after all booked dates
-    bookedDates.value.forEach(({ return_date }) => {
-        const bookedReturnDate = new Date(return_date);
-        if (bookedReturnDate >= minDate) {
-            minDate.setDate(bookedReturnDate.getDate() + 1);
+    [...bookedDates.value, ...blockedDates.value].forEach(({ return_date, blocking_end_date }) => {
+        const endDate = new Date(return_date || blocking_end_date);
+        if (endDate >= minDate) {
+            minDate.setDate(endDate.getDate() + 1);
         }
     });
 
@@ -590,6 +652,7 @@ watch(selectedPackage, () => {
     dateError.value = '';
     localStorage.removeItem('rentalData');
 });
+
 
 
 // Function to store rental data in localStorage
@@ -713,7 +776,7 @@ selectedPackage.value = initialPackageType;
                                         <span class="text-customLightGrayColor text-[1rem]">People</span>
                                         <span class="font-medium text-[1rem]">{{
                                             vehicle?.seating_capacity
-                                            }}</span>
+                                        }}</span>
                                     </div>
                                 </div>
                                 <div class="feature-item items-center flex gap-3">
@@ -722,7 +785,7 @@ selectedPackage.value = initialPackageType;
                                         <span class="text-customLightGrayColor text-[1rem]">Doors</span>
                                         <span class="font-medium text-[1rem]">{{
                                             vehicle?.number_of_doors
-                                            }}</span>
+                                        }}</span>
                                     </div>
                                 </div>
                                 <div class="feature-item items-center flex gap-3">
@@ -731,7 +794,7 @@ selectedPackage.value = initialPackageType;
                                         <span class="text-customLightGrayColor text-[1rem]">Luggage</span>
                                         <span class="font-medium text-[1rem]">{{
                                             vehicle?.luggage_capacity
-                                            }}</span>
+                                        }}</span>
                                     </div>
                                 </div>
                                 <div class="feature-item items-center flex gap-3">
@@ -740,7 +803,7 @@ selectedPackage.value = initialPackageType;
                                         <span class="text-customLightGrayColor text-[1rem]">Transmission</span>
                                         <span class="font-medium capitalize">{{
                                             vehicle?.transmission
-                                            }}</span>
+                                        }}</span>
                                     </div>
                                 </div>
                                 <div class="feature-item items-center flex gap-3">
@@ -749,7 +812,7 @@ selectedPackage.value = initialPackageType;
                                         <span class="text-customLightGrayColor text-[1rem]">Fuel Type</span>
                                         <span class="font-medium capitalize">{{
                                             vehicle?.fuel
-                                            }}</span>
+                                        }}</span>
                                     </div>
                                 </div>
                                 <div class="feature-item items-center flex gap-3">
@@ -835,10 +898,10 @@ selectedPackage.value = initialPackageType;
                             <span class="text-[2rem] font-medium">Meet Vehicle Vendor</span>
                             <div
                                 class="mt-[2rem] flex gap-5 border-[1px] border-customPrimaryColor rounded-[0.75em] px-[1rem] py-[2rem]">
-                                <img :src="vehicle?.user?.profile?.avatar
-                                    ? `/storage/${vehicle?.user?.profile?.avatar}`
-                                    : '/storage/avatars/default-avatar.svg'
-                                    " alt="User Avatar" class="w-[100px] h-[100px] rounded-full object-cover" />
+                                <img :src="vehicle.vendor_profile?.avatar
+                                    ? `/storage/${vehicle.vendor_profile.avatar}`
+                                    : '/storage/avatars/default-avatar.svg'" alt="User Avatar"
+                                    class="w-[100px] h-[100px] rounded-full object-cover" />
                                 <div>
                                     <h4 class="text-customPrimaryColor text-[1.75rem] font-medium">
                                         {{ vehicle.user.first_name }} {{ vehicle.user.last_name }}
@@ -928,7 +991,7 @@ selectedPackage.value = initialPackageType;
                                                             <div class="flex items-center gap-3 mb-2">
                                                                 <component :is="pkg.icon" class="w-6 h-6" />
                                                                 <span class="font-semibold text-[1rem]">{{ pkg.label
-                                                                }}</span>
+                                                                    }}</span>
                                                             </div>
                                                             <p class="text-sm text-gray-600 mb-2">{{ pkg.description }}
                                                             </p>
@@ -1060,7 +1123,7 @@ selectedPackage.value = initialPackageType;
                         @mouseleave="[plugin.reset(), plugin.play(), console.log('Running')]">
                         <CarouselContent>
                             <CarouselItem v-for="review in reviews" :key="review.id"
-                                class="pl-1 md:basis-1/2 lg:basis-1/3">
+                                class="pl-1 md:basis-1/2 lg:basis-1/3 ml-[1rem]">
                                 <Card class="h-[15rem]">
                                     <CardContent>
                                         <div class="review-item  px-[1rem] py-[2rem] h-full">
@@ -1107,10 +1170,10 @@ selectedPackage.value = initialPackageType;
             <div
                 class="mt-[2rem] flex items-center justify-center gap-5 border-[1px] border-customPrimaryColor rounded-[0.75em] px-[1rem] py-[2rem]">
                 <div class="flex flex-col items-center gap-5 w-[50%]">
-                    <img :src="vehicle?.user?.profile?.avatar
-                        ? `/storage/${vehicle?.user?.profile?.avatar}`
-                        : '/storage/avatars/default-avatar.svg'
-                        " alt="User Avatar" class="w-[100px] h-[100px] rounded-full object-cover" />
+                    <img :src="vehicle.vendor_profile?.avatar
+                                    ? `/storage/${vehicle.vendor_profile.avatar}`
+                                    : '/storage/avatars/default-avatar.svg'" alt="User Avatar"
+                                     class="w-[100px] h-[100px] rounded-full object-cover" />
                     <h4 class="text-customPrimaryColor text-[1.75rem] font-medium">
                         {{ vehicle.user.first_name }} {{ vehicle.user.last_name }}
                     </h4>
