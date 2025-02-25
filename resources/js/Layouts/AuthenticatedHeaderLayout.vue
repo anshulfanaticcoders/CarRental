@@ -9,6 +9,7 @@ const { url } = usePage();
 const showingNavigationDropdown = ref(false);
 
 import axios from "axios";
+import NotificationBell from "@/Components/NotificationBell.vue";
 
 const user = ref(null);
 
@@ -94,6 +95,7 @@ onMounted(fetchUserProfile);
                                     </Dropdown>
                                 </div>
 
+                                <NotificationBell/>
 
                             </div>
 

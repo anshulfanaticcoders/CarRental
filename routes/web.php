@@ -31,6 +31,8 @@ use App\Http\Controllers\Vendor\VendorVehicleController;
 use App\Http\Controllers\VendorController;
 use App\Http\Controllers\PaymentController;
 use App\Http\Controllers\Admin\VendorsDashboardController;
+use App\Models\Booking;
+use App\Models\Message;
 use Illuminate\Foundation\Application;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
@@ -72,15 +74,18 @@ Route::middleware(['auth'])->group(function () {
 
     Route::get('/vehicles', [VehicleController::class, 'index'])->name('vehicles.index');
 
-    // Messages Routes
-    Route::get('/messages', [MessageController::class, 'index'])->name('messages.index');
-    Route::get('/messages/{receiverId}', [MessageController::class, 'show'])->name('messages.show');
+
+    Route::get('/messages', [BookingController::class, 'getCustomerBookingsForMessages'])->name('messages.index');
+    Route::get('/messages/vendor', [MessageController::class, 'vendorIndex'])->name('messages.vendor.index');
+    Route::get('/messages/{booking}', [MessageController::class, 'show'])->name('messages.show');
     Route::post('/messages', [MessageController::class, 'store'])->name('messages.store');
-    Route::post('/messages/{message}/read', [MessageController::class, 'markAsRead'])->name('messages.read');
-    
-    // Notifications Routes
+    Route::get('/messages/unread', [MessageController::class, 'getUnreadCount'])->name('messages.unread');
+    Route::get('/messages/{booking}/last', [MessageController::class, 'getLastMessage'])->name('messages.last');
+    // Notification routes
     Route::get('/notifications', [NotificationController::class, 'index'])->name('notifications.index');
-    Route::post('/notifications/{notification}/read', [NotificationController::class, 'markAsRead'])->name('notifications.read');
+    Route::post('/notifications/mark-read/{id}', [NotificationController::class, 'markAsRead'])->name('notifications.mark-read');
+    Route::post('/notifications/mark-all-read', [NotificationController::class, 'markAllAsRead'])->name('notifications.mark-all-read');
+    Route::get('/notifications/unread', [NotificationController::class, 'getUnreadCount'])->name('notifications.unread');
 });
 Route::post('/vehicles', [VehicleController::class, 'store'])->name('vehicles.store');
 Route::get('/vehicles', [VehicleController::class, 'index'])->name('vehicles.index');
@@ -227,5 +232,46 @@ Route::middleware(['auth', 'role:customer'])->group(function () {
 Route::middleware(['auth', 'vendor.status'])->group(function () {
     Route::get('/vehicles/create', [VehicleController::class, 'create'])->name('vehicles.create');
     Route::inertia('vehicle-listing', 'Auth/VehicleListing');
+});
+
+
+
+Route::middleware('auth:sanctum')->get('/messages/{booking}/poll', function (Request $request, $booking) {
+    $user = Auth::user();
+    $lastMessageId = $request->input('last_message_id', 0);
+    
+    $booking = Booking::with(['vehicle.vendor', 'customer'])->findOrFail($booking);
+    
+    // Ensure the authenticated user is either the customer or the vendor
+    $customerId = $booking->customer->user_id;
+    $vendorId = $booking->vehicle->vendor_id;
+    
+    if ($user->id !== $customerId && $user->id !== $vendorId) {
+        abort(403, 'Unauthorized access to this conversation');
+    }
+    
+    // Get the other participant in the conversation
+    $otherUserId = ($user->id === $customerId) ? $vendorId : $customerId;
+    
+    // Get new messages
+    $messages = Message::where('id', '>', $lastMessageId)
+        ->where('booking_id', $booking->id)
+        ->where(function($query) use ($user, $otherUserId) {
+            $query->where(function($q) use ($user, $otherUserId) {
+                $q->where('sender_id', $user->id)
+                  ->where('receiver_id', $otherUserId);
+            })
+            ->orWhere(function($q) use ($user, $otherUserId) {
+                $q->where('sender_id', $otherUserId)
+                  ->where('receiver_id', $user->id);
+            });
+        })
+        ->with(['sender', 'receiver'])
+        ->orderBy('created_at', 'asc')
+        ->get();
+        
+    return response()->json([
+        'messages' => $messages
+    ]);
 });
 require __DIR__ . '/auth.php';

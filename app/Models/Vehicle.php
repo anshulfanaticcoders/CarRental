@@ -104,4 +104,9 @@ class Vehicle extends Model
         return $this->belongsToMany(User::class, 'user_vehicle', 'vehicle_id', 'user_id');
     }
 
+    public function vendor()
+    {
+        return $this->belongsTo(User::class, 'vendor_id');
+    }
+
 }

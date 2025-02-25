@@ -74,7 +74,7 @@ const menus = [
 ];
 
 const otherLinks = [
-  { name: "Inbox", path: `/messages/${userId}`, icon: inboxIcon },
+  { name: "Inbox", path: "/messages", icon: inboxIcon },
   { name: "Favorites", path: "/favourites", icon: favoritesIcon },
   { name: "My Reviews", path: "/review", icon: reviewsIcon },
 ];
@@ -106,7 +106,7 @@ const vendorOtherLinks = [
   { name: "Payment History", path: "/vendor/payments", icon: clockIcon },
   { name: "Bookings", path: "/bookings", icon: vehiclesIcon },
   { name: "Date Blocking", path: "/blocking-dates", icon: dateblockingIcon },
-  { name: "Inbox", path: `/messages/${userId}`, icon: inboxIcon },
+  { name: "Inbox", path: "/messages/vendor", icon: inboxIcon },
   { name: "Customer Reviews", path: "/customer-reviews", icon: reviewsIcon },
 ];
 

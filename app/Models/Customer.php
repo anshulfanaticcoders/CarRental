@@ -29,6 +29,12 @@ class Customer extends Model
         return $this->belongsTo(User::class);
     }
 
+    // Relationship with UserProfile
+    public function profile(): BelongsTo
+    {
+        return $this->belongsTo(UserProfile::class, 'user_id');
+    }
+
     // Relationship with Bookings
     public function bookings(): HasMany
     {

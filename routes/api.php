@@ -12,6 +12,8 @@ use App\Http\Controllers\UserDocumentController;
 use App\Http\Controllers\VehicleController;
 use App\Http\Controllers\VehicleCategoryController;
 use App\Http\Controllers\PopularPlacesController;
+use App\Models\Booking;
+use App\Models\Message;
 use Illuminate\Http\Request;
 use App\Models\User;
 use Illuminate\Support\Facades\Route;

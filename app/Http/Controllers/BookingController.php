@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Message;
 use App\Models\Plan;
 use App\Models\Vehicle;
 use Illuminate\Http\Request;
@@ -320,6 +321,43 @@ public function getCompletedBookings()
 
     return Inertia::render('Profile/Bookings/CompletedBookings', [
         'bookings' => $completedBookings,
+    ]);
+}
+
+
+public function getCustomerBookingsForMessages()
+{
+    $userId = Auth::id();
+    
+    $customer = Customer::where('user_id', $userId)->first();
+    
+    if (!$customer) {
+        return Inertia::render('Messages/Index', [
+            'bookings' => []
+        ]);
+    }
+    
+    $bookings = Booking::where('customer_id', $customer->id)
+        ->with([
+            'vehicle.vendor', 
+            'vehicle.images', 
+            'vehicle.category',
+            'vehicle.vendorProfile',
+            'payments'
+        ])
+        ->orderBy('created_at', 'desc')
+        ->get();
+        
+    // For each booking, get the count of unread messages
+    foreach ($bookings as $booking) {
+        $booking->unread_count = Message::where('booking_id', $booking->id)
+            ->where('receiver_id', $userId)
+            ->whereNull('read_at')
+            ->count();
+    }
+    
+    return Inertia::render('Messages/Index', [
+        'bookings' => $bookings
     ]);
 }
 }
