@@ -38,17 +38,19 @@ class UsersReportController extends Controller
             ->count();
         $newCustomersGrowthPercentage = $this->calculateGrowthPercentage($currentWeekCustomers, $previousWeekCustomers);
 
-        // Monthly data for charts
+        // Get data for charts
         $monthlyData = $this->getMonthlyData();
+        $weeklyData = $this->getWeeklyData();
+        $dailyData = $this->getDailyData();
         
         // Recent activities
         $recentActivities = ActivityLog::with('user')
-        ->whereHas('user', function ($query) { 
-            $query->where('role', 'customer');
-        })
-        ->orderBy('created_at', 'desc')
-        ->take(5)
-        ->get();
+            ->whereHas('user', function ($query) { 
+                $query->where('role', 'customer');
+            })
+            ->orderBy('created_at', 'desc')
+            ->take(5)
+            ->get();
 
         return Inertia::render('AdminDashboardPages/UsersReports/Index', [
             'totalCustomers' => $totalCustomers,
@@ -58,34 +60,105 @@ class UsersReportController extends Controller
             'newCustomers' => $currentWeekCustomers,
             'newCustomersGrowth' => $newCustomersGrowthPercentage,
             'monthlyData' => $monthlyData,
-           'recentActivities' => $recentActivities,
+            'weeklyData' => $weeklyData,
+            'dailyData' => $dailyData,
+            'recentActivities' => $recentActivities,
         ]);
     }
 
     private function getMonthlyData()
     {
-        $months = collect(range(0, 11))->map(function($month) {
+        return collect(range(0, 11))->map(function($month) {
             $date = Carbon::now()->subMonths($month);
             
+            // Total users created before or during this month
             $totalUsers = User::where('role', 'customer')
-                ->whereYear('created_at', $date->year)
-                ->whereMonth('created_at', $date->month)
+                ->whereDate('created_at', '<=', $date->copy()->endOfMonth())
                 ->count();
                 
+            // Active users who logged in during this month
             $activeUsers = User::where('role', 'customer')
                 ->whereYear('last_login_at', $date->year)
                 ->whereMonth('last_login_at', $date->month)
-                ->whereDay('last_login_at', $date->day)
+                ->count();
+                
+            // New users created during this month
+            $newUsers = User::where('role', 'customer')
+                ->whereYear('created_at', $date->year)
+                ->whereMonth('created_at', $date->month)
                 ->count();
 
             return [
                 'name' => $date->format('M Y'),
                 'total' => $totalUsers,
-                'active' => $activeUsers
+                'active' => $activeUsers,
+                'new' => $newUsers
             ];
         })->reverse()->values();
+    }
+    
+    private function getWeeklyData()
+    {
+        return collect(range(0, 11))->map(function($week) {
+            $date = Carbon::now()->subWeeks($week);
+            
+            // Total users created before or during this week
+            $totalUsers = User::where('role', 'customer')
+                ->whereDate('created_at', '<=', $date->copy()->endOfWeek())
+                ->count();
+                
+            // Active users who logged in during this week
+            $activeUsers = User::where('role', 'customer')
+                ->whereYear('last_login_at', $date->year)
+                ->whereRaw('WEEK(last_login_at, 1) = ?', [$date->weekOfYear])
+                ->count();
+                
+            // New users created during this week
+            $newUsers = User::where('role', 'customer')
+                ->whereYear('created_at', $date->year)
+                ->whereRaw('WEEK(created_at, 1) = ?', [$date->weekOfYear])
+                ->count();
 
-        return $months;
+            return [
+                'name' => 'Week ' . $date->weekOfYear . ' ' . $date->format('Y'),
+                'total' => $totalUsers,
+                'active' => $activeUsers,
+                'new' => $newUsers
+            ];
+        })->reverse()->values();
+    }
+    
+    private function getDailyData()
+    {
+        return collect(range(0, 11))->map(function($day) {
+            $date = Carbon::now()->subDays($day);
+            
+            // Total users created before or during this day
+            $totalUsers = User::where('role', 'customer')
+                ->whereDate('created_at', '<=', $date)
+                ->count();
+                
+            // Active users who logged in during this day
+            $activeUsers = User::where('role', 'customer')
+                ->whereYear('last_login_at', $date->year)
+                ->whereMonth('last_login_at', $date->month)
+                ->whereDay('last_login_at', $date->day)
+                ->count();
+                
+            // New users created during this day
+            $newUsers = User::where('role', 'customer')
+                ->whereYear('created_at', $date->year)
+                ->whereMonth('created_at', $date->month)
+                ->whereDay('created_at', $date->day)
+                ->count();
+
+            return [
+                'name' => $date->format('M d, Y'),
+                'total' => $totalUsers,
+                'active' => $activeUsers,
+                'new' => $newUsers
+            ];
+        })->reverse()->values();
     }
 
     private function calculateGrowthPercentage($current, $previous)

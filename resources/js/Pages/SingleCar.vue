@@ -23,6 +23,7 @@ import carIcon from "../../assets/carIcon.svg";
 import walkIcon from "../../assets/walking.svg";
 import mileageIcon from "../../assets/mileageIcon.svg";
 import pickupLocationIcon from "../../assets/pickupLocationIcon.svg";
+import returnLocationIcon from "../../assets/returnLocationIcon.svg";
 import partnersIcon from "../../assets/partners.svg";
 import infoIcon from "../../assets/WarningCircle.svg";
 import { Head, Link } from "@inertiajs/vue3";
@@ -90,7 +91,15 @@ const fetchReviews = async () => {
         isLoading.value = false;
     }
 };
+const formatTime = (timeString) => {
+    if (!timeString) return ''; // Handle null or undefined time
 
+    const [hours, minutes] = timeString.split(':').map(Number);
+    const period = hours >= 12 ? 'PM' : 'AM';
+    const formattedHours = hours % 12 === 0 ? 12 : hours % 12;
+
+    return `${formattedHours}:${minutes.toString().padStart(2, '0')} ${period}`;
+};
 
 // Feature-Icon Mapping
 const featureIconMap = {
@@ -964,7 +973,14 @@ selectedPackage.value = initialPackageType;
                                     <img :src="pickupLocationIcon" alt="" />
                                     <div class="flex flex-col gap-1">
                                         <span class="text-[1.25rem] text-medium">{{ vehicle?.location }}</span>
-                                        <span>{{ vehicle?.created_at }}</span>
+                                        <span>{{ route().params.pickup_date }}</span>
+                                    </div>
+                                </div>
+                                <div class="col flex items-start gap-4 mt-10">
+                                    <img :src="returnLocationIcon" alt="" />
+                                    <div class="flex flex-col gap-1">
+                                        <span class="text-[1.25rem] text-medium">{{ vehicle?.location }}</span>
+                                        <span>{{ route().params.return_date }}</span>
                                     </div>
                                 </div>
 

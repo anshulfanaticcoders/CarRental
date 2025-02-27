@@ -13,17 +13,22 @@
             <TabsTrigger value="notifications" disabled>Reports</TabsTrigger>
             <div class="flex flex-col items-end">
               <div>
-            <select v-model="exportFormat" class="p-2 border rounded">
-              <option value="pdf">Export as PDF</option>
-              <option value="excel">Export as Excel</option>
-              <option value="csv">Export as CSV</option>
-            </select>
-            <button @click="exportData" class="ml-2 p-2 bg-blue-500 text-white rounded">Export</button>
-          </div>
-      <div v-if="error" class="text-sm text-red-500 mt-2">
-        {{ error }}
-      </div>
-    </div>
+                <select v-model="selectedReport" class="p-2 border rounded">
+                  <option value="monthly">Monthly Report</option>
+                  <option value="weekly">Weekly Report</option>
+                  <option value="daily">Daily Report</option>
+                </select>
+                <select v-model="exportFormat" class="p-2 border rounded ml-2">
+                  <option value="pdf">Export as PDF</option>
+                  <option value="excel">Export as Excel</option>
+                  <option value="csv">Export as CSV</option>
+                </select>
+                <button @click="exportData" class="ml-2 p-2 bg-blue-500 text-white rounded">Export</button>
+              </div>
+              <div v-if="error" class="text-sm text-red-500 mt-2">
+                {{ error }}
+              </div>
+            </div>
           </TabsList>
           <TabsContent value="overview" class="space-y-4">
             <div class="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
@@ -47,7 +52,7 @@
                 </CardContent>
               </Card>
 
-              <!-- Total Users -->
+              <!-- Active Users -->
               <Card>
                 <CardHeader class="flex flex-row items-center justify-between space-y-0 pb-2">
                   <CardTitle class="text-sm font-medium">Active Users</CardTitle>
@@ -64,10 +69,10 @@
                     {{ activeCustomersGrowth >= 0 ? `↑ ${activeCustomersGrowth}%` : `↓
                     ${Math.abs(activeCustomersGrowth)}%` }} from last month
                   </p>
-
                 </CardContent>
               </Card>
-              <!-- Total Vehicles -->
+              
+              <!-- New Users -->
               <Card>
                 <CardHeader class="flex flex-row items-center justify-between space-y-0 pb-2">
                   <CardTitle class="text-sm font-medium">New Users</CardTitle>
@@ -85,36 +90,55 @@
                     ${Math.abs(newCustomersGrowth)}%` }} vs last week</p>
                 </CardContent>
               </Card>
-
             </div>
 
             <div class="grid gap-4 md:grid-cols-2 lg:grid-cols-7">
               <Card class="col-span-3">
                 <CardHeader>
-                  <CardTitle class="text-[1.5rem] font-semibold ">Users Overview</CardTitle>
+                  <CardTitle class="text-[1.5rem] font-semibold">Users Overview</CardTitle>
                 </CardHeader>
                 <CardContent class="pl-2">
-
-                  <BarChart :data="monthlyData" :categories="['total', 'active']" :index="'name'"
-                    :rounded-corners="4" :colors="['#153B4F','#10B981']"/>
-
+                  <!-- Conditionally render bar charts based on selected report -->
+                  <BarChart v-if="selectedReport === 'monthly'" :data="monthlyData" 
+                    :categories="[ 'active', 'new']" :index="'name'"
+                    :rounded-corners="4" :colors="['#10B981', '#FFC633']"/>
+                    
+                  <BarChart v-if="selectedReport === 'weekly'" :data="weeklyData" 
+                    :categories="[ 'active', 'new']" :index="'name'"
+                    :rounded-corners="4" :colors="['#10B981', '#FFC633']"/>
+                    
+                  <BarChart v-if="selectedReport === 'daily'" :data="dailyData" 
+                    :categories="[ 'active', 'new']" :index="'name'"
+                    :rounded-corners="4" :colors="['#10B981', '#FFC633']"/>
                 </CardContent>
               </Card>
+              
               <Card class="col-span-2">
                 <CardHeader>
-                  <CardTitle class="text-[1.5rem] font-semibold ">Revenue</CardTitle>
+                  <CardTitle class="text-[1.5rem] font-semibold">User Growth</CardTitle>
                 </CardHeader>
                 <CardContent class="pl-2">
-                  <LineChart :data="monthlyData" index="name" :categories="['total']" :colors="['blue']"
-                    :show-x-axis="true" :show-y-axis="true" :show-grid-lines="true" class="h-96 w-full" />
-
-
-
+                  <!-- Conditionally render line charts based on selected report -->
+                  <LineChart v-if="selectedReport === 'monthly'" :data="monthlyData" 
+                    index="name" :categories="['total']" :colors="['blue']"
+                    :show-x-axis="true" :show-y-axis="true" :show-grid-lines="true" 
+                    class="h-96 w-full" />
+                    
+                  <LineChart v-if="selectedReport === 'weekly'" :data="weeklyData" 
+                    index="name" :categories="['total']" :colors="['blue']"
+                    :show-x-axis="true" :show-y-axis="true" :show-grid-lines="true" 
+                    class="h-96 w-full" />
+                    
+                  <LineChart v-if="selectedReport === 'daily'" :data="dailyData" 
+                    index="name" :categories="['total']" :colors="['blue']"
+                    :show-x-axis="true" :show-y-axis="true" :show-grid-lines="true" 
+                    class="h-96 w-full" />
                 </CardContent>
               </Card>
+              
               <Card class="col-span-2">
                 <CardHeader>
-                  <CardTitle class="text-[1.5rem] font-semibold ">Recent Activities</CardTitle>
+                  <CardTitle class="text-[1.5rem] font-semibold">Recent Activities</CardTitle>
                   <CardDescription>Recent user activity.</CardDescription>
                 </CardHeader>
                 <CardContent>
@@ -164,8 +188,10 @@ import { utils, writeFile } from 'xlsx';
 import { unparse } from 'papaparse';
 import { ref } from "vue";
 
+const selectedReport = ref("monthly");
 const exportFormat = ref('pdf');
 const error = ref('');
+
 const props = defineProps([
   'totalCustomers',
   'totalCustomersGrowth',
@@ -174,13 +200,28 @@ const props = defineProps([
   'newCustomers',
   'newCustomersGrowth',
   'monthlyData',
+  'weeklyData',
+  'dailyData',
   'recentActivities'
 ]);
-// Prepare data for export
+
+// Prepare data for export based on selected report type
 const prepareExportData = () => {
   try {
-    return props.monthlyData.map(item => ({
-      Month: item.name,
+    let data;
+    
+    // Select the correct dataset based on the user's selection
+    if (selectedReport.value === "monthly") {
+      data = props.monthlyData;
+    } else if (selectedReport.value === "weekly") {
+      data = props.weeklyData;
+    } else if (selectedReport.value === "daily") {
+      data = props.dailyData;
+    }
+
+    // Transform data to match export format
+    return data.map(item => ({
+      Period: item.name,
       'Total Users': item.total,
       'Active Users': item.active,
       'New Users': item.new || 0
@@ -198,7 +239,7 @@ const exportToPDF = async () => {
     
     // Add title
     doc.setFontSize(16);
-    doc.text('User Analytics Report', 15, 15);
+    doc.text(`User Analytics ${selectedReport.value.charAt(0).toUpperCase() + selectedReport.value.slice(1)} Report`, 15, 15);
     
     // Add date
     doc.setFontSize(10);
@@ -214,7 +255,7 @@ const exportToPDF = async () => {
       yPosition += 5;
     });
     
-    doc.save('user_analytics.pdf');
+    doc.save(`user_analytics_${selectedReport.value}.pdf`);
     error.value = '';
   } catch (err) {
     error.value = 'Failed to export PDF';
@@ -228,7 +269,7 @@ const exportToExcel = async () => {
     const ws = utils.json_to_sheet(data);
     const wb = utils.book_new();
     utils.book_append_sheet(wb, ws, 'User Analytics');
-    writeFile(wb, 'user_analytics.xlsx');
+    writeFile(wb, `user_analytics_${selectedReport.value}.xlsx`);
     error.value = '';
   } catch (err) {
     error.value = 'Failed to export Excel file';
@@ -243,7 +284,7 @@ const exportToCSV = async () => {
     const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
     const link = document.createElement('a');
     link.href = URL.createObjectURL(blob);
-    link.download = 'user_analytics.csv';
+    link.download = `user_analytics_${selectedReport.value}.csv`;
     link.click();
     URL.revokeObjectURL(link.href);
     error.value = '';
@@ -267,8 +308,8 @@ const exportData = async () => {
     console.error('Export error:', err);
   }
 };
+
 const getInitials = (firstName, lastName) => {
   return `${firstName?.[0] || ''}${lastName?.[0] || ''}`;
 };
-
 </script>

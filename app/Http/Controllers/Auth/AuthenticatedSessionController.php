@@ -37,7 +37,7 @@ class AuthenticatedSessionController extends Controller
     $user = Auth::user();
 
     // Update last_login_at *after* successful authentication
-    if ($user) {  // Check if a user was actually authenticated
+    if ($user) {
         $user->last_login_at = Carbon::now();
         $user->save();
     }

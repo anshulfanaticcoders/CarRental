@@ -71,6 +71,28 @@ class ReviewController extends Controller
         ]);
     }
 
+
+    // ReviewController.php
+public function userReviews()
+{
+    $user = auth()->user();
+
+    $reviews = Review::where('user_id', $user->id)
+        ->with(['vehicle', 'booking','user','vehicle.images','vehicle.category','vehicle.user','vehicle.vendorProfile',])
+        ->orderBy('created_at', 'desc')
+        ->paginate(8);
+
+    $averageRating = Review::where('user_id', $user->id)->avg('rating');
+
+    return Inertia::render('Profile/Review/Index', [
+        'reviews' => $reviews,
+        'statistics' => [
+            'total_reviews' => $reviews->total(),
+            'average_rating' => $averageRating !== null ? $averageRating : 0, // Ensure it's 0 if null
+        ]
+    ]);
+}
+
     public function updateStatus(Review $review, Request $request)
     {
         $request->validate([

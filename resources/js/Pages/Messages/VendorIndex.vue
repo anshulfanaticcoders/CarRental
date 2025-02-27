@@ -80,6 +80,37 @@ const { bookings } = usePage().props;
 const getProfileImage = (customer) => {
   return customer.user.profile && customer.user.profile.avatar ? `/storage/${customer.user.profile.avatar}` : '/storage/avatars/default-avatar.svg';
 };
+
+// Format time for last message display
+const formatTime = (dateString) => {
+    if (!dateString) return '';
+    
+    const date = new Date(dateString);
+    return date.toLocaleTimeString('en-US', {
+        hour: '2-digit',
+        minute: '2-digit'
+    });
+};
+
+// Get the last message for a booking
+const getLastMessage = async (bookingId) => {
+    try {
+        const response = await axios.get(`/messages/${bookingId}/last`);
+        return response.data.message;
+    } catch (error) {
+        console.error('Failed to get last message:', error);
+        return null;
+    }
+};
+
+onMounted(() => {
+    console.log("Bookings Data:", props.bookings);
+    
+    // If there are bookings, select the first one by default
+    if (props.bookings && props.bookings.length > 0) {
+        loadChat(props.bookings[0]);
+    }
+});
 </script>
 
 <template>
@@ -96,54 +127,61 @@ const getProfileImage = (customer) => {
             </p>
         </div>
 
-        <div v-else class="grid grid-cols-1 gap-6">
-            <div class="flex justify-between h-[100vh]">
-                <div class="w-[35%]">
-                    <div v-for="booking in bookings" :key="booking.id"
-                        class="flex justify-between items-start">
-                        <!-- Use a div with click handler instead of Link for local chat display -->
-                        <div 
-                            @click="loadChat(booking)"
-                            class="flex items-center gap-4 w-full border-t-[1px] border-b-[1px] py-3 cursor-pointer"
-                            :class="{'bg-blue-50': selectedBooking && booking.id === selectedBooking.id}"
-                        >
-                            <!-- Display Customer Avatar -->
-                            <div class="relative w-[50px] h-[50px]">
-                                <img :src="getProfileImage(booking.customer)" alt="Customer Avatar" class="w-10 h-10 rounded-full object-cover mr-4" />
-                                <p
-                                    class="w-[0.85rem] h-[0.85rem] bg-[#009900] rounded-[99px] absolute bottom-0 right-0 border-2">
-                                </p>
+        <div v-else class="flex justify-between h-[calc(95vh-200px)]">
+            <!-- Chat List -->
+            <div class="w-[35%] overflow-y-auto border-r">
+                <div v-for="booking in filteredBookings" :key="booking.id" 
+                    class="border-b cursor-pointer"
+                    :class="{'bg-blue-50': selectedBooking && booking.id === selectedBooking.id}"
+                    @click="loadChat(booking)">
+                    <div class="flex items-center gap-4 w-full py-3 px-3 hover:bg-gray-50">
+                        <!-- Display Customer Avatar -->
+                        <div class="relative w-[50px] h-[50px] flex-shrink-0">
+                            <img :src="getProfileImage(booking.customer)" 
+                                alt="Customer Avatar"
+                                class="rounded-full object-cover h-full w-full" />
+                            <p
+                                class="w-[0.85rem] h-[0.85rem] bg-[#009900] rounded-[99px] absolute bottom-0 right-0 border-2">
+                            </p>
+                        </div>
+                        <div class="w-full">
+                            <div class="flex justify-between w-full">
+                                <span class="text-customDarkBlackColor font-medium text-[1.1rem]">{{
+                                    booking.customer?.user?.first_name || "N/A" }}</span>
+                                <span class="text-customLightGrayColor text-sm">{{ formatTime(booking.updated_at) }}</span>
                             </div>
-                            <div>
-                                <div class="flex justify-between">
-                                    <span class="text-customDarkBlackColor font-medium text-[1.1rem]">{{
-                                        booking.customer?.first_name || "N/A" }}</span>
-                                    <span class="text-customLightGrayColor">12:25</span>
-                                </div>
-                                <p class="text-customLightGrayColor">Enter your message description here...</p>
+                            <div class="flex justify-between">
+                                <p class="text-customLightGrayColor text-sm truncate">
+                                    {{ booking.vehicle?.brand }} {{ booking.vehicle?.model }}
+                                </p>
+                                <span 
+                                    v-if="booking.unread_count" 
+                                    class="bg-blue-500 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs">
+                                    {{ booking.unread_count }}
+                                </span>
                             </div>
                         </div>
                     </div>
                 </div>
-                
-                <!-- Chat Area - right side -->
-                <div class="w-[65%] bg-[#154D6A0D] h-full rounded-tr-[12px] rounded-br-[12px] p-4">
-                    <div v-if="loadingChat" class="flex-1 flex items-center justify-center h-full">
-                        <p>Loading chat...</p>
-                    </div>
-                    
-                    <div v-else-if="!selectedBooking" class="flex-1 flex items-center justify-center h-full">
-                        <p class="text-gray-500">Select a conversation to start chatting</p>
-                    </div>
-                    
-                    <ChatComponent 
-                        v-else 
-                        :booking="selectedBooking" 
-                        :messages="messages" 
-                        :otherUser="otherUser" 
-                        class="h-full"
-                    />
+            </div>
+
+            <!-- Chat Window -->
+            <div class="w-[65%] bg-[#154D6A0D] rounded-tr-[12px] rounded-br-[12px] p-4 flex flex-col">
+                <div v-if="loadingChat" class="flex-1 flex items-center justify-center">
+                    <p>Loading chat...</p>
                 </div>
+                
+                <div v-else-if="!selectedBooking" class="flex-1 flex items-center justify-center">
+                    <p class="text-gray-500">Select a conversation to start chatting</p>
+                </div>
+                
+                <ChatComponent 
+                    v-else 
+                    :booking="selectedBooking" 
+                    :messages="messages" 
+                    :otherUser="otherUser" 
+                    class="h-full"
+                />
             </div>
         </div>
     </MyProfileLayout>

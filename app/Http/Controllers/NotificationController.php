@@ -15,12 +15,23 @@ class NotificationController extends Controller
         $notifications = Notification::where('user_id', $user->id)
             ->orderBy('created_at', 'desc')
             ->paginate(10);
-        
+    
         return response()->json([
-            'notifications' => $notifications->items(),
+            'notifications' => $notifications->map(function ($notification) {
+                return [
+                    'id' => $notification->id,
+                    'title' => $notification->title,
+                    'message' => $notification->message,
+                    'type' => $notification->type,
+                    'read_at' => $notification->read_at,
+                    'created_at' => $notification->created_at,
+                    'booking_id' => $notification->booking_id // Ensure booking_id is included
+                ];
+            }),
             'unread_count' => Notification::where('user_id', $user->id)->whereNull('read_at')->count()
         ]);
     }
+    
     
     public function store(Request $request)
     {

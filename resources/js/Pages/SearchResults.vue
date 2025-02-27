@@ -296,13 +296,28 @@ const formatDate = (dateStr) => {
     return `${String(date.getMonth() + 1).padStart(2, '0')}/${String(date.getDate()).padStart(2, '0')}/${date.getFullYear()}`;
 };
 const showRentalDates = ref(false);
+
+const searchQuery = computed(() => {
+  return {
+    where: usePage().props.filters?.where || '',
+    date_from: usePage().props.filters?.date_from || '',
+    date_to: usePage().props.filters?.date_to || '',
+    latitude: usePage().props.filters?.latitude || '',
+    longitude: usePage().props.filters?.longitude || '',
+    radius: usePage().props.filters?.radius || '',
+  };
+});
+
 </script>
 
 <template>
     <AuthenticatedHeaderLayout />
     <section class="bg-customPrimaryColor py-customVerticalSpacing">
         <div class="">
-            <SearchBar class="border-[2px] rounded-[20px] border-white mt-0 mb-0" />
+            <SearchBar
+        class="border-[2px] rounded-[20px] border-white mt-0 mb-0"
+        :prefill="searchQuery"
+      />
         </div>
     </section>
 
@@ -495,7 +510,7 @@ const showRentalDates = ref(false);
                                 </button>
                             </div>
                         </div>
-                        <a :href="`/vehicle/${vehicle.id}?package=${form.package_type}`">
+                        <a :href="`/vehicle/${vehicle.id}?package=${form.package_type}&pickup_date=${form.date_from}&return_date=${form.date_to}`">
                         <div class="column flex flex-col gap-5 items-start">
                             <img v-if="vehicle.images" :src="`/storage/${vehicle.images.find(
                                 (image) =>

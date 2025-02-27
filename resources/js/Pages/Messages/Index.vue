@@ -1,7 +1,5 @@
 <script setup>
 import { ref, computed, onMounted, watch } from "vue";
-import { Head, Link } from "@inertiajs/vue3";
-import AuthenticatedLayout from "@/Layouts/AuthenticatedLayout.vue";
 import MyProfileLayout from "@/Layouts/MyProfileLayout.vue";
 import ChatComponent from '@/Components/ChatComponent.vue'; // Import the new component
 import axios from 'axios';
@@ -95,7 +93,7 @@ onMounted(() => {
             </p>
         </div>
 
-        <div v-else class="flex justify-between h-[calc(100vh-200px)]">
+        <div v-else class="flex justify-between h-[calc(95vh-200px)]">
             <!-- Chat List -->
             <div class="w-[35%] overflow-y-auto border-r">
                 <div v-for="booking in filteredBookings" :key="booking.id" 

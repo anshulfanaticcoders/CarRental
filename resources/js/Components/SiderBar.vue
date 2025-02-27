@@ -11,6 +11,7 @@ import dashboardIcon from "../../assets/vendorDashboarIcon.svg";
 import vehiclesIcon from "../../assets/vehicletypeIcon.svg";
 import clockIcon from "../../assets/clockIcon.svg";
 import dateblockingIcon from "../../assets/dateblockingIcon.svg";
+import logoutIcon from '../../assets/logoutIcon.svg';
 
 // Existing logic
 const user = ref(null);
@@ -76,7 +77,7 @@ const menus = [
 const otherLinks = [
   { name: "Inbox", path: "/messages", icon: inboxIcon },
   { name: "Favorites", path: "/favourites", icon: favoritesIcon },
-  { name: "My Reviews", path: "/review", icon: reviewsIcon },
+  { name: "My Reviews", path: "/profile/reviews", icon: reviewsIcon },
 ];
 
 // Additional menus for "vendor"
@@ -184,8 +185,8 @@ onMounted(fetchUserProfile);
     <div class="user-info p-4 w-full">
       <div class="flex items-center space-x-3">
         <img :src="user?.profile.avatar
-            ? `/storage/${user?.profile.avatar}`
-            : '/storage/avatars/default-avatar.svg'
+          ? `/storage/${user?.profile.avatar}`
+          : '/storage/avatars/default-avatar.svg'
           " alt="User Avatar" class="w-12 h-12 rounded-full object-cover" />
         <div>
           <p class="text-sm text-gray-500">
@@ -225,11 +226,18 @@ onMounted(fetchUserProfile);
     <div v-for="link in activeOtherLinks" :key="link.name" class="menu-item">
       <Link :href="link.path" class="menu-link flex items-center gap-2" :class="{ active: activeLink === link.name }"
         @click="activeLink = link.name">
-      <img :src="link.icon" alt="" class="icon w-[24px] h-[24px]" :class="{ 'brightness-active': activeLink === link.name }" />
+      <img :src="link.icon" alt="" class="icon w-[24px] h-[24px]"
+        :class="{ 'brightness-active': activeLink === link.name }" />
       {{ link.name }}
       </Link>
     </div>
+
+    <Link :href="route('logout')" method="post" as="button" class="text-[#EE1D52] flex items-center gap-1 ml-[1rem] mt-[4rem]">
+    <img :src=logoutIcon alt="">
+    Log out
+    </Link>
   </div>
+
 </template>
 
 <style scoped>

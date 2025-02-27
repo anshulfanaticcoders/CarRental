@@ -81,6 +81,8 @@ Route::middleware(['auth'])->group(function () {
     Route::post('/messages', [MessageController::class, 'store'])->name('messages.store');
     Route::get('/messages/unread', [MessageController::class, 'getUnreadCount'])->name('messages.unread');
     Route::get('/messages/{booking}/last', [MessageController::class, 'getLastMessage'])->name('messages.last');
+    Route::delete('/messages/{id}', [MessageController::class, 'destroy'])->name('messages.destroy');
+
     // Notification routes
     Route::get('/notifications', [NotificationController::class, 'index'])->name('notifications.index');
     Route::post('/notifications/mark-read/{id}', [NotificationController::class, 'markAsRead'])->name('notifications.mark-read');
@@ -193,6 +195,7 @@ Route::middleware(['auth', 'role:customer'])->group(function () {
     Route::inertia('favourites', 'Profile/Favourites');
     Route::inertia('inbox', 'Profile/Inbox');
     Route::post('/reviews', [ReviewController::class, 'store'])->name('reviews.store');
+    Route::get('/profile/reviews', [ReviewController::class, 'userReviews'])->name('profile.reviews');
 
     // apply for vendor
     Route::post('/vendor/store', [VendorController::class, 'store'])->name('vendor.store');

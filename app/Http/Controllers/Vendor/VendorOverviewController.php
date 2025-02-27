@@ -32,6 +32,21 @@ class VendorOverviewController extends Controller
             });
         })->sum('amount');
 
+        // New count for active vehicles
+        $activeVehicles = Vehicle::where('vendor_id', $vendorId)
+            ->where('status', 'available') // Assuming 'status' column and 'available' value
+            ->count();
+
+        // New count for rented vehicles
+        $rentedVehicles = Vehicle::where('vendor_id', $vendorId)
+            ->where('status', 'rented') // Assuming 'status' column and 'available' value
+            ->count();
+
+        // New count for rented vehicles
+        $maintenanceVehicles = Vehicle::where('vendor_id', $vendorId)
+            ->where('status', 'maintenance') // Assuming 'status' column and 'available' value
+            ->count();
+
         // Booking Overview Chart Data (by status)
         $bookingOverview = $this->getBookingOverview($vendorId);
 
@@ -45,6 +60,9 @@ class VendorOverviewController extends Controller
             'totalRevenue' => $totalRevenue,
             'bookingOverview' => $bookingOverview,
             'revenueData' => $revenueData,
+            'activeVehicles' => $activeVehicles,
+            'rentedVehicles' => $rentedVehicles,
+            'maintenanceVehicles' => $maintenanceVehicles,
         ]);
     }
 

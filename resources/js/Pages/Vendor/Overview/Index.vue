@@ -5,19 +5,31 @@
 
             <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-[2rem]">
                 <Card class="bg-customLightPrimaryColor">
-                    <CardHeader><CardTitle class="text-[2rem] text-center">Total Vehicles</CardTitle></CardHeader>
+                    <CardHeader><CardTitle class="text-[1.5rem] text-center">Total Vehicles</CardTitle></CardHeader>
                     <CardContent class="text-[1.75rem] bg-customPrimaryColor text-white text-center p-0 rounded-bl-[12px] rounded-br-[12px]">{{ totalVehicles }}</CardContent>
                 </Card>
                 <Card class="bg-customLightPrimaryColor">
-                    <CardHeader><CardTitle class="text-[2rem] text-center">Total Bookings</CardTitle></CardHeader>
+                    <CardHeader><CardTitle class="text-[1.5rem] text-center">Vehicles Available</CardTitle></CardHeader>
+                    <CardContent class="text-[1.75rem] bg-customPrimaryColor text-white text-center p-0 rounded-bl-[12px] rounded-br-[12px]">{{ activeVehicles }}</CardContent>
+                </Card>
+                <Card class="bg-customLightPrimaryColor">
+                    <CardHeader><CardTitle class="text-[1.5rem] text-center">Vehicles Rented</CardTitle></CardHeader>
+                    <CardContent class="text-[1.75rem] bg-customPrimaryColor text-white text-center p-0 rounded-bl-[12px] rounded-br-[12px]">{{ rentedVehicles }}</CardContent>
+                </Card>
+                <Card class="bg-customLightPrimaryColor">
+                    <CardHeader><CardTitle class="text-[1.5rem] text-center">Maintenance</CardTitle></CardHeader>
+                    <CardContent class="text-[1.75rem] bg-customPrimaryColor text-white text-center p-0 rounded-bl-[12px] rounded-br-[12px]">{{ maintenanceVehicles }}</CardContent>
+                </Card>
+                <Card class="bg-customLightPrimaryColor">
+                    <CardHeader><CardTitle class="text-[1.5rem] text-center">Total Bookings</CardTitle></CardHeader>
                     <CardContent class="text-[1.75rem] bg-customPrimaryColor text-white text-center p-0 rounded-bl-[12px] rounded-br-[12px]">{{ totalBookings }}</CardContent>
                 </Card>
                 <Card class="bg-customLightPrimaryColor">
-                    <CardHeader><CardTitle class="text-[2rem] text-center">Active Bookings</CardTitle></CardHeader>
+                    <CardHeader><CardTitle class="text-[1.5rem] text-center">Active Bookings</CardTitle></CardHeader>
                     <CardContent class="text-[1.75rem] bg-customPrimaryColor text-white text-center p-0 rounded-bl-[12px] rounded-br-[12px]">{{ activeBookings }}</CardContent>
                 </Card>
                 <Card class="bg-customLightPrimaryColor">
-                    <CardHeader><CardTitle class="text-[2rem] text-center">Total Revenue</CardTitle></CardHeader>
+                    <CardHeader><CardTitle class="text-[1.5rem] text-center">Total Revenue</CardTitle></CardHeader>
                     <CardContent class="text-[1.75rem] bg-customPrimaryColor text-white text-center p-0 rounded-bl-[12px] rounded-br-[12px]">${{ totalRevenue }}</CardContent>
                 </Card>
             </div>
@@ -63,6 +75,9 @@ const props = defineProps([
     'totalRevenue',
     'bookingOverview',
     'revenueData',
+    'activeVehicles',
+    'rentedVehicles',
+    'maintenanceVehicles',
 ]);
 
 const revenueDataAsNumbers = computed(() => {

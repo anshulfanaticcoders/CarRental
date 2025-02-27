@@ -138,7 +138,6 @@ const updateStatus = async (booking) => {
     router.reload();
   } catch (error) {
     console.error("Error updating status:", error);
-    alert("Failed to update booking status. Please try again.");
     // Reset the status back in case of error
     router.reload();
   }
