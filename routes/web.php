@@ -5,6 +5,7 @@ use App\Http\Controllers\Admin\BlogController;
 use App\Http\Controllers\Admin\BookingDashboardController;
 use App\Http\Controllers\Admin\BusinessReportsController;
 use App\Http\Controllers\Admin\DashboardController;
+use App\Http\Controllers\Admin\PageController;
 use App\Http\Controllers\Admin\PaymentDashboardController;
 use App\Http\Controllers\Admin\PlansController;
 use App\Http\Controllers\Admin\PopularPlacesController;
@@ -17,6 +18,7 @@ use App\Http\Controllers\Admin\VehicleDashboardController;
 use App\Http\Controllers\Admin\VendorsReportController;
 use App\Http\Controllers\BookingController;
 use App\Http\Controllers\FavoriteController;
+use App\Http\Controllers\FrontendPageController;
 use App\Http\Controllers\GeocodingController;
 use App\Http\Controllers\MessageController;
 use App\Http\Controllers\NotificationController;
@@ -33,6 +35,7 @@ use App\Http\Controllers\PaymentController;
 use App\Http\Controllers\Admin\VendorsDashboardController;
 use App\Models\Booking;
 use App\Models\Message;
+use App\Models\Page;
 use Illuminate\Foundation\Application;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
@@ -97,6 +100,7 @@ Route::get('/vehicle/{id}', [VehicleController::class, 'show'])->name('vehicle.s
 Route::get('/s', [SearchController::class, 'search']);
 Route::get('/api/geocoding/autocomplete', [GeocodingController::class, 'autocomplete']);
 Route::get('/blogs-page', [BlogController::class, 'showBlogPage'])->name('blogs-page');
+Route::get('/page/{slug}', [FrontendPageController::class, 'show'])->name('pages.show');
 
 // Show Blogs on Home page
 // Route::get('/', [BlogController::class, 'show'])->name('welcome');
@@ -143,6 +147,8 @@ Route::middleware(['auth', 'role:admin'])->group(function () {
     Route::get('/business-report', [BusinessReportsController::class, 'index']);
 
     Route::get('/admin/reports/users/download', [UserReportDownloadController::class, 'downloadXML']);
+
+    Route::resource('pages', PageController::class)->names('admin.pages');
 
 });
 

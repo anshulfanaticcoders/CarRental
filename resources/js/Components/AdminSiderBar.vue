@@ -180,6 +180,17 @@ const data = {
       ],
     },
     {
+      title: 'Pages',
+      url: '#',
+      icon: Notebook,
+      items: [
+        {
+          title: 'All Pages',
+          url: '/pages',
+        },
+      ],
+    },
+    {
       title: 'Payments',
       url: '#',
       icon: DollarSign,

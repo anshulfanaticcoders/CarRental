@@ -45,7 +45,7 @@ import paypalLogos from "../../assets/paymentIcons.svg";
                         <label for="" class="text-[1.25rem]">Company</label>
                         <ul class="flex flex-col gap-4">
                             <li>
-                                <Link href="">About Us</Link>
+                                <Link :href="route('pages.show', 'about-us')">About Us</Link>
                             </li>
                             <li>
                                 <Link href="/blogs-page">Blogs</Link>
@@ -62,10 +62,10 @@ import paypalLogos from "../../assets/paymentIcons.svg";
                         <label for="" class="text-[1.25rem]">Information</label>
                         <ul class="flex flex-col gap-4">
                             <li>
-                                <Link href="">Privacy Policy</Link>
+                                <Link :href="route('pages.show', 'privacy-policy')">Privacy Policy</Link>
                             </li>
                             <li>
-                                <Link href="">Terms & Conditions</Link>
+                                <Link :href="route('pages.show', 'terms-and-conditions')">Terms & Conditions</Link>
                             </li>
                         </ul>
                     </div>
