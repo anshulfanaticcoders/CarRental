@@ -59,6 +59,12 @@ const toggleFavourite = async (vehicle) => {
 };
 
 onMounted(fetchFavorites);
+
+const formatPrice = (price, vehicle) => {
+    const currencySymbol = vehicle?.vendor_profile?.currency ?? '€'; // Default to '€' if missing
+    return `${currencySymbol}${price}`;
+};
+
 </script>
 
 <template>
@@ -116,8 +122,7 @@ onMounted(fetchFavorites);
                         </div>
                         <div class="mt-[2rem] flex justify-between items-center">
                             <div>
-                                <span class="text-customPrimaryColor text-[1.875rem] font-medium">€{{
-                                    vehicle.price_per_day }}</span><span>/day</span>
+                                <span class="text-customPrimaryColor text-[1.875rem] font-medium">{{ formatPrice(vehicle.price_per_day, vehicle) }}</span><span>/day</span>
                             </div>
                             <img :src="goIcon" alt="" />
                         </div>

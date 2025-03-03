@@ -142,7 +142,7 @@ onMounted(() => {
                             <CarouselItem v-for="category in categories" :key="category.id"
                                 class="md:basis-1/2 lg:basis-1/3">
                                 <div class="p-1">
-                                    <Link :href="`/categories/${category.id}`">
+                                    <Link :href="`/s?category_id=${encodeURIComponent(category.id)}`">
                                     <Card>
                                         <CardContent
                                             class="cardContent flex h-[515px] items-center justify-center p-6 relative">

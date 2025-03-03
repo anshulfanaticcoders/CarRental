@@ -24,6 +24,11 @@
                   <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Fuel</th>
                   <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Location
                   </th>
+                  <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Limited KM
+                  </th>
+                  <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Cancellation Available
+                  </th>
                   <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Price
                   </th>
                   <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
@@ -33,28 +38,35 @@
               </thead>
               <tbody>
                 <tr v-for="(vehicle, index) in vehicles" :key="vehicle.id" class="border-b">
-                  <td class="px-6 py-4 whitespace-nowrap">{{ index + 1 }}</td>
-                  <Link :href="`/vehicle/${vehicle.id}`">
-                  <td class="px-6 py-4 whitespace-nowrap hover:scale-105">
+                  <td class="px-6 py-4 whitespace-nowrap text-[0.875rem]">{{ index + 1 }}</td>
+                  <Link :href="`/vehicle/${vehicle.id}`" class="w-full">
+                  <td class="px-2 py-4 whitespace-nowrap hover:scale-105">
                     <img :src="getPrimaryImage(vehicle)" :alt="`${vehicle.brand} ${vehicle.model}`"
-                      class="h-16 w-24 object-cover rounded">
+                      class="h-12 w-24 object-cover rounded">
                   </td>
                   </Link>
-                  <td class="px-6 py-4 whitespace-nowrap">{{ vehicle.brand }} {{ vehicle.model }}</td>
-                  <td class="px-6 py-4 whitespace-nowrap capitalize">{{ vehicle.transmission }}</td>
-                  <td class="px-6 py-4 whitespace-nowrap capitalize">{{ vehicle.fuel }}</td>
-                  <td class="px-6 py-4 whitespace-wrap">{{ vehicle.location }}</td>
-                  <td class="px-6 py-4 whitespace-nowrap text-customPrimaryColor font-bold">
-                    <span v-if="vehicle.price_per_day">${{ vehicle.price_per_day }}/day</span> <br>
-                    <span v-if="vehicle.price_per_week">${{ vehicle.price_per_week }}/week</span> <br>
-                    <span v-if="vehicle.price_per_month">${{ vehicle.price_per_month }}/month</span>
+                  <td class="px-2 py-4 whitespace-nowrap text-[0.875rem]">{{ vehicle.brand }} {{ vehicle.model }}</td>
+                  <td class="px-2 py-4 whitespace-nowrap text-[0.875rem] capitalize">{{ vehicle.transmission }}</td>
+                  <td class="px-2 py-4 whitespace-nowrap text-[0.875rem] capitalize">{{ vehicle.fuel }}</td>
+                  <td class="px-2 py-4 whitespace-wrap text-[0.875rem]">{{ vehicle.location }}</td>
+                  <td class="px-2 py-4 whitespace-wrap text-[0.875rem]">
+                    {{ vehicle.limited_km ? `€${vehicle.price_per_km}` : 'Unlimited' }}
                   </td>
-                  <td class="px-6 py-4 whitespace-nowrap">
-                    <span :class="getStatusBadgeClass(vehicle.status)" class="px-2 py-1 rounded text-sm capitalize">
+
+                  <td class="px-2 py-4 whitespace-wrap text-[0.875rem]">
+                    {{ vehicle.cancellation_available ? 'Available' : 'Unavailable' }}
+                  </td>
+
+                  <td class="px-2 py-4 whitespace-nowrap text-[0.875rem] text-customPrimaryColor font-bold">
+                    {{ formatPricing(vehicle) }}
+                  </td>
+
+                  <td class="px-2 py-4 whitespace-nowrap text-[0.875rem]">
+                    <span :class="getStatusBadgeClass(vehicle.status)" class="px-2 py-1 rounded text-xs capitalize">
                       {{ vehicle.status }}
                     </span>
                   </td>
-                  <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                  <td class="px-2 py-4 whitespace-nowrap text-xs font-medium">
                     <Link :href="route('current-vendor-vehicles.edit', vehicle.id)"
                       class="px-3 mr-2 py-1 bg-gray-600 text-white rounded hover:bg-gray-700">
                     Edit
@@ -75,7 +87,7 @@
       </div>
       <div class="mt-[1rem] flex justify-end">
         <Pagination :current-page="pagination.current_page" :total-pages="pagination.last_page"
-                @page-change="handlePageChange" />
+          @page-change="handlePageChange" />
       </div>
     </div>
 
@@ -110,10 +122,10 @@ const props = defineProps({
     type: Array,
     required: true
   },
-  pagination: { 
-        type: Object,
-        required: true
-    }
+  pagination: {
+    type: Object,
+    required: true
+  }
 })
 const handlePageChange = (page) => {
   router.get(route('current-vendor-vehicles.index'), { ...props.filters, page }, { preserveState: true, preserveScroll: true });
@@ -149,4 +161,19 @@ const deleteVehicle = () => {
     }
   })
 }
+const formatPricing = (vehicle) => {
+  if (!vehicle || !vehicle.vendor_profile || !vehicle.vendor_profile.currency) {
+    return 'N/A'; // Fallback if data is missing
+  }
+
+  const currencySymbol = vehicle.vendor_profile.currency;
+  const prices = [];
+
+  if (vehicle.price_per_day) prices.push(`${currencySymbol}${vehicle.price_per_day}/day`);
+  if (vehicle.price_per_week) prices.push(`${currencySymbol}${vehicle.price_per_week}/week`);
+  if (vehicle.price_per_month) prices.push(`${currencySymbol}${vehicle.price_per_month}/month`);
+
+  return prices.length ? prices.join(' | ') : 'N/A';
+};
+
 </script>

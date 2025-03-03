@@ -5,7 +5,7 @@ import PrimaryButton from '@/Components/PrimaryButton.vue';
 import TextArea from '@/Components/TextArea.vue';
 import TextInput from '@/Components/TextInput.vue';
 import { useForm, usePage } from '@inertiajs/vue3';
-import { ref, watch } from 'vue';
+import { computed, onMounted, ref, watch } from 'vue';
 import { useToast } from 'vue-toastification';
 
 const toast = useToast();
@@ -68,6 +68,29 @@ const handleSubmit = () => {
         },
     });
 };
+
+const currencies = ref([]);
+const selectedCurrency = computed({
+    get() {
+        const currency = currencies.value.find(c => c.symbol === form.currency);
+        return currency ? currency.code : '';
+    },
+    set(newValue) {
+        const currency = currencies.value.find(c => c.code === newValue);
+        form.currency = currency ? currency.symbol : '';
+    }
+});
+
+const fetchCurrencies = async () => {
+    try {
+        const response = await fetch('/currency.json'); // Ensure it's in /public
+        currencies.value = await response.json();
+    } catch (error) {
+        console.error("Error loading currencies:", error);
+    }
+};
+
+onMounted(fetchCurrencies);
 </script>
 
 <template>
@@ -149,10 +172,11 @@ const handleSubmit = () => {
 
                 <div class="">
                     <InputLabel for="currency" value="Currency" />
-                    <select id="currency" class="mt-1 block w-full" v-model="form.currency">
+                    <select id="currency" class="mt-1 block w-full" v-model="selectedCurrency">
                         <option value="">Select Currency</option>
-                        <option value="USD">USD</option>
-                        <option value="EUR">EUR</option>
+                        <option v-for="currency in currencies" :key="currency.code" :value="currency.code">
+                            {{ currency.code }}
+                        </option>
                     </select>
                     <InputError class="mt-2" :message="form.errors.currency" />
                 </div>

@@ -140,7 +140,7 @@ class VehicleController extends Controller
 
     public function index()
     {
-        $vehicles = Vehicle::with('category', 'user')->get();
+        $vehicles = Vehicle::with('category', 'user','vendorProfile')->get();
         return Inertia::render('Auth/VehicleIndex', [
             'vehicles' => $vehicles,
         ]);
@@ -167,7 +167,6 @@ class VehicleController extends Controller
                 $query->select('vehicle_id', 'pickup_date', 'return_date');
             }
         ])->findOrFail($id);
-
         return Inertia::render('SingleCar', [
             'vehicle' => $vehicle,
             'booked_dates' => $vehicle->bookings->map(function ($booking) {
@@ -182,7 +181,7 @@ class VehicleController extends Controller
     //This is for getting particular vehicle information to the booking page 
     public function booking(Request $request, $id)
     {
-        $vehicle = Vehicle::with(['specifications', 'images', 'category', 'user'])
+        $vehicle = Vehicle::with(['specifications', 'images', 'category', 'user', 'vendorProfile'])
             ->findOrFail($id);
 
         return Inertia::render('Booking', [

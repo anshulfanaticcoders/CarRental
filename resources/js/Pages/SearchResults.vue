@@ -23,10 +23,12 @@ import filterIcon from "../../assets/filterIcon.svg";
 import SearchBar from "@/Components/SearchBar.vue";
 import { Label } from "@/Components/ui/label";
 import { Switch } from "@/Components/ui/switch";
+
 const props = defineProps({
     vehicles: Object,
     filters: Object,
     pagination_links: String,
+    categories: Array,
 });
 // Debounce function
 const debounce = (fn, delay) => {
@@ -53,6 +55,7 @@ const form = useForm({
     longitude: usePage().props.filters.longitude || '',
     radius: usePage().props.filters.radius || '',
     package_type: usePage().props.filters.package_type || 'day',
+    category_id: usePage().props.filters.category_id || '',
 });
 
 // Debounced filter submission
@@ -298,14 +301,14 @@ const formatDate = (dateStr) => {
 const showRentalDates = ref(false);
 
 const searchQuery = computed(() => {
-  return {
-    where: usePage().props.filters?.where || '',
-    date_from: usePage().props.filters?.date_from || '',
-    date_to: usePage().props.filters?.date_to || '',
-    latitude: usePage().props.filters?.latitude || '',
-    longitude: usePage().props.filters?.longitude || '',
-    radius: usePage().props.filters?.radius || '',
-  };
+    return {
+        where: usePage().props.filters?.where || '',
+        date_from: usePage().props.filters?.date_from || '',
+        date_to: usePage().props.filters?.date_to || '',
+        latitude: usePage().props.filters?.latitude || '',
+        longitude: usePage().props.filters?.longitude || '',
+        radius: usePage().props.filters?.radius || '',
+    };
 });
 
 </script>
@@ -314,10 +317,7 @@ const searchQuery = computed(() => {
     <AuthenticatedHeaderLayout />
     <section class="bg-customPrimaryColor py-customVerticalSpacing">
         <div class="">
-            <SearchBar
-        class="border-[2px] rounded-[20px] border-white mt-0 mb-0"
-        :prefill="searchQuery"
-      />
+            <SearchBar class="border-[2px] rounded-[20px] border-white mt-0 mb-0" :prefill="searchQuery" />
         </div>
     </section>
 
@@ -331,8 +331,7 @@ const searchQuery = computed(() => {
                 <div class="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-6 gap-8">
 
                     <!-- Seating Capacity Filter -->
-                    <div
-                        class="flex flex-col p-2 shadow-lg rounded-[12px] hover:bg-customLightPrimaryColor">
+                    <div class="flex flex-col p-2 shadow-lg rounded-[12px] hover:bg-customLightPrimaryColor">
                         <div class="flex gap-2">
                             <img :src=seatingIcon alt="">
                             <label for="seating_capacity" class="block text-[1rem] font-medium">Seating Capacity</label>
@@ -347,8 +346,7 @@ const searchQuery = computed(() => {
                     </div>
 
                     <!-- Brand Filter -->
-                    <div
-                        class="flex flex-col p-2 shadow-lg rounded-[12px] hover:bg-customLightPrimaryColor">
+                    <div class="flex flex-col p-2 shadow-lg rounded-[12px] hover:bg-customLightPrimaryColor">
                         <div class="flex gap-2">
                             <img :src=brandIcon alt="" class="w-[3rem]">
                             <label for="brand" class="block text-[1rem] font-medium">Brand</label>
@@ -360,9 +358,23 @@ const searchQuery = computed(() => {
                         </select>
                     </div>
 
+                    <!-- Category Filter -->
+                    <div class="flex flex-col p-2 shadow-lg rounded-[12px] hover:bg-customLightPrimaryColor">
+                        <div class="flex gap-2">
+                            <img :src="brandIcon" alt="" class="w-[3rem]">
+                            <label for="category_id" class="block text-[1rem] font-medium">Category</label>
+                        </div>
+                        <select v-model="form.category_id" id="category_id"
+                            class="mt-1 block w-full rounded-md border-[1px] border-customLightGrayColor shadow-sm text-customPrimaryColor cursor-pointer p-2">
+                            <option value="">All Categories</option>
+                            <option v-for="category in $page.props.categories" :key="category.id" :value="category.id">
+                                {{ category.name }}
+                            </option>
+                        </select>
+                    </div>
+
                     <!-- Transmission Filter -->
-                    <div
-                        class="flex flex-col p-2 shadow-lg rounded-[12px] hover:bg-customLightPrimaryColor">
+                    <div class="flex flex-col p-2 shadow-lg rounded-[12px] hover:bg-customLightPrimaryColor">
                         <div class="flex gap-2">
                             <img :src=transmissionIcon alt="">
                             <label for="transmission" class="block text-[1rem] font-medium">Transmission</label>
@@ -376,8 +388,7 @@ const searchQuery = computed(() => {
                     </div>
 
                     <!-- Fuel Filter -->
-                    <div
-                        class="flex flex-col p-2 shadow-lg rounded-[12px] hover:bg-customLightPrimaryColor">
+                    <div class="flex flex-col p-2 shadow-lg rounded-[12px] hover:bg-customLightPrimaryColor">
                         <div class="flex gap-2">
                             <img :src=fuelIcon alt="">
                             <label for="fuel" class="block text-[1rem] font-medium">Fuel</label>
@@ -392,8 +403,7 @@ const searchQuery = computed(() => {
                     </div>
 
                     <!-- Price Range Filter -->
-                    <div
-                        class="flex flex-col p-2 shadow-lg rounded-[12px] hover:bg-customLightPrimaryColor">
+                    <div class="flex flex-col p-2 shadow-lg rounded-[12px] hover:bg-customLightPrimaryColor">
                         <div class="flex gap-2">
                             <img :src=priceIcon alt="">
                             <label for="price_range" class="block text-[1rem] font-medium">Price Range</label>
@@ -409,8 +419,7 @@ const searchQuery = computed(() => {
                     </div>
 
                     <!-- Color Filter -->
-                    <div
-                        class="flex flex-col p-2 shadow-lg rounded-[12px] hover:bg-customLightPrimaryColor">
+                    <div class="flex flex-col p-2 shadow-lg rounded-[12px] hover:bg-customLightPrimaryColor">
                         <div class="flex gap-2">
                             <img :src=colorIcon alt="" class="w-[1.5rem]">
                             <label for="color" class="block text-sm font-medium">Color</label>
@@ -423,8 +432,7 @@ const searchQuery = computed(() => {
                     </div>
 
                     <!-- Mileage Filter -->
-                    <div
-                        class="flex flex-col p-2 shadow-lg rounded-[12px] hover:bg-customLightPrimaryColor">
+                    <div class="flex flex-col p-2 shadow-lg rounded-[12px] hover:bg-customLightPrimaryColor">
                         <div class="flex gap-2">
                             <img :src=mileageIcon2 alt="" class="w-[1.5rem]">
                             <label for="mileage" class="block text-[1rem] font-medium">Mileage</label>
@@ -440,8 +448,7 @@ const searchQuery = computed(() => {
                     </div>
 
                     <!-- Package Type Filter -->
-                    <div
-                        class="flex flex-col p-2 shadow-lg rounded-[12px] hover:bg-customLightPrimaryColor">
+                    <div class="flex flex-col p-2 shadow-lg rounded-[12px] hover:bg-customLightPrimaryColor">
                         <div class="flex gap-2">
                             <label for="package_type" class="block text-[1rem] font-medium">Package Type</label>
                         </div>
@@ -510,64 +517,65 @@ const searchQuery = computed(() => {
                                 </button>
                             </div>
                         </div>
-                        <a :href="`/vehicle/${vehicle.id}?package=${form.package_type}&pickup_date=${form.date_from}&return_date=${form.date_to}`">
-                        <div class="column flex flex-col gap-5 items-start">
-                            <img v-if="vehicle.images" :src="`/storage/${vehicle.images.find(
-                                (image) =>
-                                    image.image_type === 'primary'
-                            )?.image_path
-                                }`" alt="Primary Image" class="w-full h-[250px] object-cover rounded-lg" />
-                            <span class="bg-[#f5f5f5] inline-block px-8 py-2 text-center rounded-[40px]">
-                                {{ vehicle.model }}
-                            </span>
-                        </div>
-
-                        <div class="column mt-[2rem]">
-                            <h5 class="font-medium text-[1.5rem] text-customPrimaryColor">
-                                {{ vehicle.brand }}
-                            </h5>
-                            <div class="car_short_info mt-[1rem] flex gap-3">
-                                <img :src="carIcon" alt="" />
-                                <div class="features">
-                                    <span class="capitalize text-[1.15rem]">{{ vehicle.transmission }} .
-                                        {{ vehicle.fuel }} .
-                                        {{
-                                            vehicle.seating_capacity
-                                        }}
-                                        Seats</span>
-                                </div>
-                            </div>
-                            <div class="extra_details flex gap-5 mt-[1rem]">
-                                <div class="col flex gap-3">
-                                    <img :src="walkIcon" alt="" /><span class="text-[1.15rem]">9.3 KM Away</span>
-                                </div>
-                                <div class="col flex gap-3">
-                                    <img :src="mileageIcon" alt="" /><span class="text-[1.15rem]">{{ vehicle.mileage
-                                    }}km/d</span>
-                                </div>
-                            </div>
-
-                            <div class="benefits mt-[2rem] grid grid-cols-2 gap-3">
-                                <span class="flex gap-3 items-center text-[12px]">
-                                    <img :src="check" alt="" />Free Cancellation
-                                </span>
-                                <span class="flex gap-3 items-center text-[12px]">
-                                    <img :src="check" alt="" />Unlimited mileage
-                                </span>
-                                <span class="flex gap-3 items-center text-[12px]">
-                                    <img :src="check" alt="" />Unlimited
-                                    kilometers
+                        <a
+                            :href="`/vehicle/${vehicle.id}?package=${form.package_type}&pickup_date=${form.date_from}&return_date=${form.date_to}`">
+                            <div class="column flex flex-col gap-5 items-start">
+                                <img v-if="vehicle.images" :src="`/storage/${vehicle.images.find(
+                                    (image) =>
+                                        image.image_type === 'primary'
+                                )?.image_path
+                                    }`" alt="Primary Image" class="w-full h-[250px] object-cover rounded-lg" />
+                                <span class="bg-[#f5f5f5] inline-block px-8 py-2 text-center rounded-[40px]">
+                                    {{ vehicle.model }}
                                 </span>
                             </div>
 
-                            <div class="mt-[2rem] flex justify-between items-center">
-                                <div>
-                                    <span class="text-customPrimaryColor text-[1.875rem] font-medium">€{{
-                                        vehicle[priceField] }}</span><span>/{{ priceUnit }}</span>
+                            <div class="column mt-[2rem]">
+                                <h5 class="font-medium text-[1.5rem] text-customPrimaryColor">
+                                    {{ vehicle.brand }}
+                                </h5>
+                                <div class="car_short_info mt-[1rem] flex gap-3">
+                                    <img :src="carIcon" alt="" />
+                                    <div class="features">
+                                        <span class="capitalize text-[1.15rem]">{{ vehicle.transmission }} .
+                                            {{ vehicle.fuel }} .
+                                            {{
+                                                vehicle.seating_capacity
+                                            }}
+                                            Seats</span>
+                                    </div>
                                 </div>
-                                <img :src="goIcon" alt="" />
+                                <div class="extra_details flex gap-5 mt-[1rem]">
+                                    <div class="col flex gap-3">
+                                        <img :src="walkIcon" alt="" /><span class="text-[1.15rem]">9.3 KM Away</span>
+                                    </div>
+                                    <div class="col flex gap-3">
+                                        <img :src="mileageIcon" alt="" /><span class="text-[1.15rem]">{{ vehicle.mileage
+                                            }}km/d</span>
+                                    </div>
+                                </div>
+
+                                <div class="benefits mt-[2rem] grid grid-cols-2 gap-3">
+                                    <span class="flex gap-3 items-center text-[12px]">
+                                        <img :src="check" alt="" />Free Cancellation
+                                    </span>
+                                    <span class="flex gap-3 items-center text-[12px]">
+                                        <img :src="check" alt="" />Unlimited mileage
+                                    </span>
+                                    <span class="flex gap-3 items-center text-[12px]">
+                                        <img :src="check" alt="" />Unlimited
+                                        kilometers
+                                    </span>
+                                </div>
+
+                                <div class="mt-[2rem] flex justify-between items-center">
+                                    <div>
+                                        <span class="text-customPrimaryColor text-[1.875rem] font-medium">{{ vehicle.vendor_profile.currency }}{{
+                                            vehicle[priceField] }}</span><span>/{{ priceUnit }}</span>
+                                    </div>
+                                    <img :src="goIcon" alt="" />
+                                </div>
                             </div>
-                        </div>
                         </a>
                     </div>
                 </div>

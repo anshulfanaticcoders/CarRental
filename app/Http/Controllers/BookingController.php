@@ -208,7 +208,7 @@ class BookingController extends Controller
         }
 
         // Fetch booking details
-        $booking = Booking::with(['extras', 'customer'])->find($payment->booking_id);
+        $booking = Booking::with(['extras', 'customer','vehicle.vendorProfile'])->find($payment->booking_id);
         $vehicleId = $booking->vehicle_id;
         $vehicle = Vehicle::with(['specifications', 'images', 'category', 'user'])->find($vehicleId);
         $plan = Plan::where('plan_type', $booking->plan)->first();
@@ -221,6 +221,7 @@ class BookingController extends Controller
             'extras' => $booking->extras,
             'customer' => $booking->customer,
             'plan' => $plan,
+            'vendorProfile' => $booking->vehicle->vendorProfile,
         ]);
     }
 
@@ -314,7 +315,7 @@ public function getCompletedBookings()
     $completedBookings = $customer ? 
         Booking::where('customer_id', $customer->id)
             ->where('booking_status', 'completed')
-            ->with('vehicle.images','vehicle.category', 'payments')
+            ->with('vehicle.images','vehicle.category', 'payments','vehicle.vendorProfile')
             ->orderBy('created_at', 'desc')
             ->paginate(3) : 
         collect();

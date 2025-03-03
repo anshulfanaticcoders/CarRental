@@ -193,7 +193,7 @@ const formatCurrency = (amount) => {
         </div>
 
         <div class="flex justify-between"> 
-          <Link class="button-primary px-5 py-4" href="/inbox">Chat with owner</Link>
+          <Link class="button-primary px-5 py-4" :href="`/messages/${vehicle?.id}`">Chat with owner</Link>
           <Link class="button-secondary px-5 py-4" href="/profile/bookings/pending">Go to Bookings</Link>
         </div>
       </div>

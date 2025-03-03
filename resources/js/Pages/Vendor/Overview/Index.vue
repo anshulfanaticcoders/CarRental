@@ -30,7 +30,7 @@
                 </Card>
                 <Card class="bg-customLightPrimaryColor">
                     <CardHeader><CardTitle class="text-[1.5rem] text-center">Total Revenue</CardTitle></CardHeader>
-                    <CardContent class="text-[1.75rem] bg-customPrimaryColor text-white text-center p-0 rounded-bl-[12px] rounded-br-[12px]">${{ totalRevenue }}</CardContent>
+                    <CardContent class="text-[1.75rem] bg-customPrimaryColor text-white text-center p-0 rounded-bl-[12px] rounded-br-[12px]">{{ totalRevenue }}</CardContent>
                 </Card>
             </div>
 
@@ -88,5 +88,10 @@ const revenueDataAsNumbers = computed(() => {
         total: Number(item.total),
     }));
 });
+
+const formatPrice = (price) => {
+    const currencySymbol = vehicle.value.vendor_profile.currency;
+    return `${currencySymbol}${price}`;
+};
 
 </script>

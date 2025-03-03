@@ -1,5 +1,5 @@
 <script setup>
-import { ref, computed, onMounted, watch } from "vue";
+import { ref, computed, onMounted, watch, inject } from "vue";
 import { Link, usePage } from "@inertiajs/vue3";
 import chevronIcon from "../../assets/chaveronDown.svg";
 import profileIcon from "../../assets/userDashIcon.svg";
@@ -12,6 +12,17 @@ import vehiclesIcon from "../../assets/vehicletypeIcon.svg";
 import clockIcon from "../../assets/clockIcon.svg";
 import dateblockingIcon from "../../assets/dateblockingIcon.svg";
 import logoutIcon from '../../assets/logoutIcon.svg';
+
+// Get the isCollapsed state from parent component or set default
+const isCollapsed = inject('isSidebarCollapsed', ref(false));
+const toggleSidebar = inject('toggleSidebar', () => {
+  isCollapsed.value = !isCollapsed.value;
+  // Emit the event for the parent layout
+  emit('toggle-sidebar');
+});
+
+// Define emits
+const emit = defineEmits(['toggle-sidebar']);
 
 // Existing logic
 const user = ref(null);
@@ -158,15 +169,13 @@ onMounted(() => {
 
 import axios from "axios";
 
-
-
 const fetchUserProfile = async () => {
   try {
-    // Make the request to fetch the current user's profile (no need to pass userId as it's dynamically fetched from auth)
-    const response = await axios.get("/user"); // This endpoint fetches the current authenticated user's data
+    // Make the request to fetch the current user's profile
+    const response = await axios.get("/user");
 
     if (response.data.status === "success") {
-      user.value = response.data.data; // Store the user profile data
+      user.value = response.data.data;
     } else {
       console.error("Failed to fetch user:", response.data.message);
     }
@@ -176,77 +185,120 @@ const fetchUserProfile = async () => {
 };
 
 onMounted(fetchUserProfile);
-
-
 </script>
 
 <template>
-  <div class="sidebar">
-    <div class="user-info p-4 w-full">
-      <div class="flex items-center space-x-3">
+  <div class="sidebar-inner">
+    <!-- Collapse toggle button -->
+    <div class="flex justify-end py-4 pr-6">
+      <button @click="toggleSidebar" class="collapse-toggle" :class="{ 'toggle-collapsed': isCollapsed }">
+      <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+        stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <polyline points="15 18 9 12 15 6" v-if="!isCollapsed"></polyline>
+        <polyline points="9 18 15 12 9 6" v-else></polyline>
+      </svg>
+    </button>
+    </div>
+
+    <div :class="{ 'collapsed': isCollapsed }">
+      <div class="user-info p-4 w-full" v-if="!isCollapsed">
+        <div class="flex items-center space-x-3">
+          <img :src="user?.profile.avatar
+            ? `/storage/${user?.profile.avatar}`
+            : '/storage/avatars/default-avatar.svg'
+            " alt="User Avatar" class="w-12 h-12 rounded-full object-cover" />
+          <div>
+            <p class="text-sm text-gray-500">
+              Hello, {{ greetingMessage }}
+            </p>
+            <p class="text-lg font-semibold text-gray-800">
+              {{ user?.first_name }} {{ user?.last_name }}
+            </p>
+            <p class="capitalize text-md text-[#009900]">
+              {{ user?.role }}
+            </p>
+          </div>
+        </div>
+      </div>
+
+      <!-- User avatar only when collapsed -->
+      <div class="collapsed-avatar p-4 flex justify-center" v-if="isCollapsed">
         <img :src="user?.profile.avatar
           ? `/storage/${user?.profile.avatar}`
           : '/storage/avatars/default-avatar.svg'
-          " alt="User Avatar" class="w-12 h-12 rounded-full object-cover" />
-        <div>
-          <p class="text-sm text-gray-500">
-            Hello, {{ greetingMessage }}
-          </p>
-          <p class="text-lg font-semibold text-gray-800">
-            {{ user?.first_name }} {{ user?.last_name }}
-          </p>
-          <p class="capitalize text-md text-[#009900]">
-            {{ user?.role }}
-          </p>
-        </div>
+          " alt="User Avatar" class="w-10 h-10 rounded-full object-cover" />
       </div>
-    </div>
 
-    <!-- Dynamic Menus -->
-    <div v-for="menu in activeMenus" :key="menu.key" class="menu-item flex flex-col gap-2">
-      <button class="menu-header" :class="{ active: activeMenu === menu.key }" @click="toggleMenu(menu.key)">
-        <div class="flex gap-2">
-          <img :src="menu.icon" alt="" class="icon-button active" :class="{
-            'brightness-active': activeMenu === menu.key,
-          }" />
-          {{ menu.title }}
-        </div>
-        <img class="chevron" :class="{ rotated: activeMenu === menu.key }" :src="chevronIcon" alt="" />
-      </button>
-      <ul v-if="activeMenu === menu.key" class="submenu">
-        <li v-for="item in menu.items" :key="item.name" :class="{ 'submenu-active': activeSubmenu === item.name }">
-          <Link :href="item.path" class="submenu-link flex items-center gap-2" @click="setActiveSubmenu(item.name)">
-          {{ item.name }}
-          </Link>
-        </li>
-      </ul>
-    </div>
+      <!-- Dynamic Menus -->
+      <div v-for="menu in activeMenus" :key="menu.key" class="menu-item flex flex-col gap-2">
+        <button class="menu-header" :class="{ active: activeMenu === menu.key, 'collapsed-menu': isCollapsed }" 
+               @click="toggleMenu(menu.key)">
+          <div class="flex gap-2 items-center">
+            <img :src="menu.icon" alt="" class="icon-button active" 
+                :class="{ 'brightness-active': activeMenu === menu.key }" />
+            <span v-if="!isCollapsed">{{ menu.title }}</span>
+          </div>
+          <img v-if="!isCollapsed" class="chevron" :class="{ rotated: activeMenu === menu.key }" :src="chevronIcon" alt="" />
+        </button>
+        <ul v-if="activeMenu === menu.key && !isCollapsed" class="submenu">
+          <li v-for="item in menu.items" :key="item.name" :class="{ 'submenu-active': activeSubmenu === item.name }">
+            <Link :href="item.path" class="submenu-link flex items-center gap-2" @click="setActiveSubmenu(item.name)">
+            {{ item.name }}
+            </Link>
+          </li>
+        </ul>
+      </div>
 
-    <!-- Other Links -->
-    <div v-for="link in activeOtherLinks" :key="link.name" class="menu-item">
-      <Link :href="link.path" class="menu-link flex items-center gap-2" :class="{ active: activeLink === link.name }"
-        @click="activeLink = link.name">
-      <img :src="link.icon" alt="" class="icon w-[24px] h-[24px]"
-        :class="{ 'brightness-active': activeLink === link.name }" />
-      {{ link.name }}
+      <!-- Other Links -->
+      <div v-for="link in activeOtherLinks" :key="link.name" class="menu-item">
+        <Link :href="link.path" class="menu-link flex items-center gap-2" 
+             :class="{ active: activeLink === link.name, 'collapsed-menu': isCollapsed }"
+             @click="activeLink = link.name">
+          <img :src="link.icon" alt="" class="icon w-[24px] h-[24px]"
+            :class="{ 'brightness-active': activeLink === link.name }" />
+          <span v-if="!isCollapsed">{{ link.name }}</span>
+        </Link>
+      </div>
+
+      <Link :href="route('logout')" method="post" as="button" 
+           class="text-[#EE1D52] flex items-center gap-1 mt-[4rem]"
+           :class="{ 'justify-center': isCollapsed, 'ml-[1rem]': !isCollapsed, 'ml-0': isCollapsed }">
+        <img :src="logoutIcon" alt="">
+        <span v-if="!isCollapsed">Log out</span>
       </Link>
     </div>
-
-    <Link :href="route('logout')" method="post" as="button" class="text-[#EE1D52] flex items-center gap-1 ml-[1rem] mt-[4rem]">
-    <img :src=logoutIcon alt="">
-    Log out
-    </Link>
   </div>
-
 </template>
 
 <style scoped>
-a {
-  display: flex !important;
+.sidebar-inner {
+  position: relative;
+  height: 100%;
+  width: 100%;
 }
 
-.sidebar {
-  padding: 20px;
+.collapse-toggle {
+  width: 30px;
+  height: 30px;
+  background-color: #153b4f;
+  color: white;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  z-index: 10;
+  transition: all 0.3s;
+  border: none;
+}
+
+.collapsed {
+  width: 100%;
+  overflow-x: hidden;
+}
+
+a {
+  display: flex !important;
 }
 
 .user-info {
@@ -267,6 +319,11 @@ a {
   font-size: 1rem;
   color: #153b4f;
   font-weight: 500;
+}
+
+.menu-header.collapsed-menu {
+  padding: 1rem;
+  justify-content: center;
 }
 
 .menu-header.active {
@@ -313,6 +370,11 @@ a {
   font-weight: 500;
 }
 
+.menu-link.collapsed-menu {
+  padding: 1rem;
+  justify-content: center;
+}
+
 .menu-link.active {
   color: white;
   background-color: #153b4f;
@@ -321,5 +383,9 @@ a {
 
 .brightness-active {
   filter: brightness(15);
+}
+
+.collapsed-avatar {
+  margin-bottom: 20px;
 }
 </style>

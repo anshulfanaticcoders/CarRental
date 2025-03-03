@@ -53,7 +53,10 @@ class Booking extends Model
     {
         return $this->belongsTo(Vehicle::class);
     }
-
+    public function vendorProfile()
+    {
+        return $this->belongsTo(UserProfile::class, 'vendor_id', 'user_id');
+    }
     // Generate unique booking number
     public static function generateBookingNumber(): string
     {

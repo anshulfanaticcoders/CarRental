@@ -61,7 +61,7 @@
               </div>
             </div>
             <div class='flex justify-between items-center'>
-              <span class="text-customPrimaryColor text-[1.5rem] font-medium">${{ booking.total_amount }}</span>
+              <span class="text-customPrimaryColor text-[1.5rem] font-medium"> {{ formatPrice(booking.total_amount, booking.vehicle) }}</span>
               <div>
                 <button 
                   v-if="!booking.review"
@@ -209,4 +209,11 @@ onMounted(() => {
     showNotification(flash.error, 'error');
   }
 });
+
+const formatPrice = (price, vehicle) => {
+    const currencySymbol = vehicle?.vendor_profile?.currency ?? '$'; // Default to '$' if missing
+    return `${currencySymbol}${price}`;
+};
+
+
 </script>

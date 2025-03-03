@@ -17,7 +17,7 @@ class VendorVehicleController extends Controller
 {
     $vendorId = auth()->id();
 
-    $vehicles = Vehicle::with(['specifications', 'images', 'category', 'user'])
+    $vehicles = Vehicle::with(['specifications', 'images', 'category', 'user','vendorProfile'])
         ->where('vendor_id', $vendorId)
         ->latest()
         ->paginate(8); // Paginate with 10 items per page
@@ -143,10 +143,10 @@ class VendorVehicleController extends Controller
             'security_deposit' => $request->security_deposit,
             'payment_method' => json_encode($request->payment_method),
             'price_per_day' => $request->price_per_day,
-            'price_per_week' => $request->price_per_week ?? 0,
-            'weekly_discount' => $request->weekly_discount ?? 0,
-            'price_per_month' => $request->price_per_month ?? 0,
-            'monthly_discount' => $request->monthly_discount ?? 0,
+            'price_per_week' => $request->price_per_week ?? null,
+            'weekly_discount' => $request->weekly_discount ?? null,
+            'price_per_month' => $request->price_per_month ?? null,
+            'monthly_discount' => $request->monthly_discount ?? null,
             'preferred_price_type' => $request->preferred_price_type,
         ]);
 

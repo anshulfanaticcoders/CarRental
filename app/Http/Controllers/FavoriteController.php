@@ -34,7 +34,7 @@ class FavoriteController extends Controller
     public function getFavorites()
 {
     $user = Auth::user();
-    $favorites = $user->favorites()->with(['images'])->get();
+    $favorites = $user->favorites()->with(['images','vendorProfile'])->get();
 
     return response()->json($favorites);
 }

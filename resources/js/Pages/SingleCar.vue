@@ -314,32 +314,43 @@ const validateRentalDetails = () => {
 // Function to toggle favourite status
 import { useToast } from 'vue-toastification';
 const toast = useToast();
-const toggleFavourite = async (vehicle) => {
+const fetchFavoriteStatus = async () => {
+    try {
+        const response = await axios.get("/favorites");
+        const favoriteIds = response.data.map(v => v.id);
+
+        // ✅ Check if this vehicle is in favorites
+        vehicle.value.is_favourite = favoriteIds.includes(vehicle.value.id);
+    } catch (error) {
+        console.error("Error fetching favorite status:", error);
+    }
+};
+
+// ✅ Toggle Favorite Status
+const toggleFavourite = async () => {
     if (!props.auth?.user) {
-        // Redirect to login if user is not authenticated
-        return Inertia.visit('/login');
+        return Inertia.visit('/login'); // Redirect if not logged in
     }
 
-    const endpoint = vehicle.is_favourite
-        ? `/vehicles/${vehicle.id}/unfavourite`
-        : `/vehicles/${vehicle.id}/favourite`;
+    const endpoint = vehicle.value.is_favourite
+        ? `/vehicles/${vehicle.value.id}/unfavourite`
+        : `/vehicles/${vehicle.value.id}/favourite`;
 
     try {
         await axios.post(endpoint);
-        vehicle.is_favourite = !vehicle.is_favourite;
+        vehicle.value.is_favourite = !vehicle.value.is_favourite;
 
-        toast.success(`Vehicle ${vehicle.is_favourite ? 'added to' : 'removed from'} favorites!`, {
+        toast.success(`Vehicle ${vehicle.value.is_favourite ? 'added to' : 'removed from'} favorites!`, {
             position: 'top-right',
             timeout: 3000,
             closeOnClick: true,
             pauseOnHover: true,
             draggable: true,
-            icon: vehicle.is_favourite ? '❤️' : '💔',
+            icon: vehicle.value.is_favourite ? '❤️' : '💔',
         });
 
     } catch (error) {
         if (error.response && error.response.status === 401) {
-            // If user is not authenticated, redirect to login
             Inertia.visit('/login');
         } else {
             toast.error('Failed to update favorites', {
@@ -352,6 +363,9 @@ const toggleFavourite = async (vehicle) => {
         }
     }
 };
+
+// ✅ Fetch Data on Component Mount
+onMounted(fetchFavoriteStatus);
 
 
 import { Calendar, Clock } from 'lucide-vue-next';
@@ -433,10 +447,8 @@ const discountAmount = computed(() => {
 
 
 const formatPrice = (price) => {
-    return new Intl.NumberFormat('en-US', {
-        style: 'currency',
-        currency: 'USD'
-    }).format(price);
+    const currencySymbol = vehicle.value.vendor_profile.currency;
+    return `${currencySymbol}${price}`;
 };
 
 
@@ -785,7 +797,7 @@ selectedPackage.value = initialPackageType;
                                         <span class="text-customLightGrayColor text-[1rem]">People</span>
                                         <span class="font-medium text-[1rem]">{{
                                             vehicle?.seating_capacity
-                                        }}</span>
+                                            }}</span>
                                     </div>
                                 </div>
                                 <div class="feature-item items-center flex gap-3">
@@ -794,7 +806,7 @@ selectedPackage.value = initialPackageType;
                                         <span class="text-customLightGrayColor text-[1rem]">Doors</span>
                                         <span class="font-medium text-[1rem]">{{
                                             vehicle?.number_of_doors
-                                        }}</span>
+                                            }}</span>
                                     </div>
                                 </div>
                                 <div class="feature-item items-center flex gap-3">
@@ -803,7 +815,7 @@ selectedPackage.value = initialPackageType;
                                         <span class="text-customLightGrayColor text-[1rem]">Luggage</span>
                                         <span class="font-medium text-[1rem]">{{
                                             vehicle?.luggage_capacity
-                                        }}</span>
+                                            }}</span>
                                     </div>
                                 </div>
                                 <div class="feature-item items-center flex gap-3">
@@ -812,7 +824,7 @@ selectedPackage.value = initialPackageType;
                                         <span class="text-customLightGrayColor text-[1rem]">Transmission</span>
                                         <span class="font-medium capitalize">{{
                                             vehicle?.transmission
-                                        }}</span>
+                                            }}</span>
                                     </div>
                                 </div>
                                 <div class="feature-item items-center flex gap-3">
@@ -821,7 +833,7 @@ selectedPackage.value = initialPackageType;
                                         <span class="text-customLightGrayColor text-[1rem]">Fuel Type</span>
                                         <span class="font-medium capitalize">{{
                                             vehicle?.fuel
-                                        }}</span>
+                                            }}</span>
                                     </div>
                                 </div>
                                 <div class="feature-item items-center flex gap-3">
@@ -880,26 +892,48 @@ selectedPackage.value = initialPackageType;
                         </div>
 
                         <div class="mt-[5rem]">
-                            <span class="text-[2rem] font-medium">Banefits</span>
+                            <span class="text-[2rem] font-medium mb-5 inline-block">Rental Conditions & Banefits</span>
                             <div class="flex justify-between gap-5">
-                                <div
-                                    class=" flex justify-between gap-5 border-[1px] border-customPrimaryColor rounded-[0.75em] px-[1rem] py-[2rem]">
-                                    <img :src=unlimitedKmIcon alt="">
+                                <!-- Unlimited KMs (Only Show if limited_km is TRUE) -->
+                                <div v-if="vehicle.limited_km"
+                                    class="flex justify-between items-center gap-5 border-[1px] border-customPrimaryColor rounded-[0.75em] px-[1rem] py-[2rem]">
+                                    <img :src="unlimitedKmIcon" alt="Unlimited KMs" class="w-[50px] h-[50px]">
+                                    <div>
+                                        <h4 class="text-customPrimaryColor text-[1.75rem] font-medium">Limited KMs
+                                            <span class="text-[1.2rem] font-bold mt-2">( {{ formatPrice(vehicle.price_per_km) }}/Km )</span></h4>
+                                        <p class="text-customLightGrayColor">Limited kilometres with extra charge</p>
+                                    </div>
+                                </div>
+                                <div v-else
+                                    class="flex justify-between items-center gap-5 border-[1px] border-customPrimaryColor rounded-[0.75em] px-[1rem] py-[2rem]">
+                                    <img :src="unlimitedKmIcon" alt="Unlimited KMs" class="w-[50px] h-[50px]">
                                     <div>
                                         <h4 class="text-customPrimaryColor text-[1.75rem] font-medium">Unlimited KMs
                                         </h4>
-                                        <p class="text-customLightGrayColor">Endless kilometres with no extra charge</p>
+                                        <p class="text-customLightGrayColor">unlimited kilometres with no extra charges</p>                                       
                                     </div>
                                 </div>
-                                <div
-                                    class=" flex justify-between gap-5 border-[1px] border-customPrimaryColor rounded-[0.75em] px-[1rem] py-[2rem]">
-                                    <img :src=cancellationIcon alt="">
+
+                                <!-- Cancellation Unavailable (Only Show if cancellation_available is TRUE) -->
+                                <div v-if="vehicle.cancellation_available"
+                                    class="flex justify-between items-center gap-5 border-[1px] border-customPrimaryColor rounded-[0.75em] px-[1rem] py-[2rem]">
+                                    <img :src="cancellationIcon" alt="Cancellation Unavailable" class="w-[50px] h-[50px]">
+                                    <div>
+                                        <h4 class="text-customPrimaryColor text-[1.75rem] font-medium">Cancellation
+                                            Available</h4>
+                                        <p class="text-customLightGrayColor">This booking is refundable</p>
+                                    </div>
+                                </div>
+                                <div v-else
+                                    class="flex justify-between items-center gap-5 border-[1px] border-customPrimaryColor rounded-[0.75em] px-[1rem] py-[2rem]">
+                                    <img :src="cancellationIcon" alt="Cancellation Unavailable" class="w-[50px] h-[50px]">
                                     <div>
                                         <h4 class="text-customPrimaryColor text-[1.75rem] font-medium">Cancellation
                                             Unavailable</h4>
-                                        <p class="text-customLightGrayColor">This booking is non-refundable</p>
+                                        <p class="text-customLightGrayColor">This booking is non refundable</p>
                                     </div>
                                 </div>
+
                             </div>
                         </div>
 
@@ -1007,7 +1041,7 @@ selectedPackage.value = initialPackageType;
                                                             <div class="flex items-center gap-3 mb-2">
                                                                 <component :is="pkg.icon" class="w-6 h-6" />
                                                                 <span class="font-semibold text-[1rem]">{{ pkg.label
-                                                                    }}</span>
+                                                                }}</span>
                                                             </div>
                                                             <p class="text-sm text-gray-600 mb-2">{{ pkg.description }}
                                                             </p>
@@ -1187,9 +1221,9 @@ selectedPackage.value = initialPackageType;
                 class="mt-[2rem] flex items-center justify-center gap-5 border-[1px] border-customPrimaryColor rounded-[0.75em] px-[1rem] py-[2rem]">
                 <div class="flex flex-col items-center gap-5 w-[50%]">
                     <img :src="vehicle.vendor_profile?.avatar
-                                    ? `/storage/${vehicle.vendor_profile.avatar}`
-                                    : '/storage/avatars/default-avatar.svg'" alt="User Avatar"
-                                     class="w-[100px] h-[100px] rounded-full object-cover" />
+                        ? `/storage/${vehicle.vendor_profile.avatar}`
+                        : '/storage/avatars/default-avatar.svg'" alt="User Avatar"
+                        class="w-[100px] h-[100px] rounded-full object-cover" />
                     <h4 class="text-customPrimaryColor text-[1.75rem] font-medium">
                         {{ vehicle.user.first_name }} {{ vehicle.user.last_name }}
                     </h4>

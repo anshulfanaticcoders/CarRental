@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Vehicle;
 use App\Models\VehicleCategory;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
 
 class SearchController extends Controller
@@ -26,6 +27,7 @@ class SearchController extends Controller
             'longitude' => 'required|numeric',
             'radius' => 'required|numeric',
             'package_type' => 'nullable|string|in:day,week,month',
+            'category_id' => 'nullable|exists:vehicle_categories,id',
         ]);
 
         // Fetch filter options
@@ -51,17 +53,21 @@ class SearchController extends Controller
         }
         if (!empty($validated['price_range'])) {
             $range = explode('-', $validated['price_range']);
-            $query->whereBetween('price_per_day', [(int)$range[0], (int)$range[1]]);
+            $query->whereBetween('price_per_day', [(int) $range[0], (int) $range[1]]);
         }
         if (!empty($validated['color'])) {
             $query->where('color', $validated['color']);
         }
         if (!empty($validated['mileage'])) {
             $range = explode('-', $validated['mileage']);
-            $query->whereBetween('mileage', [(int)$range[0], (int)$range[1]]);
+            $query->whereBetween('mileage', [(int) $range[0], (int) $range[1]]);
+        }
+        // Then in your query building section, add:
+        if (!empty($validated['category_id'])) {
+            $query->where('category_id', $validated['category_id']);
         }
 
-       
+        $categories = DB::table('vehicle_categories')->select('id', 'name')->get();
 
         // Location search
         if (!empty($validated['where'])) {
@@ -73,7 +79,7 @@ class SearchController extends Controller
                 }
             });
         }
-        $query->with('images','bookings');
+        $query->with('images', 'bookings','vendorProfile');
         // Distance filter (Haversine formula)
         if (!empty($validated['latitude']) && !empty($validated['longitude']) && !empty($validated['radius'])) {
             $radiusInKm = $validated['radius'] / 1000; // Convert meters to kilometers
@@ -86,8 +92,8 @@ class SearchController extends Controller
                 $validated['longitude'],
                 $validated['latitude']
             ])
-            ->havingRaw('distance_in_km <= ?', [$radiusInKm])
-            ->orderBy('distance_in_km');
+                ->havingRaw('distance_in_km <= ?', [$radiusInKm])
+                ->orderBy('distance_in_km');
         }
 
         // Package type filter
@@ -115,7 +121,7 @@ class SearchController extends Controller
             }
             return $vehicle;
         });
-      
+
         // Return Inertia response
         return Inertia::render('SearchResults', [
             'vehicles' => $vehicles,
@@ -124,6 +130,7 @@ class SearchController extends Controller
             'brands' => $brands,
             'colors' => $colors,
             'seatingCapacities' => $seatingCapacities,
+            'categories' => $categories,
         ]);
     }
 }
