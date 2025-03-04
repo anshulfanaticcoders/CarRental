@@ -69,7 +69,7 @@ const menus = [
     icon: profileIcon,
     items: [
       { name: "Profile", path: "/profile" },
-      { name: "Travel Documents", path: "/travel-documents" },
+      { name: "Travel Documents", path: "/user/documents" },
       { name: "Issued Payments", path: "/issued-payments" },
     ],
   },
@@ -100,6 +100,7 @@ const vendorMenus = [
     items: [
       { name: "Profile", path: "/profile" },
       { name: "Overview", path: "/overview" },
+      { name: "Documents", path: "/vendor/documents" },
       { name: "Reports", path: "/vendor-reports" },
     ],
   },

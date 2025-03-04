@@ -56,6 +56,12 @@ class User extends Authenticatable
     {
         return $this->hasOne(VendorDocument::class);
     }
+
+    public function documents()
+{
+    return $this->hasMany(UserDocument::class);
+}
+
     public function reviews()
     {
         return $this->hasMany(Review::class);

@@ -38,7 +38,8 @@ Route::get('/vehicles', [VehicleController::class, 'showAllVendorVehicles']);
 
 Route::get('/popular-places', [PopularPlacesController::class, 'index']);
 
-Route::get('/documents', [UserDocumentController::class, 'getUserDocuments']);
+Route::middleware('auth:sanctum')->get('/user-documents', [UserDocumentController::class, 'getUserDocuments']);
+
 
 
 // Booking API's

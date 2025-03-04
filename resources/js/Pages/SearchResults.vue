@@ -232,32 +232,47 @@ const handleMapToggle = (value) => {
 import { useToast } from 'vue-toastification'; // Reuse your existing import
 import { Inertia } from "@inertiajs/inertia";
 const toast = useToast(); // Initialize toast
+const favoriteStatus = ref({}); // Store favorite status for each vehicle
+
+const fetchFavoriteStatus = async () => {
+    try {
+        const response = await axios.get("/favorites");
+        const favoriteIds = response.data.map(v => v.id);
+
+        // ✅ Initialize favorite status for each vehicle
+        props.vehicles.data.forEach(vehicle => {
+            favoriteStatus.value[vehicle.id] = favoriteIds.includes(vehicle.id);
+        });
+    } catch (error) {
+        console.error("Error fetching favorite status:", error);
+    }
+};
+
+// ✅ Toggle Favorite Status
 const toggleFavourite = async (vehicle) => {
     if (!props.auth?.user) {
-        // Redirect to login if user is not authenticated
-        return Inertia.visit('/login');
+        return Inertia.visit('/login'); // Redirect if not logged in
     }
 
-    const endpoint = vehicle.is_favourite
+    const endpoint = favoriteStatus.value[vehicle.id]
         ? `/vehicles/${vehicle.id}/unfavourite`
         : `/vehicles/${vehicle.id}/favourite`;
 
     try {
         await axios.post(endpoint);
-        vehicle.is_favourite = !vehicle.is_favourite;
+        favoriteStatus.value[vehicle.id] = !favoriteStatus.value[vehicle.id];
 
-        toast.success(`Vehicle ${vehicle.is_favourite ? 'added to' : 'removed from'} favorites!`, {
+        toast.success(`Vehicle ${favoriteStatus.value[vehicle.id] ? 'added to' : 'removed from'} favorites!`, {
             position: 'top-right',
             timeout: 3000,
             closeOnClick: true,
             pauseOnHover: true,
             draggable: true,
-            icon: vehicle.is_favourite ? '❤️' : '💔',
+            icon: favoriteStatus.value[vehicle.id] ? '❤️' : '💔',
         });
 
     } catch (error) {
         if (error.response && error.response.status === 401) {
-            // If user is not authenticated, redirect to login
             Inertia.visit('/login');
         } else {
             toast.error('Failed to update favorites', {
@@ -270,6 +285,9 @@ const toggleFavourite = async (vehicle) => {
         }
     }
 };
+
+// ✅ Fetch Data on Component Mount
+onMounted(fetchFavoriteStatus);
 
 const priceField = computed(() => {
     switch (form.package_type) {
@@ -484,7 +502,7 @@ const searchQuery = computed(() => {
                     </div>
                     <div v-for="vehicle in vehicles.data" :key="vehicle.id"
                         class="p-[1rem] rounded-[12px] border-[1px] border-[#E7E7E7]">
-                        <div class="flex justify-between">
+                        <div class="flex justify-between mb-3">
                             <div>
                                 <span v-if="vehicle.status === 'available'"
                                     class="capitalize bg-green-200 text-customPrimaryColor rounded-[99px] py-1 px-3 font-medium">
@@ -511,9 +529,9 @@ const searchQuery = computed(() => {
                             </div>
                             <div class="column flex justify-end">
                                 <button @click.stop="toggleFavourite(vehicle)" class="heart-icon"
-                                    :class="{ 'filled-heart': vehicle.is_favourite }">
-                                    <img :src="vehicle.is_favourite ? FilledHeart : Heart" alt="Favorite"
-                                        class="w-full mb-[1rem] transition-colors duration-300" />
+                                    :class="{ 'filled-heart': favoriteStatus[vehicle.id] }">
+                                    <img :src="favoriteStatus[vehicle.id] ? FilledHeart : Heart" alt="Favorite"
+                                        class="w-[1.5rem] transition-colors duration-300" />
                                 </button>
                             </div>
                         </div>
@@ -551,7 +569,7 @@ const searchQuery = computed(() => {
                                     </div>
                                     <div class="col flex gap-3">
                                         <img :src="mileageIcon" alt="" /><span class="text-[1.15rem]">{{ vehicle.mileage
-                                            }}km/d</span>
+                                        }}km/d</span>
                                     </div>
                                 </div>
 
@@ -570,8 +588,9 @@ const searchQuery = computed(() => {
 
                                 <div class="mt-[2rem] flex justify-between items-center">
                                     <div>
-                                        <span class="text-customPrimaryColor text-[1.875rem] font-medium">{{ vehicle.vendor_profile.currency }}{{
-                                            vehicle[priceField] }}</span><span>/{{ priceUnit }}</span>
+                                        <span class="text-customPrimaryColor text-[1.875rem] font-medium">{{
+                                            vehicle.vendor_profile.currency }}{{
+                                                vehicle[priceField] }}</span><span>/{{ priceUnit }}</span>
                                     </div>
                                     <img :src="goIcon" alt="" />
                                 </div>

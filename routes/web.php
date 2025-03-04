@@ -27,6 +27,7 @@ use App\Http\Controllers\ReviewController;
 use App\Http\Controllers\SearchController;
 use App\Http\Controllers\Admin\VehicleCategoriesController;
 use App\Http\Controllers\Vendor\BlockingDateController;
+use App\Http\Controllers\Vendor\DamageProtectionController;
 use App\Http\Controllers\Vendor\VendorBookingController;
 use App\Http\Controllers\Vendor\VendorOverviewController;
 use App\Http\Controllers\Vendor\VendorVehicleController;
@@ -161,7 +162,8 @@ Route::middleware(['auth', 'role:vendor'])->group(function () {
     //Route::inertia('booking-success/details', 'Booking/Success');
     Route::inertia('vendor-pending', 'Vendor/VendorPending');
     Route::inertia('vendor-rejected', 'Vendor/VendorRejected');
-
+    Route::get('/vendor/documents', [VendorController::class, 'index'])->name('vendor.documents.index');
+    Route::post('/vendor/update', [VendorController::class, 'update'])->name('vendor.update');
     // creating vehicle routes
     // Route::get('/vehicles/create', [VehicleController::class, 'create'])->name('vehicles.create');
     Route::post('/vehicles', [VehicleController::class, 'store'])->name('vehicles.store');
@@ -174,15 +176,21 @@ Route::middleware(['auth', 'role:vendor'])->group(function () {
     Route::resource('current-vendor-vehicles', VendorVehicleController::class);
     Route::delete('current-vendor-vehicles/{vehicle}/images/{image}', [VendorVehicleController::class, 'deleteImage'])
         ->name('vehicles.deleteImage');
-        Route::resource('blocking-dates', BlockingDateController::class)->names('vendor.blocking-dates');
-        // Customer review in Vendor Profile
-        Route::get('/customer-reviews', [ReviewController::class, 'vendorReviews'])
+    Route::resource('blocking-dates', BlockingDateController::class)->names('vendor.blocking-dates');
+    // Customer review in Vendor Profile
+    Route::get('/customer-reviews', [ReviewController::class, 'vendorReviews'])
         ->name('vendor.reviews');
-        Route::patch('/reviews/{review}/status', [ReviewController::class, 'updateStatus'])
-    ->name('reviews.update-status');
+    Route::patch('/reviews/{review}/status', [ReviewController::class, 'updateStatus'])
+        ->name('reviews.update-status');
 
     // Vendor Overview
     Route::get('/overview', [VendorOverviewController::class, 'index'])->name('vendor.overview');
+
+
+    // damage protection routes
+    Route::get('bookings/{booking}/damage-protection', [DamageProtectionController::class, 'index'])->name('vendor.damage-protection.index');
+    Route::post('bookings/{booking}/damage-protection/before-images', [DamageProtectionController::class, 'storeBeforeImages'])->name('vendor.damage-protection.store-before-images');
+    Route::post('bookings/{booking}/damage-protection/after-images', [DamageProtectionController::class, 'storeAfterImages'])->name('vendor.damage-protection.store-after-images');
 
 });
 
@@ -191,8 +199,14 @@ Route::middleware(['auth', 'role:vendor'])->group(function () {
 Route::middleware(['auth', 'role:customer'])->group(function () {
 
     // User Profile routes
-    Route::inertia('travel-documents', 'Profile/TravelDocuments');
-    Route::post('/documents/upload', [UserDocumentController::class, 'uploadDocuments'])->name('documents.upload');
+    // Route::inertia('travel-documents', 'Profile/TravelDocuments');
+    Route::get('/user/documents', [UserDocumentController::class, 'index'])->name('user.documents.index');
+    Route::get('/user/documents/create', [UserDocumentController::class, 'create'])->name('user.documents.create');
+    Route::post('/user/documents', [UserDocumentController::class, 'store'])->name('user.documents.store');
+    Route::get('/user/documents/{document}/edit', [UserDocumentController::class, 'edit'])->name('user.documents.edit');
+    Route::patch('/user/documents/{document}', [UserDocumentController::class, 'update'])->name('user.documents.update');
+    Route::post('/user/documents/bulk-upload', [UserDocumentController::class, 'bulkUpload'])->name('user.documents.bulk-upload');
+
     Route::inertia('completed-bookings', 'Profile/CompletedBookings');
     Route::inertia('confirmed-bookings', 'Profile/ConfirmedBookings');
     Route::inertia('pending-bookings', 'Profile/PendingBookings');
@@ -248,37 +262,37 @@ Route::middleware(['auth', 'vendor.status'])->group(function () {
 Route::middleware('auth:sanctum')->get('/messages/{booking}/poll', function (Request $request, $booking) {
     $user = Auth::user();
     $lastMessageId = $request->input('last_message_id', 0);
-    
+
     $booking = Booking::with(['vehicle.vendor', 'customer'])->findOrFail($booking);
-    
+
     // Ensure the authenticated user is either the customer or the vendor
     $customerId = $booking->customer->user_id;
     $vendorId = $booking->vehicle->vendor_id;
-    
+
     if ($user->id !== $customerId && $user->id !== $vendorId) {
         abort(403, 'Unauthorized access to this conversation');
     }
-    
+
     // Get the other participant in the conversation
     $otherUserId = ($user->id === $customerId) ? $vendorId : $customerId;
-    
+
     // Get new messages
     $messages = Message::where('id', '>', $lastMessageId)
         ->where('booking_id', $booking->id)
-        ->where(function($query) use ($user, $otherUserId) {
-            $query->where(function($q) use ($user, $otherUserId) {
+        ->where(function ($query) use ($user, $otherUserId) {
+            $query->where(function ($q) use ($user, $otherUserId) {
                 $q->where('sender_id', $user->id)
-                  ->where('receiver_id', $otherUserId);
+                    ->where('receiver_id', $otherUserId);
             })
-            ->orWhere(function($q) use ($user, $otherUserId) {
-                $q->where('sender_id', $otherUserId)
-                  ->where('receiver_id', $user->id);
-            });
+                ->orWhere(function ($q) use ($user, $otherUserId) {
+                    $q->where('sender_id', $otherUserId)
+                        ->where('receiver_id', $user->id);
+                });
         })
         ->with(['sender', 'receiver'])
         ->orderBy('created_at', 'asc')
         ->get();
-        
+
     return response()->json([
         'messages' => $messages
     ]);

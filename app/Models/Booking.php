@@ -83,4 +83,9 @@ class Booking extends Model
         return $this->belongsTo(Plan::class); // No need to specify foreign key if it's plan_id
     }
 
+    public function damageProtection()
+    {
+        return $this->hasOne(DamageProtection::class);
+    }
+
 }

@@ -61,6 +61,9 @@
                                     @click="cancelBooking(booking.id)">
                                     Cancel
                                 </button>
+                                <button @click="goToDamageProtection(booking.id)" class="text-blue-600 font-semibold hover:underline ml-4">
+                    Damage Protection
+                </button>
                             </td>
                         </tr>
                     </tbody>
@@ -87,7 +90,9 @@ import Pagination from './Pagination.vue';
 import { useToast } from 'vue-toastification';
 const toast = useToast();
 
-
+const goToDamageProtection = (bookingId) => {
+    router.get(route('vendor.damage-protection.index', { booking: bookingId }));
+};
 const props = defineProps({
     bookings: {
         type: Array,

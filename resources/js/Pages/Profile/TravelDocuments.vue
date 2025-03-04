@@ -1,7 +1,5 @@
-
 <script setup>
 import MyProfileLayout from '@/Layouts/MyProfileLayout.vue';
-import PrimaryButton from '@/Components/PrimaryButton.vue';
 import InputError from '@/Components/InputError.vue';
 import { useForm } from '@inertiajs/vue3';
 
