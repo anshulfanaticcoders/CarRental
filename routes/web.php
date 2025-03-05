@@ -187,10 +187,20 @@ Route::middleware(['auth', 'role:vendor'])->group(function () {
     Route::get('/overview', [VendorOverviewController::class, 'index'])->name('vendor.overview');
 
 
-    // damage protection routes
-    Route::get('bookings/{booking}/damage-protection', [DamageProtectionController::class, 'index'])->name('vendor.damage-protection.index');
-    Route::post('bookings/{booking}/damage-protection/before-images', [DamageProtectionController::class, 'storeBeforeImages'])->name('vendor.damage-protection.store-before-images');
-    Route::post('bookings/{booking}/damage-protection/after-images', [DamageProtectionController::class, 'storeAfterImages'])->name('vendor.damage-protection.store-after-images');
+    Route::get('/damage-protection/{booking}', [DamageProtectionController::class, 'index'])
+    ->name('vendor.damage-protection.index');
+
+Route::post('/damage-protection/{booking}/upload-before', [DamageProtectionController::class, 'uploadBeforeImages'])
+    ->name('vendor.damage-protection.upload-before');
+
+Route::post('/damage-protection/{booking}/upload-after', [DamageProtectionController::class, 'uploadAfterImages'])
+    ->name('vendor.damage-protection.upload-after');
+
+Route::delete('/damage-protection/{booking}/delete-before', [DamageProtectionController::class, 'deleteBeforeImages'])
+    ->name('vendor.damage-protection.delete-before-images');
+
+Route::delete('/damage-protection/{booking}/delete-after', [DamageProtectionController::class, 'deleteAfterImages'])
+    ->name('vendor.damage-protection.delete-after-images');
 
 });
 
