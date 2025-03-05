@@ -56,14 +56,15 @@ return [
             'throw' => false,
         ],
         'upcloud' => [
-        'driver' => 's3',
-        'key' => env('AKIA9733CDC3121E9A8E'),
-        'secret' => env('LSJgowghRTOfXbY/6IyFHxYIGGr2KpFCcI6tc0zZ'),
-        'region' => env('EUROPE-1'), // Adjust region
-        'bucket' => env('vrooem-bucket-1'),
-        'endpoint' => env('https://pbj6a.upcloudobjects.com'), // UpCloud Object Storage endpoint
-        'use_path_style_endpoint' => true, // Important for some S3-compatible storage
-    ],
+    'driver' => 's3',
+    'key' => env('UPCLOUD_OBJECT_STORAGE_ACCESS_KEY'),
+    'secret' => env('UPCLOUD_OBJECT_STORAGE_SECRET_KEY'),
+    'region' => env('UPCLOUD_OBJECT_STORAGE_REGION', 'eu-west-1'),
+    'bucket' => env('UPCLOUD_OBJECT_STORAGE_BUCKET'),
+    'endpoint' => env('UPCLOUD_OBJECT_STORAGE_ENDPOINT'),
+    'use_path_style_endpoint' => true,
+    'url' => env('UPCLOUD_OBJECT_STORAGE_URL'), // Optional: add public URL if different
+],
 
     ],
 
