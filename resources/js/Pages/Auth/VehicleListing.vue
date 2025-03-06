@@ -124,7 +124,7 @@
                         <div>
                             <InputLabel for="transmission">Transmission:</InputLabel>
                             <Select v-model="form.transmission">
-                                <SelectTrigger class="w-full p-[1.5rem] border-customLightGrayColor rounded-[12px]">
+                                <SelectTrigger class="w-full p-[1.7rem] border-customLightGrayColor rounded-[12px]">
                                     <SelectValue :placeholder="form.transmission || 'Select transmission type'" />
                                 </SelectTrigger>
                                 <SelectContent>
@@ -142,7 +142,7 @@
                         <div>
                             <InputLabel for="fuel">Fuel:</InputLabel>
                             <Select v-model="form.fuel">
-                                <SelectTrigger class="w-full p-[1.5rem] border-customLightGrayColor rounded-[12px]">
+                                <SelectTrigger class="w-full p-[1.7rem] border-customLightGrayColor rounded-[12px]">
                                     <SelectValue :placeholder="form.fuel || 'Select fuel type'" />
                                 </SelectTrigger>
                                 <SelectContent>
@@ -160,9 +160,9 @@
 
                         <!-- Seating Capacity -->
                         <div>
-                            <Label for="seating_capacity">Seating Capacity:</Label>
+                            <InputLabel for="seating_capacity">Seating Capacity:</InputLabel>
                             <Select v-model="form.seating_capacity">
-                                <SelectTrigger class="w-full p-[1.5rem] border-customLightGrayColor rounded-[12px]">
+                                <SelectTrigger class="w-full p-[1.7rem] border-customLightGrayColor rounded-[12px]">
                                     <SelectValue :placeholder="form.seating_capacity || 'Select seating capacity'" />
                                 </SelectTrigger>
                                 <SelectContent>
@@ -182,15 +182,16 @@
                         <div>
                             <InputLabel for="number_of_doors">Number of Doors:</InputLabel>
                             <Select v-model="form.number_of_doors">
-                                <SelectTrigger class="w-full p-[1.5rem] border-customLightGrayColor rounded-[12px]">
+                                <SelectTrigger class="w-full p-[1.7rem] border-customLightGrayColor rounded-[12px]">
                                     <SelectValue :placeholder="form.number_of_doors || 'Select number of doors'" />
                                 </SelectTrigger>
                                 <SelectContent>
                                     <SelectGroup>
                                         <SelectLabel>Number of Doors</SelectLabel>
-                                        <SelectItem v-for="doors in [2, 4, 6]" :key="doors" :value="doors">
+                                        <SelectItem v-for="doors in 8" :key="doors" :value="doors">
                                             {{ doors }}
                                         </SelectItem>
+                                        
                                     </SelectGroup>
                                 </SelectContent>
                             </Select>
@@ -201,7 +202,7 @@
                         <div>
                             <InputLabel for="luggage_capacity">Luggage Capacity:</InputLabel>
                             <Select v-model="form.luggage_capacity">
-                                <SelectTrigger class="w-full p-[1.5rem] border-customLightGrayColor rounded-[12px]">
+                                <SelectTrigger class="w-full p-[1.7rem] border-customLightGrayColor rounded-[12px]">
                                     <SelectValue placeholder="Select luggage capacity" />
                                 </SelectTrigger>
                                 <SelectContent>
@@ -241,7 +242,7 @@
                         <div>
                             <InputLabel for="status">Status:</InputLabel>
                             <Select v-model="form.status">
-                                <SelectTrigger class="w-full p-[1.5rem] border-customLightGrayColor rounded-[12px]">
+                                <SelectTrigger class="w-full p-[1.7rem] border-customLightGrayColor rounded-[12px]">
                                     <SelectValue placeholder="Select status" />
                                 </SelectTrigger>
                                 <SelectContent>
@@ -272,7 +273,7 @@
                                         v-model="form.features"
                                         class="rounded border-gray-300 text-customPrimaryColor focus:ring-customPrimaryColor" />
 
-                                    <InputLabel :for="'feature-' + feature.id" class="mb-0 flex items-center">
+                                    <InputLabel :for="'feature-' + feature.id" class="mb-0 flex items-center cursor-pointer">
                                         {{ feature.name }}
                                     </InputLabel>
                                 </div>
@@ -358,7 +359,7 @@
 
                             <div class="relative">
                                 <Select v-model="form.registration_country">
-                                    <SelectTrigger class="w-full p-[1.5rem] border-customLightGrayColor rounded-[12px]">
+                                    <SelectTrigger class="w-full p-[1.7rem] border-customLightGrayColor rounded-[12px]">
                                         <SelectValue placeholder="Select a country" />
                                     </SelectTrigger>
                                     <SelectContent>

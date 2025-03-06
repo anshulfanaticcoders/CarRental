@@ -14,18 +14,18 @@ import NotificationBell from "@/Components/NotificationBell.vue";
 const user = ref(null);
 
 const fetchUserProfile = async () => {
-  try {
-    // Make the request to fetch the current user's profile (no need to pass userId as it's dynamically fetched from auth)
-    const response = await axios.get("/user"); // This endpoint fetches the current authenticated user's data
+    try {
+        // Make the request to fetch the current user's profile (no need to pass userId as it's dynamically fetched from auth)
+        const response = await axios.get("/user"); // This endpoint fetches the current authenticated user's data
 
-    if (response.data.status === "success") {
-      user.value = response.data.data; // Store the user profile data
-    } else {
-      console.error("Failed to fetch user:", response.data.message);
+        if (response.data.status === "success") {
+            user.value = response.data.data; // Store the user profile data
+        } else {
+            console.error("Failed to fetch user:", response.data.message);
+        }
+    } catch (error) {
+        console.error("Error fetching user:", error);
     }
-  } catch (error) {
-    console.error("Error fetching user:", error);
-  }
 };
 
 onMounted(fetchUserProfile);
@@ -69,15 +69,13 @@ onMounted(fetchUserProfile);
                                             <button type="button"
                                                 class="inline-flex items-center px-3 py-2 border border-transparent text-sm leading-4 font-medium rounded-md text-gray-500 bg-white hover:text-gray-700 focus:outline-none transition ease-in-out duration-150">
                                                 <div v-if="user?.profile?.avatar">
-                                                    <img :src="user?.profile.avatar
-                                                    ? `/storage/${user?.profile.avatar}`
-                                                    : '/storage/avatars/default-avatar.svg'
-                                                    " alt="User Avatar" class="w-8 h-8 rounded-full object-cover" />
+                                                    <img :src="user?.profile.avatar || '/storage/avatars/default-avatar.svg'"
+                                                        alt="User Avatar" class="w-10 h-10 rounded-full object-cover" />
                                                 </div>
                                                 <div v-else>
                                                     {{ $page.props.auth.user.first_name }}
                                                 </div>
-                                                
+
                                                 <svg class="ms-2 -me-0.5 h-4 w-4" xmlns="http://www.w3.org/2000/svg"
                                                     viewBox="0 0 20 20" fill="currentColor">
                                                     <path fill-rule="evenodd"
@@ -95,7 +93,7 @@ onMounted(fetchUserProfile);
                                     </Dropdown>
                                 </div>
 
-                                <NotificationBell/>
+                                <NotificationBell />
 
                             </div>
 

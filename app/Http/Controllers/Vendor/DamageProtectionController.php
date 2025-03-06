@@ -27,27 +27,38 @@ class DamageProtectionController extends Controller
             'images' => 'required|array',
             'images.*' => 'image|mimes:jpeg,png,jpg,gif|max:2048'
         ]);
-
+    
         $damageProtection = DamageProtection::firstOrCreate([
             'booking_id' => $booking->id
         ]);
-
+    
         $beforeImages = $damageProtection->before_images ?? [];
-
+    
         if ($request->hasFile('images')) {
             foreach ($request->file('images') as $image) {
-                // Store image in damage_protections/before directory on UpCloud Object Storage
-                $path = $image->store('damage_protections/before', 'upcloud');
-                $beforeImages[] = $path;
+                // Store image in damage_protections/before directory on UpCloud Object Storage with original name
+                $filePath = $image->getClientOriginalName();
+                $folderName = 'uploads';
+                $path = $image->store($folderName, 'upcloud');
+                $url = Storage::disk('upcloud')->url($path);
+                $beforeImages[] = $url;
             }
         }
-
+    
+        // // Debugging
+        // print_r([
+        //     'beforeImages' => $beforeImages,
+        //     'damageProtection' => $damageProtection->toArray(),
+        // ]);
+        // die();
+    
         $damageProtection->update([
             'before_images' => $beforeImages
         ]);
-
+    
         return back()->with('success', 'Before images uploaded successfully')->with('damageProtection', $damageProtection);
     }
+    
 
     public function uploadAfterImages(Request $request, Booking $booking)
     {
@@ -64,9 +75,11 @@ class DamageProtectionController extends Controller
 
         if ($request->hasFile('images')) {
             foreach ($request->file('images') as $image) {
-                // Store image in damage_protections/after directory on UpCloud Object Storage
-                $path = $image->store('damage_protections/after', 'upcloud');
-                $afterImages[] = $path;
+                // Store image in damage_protections/after directory on UpCloud Object Storage with original name
+                $filePath = 'damage_protections/after/' . time() . '_' . $image->getClientOriginalName();
+                $path = $image->storeAs('', $filePath, 'upcloud');
+                $url = Storage::disk('upcloud')->url($path);
+                $afterImages[] = $url;
             }
         }
 
@@ -84,9 +97,10 @@ class DamageProtectionController extends Controller
         if ($damageProtection) {
             // Remove all before images from UpCloud Object Storage
             $beforeImages = $damageProtection->before_images ?? [];
-            foreach ($beforeImages as $imagePath) {
-                if (Storage::disk('upcloud')->exists($imagePath)) {
-                    Storage::disk('upcloud')->delete($imagePath);
+            foreach ($beforeImages as $imageUrl) {
+                $imageKey = basename($imageUrl);
+                if (Storage::disk('upcloud')->exists('damage_protections/before/' . $imageKey)) {
+                    Storage::disk('upcloud')->delete('damage_protections/before/' . $imageKey);
                 }
             }
 
@@ -108,9 +122,10 @@ class DamageProtectionController extends Controller
         if ($damageProtection) {
             // Remove all after images from UpCloud Object Storage
             $afterImages = $damageProtection->after_images ?? [];
-            foreach ($afterImages as $imagePath) {
-                if (Storage::disk('upcloud')->exists($imagePath)) {
-                    Storage::disk('upcloud')->delete($imagePath);
+            foreach ($afterImages as $imageUrl) {
+                $imageKey = basename($imageUrl);
+                if (Storage::disk('upcloud')->exists('damage_protections/after/' . $imageKey)) {
+                    Storage::disk('upcloud')->delete('damage_protections/after/' . $imageKey);
                 }
             }
 

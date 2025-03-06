@@ -10,6 +10,7 @@ use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request; // Make sure to import this
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Redirect;
+use Illuminate\Support\Facades\Storage;
 use Inertia\Inertia;
 use Inertia\Response;
 use Illuminate\Support\Facades\DB;
@@ -50,8 +51,15 @@ class ProfileController extends Controller
             $validated = $request->validated();
 
             if ($request->hasFile('avatar')) {
-                $avatarPath = $request->file('avatar')->store('avatars', 'public');
-                $validated['avatar'] = $avatarPath;
+                $filePath = $request->file('avatar')->getClientOriginalName();
+                $folderName = 'avatars';
+                $path = $request->file('avatar')->store($folderName, 'upcloud');
+    
+                // Set the object to be publicly accessible
+                Storage::disk('upcloud')->setVisibility($path, 'public');
+    
+                $url = Storage::disk('upcloud')->url($path);
+                $validated['avatar'] = $url;
             }
             // Update user basic info
             $userFields = ['first_name', 'last_name', 'email', 'phone'];

@@ -10,6 +10,7 @@ use App\Models\VehicleSpecification;
 use App\Providers\RouteServiceProvider;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
 use Inertia\Inertia;
 
 class VehicleController extends Controller
@@ -119,18 +120,24 @@ class VehicleController extends Controller
         // Handle vehicle images
         $primaryImageUploaded = false;
         foreach ($request->file('images') as $index => $image) {
-            $imagePath = $image->store('vehicle_images', 'public');
+            // Store image on UpCloud storage
+            $folderName = 'vehicle_images';
+            $path = $image->store($folderName, 'upcloud');
+            $url = Storage::disk('upcloud')->url($path);
 
             // Determine image type
             $imageType = ($index === 0) ? 'primary' : 'gallery';
 
-            // Create vehicle image record
+            // Create vehicle image record - store the full URL
             VehicleImage::create([
                 'vehicle_id' => $vehicle->id,
-                'image_path' => $imagePath,
+                'image_path' => $path, // Store the path
+                'image_url' => $url,   // Store the full URL
                 'image_type' => $imageType,
             ]);
         }
+
+        
         ActivityLogHelper::logActivity('create', 'Created a new vehicle', $vehicle, $request);
         return redirect('/profile')->with([
             'message' => 'Vehicle added successfully!',
@@ -140,7 +147,7 @@ class VehicleController extends Controller
 
     public function index()
     {
-        $vehicles = Vehicle::with('category', 'user','vendorProfile')->get();
+        $vehicles = Vehicle::with('category', 'user', 'vendorProfile')->get();
         return Inertia::render('Auth/VehicleIndex', [
             'vehicles' => $vehicles,
         ]);
@@ -155,7 +162,7 @@ class VehicleController extends Controller
     //This is for getting particular vehicle information to the single car page 
     public function show($id, Request $request)
     {
-        
+
         $vehicle = Vehicle::with([
             'specifications',
             'images',

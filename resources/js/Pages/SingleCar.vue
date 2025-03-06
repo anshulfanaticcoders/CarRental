@@ -769,9 +769,9 @@ selectedPackage.value = initialPackageType;
                 </div>
                 <div class="w-full mt-[1rem] flex gap-2">
                     <div class="primary-image w-[60%] max-h-[500px]">
-                        <img v-if="vehicle?.images" :src="`/storage/${vehicle.images.find(
+                        <img v-if="vehicle?.images" :src="`${vehicle.images.find(
                             (image) => image.image_type === 'primary'
-                        )?.image_path
+                        )?.image_url
                             }`" alt="Primary Image" class="w-full h-full object-cover rounded-lg" />
                     </div>
 
@@ -780,7 +780,7 @@ selectedPackage.value = initialPackageType;
                         <div v-for="(image, index) in vehicle?.images.filter(
                             (image) => image.image_type === 'gallery'
                         )" :key="image.id" class="gallery-item">
-                            <img :src="`/storage/${image.image_path}`" :alt="`Gallery Image ${index + 1}`"
+                            <img :src="`${image.image_url}`" :alt="`Gallery Image ${index + 1}`"
                                 class="w-full h-[245px] object-cover rounded-lg" />
                         </div>
                     </div>
@@ -942,7 +942,7 @@ selectedPackage.value = initialPackageType;
                             <div
                                 class="mt-[2rem] flex gap-5 border-[1px] border-customPrimaryColor rounded-[0.75em] px-[1rem] py-[2rem]">
                                 <img :src="vehicle.vendor_profile?.avatar
-                                    ? `/storage/${vehicle.vendor_profile.avatar}`
+                                    ? `${vehicle.vendor_profile.avatar}`
                                     : '/storage/avatars/default-avatar.svg'" alt="User Avatar"
                                     class="w-[100px] h-[100px] rounded-full object-cover" />
                                 <div>
@@ -1221,7 +1221,7 @@ selectedPackage.value = initialPackageType;
                 class="mt-[2rem] flex items-center justify-center gap-5 border-[1px] border-customPrimaryColor rounded-[0.75em] px-[1rem] py-[2rem]">
                 <div class="flex flex-col items-center gap-5 w-[50%]">
                     <img :src="vehicle.vendor_profile?.avatar
-                        ? `/storage/${vehicle.vendor_profile.avatar}`
+                        ? `${vehicle.vendor_profile.avatar}`
                         : '/storage/avatars/default-avatar.svg'" alt="User Avatar"
                         class="w-[100px] h-[100px] rounded-full object-cover" />
                     <h4 class="text-customPrimaryColor text-[1.75rem] font-medium">

@@ -14,36 +14,36 @@ use Inertia\Inertia;
 class VendorVehicleController extends Controller
 {
     public function index()
-{
-    $vendorId = auth()->id();
+    {
+        $vendorId = auth()->id();
 
-    $vehicles = Vehicle::with(['specifications', 'images', 'category', 'user','vendorProfile'])
-        ->where('vendor_id', $vendorId)
-        ->latest()
-        ->paginate(8); // Paginate with 10 items per page
+        $vehicles = Vehicle::with(['specifications', 'images', 'category', 'user', 'vendorProfile'])
+            ->where('vendor_id', $vendorId)
+            ->latest()
+            ->paginate(8); // Paginate with 10 items per page
 
-    return Inertia::render('Vendor/Vehicles/Index', [
-        'vehicles' => $vehicles->items(),  // Get only the vehicle data
-        'pagination' => [
-            'current_page' => $vehicles->currentPage(),
-            'last_page' => $vehicles->lastPage(),
-            'per_page' => $vehicles->perPage(),
-            'total' => $vehicles->total(),
-        ],
-    ]);
-}
+        return Inertia::render('Vendor/Vehicles/Index', [
+            'vehicles' => $vehicles->items(),  // Get only the vehicle data
+            'pagination' => [
+                'current_page' => $vehicles->currentPage(),
+                'last_page' => $vehicles->lastPage(),
+                'per_page' => $vehicles->perPage(),
+                'total' => $vehicles->total(),
+            ],
+        ]);
+    }
 
 
     public function edit($id)
     {
         $vehicle = Vehicle::with(['specifications', 'images'])->findOrFail($id);
-        
+
         // Check if the vehicle belongs to the authenticated vendor
         if ($vehicle->vendor_id !== auth()->id()) {
             return redirect()->route('current-vendor-vehicles.index')
                 ->with('error', 'You do not have permission to edit this vehicle');
         }
-        
+
         $features = [
             'Bluetooth',
             'Music System',
@@ -58,7 +58,7 @@ class VendorVehicleController extends Controller
         return Inertia::render('Vendor/Vehicles/Edit', [
             'vehicle' => $vehicle,
             'categories' => DB::table('vehicle_categories')->select('id', 'name')->get(),
-            'features' => array_map(function($feature) {
+            'features' => array_map(function ($feature) {
                 return ['id' => $feature, 'name' => $feature];
             }, $features)
         ]);
@@ -72,7 +72,7 @@ class VendorVehicleController extends Controller
         // print_r($request->all());
         // die();
         $vehicle = Vehicle::findOrFail($id);
-        
+
         // Check if the vehicle belongs to the authenticated vendor
         if ($vehicle->vendor_id !== auth()->id()) {
             return redirect()->route('current-vendor-vehicles.index')
@@ -113,13 +113,19 @@ class VendorVehicleController extends Controller
             'vehicle_height' => 'required|numeric|min:0',
             'dealer_cost' => 'required|numeric|min:0',
             'phone_number' => 'required|string|max:15',
+            'limited_km' => 'boolean',
+            'cancellation_available' => 'boolean',
+            'price_per_km' => 'nullable|numeric|min:0',
+            'images.*' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048',
         ]);
 
+        $validated['limited_km'] = filter_var($request->limited_km, FILTER_VALIDATE_BOOLEAN);
+        $validated['cancellation_available'] = filter_var($request->cancellation_available, FILTER_VALIDATE_BOOLEAN);
         // Set default values for nullable fields
         $latitude = $request->latitude ?? 0;
         $longitude = $request->longitude ?? 0;
         $features = $request->features ?? [];
-        
+
         // Update vehicle
         $vehicle->update([
             'category_id' => $request->category_id,
@@ -139,15 +145,18 @@ class VendorVehicleController extends Controller
             'longitude' => $longitude,
             'status' => $request->status,
             'features' => json_encode($features),
-            'featured' => (bool)$request->featured,
+            'featured' => (bool) $request->featured,
             'security_deposit' => $request->security_deposit,
             'payment_method' => json_encode($request->payment_method),
             'price_per_day' => $request->price_per_day,
-            'price_per_week' => $request->price_per_week ?? null,
-            'weekly_discount' => $request->weekly_discount ?? null,
-            'price_per_month' => $request->price_per_month ?? null,
-            'monthly_discount' => $request->monthly_discount ?? null,
+            'price_per_week' => $request->price_per_week == 0 ? null : $request->price_per_week,
+            'weekly_discount' => $request->weekly_discount == 0 ? null : $request->weekly_discount,
+            'price_per_month' => $request->price_per_month == 0 ? null : $request->price_per_month,
+            'monthly_discount' => $request->monthly_discount == 0 ? null : $request->monthly_discount,
             'preferred_price_type' => $request->preferred_price_type,
+            'limited_km' => $request->limited_km ?? false,
+            'cancellation_available' => $request->cancellation_available ?? false,
+            'price_per_km' => $request->price_per_km == 0 ? null : $request->price_per_km,
         ]);
 
         // Update or create specifications
@@ -176,15 +185,20 @@ class VendorVehicleController extends Controller
 
         // Handle vehicle images if included in the request
         if ($request->hasFile('images')) {
+            // Delete old images
+            foreach ($vehicle->images as $image) {
+                Storage::disk('public')->delete($image->image_path);
+                $image->delete();
+            }
+
+            // Upload new images
             foreach ($request->file('images') as $index => $image) {
                 $imagePath = $image->store('vehicle_images', 'public');
 
                 // Determine image type
-                $imageType = ($index === 0 && !$vehicle->images()->where('image_type', 'primary')->exists()) 
-                    ? 'primary' 
-                    : 'gallery';
+                $imageType = ($index === 0) ? 'primary' : 'gallery';
 
-                // Create vehicle image record
+                // Save new images
                 VehicleImage::create([
                     'vehicle_id' => $vehicle->id,
                     'image_path' => $imagePath,
@@ -192,6 +206,7 @@ class VendorVehicleController extends Controller
                 ]);
             }
         }
+
 
         return redirect()->route('current-vendor-vehicles.index')
             ->with('success', 'Vehicle updated successfully');
@@ -215,13 +230,18 @@ class VendorVehicleController extends Controller
 
     public function deleteImage($vehicleId, $imageId)
     {
-        $vendorId = auth()->id();
-        $vehicle = Vehicle::where('vendor_id', $vendorId)->findOrFail($vehicleId);
-        $image = $vehicle->images()->findOrFail($imageId);
+        $image = VehicleImage::where('vehicle_id', $vehicleId)->where('id', $imageId)->first();
 
+        if (!$image) {
+            return response()->json(['message' => 'Image not found'], 404);
+        }
+
+        // Delete from storage
         Storage::disk('public')->delete($image->image_path);
+
+        // Delete from database
         $image->delete();
 
-        return back()->with('success', 'Image deleted successfully');
+        return response()->json(['message' => 'Image deleted successfully']);
     }
 }

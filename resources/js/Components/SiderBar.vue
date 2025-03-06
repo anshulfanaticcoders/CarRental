@@ -192,22 +192,21 @@ onMounted(fetchUserProfile);
   <div class="sidebar-inner">
     <!-- Collapse toggle button -->
     <div class="flex justify-end py-4 pr-6">
-      <button @click="toggleSidebar" class="collapse-toggle" :class="{ 'toggle-collapsed': isCollapsed }" title="collapse menu">
-      <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-        stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-        <polyline points="15 18 9 12 15 6" v-if="!isCollapsed"></polyline>
-        <polyline points="9 18 15 12 9 6" v-else></polyline>
-      </svg>
-    </button>
+      <button @click="toggleSidebar" class="collapse-toggle" :class="{ 'toggle-collapsed': isCollapsed }"
+        title="collapse menu">
+        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none"
+          stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <polyline points="15 18 9 12 15 6" v-if="!isCollapsed"></polyline>
+          <polyline points="9 18 15 12 9 6" v-else></polyline>
+        </svg>
+      </button>
     </div>
 
     <div :class="{ 'collapsed': isCollapsed }">
       <div class="user-info p-4 w-full" v-if="!isCollapsed">
         <div class="flex items-center space-x-3">
-          <img :src="user?.profile.avatar
-            ? `/storage/${user?.profile.avatar}`
-            : '/storage/avatars/default-avatar.svg'
-            " alt="User Avatar" class="w-12 h-12 rounded-full object-cover" />
+          <img :src="user?.profile.avatar || '/storage/avatars/default-avatar.svg'" alt="User Avatar"
+            class="w-10 h-10 rounded-full object-cover" />
           <div>
             <p class="text-sm text-gray-500">
               Hello, {{ greetingMessage }}
@@ -224,22 +223,21 @@ onMounted(fetchUserProfile);
 
       <!-- User avatar only when collapsed -->
       <div class="collapsed-avatar p-4 flex justify-center" v-if="isCollapsed">
-        <img :src="user?.profile.avatar
-          ? `/storage/${user?.profile.avatar}`
-          : '/storage/avatars/default-avatar.svg'
-          " alt="User Avatar" class="w-10 h-10 rounded-full object-cover" />
+        <img :src="user?.profile.avatar || '/storage/avatars/default-avatar.svg'" alt="User Avatar"
+          class="w-10 h-10 rounded-full object-cover" />
       </div>
 
       <!-- Dynamic Menus -->
       <div v-for="menu in activeMenus" :key="menu.key" class="menu-item flex flex-col gap-2">
-        <button class="menu-header" :class="{ active: activeMenu === menu.key, 'collapsed-menu': isCollapsed }" 
-               @click="toggleMenu(menu.key)">
+        <button class="menu-header" :class="{ active: activeMenu === menu.key, 'collapsed-menu': isCollapsed }"
+          @click="toggleMenu(menu.key)">
           <div class="flex gap-2 items-center">
-            <img :src="menu.icon" alt="" class="icon-button active" 
-                :class="{ 'brightness-active': activeMenu === menu.key }" />
+            <img :src="menu.icon" alt="" class="icon-button active"
+              :class="{ 'brightness-active': activeMenu === menu.key }" />
             <span v-if="!isCollapsed">{{ menu.title }}</span>
           </div>
-          <img v-if="!isCollapsed" class="chevron" :class="{ rotated: activeMenu === menu.key }" :src="chevronIcon" alt="" />
+          <img v-if="!isCollapsed" class="chevron" :class="{ rotated: activeMenu === menu.key }" :src="chevronIcon"
+            alt="" />
         </button>
         <ul v-if="activeMenu === menu.key && !isCollapsed" class="submenu">
           <li v-for="item in menu.items" :key="item.name" :class="{ 'submenu-active': activeSubmenu === item.name }">
@@ -252,20 +250,18 @@ onMounted(fetchUserProfile);
 
       <!-- Other Links -->
       <div v-for="link in activeOtherLinks" :key="link.name" class="menu-item">
-        <Link :href="link.path" class="menu-link flex items-center gap-2" 
-             :class="{ active: activeLink === link.name, 'collapsed-menu': isCollapsed }"
-             @click="activeLink = link.name">
-          <img :src="link.icon" alt="" class="icon w-[24px] h-[24px]"
-            :class="{ 'brightness-active': activeLink === link.name }" />
-          <span v-if="!isCollapsed">{{ link.name }}</span>
+        <Link :href="link.path" class="menu-link flex items-center gap-2"
+          :class="{ active: activeLink === link.name, 'collapsed-menu': isCollapsed }" @click="activeLink = link.name">
+        <img :src="link.icon" alt="" class="icon w-[24px] h-[24px]"
+          :class="{ 'brightness-active': activeLink === link.name }" />
+        <span v-if="!isCollapsed">{{ link.name }}</span>
         </Link>
       </div>
 
-      <Link :href="route('logout')" method="post" as="button" 
-           class="text-[#EE1D52] flex items-center gap-1 mt-[4rem]"
-           :class="{ 'justify-center': isCollapsed, 'ml-[1rem]': !isCollapsed, 'ml-0': isCollapsed }">
-        <img :src="logoutIcon" alt="">
-        <span v-if="!isCollapsed">Log out</span>
+      <Link :href="route('logout')" method="post" as="button" class="text-[#EE1D52] flex items-center gap-1 mt-[4rem]"
+        :class="{ 'justify-center': isCollapsed, 'ml-[1rem]': !isCollapsed, 'ml-0': isCollapsed }">
+      <img :src="logoutIcon" alt="">
+      <span v-if="!isCollapsed">Log out</span>
       </Link>
     </div>
   </div>

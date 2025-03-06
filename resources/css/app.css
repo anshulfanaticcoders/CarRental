@@ -184,7 +184,12 @@ body{
     font-weight: 600;
     border: 1px solid white;
 }
-
+input[type="checkbox"] {
+    width: 15px;
+    height: 15px;
+    accent-color: #153B4F; /* Changes checkbox color */
+    cursor: pointer;
+}
 
 /* input,textarea,select {
     border-radius: 0.75rem;

@@ -40,7 +40,7 @@
                             class="relative"
                         >
                             <img 
-                                :src="'/storage/' + image" 
+                                :src="image" 
                                 class="w-full h-[100px] hover:scale-105 cursor-pointer object-cover rounded"
                                 @click="openImageModal(damageProtection.before_images, index)"
                             />
@@ -89,7 +89,7 @@
                             class="relative"
                         >
                             <img 
-                                :src="'/storage/' + image" 
+                                :src="image" 
                                 class="w-full h-[100px] hover:scale-105 cursor-pointer object-cover rounded"
                                 @click="openImageModal(damageProtection.after_images, index)"
                             />
@@ -120,7 +120,7 @@
                             <div class="p-1">
                                 <Card>
                                     <CardContent class="flex aspect-square items-center justify-center p-2">
-                                        <img :src="'/storage/' + image" class="w-full h-auto rounded-lg object-cover" />
+                                        <img :src="image" class="w-full h-auto rounded-lg object-cover" />
                                     </CardContent>
                                 </Card>
                             </div>
@@ -156,70 +156,75 @@ const { booking, damageProtection: initialDamageProtection } = usePage().props;
 const damageProtection = ref(initialDamageProtection);
 const beforeImageError = ref("");
 const afterImageError = ref("");
+
 // Image Viewer Modal
 const isImageModalOpen = ref(false);
 const selectedImages = ref([]);
 const currentIndex = ref(0);
 
 const openImageModal = (images, index) => {
-    selectedImages.value = images
-    currentIndex.value = index
-    isImageModalOpen.value = true
-}
+    selectedImages.value = images;
+    currentIndex.value = index;
+    isImageModalOpen.value = true;
+};
 
 const handleBeforeFileUpload = (event) => {
-    const files = Array.from(event.target.files)
+    const files = Array.from(event.target.files);
     if (files.length > 5) {
-        beforeImageError.value = "You can upload a maximum of 5 images at a time."
-        beforeImages.value = []
-        return
+        beforeImageError.value = "You can upload a maximum of 5 images at a time.";
+        beforeImages.value = [];
+        return;
     }
-    beforeImageError.value = ""
-    beforeImages.value = files
-}
+    beforeImageError.value = "";
+    beforeImages.value = files;
+};
 
 const handleAfterFileUpload = (event) => {
-    const files = Array.from(event.target.files)
+    const files = Array.from(event.target.files);
     if (files.length > 5) {
-        afterImageError.value = "You can upload a maximum of 5 images at a time."
-        afterImages.value = []
-        return
+        afterImageError.value = "You can upload a maximum of 5 images at a time.";
+        afterImages.value = [];
+        return;
     }
-    afterImageError.value = ""
-    afterImages.value = files
-}
+    afterImageError.value = "";
+    afterImages.value = files;
+};
 
 const submitBeforeImages = () => {
-    const form = new FormData()
-    beforeImages.value.forEach(file => form.append('images[]', file))
+    const form = new FormData();
+    beforeImages.value.forEach(file => form.append('images[]', file));
 
     router.post(route('vendor.damage-protection.upload-before', { booking: booking.id }), form, {
         onSuccess: (page) => {
-            damageProtection.value = page.props.damageProtection
-            beforeImages.value = []
-            beforeImageInput.value.value = null
+            damageProtection.value = page.props.damageProtection;
+            beforeImages.value = [];
+            beforeImageInput.value.value = null;
         }
-    })
-}
+    });
+};
 
 const submitAfterImages = () => {
-    const form = new FormData()
-    afterImages.value.forEach(file => form.append('images[]', file))
+    const form = new FormData();
+    afterImages.value.forEach(file => form.append('images[]', file));
 
     router.post(route('vendor.damage-protection.upload-after', { booking: booking.id }), form, {
         onSuccess: (page) => {
-            damageProtection.value = page.props.damageProtection
-            afterImages.value = []
-            afterImageInput.value.value = null
+            damageProtection.value = page.props.damageProtection;
+            afterImages.value = [];
+            afterImageInput.value.value = null;
         }
-    })
-}
+    });
+};
 
 const deleteBeforeImages = () => {
-    router.delete(route('vendor.damage-protection.delete-before-images', { booking: booking.id }), { preserveScroll: true })
-}
+    router.delete(route('vendor.damage-protection.delete-before-images', { booking: booking.id }), { preserveScroll: true });
+};
 
 const deleteAfterImages = () => {
-    router.delete(route('vendor.damage-protection.delete-after-images', { booking: booking.id }), { preserveScroll: true })
-}
+    router.delete(route('vendor.damage-protection.delete-after-images', { booking: booking.id }), { preserveScroll: true });
+};
+
+const getImageUrl = (imagePath) => {
+    return imagePath;
+};
 </script>

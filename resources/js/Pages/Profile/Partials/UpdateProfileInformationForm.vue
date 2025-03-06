@@ -45,7 +45,9 @@ watch(() => form.title, (newTitle) => {
 });
 
 
-const avatarPreview = ref(profile?.avatar ? `/storage/${profile.avatar}` : '/storage/avatars/default-avatar.svg');
+const avatarPreview = ref(profile?.avatar 
+    ? (profile.avatar.startsWith('http') ? profile.avatar : `/storage/${profile.avatar}`) 
+    : '/storage/avatars/default-avatar.svg');
 
 function handleAvatarUpload(event) {
     const file = event.target.files[0];

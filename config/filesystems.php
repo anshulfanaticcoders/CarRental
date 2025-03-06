@@ -39,7 +39,7 @@ return [
         'public' => [
             'driver' => 'local',
             'root' => storage_path('app/public'),
-            'url' => env('APP_URL').'/storage',
+            'url' => env('APP_URL') . '/storage',
             'visibility' => 'public',
             'throw' => false,
         ],
@@ -56,15 +56,16 @@ return [
             'throw' => false,
         ],
         'upcloud' => [
-    'driver' => 's3',
-    'key' => env('UPCLOUD_OBJECT_STORAGE_ACCESS_KEY'),
-    'secret' => env('UPCLOUD_OBJECT_STORAGE_SECRET_KEY'),
-    'region' => env('UPCLOUD_OBJECT_STORAGE_REGION', 'eu-west-1'),
-    'bucket' => env('UPCLOUD_OBJECT_STORAGE_BUCKET'),
-    'endpoint' => env('UPCLOUD_OBJECT_STORAGE_ENDPOINT'),
-    'use_path_style_endpoint' => true,
-    'url' => env('UPCLOUD_OBJECT_STORAGE_URL'), // Optional: add public URL if different
-],
+        'driver' => 's3',
+        'key' => env('UPCLOUD_OBJECT_STORAGE_ACCESS_KEY'),
+        'secret' => env('UPCLOUD_OBJECT_STORAGE_SECRET_KEY'),
+        'region' => env('UPCLOUD_OBJECT_STORAGE_REGION'),
+        'bucket' => env('UPCLOUD_OBJECT_STORAGE_BUCKET'),
+        'endpoint' => env('UPCLOUD_OBJECT_STORAGE_ENDPOINT'),
+        'url' => env('UPCLOUD_OBJECT_STORAGE_URL'),
+        'use_path_style_endpoint' => true,
+        'visibility' => 'public', // Important for public access
+    ],
 
     ],
 

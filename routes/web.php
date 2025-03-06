@@ -174,8 +174,9 @@ Route::middleware(['auth', 'role:vendor'])->group(function () {
     Route::get('/vendor/payments', [BookingController::class, 'getVendorPaymentHistory'])->name('vendor.payments');
     // this is for showing All Vehicles of vendor in vendor profile
     Route::resource('current-vendor-vehicles', VendorVehicleController::class);
-    Route::delete('current-vendor-vehicles/{vehicle}/images/{image}', [VendorVehicleController::class, 'deleteImage'])
-        ->name('vehicles.deleteImage');
+    Route::delete('/current-vendor-vehicles/{vehicle}/images/{image}', [VendorVehicleController::class, 'deleteImage'])
+    ->name('current-vendor-vehicles.deleteImage');
+
     Route::resource('blocking-dates', BlockingDateController::class)->names('vendor.blocking-dates');
     // Customer review in Vendor Profile
     Route::get('/customer-reviews', [ReviewController::class, 'vendorReviews'])
