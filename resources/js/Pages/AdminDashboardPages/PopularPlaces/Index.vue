@@ -33,7 +33,7 @@
                         <TableRow v-for="place in places.data" :key="place.id">
                             <TableCell>
                                 <img 
-                                    :src="place.image ? `/storage/${place.image}` : '/placeholder.jpg'" 
+                                    :src="place.image ? `${place.image}` : '/placeholder.jpg'" 
                                     class="w-16 h-16 object-cover rounded"
                                     :alt="place.place_name"
                                 />

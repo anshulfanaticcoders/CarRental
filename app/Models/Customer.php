@@ -53,4 +53,9 @@ class Customer extends Model
         // Add your phone formatting logic here if needed
         return $this->phone;
     }
+
+    public function payments()
+    {
+        return $this->hasMany(BookingPayment::class);
+    }
 }

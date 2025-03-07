@@ -1,6 +1,13 @@
 <!-- resources/js/Pages/AdminDashboardPages/PopularPlaces/Edit.vue -->
 <template>
     <AdminDashboardLayout>
+         <!-- Loader -->
+         <div v-if="isLoading" class="fixed z-50 h-full w-full top-0 left-0 bg-[#0000009e] flex items-center justify-center">
+            <div class="flex flex-col items-center">
+                <img :src="loader" alt="Loading..." class="w-[200px]" />
+                <p class="text-white text-2xl">Updating...</p>
+            </div>
+        </div>
         <div class="flex flex-col gap-4 w-[95%] ml-[1.5rem]">
             <div class="flex items-center justify-between mt-[2rem]">
                 <span class="text-[1.5rem] font-semibold">Edit Popular Place</span>
@@ -91,7 +98,7 @@
                         <InputLabel for="image" value="Place Image" />
                         <div v-if="place.image" class="mt-2 mb-4">
                             <img 
-                                :src="`/storage/${place.image}`" 
+                                :src="`${place.image}`" 
                                 class="w-32 h-32 object-cover rounded"
                                 :alt="place.place_name"
                             />
@@ -130,7 +137,10 @@ import InputLabel from '@/Components/InputLabel.vue';
 import { Input } from '@/Components/ui/input';
 import { Button } from '@/Components/ui/button';
 import { useToast } from 'vue-toastification';
+import loader from '../../../../assets/loader.gif';
+
 const toast = useToast();
+const isLoading = ref(false);
 
 const props = defineProps({
     place: {
@@ -151,6 +161,7 @@ const form = ref({
 });
 
 const submit = () => {
+    isLoading.value = true;
     router.post(route('popular-places.update', props.place.id), form.value, {
         forceFormData: true,
         onSuccess: () => {
@@ -161,6 +172,9 @@ const submit = () => {
                 pauseOnHover: true,
                 draggable: true,
             });
+        },
+        onFinish: () => {
+            isLoading.value = false; // Hide loader after request completes
         },
         onError: (errors) => {
             toast.error('Error updating popular place. Please check your inputs.', {

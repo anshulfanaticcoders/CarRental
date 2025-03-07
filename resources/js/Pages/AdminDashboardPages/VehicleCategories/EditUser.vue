@@ -17,7 +17,7 @@
             <div>
                 <InputLabel for="image" value="Image" class="mb-2" />
                 <div v-if="editForm.existing_image" class="mb-2">
-                    <img :src="`/storage/${editForm.existing_image}`" alt="Existing Category Image"
+                    <img :src="`${editForm.existing_image}`" alt="Existing Category Image"
                         class="w-[200px] h-[150px] object-cover mb-2" />
                     <span class="text-sm text-gray-500">Current Image</span>
                 </div>

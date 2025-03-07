@@ -48,6 +48,7 @@
                 <Table>
                     <TableHeader>
                         <TableRow>
+                            <TableHead>ID</TableHead>
                             <TableHead>Title</TableHead>
                             <TableHead>Content Preview</TableHead>
                             <TableHead>Created At</TableHead>
@@ -55,7 +56,8 @@
                         </TableRow>
                     </TableHeader>
                     <TableBody>
-                        <TableRow v-for="blog in blogs" :key="blog.id">
+                        <TableRow v-for="(blog, index) in blogs" :key="blog.id">
+                            <TableCell>{{ index + 1 }}</TableCell>
                             <TableCell>{{ blog.title }}</TableCell>
                             <TableCell>{{ blog.content.substring(0, 100) }}...</TableCell>
                             <TableCell>{{ formatDate(blog.created_at) }}</TableCell>

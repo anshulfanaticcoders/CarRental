@@ -66,7 +66,6 @@ const handleSubmit = () => {
                 pauseOnHover: true,
                 draggable: true,
             });
-            window.location.reload();
         },
     });
 };
@@ -236,7 +235,7 @@ onMounted(fetchCurrencies);
                 </div>
 
                 <div class="flex items-end gap-4 row-span-3 col-span-2">
-                    <PrimaryButton :disabled="form.processing" class="w-[10rem]">Save</PrimaryButton>
+                    <PrimaryButton :disabled="form.processing" class="w-[10rem]">Update Profile </PrimaryButton>
                 </div>
             </div>
         </form>

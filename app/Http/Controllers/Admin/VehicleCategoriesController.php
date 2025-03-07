@@ -47,7 +47,8 @@ class VehicleCategoriesController extends Controller
         $data['slug'] = $request->slug ?? Str::slug($request->name);
 
         if ($request->hasFile('image')) {
-            $data['image'] = $request->file('image')->store('categoryImages', 'public');
+            $data['image'] = $request->file('image')->store('categoryImages', 'upcloud');
+            $data['image'] = Storage::disk('upcloud')->url($data['image']);
         }
 
         VehicleCategory::create($data);
@@ -75,11 +76,13 @@ class VehicleCategoriesController extends Controller
 
         if ($request->hasFile('image')) {
             // Delete old image if exists
-            if ($vehicleCategory->image && Storage::disk('public')->exists($vehicleCategory->image)) {
-                Storage::disk('public')->delete($vehicleCategory->image);
+            if ($vehicleCategory->image) {
+                $oldImagePath = str_replace(Storage::disk('upcloud')->url(''), '', $vehicleCategory->image);
+                Storage::disk('upcloud')->delete($oldImagePath);
             }
 
-            $data['image'] = $request->file('image')->store('categoryImages', 'public');
+            $data['image'] = $request->file('image')->store('categoryImages', 'upcloud');
+            $data['image'] = Storage::disk('upcloud')->url($data['image']);
         }
 
         $vehicleCategory->update($data);
@@ -92,6 +95,10 @@ class VehicleCategoriesController extends Controller
      */
     public function destroy(VehicleCategory $vehicleCategory)
     {
+        if ($vehicleCategory->image) {
+            $oldImagePath = str_replace(Storage::disk('upcloud')->url(''), '', $vehicleCategory->image);
+            Storage::disk('upcloud')->delete($oldImagePath);
+        }
         $vehicleCategory->delete();
         return redirect()->route('vehicles-categories.index')->with('success', 'Vehicle Category deleted successfully.');
     }

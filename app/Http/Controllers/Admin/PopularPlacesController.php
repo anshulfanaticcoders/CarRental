@@ -57,8 +57,10 @@ class PopularPlacesController extends Controller
         $place->longitude = $request->longitude;
 
         if ($request->hasFile('image')) {
-            $place->image = $request->file('image')->store('popularPlaces', 'public');
+            $imagePath = $request->file('image')->store('popularPlaces', 'upcloud'); // Store in UpCloud
+            $place->image = Storage::disk('upcloud')->url($imagePath); // Get full image URL
         }
+    
 
         $place->save();
 
@@ -93,11 +95,14 @@ class PopularPlacesController extends Controller
         $popularPlace->longitude = $request->longitude;
 
         if ($request->hasFile('image')) {
-            // Delete old image
+            // Delete old image from UpCloud
             if ($popularPlace->image) {
-                Storage::disk('public')->delete($popularPlace->image);
+                $oldImagePath = str_replace(Storage::disk('upcloud')->url(''), '', $popularPlace->image);
+                Storage::disk('upcloud')->delete($oldImagePath);
             }
-            $popularPlace->image = $request->file('image')->store('popularPlaces', 'public');
+    
+            $imagePath = $request->file('image')->store('popularPlaces', 'upcloud');
+            $popularPlace->image = Storage::disk('upcloud')->url($imagePath);
         }
 
         $popularPlace->save();
@@ -109,7 +114,8 @@ class PopularPlacesController extends Controller
     public function destroy(PopularPlace $popularPlace)
     {
         if ($popularPlace->image) {
-            Storage::disk('public')->delete($popularPlace->image);
+            $oldImagePath = str_replace(Storage::disk('upcloud')->url(''), '', $popularPlace->image);
+            Storage::disk('upcloud')->delete($oldImagePath);
         }
 
         $popularPlace->delete();

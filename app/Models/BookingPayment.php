@@ -81,4 +81,9 @@ class BookingPayment extends Model
     {
         $this->updateStatus(self::STATUS_FAILED);
     }
+
+      public function customer(): BelongsTo
+    {
+        return $this->belongsTo(Customer::class, 'customer_id');
+    }
 }

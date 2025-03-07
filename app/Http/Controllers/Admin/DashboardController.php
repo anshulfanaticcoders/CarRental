@@ -45,16 +45,15 @@ class DashboardController extends Controller
         $totalCustomers = User::where('role', 'customer')->count();
         $totalVendors = User::where('role', 'vendor')->count();
         $totalVehicles = Vehicle::count();
-        //$activeBookings = Booking::where('status', 'active')->count();
         $activeBookings = Booking::count();
-        $totalRevenue = Booking::sum('total_amount');
+        $totalRevenue = BookingPayment::sum('amount');
 
         // Revenue in the last hour
-        $lastHourRevenue = Booking::where('created_at', '>=', Carbon::now()->subHour())->sum('total_amount');
-        $previousHourRevenue = Booking::whereBetween('created_at', [Carbon::now()->subHours(2), Carbon::now()->subHour()])->sum('total_amount');
+        $lastHourRevenue = BookingPayment::where('created_at', '>=', Carbon::now()->subHour())->sum('amount');
+        $previousHourRevenue = BookingPayment::whereBetween('created_at', [Carbon::now()->subHours(2), Carbon::now()->subHour()])->sum('amount');
 
         // Calculate revenue growth since the last hour
-        $revenueGrowth = $lastHourRevenue - $previousHourRevenue;
+        $revenueGrowth = $this->calculateGrowthPercentage($lastHourRevenue, $previousHourRevenue);
 
         $bookingOverview = $this->getBookingOverview();
         $revenueData = $this->getRevenueData();
@@ -75,8 +74,13 @@ class DashboardController extends Controller
             'revenueData' => $revenueData,
             'recentSales' => $recentSalesData['recentSales'],
             'currentMonthSales' => $recentSalesData['currentMonthSales'],
+            'paymentOverview' => $this->getPaymentOverview(),
+            'totalCompletedPayments' => $this->getTotalPayments(BookingPayment::STATUS_SUCCEEDED),
+            'totalCancelledPayments' => $this->getTotalPayments(BookingPayment::STATUS_FAILED),
+            'paymentGrowthPercentage' => $this->calculatePaymentGrowth(),
         ]);
     }
+
     private function calculateGrowthPercentage($current, $previous)
     {
         if ($previous > 0) {
@@ -87,95 +91,107 @@ class DashboardController extends Controller
 
     protected function getBookingOverview()
     {
-        $months = collect(range(1, 12))->map(function($month) {
+        return collect(range(1, 12))->map(function ($month) {
             $date = Carbon::create()->month($month);
-            
-            // Get completed bookings
-            $completedCount = Booking::where('booking_status', 'completed')
-                ->whereYear('created_at', now()->year)
-                ->whereMonth('created_at', $month)
-                ->count();
-                
-            // Get confirmed bookings
-            $confirmedCount = Booking::where('booking_status', 'confirmed')
-                ->whereYear('created_at', now()->year)
-                ->whereMonth('created_at', $month)
-                ->count();
-                
-            // Get pending bookings
-            $pendingCount = Booking::where('booking_status', 'pending')
-                ->whereYear('created_at', now()->year)
-                ->whereMonth('created_at', $month)
-                ->count();
-            // Get pending bookings
-            $cancelledCount = Booking::where('booking_status', 'cancelled')
-                ->whereYear('created_at', now()->year)
-                ->whereMonth('created_at', $month)
-                ->count();
 
             return [
                 'name' => $date->format('M'),
-                'completed' => $completedCount,
-                'confirmed' => $confirmedCount,
-                'pending' => $pendingCount,
-                'cancelled' => $cancelledCount,
-                'total' => $completedCount + $confirmedCount + $pendingCount + $cancelledCount
+                'completed' => Booking::where('booking_status', 'completed')->whereYear('created_at', now()->year)->whereMonth('created_at', $month)->count(),
+                'confirmed' => Booking::where('booking_status', 'confirmed')->whereYear('created_at', now()->year)->whereMonth('created_at', $month)->count(),
+                'pending' => Booking::where('booking_status', 'pending')->whereYear('created_at', now()->year)->whereMonth('created_at', $month)->count(),
+                'cancelled' => Booking::where('booking_status', 'cancelled')->whereYear('created_at', now()->year)->whereMonth('created_at', $month)->count(),
             ];
-        });
-
-        return $months->values()->all();
+        })->values()->all();
     }
+
     protected function getRevenueData()
     {
-        // Get last 12 months of revenue data
-        $revenueData = collect(range(0, 11))->map(function($monthsAgo) {
+        return collect(range(0, 11))->map(function ($monthsAgo) {
             $date = now()->subMonths($monthsAgo);
-            
-            $monthlyRevenue = BookingPayment::whereYear('created_at', $date->year)
-                ->whereMonth('created_at', $date->month)
-                ->sum('amount');
-                
-            $completedBookings = Booking::where('booking_status', 'completed')
-                ->whereYear('created_at', $date->year)
-                ->whereMonth('created_at', $date->month)
-                ->count();
 
             return [
                 'name' => $date->format('M'),
-                'total' => $monthlyRevenue,
-                'bookings' => $completedBookings
+                'total' => BookingPayment::whereYear('created_at', $date->year)->whereMonth('created_at', $date->month)->sum('amount'),
+                'bookings' => Booking::where('booking_status', 'completed')->whereYear('created_at', $date->year)->whereMonth('created_at', $date->month)->count(),
             ];
-        });
-
-        return $revenueData->reverse()->values()->all();
+        })->reverse()->values()->all();
     }
+
     protected function getRecentSales()
     {
-        // Get the 10 most recent bookings with customer and vehicle details
         $recentSales = Booking::with(['customer', 'vehicle'])
             ->orderBy('created_at', 'desc')
             ->take(10)
             ->get();
 
-        // Calculate the number of sales for the current month
         $currentMonthSales = Booking::whereYear('created_at', Carbon::now()->year)
             ->whereMonth('created_at', Carbon::now()->month)
             ->count();
 
-        // Format data for the recent sales table
         $formattedSales = $recentSales->map(function ($booking) {
             return [
                 'booking_number' => $booking->booking_number,
-                'customer_name' => $booking->customer->first_name . ' ' . $booking->customer->last_name,
-                'vehicle' => $booking->vehicle->name,
+                'customer_name' => optional($booking->customer)->first_name . ' ' . optional($booking->customer)->last_name,
+                'vehicle' => optional($booking->vehicle)->name,
                 'total_amount' => $booking->total_amount,
+                'payment_status' => optional($booking->payment)->status ?? 'Pending',
                 'created_at' => $booking->created_at->format('Y-m-d H:i:s'),
             ];
         });
 
         return [
             'recentSales' => $formattedSales,
-            'currentMonthSales' => $currentMonthSales, // Add this to the response
+            'currentMonthSales' => $currentMonthSales,
         ];
     }
+
+
+    protected function getPaymentOverview()
+    {
+        return collect(range(1, 12))->map(function ($month) {
+            $date = Carbon::create()->month($month);
+
+            return [
+                'name' => $date->format('M'),
+                'completed' => BookingPayment::where('payment_status', BookingPayment::STATUS_SUCCEEDED)
+                    ->whereYear('created_at', now()->year)
+                    ->whereMonth('created_at', $month)
+                    ->sum('amount'),
+                'pending' => BookingPayment::where('payment_status', BookingPayment::STATUS_PENDING)
+                    ->whereYear('created_at', now()->year)
+                    ->whereMonth('created_at', $month)
+                    ->sum('amount'),
+                'failed' => BookingPayment::where('payment_status', BookingPayment::STATUS_FAILED)
+                    ->whereYear('created_at', now()->year)
+                    ->whereMonth('created_at', $month)
+                    ->sum('amount'),
+            ];
+        })->values()->all();
+    }
+
+
+    protected function getTotalPayments($status)
+    {
+        return BookingPayment::where('payment_status', $status)
+            ->whereYear('created_at', now()->year)
+            ->sum('amount');
+    }
+
+    protected function calculatePaymentGrowth()
+    {
+        $currentMonthPayments = BookingPayment::whereYear('created_at', now()->year)
+            ->whereMonth('created_at', now()->month)
+            ->sum('amount');
+
+        $previousMonthPayments = BookingPayment::whereYear('created_at', now()->year)
+            ->whereMonth('created_at', now()->subMonth()->month)
+            ->sum('amount');
+
+        if ($previousMonthPayments == 0) {
+            return $currentMonthPayments > 0 ? 100 : 0;
+        }
+
+        return round((($currentMonthPayments - $previousMonthPayments) / $previousMonthPayments) * 100, 2);
+    }
+
 }

@@ -147,7 +147,7 @@ onMounted(() => {
                                         <CardContent
                                             class="cardContent flex h-[515px] items-center justify-center p-6 relative">
                                             <img class="rounded-[20px] h-full w-full object-cover"
-                                                :src="`/storage/${category.image}`" alt="" />
+                                                :src="`${category.image}`" alt="" />
                                             <div
                                                 class="category_name absolute bottom-10 left-0 flex justify-between w-full px-8">
                                                 <span class="text-white text-[2rem] font-semibold">{{ category.name
@@ -184,7 +184,7 @@ onMounted(() => {
                                 :href="`/s?where=${encodeURIComponent(`${place.place_name}, ${place.city}, ${place.country}`)}&latitude=${place.latitude}&longitude=${place.longitude}&radius=10000`">
                                 <Card class="h-[18rem] border-0 rounded-[0.75rem]">
                                     <CardContent class="flex flex-col gap-2 justify-center px-1 h-full">
-                                        <img :src="`/storage/${place.image}`" alt=""
+                                        <img :src="`${place.image}`" alt=""
                                             class="rounded-[0.75rem] h-[12rem] w-full object-cover mb-2" />
                                         <div class="px-3">
                                             <h3 class="text-lg font-medium">
@@ -310,7 +310,7 @@ onMounted(() => {
             <!-- Blog Section -->
             <div class="flex gap-6 w-full full-w-container">
                 <!-- First Blog (Large Left) -->
-                <div v-if="blogs.length > 0" class="w-1/2 h-[574px] relative rounded-lg overflow-hidden shadow-md">
+                <div v-if="blogs.length > 0" class="w-1/2 h-[574px] relative rounded-lg overflow-hidden shadow-md blog-container">
                     <img :src="blogs[0].image" :alt="blogs[0].title" class="w-full h-full object-cover rounded-lg">
 
                     <div class="absolute bottom-0 bg-gradient-to-t from-black/70 to-transparent p-4 text-white">
@@ -329,9 +329,11 @@ onMounted(() => {
                     <div v-for="(blog, index) in blogs.slice(1, 4)" :key="blog.id"
                         class="relative rounded-lg h-[175px] flex justify-between gap-5 items-center">
 
-                        <img :src="blog.image" :alt="blog.title" class="w-[15rem] h-full object-cover rounded-lg">
+                        <Link :href="route('blog.show', blog.id)" class="w-[30%] h-full blog-container">
+                            <img :src="blog.image" :alt="blog.title" class="w-full h-full object-cover rounded-lg">
+                        </Link>
 
-                        <div class="">
+                        <div class="w-[70%]">
                             <p class="text-sm flex items-center gap-1 text-customLightGrayColor">
                                 <img :src=calendarIcon alt=""> {{ formatDate(blog.created_at) }}
                             </p>
@@ -384,5 +386,13 @@ onMounted(() => {
 
 .popular-places button {
     display: none;
+}
+.blog-container > img {
+    transition: transform 0.3s ease-in-out;
+}
+
+.blog-container:hover > img {
+    transform: scale(1.1);
+    cursor: pointer;
 }
 </style>

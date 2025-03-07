@@ -15,9 +15,9 @@
         <Tabs default-value="overview" class="space-y-4">
           <TabsList>
             <TabsTrigger value="overview">Overview</TabsTrigger>
-            <TabsTrigger value="analytics" disabled>Bookings</TabsTrigger>
-            <TabsTrigger value="reports" disabled>Payments</TabsTrigger>
-            <TabsTrigger value="notifications" disabled>Revenue</TabsTrigger>
+            <TabsTrigger value="bookings">Bookings</TabsTrigger>
+            <TabsTrigger value="payments">Payments</TabsTrigger>
+            <TabsTrigger value="revenue">Revenue</TabsTrigger>
           </TabsList>
           <TabsContent value="overview" class="space-y-4">
             <div class="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
@@ -121,7 +121,7 @@
 
                   <BarChart :data="props.bookingOverview"
                     :categories="['completed', 'confirmed', 'pending', 'cancelled']" index="name"
-                    :colors="['#10B981', '#153B4F', '#FFC633','#EA3C3C']" :stacked="true" :rounded-corners="4" />
+                    :colors="['#10B981', '#153B4F', '#FFC633', '#EA3C3C']" :stacked="true" :rounded-corners="4" />
                 </CardContent>
               </Card>
               <Card class="col-span-2">
@@ -129,17 +129,10 @@
                   <CardTitle class="text-[1.5rem] font-semibold ">Revenue</CardTitle>
                 </CardHeader>
                 <CardContent class="pl-2">
-                  <LineChart 
-        :data="revenueDataAsNumbers" 
-        index="name" 
-        :categories="['total']" 
-        :colors="['#3B82F6']"
-        :show-x-axis="true"
-        :show-y-axis="true"
-        :show-grid-lines="true"
-        :y-formatter="(tick) => tick ? `$ ${new Intl.NumberFormat('en-US').format(tick)}` : ''"
-        class="h-96 w-full"
-      />
+                  <LineChart :data="revenueDataAsNumbers" index="name" :categories="['total']" :colors="['#3B82F6']"
+                    :show-x-axis="true" :show-y-axis="true" :show-grid-lines="true"
+                    :y-formatter="(tick) => tick ? `$ ${new Intl.NumberFormat('en-US').format(tick)}` : ''"
+                    class="h-96 w-full" />
                 </CardContent>
               </Card>
               <Card class="col-span-2">
@@ -168,6 +161,155 @@
               </Card>
             </div>
           </TabsContent>
+          <TabsContent value="bookings" class="space-y-4">
+            <div class="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+              <!-- Active Bookings -->
+              <Card>
+                <CardHeader class="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle class="text-sm font-medium">Active Bookings</CardTitle>
+                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                    strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" class="h-4 w-4 text-muted-foreground">
+                    <rect x="3" y="4" width="18" height="16" rx="2" ry="2"></rect>
+                    <path d="M16 2v4"></path>
+                    <path d="M8 2v4"></path>
+                    <path d="M3 10h18"></path>
+                    <path d="M9 16l2 2 4-4"></path>
+                  </svg>
+                </CardHeader>
+                <CardContent>
+                  <div class="text-2xl font-bold">{{ activeBookings }}</div>
+                  <p class="text-xs text-muted-foreground">
+                    {{ bookingGrowthPercentage >= 0 ? `+${bookingGrowthPercentage}%` : `${bookingGrowthPercentage}%` }}
+                    from last month
+                  </p>
+                </CardContent>
+              </Card>
+            </div>
+
+            <div class="grid gap-4 md:grid-cols-2 lg:grid-cols-7">
+              <!-- Bookings Overview -->
+              <Card class="col-span-3">
+                <CardHeader>
+                  <CardTitle class="text-[1.5rem] font-semibold">Bookings Overview</CardTitle>
+                </CardHeader>
+                <CardContent class="pl-2">
+                  <BarChart :data="props.bookingOverview"
+                    :categories="['completed', 'confirmed', 'pending', 'cancelled']" index="name"
+                    :colors="['#10B981', '#153B4F', '#FFC633', '#EA3C3C']" :stacked="true" :rounded-corners="4" />
+                </CardContent>
+              </Card>
+
+              <!-- Recent Sales -->
+              <Card class="col-span-4">
+                <CardHeader>
+                  <CardTitle class="text-[1.5rem] font-semibold">Recent Sales</CardTitle>
+                  <CardDescription>You made {{ currentMonthSales }} sales this month.</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <table>
+                    <thead>
+                      <tr>
+                        <th>Customer Name</th>
+                        <th>Total Amount</th>
+                        <th>Date</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <tr v-for="sale in recentSales" :key="sale.booking_number">
+                        <td>{{ sale.customer_name }}</td>
+                        <td>${{ sale.total_amount }}</td>
+                        <td>{{ sale.created_at }}</td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </CardContent>
+              </Card>
+            </div>
+          </TabsContent>
+          <TabsContent value="revenue" class="space-y-4">
+  <div class="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+    <!-- Total Payments -->
+    <Card>
+      <CardHeader class="flex flex-row items-center justify-between space-y-0 pb-2">
+        <CardTitle class="text-sm font-medium">Total Payments</CardTitle>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+          strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" class="h-4 w-4 text-muted-foreground">
+          <path d="M12 1v22M19 5H5v14h14z" />
+        </svg>
+      </CardHeader>
+      <CardContent>
+        <div class="text-2xl font-bold">${{ totalRevenue }}</div>
+        <p class="text-xs text-muted-foreground">
+          {{ paymentGrowthPercentage >= 0 ? `+${paymentGrowthPercentage}%` : `${paymentGrowthPercentage}%` }}
+          from last month
+        </p>
+      </CardContent>
+    </Card>
+
+    <!-- Completed Payments -->
+    <Card>
+      <CardHeader class="flex flex-row items-center justify-between space-y-0 pb-2">
+        <CardTitle class="text-sm font-medium">Completed Payments</CardTitle>
+        <CheckCircleIcon class="h-4 w-4 text-green-500" />
+      </CardHeader>
+      <CardContent>
+        <div class="text-2xl font-bold">${{ totalCompletedPayments }}</div>
+      </CardContent>
+    </Card>
+
+    <!-- Cancelled Payments -->
+    <Card>
+      <CardHeader class="flex flex-row items-center justify-between space-y-0 pb-2">
+        <CardTitle class="text-sm font-medium">Cancelled Payments</CardTitle>
+        <XCircleIcon class="h-4 w-4 text-red-500" />
+      </CardHeader>
+      <CardContent>
+        <div class="text-2xl font-bold">${{ totalCancelledPayments }}</div>
+      </CardContent>
+    </Card>
+  </div>
+
+  <div class="grid gap-4 md:grid-cols-2 lg:grid-cols-2">
+    <!-- Payment Overview -->
+    <Card class="">
+      <CardHeader>
+        <CardTitle class="text-[1.5rem] font-semibold">Payment Overview</CardTitle>
+      </CardHeader>
+      <CardContent class="pl-2">
+        <BarChart :data="paymentOverview" :categories="['completed', 'pending', 'failed']" index="name"
+          :colors="['#10B981', '#FFC633', '#EA3C3C']" :stacked="true" :rounded-corners="4" />
+      </CardContent>
+    </Card>
+
+    <!-- Recent Payments -->
+    <Card class="">
+      <CardHeader>
+        <CardTitle class="text-[1.5rem] font-semibold ">Recent Sales</CardTitle>
+        <CardDescription>You made {{ currentMonthSales }} sales this month.</CardDescription>
+      </CardHeader>
+      <CardContent>
+        <table>
+          <thead>
+            <tr>
+              <th>Customer Name</th>
+              <th>Total Amount</th>
+              <th>Date</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr v-for="sale in recentSales" :key="sale.booking_number">
+              <td>{{ sale.customer_name }}</td>
+              <td>${{ sale.total_amount }}</td>
+              <td>{{ sale.created_at }}</td>
+            </tr>
+          </tbody>
+        </table>
+      </CardContent>
+    </Card>
+  </div>
+</TabsContent>
+
+
         </Tabs>
       </div>
     </div>
@@ -204,7 +346,11 @@ const props = defineProps([
   'bookingOverview',
   'revenueData',
   'recentSales',
-  'currentMonthSales'
+  'currentMonthSales',
+  'paymentOverview',
+  'totalCompletedPayments',
+  'totalCancelledPayments', 
+  'paymentGrowthPercentage' 
 ]);
 const revenueDataAsNumbers = computed(() => { // Use a computed property for efficiency
   if (!props.revenueData) return []; // Handle cases where data is not yet loaded

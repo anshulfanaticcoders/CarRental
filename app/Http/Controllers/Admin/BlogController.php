@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Blog;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
+use Illuminate\Support\Facades\Storage;
 
 class BlogController extends Controller
 {
@@ -35,10 +36,8 @@ class BlogController extends Controller
         $blog->content = $request->content;
 
         if ($request->hasFile('image')) {
-            $image = $request->file('image');
-            $imageName = time() . '.' . $image->getClientOriginalExtension();
-            $image->move(public_path('images/blogs'), $imageName);
-            $blog->image = 'images/blogs/' . $imageName;
+            $imagePath = $request->file('image')->store('blogs', 'upcloud'); // Store in UpCloud
+            $blog->image = Storage::disk('upcloud')->url($imagePath); // Get full image URL
         }
 
         $blog->save();
@@ -65,15 +64,14 @@ class BlogController extends Controller
         $blog->content = $request->content;
 
         if ($request->hasFile('image')) {
-            // Delete old image if exists
-            if ($blog->image && file_exists(public_path($blog->image))) {
-                unlink(public_path($blog->image));
+            // Delete old image from UpCloud if exists
+            if ($blog->image) {
+                $oldImagePath = str_replace(Storage::disk('upcloud')->url(''), '', $blog->image);
+                Storage::disk('upcloud')->delete($oldImagePath);
             }
 
-            $image = $request->file('image');
-            $imageName = time() . '.' . $image->getClientOriginalExtension();
-            $image->move(public_path('images/blogs'), $imageName);
-            $blog->image = 'images/blogs/' . $imageName;
+            $imagePath = $request->file('image')->store('blogs', 'upcloud');
+            $blog->image = Storage::disk('upcloud')->url($imagePath);
         }
 
         $blog->save();
@@ -83,22 +81,20 @@ class BlogController extends Controller
 
     public function destroy(Blog $blog)
     {
-        if ($blog->image && file_exists(public_path($blog->image))) {
-            unlink(public_path($blog->image));
+        if ($blog->image) {
+            $oldImagePath = str_replace(Storage::disk('upcloud')->url(''), '', $blog->image);
+            Storage::disk('upcloud')->delete($oldImagePath);
         }
 
         $blog->delete();
 
         return redirect()->route('blogs.index')->with('success', 'Blog deleted successfully');
     }
+
     public function homeBlogs()
     {
-        $blogs = Blog::latest()->take(4)->get()->map(function ($blog) {
-            if ($blog->image) {
-                $blog->image = asset($blog->image); // Ensure full image URL
-            }
-            return $blog;
-        });
+        $blogs = Blog::latest()->take(4)->get();
+        // No need to modify image URLs as they are already full URLs from UpCloud
 
         return Inertia::render('Welcome', [
             'blogs' => $blogs
@@ -107,10 +103,7 @@ class BlogController extends Controller
 
     public function show(Blog $blog)
     {
-        if ($blog->image) {
-            $blog->image = asset($blog->image);
-        }
-
+        // No need to modify image URL as it's already a full URL from UpCloud
         return Inertia::render('SingleBlog', [
             'blog' => $blog
         ]);
@@ -124,6 +117,7 @@ class BlogController extends Controller
             'blogs' => $blogs,
         ]);
     }
+    
     public function getRecentBlogs()
     {
         $recentBlogs = Blog::latest()->take(5)->get();

@@ -43,7 +43,7 @@
                         <TableRow v-for="(user,index) in users.data" :key="user.id">
                             <TableCell>{{ (users.current_page - 1) * users.per_page + index + 1 }}</TableCell>
                             <TableCell class="font-medium">
-                                <img :src="`/storage/${user.image}`" alt="" class="w-[100px] h-[70px] rounded-[10px]">
+                                <img :src="`${user.image}`" alt="" class="w-[100px] h-[70px] rounded-[10px]">
                             </TableCell>
                             <TableCell class="font-medium">{{ user.name }}</TableCell>
                             <TableCell class="font-medium">{{ user.description }}</TableCell>
