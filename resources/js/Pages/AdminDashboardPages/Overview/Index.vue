@@ -227,87 +227,87 @@
             </div>
           </TabsContent>
           <TabsContent value="revenue" class="space-y-4">
-  <div class="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-    <!-- Total Payments -->
-    <Card>
-      <CardHeader class="flex flex-row items-center justify-between space-y-0 pb-2">
-        <CardTitle class="text-sm font-medium">Total Payments</CardTitle>
-        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-          strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" class="h-4 w-4 text-muted-foreground">
-          <path d="M12 1v22M19 5H5v14h14z" />
-        </svg>
-      </CardHeader>
-      <CardContent>
-        <div class="text-2xl font-bold">${{ totalRevenue }}</div>
-        <p class="text-xs text-muted-foreground">
-          {{ paymentGrowthPercentage >= 0 ? `+${paymentGrowthPercentage}%` : `${paymentGrowthPercentage}%` }}
-          from last month
-        </p>
-      </CardContent>
-    </Card>
+            <div class="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+              <!-- Total Payments -->
+              <Card>
+                <CardHeader class="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle class="text-sm font-medium">Total Payments</CardTitle>
+                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                    strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" class="h-4 w-4 text-muted-foreground">
+                    <path d="M12 1v22M19 5H5v14h14z" />
+                  </svg>
+                </CardHeader>
+                <CardContent>
+                  <div class="text-2xl font-bold">${{ totalRevenue }}</div>
+                  <p class="text-xs text-muted-foreground">
+                    {{ paymentGrowthPercentage >= 0 ? `+${paymentGrowthPercentage}%` : `${paymentGrowthPercentage}%` }}
+                    from last month
+                  </p>
+                </CardContent>
+              </Card>
 
-    <!-- Completed Payments -->
-    <Card>
-      <CardHeader class="flex flex-row items-center justify-between space-y-0 pb-2">
-        <CardTitle class="text-sm font-medium">Completed Payments</CardTitle>
-        <CheckCircleIcon class="h-4 w-4 text-green-500" />
-      </CardHeader>
-      <CardContent>
-        <div class="text-2xl font-bold">${{ totalCompletedPayments }}</div>
-      </CardContent>
-    </Card>
+              <!-- Completed Payments -->
+              <Card>
+                <CardHeader class="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle class="text-sm font-medium">Completed Payments</CardTitle>
+                  <CheckCircleIcon class="h-4 w-4 text-green-500" />
+                </CardHeader>
+                <CardContent>
+                  <div class="text-2xl font-bold">${{ totalCompletedPayments }}</div>
+                </CardContent>
+              </Card>
 
-    <!-- Cancelled Payments -->
-    <Card>
-      <CardHeader class="flex flex-row items-center justify-between space-y-0 pb-2">
-        <CardTitle class="text-sm font-medium">Cancelled Payments</CardTitle>
-        <XCircleIcon class="h-4 w-4 text-red-500" />
-      </CardHeader>
-      <CardContent>
-        <div class="text-2xl font-bold">${{ totalCancelledPayments }}</div>
-      </CardContent>
-    </Card>
-  </div>
+              <!-- Cancelled Payments -->
+              <Card>
+                <CardHeader class="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle class="text-sm font-medium">Cancelled Payments</CardTitle>
+                  <XCircleIcon class="h-4 w-4 text-red-500" />
+                </CardHeader>
+                <CardContent>
+                  <div class="text-2xl font-bold">${{ totalCancelledPayments }}</div>
+                </CardContent>
+              </Card>
+            </div>
 
-  <div class="grid gap-4 md:grid-cols-2 lg:grid-cols-2">
-    <!-- Payment Overview -->
-    <Card class="">
-      <CardHeader>
-        <CardTitle class="text-[1.5rem] font-semibold">Payment Overview</CardTitle>
-      </CardHeader>
-      <CardContent class="pl-2">
-        <BarChart :data="paymentOverview" :categories="['completed', 'pending', 'failed']" index="name"
-          :colors="['#10B981', '#FFC633', '#EA3C3C']" :stacked="true" :rounded-corners="4" />
-      </CardContent>
-    </Card>
+            <div class="grid gap-4 md:grid-cols-2 lg:grid-cols-2">
+              <!-- Payment Overview -->
+              <Card class="">
+                <CardHeader>
+                  <CardTitle class="text-[1.5rem] font-semibold">Payment Overview</CardTitle>
+                </CardHeader>
+                <CardContent class="pl-2">
+                  <BarChart :data="paymentOverview" :categories="['completed', 'pending', 'failed']" index="name"
+                    :colors="['#10B981', '#FFC633', '#EA3C3C']" :stacked="true" :rounded-corners="4" />
+                </CardContent>
+              </Card>
 
-    <!-- Recent Payments -->
-    <Card class="">
-      <CardHeader>
-        <CardTitle class="text-[1.5rem] font-semibold ">Recent Sales</CardTitle>
-        <CardDescription>You made {{ currentMonthSales }} sales this month.</CardDescription>
-      </CardHeader>
-      <CardContent>
-        <table>
-          <thead>
-            <tr>
-              <th>Customer Name</th>
-              <th>Total Amount</th>
-              <th>Date</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr v-for="sale in recentSales" :key="sale.booking_number">
-              <td>{{ sale.customer_name }}</td>
-              <td>${{ sale.total_amount }}</td>
-              <td>{{ sale.created_at }}</td>
-            </tr>
-          </tbody>
-        </table>
-      </CardContent>
-    </Card>
-  </div>
-</TabsContent>
+              <!-- Recent Payments -->
+              <Card class="">
+                <CardHeader>
+                  <CardTitle class="text-[1.5rem] font-semibold ">Recent Sales</CardTitle>
+                  <CardDescription>You made {{ currentMonthSales }} sales this month.</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <table>
+                    <thead>
+                      <tr>
+                        <th>Customer Name</th>
+                        <th>Total Amount</th>
+                        <th>Date</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <tr v-for="sale in recentSales" :key="sale.booking_number">
+                        <td>{{ sale.customer_name }}</td>
+                        <td>${{ sale.total_amount }}</td>
+                        <td>{{ sale.created_at }}</td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </CardContent>
+              </Card>
+            </div>
+          </TabsContent>
 
 
         </Tabs>
@@ -349,8 +349,8 @@ const props = defineProps([
   'currentMonthSales',
   'paymentOverview',
   'totalCompletedPayments',
-  'totalCancelledPayments', 
-  'paymentGrowthPercentage' 
+  'totalCancelledPayments',
+  'paymentGrowthPercentage'
 ]);
 const revenueDataAsNumbers = computed(() => { // Use a computed property for efficiency
   if (!props.revenueData) return []; // Handle cases where data is not yet loaded

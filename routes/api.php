@@ -66,5 +66,3 @@ Route::get('/booking-success/details', [BookingController::class, 'getBookingDet
 
 // this is for recent blogs
 Route::get('/recent-blogs', [BlogController::class, 'getRecentBlogs']);
-
-// this is for get User report pdf
