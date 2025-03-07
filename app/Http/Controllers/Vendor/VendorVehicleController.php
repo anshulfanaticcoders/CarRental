@@ -191,9 +191,21 @@ class VendorVehicleController extends Controller
             }
 
             foreach ($request->file('images') as $index => $image) {
-                $imagePath = $image->store('vehicle_images', 'upcloud');
+                // Store image on UpCloud storage
+                $folderName = 'vehicle_images';
+                $path = $image->store($folderName, 'upcloud');
+                $url = Storage::disk('upcloud')->url($path);
+    
+                // Determine image type
                 $imageType = ($index === 0) ? 'primary' : 'gallery';
-                VehicleImage::create(['vehicle_id' => $vehicle->id, 'image_url' => $imagePath, 'image_type' => $imageType]);
+    
+                // Create vehicle image record - store the full URL
+                VehicleImage::create([
+                    'vehicle_id' => $vehicle->id,
+                    'image_path' => $path, // Store the path
+                    'image_url' => $url,   // Store the full URL
+                    'image_type' => $imageType,
+                ]);
             }
         }
 
