@@ -24,13 +24,15 @@
                     <!-- Place Name -->
                     <div>
                         <InputLabel for="place_name" value="Place Name" />
-                        <Input
-                            id="place_name"
-                            type="text"
-                            v-model="form.place_name"
-                            class="mt-1 block w-full"
-                            required
-                        />
+                        <Input v-model="mapform.location" @input="handleSearchInput"
+                                placeholder="Search for a location" />
+                            <div v-if="searchResults.length"
+                                class="absolute z-10 bg-white border rounded mt-1 max-h-60 overflow-y-auto">
+                                <div v-for="result in searchResults" :key="result.properties.id"
+                                    @click="selectLocation(result)" class="p-2 hover:bg-gray-100 cursor-pointer">
+                                    {{ result.properties.label }}
+                                </div>
+                            </div>
                     </div>
 
                     <!-- City, State, Country -->
@@ -111,7 +113,7 @@
                             accept="image/*"
                         />
                     </div>
-
+                    <div id="map" class="h-[400px] w-full"></div>
                     <div class="flex justify-end gap-2">
                         <Link
                             :href="route('popular-places.index')"
@@ -130,7 +132,7 @@
 </template>
 
 <script setup>
-import { ref } from 'vue';
+import { onMounted, onUnmounted, ref } from 'vue';
 import { Link, router } from '@inertiajs/vue3';
 import AdminDashboardLayout from '@/Layouts/AdminDashboardLayout.vue';
 import InputLabel from '@/Components/InputLabel.vue';
@@ -138,6 +140,7 @@ import { Input } from '@/Components/ui/input';
 import { Button } from '@/Components/ui/button';
 import { useToast } from 'vue-toastification';
 import loader from '../../../../assets/loader.gif';
+import L from 'leaflet';
 
 const toast = useToast();
 const isLoading = ref(false);
@@ -159,6 +162,64 @@ const form = ref({
     image: null,
     _method: 'PUT'
 });
+const mapform = ref({
+    location: '',
+    latitude: null,
+    longitude: null
+});
+
+const searchResults = ref([]);
+let map = null;
+let marker = null;
+
+onMounted(() => {
+    map = L.map('map').setView([20, 78], 5);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
+    map.on('click', (e) => updateMarkerAndForm(e.latlng.lat, e.latlng.lng));
+});
+
+onUnmounted(() => {
+    if (map) {
+        map.remove();
+    }
+});
+
+const updateMarkerAndForm = (lat, lng) => {
+    form.value.latitude = lat.toFixed(6);
+    form.value.longitude = lng.toFixed(6);
+    if (marker) {
+        marker.setLatLng([lat, lng]);
+    } else {
+        marker = L.marker([lat, lng]).addTo(map);
+    }
+    map.setView([lat, lng], 13);
+};
+
+const handleSearchInput = async () => {
+    if (mapform.value.location.length < 3) {
+        searchResults.value = [];
+        return;
+    }
+    try {
+        const response = await axios.get(`/api/geocoding/autocomplete?text=${encodeURIComponent(mapform.value.location)}`);
+        searchResults.value = response.data.features;
+    } catch (error) {
+        console.error('Error fetching locations:', error);
+    }
+};
+
+const selectLocation = (result) => {
+    const [lng, lat] = result.geometry.coordinates;
+    mapform.value.location = result.properties?.label || 'Unknown Location';
+    form.value.place_name = result.properties?.name || result.properties?.label || '';
+    form.value.city = result.properties?.city || result.properties?.municipality || '';
+    form.value.state = result.properties?.state || result.properties?.region || '';
+    form.value.country = result.properties?.country || '';
+    form.value.latitude = lat.toFixed(6);
+    form.value.longitude = lng.toFixed(6);
+    searchResults.value = [];
+    updateMarkerAndForm(lat, lng);
+};
 
 const submit = () => {
     isLoading.value = true;
@@ -188,3 +249,10 @@ const submit = () => {
     });
 };
 </script>
+
+
+<style>
+#map{
+    display: none;
+}
+</style>
