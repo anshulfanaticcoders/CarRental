@@ -136,7 +136,7 @@ const vehicleToDelete = ref(null)
 
 const getPrimaryImage = (vehicle) => {
   const primaryImage = vehicle.images.find(img => img.image_type === 'primary')
-  return primaryImage ? `/storage/${primaryImage.image_path}` : '/images/placeholder.jpg'
+  return primaryImage ? `${primaryImage.image_url}` : '/images/placeholder.jpg'
 }
 
 const getStatusBadgeClass = (status) => {

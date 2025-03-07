@@ -315,7 +315,7 @@
                                     <div class="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-5 gap-4">
                                         <div v-for="image in props.vehicle.images" :key="image.id"
                                             class="relative group border rounded-lg overflow-hidden h-48">
-                                            <img :src="`/storage/${image.image_path}`" alt="Vehicle image"
+                                            <img :src="`${image.image_url}`" alt="Vehicle image"
                                                 class="w-full h-full object-cover" />
                                             <div class="absolute top-0 right-0 p-1">
                                                 <button type="button" @click="deleteImage(props.vehicle.id, image.id)"

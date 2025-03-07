@@ -36,13 +36,14 @@ class UserDocumentController extends Controller
         ]);
 
         $file = $request->file('document_file');
-        $path = $file->store('documents', 'public');
+        $path = $file->store('documents', 'upcloud');
+        $url = Storage::disk('upcloud')->url($path);
 
         UserDocument::create([
             'user_id' => Auth::id(),
             'document_type' => $request->document_type,
             'document_number' => Str::upper(Str::random(10)),
-            'document_file' => $path,
+            'document_file' => $url,
             'verification_status' => 'pending',
         ]);
 
@@ -69,10 +70,11 @@ class UserDocumentController extends Controller
         ]);
 
         if ($request->hasFile('document_file')) {
-            Storage::disk('public')->delete($document->document_file);
-            $path = $request->file('document_file')->store('documents', 'public');
+            Storage::disk('upcloud')->delete($document->document_file);
+            $path = $request->file('document_file')->store('documents', 'upcloud');
+            $url = Storage::disk('upcloud')->url($path);
             $document->update([
-                'document_file' => $path,
+                'document_file' => $url,
                 'verification_status' => 'pending'
             ]);
         }
@@ -85,7 +87,7 @@ class UserDocumentController extends Controller
     {
         $this->authorize('delete', $document);
 
-        Storage::disk('public')->delete($document->document_file);
+        Storage::disk('upcloud')->delete($document->document_file);
         $document->delete();
 
         return redirect()->route('user.documents.index')->with('success', 'Document deleted successfully.');
@@ -104,11 +106,14 @@ class UserDocumentController extends Controller
                 $index = str_replace('document_file_', '', $key);
                 $typeKey = 'document_type_' . $index;
 
+                $path = $file->store('documents', 'upcloud');
+                $url = Storage::disk('upcloud')->url($path);
+
                 UserDocument::create([
                     'user_id' => Auth::id(),
                     'document_type' => $request->$typeKey,
                     'document_number' => Str::upper(Str::random(10)),
-                    'document_file' => $file->store('documents', 'public'),
+                    'document_file' => $url,
                     'verification_status' => 'pending',
                 ]);
             }

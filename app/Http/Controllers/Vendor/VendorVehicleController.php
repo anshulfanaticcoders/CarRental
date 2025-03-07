@@ -185,25 +185,15 @@ class VendorVehicleController extends Controller
 
         // Handle vehicle images if included in the request
         if ($request->hasFile('images')) {
-            // Delete old images
             foreach ($vehicle->images as $image) {
-                Storage::disk('public')->delete($image->image_path);
+                Storage::disk('upcloud')->delete($image->image_url);
                 $image->delete();
             }
 
-            // Upload new images
             foreach ($request->file('images') as $index => $image) {
-                $imagePath = $image->store('vehicle_images', 'public');
-
-                // Determine image type
+                $imagePath = $image->store('vehicle_images', 'upcloud');
                 $imageType = ($index === 0) ? 'primary' : 'gallery';
-
-                // Save new images
-                VehicleImage::create([
-                    'vehicle_id' => $vehicle->id,
-                    'image_path' => $imagePath,
-                    'image_type' => $imageType,
-                ]);
+                VehicleImage::create(['vehicle_id' => $vehicle->id, 'image_url' => $imagePath, 'image_type' => $imageType]);
             }
         }
 
@@ -219,7 +209,7 @@ class VendorVehicleController extends Controller
 
         // Delete images from storage
         foreach ($vehicle->images as $image) {
-            Storage::disk('public')->delete($image->image_path);
+            Storage::disk('upcloud')->delete($image->image_url);
         }
 
         $vehicle->delete();
@@ -237,7 +227,8 @@ class VendorVehicleController extends Controller
         }
 
         // Delete from storage
-        Storage::disk('public')->delete($image->image_path);
+        Storage::disk('upcloud')->delete($image->image_url);
+       
 
         // Delete from database
         $image->delete();

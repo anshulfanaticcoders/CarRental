@@ -6,6 +6,7 @@ use App\Models\VendorProfile;
 use App\Providers\RouteServiceProvider;
 use Illuminate\Http\Request;
 use App\Models\User;
+use Illuminate\Support\Facades\Storage;
 use Inertia\Inertia;
 
 class VendorController extends Controller
@@ -40,13 +41,13 @@ class VendorController extends Controller
             $vendorDocument = VendorDocument::create([
                 'user_id' => $request->user()->id,
                 'driving_license' => $request->hasFile('driving_license') 
-                    ? $request->file('driving_license')->store('vendorDocuments', 'public') 
+                    ? Storage::disk('upcloud')->putFile('vendorDocuments', $request->file('driving_license')) 
                     : null,
                 'passport' => $request->hasFile('passport') 
-                    ? $request->file('passport')->store('vendorDocuments', 'public') 
+                    ? Storage::disk('upcloud')->putFile('vendorDocuments', $request->file('passport')) 
                     : null,
                 'passport_photo' => $request->hasFile('passport_photo') 
-                    ? $request->file('passport_photo')->store('vendorDocuments', 'public') 
+                    ? Storage::disk('upcloud')->putFile('vendorDocuments', $request->file('passport_photo')) 
                     : null,
                 'status' => 'pending',
             ]);
@@ -134,27 +135,27 @@ class VendorController extends Controller
             // Handle file uploads
             if ($request->hasFile('driving_license')) {
                 if ($document && $document->driving_license) {
-                    \Storage::disk('public')->delete($document->driving_license);
+                    Storage::disk('upcloud')->delete($document->driving_license);
                 }
-                $drivingLicense = $request->file('driving_license')->store('vendorDocuments', 'public');
+                $drivingLicense = Storage::disk('upcloud')->putFile('vendorDocuments', $request->file('driving_license'));
             } else {
                 $drivingLicense = $document ? $document->driving_license : null;
             }
-            
+
             if ($request->hasFile('passport')) {
                 if ($document && $document->passport) {
-                    \Storage::disk('public')->delete($document->passport);
+                    Storage::disk('upcloud')->delete($document->passport);
                 }
-                $passport = $request->file('passport')->store('vendorDocuments', 'public');
+                $passport = Storage::disk('upcloud')->putFile('vendorDocuments', $request->file('passport'));
             } else {
                 $passport = $document ? $document->passport : null;
             }
-            
+
             if ($request->hasFile('passport_photo')) {
                 if ($document && $document->passport_photo) {
-                    \Storage::disk('public')->delete($document->passport_photo);
+                    Storage::disk('upcloud')->delete($document->passport_photo);
                 }
-                $passportPhoto = $request->file('passport_photo')->store('vendorDocuments', 'public');
+                $passportPhoto = Storage::disk('upcloud')->putFile('vendorDocuments', $request->file('passport_photo'));
             } else {
                 $passportPhoto = $document ? $document->passport_photo : null;
             }

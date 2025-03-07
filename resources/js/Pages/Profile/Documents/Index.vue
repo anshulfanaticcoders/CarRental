@@ -79,7 +79,7 @@
                         <TableRow v-for="document in documents" :key="document.id">
                             <TableCell>{{ formatDocumentType(document.document_type) }}</TableCell>
                             <TableCell>
-                                <img :src="`/storage/${document.document_file}`" alt="Document Image" class="h-20 w-[150px] object-cover"/>
+                                <img :src="`${document.document_file}`" alt="Document Image" class="h-20 w-[150px] object-cover"/>
                             </TableCell>
                             <TableCell>
                                 <Badge :variant="getStatusBadgeVariant(document.verification_status)">

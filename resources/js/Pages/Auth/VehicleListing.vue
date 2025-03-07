@@ -72,7 +72,7 @@
                                 class="peer sr-only" />
                             <InputLabel :for="category.id"
                                 class="flex flex-col items-center p-4 cursor-pointer rounded-lg border-2 border-gray-200 hover:border-customPrimaryColor transition-colors peer-checked:border-customPrimaryColor peer-checked:bg-blue-50">
-                                <img :src="`/storage/${category.image}`" :alt="category.InputLabel"
+                                <img :src="`${category.image}`" :alt="category.InputLabel"
                                     class="p-2 w-[200px] h-[150px] object-cover" />
                                 <p class="text-center">{{ category.name }}</p>
                                 <span class="text-[1.5rem] text-center block font-medium text-gray-700">{{
