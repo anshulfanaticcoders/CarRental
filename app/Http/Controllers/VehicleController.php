@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Helpers\ActivityLogHelper;
 use App\Models\Vehicle;
+use App\Models\VehicleBenefit;
 use App\Models\VehicleFeature;
 use App\Models\VehicleImage;
 use App\Models\VehicleSpecification;
@@ -68,6 +69,24 @@ class VehicleController extends Controller
             'vehicle_height' => 'required|integer|min:0',
             'dealer_cost' => 'required|decimal:0,2|min:0',
             'phone_number' => 'required|string|max:15',
+
+            // New Vehicle Benefit fields
+            'limited_km_per_day' => 'boolean',
+            'limited_km_per_week' => 'boolean',
+            'limited_km_per_month' => 'boolean',
+            'limited_km_per_day_range' => 'nullable|integer|min:0',
+            'limited_km_per_week_range' => 'nullable|integer|min:0',
+            'limited_km_per_month_range' => 'nullable|integer|min:0',
+            'cancellation_available_per_day' => 'boolean',
+            'cancellation_available_per_week' => 'boolean',
+            'cancellation_available_per_month' => 'boolean',
+            'cancellation_available_per_day_date' => 'nullable|integer|min:0',
+            'cancellation_available_per_week_date' => 'nullable|integer|min:0',
+            'cancellation_available_per_month_date' => 'nullable|integer|min:0',
+            'price_per_km_per_day' => 'nullable|decimal:0,2|min:0',
+            'price_per_km_per_week' => 'nullable|decimal:0,2|min:0',
+            'price_per_km_per_month' => 'nullable|decimal:0,2|min:0',
+            'minimum_driver_age' => 'nullable|integer|min:18',
         ]);
 
         // Create the vehicle
@@ -103,6 +122,27 @@ class VehicleController extends Controller
             'limited_km' => $request->limited_km ?? false,
             'cancellation_available' => $request->cancellation_available ?? false,
             'price_per_km' => $request->price_per_km,
+        ]);
+
+
+        VehicleBenefit::create([
+            'vehicle_id' => $vehicle->id,
+            'limited_km_per_day' => $request->limited_km_per_day ?? false,
+            'limited_km_per_week' => $request->limited_km_per_week ?? false,
+            'limited_km_per_month' => $request->limited_km_per_month ?? false,
+            'limited_km_per_day_range' => $request->limited_km_per_day_range,
+            'limited_km_per_week_range' => $request->limited_km_per_week_range,
+            'limited_km_per_month_range' => $request->limited_km_per_month_range,
+            'cancellation_available_per_day' => $request->cancellation_available_per_day ?? false,
+            'cancellation_available_per_week' => $request->cancellation_available_per_week ?? false,
+            'cancellation_available_per_month' => $request->cancellation_available_per_month ?? false,
+            'cancellation_available_per_day_date' => $request->cancellation_available_per_day_date,
+            'cancellation_available_per_week_date' => $request->cancellation_available_per_week_date,
+            'cancellation_available_per_month_date' => $request->cancellation_available_per_month_date,
+            'price_per_km_per_day' => $request->price_per_km_per_day,
+            'price_per_km_per_week' => $request->price_per_km_per_week,
+            'price_per_km_per_month' => $request->price_per_km_per_month,
+            'minimum_driver_age' => $request->minimum_driver_age,
         ]);
 
         // Create the vehicle specifications
@@ -169,6 +209,7 @@ class VehicleController extends Controller
             'category',
             'user',
             'vendorProfile',
+            'benefits',
             'vendorProfileData',
             'bookings' => function ($query) {
                 $query->select('vehicle_id', 'pickup_date', 'return_date');

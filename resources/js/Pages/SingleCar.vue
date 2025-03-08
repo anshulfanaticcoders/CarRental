@@ -857,13 +857,8 @@ selectedPackage.value = initialPackageType;
                                         <span class="font-medium text-[1rem]">{{ vehicle?.mileage }} km/d</span>
                                     </div>
                                 </div>
-                                <div class="feature-item items-center flex gap-3">
-                                    <img :src="ageIcon" alt="" class='w-[30px] h-[30px]' />
-                                    <div class="flex flex-col">
-                                        <span class="text-customLightGrayColor text-[1rem]">Minimum Driving Age</span>
-                                        <span class="font-medium text-[1rem]">21</span>
-                                    </div>
-                                </div>
+
+
                             </div>
                         </div>
 
@@ -891,50 +886,78 @@ selectedPackage.value = initialPackageType;
                             <div id="map" class="h-full rounded-lg mt-4"></div>
                         </div>
 
-                        <div class="mt-[5rem]">
+                        <div class="mt-[5rem] benefits">
                             <span class="text-[2rem] font-medium mb-5 inline-block">Rental Conditions & Banefits</span>
-                            <div class="flex justify-between gap-5">
-                                <!-- Unlimited KMs (Only Show if limited_km is TRUE) -->
-                                <div v-if="vehicle.limited_km"
-                                    class="flex justify-between items-center gap-5 border-[1px] border-customPrimaryColor rounded-[0.75em] px-[1rem] py-[2rem]">
-                                    <img :src="unlimitedKmIcon" alt="Unlimited KMs" class="w-[50px] h-[50px]">
-                                    <div>
-                                        <h4 class="text-customPrimaryColor text-[1.75rem] font-medium">Limited KMs
-                                            <span class="text-[1.2rem] font-bold mt-2">( {{ formatPrice(vehicle.price_per_km) }}/Km )</span></h4>
-                                        <p class="text-customLightGrayColor">Limited kilometres with extra charge</p>
-                                    </div>
-                                </div>
-                                <div v-else
-                                    class="flex justify-between items-center gap-5 border-[1px] border-customPrimaryColor rounded-[0.75em] px-[1rem] py-[2rem]">
-                                    <img :src="unlimitedKmIcon" alt="Unlimited KMs" class="w-[50px] h-[50px]">
-                                    <div>
-                                        <h4 class="text-customPrimaryColor text-[1.75rem] font-medium">Unlimited KMs
-                                        </h4>
-                                        <p class="text-customLightGrayColor">unlimited kilometres with no extra charges</p>                                       
-                                    </div>
-                                </div>
+                            <ul class="vehicle-benefits p-4 border rounded-lg shadow-sm bg-white flex flex-col gap-2">
+                                <!-- Limited Kilometer Display -->
+                                <li v-if="vehicle?.benefits?.limited_km_per_day" class="flex items-center gap-1">
+                                    <p class="text-[1.2rem] text-customPrimaryColor font-medium">
+                                        Limited Kilometer Per Day: {{ vehicle?.benefits?.limited_km_per_day_range }} km
+                                    </p>
+                                    <span class="text-customDarkBlackColor font-medium">
+                                        -> After that {{ formatPrice(vehicle?.benefits?.price_per_km_per_day) }}/km will
+                                        be charged.
+                                    </span>
+                                </li>
+                                <li v-if="vehicle?.benefits?.limited_km_per_week" class="flex items-center gap-1">
+                                    <p class="text-[1.2rem] text-customPrimaryColor font-medium">
+                                        Limited Kilometer Per Week: {{ vehicle?.benefits?.limited_km_per_week_range }}
+                                        km
+                                    </p>
+                                    <span class="text-customDarkBlackColor font-medium">
+                                        -> After that {{ formatPrice(vehicle?.benefits?.price_per_km_per_week) }}/km
+                                        will be charged.
+                                    </span>
+                                </li>
+                                <li v-if="vehicle?.benefits?.limited_km_per_month" class="flex items-center gap-1">
+                                    <p class="text-[1.2rem] text-customPrimaryColor font-medium">
+                                        Limited Kilometer Per Month: {{ vehicle?.benefits?.limited_km_per_month_range }}
+                                        km
+                                    </p>
+                                    <span class="text-customDarkBlackColor font-medium">
+                                        -> After that {{ formatPrice(vehicle?.benefits?.price_per_km_per_month) }}/km
+                                        will be charged.
+                                    </span>
+                                </li>
 
-                                <!-- Cancellation Unavailable (Only Show if cancellation_available is TRUE) -->
-                                <div v-if="vehicle.cancellation_available"
-                                    class="flex justify-between items-center gap-5 border-[1px] border-customPrimaryColor rounded-[0.75em] px-[1rem] py-[2rem]">
-                                    <img :src="cancellationIcon" alt="Cancellation Unavailable" class="w-[50px] h-[50px]">
-                                    <div>
-                                        <h4 class="text-customPrimaryColor text-[1.75rem] font-medium">Cancellation
-                                            Available</h4>
-                                        <p class="text-customLightGrayColor">This booking is refundable</p>
-                                    </div>
-                                </div>
-                                <div v-else
-                                    class="flex justify-between items-center gap-5 border-[1px] border-customPrimaryColor rounded-[0.75em] px-[1rem] py-[2rem]">
-                                    <img :src="cancellationIcon" alt="Cancellation Unavailable" class="w-[50px] h-[50px]">
-                                    <div>
-                                        <h4 class="text-customPrimaryColor text-[1.75rem] font-medium">Cancellation
-                                            Unavailable</h4>
-                                        <p class="text-customLightGrayColor">This booking is non refundable</p>
-                                    </div>
-                                </div>
+                                <!-- Cancellation Availability Display -->
+                                <li v-if="vehicle?.benefits?.cancellation_available_per_day" class="flex items-center gap-1">
+                                    <p class="text-[1.2rem] text-customPrimaryColor font-medium">
+                                        Cancellation Available (for daily package): {{
+                                            vehicle?.benefits?.cancellation_available_per_day_date }} days before rental
+                                        date
+                                    </p>
+                                </li>
+                                <li v-if="vehicle?.benefits?.cancellation_available_per_week" class="flex items-center gap-1">
+                                    <p class="text-[1.2rem] text-customPrimaryColor font-medium">
+                                        Cancellation Available (for weekly package): {{
+                                            vehicle?.benefits?.cancellation_available_per_week_date }} days before rental
+                                        date
+                                    </p>
+                                </li>
+                                <li v-if="vehicle?.benefits?.cancellation_available_per_month" class="flex items-center gap-1">
+                                    <p class="text-[1.2rem] text-customPrimaryColor font-medium">
+                                        Cancellation Available (for monthly package): {{
+                                            vehicle?.benefits?.cancellation_available_per_month_date }} days before rental
+                                        date
+                                    </p>
+                                </li>
 
-                            </div>
+                                <!-- Minimum Driver Age -->
+                                <li v-if="vehicle?.benefits?.minimum_driver_age" class="flex items-center gap-1">
+                                    <p class="text-[1.2rem] text-customPrimaryColor font-medium">
+                                        Minimum Driver Age: {{ vehicle?.benefits?.minimum_driver_age }} years
+                                    </p>
+                                </li>
+
+                                <!-- Fallback Message if No Benefits Exist -->
+                                <li v-else-if="!vehicle?.benefits || Object.keys(vehicle?.benefits).length === 0">
+                                    <p class="text-gray-500 text-lg">No additional benefits available for this vehicle.
+                                    </p>
+                                </li>
+                            </ul>
+
+
                         </div>
 
                         <div class="mt-[5rem]">
@@ -1326,5 +1349,15 @@ selectedPackage.value = initialPackageType;
     left: 90% !important;
     justify-content: center;
     z-index: 99;
+}
+
+.vehicle-benefits > li::before {
+    content: "";
+    background-color: #153b4f;
+    height: 0.5rem;
+    width: 0.5rem;
+    border-radius: 100%;
+    display: flex;
+    margin-right: 0.75rem;
 }
 </style>

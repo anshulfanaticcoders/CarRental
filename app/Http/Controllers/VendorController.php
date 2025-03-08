@@ -115,91 +115,94 @@ class VendorController extends Controller
     
     // Add update method to update vendor documents
     public function update(Request $request)
-    {
-        try {
-            // Validate the incoming request
-            $request->validate([
-                'driving_license' => 'nullable|file|mimes:jpg,png,pdf',
-                'passport' => 'nullable|file|mimes:jpg,png,pdf',
-                'passport_photo' => 'nullable|file|mimes:jpg,png',
-                'company_name' => 'required|string|max:255',
-                'company_phone_number' => 'required|string|max:15',
-                'company_email' => 'required|email|max:255',
-                'company_address' => 'required|string|max:255',
-                'company_gst_number' => 'required|string|max:15',
-            ]);
+{
+    try {
+        // Validate the incoming request
+        $request->validate([
+            'driving_license' => 'nullable|file|mimes:jpg,png,pdf',
+            'passport' => 'nullable|file|mimes:jpg,png,pdf',
+            'passport_photo' => 'nullable|file|mimes:jpg,png',
+            'company_name' => 'required|string|max:255',
+            'company_phone_number' => 'required|string|max:15',
+            'company_email' => 'required|email|max:255',
+            'company_address' => 'required|string|max:255',
+            'company_gst_number' => 'required|string|max:15',
+        ]);
 
-            $userId = auth()->id();
-            $document = VendorDocument::where('user_id', $userId)->first();
-            
-            // Handle file uploads
-            if ($request->hasFile('driving_license')) {
-                if ($document && $document->driving_license) {
-                    Storage::disk('upcloud')->delete($document->driving_license);
-                }
-                $drivingLicense = Storage::disk('upcloud')->putFile('vendorDocuments', $request->file('driving_license'));
-            } else {
-                $drivingLicense = $document ? $document->driving_license : null;
+        $userId = auth()->id();
+        $document = VendorDocument::where('user_id', $userId)->first();
+
+        // Define folder path
+        $folderName = 'vehicle_images';
+
+        // Handle file uploads
+        $drivingLicense = $document ? $document->driving_license : null;
+        $passport = $document ? $document->passport : null;
+        $passportPhoto = $document ? $document->passport_photo : null;
+
+        if ($request->hasFile('driving_license')) {
+            if ($document && $document->driving_license) {
+                Storage::disk('upcloud')->delete($document->driving_license);
             }
-
-            if ($request->hasFile('passport')) {
-                if ($document && $document->passport) {
-                    Storage::disk('upcloud')->delete($document->passport);
-                }
-                $passport = Storage::disk('upcloud')->putFile('vendorDocuments', $request->file('passport'));
-            } else {
-                $passport = $document ? $document->passport : null;
-            }
-
-            if ($request->hasFile('passport_photo')) {
-                if ($document && $document->passport_photo) {
-                    Storage::disk('upcloud')->delete($document->passport_photo);
-                }
-                $passportPhoto = Storage::disk('upcloud')->putFile('vendorDocuments', $request->file('passport_photo'));
-            } else {
-                $passportPhoto = $document ? $document->passport_photo : null;
-            }
-
-            // Update or create the vendor document
-            VendorDocument::updateOrCreate(
-                ['user_id' => $userId],
-                [
-                    'driving_license' => $drivingLicense,
-                    'passport' => $passport,
-                    'passport_photo' => $passportPhoto,
-                    'status' => 'pending',
-                ]
-            );
-
-            // Update the vendor profile
-            VendorProfile::updateOrCreate(
-                ['user_id' => $userId],
-                [
-                    'company_name' => $request->company_name,
-                    'company_phone_number' => $request->company_phone_number,
-                    'company_email' => $request->company_email,
-                    'company_address' => $request->company_address,
-                    'company_gst_number' => $request->company_gst_number,
-                    'status' => 'pending',
-                ]
-            );
-
-            return back()->with([
-                'message' => 'Vendor documents updated successfully!',
-                'type' => 'success'
-            ]);
-
-        } catch (\Exception $e) {
-            // Log the error for debugging
-            \Log::error('Vendor Document Update Error: ' . $e->getMessage());
-
-            // Return error response
-            return back()->with([
-                'message' => 'Something went wrong during update. Please try again.',
-                'type' => 'error'
-            ])->withErrors([
-                'error' => 'Update failed. Please try again.'
-            ]);
+            $path = $request->file('driving_license')->store($folderName, 'upcloud');
+            $drivingLicense = Storage::disk('upcloud')->url($path);
         }
+
+        if ($request->hasFile('passport')) {
+            if ($document && $document->passport) {
+                Storage::disk('upcloud')->delete($document->passport);
+            }
+            $path = $request->file('passport')->store($folderName, 'upcloud');
+            $passport = Storage::disk('upcloud')->url($path);
+        }
+
+        if ($request->hasFile('passport_photo')) {
+            if ($document && $document->passport_photo) {
+                Storage::disk('upcloud')->delete($document->passport_photo);
+            }
+            $path = $request->file('passport_photo')->store($folderName, 'upcloud');
+            $passportPhoto = Storage::disk('upcloud')->url($path);
+        }
+
+        // Update or create the vendor document
+        VendorDocument::updateOrCreate(
+            ['user_id' => $userId],
+            [
+                'driving_license' => $drivingLicense,
+                'passport' => $passport,
+                'passport_photo' => $passportPhoto,
+                'status' => 'pending',
+            ]
+        );
+
+        // Update the vendor profile
+        VendorProfile::updateOrCreate(
+            ['user_id' => $userId],
+            [
+                'company_name' => $request->company_name,
+                'company_phone_number' => $request->company_phone_number,
+                'company_email' => $request->company_email,
+                'company_address' => $request->company_address,
+                'company_gst_number' => $request->company_gst_number,
+                'status' => 'pending',
+            ]
+        );
+
+        return back()->with([
+            'message' => 'Vendor documents updated successfully!',
+            'type' => 'success'
+        ]);
+
+    } catch (\Exception $e) {
+        \Log::error('Vendor Document Update Error: ' . $e->getMessage());
+
+        return back()->with([
+            'message' => 'Something went wrong during update. Please try again.',
+            'type' => 'error'
+        ])->withErrors([
+            'error' => 'Update failed. Please try again.'
+        ]);
     }
+}
+
 }

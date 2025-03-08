@@ -55,18 +55,18 @@
                                 </Badge>
                             </TableCell>
                             <TableCell>
-                                <img @click="openImageModal(`/storage/${user.vendor_document?.driving_license}`)"
-                                    :src="`/storage/${user.vendor_document?.driving_license}`" alt="Driving License"
+                                <img @click="openImageModal(`${user.vendor_document?.driving_license}`)"
+                                    :src="`${user.vendor_document?.driving_license}`" alt="Driving License"
                                     class="w-[100px] h-[80px] object-cover mb-2 cursor-pointer" />
                             </TableCell>
                             <TableCell>
-                                <img @click="openImageModal(`/storage/${user.vendor_document?.passport}`)"
-                                    :src="`/storage/${user.vendor_document?.passport}`" alt="Passport"
+                                <img @click="openImageModal(`${user.vendor_document?.passport}`)"
+                                    :src="`${user.vendor_document?.passport}`" alt="Passport"
                                     class="w-[100px] h-[80px] object-cover mb-2 cursor-pointer" />
                             </TableCell>
                             <TableCell>
-                                <img @click="openImageModal(`/storage/${user.vendor_document?.passport_photo}`)"
-                                    :src="`/storage/${user.vendor_document?.passport_photo}`" alt="Passport Photo"
+                                <img @click="openImageModal(`${user.vendor_document?.passport_photo}`)"
+                                    :src="`${user.vendor_document?.passport_photo}`" alt="Passport Photo"
                                     class="w-[100px] h-[80px] object-cover mb-2 cursor-pointer" />
                             </TableCell>
                             <TableCell class="text-right">

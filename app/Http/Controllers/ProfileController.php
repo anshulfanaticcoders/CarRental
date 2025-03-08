@@ -180,4 +180,33 @@ public function getUserForBooking()
         'user' => $user,
     ]);
 }
+
+
+public function getProfileCompletion()
+{
+    $user = Auth::user()->load('profile');
+
+    $requiredFields = [
+        'first_name', 'last_name', 'email', 'phone',
+        'date_of_birth', 'address_line1', 'city', 'state',
+        'country', 'postal_code', 'tax_identification',
+        'about', 'title', 'gender', 'currency', 'avatar'
+    ];
+
+    $filledFields = 0;
+    foreach ($requiredFields as $field) {
+        if (!empty($user->{$field}) || !empty($user->profile->{$field})) {
+            $filledFields++;
+        }
+    }
+
+    $totalFields = count($requiredFields);
+    $completionPercentage = round(($filledFields / $totalFields) * 100);
+
+    return response()->json([
+        'status' => 'success',
+        'percentage' => $completionPercentage
+    ], 200);
+}
+
 }

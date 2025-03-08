@@ -1,5 +1,12 @@
 <template>
 
+    <div v-if="isLoading" class="fixed z-50 h-full w-full top-0 left-0 bg-[#0000009e]">
+        <div class="flex justify-center flex-col items-center h-full w-full">
+            <img :src=loader alt="" class="w-[200px]">
+            <p class="text-[white] text-[1.5rem]">Please do not refresh the page. Wait....</p>
+        </div>
+    </div>
+
     <Head title="Vehicle Listing" />
     <div v-if="currentStep === 0" class="overflow-x-hidden">
         <div class="flex justify-between min-h-[100vh]">
@@ -191,7 +198,7 @@
                                         <SelectItem v-for="doors in 8" :key="doors" :value="doors">
                                             {{ doors }}
                                         </SelectItem>
-                                        
+
                                     </SelectGroup>
                                 </SelectContent>
                             </Select>
@@ -273,7 +280,8 @@
                                         v-model="form.features"
                                         class="rounded border-gray-300 text-customPrimaryColor focus:ring-customPrimaryColor" />
 
-                                    <InputLabel :for="'feature-' + feature.id" class="mb-0 flex items-center cursor-pointer">
+                                    <InputLabel :for="'feature-' + feature.id"
+                                        class="mb-0 flex items-center cursor-pointer">
                                         {{ feature.name }}
                                     </InputLabel>
                                 </div>
@@ -710,7 +718,7 @@
                     </div>
 
 
-                    <!-- Unlimited Kilometers and Featured-->
+                    <!-- Unlimited Kilometers and Featured
                     <div class="flex items items-center gap-5">
                         <div class="flex gap-[0.5rem] items-center">
                             <input type="checkbox" v-model="form.limited_km" id="limited_km" />
@@ -721,15 +729,141 @@
                             <input type="checkbox" v-model="form.cancellation_available" id="cancellation_available" />
                             <InputLabel for="cancellation_available" class="mb-0">Cancellation Available</InputLabel>
                         </div>
-                        <div class="flex gap-[0.5rem] items-center">
-                            <input type="checkbox" v-model="form.featured" id="featured" />
-                            <InputLabel class="mb-0" for="featured">Featured:</InputLabel>
-                        </div>
+
                     </div>
                     <div v-if="form.limited_km">
                         <InputLabel for="price_per_km">Price per Kilometer</InputLabel>
                         <input type="number" v-model="form.price_per_km" id="price_per_km" />
+                    </div> -->
+
+
+                    <div>
+    <!-- Limited Kilometer Section -->
+    <div class="mb-6">
+        <h3 class="font-medium text-lg mb-2">Kilometer Limitations</h3>
+        
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <!-- Per Day Limitation -->
+            <div v-if="selectedTypes.day" class="border rounded p-4">
+                <div class="flex gap-2 items-center mb-3">
+                    <input type="checkbox" v-model="form.limited_km_per_day" id="limited_km_per_day" />
+                    <InputLabel for="limited_km_per_day" class="mb-0">Limited Kilometer Per Day</InputLabel>
+                </div>
+                
+                <div v-if="form.limited_km_per_day">
+                    <div class="mb-3">
+                        <InputLabel for="limited_km_per_day_range">KM Limit</InputLabel>
+                        <input type="number" v-model="form.limited_km_per_day_range" id="limited_km_per_day_range" class="w-full" />
                     </div>
+                    
+                    <div>
+                        <InputLabel for="price_per_km_per_day">Price Per Extra KM</InputLabel>
+                        <input type="number" v-model="form.price_per_km_per_day" id="price_per_km_per_day" class="w-full" />
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Per Week Limitation -->
+            <div v-if="selectedTypes.week" class="border rounded p-4">
+                <div class="flex gap-2 items-center mb-3">
+                    <input type="checkbox" v-model="form.limited_km_per_week" id="limited_km_per_week" />
+                    <InputLabel for="limited_km_per_week" class="mb-0">Limited Kilometer Per Week</InputLabel>
+                </div>
+                
+                <div v-if="form.limited_km_per_week">
+                    <div class="mb-3">
+                        <InputLabel for="limited_km_per_week_range">KM Limit</InputLabel>
+                        <input type="number" v-model="form.limited_km_per_week_range" id="limited_km_per_week_range" class="w-full" />
+                    </div>
+                    
+                    <div>
+                        <InputLabel for="price_per_km_per_week">Price Per Extra KM</InputLabel>
+                        <input type="number" v-model="form.price_per_km_per_week" id="price_per_km_per_week" class="w-full" />
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Per Month Limitation -->
+            <div v-if="selectedTypes.month" class="border rounded p-4">
+                <div class="flex gap-2 items-center mb-3">
+                    <input type="checkbox" v-model="form.limited_km_per_month" id="limited_km_per_month" />
+                    <InputLabel for="limited_km_per_month" class="mb-0">Limited Kilometer Per Month</InputLabel>
+                </div>
+                
+                <div v-if="form.limited_km_per_month">
+                    <div class="mb-3">
+                        <InputLabel for="limited_km_per_month_range">KM Limit</InputLabel>
+                        <input type="number" v-model="form.limited_km_per_month_range" id="limited_km_per_month_range" class="w-full" />
+                    </div>
+                    
+                    <div>
+                        <InputLabel for="price_per_km_per_month">Price Per Extra KM</InputLabel>
+                        <input type="number" v-model="form.price_per_km_per_month" id="price_per_km_per_month" class="w-full" />
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Cancellation Policy Section -->
+    <div class="mb-6">
+        <h3 class="font-medium text-lg mb-2">Cancellation Policy</h3>
+        
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <!-- Per Day Cancellation -->
+            <div class="border rounded p-4">
+                <div class="flex gap-2 items-center mb-3">
+                    <input type="checkbox" v-model="form.cancellation_available_per_day" id="cancellation_available_per_day" />
+                    <InputLabel for="cancellation_available_per_day" class="mb-0">Cancellation Available Per Day</InputLabel>
+                </div>
+                
+                <div v-if="form.cancellation_available_per_day">
+                    <InputLabel for="cancellation_available_per_day_date">Days Prior Notice Required</InputLabel>
+                    <input type="number" v-model="form.cancellation_available_per_day_date" id="cancellation_available_per_day_date" class="w-full" />
+                </div>
+            </div>
+            
+            <!-- Per Week Cancellation -->
+            <div class="border rounded p-4">
+                <div class="flex gap-2 items-center mb-3">
+                    <input type="checkbox" v-model="form.cancellation_available_per_week" id="cancellation_available_per_week" />
+                    <InputLabel for="cancellation_available_per_week" class="mb-0">Cancellation Available Per Week</InputLabel>
+                </div>
+                
+                <div v-if="form.cancellation_available_per_week">
+                    <InputLabel for="cancellation_available_per_week_date">Days Prior Notice Required</InputLabel>
+                    <input type="number" v-model="form.cancellation_available_per_week_date" id="cancellation_available_per_week_date" class="w-full" />
+                </div>
+            </div>
+            
+            <!-- Per Month Cancellation -->
+            <div class="border rounded p-4">
+                <div class="flex gap-2 items-center mb-3">
+                    <input type="checkbox" v-model="form.cancellation_available_per_month" id="cancellation_available_per_month" />
+                    <InputLabel for="cancellation_available_per_month" class="mb-0">Cancellation Available Per Month</InputLabel>
+                </div>
+                
+                <div v-if="form.cancellation_available_per_month">
+                    <InputLabel for="cancellation_available_per_month_date">Days Prior Notice Required</InputLabel>
+                    <input type="number" v-model="form.cancellation_available_per_month_date" id="cancellation_available_per_month_date" class="w-full" />
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Driver Requirements Section -->
+    <div>
+        <h3 class="font-medium text-lg mb-2">Driver Requirements</h3>
+        
+        <div class="max-w-xs">
+            <InputLabel for="minimum_driver_age">Minimum Driver Age</InputLabel>
+            <input type="number" v-model="form.minimum_driver_age" id="minimum_driver_age" class="w-full" />
+        </div>
+    </div>
+</div>
+
+
+
                     <div class="buttons flex justify-between mt-[2rem] pb-[4rem]">
                         <button class="button-secondary w-[40%]" @click="prevStep">
                             Back
@@ -852,6 +986,7 @@ import { useToast } from 'vue-toastification'; // Add this import
 import Select from "@/Components/ui/select/Select.vue";
 import SelectItem from "@/Components/ui/select/SelectItem.vue";
 import { SelectContent, SelectGroup, SelectLabel, SelectTrigger, SelectValue } from "@/Components/ui/select";
+import loader from "../../../assets/loader.gif";
 const toast = useToast(); // Initialize toast
 // Form data
 const form = useForm({
@@ -898,6 +1033,26 @@ const form = useForm({
     // vehicle images
     images: [],
     radius: 831867.4340914232,
+
+
+    // Vehicle Benefit fields
+    limited_km_per_day: false,
+    limited_km_per_week: false,
+    limited_km_per_month: false,
+    limited_km_per_day_range: null,
+    limited_km_per_week_range: null,
+    limited_km_per_month_range: null,
+    cancellation_available_per_day: false,
+    cancellation_available_per_week: false,
+    cancellation_available_per_month: false,
+    cancellation_available_per_day_date: null,
+    cancellation_available_per_week_date: null,
+    cancellation_available_per_month_date: null,
+    price_per_km_per_day: null,
+    price_per_km_per_week: null,
+    price_per_km_per_month: null,
+    minimum_driver_age: null,
+
 });
 const props = defineProps({
     vehicle: {
@@ -934,8 +1089,19 @@ const paymentMethodsArray = computed(() => {
     }
     return [];
 });
+
+
+const isLoading = ref(false);
+watch(isLoading, (newValue) => {
+    if (newValue) {
+        document.body.style.overflow = 'hidden';
+    } else {
+        document.body.style.overflow = '';
+    }
+});
 // Submit form data
 const submit = () => {
+    isLoading.value = true;
     if (form.images.length < 5) return;
     form.post(route("vehicles.store"), {
         onSuccess: () => {
@@ -946,6 +1112,8 @@ const submit = () => {
                 pauseOnHover: true,
                 draggable: true,
             });
+
+            isLoading.value = false;
         },
         onError: (errors) => {
             toast.error('Something went wrong. Please check your inputs.', {

@@ -25,21 +25,21 @@
                         <TableBody>
                             <TableRow>
                                 <TableCell>
-                                    <img :src="`/storage/${document.driving_license}`" alt="Driving License" class="w-[150px] h-[100px] mb-2 object-cover">
+                                    <img :src="`${document.driving_license}`" alt="Driving License" class="w-[150px] h-[100px] mb-2 object-cover">
                                     <Button v-if="document.driving_license" variant="outline" size="sm" @click="viewDocument(document.driving_license)" class="w-[150px]">
                                         View
                                     </Button>
                                     <span v-else>Not uploaded</span>
                                 </TableCell>
                                 <TableCell>
-                                    <img :src="`/storage/${document.passport}`" alt="Passport" class="w-[150px] h-[100px] mb-2 object-cover">
+                                    <img :src="`${document.passport}`" alt="Passport" class="w-[150px] h-[100px] mb-2 object-cover">
                                     <Button v-if="document.passport" variant="outline" size="sm" @click="viewDocument(document.passport)" class="w-[150px]">
                                         View
                                     </Button>
                                     <span v-else>Not uploaded</span>
                                 </TableCell>
                                 <TableCell>
-                                    <img :src="`/storage/${document.passport_photo}`" alt="Passport Photo" class="w-[150px] h-[100px] mb-2 object-cover">
+                                    <img :src="`${document.passport_photo}`" alt="Passport Photo" class="w-[150px] h-[100px] mb-2 object-cover">
                                     <Button v-if="document.passport_photo" variant="outline" size="sm" @click="viewDocument(document.passport_photo)" class="w-[150px]">
                                         View
                                     </Button>
@@ -123,7 +123,7 @@ const openEditDialog = () => {
 };
 
 const viewDocument = (path) => {
-    window.open(`/storage/${path}`, '_blank');
+    window.open(`${path}`, '_blank');
 };
 
 const getStatusBadgeVariant = (status) => {

@@ -92,6 +92,9 @@ Route::middleware(['auth'])->group(function () {
     Route::post('/notifications/mark-read/{id}', [NotificationController::class, 'markAsRead'])->name('notifications.mark-read');
     Route::post('/notifications/mark-all-read', [NotificationController::class, 'markAllAsRead'])->name('notifications.mark-all-read');
     Route::get('/notifications/unread', [NotificationController::class, 'getUnreadCount'])->name('notifications.unread');
+
+    Route::get('/profile/completion', [ProfileController::class, 'getProfileCompletion'])->name('profile.completion');
+
 });
 Route::post('/vehicles', [VehicleController::class, 'store'])->name('vehicles.store');
 Route::get('/vehicles', [VehicleController::class, 'index'])->name('vehicles.index');
@@ -102,6 +105,7 @@ Route::get('/s', [SearchController::class, 'search']);
 Route::get('/api/geocoding/autocomplete', [GeocodingController::class, 'autocomplete']);
 Route::get('/blogs-page', [BlogController::class, 'showBlogPage'])->name('blogs-page');
 Route::get('/page/{slug}', [FrontendPageController::class, 'show'])->name('pages.show');
+
 
 // Show Blogs on Home page
 // Route::get('/', [BlogController::class, 'show'])->name('welcome');

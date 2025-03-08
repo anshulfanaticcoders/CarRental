@@ -45,8 +45,8 @@ watch(() => form.title, (newTitle) => {
 });
 
 
-const avatarPreview = ref(profile?.avatar 
-    ? (profile.avatar.startsWith('http') ? profile.avatar : `/storage/${profile.avatar}`) 
+const avatarPreview = ref(profile?.avatar
+    ? (profile.avatar.startsWith('http') ? profile.avatar : `/storage/${profile.avatar}`)
     : '/storage/avatars/default-avatar.svg');
 
 function handleAvatarUpload(event) {
@@ -61,11 +61,14 @@ const handleSubmit = () => {
         onSuccess: () => {
             toast.success('Profile updated successfully!', {
                 position: 'top-right',
-                timeout: 3000,
+                timeout: 2000,
                 closeOnClick: true,
                 pauseOnHover: true,
                 draggable: true,
             });
+            setTimeout(() => {
+                window.location.reload();
+            }, 1000);
         },
     });
 };
@@ -92,12 +95,36 @@ const fetchCurrencies = async () => {
 };
 
 onMounted(fetchCurrencies);
+
+
+const profileCompletion = ref(0);
+
+const fetchProfileCompletion = async () => {
+    try {
+        const response = await fetch(route('profile.completion'));
+        const data = await response.json();
+        profileCompletion.value = data.percentage;
+    } catch (error) {
+        console.error('Error fetching profile completion:', error);
+    }
+};
+
+onMounted(fetchProfileCompletion);
+
 </script>
 
 <template>
     <header>
         <h2 class="text-[1.75rem] font-medium text-gray-900">Personal Details</h2>
+        <div>
+            <div class="profile-completion">
+                <p>Profile Completion: {{ profileCompletion }}%</p>
+                <div class="progress-bar">
+                    <div class="progress-fill" :style="{ width: profileCompletion + '%' }"></div>
+                </div>
+            </div>
 
+        </div>
     </header>
     <section v-bind="$attrs">
         <form @submit.prevent="handleSubmit" class="mt-6 space-y-6">
@@ -249,5 +276,26 @@ select {
     border-radius: 0.75rem;
     border: 1px solid rgba(43, 43, 43, 0.50) !important;
     padding: 1rem;
+}
+
+.profile-completion {
+    margin: 10px 0;
+}
+
+.progress-bar {
+    width: 100%;
+    height: 10px;
+    background-color: #e0e0e0;
+    /* Grey background for the remaining part */
+    border-radius: 5px;
+    overflow: hidden;
+    position: relative;
+}
+
+.progress-fill {
+    height: 100%;
+    background-color: #4caf50;
+    /* Green color for filled portion */
+    transition: width 0.5s ease-in-out;
 }
 </style>

@@ -109,4 +109,10 @@ class Vehicle extends Model
         return $this->belongsTo(User::class, 'vendor_id');
     }
 
+    public function benefits()
+{
+    return $this->hasOne(VehicleBenefit::class);
+}
+
+
 }
