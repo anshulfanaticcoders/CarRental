@@ -16,7 +16,6 @@
                             <TableRow>
                                 <TableHead>Driving License</TableHead>
                                 <TableHead>Passport</TableHead>
-                                <TableHead>Passport Photo</TableHead>
                                 <TableHead>Company Name</TableHead>
                                 <TableHead>Status</TableHead>
                                 <TableHead class="text-right">Actions</TableHead>
@@ -34,13 +33,6 @@
                                 <TableCell>
                                     <img :src="`${document.passport}`" alt="Passport" class="w-[150px] h-[100px] mb-2 object-cover">
                                     <Button v-if="document.passport" variant="outline" size="sm" @click="viewDocument(document.passport)" class="w-[150px]">
-                                        View
-                                    </Button>
-                                    <span v-else>Not uploaded</span>
-                                </TableCell>
-                                <TableCell>
-                                    <img :src="`${document.passport_photo}`" alt="Passport Photo" class="w-[150px] h-[100px] mb-2 object-cover">
-                                    <Button v-if="document.passport_photo" variant="outline" size="sm" @click="viewDocument(document.passport_photo)" class="w-[150px]">
                                         View
                                     </Button>
                                     <span v-else>Not uploaded</span>
@@ -84,7 +76,7 @@
                         <p>{{ document.vendor_profile.company_email }}</p>
                     </div>
                     <div>
-                        <p class="font-medium text-sm">GST Number:</p>
+                        <p class="font-medium text-sm">VAT Number:</p>
                         <p>{{ document.vendor_profile.company_gst_number }}</p>
                     </div>
                     <div class="col-span-2">

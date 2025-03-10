@@ -1200,12 +1200,12 @@ const nextStep = () => {
 
         case 2: // Technical Specifications
             if (
-                !form.registration_number ||
+                // !form.registration_number ||
                 !form.registration_country ||
                 !form.registration_date ||
-                !form.gross_vehicle_mass ||
-                !form.vehicle_height ||
-                !form.dealer_cost ||
+                // !form.gross_vehicle_mass ||
+                // !form.vehicle_height ||
+                // !form.dealer_cost ||
                 !form.phone_number
             ) {
                 isValid = false;
@@ -1222,10 +1222,7 @@ const nextStep = () => {
 
         case 4: // Pricing
             if (
-                !form.preferred_price_type ||
-                (form.preferred_price_type === 'day' && form.price_per_day <= 0) ||
-                (form.preferred_price_type === 'week' && form.price_per_week <= 0) ||
-                (form.preferred_price_type === 'month' && form.price_per_month <= 0) ||
+               
                 !form.security_deposit ||
                 !form.payment_method
             ) {

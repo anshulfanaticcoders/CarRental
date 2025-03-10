@@ -564,9 +564,7 @@ const searchQuery = computed(() => {
                                     </div>
                                 </div>
                                 <div class="extra_details flex gap-5 mt-[1rem]">
-                                    <div class="col flex gap-3">
-                                        <img :src="walkIcon" alt="" /><span class="text-[1.15rem]">9.3 KM Away</span>
-                                    </div>
+                                  
                                     <div class="col flex gap-3">
                                         <img :src="mileageIcon" alt="" /><span class="text-[1.15rem]">{{ vehicle.mileage
                                         }}km/d</span>

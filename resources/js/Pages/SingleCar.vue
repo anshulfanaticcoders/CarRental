@@ -36,6 +36,7 @@ import {
     CarouselNext,
     CarouselPrevious,
 } from "@/Components/ui/carousel";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/Components/ui/dialog";
 import Card from "@/Components/ui/card/Card.vue";
 import CardContent from "@/Components/ui/card/CardContent.vue";
 import Autoplay from 'embla-carousel-autoplay';
@@ -47,6 +48,12 @@ const vehicle = ref(props.vehicle);
 const user = ref(null);
 const reviews = ref([]);
 const isLoading = ref(true);
+
+// getting authenticated user role info 
+const authUser = props.auth?.user; // Get authenticated user
+const isVendor = authUser?.role;
+
+
 const plugin = Autoplay({
     delay: 2000,
     stopOnMouseEnter: true,
@@ -100,6 +107,12 @@ const formatTime = (timeString) => {
 
     return `${formattedHours}:${minutes.toString().padStart(2, '0')} ${period}`;
 };
+const averageRating = computed(() => {
+    if (!reviews.value.length) return 0; // No reviews, return 0
+    const totalRating = reviews.value.reduce((sum, review) => sum + review.rating, 0);
+    return (totalRating / reviews.value.length).toFixed(1); // Round to 1 decimal place
+});
+
 
 // Feature-Icon Mapping
 const featureIconMap = {
@@ -373,6 +386,7 @@ import { Calendar, Clock } from 'lucide-vue-next';
 import { Alert, AlertDescription } from '@/Components/ui/alert';
 import { CardHeader, CardTitle } from "@/Components/ui/card";
 import { Inertia } from "@inertiajs/inertia";
+import { Button } from "@/Components/ui/button";
 
 const selectedPackage = ref('day');
 const dateError = ref('');
@@ -719,11 +733,16 @@ watch([
     }
 });
 
-
+const showWarningModal = ref(false);
 const proceedToPayment = () => {
     // Validate rental details before proceeding
     if (!validateRentalDetails()) {
         return; // Stop the function if validation fails
+    }
+
+    if (isVendor === 'vendor') {
+        showWarningModal.value = true;
+        return;
     }
     storeRentalData();
     // Proceed to payment page with query parameters
@@ -736,6 +755,7 @@ const proceedToPayment = () => {
         totalPrice: calculateTotalPrice.value,
         discountAmount: discountAmount.value,
     });
+
 };
 
 // Get package type from query parameter
@@ -758,10 +778,15 @@ selectedPackage.value = initialPackageType;
                     </span>
                 </div>
                 <div class="flex gap-2 items-center text-[1.25rem]">
-                    <div class="car_ratings flex gap-2 items-center">
-                        <img :src=starIcon alt="">
-                        <span>5(1)</span>
+                    <div class="car_ratings flex gap-2 items-center" v-if="reviews.length > 0">
+                        <div class="flex items-center gap-1">
+                            <img v-for="n in 5" :key="n" :src="getStarIcon(averageRating, n)"
+                                :alt="getStarAltText(averageRating, n)" class="w-[20px] h-[20px]" />
+                        </div>
+                        <span>{{ averageRating }} ({{ reviews.length }})</span>
                     </div>
+                    <p v-else>No ratings yet.</p>
+
                     <div class="dot_seperator"><strong>.</strong></div>
                     <div class="car_location">
                         <span>{{ vehicle?.location }}</span>
@@ -797,7 +822,7 @@ selectedPackage.value = initialPackageType;
                                         <span class="text-customLightGrayColor text-[1rem]">People</span>
                                         <span class="font-medium text-[1rem]">{{
                                             vehicle?.seating_capacity
-                                            }}</span>
+                                        }}</span>
                                     </div>
                                 </div>
                                 <div class="feature-item items-center flex gap-3">
@@ -806,7 +831,7 @@ selectedPackage.value = initialPackageType;
                                         <span class="text-customLightGrayColor text-[1rem]">Doors</span>
                                         <span class="font-medium text-[1rem]">{{
                                             vehicle?.number_of_doors
-                                            }}</span>
+                                        }}</span>
                                     </div>
                                 </div>
                                 <div class="feature-item items-center flex gap-3">
@@ -815,7 +840,7 @@ selectedPackage.value = initialPackageType;
                                         <span class="text-customLightGrayColor text-[1rem]">Luggage</span>
                                         <span class="font-medium text-[1rem]">{{
                                             vehicle?.luggage_capacity
-                                            }}</span>
+                                        }}</span>
                                     </div>
                                 </div>
                                 <div class="feature-item items-center flex gap-3">
@@ -824,7 +849,7 @@ selectedPackage.value = initialPackageType;
                                         <span class="text-customLightGrayColor text-[1rem]">Transmission</span>
                                         <span class="font-medium capitalize">{{
                                             vehicle?.transmission
-                                            }}</span>
+                                        }}</span>
                                     </div>
                                 </div>
                                 <div class="feature-item items-center flex gap-3">
@@ -833,7 +858,7 @@ selectedPackage.value = initialPackageType;
                                         <span class="text-customLightGrayColor text-[1rem]">Fuel Type</span>
                                         <span class="font-medium capitalize">{{
                                             vehicle?.fuel
-                                            }}</span>
+                                        }}</span>
                                     </div>
                                 </div>
                                 <div class="feature-item items-center flex gap-3">
@@ -921,21 +946,24 @@ selectedPackage.value = initialPackageType;
                                 </li>
 
                                 <!-- Cancellation Availability Display -->
-                                <li v-if="vehicle?.benefits?.cancellation_available_per_day" class="flex items-center gap-1">
+                                <li v-if="vehicle?.benefits?.cancellation_available_per_day"
+                                    class="flex items-center gap-1">
                                     <p class="text-[1.2rem] text-customPrimaryColor font-medium">
                                         Cancellation Available (for daily package): {{
                                             vehicle?.benefits?.cancellation_available_per_day_date }} days before rental
                                         date
                                     </p>
                                 </li>
-                                <li v-if="vehicle?.benefits?.cancellation_available_per_week" class="flex items-center gap-1">
+                                <li v-if="vehicle?.benefits?.cancellation_available_per_week"
+                                    class="flex items-center gap-1">
                                     <p class="text-[1.2rem] text-customPrimaryColor font-medium">
                                         Cancellation Available (for weekly package): {{
                                             vehicle?.benefits?.cancellation_available_per_week_date }} days before rental
                                         date
                                     </p>
                                 </li>
-                                <li v-if="vehicle?.benefits?.cancellation_available_per_month" class="flex items-center gap-1">
+                                <li v-if="vehicle?.benefits?.cancellation_available_per_month"
+                                    class="flex items-center gap-1">
                                     <p class="text-[1.2rem] text-customPrimaryColor font-medium">
                                         Cancellation Available (for monthly package): {{
                                             vehicle?.benefits?.cancellation_available_per_month_date }} days before rental
@@ -981,7 +1009,7 @@ selectedPackage.value = initialPackageType;
                     <div class="column w-[40%]">
                         <div class="paymentInfoDiv p-5 sticky top-[3rem]">
                             <div class="flex items-center justify-between gap-3">
-                                <h4>{{ vehicle?.brand }}</h4>
+                                <h4>{{ vehicle?.brand }} {{ vehicle?.model }}</h4>
                                 <span class="bg-[#f5f5f5] inline-block px-8 py-2 text-center rounded-[40px]">
                                     {{ vehicle?.category.name }}
                                 </span>
@@ -1013,9 +1041,7 @@ selectedPackage.value = initialPackageType;
                                 </div>
                             </div>
                             <div class="extra_details flex gap-5 mt-[1rem]">
-                                <div class="col flex gap-3">
-                                    <img :src="walkIcon" alt="" /><span class="text-[1.15rem]">9.3 KM Away</span>
-                                </div>
+                                
                                 <div class="col flex gap-3">
                                     <img :src="mileageIcon" alt="" /><span class="text-[1.15rem]">{{ vehicle?.mileage }}
                                         km/d</span>
@@ -1064,7 +1090,7 @@ selectedPackage.value = initialPackageType;
                                                             <div class="flex items-center gap-3 mb-2">
                                                                 <component :is="pkg.icon" class="w-6 h-6" />
                                                                 <span class="font-semibold text-[1rem]">{{ pkg.label
-                                                                }}</span>
+                                                                    }}</span>
                                                             </div>
                                                             <p class="text-sm text-gray-600 mb-2">{{ pkg.description }}
                                                             </p>
@@ -1163,6 +1189,23 @@ selectedPackage.value = initialPackageType;
                                             </Card>
                                         </div>
                                     </div>
+                                    <!-- Warning Modal -->
+                                    <Dialog v-model:open="showWarningModal">
+                                        <DialogContent class="">
+                                            <DialogHeader>
+                                                <DialogTitle>Access Denied</DialogTitle>
+                                                <DialogDescription>
+                                                    You cannot proceed to the payment page because you are a vendor, not
+                                                    a customer.
+                                                </DialogDescription>
+                                            </DialogHeader>
+                                            <DialogFooter>
+                                                <Button @click="showWarningModal = false" class="button-primary">
+                                                    Okay
+                                                </Button>
+                                            </DialogFooter>
+                                        </DialogContent>
+                                    </Dialog>
                                     <div class="column mt-[2rem]">
                                         <button @click="proceedToPayment"
                                             class="button-primary block text-center p-5 w-full">Proceed to Pay</button>
@@ -1201,7 +1244,7 @@ selectedPackage.value = initialPackageType;
                                     <CardContent>
                                         <div class="review-item  px-[1rem] py-[2rem] h-full">
                                             <div class="flex items-center gap-3">
-                                                <img :src="review.user.profile?.avatar ? `/storage/${review.user.profile?.avatar}` : '/storage/avatars/default-avatar.svg'"
+                                                <img :src="review.user.profile?.avatar ? `${review.user.profile?.avatar}` : '/storage/avatars/default-avatar.svg'"
                                                     alt="User Avatar"
                                                     class="w-[50px] h-[50px] rounded-full object-cover" />
                                                 <div>
@@ -1351,7 +1394,7 @@ selectedPackage.value = initialPackageType;
     z-index: 99;
 }
 
-.vehicle-benefits > li::before {
+.vehicle-benefits>li::before {
     content: "";
     background-color: #153b4f;
     height: 0.5rem;

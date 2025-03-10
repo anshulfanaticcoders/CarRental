@@ -93,7 +93,7 @@ const toggleOptions = (messageId) => {
 
 const getProfileImage = (customer) => {
     return customer.user.profile && customer.user.profile.avatar
-        ? `/storage/${customer.user.profile.avatar}`
+        ? `${customer.user.profile.avatar}`
         : '/storage/avatars/default-avatar.svg';
 };
 
@@ -107,7 +107,7 @@ onMounted(() => {
         <!-- Booking Information -->
         <div class="p-4 bg-gray-50 rounded-lg mb-4 flex gap-4" v-if="userRole === 'customer'">
             <img :src="booking.vehicle?.vendor_profile?.avatar
-                ? `/storage/${booking.vehicle.vendor_profile.avatar}`
+                ? `${booking.vehicle.vendor_profile.avatar}`
                 : '/storage/avatars/default-avatar.svg'" alt="User Avatar"
                 class="rounded-full object-cover h-[50px] w-[50px]" />
             <div>

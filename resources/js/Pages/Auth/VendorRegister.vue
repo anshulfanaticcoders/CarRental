@@ -18,7 +18,6 @@ const form = useForm({
     address: props.userProfile.address_line1,
     driving_license: null,
     passport: null,
-    passport_photo: null,
     company_name: "",
     company_phone_number: "",
     company_email: "",
@@ -33,8 +32,18 @@ const fullName = `${props.user.first_name} ${props.user.last_name}`;
 const fileNames = ref({
     driving_license: "",
     passport: "",
-    passport_photo: "",
 });
+
+const filePreviews = ref({
+    driving_license: null,
+    passport: null,
+});
+
+const removeFile = (type) => {
+    fileNames.value[type] = "";
+    filePreviews.value[type] = null;
+};
+
 
 // Load saved file data on component mount
 onMounted(() => {
@@ -67,14 +76,29 @@ const prevStep = () => {
 
 const handleFileChange = (field, event) => {
     const file = event.target.files[0];
+
     if (file) {
         form[field] = file;
         fileNames.value[field] = file.name;
 
-        // Store the updated file names in localStorage
-        localStorage.setItem("vendorFileData", JSON.stringify(fileNames.value));
+        // Create image preview
+        const reader = new FileReader();
+        reader.onload = () => {
+            filePreviews.value[field] = reader.result;
+
+            // Save to localStorage (file names & previews)
+            localStorage.setItem(
+                "vendorFileData",
+                JSON.stringify({
+                    fileNames: fileNames.value,
+                    filePreviews: filePreviews.value,
+                })
+            );
+        };
+        reader.readAsDataURL(file);
     }
 };
+
 
 const submit = () => {
     form.post(route("vendor.store"), {
@@ -104,6 +128,7 @@ const submit = () => {
 </script>
 
 <template>
+
     <Head title="Vendor Register" />
     <AuthenticatedHeaderLayout />
     <div class="">
@@ -112,9 +137,7 @@ const submit = () => {
                 <form @submit.prevent="submit" class="w-full">
                     <div v-if="currentStep === 0">
                         <div class="flex flex-col gap-5">
-                            <span class="text-[3rem] font-medium"
-                                >Create Vendor</span
-                            >
+                            <span class="text-[3rem] font-medium">Create Vendor</span>
                             <p class="text-customLightGrayColor text-[1.15rem]">
                                 Create your listing in a few minutes to receive
                                 rental requests! All you need is a photo, a
@@ -123,245 +146,170 @@ const submit = () => {
                                 Also, make sure you have the vehicle's
                                 registration certificate nearby.
                             </p>
-                            <PrimaryButton
-                                class="w-[30%]"
-                                type="button"
-                                @click="nextStep"
-                                >Create a vendor</PrimaryButton
-                            >
+                            <PrimaryButton class="w-[30%]" type="button" @click="nextStep">Create a vendor
+                            </PrimaryButton>
                         </div>
                     </div>
                     <div v-if="currentStep === 1">
                         <div class="grid grid-cols-1 gap-5">
                             <div class="column w-full">
-                                <InputLabel for="full_name"
-                                    >Full Name</InputLabel
-                                >
-                                <TextInput
-                                    type="text"
-                                    v-model="fullName"
-                                    readonly
-                                    class="w-full"
-                                />
+                                <InputLabel for="full_name">Full Name</InputLabel>
+                                <TextInput type="text" v-model="fullName" readonly class="w-full" />
                             </div>
 
                             <div class="column w-full">
-                                <InputLabel for="phone"
-                                    >Phone Number</InputLabel
-                                >
-                                <TextInput
-                                    type="tel"
-                                    v-model="form.phone"
-                                    class="w-full"
-                                    readonly
-                                />
+                                <InputLabel for="phone">Phone Number</InputLabel>
+                                <TextInput type="tel" v-model="form.phone" class="w-full" readonly />
                             </div>
 
                             <div class="column w-full">
                                 <InputLabel for="email">Email</InputLabel>
-                                <TextInput
-                                    type="email"
-                                    v-model="form.email"
-                                    readonly
-                                    class="w-full"
-                                />
+                                <TextInput type="email" v-model="form.email" readonly class="w-full" />
                             </div>
 
                             <div class="column w-full">
                                 <InputLabel for="address">Address</InputLabel>
-                                <textarea
-                                    v-model="form.address"
-                                    class="w-full"
-                                    readonly
-                                ></textarea>
+                                <textarea v-model="form.address" class="w-full" readonly></textarea>
                             </div>
 
                             <div class="flex justify-between">
-                                <button
-                                    class="button-secondary w-[30%]"
-                                    type="button"
-                                    @click="prevStep"
-                                    :disabled="currentStep === 0"
-                                >
+                                <button class="button-secondary w-[30%]" type="button" @click="prevStep"
+                                    :disabled="currentStep === 0">
                                     Back
                                 </button>
-                                <PrimaryButton
-                                    class="w-[30%]"
-                                    type="button"
-                                    @click="nextStep"
-                                    >Next</PrimaryButton
-                                >
+                                <PrimaryButton class="w-[30%]" type="button" @click="nextStep">Next</PrimaryButton>
                             </div>
                         </div>
                     </div>
                     <div v-else-if="currentStep === 2">
                         <div class="grid grid-cols-1 gap-5">
+                            <!-- Driving License -->
                             <div class="column w-full">
-                                <InputLabel for="driving_license"
-                                    >Driving License</InputLabel
-                                >
+                                <InputLabel for="driving_license">Driving License</InputLabel>
                                 <div class="flex flex-col gap-2">
-                                    <TextInput
-                                        type="file"
-                                        @change="
-                                            handleFileChange(
-                                                'driving_license',
-                                                $event
-                                            )
-                                        "
-                                        class="w-full"
-                                    />
-                                    <span
-                                        v-if="fileNames.driving_license"
-                                        class="text-sm text-gray-600"
-                                    >
-                                        Selected file:
-                                        {{ fileNames.driving_license }}
+
+                                    <!-- Clickable Upload Area -->
+                                    <div @click="$refs.drivingLicenseInput.click()"
+                                        class="document-div cursor-pointer border-[2px] border-customPrimaryColor p-4 rounded-lg text-center border-dotted">
+                                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"
+                                            stroke-width="1.5" stroke="#153b4f"
+                                            class="w-10 h-10 mx-auto text-gray-400">
+                                            <path stroke-linecap="round" stroke-linejoin="round"
+                                                d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5" />
+                                        </svg>
+                                        <p class="mt-2 text-sm text-gray-600">Click to select an image</p>
+                                        <p class="text-xs text-gray-500 mt-1">JPG, PNG, GIF up to 2MB</p>
+                                    </div>
+
+                                    <!-- Hidden File Input -->
+                                    <input type="file" ref="drivingLicenseInput" class="hidden"
+                                        @change="handleFileChange('driving_license', $event)" />
+
+                                    <!-- Show Image Preview with Remove Button -->
+                                    <div v-if="filePreviews.driving_license" class="relative w-[150px]">
+                                        <img :src="filePreviews.driving_license" alt="Preview"
+                                            class="w-full h-[100px] object-cover rounded-md border shadow-md" />
+
+                                        <!-- Remove File Button -->
+                                        <button @click.stop="removeFile('driving_license')"
+                                            class="absolute top-1 right-1 bg-red-500 text-white p-1 rounded-full text-xs">
+                                            ✕
+                                        </button>
+                                    </div>
+
+                                    <!-- Show Selected File Name -->
+                                    <span v-if="fileNames.driving_license" class="text-sm text-gray-600">
+                                        Selected file: {{ fileNames.driving_license }}
                                     </span>
                                 </div>
                             </div>
 
+                            <!-- Passport/ID -->
                             <div class="column w-full">
-                                <InputLabel for="passport">Passport</InputLabel>
+                                <InputLabel for="passport">Passport/ID</InputLabel>
                                 <div class="flex flex-col gap-2">
-                                    <TextInput
-                                        type="file"
-                                        @change="
-                                            handleFileChange('passport', $event)
-                                        "
-                                        class="w-full"
-                                    />
-                                    <span
-                                        v-if="fileNames.passport"
-                                        class="text-sm text-gray-600"
-                                    >
+
+                                    <!-- Clickable Upload Area -->
+                                    <div @click="$refs.passportInput.click()"
+                                        class="document-div cursor-pointer border-[2px] border-customPrimaryColor p-4 rounded-lg text-center border-dotted">
+                                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"
+                                            stroke-width="1.5" stroke="#153b4f"
+                                            class="w-10 h-10 mx-auto text-gray-400">
+                                            <path stroke-linecap="round" stroke-linejoin="round"
+                                                d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5" />
+                                        </svg>
+                                        <p class="mt-2 text-sm text-gray-600">Click to select an image</p>
+                                        <p class="text-xs text-gray-500 mt-1">JPG, PNG, GIF up to 2MB</p>
+                                    </div>
+
+                                    <!-- Hidden File Input -->
+                                    <input type="file" ref="passportInput" class="hidden"
+                                        @change="handleFileChange('passport', $event)" />
+
+                                    <!-- Show Image Preview with Remove Button -->
+                                    <div v-if="filePreviews.passport" class="relative w-[150px]">
+                                        <img :src="filePreviews.passport" alt="Preview"
+                                            class="w-full h-[100px] object-cover rounded-md border shadow-md" />
+
+                                        <!-- Remove File Button -->
+                                        <button @click.stop="removeFile('passport')"
+                                            class="absolute top-1 right-1 bg-red-500 text-white p-1 rounded-full text-xs">
+                                            ✕
+                                        </button>
+                                    </div>
+
+                                    <!-- Show Selected File Name -->
+                                    <span v-if="fileNames.passport" class="text-sm text-gray-600">
                                         Selected file: {{ fileNames.passport }}
                                     </span>
                                 </div>
                             </div>
 
-                            <div class="column w-full">
-                                <InputLabel for="passport_photo"
-                                    >Passport Photo</InputLabel
-                                >
-                                <div class="flex flex-col gap-2">
-                                    <TextInput
-                                        type="file"
-                                        @change="
-                                            handleFileChange(
-                                                'passport_photo',
-                                                $event
-                                            )
-                                        "
-                                        class="w-full"
-                                    />
-                                    <span
-                                        v-if="fileNames.passport_photo"
-                                        class="text-sm text-gray-600"
-                                    >
-                                        Selected file:
-                                        {{ fileNames.passport_photo }}
-                                    </span>
-                                </div>
-                            </div>
-
-                            <div class="flex justify-between">
-                                <button
-                                    class="button-secondary w-[30%]"
-                                    type="button"
-                                    @click="prevStep"
-                                >
-                                    Back
-                                </button>
-                                <PrimaryButton
-                                    class="w-[30%]"
-                                    type="button"
-                                    @click="nextStep"
-                                    >Next</PrimaryButton
-                                >
-                            </div>
                         </div>
+                        <!-- Buttons -->
+    <div class="flex justify-between mt-[2rem]">
+       <button class="button-secondary w-[30%]" type="button" @click="prevStep">Back</button>
+       <PrimaryButton class="w-[30%]" type="button" @click="nextStep">Next</PrimaryButton>
+    </div>
+
+                        
                     </div>
 
                     <div v-else-if="currentStep === 3">
                         <div class="grid grid-cols-1 gap-5">
                             <div class="column w-full">
-                                <InputLabel for="company_name"
-                                    >Company Name</InputLabel
-                                >
-                                <TextInput
-                                    type="text"
-                                    v-model="form.company_name"
-                                    class="w-full"
-                                    required
-                                />
+                                <InputLabel for="company_name">Company Name</InputLabel>
+                                <TextInput type="text" v-model="form.company_name" class="w-full" required />
                             </div>
                             <div class="column w-full">
-                                <InputLabel for="company_phone_number"
-                                    >Company Phone Number</InputLabel
-                                >
-                                <TextInput
-                                    type="tel"
-                                    v-model="form.company_phone_number"
-                                    class="w-full"
-                                    required
-                                />
+                                <InputLabel for="company_phone_number">Company Phone Number</InputLabel>
+                                <TextInput type="tel" v-model="form.company_phone_number" class="w-full" required />
                             </div>
                             <div class="column w-full">
-                                <InputLabel for="company_email"
-                                    >Company Email</InputLabel
-                                >
-                                <TextInput
-                                    type="email"
-                                    v-model="form.company_email"
-                                    class="w-full"
-                                    required
-                                />
+                                <InputLabel for="company_email">Company Email</InputLabel>
+                                <TextInput type="email" v-model="form.company_email" class="w-full" required />
                             </div>
                             <div class="column w-full">
-                                <InputLabel for="company_address"
-                                    >Company Address</InputLabel
-                                >
-                                <textarea
-                                    v-model="form.company_address"
-                                    class="w-full"
-                                    required
-                                ></textarea>
+                                <InputLabel for="company_address">Company Address</InputLabel>
+                                <textarea v-model="form.company_address" class="w-full" required></textarea>
                             </div>
                             <div class="column w-full">
-                                <InputLabel for="company_gst_number"
-                                    >Company GST Number</InputLabel
-                                >
-                                <TextInput
-                                    type="text"
-                                    v-model="form.company_gst_number"
-                                    class="w-full"
-                                    required
-                                />
+                                <InputLabel for="company_gst_number">VAT Number</InputLabel>
+                                <TextInput type="text" v-model="form.company_gst_number" class="w-full" required />
                             </div>
                             <div class="flex justify-between">
-                                <button
-                                    class="button-secondary w-[30%]"
-                                    type="button"
-                                    @click="prevStep"
-                                >
+                                <button class="button-secondary w-[30%]" type="button" @click="prevStep">
                                     Back
                                 </button>
-                                <PrimaryButton class="w-[30%]" type="submit"
-                                    >Submit</PrimaryButton
-                                >
+                                <PrimaryButton class="w-[30%]" type="submit">Submit</PrimaryButton>
                             </div>
                         </div>
                     </div>
                 </form>
             </div>
 
-            <div
-                class="column bg-customPrimaryColor w-[50%] min-h-[80vh] relative"
-            >
-                <div
-                    class="flex flex-col gap-10 items-center justify-center h-full"
-                >
+            <div class="column bg-customPrimaryColor w-[50%] min-h-[80vh] relative">
+                <div class="flex flex-col gap-10 items-center justify-center h-full">
                     <div class="col text-customPrimaryColor-foreground w-[70%]">
                         <img :src="warningSign" alt="" />
                         <h4 class="text-[1.5rem] font-medium">
@@ -383,11 +331,7 @@ const submit = () => {
                         <p>Contact us on: +91 524555552</p>
                     </div>
                 </div>
-                <img
-                    :src="vendorBgimage"
-                    alt=""
-                    class="absolute bottom-0 left-[-4rem]"
-                />
+                <img :src="vendorBgimage" alt="" class="absolute bottom-0 left-[-4rem]" />
             </div>
         </div>
     </div>
@@ -397,9 +341,20 @@ const submit = () => {
 label {
     margin-bottom: 0.5rem;
 }
-input,textarea,select {
+
+input,
+textarea,
+select {
     border-radius: 0.75rem;
-    border: 1px solid rgba(43, 43, 43, 0.50)!important;
+    border: 1px solid rgba(43, 43, 43, 0.50) !important;
     padding: 1rem;
 }
+.document-div svg {
+    transition: transform 0.3s ease-in-out;
+}
+
+.document-div:hover svg {
+    transform: scale(1.1);
+}
+
 </style>

@@ -100,13 +100,13 @@ onMounted(fetchCurrencies);
 const profileCompletion = ref(0);
 
 const fetchProfileCompletion = async () => {
-    try {
-        const response = await fetch(route('profile.completion'));
-        const data = await response.json();
-        profileCompletion.value = data.percentage;
-    } catch (error) {
-        console.error('Error fetching profile completion:', error);
-    }
+  try {
+    const response = await fetch('/profile/completion');
+    const data = await response.json();
+    profileCompletion.value = data.percentage;
+  } catch (error) {
+    console.error('Error fetching profile completion:', error);
+  }
 };
 
 onMounted(fetchProfileCompletion);

@@ -52,7 +52,7 @@ class VehicleController extends Controller
             // 'payment_method' => 'required|string',
             'payment_method' => 'required|array',
             'payment_method.*' => 'string|in:credit_card,cheque,bank_wire,cryptocurrency,other',
-            'price_per_day' => 'required|decimal:0,2|min:0',
+            'price_per_day' => 'nullable|decimal:0,2|min:0',
             'price_per_week' => 'nullable|decimal:0,2|min:0',
             'weekly_discount' => 'nullable|decimal:0,2|min:0|max:1000',
             'price_per_month' => 'nullable|decimal:0,2|min:0',
@@ -62,12 +62,12 @@ class VehicleController extends Controller
             'cancellation_available' => 'boolean',
             'price_per_km' => 'nullable|decimal:0,2|min:0',
 
-            'registration_number' => 'required|string|max:50',
+            // 'registration_number' => 'required|string|max:50',
             'registration_country' => 'required|string|max:50',
             'registration_date' => 'required|date',
-            'gross_vehicle_mass' => 'required|integer|min:0',
-            'vehicle_height' => 'required|integer|min:0',
-            'dealer_cost' => 'required|decimal:0,2|min:0',
+            // 'gross_vehicle_mass' => 'required|integer|min:0',
+            // 'vehicle_height' => 'required|integer|min:0',
+            // 'dealer_cost' => 'required|decimal:0,2|min:0',
             'phone_number' => 'required|string|max:15',
 
             // New Vehicle Benefit fields
@@ -229,7 +229,7 @@ class VehicleController extends Controller
     //This is for getting particular vehicle information to the booking page 
     public function booking(Request $request, $id)
     {
-        $vehicle = Vehicle::with(['specifications', 'images', 'category', 'user', 'vendorProfile'])
+        $vehicle = Vehicle::with(['specifications', 'images', 'category', 'user', 'vendorProfile','benefits'])
             ->findOrFail($id);
 
         return Inertia::render('Booking', [

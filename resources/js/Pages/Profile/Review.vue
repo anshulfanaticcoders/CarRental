@@ -58,7 +58,7 @@ onMounted(() => {
             <div v-for="review in reviews" :key="review.id" class=" mx-auto">
                 <div class="review-item  px-[1rem] py-[2rem] h-full">
                     <div class="flex items-center gap-3">
-                        <img :src="review.user.profile?.avatar ? `/storage/${review.user.profile?.avatar}` : '/storage/avatars/default-avatar.svg'"
+                        <img :src="review.user.profile?.avatar ? `${review.user.profile?.avatar}` : '/storage/avatars/default-avatar.svg'"
                             alt="User Avatar" class="w-[50px] h-[50px] rounded-full object-cover" />
                         <div>
                             <h4 class="text-customPrimaryColor font-medium">{{

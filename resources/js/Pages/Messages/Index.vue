@@ -104,7 +104,7 @@ onMounted(() => {
                         <!-- Display Vendor Avatar -->
                         <div class="relative w-[50px] h-[50px] flex-shrink-0">
                             <img :src="booking.vehicle?.vendor_profile?.avatar
-                                ? `/storage/${booking.vehicle.vendor_profile.avatar}`
+                                ? `${booking.vehicle.vendor_profile.avatar}`
                                 : '/storage/avatars/default-avatar.svg'" alt="User Avatar"
                                 class="rounded-full object-cover h-full w-full" />
                             <p

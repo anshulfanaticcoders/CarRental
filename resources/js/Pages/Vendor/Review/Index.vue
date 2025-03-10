@@ -129,7 +129,7 @@ const handlePageChange = (page) => {
                     <div class="flex items-center">
                       <div class="flex-shrink-0 h-10 w-10">
                         <img v-if="review.user?.profile?.avatar" 
-                             :src="`/storage/${review.user.profile.avatar}`"
+                             :src="`${review.user.profile.avatar}`"
                              class="h-10 w-10 rounded-full object-cover"
                              :alt="review.user?.first_name">
                         <div v-else 

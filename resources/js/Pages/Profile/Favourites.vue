@@ -87,10 +87,10 @@ const formatPrice = (price, vehicle) => {
                 </div>
                 <Link :href="`/vehicle/${vehicle.id}`">
                     <div class="column flex flex-col gap-5 items-start">
-                        <img v-if="vehicle.images" :src="`/storage/${vehicle.images.find(
+                        <img v-if="vehicle.images" :src="`${vehicle.images.find(
                             (image) =>
                                 image.image_type === 'primary'
-                        )?.image_path
+                        )?.image_url
                             }`" alt="Primary Image" class="w-full h-[250px] object-cover rounded-lg" />
                         <span class="bg-[#f5f5f5] inline-block px-8 py-2 text-center rounded-[40px]">
                             {{ vehicle.model }}

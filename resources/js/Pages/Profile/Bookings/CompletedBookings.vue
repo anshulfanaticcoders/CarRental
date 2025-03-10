@@ -16,7 +16,7 @@
              <Link :href="`/vehicle/${booking.vehicle.id}`">
           <div class="w-20%">
             <img v-if="booking.vehicle?.images"
-                 :src="`/storage/${booking.vehicle.images.find(image => image.image_type === 'primary')?.image_path}`"
+                 :src="`${booking.vehicle.images.find(image => image.image_type === 'primary')?.image_url}`"
                  alt="Image of the booked {{ booking.vehicle.brand }} {{ booking.vehicle.model }}"
                  class="w-full h-[250px] object-cover rounded-md" />
             <img v-else src="/path/to/placeholder-image.jpg" alt="Placeholder Image" class="w-full h-[250px] object-cover rounded-md" />

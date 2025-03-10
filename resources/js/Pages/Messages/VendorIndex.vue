@@ -78,7 +78,7 @@ const loadChat = async (booking) => {
 const { bookings } = usePage().props;
 
 const getProfileImage = (customer) => {
-  return customer.user.profile && customer.user.profile.avatar ? `/storage/${customer.user.profile.avatar}` : '/storage/avatars/default-avatar.svg';
+  return customer.user.profile && customer.user.profile.avatar ? `${customer.user.profile.avatar}` : '/storage/avatars/default-avatar.svg';
 };
 
 // Format time for last message display

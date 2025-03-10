@@ -14,6 +14,15 @@ import { loadStripe } from '@stripe/stripe-js';
 import PrimaryButton from "@/Components/PrimaryButton.vue";
 import Footer from "@/Components/Footer.vue";
 import loader from "../../assets/loader.gif";
+import {
+    Dialog,
+    DialogContent,
+    DialogDescription,
+    DialogFooter,
+    DialogHeader,
+    DialogTitle,
+    DialogTrigger,
+} from '@/Components/ui/dialog'
 
 // Add these methods to your script section
 const incrementQuantity = (extra) => {
@@ -73,6 +82,47 @@ const user = ref(props.auth?.user || null);
 const packageType = ref(props.query?.packageType || 'day');
 const totalPrice = ref(Number(props.query?.totalPrice) || 0);
 const discountAmount = ref(Number(props.query?.discountAmount) || 0);
+const dateFrom = ref(props.query?.dateFrom || null);
+const dateTo = ref(props.query?.dateTo || null);
+const timeFrom = ref(props.query?.timeFrom || null);
+const timeTo = ref(props.query?.timeTo || null);
+
+
+// Calculate cancellation date based on package type
+const getCancellationDate = computed(() => {
+    if (!dateFrom.value) return null;
+
+    let cancellationDays = 0;
+
+    if (packageType.value === 'day' && vehicle.value?.benefits?.cancellation_available_per_day) {
+        cancellationDays = vehicle.value?.benefits?.cancellation_available_per_day_date || 0;
+    } else if (packageType.value === 'week' && vehicle.value?.benefits?.cancellation_available_per_week) {
+        cancellationDays = vehicle.value?.benefits?.cancellation_available_per_week_date || 0;
+    } else if (packageType.value === 'month' && vehicle.value?.benefits?.cancellation_available_per_month) {
+        cancellationDays = vehicle.value?.benefits?.cancellation_available_per_month_date || 0;
+    }
+
+    // Create a new date object from dateFrom
+    const bookingDate = new Date(dateFrom.value);
+    // Subtract cancellation days
+    bookingDate.setDate(bookingDate.getDate() - cancellationDays);
+
+    // Format the date as YYYY-MM-DD
+    return bookingDate.toISOString().split('T')[0];
+});
+
+// Format date function for display
+const formatDate = (dateString) => {
+    if (!dateString) return '';
+    const date = new Date(dateString);
+
+    // Format as YYYY-MM-DD
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+
+    return `${year}-${month}-${day}`;
+};
 
 // This is for protection Plans
 const plans = ref([]);
@@ -425,6 +475,7 @@ const submitBooking = async () => {
         isLoading.value = false; // Hide loader
     }
 };
+
 </script>
 
 
@@ -437,38 +488,68 @@ const submitBooking = async () => {
             <div class="full-w-container flex justify-between py-customVerticalSpacing gap-5">
                 <div class="column w-[65%] flex flex-col gap-10" v-if="currentStep === 1">
                     <div class="free_cancellation p-5 bg-[#0099001A] border-[#009900] rounded-[8px] border-[1px]">
-                        <p class="text-[1.15rem] text-[#009900] font-medium">
-                            Free Cancellation before pick-up (19Nov 2023, 12:00PM)
-                        </p>
+
+                        <!-- Cancellation Availability Display -->
+                        <div v-if="vehicle?.benefits?.cancellation_available_per_day && packageType === 'day'"
+                            class="flex items-center gap-1">
+                            <p class="text-[1.2rem] text-[#009900] font-medium">
+                                Free Cancellation before {{ formatDate(getCancellationDate) }}
+                                ({{ vehicle?.benefits?.cancellation_available_per_day_date }} days prior to pickup)
+                            </p>
+                        </div>
+                        <div v-if="vehicle?.benefits?.cancellation_available_per_week && packageType === 'week'"
+                            class="flex items-center gap-1">
+                            <p class="text-[1.2rem] text-[#009900] font-medium">
+                                Free Cancellation before {{ formatDate(getCancellationDate) }}
+                                ({{ vehicle?.benefits?.cancellation_available_per_week_date }} days prior to pickup)
+                            </p>
+                        </div>
+                        <div v-if="vehicle?.benefits?.cancellation_available_per_month && packageType === 'month'"
+                            class="flex items-center gap-1">
+                            <p class="text-[1.2rem] text-[#009900] font-medium">
+                                Free Cancellation before {{ formatDate(getCancellationDate) }}
+                                ({{ vehicle?.benefits?.cancellation_available_per_month_date }} days prior to pickup)
+                            </p>
+                        </div>
+
+                        <div v-else-if="!vehicle?.benefits?.cancellation_available_per_month">
+                            <p class="text-[1.2rem] text-[#009900] font-medium">No Cancellation Available</p>
+                        </div>
+
+
                     </div>
 
                     <div class="flex flex-col gap-10">
                         <h4 class="text-[2.5rem]">Protection Plan</h4>
 
                         <!-- Protection Plan -->
-                        <div class="protection_plan flex justify-between gap-5">
-                            <div v-for="plan in plans" :key="plan.id"
-                                class="col w-[50%] rounded-[20px] border-[1px] border-[#153B4F] p-5 flex flex-col gap-5"
-                                :class="{
-                                    'border-[#153B4F]': selectedPlan?.id === plan.id,
-                                    'bg-[#153B4F0D]': selectedPlan?.id === plan.id,
-                                }" @click="selectPlan(plan)">
+                        <div class="protection_plan flex gap-10">
+                            <div v-for="plan in plans" :key="plan.id" class="cursor-pointer col w-[45%] rounded-[20px] border-[1px] border-[#153B4F] p-5 flex flex-col gap-5 
+           transition-transform duration-300 ease-in-out" :class="{
+            'hover:scale-105 scale-105': selectedPlan?.id === plan.id,  // Keeps the scale effect when selected
+            'border-[#153B4F] bg-[#153B4F0D]': selectedPlan?.id === plan.id,
+        }" @click="selectPlan(plan)">
+
                                 <span class="text-[1.5rem] text-center" :class="{
                                     'text-[#016501]': plan.plan_type === 'Exclusive plan',
                                 }">
                                     {{ plan.plan_type }}
                                 </span>
+
                                 <strong class="text-[3rem] font-medium text-center">
                                     {{ formatPrice(plan.plan_value) }}
                                 </strong>
+
                                 <p class="text-[1.25rem] text-[#2B2B2B] text-center">
                                     Access to basic features without any subscription fee.
                                 </p>
+
                                 <button class="button-primary px-5 py-2" @click="selectPlan(plan)" :class="{
                                     'bg-[#016501]': selectedPlan?.id === plan.id,
                                 }">
                                     {{ selectedPlan?.id === plan.id ? "Selected" : "Select" }}
                                 </button>
+
                                 <div class="checklist features">
                                     <ul
                                         class="check-list text-center mt-[1rem] inline-flex flex-col items-center w-full gap-3">
@@ -479,6 +560,7 @@ const submitBooking = async () => {
                                     </ul>
                                 </div>
                             </div>
+
                         </div>
 
                         <!-- Additional Equipment -->
@@ -711,7 +793,8 @@ const submitBooking = async () => {
                         <div class="flex items-center justify-between gap-3">
                             <h4>{{ vehicle?.brand }}</h4>
                             <span
-                                class="bg-[#f5f5f5] inline-block px-8 py-2 text-center rounded-[40px] text-customPrimaryColor">SUV</span>
+                                class="bg-[#f5f5f5] inline-block px-8 py-2 text-center rounded-[40px] text-customPrimaryColor">{{
+                                    vehicle?.category.name }}</span>
                         </div>
                         <div class="">
                             <span>Hosted by
@@ -742,9 +825,7 @@ const submitBooking = async () => {
                                 <div class="flex flex-col gap-1">
                                     <span class="text-[1.25rem] text-medium">{{
                                         vehicle?.location
-                                    }}</span><span class="">{{
-                                            vehicle?.created_at
-                                        }}</span>
+                                        }}</span><span class="">From: {{ dateFrom }} {{ timeFrom }}</span>
                                 </div>
                             </div>
                             <div class="col flex items-start gap-4 mt-[2.5rem]">
@@ -752,9 +833,7 @@ const submitBooking = async () => {
                                 <div class="flex flex-col gap-1">
                                     <span class="text-[1.25rem] text-medium">{{
                                         vehicle?.location
-                                    }}</span><span class="">{{
-                                            vehicle?.created_at
-                                        }}</span>
+                                        }}</span><span class="">To: {{ dateTo }} {{ timeTo }}</span>
                                 </div>
                             </div>
 
@@ -773,11 +852,11 @@ const submitBooking = async () => {
                                     <div v-if="selectedPlan" class="flex justify-between items-center text-[1.15rem]">
                                         <span>{{
                                             selectedPlan.plan_type
-                                        }}</span>
+                                            }}</span>
                                         <div>
                                             <strong class="text-[1.5rem] font-medium">{{
                                                 formatPrice(selectedPlan.plan_value)
-                                                }}</strong>
+                                            }}</strong>
 
                                         </div>
                                     </div>
@@ -794,16 +873,60 @@ const submitBooking = async () => {
                                         <div>
                                             <strong class="text-[1.5rem] font-medium">{{
                                                 formatPrice(extra.price * extra.quantity)
-                                                }}</strong>
+                                            }}</strong>
 
                                         </div>
                                     </div>
                                 </div>
-                                <div class="column mt-[2rem]">
-                                    <Link href="" class="underline">
-                                    View Pricing details
-                                    </Link>
-                                </div>
+                                <!-- Dialog Trigger -->
+                                <Dialog>
+                                    <DialogTrigger class="underline text-blue-600 mt-4 block cursor-pointer">
+                                        View Pricing details
+                                    </DialogTrigger>
+
+                                    <DialogContent class="max-w-[600px]">
+                                        <DialogHeader>
+                                            <DialogTitle>Detailed Pricing Breakdown</DialogTitle>
+                                            <DialogDescription>Here is the breakdown of your selected options.
+                                            </DialogDescription>
+                                        </DialogHeader>
+
+                                        <!-- Pricing Breakdown inside Dialog -->
+                                        <div class="flex flex-col gap-4">
+                                            
+                                            <div class="flex justify-between text-[1.15rem]">
+                                                <span>Base Price</span>
+                                                <p class="font-medium">{{ formatPrice(totalPrice+discountAmount) }}/{{ packageType }}</p>
+                                            </div>
+
+                                            <div v-if="selectedPlan" class="flex justify-between text-[1.15rem]">
+                                                <span>Plan: {{ selectedPlan.plan_type }}</span>
+                                                <p class="font-medium">{{ formatPrice(selectedPlan.plan_value) }}</p>
+                                            </div>
+
+                                            <div v-for="extra in bookingExtras" :key="extra.id"
+                                                v-show="extra.quantity > 0" class="flex justify-between text-[1.15rem]">
+                                                <span>{{ extra.extra_name }} {{ extra.quantity > 1 ?
+                                                    `(x${extra.quantity})` : "" }}</span>
+                                                <p class="font-medium">{{ formatPrice(extra.price * extra.quantity) }}</p>
+                                            </div>
+
+                                            <div
+                                                class="flex justify-between text-[1.25rem] font-bold border-t pt-3 mt-3">
+                                                <span>Total (incl. VAT)</span>
+                                                <p class="font-medium">{{ formatPrice(calculateTotal+discountAmount) }}</p>
+                                            </div>
+                                            <div v-if="discountAmount" class="mt-[-1rem] flex justify-between text-[1.15rem]">
+                                                <span>Discount</span>
+                                                <div class="flex flex-col items-end">
+                                                    <p class="border-b-2 mb-1 text-red-500 font-medium">-{{ formatPrice(discountAmount) }}</p>
+                                                    <strong class="text-[1.3rem]">{{ formatPrice(calculateTotal) }}</strong>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </DialogContent>
+                                </Dialog>
+
                                 <div
                                     class="column flex justify-between bg-white text-customPrimaryColor p-4 mt-[2rem] rounded-[12px]">
                                     <p class="flex items-center text-[1.15rem]">

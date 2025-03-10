@@ -39,7 +39,6 @@
                             <TableHead>Status</TableHead>
                             <TableHead>Driving License</TableHead>
                             <TableHead>Passport</TableHead>
-                            <TableHead>Passport Photo</TableHead>
                             <TableHead class="text-right">Actions</TableHead>
                         </TableRow>
                     </TableHeader>
@@ -62,11 +61,6 @@
                             <TableCell>
                                 <img @click="openImageModal(`${user.vendor_document?.passport}`)"
                                     :src="`${user.vendor_document?.passport}`" alt="Passport"
-                                    class="w-[100px] h-[80px] object-cover mb-2 cursor-pointer" />
-                            </TableCell>
-                            <TableCell>
-                                <img @click="openImageModal(`${user.vendor_document?.passport_photo}`)"
-                                    :src="`${user.vendor_document?.passport_photo}`" alt="Passport Photo"
                                     class="w-[100px] h-[80px] object-cover mb-2 cursor-pointer" />
                             </TableCell>
                             <TableCell class="text-right">

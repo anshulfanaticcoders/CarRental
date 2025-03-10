@@ -41,7 +41,7 @@
                   <td class="px-6 py-4 whitespace-nowrap text-[0.875rem]">{{ index + 1 }}</td>
                   <Link :href="`/vehicle/${vehicle.id}`" class="w-full">
                   <td class="px-2 py-4 whitespace-nowrap hover:scale-105">
-                    <img :src="getPrimaryImage(vehicle)" :alt="`${vehicle.brand} ${vehicle.model}`"
+                    <img :src="getPrimaryImage(vehicle)" alt="no image"
                       class="h-12 w-24 object-cover rounded">
                   </td>
                   </Link>

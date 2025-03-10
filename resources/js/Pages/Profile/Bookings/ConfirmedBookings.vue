@@ -17,7 +17,7 @@
           class="bg-white shadow-md rounded-lg p-6 gap-10 flex justify-between mb-6">
           <Link :href="`/vehicle/${booking.vehicle.id}`">
           <div class="w-20%"> <img v-if="booking.vehicle?.images"
-              :src="`/storage/${booking.vehicle.images.find(image => image.image_type === 'primary')?.image_path}`"
+              :src="`${booking.vehicle.images.find(image => image.image_type === 'primary')?.image_path}`"
               alt="Primary Vehicle Image" class="w-full h-[250px] object-cover rounded-md" /> <img v-else
               src="/path/to/placeholder-image.jpg" alt="Placeholder Image"
               class="w-full h-[250px] object-cover rounded-md" />

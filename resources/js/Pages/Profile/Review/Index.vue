@@ -27,7 +27,7 @@
                                     review.vehicle.fuel }} . {{ review.vehicle.seating_capacity }} seats</p>
                                 <div class="flex">
                                     <img v-if="review.vehicle.vendor_profile && review.vehicle.vendor_profile.avatar"
-                                        :src="`/storage/${review.vehicle.vendor_profile.avatar}`"
+                                        :src="`${review.vehicle.vendor_profile.avatar}`"
                                         class="w-12 h-12 rounded-full mr-2" />
                                     <div>
                                         <p class="text-[1.1rem]">{{ review.vehicle.user.first_name }}</p>
@@ -126,9 +126,9 @@ const getPrimaryImage = (review) => {
     }
     const primaryImage = review.vehicle.images.find(img => img.image_type === 'primary');
     if (!primaryImage) {
-        return `/storage/${review.vehicle.images[0].image_path}`; // Return first image if no primary
+        return `${review.vehicle.images[0].image_path}`; // Return first image if no primary
     }
-    return `/storage/${primaryImage.image_path}`;
+    return `${primaryImage.image_url}`;
 }
 
 const formatDate = (date) => {
