@@ -28,9 +28,11 @@ use App\Http\Controllers\SearchController;
 use App\Http\Controllers\Admin\VehicleCategoriesController;
 use App\Http\Controllers\Vendor\BlockingDateController;
 use App\Http\Controllers\Vendor\DamageProtectionController;
+use App\Http\Controllers\Vendor\PlanController;
 use App\Http\Controllers\Vendor\VendorBookingController;
 use App\Http\Controllers\Vendor\VendorOverviewController;
 use App\Http\Controllers\Vendor\VendorVehicleController;
+use App\Http\Controllers\Vendor\VendorVehiclePlanController;
 use App\Http\Controllers\VendorController;
 use App\Http\Controllers\PaymentController;
 use App\Http\Controllers\Admin\VendorsDashboardController;
@@ -206,6 +208,17 @@ Route::delete('/damage-protection/{booking}/delete-before', [DamageProtectionCon
 
 Route::delete('/damage-protection/{booking}/delete-after', [DamageProtectionController::class, 'deleteAfterImages'])
     ->name('vendor.damage-protection.delete-after-images');
+    
+
+    Route::get('/plans', [VendorVehiclePlanController::class, 'getPlans']);
+    Route::post('/vehicle-plans', [VendorVehiclePlanController::class, 'store']);
+    Route::get('/vehicle-plans/{vehicleId}', [VendorVehiclePlanController::class, 'getVehiclePlans']);
+    Route::delete('/vehicle-plans/{id}', [VendorVehiclePlanController::class, 'destroy']);
+
+
+    Route::get('vendor/plans', [PlanController::class, 'index'])->name('VendorPlanIndex');
+    Route::get('vendor/plans/{id}/edit', [PlanController::class, 'edit'])->name('VendorPlanEdit');
+    Route::put('vendor/plans/{id}', [PlanController::class, 'update'])->name('VendorPlanUpdate');
 
 });
 

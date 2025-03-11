@@ -114,5 +114,10 @@ class Vehicle extends Model
     return $this->hasOne(VehicleBenefit::class);
 }
 
+// In Vehicle.php model
+public function vendorPlans()
+{
+    return $this->hasMany(VendorVehiclePlan::class);
+}
 
 }

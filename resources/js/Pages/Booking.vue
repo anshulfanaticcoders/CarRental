@@ -57,7 +57,7 @@ const validateSteps = () => {
 
     if (currentStep.value === 2) {
         // Add any additional validation for Step 2 here
-        if (!customer.value.first_name || !customer.value.last_name || !customer.value.email) {
+        if (!customer.value.first_name || !customer.value.last_name || !customer.value.email || !customer.value.driver_age) {
             alert("Please fill in all required fields in Step 2.");
             return false;
         }
@@ -125,27 +125,25 @@ const formatDate = (dateString) => {
 };
 
 // This is for protection Plans
-const plans = ref([]);
+const plans = ref(props.plans);
 const selectedPlan = ref(null);
-const fetchPlans = async () => {
-    try {
-        const response = await axios.get("/api/plans");
-        plans.value = response.data;
-        // Select Free plan by default
-        const freePlan = plans.value.find(
-            (plan) => plan.plan_type === "Free plan"
-        );
-        if (freePlan) {
-            selectedPlan.value = freePlan;
-        }
-    } catch (error) {
-        console.error("Error fetching plans:", error);
-    }
-};
-
 const selectPlan = (plan) => {
     selectedPlan.value = plan;
 };
+
+const parsedFeatures = (features) => {
+    try {
+        return JSON.parse(features);
+    } catch (e) {
+        return [];
+    }
+};
+onMounted(() => {
+    const freePlan = plans.value.find(plan => plan.id === 2);
+    if (freePlan) {
+        selectedPlan.value = freePlan;
+    }
+});
 
 // This is for Extras
 const bookingExtras = ref([]);
@@ -161,7 +159,6 @@ const fetchBookingExtras = async () => {
 
 onMounted(() => {
     fetchBookingExtras();
-    fetchPlans();
 });
 
 // Store the selected plan and booking extras in sessionStorage
@@ -287,7 +284,7 @@ const calculateTotal = computed(() => {
 
     total += Number(totalPrice.value);
     // Add plan value
-    total += Number(selectedPlan.value?.plan_value || 0);
+    total += Number(selectedPlan.value?.price || 0);
 
     // Add extras with quantity multiplication
     bookingExtras.value.forEach((extra) => {
@@ -525,42 +522,40 @@ const submitBooking = async () => {
                         <!-- Protection Plan -->
                         <div class="protection_plan flex gap-10">
                             <div v-for="plan in plans" :key="plan.id" class="cursor-pointer col w-[45%] rounded-[20px] border-[1px] border-[#153B4F] p-5 flex flex-col gap-5 
-           transition-transform duration-300 ease-in-out" :class="{
-            'hover:scale-105 scale-105': selectedPlan?.id === plan.id,  // Keeps the scale effect when selected
-            'border-[#153B4F] bg-[#153B4F0D]': selectedPlan?.id === plan.id,
-        }" @click="selectPlan(plan)">
-
+                                   transition-transform duration-300 ease-in-out" :class="{
+                                    'hover:scale-105 scale-105': selectedPlan?.plan_id === plan.plan_id, // Keeps the scale effect when selected
+                                    'border-[#153B4F] bg-[#153B4F0D]': selectedPlan?.plan_id === plan.plan_id,
+                                }" @click="selectPlan(plan)">
                                 <span class="text-[1.5rem] text-center" :class="{
-                                    'text-[#016501]': plan.plan_type === 'Exclusive plan',
+                                    'text-[#016501]': plan.plan_id === 2,
                                 }">
                                     {{ plan.plan_type }}
                                 </span>
 
                                 <strong class="text-[3rem] font-medium text-center">
-                                    {{ formatPrice(plan.plan_value) }}
+                                    {{ formatPrice(plan.price) }}
                                 </strong>
 
                                 <p class="text-[1.25rem] text-[#2B2B2B] text-center">
                                     Access to basic features without any subscription fee.
                                 </p>
 
-                                <button class="button-primary px-5 py-2" @click="selectPlan(plan)" :class="{
-                                    'bg-[#016501]': selectedPlan?.id === plan.id,
+                                <button class="button-primary px-5 py-2" @click.stop="selectPlan(plan)" :class="{
+                                    'bg-[#016501]': selectedPlan?.plan_id === plan.plan_id,
                                 }">
-                                    {{ selectedPlan?.id === plan.id ? "Selected" : "Select" }}
+                                    {{ selectedPlan?.plan_id === plan.plan_id ? 'Selected' : 'Select' }}
                                 </button>
 
                                 <div class="checklist features">
                                     <ul
                                         class="check-list text-center mt-[1rem] inline-flex flex-col items-center w-full gap-3">
-                                        <li v-for="(feature, index) in plan.features" :key="index"
+                                        <li v-for="(feature, index) in parsedFeatures(plan.features)" :key="index"
                                             class="checklist-item">
                                             {{ feature }}
                                         </li>
                                     </ul>
                                 </div>
                             </div>
-
                         </div>
 
                         <!-- Additional Equipment -->
@@ -704,10 +699,36 @@ const submitBooking = async () => {
                 <div class="column w-[65%] flex flex-col gap-10" v-if="currentStep === 3">
                     <h4 class="text-[2rem] font-medium">Payment Method</h4>
                     <div class="free_cancellation p-5 bg-[#0099001A] border-[#009900] rounded-[8px] border-[1px]">
-                        <p class="text-[1.15rem] text-[#009900] font-medium">
-                            Free Cancellation before 48hours
-                        </p>
-                    </div>
+
+<!-- Cancellation Availability Display -->
+<div v-if="vehicle?.benefits?.cancellation_available_per_day && packageType === 'day'"
+    class="flex items-center gap-1">
+    <p class="text-[1.2rem] text-[#009900] font-medium">
+        Free Cancellation before {{ formatDate(getCancellationDate) }}
+        ({{ vehicle?.benefits?.cancellation_available_per_day_date }} days prior to pickup)
+    </p>
+</div>
+<div v-if="vehicle?.benefits?.cancellation_available_per_week && packageType === 'week'"
+    class="flex items-center gap-1">
+    <p class="text-[1.2rem] text-[#009900] font-medium">
+        Free Cancellation before {{ formatDate(getCancellationDate) }}
+        ({{ vehicle?.benefits?.cancellation_available_per_week_date }} days prior to pickup)
+    </p>
+</div>
+<div v-if="vehicle?.benefits?.cancellation_available_per_month && packageType === 'month'"
+    class="flex items-center gap-1">
+    <p class="text-[1.2rem] text-[#009900] font-medium">
+        Free Cancellation before {{ formatDate(getCancellationDate) }}
+        ({{ vehicle?.benefits?.cancellation_available_per_month_date }} days prior to pickup)
+    </p>
+</div>
+
+<div v-else-if="!vehicle?.benefits?.cancellation_available_per_month">
+    <p class="text-[1.2rem] text-[#009900] font-medium">No Cancellation Available</p>
+</div>
+
+
+</div>
                     <h3 class="text-[2rem] font-medium">Pay Now to Lock in this Deal</h3>
 
                     <div class="stripe-payment-form p-6 border rounded-lg">
@@ -855,7 +876,7 @@ const submitBooking = async () => {
                                             }}</span>
                                         <div>
                                             <strong class="text-[1.5rem] font-medium">{{
-                                                formatPrice(selectedPlan.plan_value)
+                                                formatPrice(selectedPlan.price)
                                             }}</strong>
 
                                         </div>
@@ -893,10 +914,11 @@ const submitBooking = async () => {
 
                                         <!-- Pricing Breakdown inside Dialog -->
                                         <div class="flex flex-col gap-4">
-                                            
+
                                             <div class="flex justify-between text-[1.15rem]">
                                                 <span>Base Price</span>
-                                                <p class="font-medium">{{ formatPrice(totalPrice+discountAmount) }}/{{ packageType }}</p>
+                                                <p class="font-medium">{{ formatPrice(totalPrice + discountAmount) }}/{{
+                                                    packageType }}</p>
                                             </div>
 
                                             <div v-if="selectedPlan" class="flex justify-between text-[1.15rem]">
@@ -908,19 +930,25 @@ const submitBooking = async () => {
                                                 v-show="extra.quantity > 0" class="flex justify-between text-[1.15rem]">
                                                 <span>{{ extra.extra_name }} {{ extra.quantity > 1 ?
                                                     `(x${extra.quantity})` : "" }}</span>
-                                                <p class="font-medium">{{ formatPrice(extra.price * extra.quantity) }}</p>
+                                                <p class="font-medium">{{ formatPrice(extra.price * extra.quantity) }}
+                                                </p>
                                             </div>
 
                                             <div
                                                 class="flex justify-between text-[1.25rem] font-bold border-t pt-3 mt-3">
                                                 <span>Total (incl. VAT)</span>
-                                                <p class="font-medium">{{ formatPrice(calculateTotal+discountAmount) }}</p>
+                                                <p class="font-medium">{{ formatPrice(calculateTotal + discountAmount)
+                                                    }}
+                                                </p>
                                             </div>
-                                            <div v-if="discountAmount" class="mt-[-1rem] flex justify-between text-[1.15rem]">
+                                            <div v-if="discountAmount"
+                                                class="mt-[-1rem] flex justify-between text-[1.15rem]">
                                                 <span>Discount</span>
                                                 <div class="flex flex-col items-end">
-                                                    <p class="border-b-2 mb-1 text-red-500 font-medium">-{{ formatPrice(discountAmount) }}</p>
-                                                    <strong class="text-[1.3rem]">{{ formatPrice(calculateTotal) }}</strong>
+                                                    <p class="border-b-2 mb-1 text-red-500 font-medium">-{{
+                                                        formatPrice(discountAmount) }}</p>
+                                                    <strong class="text-[1.3rem]">{{ formatPrice(calculateTotal)
+                                                    }}</strong>
                                                 </div>
                                             </div>
                                         </div>

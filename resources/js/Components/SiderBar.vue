@@ -111,6 +111,7 @@ const vendorMenus = [
     items: [
       { name: "All Vehicles", path: "/current-vendor-vehicles" },
       { name: "Add New Vehicle", path: "/vehicle-listing" },
+      { name: "Add Plan", path: "vendor/plans" },
     ],
   },
 ];

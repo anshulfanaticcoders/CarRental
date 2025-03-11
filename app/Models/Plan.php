@@ -20,4 +20,11 @@ class Plan extends Model
         'features' => 'array'
     ];
     
+
+
+// In Plan.php model
+public function vendorVehiclePlans()
+{
+    return $this->hasMany(VendorVehiclePlan::class);
+}
 }

@@ -8,6 +8,7 @@ use App\Models\VehicleBenefit;
 use App\Models\VehicleFeature;
 use App\Models\VehicleImage;
 use App\Models\VehicleSpecification;
+use App\Models\VendorVehiclePlan;
 use App\Providers\RouteServiceProvider;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -157,6 +158,23 @@ class VehicleController extends Controller
             'phone_number' => $request->phone_number,
         ]);
 
+
+         // Save the selected plan details
+    if ($request->has('selected_plans')) {
+        $selectedPlans = $request->input('selected_plans');
+
+        foreach ($selectedPlans as $selectedPlan) {
+            VendorVehiclePlan::create([
+                'vendor_id' => $request->user()->id,
+                'vehicle_id' => $vehicle->id,
+                'plan_id' => $selectedPlan['id'],
+                'plan_type' => $selectedPlan['plan_type'],
+                'price' => $selectedPlan['plan_value'],
+                'features' => isset($selectedPlan['features']) ? json_encode($selectedPlan['features']) : null,
+            ]);
+        }
+    }
+
         // Handle vehicle images
         $primaryImageUploaded = false;
         foreach ($request->file('images') as $index => $image) {
@@ -229,11 +247,12 @@ class VehicleController extends Controller
     //This is for getting particular vehicle information to the booking page 
     public function booking(Request $request, $id)
     {
-        $vehicle = Vehicle::with(['specifications', 'images', 'category', 'user', 'vendorProfile','benefits'])
+        $vehicle = Vehicle::with(['specifications', 'images', 'category', 'user', 'vendorProfile','benefits', 'vendorPlans'])
             ->findOrFail($id);
 
         return Inertia::render('Booking', [
             'vehicle' => $vehicle,
+            'plans' => $vehicle->vendorPlans,
             'query' => $request->all(),
         ]);
     }

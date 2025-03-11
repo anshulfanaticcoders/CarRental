@@ -738,129 +738,154 @@
 
 
                     <div>
-    <!-- Limited Kilometer Section -->
-    <div class="mb-6">
-        <h3 class="font-medium text-lg mb-2">Kilometer Limitations</h3>
-        
-        <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <!-- Per Day Limitation -->
-            <div v-if="selectedTypes.day" class="border rounded p-4">
-                <div class="flex gap-2 items-center mb-3">
-                    <input type="checkbox" v-model="form.limited_km_per_day" id="limited_km_per_day" />
-                    <InputLabel for="limited_km_per_day" class="mb-0">Limited Kilometer Per Day</InputLabel>
-                </div>
-                
-                <div v-if="form.limited_km_per_day">
-                    <div class="mb-3">
-                        <InputLabel for="limited_km_per_day_range">KM Limit</InputLabel>
-                        <input type="number" v-model="form.limited_km_per_day_range" id="limited_km_per_day_range" class="w-full" />
+                        <!-- Limited Kilometer Section -->
+                        <div class="mb-6">
+                            <h3 class="font-medium text-lg mb-2">Kilometer Limitations</h3>
+
+                            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                                <!-- Per Day Limitation -->
+                                <div v-if="selectedTypes.day" class="border rounded p-4">
+                                    <div class="flex gap-2 items-center mb-3">
+                                        <input type="checkbox" v-model="form.limited_km_per_day"
+                                            id="limited_km_per_day" />
+                                        <InputLabel for="limited_km_per_day" class="mb-0">Limited Kilometer Per Day
+                                        </InputLabel>
+                                    </div>
+
+                                    <div v-if="form.limited_km_per_day">
+                                        <div class="mb-3">
+                                            <InputLabel for="limited_km_per_day_range">KM Limit</InputLabel>
+                                            <input type="number" v-model="form.limited_km_per_day_range"
+                                                id="limited_km_per_day_range" class="w-full" />
+                                        </div>
+
+                                        <div>
+                                            <InputLabel for="price_per_km_per_day">Price Per Extra KM</InputLabel>
+                                            <input type="number" v-model="form.price_per_km_per_day"
+                                                id="price_per_km_per_day" class="w-full" />
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Per Week Limitation -->
+                                <div v-if="selectedTypes.week" class="border rounded p-4">
+                                    <div class="flex gap-2 items-center mb-3">
+                                        <input type="checkbox" v-model="form.limited_km_per_week"
+                                            id="limited_km_per_week" />
+                                        <InputLabel for="limited_km_per_week" class="mb-0">Limited Kilometer Per Week
+                                        </InputLabel>
+                                    </div>
+
+                                    <div v-if="form.limited_km_per_week">
+                                        <div class="mb-3">
+                                            <InputLabel for="limited_km_per_week_range">KM Limit</InputLabel>
+                                            <input type="number" v-model="form.limited_km_per_week_range"
+                                                id="limited_km_per_week_range" class="w-full" />
+                                        </div>
+
+                                        <div>
+                                            <InputLabel for="price_per_km_per_week">Price Per Extra KM</InputLabel>
+                                            <input type="number" v-model="form.price_per_km_per_week"
+                                                id="price_per_km_per_week" class="w-full" />
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Per Month Limitation -->
+                                <div v-if="selectedTypes.month" class="border rounded p-4">
+                                    <div class="flex gap-2 items-center mb-3">
+                                        <input type="checkbox" v-model="form.limited_km_per_month"
+                                            id="limited_km_per_month" />
+                                        <InputLabel for="limited_km_per_month" class="mb-0">Limited Kilometer Per Month
+                                        </InputLabel>
+                                    </div>
+
+                                    <div v-if="form.limited_km_per_month">
+                                        <div class="mb-3">
+                                            <InputLabel for="limited_km_per_month_range">KM Limit</InputLabel>
+                                            <input type="number" v-model="form.limited_km_per_month_range"
+                                                id="limited_km_per_month_range" class="w-full" />
+                                        </div>
+
+                                        <div>
+                                            <InputLabel for="price_per_km_per_month">Price Per Extra KM</InputLabel>
+                                            <input type="number" v-model="form.price_per_km_per_month"
+                                                id="price_per_km_per_month" class="w-full" />
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Cancellation Policy Section -->
+                        <div class="mb-6">
+                            <h3 class="font-medium text-lg mb-2">Cancellation Policy</h3>
+
+                            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                                <!-- Per Day Cancellation -->
+                                <div class="border rounded p-4">
+                                    <div class="flex gap-2 items-center mb-3">
+                                        <input type="checkbox" v-model="form.cancellation_available_per_day"
+                                            id="cancellation_available_per_day" />
+                                        <InputLabel for="cancellation_available_per_day" class="mb-0">Cancellation
+                                            Available Per Day</InputLabel>
+                                    </div>
+
+                                    <div v-if="form.cancellation_available_per_day">
+                                        <InputLabel for="cancellation_available_per_day_date">Days Prior Notice Required
+                                        </InputLabel>
+                                        <input type="number" v-model="form.cancellation_available_per_day_date"
+                                            id="cancellation_available_per_day_date" class="w-full" />
+                                    </div>
+                                </div>
+
+                                <!-- Per Week Cancellation -->
+                                <div class="border rounded p-4">
+                                    <div class="flex gap-2 items-center mb-3">
+                                        <input type="checkbox" v-model="form.cancellation_available_per_week"
+                                            id="cancellation_available_per_week" />
+                                        <InputLabel for="cancellation_available_per_week" class="mb-0">Cancellation
+                                            Available Per Week</InputLabel>
+                                    </div>
+
+                                    <div v-if="form.cancellation_available_per_week">
+                                        <InputLabel for="cancellation_available_per_week_date">Days Prior Notice
+                                            Required</InputLabel>
+                                        <input type="number" v-model="form.cancellation_available_per_week_date"
+                                            id="cancellation_available_per_week_date" class="w-full" />
+                                    </div>
+                                </div>
+
+                                <!-- Per Month Cancellation -->
+                                <div class="border rounded p-4">
+                                    <div class="flex gap-2 items-center mb-3">
+                                        <input type="checkbox" v-model="form.cancellation_available_per_month"
+                                            id="cancellation_available_per_month" />
+                                        <InputLabel for="cancellation_available_per_month" class="mb-0">Cancellation
+                                            Available Per Month</InputLabel>
+                                    </div>
+
+                                    <div v-if="form.cancellation_available_per_month">
+                                        <InputLabel for="cancellation_available_per_month_date">Days Prior Notice
+                                            Required</InputLabel>
+                                        <input type="number" v-model="form.cancellation_available_per_month_date"
+                                            id="cancellation_available_per_month_date" class="w-full" />
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Driver Requirements Section -->
+                        <div>
+                            <h3 class="font-medium text-lg mb-2">Driver Requirements</h3>
+
+                            <div class="max-w-xs">
+                                <InputLabel for="minimum_driver_age">Minimum Driver Age</InputLabel>
+                                <input type="number" v-model="form.minimum_driver_age" id="minimum_driver_age"
+                                    class="w-full" />
+                            </div>
+                        </div>
                     </div>
-                    
-                    <div>
-                        <InputLabel for="price_per_km_per_day">Price Per Extra KM</InputLabel>
-                        <input type="number" v-model="form.price_per_km_per_day" id="price_per_km_per_day" class="w-full" />
-                    </div>
-                </div>
-            </div>
-            
-            <!-- Per Week Limitation -->
-            <div v-if="selectedTypes.week" class="border rounded p-4">
-                <div class="flex gap-2 items-center mb-3">
-                    <input type="checkbox" v-model="form.limited_km_per_week" id="limited_km_per_week" />
-                    <InputLabel for="limited_km_per_week" class="mb-0">Limited Kilometer Per Week</InputLabel>
-                </div>
-                
-                <div v-if="form.limited_km_per_week">
-                    <div class="mb-3">
-                        <InputLabel for="limited_km_per_week_range">KM Limit</InputLabel>
-                        <input type="number" v-model="form.limited_km_per_week_range" id="limited_km_per_week_range" class="w-full" />
-                    </div>
-                    
-                    <div>
-                        <InputLabel for="price_per_km_per_week">Price Per Extra KM</InputLabel>
-                        <input type="number" v-model="form.price_per_km_per_week" id="price_per_km_per_week" class="w-full" />
-                    </div>
-                </div>
-            </div>
-            
-            <!-- Per Month Limitation -->
-            <div v-if="selectedTypes.month" class="border rounded p-4">
-                <div class="flex gap-2 items-center mb-3">
-                    <input type="checkbox" v-model="form.limited_km_per_month" id="limited_km_per_month" />
-                    <InputLabel for="limited_km_per_month" class="mb-0">Limited Kilometer Per Month</InputLabel>
-                </div>
-                
-                <div v-if="form.limited_km_per_month">
-                    <div class="mb-3">
-                        <InputLabel for="limited_km_per_month_range">KM Limit</InputLabel>
-                        <input type="number" v-model="form.limited_km_per_month_range" id="limited_km_per_month_range" class="w-full" />
-                    </div>
-                    
-                    <div>
-                        <InputLabel for="price_per_km_per_month">Price Per Extra KM</InputLabel>
-                        <input type="number" v-model="form.price_per_km_per_month" id="price_per_km_per_month" class="w-full" />
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-    
-    <!-- Cancellation Policy Section -->
-    <div class="mb-6">
-        <h3 class="font-medium text-lg mb-2">Cancellation Policy</h3>
-        
-        <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <!-- Per Day Cancellation -->
-            <div class="border rounded p-4">
-                <div class="flex gap-2 items-center mb-3">
-                    <input type="checkbox" v-model="form.cancellation_available_per_day" id="cancellation_available_per_day" />
-                    <InputLabel for="cancellation_available_per_day" class="mb-0">Cancellation Available Per Day</InputLabel>
-                </div>
-                
-                <div v-if="form.cancellation_available_per_day">
-                    <InputLabel for="cancellation_available_per_day_date">Days Prior Notice Required</InputLabel>
-                    <input type="number" v-model="form.cancellation_available_per_day_date" id="cancellation_available_per_day_date" class="w-full" />
-                </div>
-            </div>
-            
-            <!-- Per Week Cancellation -->
-            <div class="border rounded p-4">
-                <div class="flex gap-2 items-center mb-3">
-                    <input type="checkbox" v-model="form.cancellation_available_per_week" id="cancellation_available_per_week" />
-                    <InputLabel for="cancellation_available_per_week" class="mb-0">Cancellation Available Per Week</InputLabel>
-                </div>
-                
-                <div v-if="form.cancellation_available_per_week">
-                    <InputLabel for="cancellation_available_per_week_date">Days Prior Notice Required</InputLabel>
-                    <input type="number" v-model="form.cancellation_available_per_week_date" id="cancellation_available_per_week_date" class="w-full" />
-                </div>
-            </div>
-            
-            <!-- Per Month Cancellation -->
-            <div class="border rounded p-4">
-                <div class="flex gap-2 items-center mb-3">
-                    <input type="checkbox" v-model="form.cancellation_available_per_month" id="cancellation_available_per_month" />
-                    <InputLabel for="cancellation_available_per_month" class="mb-0">Cancellation Available Per Month</InputLabel>
-                </div>
-                
-                <div v-if="form.cancellation_available_per_month">
-                    <InputLabel for="cancellation_available_per_month_date">Days Prior Notice Required</InputLabel>
-                    <input type="number" v-model="form.cancellation_available_per_month_date" id="cancellation_available_per_month_date" class="w-full" />
-                </div>
-            </div>
-        </div>
-    </div>
-    
-    <!-- Driver Requirements Section -->
-    <div>
-        <h3 class="font-medium text-lg mb-2">Driver Requirements</h3>
-        
-        <div class="max-w-xs">
-            <InputLabel for="minimum_driver_age">Minimum Driver Age</InputLabel>
-            <input type="number" v-model="form.minimum_driver_age" id="minimum_driver_age" class="w-full" />
-        </div>
-    </div>
-</div>
 
 
 
@@ -904,8 +929,109 @@
         </div>
     </div>
 
+
     <!-- Step-5 -->
     <div v-if="currentStep === 5" class="overflow-x-hidden">
+        <div class="flex justify-between h-[100vh]">
+            <div class="column overflow-y-auto w-[50%] flex justify-center pb-[4rem]">
+                <div class="flex flex-col gap-5 w-[80%]">
+                    <Link class="w-[5rem] mt-[2rem]" href="/">
+                    <ApplicationLogo />
+                    </Link>
+
+                    <div class=" mt-10">
+                        <span class="text-[1.7rem] font-medium text-gray-800">Choose Your Protection Plan</span>
+                        <p class="text-gray-600 mt-5">
+                            You can <strong>select Exclsive plan or can proceed with Free plan by default</strong>.
+                            These plans will be visible to the customers and customers can select one of these methods during the booking process.
+                            <strong class="underline text-red-500">Click below Plan card to select or edit the Plan price </strong>
+                        </p>
+                    </div>
+                    <!-- Protection Plan -->
+                    <div class="protection_plan flex gap-10 mt-4">
+
+                        <div v-for="plan in plans" :key="plan.id" class="cursor-pointer col w-[45%] rounded-[20px] border-[1px] border-[#153B4F] p-5 flex flex-col gap-5 
+                   hover:bg-[#153B4F0D] transition-transform duration-300 ease-in-out" :class="{
+                    'hover:scale-105 scale-105': selectedPlans.includes(plan),  // Keeps the scale effect when selected
+                    'border-[#153B4F] bg-[#153B4F0D]': selectedPlans.includes(plan),
+                }" @click="togglePlanSelection(plan)">
+                            <span class="text-[1.5rem] text-center" :class="{
+                                'text-[#016501]': plan.plan_type === 'Exclusive plan',
+                            }">
+                                {{ plan.plan_type }}
+                            </span>
+
+                            <strong class="text-[3rem] font-medium text-center">
+                                <input v-if="plan.id === 1 && selectedPlans.includes(plan)" v-model="plan.plan_value"
+                                    type="number" class="w-full text-center p-0" @click.stop />
+                                <span v-else>{{ plan.plan_value }}</span>
+                                <img src="" alt="">
+                            </strong>
+
+                            <p class="text-[1.25rem] text-[#2B2B2B] text-center">
+                                Access to basic features without any subscription fee.
+                            </p>
+
+                            <button class="button-primary px-5 py-2" @click.stop="togglePlanSelection(plan)" :class="{
+                                'bg-[#016501]': selectedPlans.includes(plan),
+                            }">
+                                {{ selectedPlans.includes(plan) ? 'Selected' : 'Select' }}
+                            </button>
+
+                            <div class="checklist features">
+                                <ul
+                                    class="check-list text-center mt-[1rem] inline-flex flex-col items-center w-full gap-3">
+                                    <li v-for="(feature, index) in plan.features" :key="index" class="checklist-item list-disc">
+                                        {{ feature }}
+                                    </li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="buttons flex justify-between mt-[2rem] pb-[4rem]">
+                        <button class="button-secondary w-[40%]" @click="prevStep">
+                            Back
+                        </button>
+                        <PrimaryButton class="w-[40%]" type="button" @click="nextStep">Next</PrimaryButton>
+                    </div>
+                </div>
+            </div>
+
+            <div class="column min-h-full w-[50%] flex-1 bg-customPrimaryColor relative">
+                <div class="flex flex-col gap-10 items-center justify-center h-full">
+                    <div class="col text-customPrimaryColor-foreground w-[70%] p-[2rem] border-b-[2px]">
+                        <img :src="warningSign" alt="" />
+                        <h4 class="text-[1.5rem] font-medium">Tip</h4>
+                        <p>
+                            The rate indicated corresponds to the daily rate of the hire.
+                            Please note your remuneration will correspond to 85% of the rate
+                            applied for the hire.
+                        </p>
+                    </div>
+                    <div class="col text-customPrimaryColor-foreground w-[70%] p-[2rem] border-b-[2px]">
+                        <img :src="warningSign" alt="" />
+                        <h4 class="text-[1.5rem] font-medium">Information</h4>
+                        <p>
+                            All this information is necessary so that we can secure your
+                            listing.
+                        </p>
+                    </div>
+                    <div class="col text-customPrimaryColor-foreground w-[70%] px-[2rem]">
+                        <img :src="warningSign" alt="" />
+                        <h4 class="text-[1.5rem] font-medium">
+                            Need some help?
+                        </h4>
+                        <p>Contact us on: +91 524555552</p>
+                    </div>
+                </div>
+                <img :src="circleImg" alt="" class="absolute top-[-30%] right-[-15%]" />
+            </div>
+        </div>
+    </div>
+
+
+    <!-- Step-6 -->
+    <div v-if="currentStep === 6" class="overflow-x-hidden">
         <div class="flex justify-between h-[100vh]">
             <div class="column overflow-y-auto w-[50%] flex justify-center pb-[4rem]">
                 <div class="flex flex-col gap-5 w-[60%]">
@@ -987,7 +1113,10 @@ import Select from "@/Components/ui/select/Select.vue";
 import SelectItem from "@/Components/ui/select/SelectItem.vue";
 import { SelectContent, SelectGroup, SelectLabel, SelectTrigger, SelectValue } from "@/Components/ui/select";
 import loader from "../../../assets/loader.gif";
+import { usePage } from '@inertiajs/vue3';
+
 const toast = useToast(); // Initialize toast
+
 // Form data
 const form = useForm({
     category_id: null,
@@ -1053,6 +1182,8 @@ const form = useForm({
     price_per_km_per_month: null,
     minimum_driver_age: null,
 
+    selected_plans: [],
+
 });
 const props = defineProps({
     vehicle: {
@@ -1065,7 +1196,43 @@ const selectedTypes = reactive({
     day: true, // Daily is selected by default
     week: false,
     month: false
-})
+});
+
+
+
+// This is for protection Plans
+const plans = ref([]);
+const selectedPlans = ref([]);
+
+const fetchPlans = async () => {
+    try {
+        const response = await axios.get('/api/plans');
+        plans.value = response.data;
+        const freePlan = plans.value.find((plan) => plan.id === 2);
+        if (freePlan) {
+            selectedPlans.value.push(freePlan);
+        }
+    } catch (error) {
+        console.error('Error fetching plans:', error);
+    }
+};
+
+const togglePlanSelection = (plan) => {
+    // Prevent deselecting the free plan (ID = 2)
+    if (plan.id === 2) return;
+
+    const index = selectedPlans.value.findIndex((p) => p.id === plan.id);
+    if (index > -1) {
+        selectedPlans.value.splice(index, 1);
+    } else {
+        selectedPlans.value.push(plan);
+    }
+};
+
+onMounted(() => {
+    fetchPlans();
+});
+
 // fetching the vehicle categories from the database thorough api
 const categories = ref([]);
 const fetchCategories = async () => {
@@ -1103,6 +1270,7 @@ watch(isLoading, (newValue) => {
 const submit = () => {
     isLoading.value = true;
     if (form.images.length < 5) return;
+    form.selected_plans = selectedPlans.value;
     form.post(route("vehicles.store"), {
         onSuccess: () => {
             toast.success('Vendor registration completed successfully! Wait for confimation', {
@@ -1222,16 +1390,23 @@ const nextStep = () => {
 
         case 4: // Pricing
             if (
-               
+
                 !form.security_deposit ||
-                !form.payment_method
+                !form.payment_method ||
+                !form.minimum_driver_age
             ) {
                 isValid = false;
                 alert('Please fill in all required pricing details');
             }
             break;
+        case 5: // Plan Selection
+            if (selectedPlans.value.length === 0) {
+                isValid = false;
+                alert('Please select at least one plan');
+            }
+            break;
 
-        case 5: // Image Upload
+        case 6: // Image Upload
             if (form.images.length < 5) {
                 isValid = false;
                 alert('Please upload at least 5 images');
@@ -1241,7 +1416,7 @@ const nextStep = () => {
 
     // If validation passes, move to next step
     if (isValid) {
-        if (currentStep.value < 5) {
+        if (currentStep.value < 6) {
             currentStep.value++;
             if (currentStep.value === 3) {
                 initializeMap();
@@ -1331,6 +1506,7 @@ watch(() => form.registration_country, (newVal) => {
         form.phone_number = selectedPhoneCode.value; // Update phone number with code
     }
 });
+
 
 </script>
 
