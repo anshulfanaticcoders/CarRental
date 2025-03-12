@@ -23,9 +23,9 @@
                 <Link :href="route('VendorPlanIndex')" class="bg-gray-200 py-2 px-4 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 hover:bg-gray-300 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 mr-3">
                   Cancel
                 </Link>
-                <button type="submit" class="inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
+                <Button type="submit" class="inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
                   Save
-                </button>
+                </Button>
               </div>
             </form>
           </div>
@@ -35,7 +35,8 @@
   </template>
   
   <script setup>
-  import MyProfileLayout from '@/Layouts/MyProfileLayout.vue';
+  import { Button } from '@/Components/ui/button';
+import MyProfileLayout from '@/Layouts/MyProfileLayout.vue';
   import { Link, useForm } from '@inertiajs/inertia-vue3';
   
   // Define props

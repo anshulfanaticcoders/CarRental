@@ -1,9 +1,14 @@
 <template>
     <MyProfileLayout>
-        <div class="max-w-7xl mx-auto sm:px-6 lg:px-8 py-12">
-            <div class="flex items-center gap-2">
-                <h1 class="text-2xl font-bold">Damage Protection for Booking number :- </h1>
+        <div class="">
+            <div class="flex items-center justify-between text-[1.75rem] font-bold text-gray-800 bg-customLightPrimaryColor p-4 rounded-[12px] mb-[1rem]">
+                <div class="flex gap-2 items-center">
+                    <span class="text-2xl font-bold">Damage Protection for Booking number :- </span>
                 <p class="bg-customPrimaryColor text-white px-3 rounded-[99px] text-[1.1rem]">{{ booking.booking_number }}</p>
+                </div>
+                <Button variant="destructive" @click="navigateToBooking">
+                    Cancel
+                </Button>
             </div>
             <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg p-6 flex justify-between">
 
@@ -147,6 +152,7 @@ import MyProfileLayout from '@/Layouts/MyProfileLayout.vue';
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/Components/ui/dialog';
 import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious } from '@/Components/ui/carousel';
 import { Card, CardContent } from '@/Components/ui/card';
+import { Button } from '@/Components/ui/button';
 
 const beforeImages = ref([]);
 const afterImages = ref([]);
@@ -226,5 +232,10 @@ const deleteAfterImages = () => {
 
 const getImageUrl = (imagePath) => {
     return imagePath;
+};
+
+
+const navigateToBooking = () => {
+  router.visit(route('bookings.index'));
 };
 </script>

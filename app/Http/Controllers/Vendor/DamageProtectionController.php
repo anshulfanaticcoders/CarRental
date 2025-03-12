@@ -17,7 +17,7 @@ class DamageProtectionController extends Controller
 
         return inertia('Vendor/DamageProtection/Index', [
             'booking' => $booking,
-            'damageProtection' => $damageProtection
+            'damageProtection' => $damageProtection,
         ]);
     }
 

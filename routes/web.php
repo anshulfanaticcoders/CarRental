@@ -31,6 +31,7 @@ use App\Http\Controllers\Vendor\DamageProtectionController;
 use App\Http\Controllers\Vendor\PlanController;
 use App\Http\Controllers\Vendor\VendorBookingController;
 use App\Http\Controllers\Vendor\VendorOverviewController;
+use App\Http\Controllers\Vendor\VendorVehicleAddonController;
 use App\Http\Controllers\Vendor\VendorVehicleController;
 use App\Http\Controllers\Vendor\VendorVehiclePlanController;
 use App\Http\Controllers\VendorController;
@@ -174,16 +175,22 @@ Route::middleware(['auth', 'role:vendor'])->group(function () {
     // Route::get('/vehicles/create', [VehicleController::class, 'create'])->name('vehicles.create');
     Route::post('/vehicles', [VehicleController::class, 'store'])->name('vehicles.store');
     Route::get('/vehicle-categories', [VehicleController::class, 'getCategories'])->name('vehicle.categories');
+
     // this is for showing All Booking details of customer in vendor profile
     Route::resource('bookings', VendorBookingController::class)->names('bookings');
     Route::post('api/bookings/{booking}/cancel', [VendorBookingController::class, 'cancel'])->name('bookings.cancel');
+
+    // this is used to show payment history of all customers on vendor profile page
     Route::get('/vendor/payments', [BookingController::class, 'getVendorPaymentHistory'])->name('vendor.payments');
+
     // this is for showing All Vehicles of vendor in vendor profile
     Route::resource('current-vendor-vehicles', VendorVehicleController::class);
     Route::delete('/current-vendor-vehicles/{vehicle}/images/{image}', [VendorVehicleController::class, 'deleteImage'])
-    ->name('current-vendor-vehicles.deleteImage');
+        ->name('current-vendor-vehicles.deleteImage');
 
+    //this route is used to block rental dates in vendor profile 
     Route::resource('blocking-dates', BlockingDateController::class)->names('vendor.blocking-dates');
+
     // Customer review in Vendor Profile
     Route::get('/customer-reviews', [ReviewController::class, 'vendorReviews'])
         ->name('vendor.reviews');
@@ -193,32 +200,36 @@ Route::middleware(['auth', 'role:vendor'])->group(function () {
     // Vendor Overview
     Route::get('/overview', [VendorOverviewController::class, 'index'])->name('vendor.overview');
 
-
+    // these are for damage protection on vendor profile page
     Route::get('/damage-protection/{booking}', [DamageProtectionController::class, 'index'])
-    ->name('vendor.damage-protection.index');
+        ->name('vendor.damage-protection.index');
 
-Route::post('/damage-protection/{booking}/upload-before', [DamageProtectionController::class, 'uploadBeforeImages'])
-    ->name('vendor.damage-protection.upload-before');
+    Route::post('/damage-protection/{booking}/upload-before', [DamageProtectionController::class, 'uploadBeforeImages'])
+        ->name('vendor.damage-protection.upload-before');
 
-Route::post('/damage-protection/{booking}/upload-after', [DamageProtectionController::class, 'uploadAfterImages'])
-    ->name('vendor.damage-protection.upload-after');
+    Route::post('/damage-protection/{booking}/upload-after', [DamageProtectionController::class, 'uploadAfterImages'])
+        ->name('vendor.damage-protection.upload-after');
 
-Route::delete('/damage-protection/{booking}/delete-before', [DamageProtectionController::class, 'deleteBeforeImages'])
-    ->name('vendor.damage-protection.delete-before-images');
+    Route::delete('/damage-protection/{booking}/delete-before', [DamageProtectionController::class, 'deleteBeforeImages'])
+        ->name('vendor.damage-protection.delete-before-images');
 
-Route::delete('/damage-protection/{booking}/delete-after', [DamageProtectionController::class, 'deleteAfterImages'])
-    ->name('vendor.damage-protection.delete-after-images');
-    
+    Route::delete('/damage-protection/{booking}/delete-after', [DamageProtectionController::class, 'deleteAfterImages'])
+        ->name('vendor.damage-protection.delete-after-images');
 
+
+    // these are used to get plans on the vehicle listing page
     Route::get('/plans', [VendorVehiclePlanController::class, 'getPlans']);
     Route::post('/vehicle-plans', [VendorVehiclePlanController::class, 'store']);
     Route::get('/vehicle-plans/{vehicleId}', [VendorVehiclePlanController::class, 'getVehiclePlans']);
     Route::delete('/vehicle-plans/{id}', [VendorVehiclePlanController::class, 'destroy']);
 
-
-    Route::get('vendor/plans', [PlanController::class, 'index'])->name('VendorPlanIndex');
+    // these are used on vendor profile page to update plan price 
+    Route::get('/plans', [PlanController::class, 'index'])->name('VendorPlanIndex');
     Route::get('vendor/plans/{id}/edit', [PlanController::class, 'edit'])->name('VendorPlanEdit');
     Route::put('vendor/plans/{id}', [PlanController::class, 'update'])->name('VendorPlanUpdate');
+
+
+    Route::resource('vendor-vehicle-addons', VendorVehicleAddonController::class);
 
 });
 
@@ -258,6 +269,8 @@ Route::middleware(['auth', 'role:customer'])->group(function () {
     Route::post('/payment/charge', [PaymentController::class, 'charge'])->name('payment.charge');
     // this route is to show customer booking in the customer profile
     Route::get('/customer/bookings', [BookingController::class, 'getCustomerBookingData'])->name('customer.bookings');
+
+
     //  this is route is for redirecting to the success page after payment done
     Route::get('/booking-success/details', function () {
         return Inertia::render('Booking/Success', [
@@ -265,6 +278,7 @@ Route::middleware(['auth', 'role:customer'])->group(function () {
         ]);
     })->name('booking-success.details');
 
+    // these routes are used to get booking confirmation on user profile page
     Route::get('/profile/bookings/pending', [BookingController::class, 'getPendingBookings'])
         ->name('profile.bookings.pending');
 
@@ -274,11 +288,13 @@ Route::middleware(['auth', 'role:customer'])->group(function () {
     Route::get('/profile/bookings/completed', [BookingController::class, 'getCompletedBookings'])
         ->name('profile.bookings.completed');
 
-    //  ADD to favourite routes
+
+    //  these routes are used  to add favourite vehicles into customer profile from single car page, search result 
     Route::post('/vehicles/{vehicle}/favourite', [FavoriteController::class, 'favourite'])->name('vehicles.favourite');
     Route::post('/vehicles/{vehicle}/unfavourite', [FavoriteController::class, 'unfavourite'])->name('vehicles.unfavourite');
     Route::get('/favorites', [FavoriteController::class, 'getFavorites']);
 });
+
 
 Route::middleware(['auth', 'vendor.status'])->group(function () {
     Route::get('/vehicles/create', [VehicleController::class, 'create'])->name('vehicles.create');

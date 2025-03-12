@@ -9,9 +9,12 @@
     </div>
 
     <div class="py-12">
-      <div class=" mx-auto">
+      <div class="mx-auto">
+        <div class="rounded-[12px] mb-4">
+          <input type="text" v-model="searchQuery" placeholder="Search vehicles..." class="px-4 py-2 border border-gray-300 rounded-md w-full" />
+        </div>
         <div class="rounded-[12px]">
-          <div v-if="vehicles.length" class="overflow-x-auto">
+          <div v-if="filteredVehicles.length" class="overflow-x-auto">
             <table class="min-w-full divide-y divide-gray-200">
               <thead class="bg-gray-50">
                 <tr class="">
@@ -37,8 +40,8 @@
                 </tr>
               </thead>
               <tbody>
-                <tr v-for="(vehicle, index) in vehicles" :key="vehicle.id" class="border-b">
-                  <td class="px-6 py-4 whitespace-nowrap text-[0.875rem]">{{ index + 1 }}</td>
+                <tr v-for="(vehicle, index) in filteredVehicles" :key="vehicle.id" class="border-b">
+                  <td class="px-6 py-4 whitespace-nowrap text-[0.875rem]">{{ (pagination.current_page - 1) * pagination.per_page + index + 1 }}</td>
                   <Link :href="`/vehicle/${vehicle.id}`" class="w-full">
                   <td class="px-2 py-4 whitespace-nowrap hover:scale-105">
                     <img :src="getPrimaryImage(vehicle)" alt="no image"
@@ -110,7 +113,7 @@
 </template>
 
 <script setup>
-import { ref } from 'vue'
+import { ref, computed, watch } from 'vue'
 import { Link } from '@inertiajs/vue3'
 import { router } from '@inertiajs/vue3'
 import Modal from '@/Components/Modal.vue'
@@ -127,6 +130,17 @@ const props = defineProps({
     required: true
   }
 })
+const searchQuery = ref('');
+
+
+watch(searchQuery, (newQuery) => {
+  router.get(
+    route('current-vendor-vehicles.index'),
+    { search: newQuery },
+    { preserveState: true, preserveScroll: true }
+  );
+});
+
 const handlePageChange = (page) => {
   router.get(route('current-vendor-vehicles.index'), { ...props.filters, page }, { preserveState: true, preserveScroll: true });
 
@@ -176,5 +190,18 @@ const formatPricing = (vehicle) => {
   return prices.length ? prices.join(' | ') : 'N/A';
 };
 
+const filteredVehicles = computed(() => {
+  return props.vehicles.filter(vehicle => {
+    const query = searchQuery.value.toLowerCase();
+    return (
+      vehicle.brand.toLowerCase().includes(query) ||
+      vehicle.model.toLowerCase().includes(query) ||
+      vehicle.transmission.toLowerCase().includes(query) ||
+      vehicle.fuel.toLowerCase().includes(query) ||
+      vehicle.location.toLowerCase().includes(query) ||
+      vehicle.status.toLowerCase().includes(query)
+    );
+  });
+});
 
 </script>

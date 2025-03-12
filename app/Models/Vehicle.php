@@ -120,4 +120,10 @@ public function vendorPlans()
     return $this->hasMany(VendorVehiclePlan::class);
 }
 
+// Add the relationship for VendorVehicleAddon
+public function addons()
+{
+    return $this->hasMany(VendorVehicleAddon::class, 'vehicle_id');
+}
+
 }

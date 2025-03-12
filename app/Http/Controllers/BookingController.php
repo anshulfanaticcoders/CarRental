@@ -253,13 +253,14 @@ public function getVendorPaymentHistory()
     ->where('vehicles.vendor_id', $vendorId)
     ->select('booking_payments.*')
     ->orderBy('booking_payments.created_at', 'desc')
-    ->paginate(8);
+    ->paginate(6);
 
 return Inertia::render('Vendor/Payments/Index', [
     'payments' => $payments->items(), 
     'pagination' => [
         'current_page' => $payments->currentPage(),
         'last_page' => $payments->lastPage(),
+        'per_page' => $payments->perPage(),
     ]
 ]);
 

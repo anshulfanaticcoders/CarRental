@@ -146,26 +146,33 @@ onMounted(() => {
 });
 
 // This is for Extras
-const bookingExtras = ref([]);
+const bookingExtras = ref(props.addons); 
 
-const fetchBookingExtras = async () => {
-    try {
-        const response = await axios.get("/api/booking-addons");
-        bookingExtras.value = response.data;
-    } catch (error) {
-        console.error("Error fetching booking extras:", error);
-    }
-};
+// const fetchBookingExtras = async () => {
+//     try {
+//         const response = await axios.get("/api/booking-addons");
+//         bookingExtras.value = response.data;
+//     } catch (error) {
+//         console.error("Error fetching booking extras:", error);
+//     }
+// };
 
-onMounted(() => {
-    fetchBookingExtras();
-});
+// onMounted(() => {
+//     fetchBookingExtras();
+// });
 
+// Store the selected plan and booking extras in sessionStorage
 // Store the selected plan and booking extras in sessionStorage
 const storeSelectionData = () => {
     const selectionData = {
         selectedPlan: selectedPlan.value,
-        extras: bookingExtras.value.map(extra => ({ id: extra.id, quantity: extra.quantity, price: extra.price * extra.quantity, extra_name: extra.extra_name, extra_type: extra.extra_type }))
+        extras: bookingExtras.value.map(extra => ({
+            id: extra.id,
+            quantity: extra.quantity,
+            price: extra.price * extra.quantity,
+            extra_name: extra.extra_name,
+            extra_type: extra.extra_type
+        }))
     };
     sessionStorage.setItem("selectionData", JSON.stringify(selectionData));
 };
@@ -923,7 +930,7 @@ const submitBooking = async () => {
 
                                             <div v-if="selectedPlan" class="flex justify-between text-[1.15rem]">
                                                 <span>Plan: {{ selectedPlan.plan_type }}</span>
-                                                <p class="font-medium">{{ formatPrice(selectedPlan.plan_value) }}</p>
+                                                <p class="font-medium">{{ formatPrice(selectedPlan.price) }}</p>
                                             </div>
 
                                             <div v-for="extra in bookingExtras" :key="extra.id"

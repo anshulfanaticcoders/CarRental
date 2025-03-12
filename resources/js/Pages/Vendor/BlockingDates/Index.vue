@@ -37,8 +37,13 @@
                 </DialogContent>
             </Dialog>
         </div>
+
+        <!-- Search Bar -->
+        <div class="mb-4">
+            <input type="text" v-model="searchQuery" placeholder="Search vehicles..." class="px-4 py-2 border border-gray-300 rounded-md w-full" />
+        </div>
         
-        <div v-if="vehicles.length" class="bg-white rounded-lg shadow overflow-x-auto">
+        <div v-if="filteredVehicles.length" class="bg-white rounded-lg shadow overflow-x-auto">
             <table class="min-w-full divide-y divide-gray-200">
                 <thead class="bg-gray-50">
                     <tr>
@@ -51,8 +56,8 @@
                     </tr>
                 </thead>
                 <tbody>
-                    <tr v-for="vehicle in vehicles" :key="vehicle.id" class="border-b hover:bg-gray-50">
-                        <td class="px-6 py-4 whitespace-nowrap">{{ vehicle.id }}</td>
+                    <tr v-for="(vehicle,index) in filteredVehicles" :key="vehicle.id" class="border-b hover:bg-gray-50">
+                        <td class="px-6 py-4 whitespace-nowrap">{{ (pagination.current_page - 1) * pagination.per_page + index + 1 }}</td>
                         <td class="px-4 py-2 text-sm text-gray-700">{{ vehicle.brand }}</td>
                         <td class="px-4 py-2 text-sm text-gray-700">{{ vehicle.model }}</td>
                         <td class="px-4 py-2 text-sm text-gray-700">{{ vehicle.blocking_start_date || 'N/A' }}</td>
@@ -93,13 +98,19 @@
         <div v-else class="text-center py-6">
             <span class="text-gray-500">No vehicles found.</span>
         </div>
+
+        <!-- Pagination -->
+        <div class="mt-[1rem] flex justify-end">
+    <Pagination :current-page="pagination.current_page" :total-pages="pagination.last_page"
+        @page-change="handlePageChange" />
+</div>
     </MyProfileLayout>
 </template>
 
 <script setup>
 import MyProfileLayout from '@/Layouts/MyProfileLayout.vue';
-import { ref } from 'vue';
-import { usePage } from '@inertiajs/vue3';
+import { ref, computed, watch } from 'vue';
+import { usePage, router  } from '@inertiajs/vue3';
 import { useToast } from 'vue-toastification';
 import axios from 'axios';
 import {
@@ -111,11 +122,28 @@ import {
     DialogTitle,
     DialogTrigger,
 } from '@/Components/ui/dialog';
+import Pagination from './Pagination.vue';
 
 const toast = useToast();
-const { props } = usePage();
-const vehicles = ref(props.vehicles);
+// const { props } = usePage();
+// const vehicles = ref(props.vehicles);
 const form = ref({ vehicle_id: '', blocking_start_date: '', blocking_end_date: '' });
+const searchQuery = ref('');
+
+const props = defineProps({
+    vehicles: {
+        type: Array,
+        filters: Object,
+        required: true
+    },
+    pagination: { 
+        type: Object,
+        required: true
+    }
+});
+const handlePageChange = (page) => {
+    router.get(route('vendor.blocking-dates.index'), { ...props.filters, page }, { preserveState: true, preserveScroll: true });
+};
 
 const submitForm = async () => {
     try {
@@ -175,6 +203,26 @@ const removeBlockingDates = async (vehicleId) => {
         }
     }
 };
+
+const filteredVehicles = computed(() => {
+    const query = searchQuery.value.toLowerCase();
+    return props.vehicles.filter(vehicle => {
+        return (
+            vehicle.brand.toLowerCase().includes(query) ||
+            vehicle.model.toLowerCase().includes(query) ||
+            (vehicle.blocking_start_date || 'N/A').toLowerCase().includes(query) ||
+            (vehicle.blocking_end_date || 'N/A').toLowerCase().includes(query)
+        );
+    });
+});
+
+watch(searchQuery, (newQuery) => {
+  router.get(
+    route('vendor.blocking-dates.index'),
+    { search: newQuery },
+    { preserveState: true, preserveScroll: true }
+  );
+});
 </script>
 
 <style>

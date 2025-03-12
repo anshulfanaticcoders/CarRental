@@ -1,6 +1,6 @@
 <!-- Pages/Vendor/Review/Index.vue -->
 <script setup>
-import { computed } from 'vue'
+import { computed, ref, watch } from 'vue'
 import { Head, useForm } from '@inertiajs/vue3'
 import MyProfileLayout from '@/Layouts/MyProfileLayout.vue'
 import Pagination from './Pagination.vue'
@@ -18,12 +18,32 @@ const props = defineProps({
 
 const form = useForm({
   status: ''
-})
+});
+
+const searchQuery = ref('');
+watch(searchQuery, (newQuery) => {
+  router.get(
+    route('vendor.reviews'),
+    { search: newQuery },
+    { preserveState: true, preserveScroll: true }
+  );
+});
+
+const filteredReviews = computed(() => {
+  if (!searchQuery.value) return props.reviews.data
+  return props.reviews.data.filter(review => 
+    review.user?.first_name?.toLowerCase().includes(searchQuery.value.toLowerCase()) ||
+    review.user?.last_name?.toLowerCase().includes(searchQuery.value.toLowerCase()) ||
+    review.vehicle?.brand?.toLowerCase().includes(searchQuery.value.toLowerCase()) ||
+    review.vehicle?.model?.toLowerCase().includes(searchQuery.value.toLowerCase()) ||
+    review.review_text?.toLowerCase().includes(searchQuery.value.toLowerCase())
+  )
+});
 
 const averageRating = computed(() => {
   const rating = Number(props.statistics.average_rating)
   return isNaN(rating) ? '0.0' : rating.toFixed(1)
-})
+});
 
 const getRatingColor = (rating) => {
   if (!rating) return 'text-gray-400'
@@ -31,7 +51,7 @@ const getRatingColor = (rating) => {
   if (numRating >= 4) return 'text-green-600'
   if (numRating >= 3) return 'text-yellow-600'
   return 'text-red-600'
-}
+};
 
 const getStatusColor = (status) => {
   const colors = {
@@ -40,7 +60,7 @@ const getStatusColor = (status) => {
     rejected: 'bg-red-100 text-red-800'
   }
   return colors[status] || 'bg-gray-100 text-gray-800'
-}
+};
 
 const formatDate = (date) => {
   return new Date(date).toLocaleDateString('en-US', {
@@ -48,7 +68,7 @@ const formatDate = (date) => {
     month: 'long',
     day: 'numeric'
   })
-}
+};
 
 const updateStatus = (review, status) => {
   form.status = status
@@ -57,8 +77,8 @@ const updateStatus = (review, status) => {
     onSuccess: () => {
       // Show success message if needed
     }
-  })
-}
+  });
+};
 
 const handlePageChange = (page) => {
     router.get(
@@ -66,7 +86,7 @@ const handlePageChange = (page) => {
         { ...props.filters, page },
         { preserveState: true, preserveScroll: true }
     )
-}
+};
 </script>
 
 <template>
@@ -90,6 +110,15 @@ const handlePageChange = (page) => {
               </p>
             </div>
           </div>
+        </div>
+
+        <!-- Search Input -->
+        <div class="mb-4">
+          <input 
+            v-model="searchQuery" 
+            type="text" 
+            placeholder="Search Reviews..." 
+            class="px-4 py-2 border border-gray-300 rounded-md w-full">
         </div>
 
         <!-- Reviews Table -->
@@ -123,8 +152,8 @@ const handlePageChange = (page) => {
                 </tr>
               </thead>
               <tbody class="bg-white divide-y divide-gray-200">
-                <tr v-for="(review, index) in reviews.data" :key="review.id">
-                  <td class="px-6 py-4 whitespace-nowrap">{{ index + 1 }}</td>
+                <tr v-for="(review, index) in filteredReviews" :key="review.id">
+                  <td class="px-6 py-4 whitespace-nowrap">{{ (reviews.current_page - 1) * reviews.per_page + index + 1 }}</td>
                   <td class="px-6 py-4 whitespace-nowrap">
                     <div class="flex items-center">
                       <div class="flex-shrink-0 h-10 w-10">

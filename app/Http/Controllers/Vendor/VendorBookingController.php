@@ -10,25 +10,48 @@ use Illuminate\Http\Request;
 
 class VendorBookingController extends Controller
 {
-    public function index()
-    {
-        $vendorId = auth()->id();
-    
-        $bookings = Booking::with(['customer', 'vehicle', 'payments'])
-            ->whereHas('vehicle', function ($query) use ($vendorId) {
-                $query->where('vendor_id', $vendorId);
-            })
-            ->orderBy('created_at', 'desc')
-            ->paginate(8);
-    
-        return Inertia::render('Vendor/Bookings/Index', [
-            'bookings' => $bookings->items(),
-            'pagination' => [
-        'current_page' => $bookings->currentPage(),
-        'last_page' => $bookings->lastPage(),
-    ]
-        ]);
-    }
+    public function index(Request $request)
+{
+    $vendorId = auth()->id();
+    $searchQuery = $request->input('search', '');
+
+    $bookings = Booking::with(['customer', 'vehicle', 'payments'])
+        ->whereHas('vehicle', function ($query) use ($vendorId) {
+            $query->where('vendor_id', $vendorId);
+        })
+        ->when($searchQuery, function ($query, $searchQuery) {
+            $query->where(function ($q) use ($searchQuery) {
+                $q->where('booking_number', 'like', '%' . $searchQuery . '%')
+                  ->orWhereHas('customer', function ($q) use ($searchQuery) {
+                      $q->where('first_name', 'like', '%' . $searchQuery . '%')
+                        ->orWhere('last_name', 'like', '%' . $searchQuery . '%');
+                  })
+                  ->orWhereHas('vehicle', function ($q) use ($searchQuery) {
+                      $q->where('brand', 'like', '%' . $searchQuery . '%')
+                        ->orWhere('model', 'like', '%' . $searchQuery . '%');
+                  })
+                  ->orWhere('booking_status', 'like', '%' . $searchQuery . '%')
+                  ->orWhereHas('payments', function ($q) use ($searchQuery) {
+                      $q->where('payment_status', 'like', '%' . $searchQuery . '%');
+                  })
+                  ->orWhere('pickup_date', 'like', '%' . $searchQuery . '%')
+                  ->orWhere('return_date', 'like', '%' . $searchQuery . '%');
+            });
+        })
+        ->orderBy('created_at', 'desc')
+        ->paginate(2);
+
+    return Inertia::render('Vendor/Bookings/Index', [
+        'bookings' => $bookings->items(),
+        'pagination' => [
+            'current_page' => $bookings->currentPage(),
+            'last_page' => $bookings->lastPage(),
+            'per_page' => $bookings->perPage(),
+            'total' => $bookings->total(),
+        ],
+        'filters' => $request->all(),
+    ]);
+}
     
 
     public function update(Request $request, Booking $booking)

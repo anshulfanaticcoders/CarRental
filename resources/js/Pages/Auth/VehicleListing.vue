@@ -943,8 +943,10 @@
                         <span class="text-[1.7rem] font-medium text-gray-800">Choose Your Protection Plan</span>
                         <p class="text-gray-600 mt-5">
                             You can <strong>select Exclsive plan or can proceed with Free plan by default</strong>.
-                            These plans will be visible to the customers and customers can select one of these methods during the booking process.
-                            <strong class="underline text-red-500">Click below Plan card to select or edit the Plan price </strong>
+                            These plans will be visible to the customers and customers can select one of these methods
+                            during the booking process.
+                            <strong class="underline text-red-500">Click below Plan card to select or edit the Plan
+                                price </strong>
                         </p>
                     </div>
                     <!-- Protection Plan -->
@@ -981,7 +983,8 @@
                             <div class="checklist features">
                                 <ul
                                     class="check-list text-center mt-[1rem] inline-flex flex-col items-center w-full gap-3">
-                                    <li v-for="(feature, index) in plan.features" :key="index" class="checklist-item list-disc">
+                                    <li v-for="(feature, index) in plan.features" :key="index"
+                                        class="checklist-item list-disc">
                                         {{ feature }}
                                     </li>
                                 </ul>
@@ -1030,8 +1033,91 @@
     </div>
 
 
-    <!-- Step-6 -->
+    <!-- Step-6: Addon Selection -->
     <div v-if="currentStep === 6" class="overflow-x-hidden">
+        <div class="flex justify-between h-[100vh]">
+            <div class="column overflow-y-auto w-[50%] flex justify-center pb-[4rem]">
+                <div class="flex flex-col gap-5 w-[70%]">
+                    <Link class="w-[5rem] mt-[2rem]" href="/">
+                    <ApplicationLogo />
+                    </Link>
+                    <div class="mt-[5rem] mb-[2rem]">
+                        <p class="text-[1.75rem] font-medium">
+                            Select Addons
+                        </p>
+                        <span class="text-[0.75rem] text-customLightGrayColor font-medium">Select addons for your
+                            vehicle and set prices</span>
+                    </div>
+                    <div v-for="addon in addons" :key="addon.id"
+                        class="flex justify-between gap-10 items-center border rounded-lg p-4">
+                        <!-- Left Section: Checkbox & Text -->
+                        <div class="flex items-start gap-3 w-[55%]">
+                            <input type="checkbox" :value="addon.id" v-model="selectedAddons" class="w-5 h-5 mt-1">
+                            <div>
+                                <h3 class="font-semibold text-lg">{{ addon.extra_name }}</h3>
+                                <p class="text-gray-500 text-sm">{{ addon.description }}</p>
+                            </div>
+                        </div>
+
+                        <!-- Right Section: Price & Quantity -->
+                        <div class="flex items-center gap-4">
+                            <div class="flex flex-col items-start">
+                                <label for="price" class="text-sm text-gray-500">Price Per Day (€)</label>
+                                <input type="number" v-model="addonPrices[addon.id]"
+                                    class="w-24 px-2 py-1 border rounded" />
+                            </div>
+                            <div class="flex items-center gap-2">
+                                <button @click="decrementQuantity(addon.id)" class="px-2 py-1 border rounded">-</button>
+                                <span class="px-3 py-1 bg-gray-100 rounded">{{ addonQuantities[addon.id] || '00'
+                                    }}</span>
+                                <button @click="incrementQuantity(addon.id)" class="px-2 py-1 border rounded">+</button>
+                            </div>
+                        </div>
+                    </div>
+
+
+                    <div class="buttons flex justify-between mt-[2rem] pb-[4rem]">
+                        <button class="button-secondary w-[40%]" @click="prevStep">
+                            Back
+                        </button>
+                        <PrimaryButton class="w-[40%]" type="button" @click="nextStep">Next</PrimaryButton>
+                    </div>
+                </div>
+            </div>
+            <div class="column min-h-full w-[50%] flex-1 bg-customPrimaryColor relative">
+                <div class="flex flex-col gap-10 items-center justify-center h-full">
+                    <div class="col text-customPrimaryColor-foreground w-[70%] p-[2rem] border-b-[2px]">
+                        <img :src="warningSign" alt="" />
+                        <h4 class="text-[1.5rem] font-medium">Tip</h4>
+                        <p>
+                            The rate indicated corresponds to the daily rate of the hire.
+                            Please note your remuneration will correspond to 85% of the rate
+                            applied for the hire.
+                        </p>
+                    </div>
+                    <div class="col text-customPrimaryColor-foreground w-[70%] p-[2rem] border-b-[2px]">
+                        <img :src="warningSign" alt="" />
+                        <h4 class="text-[1.5rem] font-medium">Information</h4>
+                        <p>
+                            All this information is necessary so that we can secure your
+                            listing.
+                        </p>
+                    </div>
+                    <div class="col text-customPrimaryColor-foreground w-[70%] px-[2rem]">
+                        <img :src="warningSign" alt="" />
+                        <h4 class="text-[1.5rem] font-medium">
+                            Need some help?
+                        </h4>
+                        <p>Contact us on: +91 524555552</p>
+                    </div>
+                </div>
+                <img :src="circleImg" alt="" class="absolute top-[-30%] right-[-15%]" />
+            </div>
+        </div>
+    </div>
+
+    <!-- Step-7 -->
+    <div v-if="currentStep === 7" class="overflow-x-hidden">
         <div class="flex justify-between h-[100vh]">
             <div class="column overflow-y-auto w-[50%] flex justify-center pb-[4rem]">
                 <div class="flex flex-col gap-5 w-[60%]">
@@ -1116,7 +1202,10 @@ import loader from "../../../assets/loader.gif";
 import { usePage } from '@inertiajs/vue3';
 
 const toast = useToast(); // Initialize toast
-
+const addons = ref([]);
+const selectedAddons = ref([]);
+const addonPrices = ref({});
+const addonQuantities = ref({});
 // Form data
 const form = useForm({
     category_id: null,
@@ -1184,6 +1273,10 @@ const form = useForm({
 
     selected_plans: [],
 
+    selected_addons: selectedAddons.value,
+    addon_prices: addonPrices.value,
+    addon_quantities: addonQuantities.value,
+
 });
 const props = defineProps({
     vehicle: {
@@ -1233,6 +1326,43 @@ onMounted(() => {
     fetchPlans();
 });
 
+
+
+// Add addonQuantities ref
+
+const fetchAddons = async () => {
+    try {
+        const response = await axios.get('/api/booking-addons');
+        addons.value = response.data;
+
+        // Prefill addon prices and quantities
+        addons.value.forEach(addon => {
+            addonPrices.value[addon.id] = addon.price || 0; // Assuming the price is part of the addon data
+            addonQuantities.value[addon.id] = 1; // Default quantity is 1
+        });
+    } catch (error) {
+        console.error('Error fetching addons:', error);
+    }
+};
+
+const incrementQuantity = (addonId) => {
+    if (!addonQuantities.value[addonId]) {
+        addonQuantities.value[addonId] = 1;
+    }
+    addonQuantities.value[addonId]++;
+};
+
+const decrementQuantity = (addonId) => {
+    if (addonQuantities.value[addonId] > 1) {
+        addonQuantities.value[addonId]--;
+    }
+};
+
+onMounted(() => {
+    fetchAddons();
+});
+
+
 // fetching the vehicle categories from the database thorough api
 const categories = ref([]);
 const fetchCategories = async () => {
@@ -1271,6 +1401,9 @@ const submit = () => {
     isLoading.value = true;
     if (form.images.length < 5) return;
     form.selected_plans = selectedPlans.value;
+    form.selected_addons = selectedAddons.value;
+    form.addon_prices = addonPrices.value;
+    form.addon_quantities = addonQuantities.value;
     form.post(route("vehicles.store"), {
         onSuccess: () => {
             toast.success('Vendor registration completed successfully! Wait for confimation', {
@@ -1368,7 +1501,7 @@ const nextStep = () => {
 
         case 2: // Technical Specifications
             if (
-                // !form.registration_number ||
+                !form.registration_number ||
                 !form.registration_country ||
                 !form.registration_date ||
                 // !form.gross_vehicle_mass ||
@@ -1406,7 +1539,26 @@ const nextStep = () => {
             }
             break;
 
-        case 6: // Image Upload
+        case 6: // Addon Selection
+            if (selectedAddons.value.length === 0) {
+                isValid = false;
+                alert('Please select at least one addon');
+            } else {
+                for (const addonId of selectedAddons.value) {
+                    if (!addonPrices.value[addonId] || addonPrices.value[addonId] <= 0) {
+                        isValid = false;
+                        alert('Please set a valid price for all selected addons');
+                        break;
+                    }
+                    if (!addonQuantities.value[addonId] || addonQuantities.value[addonId] <= 0) {
+                        isValid = false;
+                        alert('Please set a valid quantity for all selected addons');
+                        break;
+                    }
+                }
+            }
+            break;
+        case 7: // Image Upload
             if (form.images.length < 5) {
                 isValid = false;
                 alert('Please upload at least 5 images');
@@ -1416,7 +1568,7 @@ const nextStep = () => {
 
     // If validation passes, move to next step
     if (isValid) {
-        if (currentStep.value < 6) {
+        if (currentStep.value < 7) {
             currentStep.value++;
             if (currentStep.value === 3) {
                 initializeMap();
@@ -1512,7 +1664,7 @@ watch(() => form.registration_country, (newVal) => {
 
 
 
-<style>
+<style scoped>
 select {
     width: 100%;
 }

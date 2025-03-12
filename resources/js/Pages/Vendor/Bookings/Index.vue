@@ -3,7 +3,12 @@
         <div class="">
             <p class="text-[1.75rem] font-bold text-gray-800 bg-customLightPrimaryColor p-4 rounded-[12px] mb-[1rem]">Booking Details</p>
 
-            <div v-if="bookings.length" class="bg-white rounded-lg shadow overflow-x-auto">
+            <!-- Search Bar -->
+            <div class="mb-4">
+                <input type="text" v-model="searchQuery" placeholder="Search bookings..." class="px-4 py-2 border border-gray-300 rounded-md w-full" />
+            </div>
+
+            <div v-if="filteredBookings.length" class="bg-white rounded-lg shadow overflow-x-auto">
                 <table class="min-w-full divide-y divide-gray-200">
                     <thead class="bg-gray-50">
                         <tr>
@@ -19,8 +24,8 @@
                         </tr>
                     </thead>
                     <tbody>
-                        <tr v-for="(booking, index) in bookings" :key="booking.id" class="border-b hover:bg-gray-50">
-                            <td class="px-6 py-4 whitespace-nowrap">{{ index + 1 }}</td>
+                        <tr v-for="(booking, index) in filteredBookings" :key="booking.id" class="border-b hover:bg-gray-50">
+                            <td class="px-6 py-4 whitespace-nowrap">{{ (pagination.current_page - 1) * pagination.per_page + index + 1 }}</td>
                             <td class="px-4 py-2 text-sm text-gray-700">{{ booking.booking_number }}</td>
                             <td class="px-4 py-2 text-sm text-gray-700">
                                 {{ booking.customer?.first_name }} {{ booking.customer?.last_name }}
@@ -83,8 +88,9 @@
 </template>
 
 <script setup>
+import { ref, computed, watch } from 'vue';
 import MyProfileLayout from '@/Layouts/MyProfileLayout.vue';
-import {router } from '@inertiajs/vue3';
+import { router } from '@inertiajs/vue3';
 import axios from 'axios';
 import Pagination from './Pagination.vue';
 import { useToast } from 'vue-toastification';
@@ -104,10 +110,12 @@ const props = defineProps({
         required: true
     }
 });
+const searchQuery = ref('');
+
 const handlePageChange = (page) => {
     router.get(route('bookings.index'), { ...props.filters, page }, { preserveState: true, preserveScroll: true });
-
 };
+
 const formatDate = (dateStr) => {
     const date = new Date(dateStr);
     return `${String(date.getMonth() + 1).padStart(2, '0')}/${String(date.getDate()).padStart(2, '0')}/${date.getFullYear()}`;
@@ -159,4 +167,29 @@ const cancelBooking = async (bookingId) => {
         }
     }
 };
+
+const filteredBookings = computed(() => {
+    const query = searchQuery.value.toLowerCase();
+    return props.bookings.filter(booking => {
+        return (
+            booking.booking_number.toLowerCase().includes(query) ||
+            (booking.customer?.first_name.toLowerCase().includes(query) || 
+            booking.customer?.last_name.toLowerCase().includes(query)) ||
+            booking.vehicle?.brand.toLowerCase().includes(query) ||
+            booking.vehicle?.model.toLowerCase().includes(query) ||
+            booking.booking_status.toLowerCase().includes(query) ||
+            (booking.payments[0]?.payment_status.toLowerCase().includes(query) || 'No Payment'.toLowerCase().includes(query)) ||
+            formatDate(booking.pickup_date).toLowerCase().includes(query) ||
+            formatDate(booking.return_date).toLowerCase().includes(query)
+        );
+    });
+});
+
+watch(searchQuery, (newQuery) => {
+  router.get(
+    route('bookings.index'),
+    { search: newQuery },
+    { preserveState: true, preserveScroll: true }
+  );
+});
 </script>

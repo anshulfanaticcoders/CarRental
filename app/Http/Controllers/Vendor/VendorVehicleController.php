@@ -13,25 +13,37 @@ use Inertia\Inertia;
 
 class VendorVehicleController extends Controller
 {
-    public function index()
-    {
-        $vendorId = auth()->id();
+    public function index(Request $request)
+{
+    $vendorId = auth()->id();
+    $searchQuery = $request->input('search', '');
 
-        $vehicles = Vehicle::with(['specifications', 'images', 'category', 'user', 'vendorProfile'])
-            ->where('vendor_id', $vendorId)
-            ->latest()
-            ->paginate(8); // Paginate with 10 items per page
+    $vehicles = Vehicle::with(['specifications', 'images', 'category', 'user', 'vendorProfile'])
+        ->where('vendor_id', $vendorId)
+        ->when($searchQuery, function ($query, $searchQuery) {
+            $query->where(function ($q) use ($searchQuery) {
+                $q->where('brand', 'like', '%' . $searchQuery . '%')
+                  ->orWhere('model', 'like', '%' . $searchQuery . '%')
+                  ->orWhere('transmission', 'like', '%' . $searchQuery . '%')
+                  ->orWhere('fuel', 'like', '%' . $searchQuery . '%')
+                  ->orWhere('location', 'like', '%' . $searchQuery . '%')
+                  ->orWhere('status', 'like', '%' . $searchQuery . '%');
+            });
+        })
+        ->latest()
+        ->paginate(6); // Paginate with 6 items per page
 
-        return Inertia::render('Vendor/Vehicles/Index', [
-            'vehicles' => $vehicles->items(),  // Get only the vehicle data
-            'pagination' => [
-                'current_page' => $vehicles->currentPage(),
-                'last_page' => $vehicles->lastPage(),
-                'per_page' => $vehicles->perPage(),
-                'total' => $vehicles->total(),
-            ],
-        ]);
-    }
+    return Inertia::render('Vendor/Vehicles/Index', [
+        'vehicles' => $vehicles->items(),  // Get only the vehicle data
+        'pagination' => [
+            'current_page' => $vehicles->currentPage(),
+            'last_page' => $vehicles->lastPage(),
+            'per_page' => $vehicles->perPage(),
+            'total' => $vehicles->total(),
+        ],
+        'filters' => $request->all(), // Add the filters to the response
+    ]);
+}
 
 
     public function edit($id)

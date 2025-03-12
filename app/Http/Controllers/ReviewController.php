@@ -49,27 +49,40 @@ class ReviewController extends Controller
     }
 
     public function vendorReviews(Request $request)
-    {
-        $vendor = auth()->user();
+{
+    $vendor = auth()->user();
+    $searchQuery = $request->input('search', '');
 
-        // Get all reviews for the vendor's vehicles
-        $reviews = Review::whereHas('vehicle', function ($query) use ($vendor) {
+    // Get all reviews for the vendor's vehicles
+    $reviews = Review::whereHas('vehicle', function ($query) use ($vendor) {
             $query->where('vendor_id', $vendor->id);
         })
-            ->with(['user.profile', 'vehicle', 'booking'])
-            ->orderBy('created_at', 'desc')
-            ->paginate(8);
+        ->with(['user.profile', 'vehicle', 'booking'])
+        ->when($searchQuery, function ($query, $searchQuery) {
+            $query->where(function ($q) use ($searchQuery) {
+                $q->whereHas('user', function ($q) use ($searchQuery) {
+                    $q->where('first_name', 'like', '%' . $searchQuery . '%')
+                      ->orWhere('last_name', 'like', '%' . $searchQuery . '%');
+                })->orWhereHas('vehicle', function ($q) use ($searchQuery) {
+                    $q->where('brand', 'like', '%' . $searchQuery . '%')
+                      ->orWhere('model', 'like', '%' . $searchQuery . '%');
+                })->orWhere('review_text', 'like', '%' . $searchQuery . '%');
+            });
+        })
+        ->orderBy('created_at', 'desc')
+        ->paginate(5);
 
-        return Inertia::render('Vendor/Review/Index', [
-            'reviews' => $reviews,
-            'statistics' => [
-                'total_reviews' => $reviews->total(),
-                'average_rating' => Review::whereHas('vehicle', function ($query) use ($vendor) {
-                    $query->where('vendor_id', $vendor->id);
-                })->avg('rating') ?? 0,
-            ]
-        ]);
-    }
+    return Inertia::render('Vendor/Review/Index', [
+        'reviews' => $reviews,
+        'statistics' => [
+            'total_reviews' => $reviews->total(),
+            'average_rating' => Review::whereHas('vehicle', function ($query) use ($vendor) {
+                $query->where('vendor_id', $vendor->id);
+            })->avg('rating') ?? 0,
+        ],
+        'filters' => $request->only('search')
+    ]);
+}
 
 
     // ReviewController.php

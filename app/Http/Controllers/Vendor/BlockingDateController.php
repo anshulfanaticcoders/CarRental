@@ -9,13 +9,32 @@ use Inertia\Inertia;
 
 class BlockingDateController extends Controller
 {
-    public function index()
+    public function index(Request $request)
     {
         $vendorId = auth()->id();
-        $vehicles = Vehicle::where('vendor_id', $vendorId)->get();
-
+        $searchQuery = $request->input('search', '');
+    
+        // Apply pagination and search to the vehicles query
+        $vehicles = Vehicle::where('vendor_id', $vendorId)
+            ->when($searchQuery, function ($query, $searchQuery) {
+                $query->where(function ($q) use ($searchQuery) {
+                    $q->where('brand', 'like', '%' . $searchQuery . '%')
+                      ->orWhere('model', 'like', '%' . $searchQuery . '%')
+                      ->orWhere('blocking_start_date', 'like', '%' . $searchQuery . '%')
+                      ->orWhere('blocking_end_date', 'like', '%' . $searchQuery . '%');
+                });
+            })
+            ->paginate(7); // 10 items per page
+    
         return Inertia::render('Vendor/BlockingDates/Index', [
-            'vehicles' => $vehicles,
+            'vehicles' => $vehicles->items(),
+            'pagination' => [
+                'current_page' => $vehicles->currentPage(),
+                'last_page' => $vehicles->lastPage(),
+                'per_page' => $vehicles->perPage(),
+                'total' => $vehicles->total(),
+            ],
+            'filters' => $request->all(),
         ]);
     }
 

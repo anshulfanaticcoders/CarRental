@@ -3,11 +3,13 @@
 namespace App\Http\Controllers;
 
 use App\Helpers\ActivityLogHelper;
+use App\Models\BookingAddon;
 use App\Models\Vehicle;
 use App\Models\VehicleBenefit;
 use App\Models\VehicleFeature;
 use App\Models\VehicleImage;
 use App\Models\VehicleSpecification;
+use App\Models\VendorVehicleAddon;
 use App\Models\VendorVehiclePlan;
 use App\Providers\RouteServiceProvider;
 use Illuminate\Http\Request;
@@ -63,7 +65,7 @@ class VehicleController extends Controller
             'cancellation_available' => 'boolean',
             'price_per_km' => 'nullable|decimal:0,2|min:0',
 
-            // 'registration_number' => 'required|string|max:50',
+            'registration_number' => 'required|string|max:50',
             'registration_country' => 'required|string|max:50',
             'registration_date' => 'required|date',
             // 'gross_vehicle_mass' => 'required|integer|min:0',
@@ -175,6 +177,35 @@ class VehicleController extends Controller
         }
     }
 
+
+    // Save the selected addon details
+    if ($request->has('selected_addons')) {
+        $selectedAddons = $request->input('selected_addons');
+        $addonPrices = $request->input('addon_prices');
+        $addonQuantities = $request->input('addon_quantities');
+
+        if ($request->has('selected_addons')) {
+            $selectedAddons = $request->input('selected_addons');
+            $addonPrices = $request->input('addon_prices');
+            $addonQuantities = $request->input('addon_quantities');
+    
+            foreach ($selectedAddons as $addonId) {
+                $addon = BookingAddon::find($addonId); // Fetch the addon details
+    
+                VendorVehicleAddon::create([
+                    'vendor_id' => $request->user()->id,
+                    'vehicle_id' => $vehicle->id,
+                    'addon_id' => $addonId,
+                    'extra_type' => $addon->extra_type, // Add extra_type
+                    'extra_name' => $addon->extra_name, // Add extra_name
+                    'price' => $addonPrices[$addonId],
+                    'quantity' => $addonQuantities[$addonId],
+                    'description' => $addon->description, // Add description
+                ]);
+            }
+        }
+    }
+
         // Handle vehicle images
         $primaryImageUploaded = false;
         foreach ($request->file('images') as $index => $image) {
@@ -247,12 +278,13 @@ class VehicleController extends Controller
     //This is for getting particular vehicle information to the booking page 
     public function booking(Request $request, $id)
     {
-        $vehicle = Vehicle::with(['specifications', 'images', 'category', 'user', 'vendorProfile','benefits', 'vendorPlans'])
+        $vehicle = Vehicle::with(['specifications', 'images', 'category', 'user', 'vendorProfile','benefits', 'vendorPlans','addons'])
             ->findOrFail($id);
 
         return Inertia::render('Booking', [
             'vehicle' => $vehicle,
             'plans' => $vehicle->vendorPlans,
+            'addons' => $vehicle->addons,
             'query' => $request->all(),
         ]);
     }

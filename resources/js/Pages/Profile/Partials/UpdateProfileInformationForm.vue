@@ -7,6 +7,15 @@ import TextInput from '@/Components/TextInput.vue';
 import { useForm, usePage } from '@inertiajs/vue3';
 import { computed, onMounted, ref, watch } from 'vue';
 import { useToast } from 'vue-toastification';
+import {
+    Select,
+    SelectContent,
+    SelectGroup,
+    SelectItem,
+    SelectLabel,
+    SelectTrigger,
+    SelectValue
+} from '@/Components/ui/select';
 
 const toast = useToast();
 const user = usePage().props.auth.user;
@@ -100,16 +109,38 @@ onMounted(fetchCurrencies);
 const profileCompletion = ref(0);
 
 const fetchProfileCompletion = async () => {
-  try {
-    const response = await fetch('/profile/completion');
-    const data = await response.json();
-    profileCompletion.value = data.percentage;
-  } catch (error) {
-    console.error('Error fetching profile completion:', error);
-  }
+    try {
+        const response = await fetch('/profile/completion');
+        const data = await response.json();
+        profileCompletion.value = data.percentage;
+    } catch (error) {
+        console.error('Error fetching profile completion:', error);
+    }
 };
 
 onMounted(fetchProfileCompletion);
+
+
+const countries = ref([]);
+const selectedCountry = ref("");
+
+
+const fetchCountries = async () => {
+    try {
+        const response = await fetch('/countries.json'); // Ensure it's in /public
+        countries.value = await response.json();
+    } catch (error) {
+        console.error("Error loading countries:", error);
+    }
+};
+
+onMounted(fetchCountries);
+
+// Get flag URL
+const getFlagUrl = (countryCode) => {
+    return `https://flagcdn.com/w40/${countryCode.toLowerCase()}.png`;
+};
+
 
 </script>
 
@@ -192,11 +223,29 @@ onMounted(fetchProfileCompletion);
                     <InputError class="mt-2" :message="form.errors.date_of_birth" />
                 </div>
 
-                <div>
-                    <InputLabel for="country" value="Country" />
-                    <TextInput id="country" type="text" class="mt-1 block w-full" v-model="form.country" />
+                <div class="relative">
+                    <InputLabel for="country" value="Country" class="mb-1" />
+                    <Select v-model="form.country">
+                        <SelectTrigger class="w-full p-[1.7rem] border-customLightGrayColor rounded-[12px]">
+                            <SelectValue placeholder="Select Country" />
+                        </SelectTrigger>
+                        <SelectContent>
+                            <SelectGroup>
+                                <SelectLabel>Country</SelectLabel>
+                                <SelectItem v-for="country in countries" :key="country.code" :value="country.code">
+                                    {{ country.name }}
+                                </SelectItem>
+                            </SelectGroup>
+                        </SelectContent>
+                    </Select>
                     <InputError class="mt-2" :message="form.errors.country" />
+
+                    <!-- Dynamic Flag -->
+                    <img v-if="form.country" :src="getFlagUrl(form.country)" alt="Country Flag"
+                        class="absolute right-3 top-1/2 transform translate-x-[-10%] translate-y-[-10%] w-[2.1rem] h-[1.5rem] rounded" />
                 </div>
+
+
 
                 <div class="">
                     <InputLabel for="currency" value="Currency" />
@@ -269,7 +318,7 @@ onMounted(fetchProfileCompletion);
     </section>
 </template>
 
-<style>
+<style scoped>
 input,
 textarea,
 select {
