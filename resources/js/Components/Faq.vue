@@ -43,17 +43,18 @@ const accordionItems = [
 </script>
 
 <template>
-    <div class="full-w-container min-h-[80vh] bg-[#153B4F1A] rounded-[20px] py-customVerticalSpacing flex flex-col gap-16">
+    <div class="full-w-container min-h-[80vh] bg-[#153B4F1A] rounded-[20px] py-customVerticalSpacing flex flex-col gap-16
+    max-[480px]:w-full max-[480px]:rounded-none">
      <div class="flex  items-center justify-center ">
-        <div class="column w-[573px] flex flex-col gap-5 text-center">
-            <span class="text-customPrimaryColor text-[3rem] font-bold">FAQ's</span>
-        <p class="text-customPrimaryColor text-[1.25rem]"> From luxury sedans to budget-friendly compacts, we've got something for every journey</p>
+        <div class="column w-[573px] max-[480px]:text-[2rem] flex flex-col gap-5 text-center">
+            <span class="text-customPrimaryColor text-[3rem] font-bold max-[480px]:text-[2rem]">FAQ's</span>
+        <p class="text-customPrimaryColor text-[1.25rem] max-[480px]:text-[1rem]"> From luxury sedans to budget-friendly compacts, we've got something for every journey</p>
         </div>
      </div>
-     <div class="column px-[4rem]">
+     <div class="column px-[4rem] max-[480px]:px-[1.5rem]">
         <Accordion
         type="single"
-        class="w-full grid grid-cols-2 gap-10"
+        class="w-full grid grid-cols-2 gap-10 max-[480px]:grid-cols-1"
         collapsible
         :default-value="defaultValue"
     >
@@ -63,11 +64,12 @@ const accordionItems = [
             :key="item.value"
             :value="item.value"
         >
-            <AccordionTriggerVariant class="text-[1.35rem] text-customPrimaryColor">{{
+            <AccordionTriggerVariant class="text-[1.35rem] text-customPrimaryColor 
+            max-[480px]:text-[1rem] max-[480px]:text-left">{{
                 item.title
             }}</AccordionTriggerVariant>
             <AccordionContent
-                class="text-[1.25rem] text-customLightGrayColor"
+                class="text-[1.25rem] text-customLightGrayColor max-[480px]:text-[0.95rem]"
             >
                 {{ item.content }}
             </AccordionContent>

@@ -86,6 +86,7 @@
                                     category.InputLabel }}</span>
                             </InputLabel>
                         </div>
+                        <span v-if="errors.category_id" class="text-red-500 text-sm">{{ errors.category_id }}</span>
                     </div>
 
                     <div class="mt-[1rem]">
@@ -101,6 +102,7 @@
                             <InputLabel for="brand">Brand:</InputLabel>
                             <input type="text" v-model="form.brand" id="brand" required
                                 placeholder="Enter vehicle brand" />
+                            <span v-if="errors.brand" class="text-red-500 text-sm">{{ errors.brand }}</span>
                         </div>
 
                         <!-- Model -->
@@ -108,6 +110,7 @@
                             <InputLabel for="model">Model:</InputLabel>
                             <input type="text" v-model="form.model" id="model" required
                                 placeholder="Enter vehicle model" />
+                            <span v-if="errors.model" class="text-red-500 text-sm">{{ errors.model }}</span>
                         </div>
 
                         <!-- Color -->
@@ -115,6 +118,7 @@
                             <InputLabel for="color">Color:</InputLabel>
                             <input type="text" v-model="form.color" id="color" required
                                 placeholder="Enter vehicle color" />
+                            <span v-if="errors.color" class="text-red-500 text-sm">{{ errors.color }}</span>
                         </div>
 
                         <!-- Mileage -->
@@ -124,6 +128,7 @@
                                 <input type="number" v-model="form.mileage" id="mileage" required />
                                 <span
                                     class="absolute text-[0.875rem] top-[50%] right-3 translate-y-[-50%] text-customLightGrayColor font-medium">(km/d)</span>
+                                <span v-if="errors.mileage" class="text-red-500 text-sm">{{ errors.mileage }}</span>
                             </div>
                         </div>
 
@@ -222,7 +227,8 @@
                                     </SelectGroup>
                                 </SelectContent>
                             </Select>
-
+                            <span v-if="errors.luggage_capacity" class="text-red-500 text-sm">{{ errors.luggage_capacity
+                                }}</span>
                         </div>
 
                         <!-- Horsepower -->
@@ -233,6 +239,7 @@
                                 <span
                                     class="absolute text-[0.875rem] top-[50%] right-3 translate-y-[-50%] text-customLightGrayColor font-medium">hp</span>
                             </div>
+                            <span v-if="errors.horsepower" class="text-red-500 text-sm">{{ errors.horsepower }}</span>
                         </div>
 
                         <!-- CO2 Emissions -->
@@ -243,6 +250,7 @@
                                 <span
                                     class="absolute text-[0.875rem] top-[50%] right-3 translate-y-[-50%] text-customLightGrayColor font-medium">(g/km)</span>
                             </div>
+                            <span v-if="errors.co2" class="text-red-500 text-sm">{{ errors.co2 }}</span>
                         </div>
 
                         <!-- Status -->
@@ -359,6 +367,8 @@
                             <input class="w-full" type="text" v-model="form.registration_number"
                                 id="registration_number" required
                                 placeholder="Enter your vehicle registration number" />
+                            <span v-if="errors.registration_number" class="text-red-500 text-sm">{{
+                                errors.registration_number }}</span>
                         </div>
 
                         <!-- Registration Country -->
@@ -387,6 +397,9 @@
                                     alt="Country Flag"
                                     class="absolute right-3 top-1/2 transform -translate-y-1/2 w-[2.1rem] h-[1.5rem] rounded" />
                             </div>
+
+                            <span v-if="errors.registration_country" class="text-red-500 text-sm">{{
+                                errors.registration_country }}</span>
                         </div>
 
 
@@ -395,6 +408,8 @@
                             <InputLabel class="text-black" for="registration_date">Registration Date:</InputLabel>
                             <input class="w-full" type="date" v-model="form.registration_date" id="registration_date"
                                 required />
+                            <span v-if="errors.registration_date" class="text-red-500 text-sm">{{
+                                errors.registration_date }}</span>
                         </div>
 
                         <!-- Gross Vehicle Mass -->
@@ -402,7 +417,7 @@
                             <InputLabel class="text-black" for="gross_vehicle_mass">Gross Vehicle Mass:</InputLabel>
                             <div class="relative">
                                 <input class="w-full" type="number" v-model="form.gross_vehicle_mass"
-                                    id="gross_vehicle_mass" required />
+                                    id="gross_vehicle_mass" />
                                 <span
                                     class="absolute text-[0.875rem] top-[50%] right-3 translate-y-[-50%] text-customLightGrayColor font-medium">in
                                     (lb's)</span>
@@ -413,8 +428,7 @@
                         <div>
                             <InputLabel class="text-black" for="vehicle_height">Vehicle Height:</InputLabel>
                             <div class="relative">
-                                <input class="w-full" type="number" v-model="form.vehicle_height" id="vehicle_height"
-                                    required />
+                                <input class="w-full" type="number" v-model="form.vehicle_height" id="vehicle_height" />
                                 <span
                                     class="absolute text-[0.875rem] top-[50%] right-3 translate-y-[-50%] text-customLightGrayColor font-medium">in
                                     m(meters)</span>
@@ -426,6 +440,7 @@
                         <div class="col-span-2">
                             <InputLabel class="text-black" for="dealer_cost">Dealer Cost:</InputLabel>
                             <input class="" type="number" v-model="form.dealer_cost" id="dealer_cost" required />
+                            <span v-if="errors.dealer_cost" class="text-red-500 text-sm">{{ errors.dealer_cost }}</span>
                         </div>
 
                         <!-- Phone Number -->
@@ -436,6 +451,8 @@
                                 to receive your requests</span>
                             <input class="w-full" type="text" v-model="form.phone_number" id="phone_number" required
                                 placeholder="+91" />
+                            <span v-if="errors.phone_number" class="text-red-500 text-sm">{{ errors.phone_number
+                                }}</span>
                         </div>
                     </div>
                     <div class="buttons flex justify-between mt-[2rem] pb-[4rem]">
@@ -522,7 +539,7 @@
                         <!-- <div id="map" class="w-full h-64 mt-4"></div> -->
                         <LocationPicker :onLocationSelect="selectLocation" />
                     </div>
-
+                    <span v-if="errors.location" class="text-red-500 text-sm">{{ errors.location }}</span>
                     <div class="buttons flex justify-between mt-[2rem] pb-[4rem]">
                         <button class="button-secondary w-[40%]" @click="prevStep">
                             Back
@@ -659,6 +676,8 @@
 
                                 </div>
                             </div>
+                            <span v-if="errors.price_per_day" class="text-red-500 text-sm">{{ errors.price_per_day
+                                }}</span>
                         </div>
                         <!-- Security Deposit -->
                         <div class="mt-[2rem]">
@@ -671,6 +690,8 @@
                             <input type="number" v-model="form.security_deposit" id="security_deposit" required min="0"
                                 step="0.01" />
                         </div>
+                        <span v-if="errors.security_deposit" class="text-red-500 text-sm">{{ errors.security_deposit
+                            }}</span>
                     </div>
 
                     <!-- Payment Method -->
@@ -700,10 +721,12 @@
                                 <label class="ml-2" for="cryptocurrency">Cryptocurrency</label>
                             </InputLabel>
                             <InputLabel>
-                                <input type="checkbox" v-model="form.payment_method" value="other" id="other" />
-                                <label class="ml-2" for="other">Other</label>
+                                <input type="checkbox" v-model="form.payment_method" value="cash" id="cash" />
+                                <label class="ml-2" for="cash">Cash</label>
                             </InputLabel>
                         </div>
+                        <span v-if="errors.payment_method" class="text-red-500 text-sm">{{ errors.payment_method
+                            }}</span>
 
                         <div v-if="paymentMethodsArray.length > 0">
                             <p class="text-[0.85rem] text-green-400">Selected Payment Methods:</p>
@@ -883,6 +906,8 @@
                                 <InputLabel for="minimum_driver_age">Minimum Driver Age</InputLabel>
                                 <input type="number" v-model="form.minimum_driver_age" id="minimum_driver_age"
                                     class="w-full" />
+                                <span v-if="errors.minimum_driver_age" class="text-red-500 text-sm">{{
+                                    errors.minimum_driver_age }}</span>
                             </div>
                         </div>
                     </div>
@@ -1069,7 +1094,7 @@
                             <div class="flex items-center gap-2">
                                 <button @click="decrementQuantity(addon.id)" class="px-2 py-1 border rounded">-</button>
                                 <span class="px-3 py-1 bg-gray-100 rounded">{{ addonQuantities[addon.id] || '00'
-                                    }}</span>
+                                }}</span>
                                 <button @click="incrementQuantity(addon.id)" class="px-2 py-1 border rounded">+</button>
                             </div>
                         </div>
@@ -1132,25 +1157,27 @@
                         <span class="text-[0.75rem] text-customLightGrayColor font-medium">Upload at least 5 photos of
                             your vehicle</span>
                     </div>
-                    <div
-                        class="flex flex-col gap-2 justify-center items-center border-[2px] rounded-[0.5rem] border-customPrimaryColor border-dashed py-10">
-                        <img :src="uploadIcon" alt="" />
-                        <p>Drag & Drop to Upload Photos</p>
-                        <p class="text-customLightGrayColor font-medium">or</p>
-                        <input type="file" id="images" @change="handleFileUpload" multiple />
-                        <div v-if="form.images.length" class="image-preview-container">
-                            <div v-for="(image, index) in form.images" :key="index" class="image-preview">
-                                <img :src="getImageUrl(image)" alt="Vehicle Image" />
-                                <button class="remove-btn" @click="removeImage(index)">✖</button>
-                            </div>
-                        </div>
-                    </div>
+                    <!-- Image Upload Section -->
+<div class="flex flex-col gap-2 justify-center items-center border-[2px] rounded-[0.5rem] border-customPrimaryColor border-dashed py-10">
+    <img :src="uploadIcon" alt="" />
+    <p>Drag & Drop to Upload Photos</p>
+    <p class="text-customLightGrayColor font-medium">or</p>
+    <input type="file" id="images" @change="handleFileUpload" multiple />
+    <div v-if="form.images.length" class="image-preview-container">
+        <div v-for="(image, index) in form.images" :key="index" class="image-preview">
+            <img :src="getImageUrl(image)" alt="Vehicle Image" />
+            <button class="remove-btn" @click="removeImage(index)">✖</button>
+        </div>
+    </div>
+    <p>{{ imageCountMessage }}</p>
+</div>
 
                     <div class="buttons flex justify-between mt-[2rem] pb-[4rem]">
                         <button class="button-secondary w-[40%]" @click="prevStep">
                             Back
                         </button>
-                        <PrimaryButton class="w-[40%]" type="button" @click="submit" :disabled="form.images.length < 5">
+                        <PrimaryButton class="w-[40%] disabled:opacity-50" type="button" @click="submit"
+                            :disabled="!isImageCountValid">
                             Submit</PrimaryButton>
                     </div>
                 </div>
@@ -1217,7 +1244,7 @@ const form = useForm({
     fuel: "petrol",
     seating_capacity: 1,
     number_of_doors: 2,
-    luggage_capacity: 0,
+    luggage_capacity: 1,
     horsepower: 70,
     co2: "",
     location: "",
@@ -1473,95 +1500,142 @@ onMounted(() => {
     fetchCategories();
     fetchFeatures();
 });
+
+const imageCountMessage = computed(() => {
+    return `${form.images.length} image(s) selected`;
+});
+
+
 let map = null;
 let marker = null // Marker instance
 const currentStep = ref(0);
 
+const errors = reactive({
+    category_id: '',
+    brand: '',
+    model: '',
+    color: '',
+    mileage: '',
+    horsepower: '',
+    co2: '',
+    registration_number: '',
+    registration_country: '',
+    registration_date: '',
+    phone_number: '',
+    location: '',
+    latitude: '',
+    longitude: '',
+    security_deposit: '',
+    payment_method: '',
+    minimum_driver_age: '',
+    price_per_day: '',
+    price_per_week: '',
+    price_per_month: '',
+    addon_prices: '',
+    images: ''
+});
+
 const nextStep = () => {
     let isValid = true;
+
+    // Clear previous errors
+    Object.keys(errors).forEach(key => errors[key] = '');
 
     // Step-specific validation
     switch (currentStep.value) {
         case 1: // Vehicle Category and Details
             if (!form.category_id) {
                 isValid = false;
-                alert('Please select a vehicle category');
-            } else if (
-                !form.brand ||
-                !form.model ||
-                !form.color ||
-                !form.mileage ||
-                !form.horsepower ||
-                !form.co2
-            ) {
+                errors.category_id = 'Please select a vehicle category';
+            }
+            if (!form.brand) {
                 isValid = false;
-                alert('Please fill in all vehicle details');
+                errors.brand = 'Please enter the vehicle brand';
+            }
+            if (!form.model) {
+                isValid = false;
+                errors.model = 'Please enter the vehicle model';
+            }
+            if (!form.color) {
+                isValid = false;
+                errors.color = 'Please enter the vehicle color';
+            }
+            if (!form.mileage) {
+                isValid = false;
+                errors.mileage = 'Please enter the vehicle mileage';
+            }
+            if (!form.horsepower) {
+                isValid = false;
+                errors.horsepower = 'Please enter the vehicle horsepower';
+            }
+            if (!form.co2) {
+                isValid = false;
+                errors.co2 = 'Please enter the vehicle CO2 emissions';
             }
             break;
 
         case 2: // Technical Specifications
-            if (
-                !form.registration_number ||
-                !form.registration_country ||
-                !form.registration_date ||
-                // !form.gross_vehicle_mass ||
-                // !form.vehicle_height ||
-                // !form.dealer_cost ||
-                !form.phone_number
-            ) {
+            if (!form.registration_number) {
                 isValid = false;
-                alert('Please fill in all technical specification details');
+                errors.registration_number = 'Please enter the registration number';
+            }
+            if (!form.registration_country) {
+                isValid = false;
+                errors.registration_country = 'Please select the registration country';
+            }
+            if (!form.registration_date) {
+                isValid = false;
+                errors.registration_date = 'Please enter the registration date';
+            }
+            if (!form.phone_number) {
+                isValid = false;
+                errors.phone_number = 'Please enter the phone number';
             }
             break;
 
         case 3: // Location
             if (!form.location || !form.latitude || !form.longitude) {
                 isValid = false;
-                alert('Please select a valid location');
+                errors.location = 'Please select a valid location';
             }
             break;
 
         case 4: // Pricing
-            if (
-
-                !form.security_deposit ||
-                !form.payment_method ||
-                !form.minimum_driver_age
-            ) {
+            if (!form.security_deposit) {
                 isValid = false;
-                alert('Please fill in all required pricing details');
+                errors.security_deposit = 'Please enter the security deposit';
+            }
+            if (!form.payment_method) {
+                isValid = false;
+                errors.payment_method = 'Please select a payment method';
+            }
+            if (!form.minimum_driver_age) {
+                isValid = false;
+                errors.minimum_driver_age = 'Please enter the minimum driver age';
+            }
+            if (!form.price_per_day && !form.price_per_week && !form.price_per_month) {
+                isValid = false;
+                errors.price_per_day = 'Please enter at least one pricing option';
             }
             break;
+
         case 5: // Plan Selection
             if (selectedPlans.value.length === 0) {
                 isValid = false;
-                alert('Please select at least one plan');
+                errors.selected_plans = 'Please select at least one plan';
             }
             break;
 
         case 6: // Addon Selection
             if (selectedAddons.value.length === 0) {
-                isValid = false;
-                alert('Please select at least one addon');
-            } else {
-                for (const addonId of selectedAddons.value) {
-                    if (!addonPrices.value[addonId] || addonPrices.value[addonId] <= 0) {
-                        isValid = false;
-                        alert('Please set a valid price for all selected addons');
-                        break;
-                    }
-                    if (!addonQuantities.value[addonId] || addonQuantities.value[addonId] <= 0) {
-                        isValid = false;
-                        alert('Please set a valid quantity for all selected addons');
-                        break;
-                    }
-                }
+                isValid = true;
             }
             break;
+
         case 7: // Image Upload
             if (form.images.length < 5) {
                 isValid = false;
-                alert('Please upload at least 5 images');
+                errors.images = 'Please upload at least 5 images';
             }
             break;
     }
@@ -1581,6 +1655,8 @@ const prevStep = () => {
         currentStep.value--;
     }
 };
+
+const isImageCountValid = computed(() => form.images.length >= 5);
 // leaflet map
 const mapform = ref({
     location: '',
@@ -1664,7 +1740,7 @@ watch(() => form.registration_country, (newVal) => {
 
 
 
-<style scoped>
+<style>
 select {
     width: 100%;
 }
@@ -1677,6 +1753,10 @@ label {
     position: relative;
     width: 100%;
     max-width: 500px;
+}
+
+.price-slider input {
+    padding: 0.25rem 0;
 }
 
 .slider-container {

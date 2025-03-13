@@ -9,11 +9,14 @@ import paypalLogos from "../../assets/paymentIcons.svg";
 
 <template>
     <div
-        class="bg-customPrimaryColor py-customVerticalSpacing text-customPrimaryColor-foreground"
+        class="bg-customPrimaryColor py-customVerticalSpacing text-customPrimaryColor-foreground
+        max-[480px]:py-0"
     >
         <div class="container">
-            <div class="column py-[3rem] flex justify-between gap-6">
-                <div class="col w-[30%] flex flex-col gap-5">
+            <div class="column py-[3rem] flex justify-between gap-6
+            max-[480px]:flex-col">
+                <div class="col w-[30%] flex flex-col gap-5
+                max-[480px]:w-full">
                     <Link class="w-full" href="/"><ApplicationLogo logoColor="#FFFFFF" /></Link>
                     <div class="socialIcons flex gap-6">
                         <Link href=""><img :src="facebookLogo" alt="" /></Link>
@@ -40,7 +43,8 @@ import paypalLogos from "../../assets/paymentIcons.svg";
                 </div>
             </div>
                 </div>
-                <div class="col w-[50%] flex justify-between gap-10">
+                <div class="col w-[50%] flex justify-between gap-10
+                max-[480px]:grid max-[480px]:grid-cols-2 max-[480px]:w-full max-[480px]:mt-5">
                     <div class="col flex flex-col gap-8">
                         <label for="" class="text-[1.25rem]">Company</label>
                         <ul class="flex flex-col gap-4">
@@ -111,9 +115,9 @@ import paypalLogos from "../../assets/paymentIcons.svg";
     </div>
 
     <div class="bg-customDarkBlackColor py-[2rem] text-white">
-     <div class="container flex justify-between items-center">
-        <div class="column">
-            <span class="text-[1.25rem] font-[jakartaFont]">Copyright @ 2024 Vrooem, All rights reserved.</span>
+     <div class="container flex justify-between items-center max-[480px]:flex-col max-[480px]:justify-center max-[480px]:gap-5">
+        <div class="column max-[480px]:flex">
+            <span class="text-[1.25rem] max-[480px]:text-[0.95rem] max-[480px]:w-full max-[480px]:text-center">Copyright @ 2024 Vrooem, All rights reserved.</span>
         </div>
         <div class="column">
             <img :src=paypalLogos alt="">

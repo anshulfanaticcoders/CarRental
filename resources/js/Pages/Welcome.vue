@@ -119,17 +119,18 @@ onMounted(() => {
         </section>
 
 
-        <section class="mt-[-14rem] mb-[12rem] max-[480px]:mt-[0] max-[480px]:bg-customPrimaryColor">
+        <section class="mt-[-14rem] mb-[12rem] max-[480px]:mb-[0] max-[480px]:mt-[-1rem] max-[480px]:pt-[2rem] max-[480px]:bg-customPrimaryColor">
             <SearchBar />
         </section>
 
         <section
-            class="ml-[5%] w-[105%] category-carousel mt-[8rem] min-h-[50vh] py-customVerticalSpacing overflow-hidden">
-            <div class="flex min-h-[inherit] items-center gap-24">
+            class="ml-[5%] w-[105%] category-carousel mt-[8rem] min-h-[50vh] py-customVerticalSpacing overflow-hidden
+            max-[480px]:mt-0 ">
+            <div class="flex min-h-[inherit] items-center gap-24 
+            max-[480px]:flex-col max-[480px]:gap-10 max-[480px]:items-start">
                 <div class="column">
                     <h2>
-                        Our <br />
-                        Categories
+                        Our Categories
                     </h2>
                 </div>
                 <div class="column carousel rounded-[20px] p-6" style="
@@ -139,15 +140,15 @@ onMounted(() => {
                             rgba(21, 59, 79, 0) 94.4%
                         );
                     ">
-                    <Carousel class="relative w-full" :opts="{ align: 'start' }">
+                    <Carousel class="relative w-full max-[480px]:h-[20rem]" :opts="{ align: 'start' }">
                         <CarouselContent>
                             <CarouselItem v-for="category in categories" :key="category.id"
                                 class="md:basis-1/2 lg:basis-1/3">
                                 <div class="p-1">
                                     <Link :href="`/s?category_id=${encodeURIComponent(category.id)}`">
-                                    <Card>
+                                    <Card class="bg-transparent shadow-none border-none">
                                         <CardContent
-                                            class="cardContent flex h-[515px] items-center justify-center p-6 relative">
+                                            class="cardContent flex h-[515px] max-[480px]:h-[20rem] items-center justify-center p-6 relative">
                                             <img class="rounded-[20px] h-full w-full object-cover"
                                                 :src="`${category.image}`" alt="" />
                                             <div
@@ -170,12 +171,12 @@ onMounted(() => {
         </section>
 
         <!------------------------------- Top Destination Places -------------------------------------->
-        <section class="flex flex-col gap-10 py-customVerticalSpacing popular-places">
+        <section class="flex flex-col gap-10 py-customVerticalSpacing popular-places max-[480px]:py-[1rem]">
             <div class="column ml-[5%]">
                 <span class="text-[1.15rem] text-customPrimaryColor">-Top Destinations -</span>
-                <h3 class="text-customDarkBlackColor mt-[1rem]">Popular places</h3>
+                <h3 class="text-customDarkBlackColor mt-[1rem] max-[480px]:text-[1.75rem]">Popular places</h3>
             </div>
-            <div class="column">
+            <div class="column max-[480px]:px-[1.5rem]">
                 <Carousel class="relative w-full" :plugins="[plugin]" @mouseenter="plugin.stop"
                     @mouseleave="[plugin.reset(), plugin.play(), console.log('Running')]">
                     <CarouselContent>
@@ -224,14 +225,15 @@ onMounted(() => {
                         got something for every journey
                     </h3>
                 </div>
-                <div class="column grid grid-cols-3 gap-16">
+                <div class="column grid grid-cols-3 gap-16
+                max-[480px]:grid-cols-1">
                     <div class="col flex flex-col gap-10">
                         <div class="info-card flex gap-5 items-start">
                             <img :src="locationMapIcon" alt="" />
                             <div class="flex flex-col gap-3">
-                                <span class="text-[1.5rem] text-customDarkBlackColor font-medium">Convenient
+                                <span class="text-[1.5rem] text-customDarkBlackColor font-medium  max-[480px]:text-[1.25rem]">Convenient
                                     Locations</span>
-                                <p class="text-customLightGrayColor text-[1.15rem]">
+                                <p class="text-customLightGrayColor text-[1.15rem]  max-[480px]:text-[0.95rem]">
                                     With multiple rental locations at airports,
                                     city centers, and popular destinations,
                                     picking up and dropping off your rental is
@@ -242,9 +244,9 @@ onMounted(() => {
                         <div class="info-card flex gap-5 items-start">
                             <img :src="phoneIcon" alt="" />
                             <div class=" flex flex-col gap-3">
-                                <span class="text-[1.5rem] text-customDarkBlackColor font-medium">Fast and Easy Booking
+                                <span class="text-[1.5rem] text-customDarkBlackColor font-medium  max-[480px]:text-[1.25rem]">Fast and Easy Booking
                                     Process</span>
-                                <p class="text-customLightGrayColor text-[1.15rem]">
+                                <p class="text-customLightGrayColor text-[1.15rem]  max-[480px]:text-[0.95rem]">
                                     Select your desired pickup and return dates,
                                     along with the time.
                                 </p>
@@ -259,10 +261,10 @@ onMounted(() => {
                         <div class="info-card flex gap-5 items-start">
                             <img :src="chipIcon" alt="" />
                             <div class=" flex flex-col gap-3">
-                                <span class="text-[1.5rem] text-customDarkBlackColor font-medium">Modern Fleet with the
+                                <span class="text-[1.5rem] text-customDarkBlackColor font-medium  max-[480px]:text-[1.25rem]">Modern Fleet with the
                                     Latest
                                     Technology</span>
-                                <p class="text-customLightGrayColor text-[1.15rem]">
+                                <p class="text-customLightGrayColor text-[1.15rem]  max-[480px]:text-[0.95rem]">
                                     Select your desired pickup and return dates,
                                     along with the time.
                                 </p>
@@ -271,9 +273,9 @@ onMounted(() => {
                         <div class="info-card flex gap-5 items-start">
                             <img :src="userCoverageIcon" alt="" />
                             <div class="flex flex-col gap-3 ">
-                                <span class="text-[1.5rem] text-customDarkBlackColor font-medium">Insurance
+                                <span class="text-[1.5rem] text-customDarkBlackColor font-medium  max-[480px]:text-[1.25rem]">Insurance
                                     Coverage</span>
-                                <p class="text-customLightGrayColor text-[1.15rem]">
+                                <p class="text-customLightGrayColor text-[1.15rem]  max-[480px]:text-[0.95rem]">
                                     Select your desired pickup and return dates,
                                     along with the time.
                                 </p>
@@ -301,25 +303,30 @@ onMounted(() => {
 
         <!-- ------------------------Blogs Section-------------------------------- -->
         <!------------------------------ <Start>  -------------------------------------------------->
-        <section class="blogs min-h-[80vh] flex flex-col gap-10 items-center py-customVerticalSpacing">
-            <div class="column text-center flex flex-col items-center w-[650px] py-8">
+        <section class="blogs min-h-[80vh] flex flex-col gap-10 items-center py-customVerticalSpacing
+        max-[480px]:py-0 max-[480px]:gap-0">
+            <div class="column text-center flex flex-col items-center w-[650px] py-8 
+            max-[480px]:py-0 max-[480px]:w-full max-[480px]:mb-10">
                 <span class="text-[1.25rem] text-customPrimaryColor">-Latest Articles-</span>
-                <h3 class="max-w-[883px] text-[3rem] font-bold text-customDarkBlackColor">
+                <h3 class="max-w-[883px] text-[3rem] font-bold text-customDarkBlackColor
+                max-[480px]:max-w-full max-[480px]:text-[1.5rem]">
                     Stay informed and inspired for your next journey
                 </h3>
             </div>
 
             <!-- Blog Section -->
-            <div class="flex gap-6 w-full full-w-container">
+            <div class="flex gap-6 w-full full-w-container
+            max-[480px]:flex-col">
                 <!-- First Blog (Large Left) -->
-                <div v-if="blogs.length > 0" class="w-1/2 h-[574px] relative rounded-lg overflow-hidden shadow-md blog-container">
+                <div v-if="blogs.length > 0" class="w-1/2 h-[574px] relative rounded-lg overflow-hidden shadow-md blog-container
+                    max-[480px]:w-full max-[480px]:h-[380px]">
                     <img :src="blogs[0].image" :alt="blogs[0].title" class="w-full h-full object-cover rounded-lg">
 
                     <div class="absolute bottom-0 bg-gradient-to-t from-black/70 to-transparent p-4 text-white">
                         <p class="text-[1.25rem] flex items-center gap-1">
                             <img :src=calendarWhiteIcon alt=""> {{ formatDate(blogs[0].created_at) }}
                         </p>
-                        <h4 class="font-semibold text-[2rem]">{{ blogs[0].title }}</h4>
+                        <h4 class="font-semibold text-[2rem] max-[480px]:text-[1.25rem]">{{ blogs[0].title }}</h4>
                         <Link :href="route('blog.show', blogs[0].id)" class="inline-flex items-center mt-2 text-blue-400">
                         <img :src=whiteGoIcon alt="">
                         </Link>
@@ -327,19 +334,21 @@ onMounted(() => {
                 </div>
 
                 <!-- Other Blogs (Stacked Right, Dividing Height) -->
-                <div class="flex flex-col gap-6 w-1/2">
+                <div class="flex flex-col gap-6 w-1/2
+                max-[480px]:w-full max-[480px]:gap-0">
                     <div v-for="(blog, index) in blogs.slice(1, 4)" :key="blog.id"
                         class="relative rounded-lg h-[175px] flex justify-between gap-5 items-center">
 
-                        <Link :href="route('blog.show', blog.id)" class="w-[30%] h-full blog-container">
+                        <Link :href="route('blog.show', blog.id)" class="w-[30%] h-full blog-container max-[480px]:w-[40%] max-[480px]:h-[120px]">
                             <img :src="blog.image" :alt="blog.title" class="w-full h-full object-cover rounded-lg">
                         </Link>
 
                         <div class="w-[70%]">
-                            <p class="text-sm flex items-center gap-1 text-customLightGrayColor">
+                            <p class="text-sm flex items-center gap-1 text-customLightGrayColor
+                            ">
                                 <img :src=calendarIcon alt=""> {{ formatDate(blog.created_at) }}
                             </p>
-                            <h4 class="font-semibold text-[1.5rem] text-customDarkBlackColor">{{ blog.title }}</h4>
+                            <h4 class="font-semibold text-[1.5rem] text-customDarkBlackColor max-[480px]:text-[1rem]">{{ blog.title }}</h4>
                             <Link :href="route('blog.show', blog.id)" class="inline-flex items-center mt-2 text-customPrimaryColor">
                                 Read Story 
                                 <img :src=goIcon alt="" class="w-[1.5rem] ml-[0.75rem]">
@@ -396,5 +405,16 @@ onMounted(() => {
 .blog-container:hover > img {
     transform: scale(1.1);
     cursor: pointer;
+}
+@media screen and (max-width:480px) {
+    .category-carousel .next-btn{
+        right: 10%!important;
+        display: none;
+        
+    }
+    .category-carousel .prev-btn{
+        left: -4%!important;
+        display: none;
+    }
 }
 </style>

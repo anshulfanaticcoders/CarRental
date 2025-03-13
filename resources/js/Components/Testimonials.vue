@@ -62,57 +62,42 @@ const plugin = Autoplay({
 </script>
 
 <template>
-    <div
-        class="testimonials bg-customPrimaryColor min-h-[90vh] flex flex-col gap-10 items-center py-customVerticalSpacing mt-[4rem]"
-    >
-        <div class="column text-center flex flex-col items-center text-customPrimaryColor-foreground w-[573px] py-[2rem]">
-            <span class="text-[1.25rem]">-Testimonials-</span>
-            <h3 class="max-w-[883px]">
+    <div class="testimonials bg-customPrimaryColor min-h-[90vh]  max-[480px]:min-h-auto flex flex-col gap-10 items-center py-customVerticalSpacing mt-[4rem]
+         max-[480px]:mt-0 max-[480px]:py-0 max-[480px]:px-[0.5rem]">
+        <div class="column text-center flex flex-col items-center text-customPrimaryColor-foreground w-[573px] py-[2rem]
+         max-[480px]:w-full">
+            <span class="text-[1.25rem]  max-[480px]:mb-5">-Testimonials-</span>
+            <h3 class="max-w-[883px] max-[480px]:max-w-full">
                 What our customers are saying about us
             </h3>
         </div>
-        <Carousel
-            class="relative w-full full-w-container"
-            :plugins="[plugin]"
-            @mouseenter="plugin.stop"
-            @mouseleave="
-                [plugin.reset(), plugin.play(), console.log('Running')]
-            "
-            :slides-to-show="3"
-        >
-            <CarouselContent>
-                <CarouselItem
-                    v-for="(testimonial, index) in testimonials"
-                    :key="index"
-                    class="pl-1 md:basis-1/2 lg:basis-1/4"
-                >
+        <Carousel class="relative w-full full-w-container" :plugins="[plugin]" @mouseenter="plugin.stop" @mouseleave="
+            [plugin.reset(), plugin.play(), console.log('Running')]
+            " :slides-to-show="3">
+            <CarouselContent class="max-[480px]:mx-0">
+                <CarouselItem v-for="(testimonial, index) in testimonials" :key="index"
+                    class="pl-1 md:basis-1/2 lg:basis-1/4">
                     <div class="p-1">
                         <Card class='h-[19rem]'>
-                            <CardContent
-                                class="flex h-full flex-col aspect-square justify-center p-6 gap-10"
-                            >
+                            <CardContent class="flex h-full flex-col aspect-square justify-center p-6 gap-10">
                                 <!-- get testimonials values here -->
-                                <div
-                                    class="column p-4 border-b border-customMediumBlackColor"
-                                >
-                                <span v-for="star in Math.floor(testimonial.rating)" :key="star" class="text-yellow-500 text-[1.5rem]">★</span>
-                                <span v-if="testimonial.rating % 1 !== 0" class="text-yellow-500 text-[1.5rem]">☆</span>
+                                <div class="column p-4 border-b border-customMediumBlackColor">
+                                    <span v-for="star in Math.floor(testimonial.rating)" :key="star"
+                                        class="text-yellow-500 text-[1.5rem]">★</span>
+                                    <span v-if="testimonial.rating % 1 !== 0"
+                                        class="text-yellow-500 text-[1.5rem]">☆</span>
                                     <p class="text-[1.125rem]">
                                         {{ testimonial.comment }}
                                     </p>
                                 </div>
                                 <div class="column flex gap-4 items-center">
                                     <div class="col">
-                                        <img
-                                            :src="testimonial.avatar"
-                                            alt=""
-                                            class="h-16 w-16"
-                                        />
+                                        <img :src="testimonial.avatar" alt="" class="h-16 w-16" />
                                     </div>
                                     <div class="col flex flex-col gap-1">
                                         <strong>{{
                                             testimonial.author
-                                        }}</strong>
+                                            }}</strong>
                                         <span>{{ testimonial.title }}</span>
                                     </div>
                                 </div>
@@ -128,25 +113,42 @@ const plugin = Autoplay({
 </template>
 
 <style>
-.testimonials button{
- top: 130%!important;
+.testimonials button {
+    top: 130% !important;
 }
-.testimonials .prev-btn{
- left: 45%!important;
- background-color: white;
+
+.testimonials .prev-btn {
+    left: 45% !important;
+    background-color: white;
 
 }
-.testimonials .next-btn{
- right: 45%!important;
- background-color: white;
+
+.testimonials .next-btn {
+    right: 45% !important;
+    background-color: white;
 }
+
 .testimonials .prev-btn svg,
-.testimonials .next-btn svg{
-    color: #2b2b2b!important;
+.testimonials .next-btn svg {
+    color: #2b2b2b !important;
 }
+
 .testimonials {
     background-image: url('../../assets/gridlinetestimonials.png');
     background-size: cover;
     /* background-position: center center; */
+}
+
+@media screen and (max-width:480px) {
+    .testimonials .prev-btn {
+        left: 60% !important;
+        background-color: white;
+
+    }
+
+    .testimonials .next-btn {
+        right: 0% !important;
+        background-color: white;
+    }
 }
 </style>

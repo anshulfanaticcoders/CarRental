@@ -54,7 +54,7 @@ class VehicleController extends Controller
             'security_deposit' => 'required|decimal:0,2|min:0',
             // 'payment_method' => 'required|string',
             'payment_method' => 'required|array',
-            'payment_method.*' => 'string|in:credit_card,cheque,bank_wire,cryptocurrency,other',
+            'payment_method.*' => 'string|in:credit_card,cheque,bank_wire,cryptocurrency,cash',
             'price_per_day' => 'nullable|decimal:0,2|min:0',
             'price_per_week' => 'nullable|decimal:0,2|min:0',
             'weekly_discount' => 'nullable|decimal:0,2|min:0|max:1000',

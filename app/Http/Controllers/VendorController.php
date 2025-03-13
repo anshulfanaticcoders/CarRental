@@ -23,71 +23,80 @@ class VendorController extends Controller
     }
 
     public function store(Request $request)
-    {
-        try {
-            // Validate the incoming request
-            $request->validate([
-                'driving_license' => 'nullable|file|mimes:jpg,png,pdf',
-                'passport' => 'nullable|file|mimes:jpg,png,pdf',
-                'passport_photo' => 'nullable|file|mimes:jpg,png',
-                'company_name' => 'required|string|max:255',
-                'company_phone_number' => 'required|string|max:15',
-                'company_email' => 'required|email|max:255',
-                'company_address' => 'required|string|max:255',
-                'company_gst_number' => 'required|string|max:15',
-            ]);
+{
+    try {
+        // Validate the incoming request
+        $request->validate([
+            'driving_license' => 'nullable|file|mimes:jpg,png,pdf',
+            'passport' => 'nullable|file|mimes:jpg,png,pdf',
+            'company_name' => 'required|string|max:255',
+            'company_phone_number' => 'required|string|max:15',
+            'company_email' => 'required|email|max:255',
+            'company_address' => 'required|string|max:255',
+            'company_gst_number' => 'required|string|max:15',
+        ]);
 
-            // Handle file uploads
-            $vendorDocument = VendorDocument::create([
-                'user_id' => $request->user()->id,
-                'driving_license' => $request->hasFile('driving_license') 
-                    ? Storage::disk('upcloud')->putFile('vendorDocuments', $request->file('driving_license')) 
-                    : null,
-                'passport' => $request->hasFile('passport') 
-                    ? Storage::disk('upcloud')->putFile('vendorDocuments', $request->file('passport')) 
-                    : null,
-                // 'passport_photo' => $request->hasFile('passport_photo') 
-                //     ? Storage::disk('upcloud')->putFile('vendorDocuments', $request->file('passport_photo')) 
-                //     : null,
-                'status' => 'pending',
-            ]);
+        $userId = auth()->id();
 
-            // Create or update the vendor profile
-            VendorProfile::updateOrCreate(
-                ['user_id' => $request->user()->id],
-                [
-                    'company_name' => $request->company_name,
-                    'company_phone_number' => $request->company_phone_number,
-                    'company_email' => $request->company_email,
-                    'company_address' => $request->company_address,
-                    'company_gst_number' => $request->company_gst_number,
-                    'status' => 'pending',
-                ]
-            );
+        // Define folder path - use the same folder as in update method
+        $folderName = 'vehicle_images';
 
-            $user = User::find($request->user()->id);
-            $user->role = 'vendor';
-            $user->save();
-
-            // Return a JSON response for Inertia
-            return redirect(RouteServiceProvider::HOMEPAGE)->with([
-                'message' => 'Vendor registration completed successfully!',
-                'type' => 'success'
-            ]);
-
-        } catch (\Exception $e) {
-            // Log the error for debugging
-            \Log::error('Vendor Registration Error: ' . $e->getMessage());
-
-            // Return error response
-            return back()->with([
-                'message' => 'Something went wrong during registration. Please try again.',
-                'type' => 'error'
-            ])->withErrors([
-                'error' => 'Registration failed. Please try again.'
-            ]);
+        // Handle file uploads with the same pattern as update method
+        $drivingLicense = null;
+        if ($request->hasFile('driving_license')) {
+            $path = $request->file('driving_license')->store($folderName, 'upcloud');
+            $drivingLicense = Storage::disk('upcloud')->url($path);
         }
+
+        $passport = null;
+        if ($request->hasFile('passport')) {
+            $path = $request->file('passport')->store($folderName, 'upcloud');
+            $passport = Storage::disk('upcloud')->url($path);
+        }
+
+        // Create the vendor document
+        VendorDocument::create([
+            'user_id' => $userId,
+            'driving_license' => $drivingLicense,
+            'passport' => $passport,
+            'status' => 'pending',
+        ]);
+
+        // Create the vendor profile
+        VendorProfile::create([
+            'user_id' => $userId,
+            'company_name' => $request->company_name,
+            'company_phone_number' => $request->company_phone_number,
+            'company_email' => $request->company_email,
+            'company_address' => $request->company_address,
+            'company_gst_number' => $request->company_gst_number,
+            'status' => 'pending',
+        ]);
+
+        // Update user role to vendor
+        $user = User::find($userId);
+        $user->role = 'vendor';
+        $user->save();
+
+        // Return a JSON response for Inertia
+        return redirect(RouteServiceProvider::HOMEPAGE)->with([
+            'message' => 'Vendor registration completed successfully!',
+            'type' => 'success'
+        ]);
+
+    } catch (\Exception $e) {
+        // Log the error for debugging
+        \Log::error('Vendor Registration Error: ' . $e->getMessage());
+
+        // Return error response
+        return back()->with([
+            'message' => 'Something went wrong during registration. Please try again.',
+            'type' => 'error'
+        ])->withErrors([
+            'error' => 'Registration failed. Please try again.'
+        ]);
     }
+}
     
     // Add index method to display vendor documents
     public function index(Request $request)
@@ -121,7 +130,6 @@ class VendorController extends Controller
         $request->validate([
             'driving_license' => 'nullable|file|mimes:jpg,png,pdf',
             'passport' => 'nullable|file|mimes:jpg,png,pdf',
-            // 'passport_photo' => 'nullable|file|mimes:jpg,png',
             'company_name' => 'required|string|max:255',
             'company_phone_number' => 'required|string|max:15',
             'company_email' => 'required|email|max:255',

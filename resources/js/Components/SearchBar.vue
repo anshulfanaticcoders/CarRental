@@ -1,15 +1,17 @@
 <template>
-    <section class="full-w-container" @click="closeSearchResults">
-      <div class="search_bar rounded-[20px]">
-        <div class="flex relative max-[480px]:flex-col">
+    <section class="full-w-container max-[480px]:pb-[2rem]" @click="closeSearchResults">
+      <div class="search_bar rounded-[20px] max-[480px]:border-[1px]">
+        <div class="flex relative max-[480px]:flex-col max-[480px]:items-center">
           <div
-            class="column w-[20%] bg-customPrimaryColor text-customPrimaryColor-foreground p-[2rem] rounded-tl-[20px] rounded-bl-[20px]"
+            class="column w-[20%] max-[480px]:w-[100%] max-[480px]:p-[1.5rem] bg-customPrimaryColor text-customPrimaryColor-foreground p-[2rem] rounded-tl-[20px] rounded-bl-[20px]
+            max-[480px]:rounded-tr-[16px] max-[480px]:rounded-tl-[16px] max-[480px]:rounded-bl-[0] max-[480px]:border-[1px]"
           >
-            <span class="text-[1.75rem] font-medium">Do you need a rental car?</span>
+            <span class="text-[1.75rem] font-medium max-[480px]:text-[1.5rem]">Do you need a rental car?</span>
           </div>
           <form
             @submit.prevent="submit"
-            class="column w-[80%] px-[2rem] py-[1rem] rounded-tr-[16px] rounded-br-[16px] bg-white grid grid-cols-5"
+            class="column w-[80%] max-[480px]:w-[100%] px-[2rem] py-[1rem] rounded-tr-[16px] rounded-br-[16px] bg-white grid grid-cols-5
+            max-[480px]:flex max-[480px]:flex-col max-[480px]:gap-10 max-[480px]:rounded-tr-[0] max-[480px]:rounded-bl-[16px] max-[480px]:px-[1rem]"
           >
             <div class="col col-span-2 flex flex-col justify-center">
               <div class="flex flex-col">
@@ -48,7 +50,7 @@
               </div>
             </div>
   
-            <div class="col border-r-2 border-customMediumBlackColor px-5 flex flex-col justify-center">
+            <div class="col border-r-2 max-[480px]:border-r-0 border-customMediumBlackColor px-5 max-[480px]:px-1 flex flex-col justify-center">
               <label class="block text-sm mb-1 text-customLightGrayColor font-medium"
                 >Pick Up Date & Time</label
               >
@@ -61,7 +63,7 @@
               />
                <p v-if="dateError && !form.date_from" class="text-red-500 text-xs mt-1">Please select a pickup date.</p>
             </div>
-            <div class="col border-r-2 border-customMediumBlackColor px-5 flex flex-col justify-center">
+            <div class="col border-r-2 max-[480px]:border-r-0 border-customMediumBlackColor px-5 max-[480px]:px-1 flex flex-col justify-center">
               <label class="block text-sm mb-1 text-customLightGrayColor font-medium"
                 >Return Date & Time</label
               >
@@ -78,7 +80,7 @@
             <div class="inner-col flex justify-center items-center">
               <button
                 type="submit"
-                class="bg-customPrimaryColor text-customPrimaryColor-foreground rounded-[40px] w-[138px] py-4 text-center"
+                class="bg-customPrimaryColor text-customPrimaryColor-foreground rounded-[40px] w-[138px] max-[480px]:w-full py-4 text-center"
               >
                 Search
               </button>
@@ -205,5 +207,12 @@
   }
   .search-results {
     box-shadow: 5px 5px 10px rgba(0, 0, 0, 0.349);
+  }
+
+
+  @media screen and (max-width:480px) {
+    .search_bar{
+      box-shadow: none;
+    }
   }
   </style>
