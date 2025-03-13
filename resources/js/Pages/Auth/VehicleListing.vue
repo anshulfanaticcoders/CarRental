@@ -983,7 +983,7 @@
                     'border-[#153B4F] bg-[#153B4F0D]': selectedPlans.includes(plan),
                 }" @click="togglePlanSelection(plan)">
                             <span class="text-[1.5rem] text-center" :class="{
-                                'text-[#016501]': plan.plan_type === 'Exclusive plan',
+                                'text-[#016501]': selectedPlans.includes(plan),
                             }">
                                 {{ plan.plan_type }}
                             </span>
@@ -996,7 +996,7 @@
                             </strong>
 
                             <p class="text-[1.25rem] text-[#2B2B2B] text-center">
-                                Access to basic features without any subscription fee.
+                                {{ plan.plan_description }}
                             </p>
 
                             <button class="button-primary px-5 py-2" @click.stop="togglePlanSelection(plan)" :class="{
