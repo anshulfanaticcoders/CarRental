@@ -13,6 +13,7 @@ class Plan extends Model
         'plan_type', 
         'plan_value',
         'features',
+        'plan_description',
     ];
 
     protected $casts = [

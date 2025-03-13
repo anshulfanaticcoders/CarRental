@@ -139,36 +139,43 @@ const parsedFeatures = (features) => {
     }
 };
 onMounted(() => {
-    const freePlan = plans.value.find(plan => plan.id === 2);
+    // Check if you should be using plan.plan_id instead of plan.id
+    const freePlan = plans.value.find(plan => plan.plan_id === 2);
     if (freePlan) {
         selectedPlan.value = freePlan;
+    } else {
+        // Fallback to check for id if plan_id doesn't exist
+        const fallbackPlan = plans.value.find(plan => plan.id === 2);
+        if (fallbackPlan) {
+            selectedPlan.value = fallbackPlan;
+        }
+        // If no plan with ID 2 is found, you might want to select the first plan
+        else if (plans.value.length > 0) {
+            selectedPlan.value = plans.value[0];
+        }
+    }
+    
+    // Store the selection in session storage
+    if (selectedPlan.value) {
+        storeSelectionData();
     }
 });
 
 // This is for Extras
-const bookingExtras = ref(props.addons); 
+const bookingExtras = ref(props.addons.map(addon => ({
+  ...addon,
+  quantity: 0, // Set default to 0
+  maxQuantity: addon.quantity // Store the original quantity as maxQuantity
+})));
 
-// const fetchBookingExtras = async () => {
-//     try {
-//         const response = await axios.get("/api/booking-addons");
-//         bookingExtras.value = response.data;
-//     } catch (error) {
-//         console.error("Error fetching booking extras:", error);
-//     }
-// };
 
-// onMounted(() => {
-//     fetchBookingExtras();
-// });
-
-// Store the selected plan and booking extras in sessionStorage
-// Store the selected plan and booking extras in sessionStorage
 const storeSelectionData = () => {
     const selectionData = {
         selectedPlan: selectedPlan.value,
         extras: bookingExtras.value.map(extra => ({
             id: extra.id,
             quantity: extra.quantity,
+            maxQuantity: extra.maxQuantity,
             price: extra.price * extra.quantity,
             extra_name: extra.extra_name,
             extra_type: extra.extra_type
@@ -187,6 +194,10 @@ const loadSelectionData = () => {
             const extra = bookingExtras.value.find(extra => extra.id === savedExtra.id);
             if (extra) {
                 extra.quantity = savedExtra.quantity;
+                // Make sure we don't lose the maxQuantity
+                if (savedExtra.maxQuantity) {
+                    extra.maxQuantity = savedExtra.maxQuantity;
+                }
             }
         });
     }
@@ -575,35 +586,35 @@ const submitBooking = async () => {
                             </p>
                             <div class="equipment-list">
                                 <div v-for="extra in bookingExtras" :key="extra.id"
-                                    class="equipment-item flex justify-between items-center mt-[2rem] gap-4 p-5 border-[1px] rounded-[12px] border-customPrimaryColor">
-                                    <div class="col flex-1">
-                                        <span class="text-[1.25rem] text-customPrimaryColor font-bold">
-                                            {{ extra.extra_name }}
-                                        </span>
-                                        <p class="text-customLightGrayColor">
-                                            {{ extra.description }}
-                                        </p>
-                                    </div>
-                                    <div class="col flex-[0.5]">
-                                        <span class="text-[1.25rem] text-customPrimaryColor font-bold">
-                                            {{ formatPrice(extra.price) }} Per day
-                                        </span>
-                                    </div>
-                                    <div class="col flex=[0.5]">
-                                        <div class="quantity-counter">
-                                            <button @click="decrementQuantity(extra)" class="decrement"
-                                                :disabled="extra.quantity === 0">
-                                                -
-                                            </button>
-                                            <input type="number" v-model.number="extra.quantity" class="value" min="0"
-                                                max="2" @input="validateQuantity(extra)" />
-                                            <button @click="incrementQuantity(extra)" class="increment"
-                                                :disabled="extra.quantity >= 2">
-                                                +
-                                            </button>
-                                        </div>
-                                    </div>
-                                </div>
+     class="equipment-item flex justify-between items-center mt-[2rem] gap-4 p-5 border-[1px] rounded-[12px] border-customPrimaryColor">
+    <div class="col flex-1">
+        <span class="text-[1.25rem] text-customPrimaryColor font-bold">
+            {{ extra.extra_name }}
+        </span>
+        <p class="text-customLightGrayColor">
+            {{ extra.description }}
+        </p>
+    </div>
+    <div class="col flex-[0.5]">
+        <span class="text-[1.25rem] text-customPrimaryColor font-bold">
+            {{ formatPrice(extra.price) }} Per day
+        </span>
+    </div>
+    <div class="col flex=[0.5]">
+        <div class="quantity-counter">
+            <button @click="decrementQuantity(extra)" class="decrement"
+                    :disabled="extra.quantity === 0">
+                -
+            </button>
+            <input type="number" v-model.number="extra.quantity" class="value" min="0"
+                   :max="extra.maxQuantity" @input="validateQuantity(extra)" />
+            <button @click="incrementQuantity(extra)" class="increment"
+                    :disabled="extra.quantity >= extra.maxQuantity">
+                +
+            </button>
+        </div>
+    </div>
+</div>
                             </div>
                         </div>
 

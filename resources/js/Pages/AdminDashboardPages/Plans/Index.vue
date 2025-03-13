@@ -15,11 +15,11 @@
             </div>
 
             <Dialog v-model:open="isEditDialogOpen">
-                <EditUser :user="editForm" @close="isEditDialogOpen = false" />
+                <EditUser :plan="editForm" @close="isEditDialogOpen = false" />
             </Dialog>
 
             <Dialog v-model:open="isViewDialogOpen">
-                <ViewUser :user="viewForm" @close="isViewDialogOpen = false" />
+                <ViewUser :plan="viewForm" @close="isViewDialogOpen = false" />
             </Dialog>
 
             <div class="rounded-md border p-5  mt-[1rem] bg-[#153B4F0D]">
@@ -28,20 +28,26 @@
                         <TableRow>
                             <TableHead>ID</TableHead>
                             <TableHead>Plan Type</TableHead>
+                            <TableHead>Description</TableHead>
                             <TableHead>Plan Value</TableHead>
                             <TableHead>Features</TableHead>
                             <TableHead class="text-right">Actions</TableHead>
                         </TableRow>
                     </TableHeader>
                     <TableBody>
-                        <TableRow v-for="(user, index) in users.data" :key="user.id">
-                            <TableCell>{{ (users.current_page - 1) * users.per_page + index + 1 }}</TableCell>
-                            <TableCell>{{ user.plan_type }}</TableCell>
-                            <TableCell>${{ Number(user.plan_value).toFixed(2) }}</TableCell>
+                        <TableRow v-for="(plan, index) in plans.data" :key="plan.id">
+                            <TableCell>{{ (plans.current_page - 1) * plans.per_page + index + 1 }}</TableCell>
+                            <TableCell>{{ plan.plan_type }}</TableCell>
                             <TableCell>
-                                <div v-if="user.features && user.features.length">
+                                <div class="max-w-[300px] truncate">
+                                    {{ plan.plan_description || 'No description' }}
+                                </div>
+                            </TableCell>
+                            <TableCell>{{ Number(plan.plan_value).toFixed(2) }}</TableCell>
+                            <TableCell>
+                                <div v-if="plan.features && plan.features.length">
                                     <ul class="list-disc list-inside">
-                                        <li v-for="(feature, index) in user.features" :key="index">
+                                        <li v-for="(feature, index) in plan.features" :key="index">
                                             {{ feature }}
                                         </li>
                                     </ul>
@@ -50,14 +56,14 @@
                             </TableCell>
                             <TableCell class="text-right">
                                 <div class="flex justify-end gap-2">
-                                    <Button size="sm" variant="outline" @click="openViewDialog(user)">
+                                    <Button size="sm" variant="outline" @click="openViewDialog(plan)">
                                         View
                                     </Button>
-                                    <Button size="sm" variant="outline" @click="openEditDialog(user)">
+                                    <Button size="sm" variant="outline" @click="openEditDialog(plan)">
                                         Edit
                                         <img :src=editIcon alt="">
                                     </Button>
-                                    <Button size="sm" variant="destructive" @click="deleteUser(user.id)">Delete</Button>
+                                    <Button size="sm" variant="destructive" @click="deletePlan(plan.id)">Delete</Button>
                                 </div>
                             </TableCell>
                         </TableRow>
@@ -65,7 +71,7 @@
                 </Table>
                 <!-- Pagination -->
                 <div class="mt-4 flex justify-end">
-                    <Pagination :current-page="users.current_page" :total-pages="users.last_page"
+                    <Pagination :current-page="plans.current_page" :total-pages="plans.last_page"
                         @page-change="handlePageChange" />
                 </div>
             </div>
@@ -94,7 +100,7 @@ import Pagination from "@/Pages/AdminDashboardPages/Plans/Pagination.vue";
 
 
 const props = defineProps({
-    users: Object,
+    plans: Object,
     filters: Object,
 });
 const search = ref(props.filters.search || ''); // Initialize search with the filter value
@@ -106,24 +112,32 @@ const viewForm = ref({});
 
 // Handle search input
 const handleSearch = () => {
-    router.get('/plans', { search: search.value }, {
+    router.get('/admin/plans', { search: search.value }, {
         preserveState: true,
         replace: true,
     });
 };
 
-const openEditDialog = (user) => {
-    editForm.value = { ...user };
+
+const openEditDialog = (plan) => {
+    editForm.value = { ...plan };
     isEditDialogOpen.value = true;
 };
 
-const openViewDialog = (user) => {
-    viewForm.value = { ...user };
+const openViewDialog = (plan) => {
+    viewForm.value = { ...plan };
     isViewDialogOpen.value = true;
 };
 
-const deleteUser = (id) => {
-    router.delete(`/plans/${id}`);
+const deletePlan = (id) => {
+    router.delete(`/admin/plans/${id}`, {
+        onSuccess: () => {
+            console.log('Plan deleted successfully');
+        },
+        onError: (errors) => {
+            console.error(errors);
+        }
+    });
 };
 
 const handlePageChange = (page) => {

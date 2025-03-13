@@ -10,22 +10,27 @@ use Inertia\Inertia;
 class PlansController extends Controller
 {
     public function index(Request $request)
-    {
-        $search = $request->query('search');
-        $plans = Plan::paginate(10);
+{
+    $search = $request->query('search');
+    
+    $plans = Plan::when($search, function ($query, $search) {
+        return $query->where('plan_type', 'LIKE', "%{$search}%");
+    })->paginate(10);
 
-        return Inertia::render('AdminDashboardPages/Plans/Index', [
-            'users' => $plans,
-            'filters' => $request->only(['search']),
-        ]);
-    }
+    return Inertia::render('AdminDashboardPages/Plans/Index', [
+        'plans' => $plans,
+        'filters' => $request->only(['search']),
+    ]);
+}
+
 
     public function store(Request $request)
     {
         $validated = $request->validate([
             'plan_type' => 'required|string|max:255',
             'plan_value' => 'required|numeric|min:0',
-            'features' => 'nullable|array'
+            'features' => 'nullable|array',
+            'plan_description' => 'nullable|string',
         ]);
 
         Plan::create($validated);
@@ -38,7 +43,8 @@ class PlansController extends Controller
         $validated = $request->validate([
             'plan_type' => 'required|string|max:255',
             'plan_value' => 'required|numeric|min:0',
-            'features' => 'nullable|array'
+            'features' => 'nullable|array',
+            'plan_description' => 'nullable|string',
         ]);
 
         $plan->update($validated);

@@ -115,7 +115,7 @@ const data = {
         },
         {
           title: 'Plans',
-          url: '/plans',
+          url: '/admin/plans',
         },
       ],
     },

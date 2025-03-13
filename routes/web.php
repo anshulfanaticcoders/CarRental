@@ -138,7 +138,7 @@ Route::middleware(['auth', 'role:admin'])->group(function () {
     Route::get('/customer-bookings/cancelled', [BookingDashboardController::class, 'cancelled'])->name('customer-bookings.cancelled');
     Route::resource('booking-addons', VehicleAddonsController::class)->middleware(['auth']);
     Route::resource('popular-places', PopularPlacesController::class)->except(['show']);
-    Route::resource('plans', PlansController::class);
+    Route::resource('admin/plans', PlansController::class);
     Route::resource('blogs', BlogController::class);
     Route::get('/admin-dashboard', [DashboardController::class, 'index']);
 

@@ -1,13 +1,18 @@
+
 <template>
     <DialogContent>
         <DialogHeader>
             <DialogTitle>Edit Plan</DialogTitle>
         </DialogHeader>
-        <form @submit.prevent="updateUser" class="space-y-4">
+        <form @submit.prevent="updatePlan" class="space-y-4">
             <div class="grid grid-cols-2 gap-4">
                 <div>
                     <InputLabel for="plan_type" value="Plan Type *" />
                     <Input v-model="editForm.plan_type" required />
+                </div>
+                <div>
+                    <InputLabel for="plan_description" value="Plan Description *" />
+                    <Textarea v-model="editForm.plan_description" required />
                 </div>
                 <div>
                     <InputLabel for="plan_value" value="Plan Value *" />
@@ -41,15 +46,16 @@ import Input from "@/Components/ui/input/Input.vue";
 import InputLabel from "@/Components/InputLabel.vue";
 import Button from "@/Components/ui/button/Button.vue";
 import { useToast } from 'vue-toastification';
+import { Textarea } from "@/Components/ui/textarea";
 
 const toast = useToast();
 
 const props = defineProps({
-    user: Object,
+    plan: Object,
 });
 
 const emit = defineEmits(['close']); // Define the 'close' event
-const editForm = ref({ ...props.user });
+const editForm = ref({ ...props.plan });
 const addEditFeature = () => {
     editForm.value.features.push('');
 };
@@ -57,13 +63,13 @@ const addEditFeature = () => {
 const removeEditFeature = (index) => {
     editForm.value.features.splice(index, 1);
 };
-// Watch for changes in props.user (if the user data is updated dynamically)
-watch(() => props.user, (newUser) => {
-    editForm.value = { ...newUser };
+// Watch for changes in props.plan (if the plan data is updated dynamically)
+watch(() => props.plan, (newPlan) => {
+    editForm.value = { ...newPlan };
 }, { immediate: true });
 
-const updateUser = () => {
-    router.put(`/plans/${editForm.value.id}`, editForm.value, {
+const updatePlan = () => {
+    router.put(`/admin/plans/${editForm.value.id}`, editForm.value, {
         onSuccess: () => {
             emit('close');
             toast.success('Plan updated successfully!', {

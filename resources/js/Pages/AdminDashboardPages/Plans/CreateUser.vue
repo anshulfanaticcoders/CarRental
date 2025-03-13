@@ -10,6 +10,10 @@
                     <Input v-model="form.plan_type" required />
                 </div>
                 <div>
+                    <InputLabel for="plan_description" value="Plan Description *" />
+                    <Input v-model="form.plan_description" required />
+                </div>
+                <div>
                     <InputLabel for="plan_value" value="Plan Value *" />
                     <Input v-model="form.plan_value" type="number" step="0.01" required />
                 </div>
@@ -45,8 +49,9 @@ const toast = useToast();
 
 const form = ref({
     plan_type: '',
+    plan_description: '',
     plan_value: null,
-    features: []
+    features: [],
 });
 const emit = defineEmits(['close']); // Define the 'close' event
 
@@ -58,10 +63,11 @@ const removeFeature = (index) => {
     form.value.features.splice(index, 1);
 };
 const submitForm = () => {
-    router.post("/plans", form.value, {
+    router.post("/admin/plans", form.value, {
         onSuccess: () => {
             form.value = {
                 plan_type: '',
+                plan_description: '',
                 plan_value: null,
                 features: []
             };

@@ -15,6 +15,7 @@ return new class extends Migration {
             $table->string('plan_type');
             $table->decimal('plan_value', 10, 2);
             $table->json('features')->nullable();
+            $table->text('plan_description')->nullable();
             $table->timestamps();
         });
     }
