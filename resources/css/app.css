@@ -196,3 +196,21 @@ input[type="checkbox"] {
     border: 1px solid rgba(43, 43, 43, 0.50)!important;
     padding: 1rem;
 } */
+
+
+/* Media query */
+
+@media screen and (max-width:480px) {
+    h1{
+        font-size: 2.5rem;
+        line-height: 1.3em;
+    }
+    h2{
+        font-size: 1.5rem;
+        line-height: 1.1em;
+    }
+    h3{
+        font-size: 1.5rem;
+        line-height: 1.1em;
+    }
+}

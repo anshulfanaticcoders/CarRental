@@ -97,27 +97,29 @@ onMounted(() => {
     <AuthenticatedHeaderLayout />
 
     <main class="overflow-x-hidden">
-        <section class="hero_section">
-            <div class="wrapper flex justify-between w-full">
+        <section class="hero_section max-[480px]:bg-customPrimaryColor">
+            <div class="wrapper flex justify-between w-full
+            max-[480px]:flex-col">
                 <div
-                    class="column bg-customPrimaryColor h-[65vh] w-full text-white flex flex-col items-end justify-center">
-                    <div class="pl-[10%]">
+                    class="column bg-customPrimaryColor h-[65vh] w-full text-white flex flex-col items-end justify-center
+                     max-[480px]:h-auto max-[480px]:px-[1.5rem] max-[480px]:py-[1.5rem]">
+                    <div class="pl-[10%] max-[480px]:pl-[0]">
                         <h1>Hit the Road with the Perfect Ride</h1>
-                        <p class="text-[1.25rem] mt-3">
-                            Get a car wherever and whenever you need it <br />
+                        <p class="text-[1.25rem] mt-3 max-w-[450px] max-[480px]:text-[1rem]">
+                            Get a car wherever and whenever you need it
                             with your iOS or Android device.
                         </p>
                     </div>
                 </div>
-                <div class="column h-[80vh] w-full relative">
-                    <img class="rounded-bl-[20px] h-full w-full object-cover" :src="heroImg" alt="" />
+                <div class="column h-[80vh] w-full relative max-[480px]:h-auto max-[480px]:pb-[2rem] max-[480px]:px-[1.5rem]">
+                    <img class="rounded-bl-[20px] h-full w-full object-cover max-[480px]:rounded-[20px]" :src="heroImg" alt="" />
                     <div class="bg-customOverlayColor absolute top-0 w-full h-full rounded-bl-[20px]"></div>
                 </div>
             </div>
         </section>
 
 
-        <section class="mt-[-14rem] mb-[12rem]">
+        <section class="mt-[-14rem] mb-[12rem] max-[480px]:mt-[0] max-[480px]:bg-customPrimaryColor">
             <SearchBar />
         </section>
 

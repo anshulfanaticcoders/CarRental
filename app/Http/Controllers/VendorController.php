@@ -46,9 +46,9 @@ class VendorController extends Controller
                 'passport' => $request->hasFile('passport') 
                     ? Storage::disk('upcloud')->putFile('vendorDocuments', $request->file('passport')) 
                     : null,
-                'passport_photo' => $request->hasFile('passport_photo') 
-                    ? Storage::disk('upcloud')->putFile('vendorDocuments', $request->file('passport_photo')) 
-                    : null,
+                // 'passport_photo' => $request->hasFile('passport_photo') 
+                //     ? Storage::disk('upcloud')->putFile('vendorDocuments', $request->file('passport_photo')) 
+                //     : null,
                 'status' => 'pending',
             ]);
 
@@ -121,7 +121,7 @@ class VendorController extends Controller
         $request->validate([
             'driving_license' => 'nullable|file|mimes:jpg,png,pdf',
             'passport' => 'nullable|file|mimes:jpg,png,pdf',
-            'passport_photo' => 'nullable|file|mimes:jpg,png',
+            // 'passport_photo' => 'nullable|file|mimes:jpg,png',
             'company_name' => 'required|string|max:255',
             'company_phone_number' => 'required|string|max:15',
             'company_email' => 'required|email|max:255',
@@ -138,7 +138,7 @@ class VendorController extends Controller
         // Handle file uploads
         $drivingLicense = $document ? $document->driving_license : null;
         $passport = $document ? $document->passport : null;
-        $passportPhoto = $document ? $document->passport_photo : null;
+        // $passportPhoto = $document ? $document->passport_photo : null;
 
         if ($request->hasFile('driving_license')) {
             if ($document && $document->driving_license) {
@@ -156,13 +156,13 @@ class VendorController extends Controller
             $passport = Storage::disk('upcloud')->url($path);
         }
 
-        if ($request->hasFile('passport_photo')) {
-            if ($document && $document->passport_photo) {
-                Storage::disk('upcloud')->delete($document->passport_photo);
-            }
-            $path = $request->file('passport_photo')->store($folderName, 'upcloud');
-            $passportPhoto = Storage::disk('upcloud')->url($path);
-        }
+        // if ($request->hasFile('passport_photo')) {
+        //     if ($document && $document->passport_photo) {
+        //         Storage::disk('upcloud')->delete($document->passport_photo);
+        //     }
+        //     $path = $request->file('passport_photo')->store($folderName, 'upcloud');
+        //     $passportPhoto = Storage::disk('upcloud')->url($path);
+        // }
 
         // Update or create the vendor document
         VendorDocument::updateOrCreate(
@@ -170,7 +170,7 @@ class VendorController extends Controller
             [
                 'driving_license' => $drivingLicense,
                 'passport' => $passport,
-                'passport_photo' => $passportPhoto,
+                // 'passport_photo' => $passportPhoto,
                 'status' => 'pending',
             ]
         );

@@ -1,7 +1,7 @@
 <template>
     <section class="full-w-container" @click="closeSearchResults">
       <div class="search_bar rounded-[20px]">
-        <div class="flex relative">
+        <div class="flex relative max-[480px]:flex-col">
           <div
             class="column w-[20%] bg-customPrimaryColor text-customPrimaryColor-foreground p-[2rem] rounded-tl-[20px] rounded-bl-[20px]"
           >
