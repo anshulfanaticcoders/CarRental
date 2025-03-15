@@ -225,12 +225,20 @@ watch(searchQuery, (newQuery) => {
 });
 </script>
 
-<style>
+<style scoped>
 select {
     width: 100%;
 }
 
 label {
     margin-bottom: 0.5rem;
+}
+
+@media screen and (max-width:480px) {
+    
+    th{
+        font-size: 0.75rem;
+    }
+   
 }
 </style>

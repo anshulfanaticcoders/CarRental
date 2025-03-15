@@ -46,7 +46,7 @@ const accordionItems = [
     <div class="full-w-container min-h-[80vh] bg-[#153B4F1A] rounded-[20px] py-customVerticalSpacing flex flex-col gap-16
     max-[480px]:w-full max-[480px]:rounded-none">
      <div class="flex  items-center justify-center ">
-        <div class="column w-[573px] max-[480px]:text-[2rem] flex flex-col gap-5 text-center">
+        <div class="column w-[573px] max-[480px]:text-[2rem] flex flex-col gap-5 text-center max-[480px]:px-[1.5rem]">
             <span class="text-customPrimaryColor text-[3rem] font-bold max-[480px]:text-[2rem]">FAQ's</span>
         <p class="text-customPrimaryColor text-[1.25rem] max-[480px]:text-[1rem]"> From luxury sedans to budget-friendly compacts, we've got something for every journey</p>
         </div>

@@ -1,29 +1,26 @@
 <script setup>
-import { ref, computed, onMounted, watch } from "vue";
-import { Head, Link, usePage } from "@inertiajs/vue3";
-import AuthenticatedLayout from "@/Layouts/AuthenticatedLayout.vue";
+import { ref, computed, onMounted } from "vue";
 import MyProfileLayout from "@/Layouts/MyProfileLayout.vue";
-import ChatComponent from '@/Components/ChatComponent.vue'; // Import the chat component
+import ChatComponent from '@/Components/ChatComponent.vue';
 import axios from 'axios';
 
 const props = defineProps({
     bookings: Array,
 });
-const searchQuery = ref("");
 
-// Chat-related state
+const searchQuery = ref("");
 const selectedBooking = ref(null);
 const messages = ref([]);
 const otherUser = ref(null);
 const loadingChat = ref(false);
+// Only adding this for mobile responsiveness
+const showChat = ref(false);
 
 const filteredBookings = computed(() => {
     if (!searchQuery.value) return props.bookings;
-
     const query = searchQuery.value.toLowerCase();
-
     return props.bookings.filter(booking =>
-        booking?.booking_number?.toString().toLowerCase().includes(query) || // Ensure it's a string
+        booking?.booking_number?.toString().toLowerCase().includes(query) ||
         booking?.vehicle?.brand?.toLowerCase().includes(query) ||
         booking?.vehicle?.model?.toLowerCase().includes(query) ||
         booking?.pickup_location?.toLowerCase().includes(query) ||
@@ -55,15 +52,14 @@ const getStatusClass = (status) => {
     }
 };
 
-// Function to load chat data for a selected booking
 const loadChat = async (booking) => {
     loadingChat.value = true;
     selectedBooking.value = booking;
+    showChat.value = true; // For mobile responsiveness
     
     try {
         const response = await axios.get(`/messages/${booking.id}`);
         
-        // Extract data from the Inertia response props
         if (response.data && response.data.props) {
             messages.value = response.data.props.messages || [];
             otherUser.value = response.data.props.otherUser || null;
@@ -75,13 +71,10 @@ const loadChat = async (booking) => {
     }
 };
 
-const { bookings } = usePage().props;
-
 const getProfileImage = (customer) => {
   return customer.user.profile && customer.user.profile.avatar ? `${customer.user.profile.avatar}` : '/storage/avatars/default-avatar.svg';
 };
 
-// Format time for last message display
 const formatTime = (dateString) => {
     if (!dateString) return '';
     
@@ -92,7 +85,6 @@ const formatTime = (dateString) => {
     });
 };
 
-// Get the last message for a booking
 const getLastMessage = async (bookingId) => {
     try {
         const response = await axios.get(`/messages/${bookingId}/last`);
@@ -106,7 +98,6 @@ const getLastMessage = async (bookingId) => {
 onMounted(() => {
     console.log("Bookings Data:", props.bookings);
     
-    // If there are bookings, select the first one by default
     if (props.bookings && props.bookings.length > 0) {
         loadChat(props.bookings[0]);
     }
@@ -115,10 +106,10 @@ onMounted(() => {
 
 <template>
     <MyProfileLayout>
-        <div class="flex justify-between items-center bg-[#154D6A0D] rounded-[12px] px-[1rem] py-[1rem] mb-[2rem] ">
+        <div class="flex flex-col sm:flex-row justify-between items-center bg-[#154D6A0D] rounded-[12px] px-[1rem] py-[1rem] mb-[2rem]">
             <p class="text-[1.5rem] text-customPrimaryColor font-bold">Inbox</p>
             <input v-model="searchQuery" type="text" placeholder="Search bookings..."
-                class="w-full sm:w-64 px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                class="w-full sm:w-64 px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 mt-2 sm:mt-0" />
         </div>
 
         <div v-if="filteredBookings.length === 0" class="text-center py-8">
@@ -127,9 +118,9 @@ onMounted(() => {
             </p>
         </div>
 
-        <div v-else class="flex justify-between h-[calc(95vh-200px)]">
+        <div v-else class="flex flex-col sm:flex-row h-[calc(95vh-200px)]">
             <!-- Chat List -->
-            <div class="w-[35%] overflow-y-auto border-r">
+            <div :class="{'hidden sm:block sm:w-[35%]': showChat, 'w-full sm:w-[35%]': !showChat}" class="overflow-y-auto border-r">
                 <div v-for="booking in filteredBookings" :key="booking.id" 
                     class="border-b cursor-pointer"
                     :class="{'bg-blue-50': selectedBooking && booking.id === selectedBooking.id}"
@@ -166,7 +157,28 @@ onMounted(() => {
             </div>
 
             <!-- Chat Window -->
-            <div class="w-[65%] bg-[#154D6A0D] rounded-tr-[12px] rounded-br-[12px] p-4 flex flex-col">
+            <div v-if="!showChat" class="hidden sm:block sm:w-[65%] bg-[#154D6A0D] rounded-tr-[12px] rounded-br-[12px] p-4 flex flex-col">
+                <div v-if="loadingChat" class="flex-1 flex items-center justify-center">
+                    <p>Loading chat...</p>
+                </div>
+                
+                <div v-else-if="!selectedBooking" class="flex-1 flex items-center justify-center">
+                    <p class="text-gray-500">Select a conversation to start chatting</p>
+                </div>
+                
+                <ChatComponent 
+                    v-else 
+                    :booking="selectedBooking" 
+                    :messages="messages" 
+                    :otherUser="otherUser" 
+                    class="h-full"
+                />
+            </div>
+
+            <!-- Mobile Chat Window -->
+            <div v-if="showChat" class="w-full sm:w-[65%] bg-[#154D6A0D] rounded-tr-[12px] rounded-br-[12px] p-4 flex flex-col">
+                <button @click="showChat = false" class="sm:hidden text-blue-500 mb-2">Back to Inbox</button>
+                
                 <div v-if="loadingChat" class="flex-1 flex items-center justify-center">
                     <p>Loading chat...</p>
                 </div>

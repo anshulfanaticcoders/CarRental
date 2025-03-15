@@ -120,11 +120,11 @@ onMounted(fetchUserProfile);
                     <!-- Mobile Navigation Menu -->
                     <div :class="{ 'block': showingNavigationDropdown, 'hidden': !showingNavigationDropdown }"
                         class="sm:hidden">
-                        <div class="pt-2 pb-3 space-y-1">
+                        <!-- <div class="pt-2 pb-3 space-y-1">
                             <ResponsiveNavLink :href="route('dashboard')" :active="route().current('dashboard')">
                                 Dashboard
                             </ResponsiveNavLink>
-                        </div>
+                        </div> -->
 
                         <div class="pt-4 pb-1 border-t border-gray-200">
                             <div class="px-4">
@@ -147,8 +147,8 @@ onMounted(fetchUserProfile);
             <div v-else class="column py-[0.5rem]">
                 <div class="flex justify-between items-center">
                     <!-- Logo -->
-                    <Link href="/">
-                    <ApplicationLogo />
+                    <Link href="/" class="max-[480px]:w-[150px]">
+                    <ApplicationLogo class="max-[480px]:w-full"/>
                     </Link>
 
                     <!-- Navigation -->
@@ -156,12 +156,16 @@ onMounted(fetchUserProfile);
                         <!-- Auth Links -->
                         <div class="column">
                             <Link :href="route('login')"
-                                class="button-primary py-3 px-5 font-semibold text-gray-600 dark:text-gray-400 dark:hover:text-white focus:outline focus:outline-2 focus:rounded-sm focus:outline-red-500">
+                                class="button-primary py-3 px-5 font-semibold text-gray-600 dark:text-gray-400 dark:hover:text-white focus:outline focus:outline-2 focus:rounded-sm
+                                max-[480px]:text-[0.65rem]
+                                ">
                             Log in
                             </Link>
 
                             <Link :href="route('register')"
-                                class="button-secondary ms-4 font-semibold text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white focus:outline focus:outline-2 focus:rounded-sm focus:outline-red-500">
+                                class="button-secondary ms-4 font-semibold text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white focus:outline focus:outline-2 focus:rounded-sm
+                                max-[480px]:text-[0.65rem]
+                                ">
                             Create an Account
                             </Link>
                         </div>

@@ -770,14 +770,14 @@ selectedPackage.value = initialPackageType;
     <AuthenticatedHeaderLayout />
     <main>
         <section>
-            <div class="full-w-container py-customVerticalSpacing">
-                <div class="flex gap-2 items-center mb-1">
+            <div class="full-w-container py-customVerticalSpacing max-[480px]:py-0">
+                <div class="flex gap-2 items-center mb-1 max-[480px]:hidden">
                     <h4 class="font-medium">{{ vehicle?.brand }}</h4>
                     <span class="bg-[#f5f5f5] inline-block px-8 py-2 text-center rounded-[40px]">
                         {{ vehicle?.category.name }}
                     </span>
                 </div>
-                <div class="flex gap-2 items-center text-[1.25rem]">
+                <div class="flex gap-2 items-center text-[1.25rem] max-[480px]:hidden">
                     <div class="car_ratings flex gap-2 items-center" v-if="reviews.length > 0">
                         <div class="flex items-center gap-1">
                             <img v-for="n in 5" :key="n" :src="getStarIcon(averageRating, n)"
@@ -792,8 +792,8 @@ selectedPackage.value = initialPackageType;
                         <span>{{ vehicle?.location }}</span>
                     </div>
                 </div>
-                <div class="w-full mt-[1rem] flex gap-2">
-                    <div class="primary-image w-[60%] max-h-[500px]">
+                <div class="w-full mt-[1rem] flex gap-2 max-[480px]:flex-col">
+                    <div class="primary-image w-[60%] max-h-[500px] max-[480px]:w-full max-[480px]:max-h-auto">
                         <img v-if="vehicle?.images" :src="`${vehicle.images.find(
                             (image) => image.image_type === 'primary'
                         )?.image_url
@@ -801,85 +801,108 @@ selectedPackage.value = initialPackageType;
                     </div>
 
                     <!-- Display the gallery images -->
-                    <div class="gallery w-[50%] grid grid-cols-2 gap-2 max-h-[245px]">
+                    <div class="gallery w-[50%] grid grid-cols-2 gap-2 max-h-[245px] max-[480px]:w-full max-[480px]:flex max-[480px]:h-[100px]">
                         <div v-for="(image, index) in vehicle?.images.filter(
                             (image) => image.image_type === 'gallery'
-                        )" :key="image.id" class="gallery-item">
+                        )" :key="image.id" class="gallery-item max-[480px]:flex-1">
                             <img :src="`${image.image_url}`" :alt="`Gallery Image ${index + 1}`"
-                                class="w-full h-[245px] object-cover rounded-lg" />
+                                class="w-full h-[245px] object-cover rounded-lg max-[480px]:h-full" />
                         </div>
                     </div>
                 </div>
-                <div class="flex justify-between mt-[4rem]">
-                    <div class="column w-[50%]">
-                        <div class="column flex flex-col gap-10">
+                <div class="mobile_display hidden max-[480px]:block max-[480px]:mt-8">
+                    <div class="flex gap-2 items-center mb-1">
+                    <h4 class="font-medium max-[480px]:text-[1.25rem]">{{ vehicle?.brand }}</h4>
+                    <span class="bg-[#f5f5f5] inline-block px-8 py-2 text-center rounded-[40px] max-[480px]:text-[1rem]">
+                        {{ vehicle?.category.name }}
+                    </span>
+                </div>
+                <div class="flex gap-2 items-center text-[1.25rem]">
+                    <div class="car_ratings flex gap-2 items-center" v-if="reviews.length > 0">
+                        <div class="flex items-center gap-1">
+                            <img v-for="n in 5" :key="n" :src="getStarIcon(averageRating, n)"
+                                :alt="getStarAltText(averageRating, n)" class="w-[20px] h-[20px]" />
+                        </div>
+                        <span>{{ averageRating }} ({{ reviews.length }})</span>
+                    </div>
+                    <p v-else class="max-[480px]:text-[12px] max-[480px]:mt-2">No ratings yet.</p>
+
+                    <div class="dot_seperator"><strong>.</strong></div>
+                    <div class="car_location">
+                        <span class="max-[480px]:text-[12px]">{{ vehicle?.location }}</span>
+                    </div>
+                </div>
+                </div>
+                <div class="flex justify-between mt-[4rem] max-[480px]:flex-col max-[480px]:mt-10">
+                    <div class="column w-[50%] max-[480px]:w-full">
+                        <div class="column flex flex-col gap-10 max-[480px]:gap-5">
                             <!-- Vehicle Features Section -->
-                            <span class="text-[2rem] font-medium">Car Overview</span>
-                            <div class="features grid grid-cols-4 gap-x-[2rem] gap-y-[2rem]">
+                            <span class="text-[2rem] font-medium max-[480px]:text-[1rem]">Car Overview</span>
+                            <div class="features grid grid-cols-4 gap-x-[2rem] gap-y-[2rem] max-[480px]:grid-cols-3">
                                 <div class="feature-item items-center flex gap-3">
-                                    <img :src="peopleIcon" alt="" class='w-[30px] h-[30px]' />
+                                    <img :src="peopleIcon" alt="" class='w-[30px] h-[30px] max-[480px]:w-[24px] max-[480px]:h-[24px]' />
                                     <div class="flex flex-col">
-                                        <span class="text-customLightGrayColor text-[1rem]">People</span>
-                                        <span class="font-medium text-[1rem]">{{
+                                        <span class="text-customLightGrayColor text-[1rem] max-[480px]:text-[0.75rem]">People</span>
+                                        <span class="font-medium text-[1rem] max-[480px]:text-[0.85rem]">{{
                                             vehicle?.seating_capacity
                                         }}</span>
                                     </div>
                                 </div>
                                 <div class="feature-item items-center flex gap-3">
-                                    <img :src="doorIcon" alt="" class='w-[30px] h-[30px]' />
+                                    <img :src="doorIcon" alt="" class='w-[30px] h-[30px] max-[480px]:w-[24px] max-[480px]:h-[24px]' />
                                     <div class="flex flex-col">
-                                        <span class="text-customLightGrayColor text-[1rem]">Doors</span>
-                                        <span class="font-medium text-[1rem]">{{
+                                        <span class="text-customLightGrayColor text-[1rem] max-[480px]:text-[0.75rem]">Doors</span>
+                                        <span class="font-medium text-[1rem] max-[480px]:text-[0.85rem]">{{
                                             vehicle?.number_of_doors
                                         }}</span>
                                     </div>
                                 </div>
                                 <div class="feature-item items-center flex gap-3">
-                                    <img :src="luggageIcon" alt="" class='w-[30px] h-[30px]' />
+                                    <img :src="luggageIcon" alt="" class='w-[30px] h-[30px] max-[480px]:w-[24px] max-[480px]:h-[24px]' />
                                     <div class="flex flex-col">
-                                        <span class="text-customLightGrayColor text-[1rem]">Luggage</span>
-                                        <span class="font-medium text-[1rem]">{{
+                                        <span class="text-customLightGrayColor text-[1rem] max-[480px]:text-[0.75rem]">Luggage</span>
+                                        <span class="font-medium text-[1rem] max-[480px]:text-[0.85rem]">{{
                                             vehicle?.luggage_capacity
                                         }}</span>
                                     </div>
                                 </div>
                                 <div class="feature-item items-center flex gap-3">
-                                    <img :src="transmisionIcon" alt="" class='w-[30px] h-[30px]' />
+                                    <img :src="transmisionIcon" alt="" class='w-[30px] h-[30px] max-[480px]:w-[24px] max-[480px]:h-[24px]' />
                                     <div class="flex flex-col">
-                                        <span class="text-customLightGrayColor text-[1rem]">Transmission</span>
-                                        <span class="font-medium capitalize">{{
+                                        <span class="text-customLightGrayColor text-[1rem] max-[480px]:text-[0.75rem]">Transmission</span>
+                                        <span class="font-medium capitalize max-[480px]:text-[0.85rem]">{{
                                             vehicle?.transmission
                                         }}</span>
                                     </div>
                                 </div>
                                 <div class="feature-item items-center flex gap-3">
-                                    <img :src="fuelIcon" alt="" class='w-[30px] h-[30px]' />
+                                    <img :src="fuelIcon" alt="" class='w-[30px] h-[30px] max-[480px]:w-[24px] max-[480px]:h-[24px]' />
                                     <div class="flex flex-col">
-                                        <span class="text-customLightGrayColor text-[1rem]">Fuel Type</span>
-                                        <span class="font-medium capitalize">{{
+                                        <span class="text-customLightGrayColor text-[1rem] max-[480px]:text-[0.75rem]">Fuel Type</span>
+                                        <span class="font-medium capitalize max-[480px]:text-[0.85rem]">{{
                                             vehicle?.fuel
                                         }}</span>
                                     </div>
                                 </div>
                                 <div class="feature-item items-center flex gap-3">
-                                    <img :src="enginepowerIcon" alt="" class='w-[30px] h-[30px]' />
+                                    <img :src="enginepowerIcon" alt="" class='w-[30px] h-[30px] max-[480px]:w-[24px] max-[480px]:h-[24px]' />
                                     <div class="flex flex-col">
-                                        <span class="text-customLightGrayColor text-[1rem]">Horsepower</span>
-                                        <span class="font-medium text-[1rem]">{{ vehicle?.horsepower }} hp</span>
+                                        <span class="text-customLightGrayColor text-[1rem] max-[480px]:text-[0.75rem]">Horsepower</span>
+                                        <span class="font-medium text-[1rem] max-[480px]:text-[0.85rem]">{{ vehicle?.horsepower }} hp</span>
                                     </div>
                                 </div>
                                 <div class="feature-item items-center flex gap-3">
-                                    <img :src="carbonIcon" alt="" class='w-[30px] h-[30px]' />
+                                    <img :src="carbonIcon" alt="" class='w-[30px] h-[30px] max-[480px]:w-[24px] max-[480px]:h-[24px]' />
                                     <div class="flex flex-col">
-                                        <span class="text-customLightGrayColor text-[1rem]">Co2 Emission</span>
-                                        <span class="font-medium text-[1rem]">{{ vehicle?.co2 }} (g/km)</span>
+                                        <span class="text-customLightGrayColor text-[1rem] max-[480px]:text-[0.75rem]">Co2 Emission</span>
+                                        <span class="font-medium text-[1rem] max-[480px]:text-[0.85rem]">{{ vehicle?.co2 }} (g/km)</span>
                                     </div>
                                 </div>
                                 <div class="feature-item items-center flex gap-3">
-                                    <img :src="mileageIcon" alt="" class='w-[30px] h-[30px]' />
+                                    <img :src="mileageIcon" alt="" class='w-[30px] h-[30px] max-[480px]:w-[24px] max-[480px]:h-[24px]' />
                                     <div class="flex flex-col">
-                                        <span class="text-customLightGrayColor text-[1rem]">Mileage</span>
-                                        <span class="font-medium text-[1rem]">{{ vehicle?.mileage }} km/d</span>
+                                        <span class="text-customLightGrayColor text-[1rem] max-[480px]:text-[0.75rem]">Mileage</span>
+                                        <span class="font-medium text-[1rem] max-[480px]:text-[0.85rem]">{{ vehicle?.mileage }} km/d</span>
                                     </div>
                                 </div>
 
@@ -888,13 +911,13 @@ selectedPackage.value = initialPackageType;
                         </div>
 
                         <div class="features mt-[3rem]">
-                            <span class="text-[2rem] font-medium">Features</span>
-                            <div class="grid grid-cols-4 mt-[2rem] gap-y-[2rem]">
-                                <div class="flex items-center gap-3" v-if="vehicle?.features" v-for="(feature, index) in JSON.parse(
+                            <span class="text-[2rem] font-medium max-[480px]:text-[1rem]">Features</span>
+                            <div class="grid grid-cols-4 mt-[2rem] gap-y-[2rem] max-[480px]:mt-[1rem]">
+                                <div class="flex items-center gap-3 max-[480px]:text-[0.95rem]" v-if="vehicle?.features" v-for="(feature, index) in JSON.parse(
                                     vehicle.features
                                 )" :key="index">
                                     <img :src="featureIconMap[feature]" alt="Feature Icon"
-                                        class="feature-icon w-[30px] h-[30px]" />
+                                        class="feature-icon w-[30px] h-[30px] max-[480px]:w-[24px] max-[480px]:h-[24px" />
                                     {{ feature }}
                                 </div>
                                 <div v-else>
@@ -903,20 +926,20 @@ selectedPackage.value = initialPackageType;
                             </div>
                         </div>
 
-                        <div class=" mt-[3rem]">
-                            <span class="text-[2rem] font-medium">Car Location</span>
-                            <div class="gap-y-[2rem]">
+                        <div class="mt-[3rem] max-[480px]:mt-[2rem]">
+                            <span class="text-[2rem] font-medium max-[480px]:text-[1rem]">Car Location</span>
+                            <div class="gap-y-[2rem] max-[480px]:mt-[0.5rem]">
                                 {{ vehicle?.location }}
                             </div>
                             <div id="map" class="h-full rounded-lg mt-4"></div>
                         </div>
 
-                        <div class="mt-[5rem] benefits">
-                            <span class="text-[2rem] font-medium mb-5 inline-block">Rental Conditions & Banefits</span>
+                        <div class="mt-[5rem] benefits max-[480px]:mt-[2rem]">
+                            <span class="text-[2rem] font-medium mb-5 inline-block max-[480px]:text-[1rem]">Rental Conditions & Banefits</span>
                             <ul class="vehicle-benefits p-4 border rounded-lg shadow-sm bg-white flex flex-col gap-2">
                                 <!-- Limited Kilometer Display -->
                                 <li v-if="vehicle?.benefits?.limited_km_per_day" class="flex items-center gap-1">
-                                    <p class="text-[1.2rem] text-customPrimaryColor font-medium">
+                                    <p class="text-[1.2rem] max-[480px]:text-[0.95rem] text-customPrimaryColor font-medium">
                                         Limited Kilometer Per Day: {{ vehicle?.benefits?.limited_km_per_day_range }} km
                                     </p>
                                     <span class="text-customDarkBlackColor font-medium">
@@ -925,7 +948,7 @@ selectedPackage.value = initialPackageType;
                                     </span>
                                 </li>
                                 <li v-if="vehicle?.benefits?.limited_km_per_week" class="flex items-center gap-1">
-                                    <p class="text-[1.2rem] text-customPrimaryColor font-medium">
+                                    <p class="text-[1.2rem] max-[480px]:text-[0.95rem] text-customPrimaryColor font-medium">
                                         Limited Kilometer Per Week: {{ vehicle?.benefits?.limited_km_per_week_range }}
                                         km
                                     </p>
@@ -935,7 +958,7 @@ selectedPackage.value = initialPackageType;
                                     </span>
                                 </li>
                                 <li v-if="vehicle?.benefits?.limited_km_per_month" class="flex items-center gap-1">
-                                    <p class="text-[1.2rem] text-customPrimaryColor font-medium">
+                                    <p class="text-[1.2rem] max-[480px]:text-[0.95rem] text-customPrimaryColor font-medium">
                                         Limited Kilometer Per Month: {{ vehicle?.benefits?.limited_km_per_month_range }}
                                         km
                                     </p>
@@ -948,7 +971,7 @@ selectedPackage.value = initialPackageType;
                                 <!-- Cancellation Availability Display -->
                                 <li v-if="vehicle?.benefits?.cancellation_available_per_day"
                                     class="flex items-center gap-1">
-                                    <p class="text-[1.2rem] text-customPrimaryColor font-medium">
+                                    <p class="text-[1.2rem] max-[480px]:text-[0.95rem] text-customPrimaryColor font-medium">
                                         Cancellation Available (for daily package): {{
                                             vehicle?.benefits?.cancellation_available_per_day_date }} days before rental
                                         date
@@ -956,7 +979,7 @@ selectedPackage.value = initialPackageType;
                                 </li>
                                 <li v-if="vehicle?.benefits?.cancellation_available_per_week"
                                     class="flex items-center gap-1">
-                                    <p class="text-[1.2rem] text-customPrimaryColor font-medium">
+                                    <p class="text-[1.2rem] max-[480px]:text-[0.95rem] text-customPrimaryColor font-medium">
                                         Cancellation Available (for weekly package): {{
                                             vehicle?.benefits?.cancellation_available_per_week_date }} days before rental
                                         date
@@ -964,7 +987,7 @@ selectedPackage.value = initialPackageType;
                                 </li>
                                 <li v-if="vehicle?.benefits?.cancellation_available_per_month"
                                     class="flex items-center gap-1">
-                                    <p class="text-[1.2rem] text-customPrimaryColor font-medium">
+                                    <p class="text-[1.2rem] max-[480px]:text-[0.95rem] text-customPrimaryColor font-medium">
                                         Cancellation Available (for monthly package): {{
                                             vehicle?.benefits?.cancellation_available_per_month_date }} days before rental
                                         date
@@ -973,7 +996,7 @@ selectedPackage.value = initialPackageType;
 
                                 <!-- Minimum Driver Age -->
                                 <li v-if="vehicle?.benefits?.minimum_driver_age" class="flex items-center gap-1">
-                                    <p class="text-[1.2rem] text-customPrimaryColor font-medium">
+                                    <p class="text-[1.2rem] max-[480px]:text-[0.95rem] text-customPrimaryColor font-medium">
                                         Minimum Driver Age: {{ vehicle?.benefits?.minimum_driver_age }} years
                                     </p>
                                 </li>
@@ -988,41 +1011,42 @@ selectedPackage.value = initialPackageType;
 
                         </div>
 
-                        <div class="mt-[5rem]">
-                            <span class="text-[2rem] font-medium">Meet Vehicle Vendor</span>
+                        <div class="mt-[5rem] max-[480px]:mt-[2rem]">
+                            <span class="text-[2rem] font-medium max-[480px]:text-[1rem]">Meet Vehicle Vendor</span>
                             <div
-                                class="mt-[2rem] flex gap-5 border-[1px] border-customPrimaryColor rounded-[0.75em] px-[1rem] py-[2rem]">
+                                class="mt-[2rem] flex gap-5 border-[1px] border-customPrimaryColor
+                                 rounded-[0.75em] px-[1rem] py-[2rem] max-[480px]:py-[1rem]">
                                 <img :src="vehicle.vendor_profile?.avatar
                                     ? `${vehicle.vendor_profile.avatar}`
                                     : '/storage/avatars/default-avatar.svg'" alt="User Avatar"
-                                    class="w-[100px] h-[100px] rounded-full object-cover" />
+                                    class="w-[100px] h-[100px] max-[480px]:w-[60px] max-[480px]:h-[60px] rounded-full object-cover" />
                                 <div>
-                                    <h4 class="text-customPrimaryColor text-[1.75rem] font-medium">
+                                    <h4 class="text-customPrimaryColor text-[1.75rem] font-medium max-[480px]:text-[1rem]">
                                         {{ vehicle.user.first_name }} {{ vehicle.user.last_name }}
                                     </h4>
-                                    <p class="text-customLightGrayColor">{{ vehicle.vendor_profile.about }}</p>
+                                    <p class="text-customLightGrayColor max-[480px]:text-[0.95rem]">{{ vehicle.vendor_profile.about }}</p>
                                 </div>
                             </div>
                         </div>
                     </div>
 
-                    <div class="column w-[40%]">
+                    <div class="column w-[40%] max-[480px]:w-full max-[480px]:mt-[2rem]">
                         <div class="paymentInfoDiv p-5 sticky top-[3rem]">
-                            <div class="flex items-center justify-between gap-3">
-                                <h4>{{ vehicle?.brand }} {{ vehicle?.model }}</h4>
-                                <span class="bg-[#f5f5f5] inline-block px-8 py-2 text-center rounded-[40px]">
+                            <div class="flex items-center justify-between gap-3 max-[480px]:mb-4">
+                                <h4 class="max-[480px]:text-[1.2rem]">{{ vehicle?.brand }} {{ vehicle?.model }}</h4>
+                                <span class="bg-[#f5f5f5] inline-block px-8 py-2 text-center rounded-[40px] max-[480px]:text-[0.95rem]">
                                     {{ vehicle?.category.name }}
                                 </span>
                                 <div class="icons flex items-center gap-3">
-                                    <Link href="" class=""><img :src="ShareIcon" alt="" /></Link>
+                                    <Link href="" class="max-[480px]:w-[1.5rem]"><img :src="ShareIcon" alt="" /></Link>
                                     <button @click.stop="toggleFavourite(vehicle)" class="heart-icon"
                                         :class="{ 'filled-heart': vehicle.is_favourite }">
                                         <img :src="vehicle.is_favourite ? FilledHeart : Heart" alt="Favorite"
-                                            class="w-[2rem] transition-colors duration-300" />
+                                            class="w-[2rem] max-[480px]:w-[1.5rem] transition-colors duration-300" />
                                     </button>
                                 </div>
                             </div>
-                            <div>
+                            <div class="max-[480px]:text-[0.85rem]">
                                 <span>Hosted by
                                     <span class="vendorName uppercase">
                                         {{ vehicle?.user.first_name }}
@@ -1031,9 +1055,9 @@ selectedPackage.value = initialPackageType;
                                 </span>
                             </div>
                             <div class="car_short_info mt-[1rem] flex gap-3">
-                                <img :src="carIcon" alt="" />
+                                <img :src="carIcon" alt="" class="max-[480px]:w-[24px]"/>
                                 <div class="features">
-                                    <span class="text-[1.15rem] capitalize">
+                                    <span class="text-[1.15rem] capitalize max-[480px]:text-[0.85rem]">
                                         {{ vehicle?.transmission }} .
                                         {{ vehicle?.fuel }} .
                                         {{ vehicle?.seating_capacity }} Seats
@@ -1043,7 +1067,8 @@ selectedPackage.value = initialPackageType;
                             <div class="extra_details flex gap-5 mt-[1rem]">
                                 
                                 <div class="col flex gap-3">
-                                    <img :src="mileageIcon" alt="" /><span class="text-[1.15rem]">{{ vehicle?.mileage }}
+                                    <img :src="mileageIcon" alt="" class="max-[480px]:w-[24px]"/>
+                                    <span class="text-[1.15rem] max-[480px]:text-[0.85rem]">{{ vehicle?.mileage }}
                                         km/d</span>
                                 </div>
                             </div>
@@ -1051,19 +1076,19 @@ selectedPackage.value = initialPackageType;
                             <div class="ratings"></div>
 
                             <div class="location mt-[2rem]">
-                                <span class="text-[1.5rem] font-medium mb-[1rem] inline-block">Location</span>
+                                <span class="text-[1.5rem] font-medium mb-[1rem] inline-block max-[480px]:text-[1.2rem]">Location</span>
                                 <div class="col flex items-start gap-4">
-                                    <img :src="pickupLocationIcon" alt="" />
+                                    <img :src="pickupLocationIcon" alt="" class="max-[480px]:w-[24px]"/>
                                     <div class="flex flex-col gap-1">
-                                        <span class="text-[1.25rem] text-medium">{{ vehicle?.location }}</span>
-                                        <span>{{ route().params.pickup_date }}</span>
+                                        <span class="text-[1.25rem] text-medium max-[480px]:text-[1rem]">{{ vehicle?.location }}</span>
+                                        <span class="max-[480px]:text-[0.95rem]">{{ route().params.pickup_date }}</span>
                                     </div>
                                 </div>
                                 <div class="col flex items-start gap-4 mt-10">
-                                    <img :src="returnLocationIcon" alt="" />
+                                    <img :src="returnLocationIcon" alt="" class="max-[480px]:w-[24px]"/>
                                     <div class="flex flex-col gap-1">
-                                        <span class="text-[1.25rem] text-medium">{{ vehicle?.location }}</span>
-                                        <span>{{ route().params.return_date }}</span>
+                                        <span class="text-[1.25rem] text-medium max-[480px]:text-[1rem]">{{ vehicle?.location }}</span>
+                                        <span class="max-[480px]:text-[0.95rem]">{{ route().params.return_date }}</span>
                                     </div>
                                 </div>
 
@@ -1071,7 +1096,7 @@ selectedPackage.value = initialPackageType;
 
                                 <div class="pricing py-5">
                                     <div class="column flex items-center justify-between">
-                                        <div class="mx-auto px-6">
+                                        <div class="mx-auto px-6 max-[480px]:px-0 max-[480px]:w-full">
                                             <Card>
                                                 <CardHeader>
                                                     <CardTitle class="inline-block text-[1rem]">Choose Your Rental
@@ -1164,16 +1189,16 @@ selectedPackage.value = initialPackageType;
                                                     <!-- Show Total Price -->
                                                     <div v-if="form.date_from && form.date_to && !dateError"
                                                         class="mt-6 p-4 bg-blue-50 rounded-lg">
-                                                        <p class="text-lg font-semibold">
+                                                        <p class="text-lg max-[480px]:text-[1rem] font-semibold">
                                                             Current Price: {{formatPrice(pricingPackages.find(pkg =>
                                                                 pkg.id === selectedPackage).price)}}
                                                         </p>
                                                         <p v-if="pricingPackages.find(pkg => pkg.id === selectedPackage).discount"
-                                                            class="text-lg text-green-600">
+                                                            class="text-lg max-[480px]:text-[1rem] text-green-600">
                                                             Discount: -{{formatPrice(pricingPackages.find(pkg => pkg.id
                                                                 === selectedPackage).discount)}}
                                                         </p>
-                                                        <p class="text-[1.75rem] font-semibold">
+                                                        <p class="text-[1.75rem] max-[480px]:text-[1.5rem] font-semibold">
                                                             Total Price: {{ formatPrice(calculateTotalPrice) }}
                                                         </p>
                                                         <p class="text-sm text-gray-600">
@@ -1208,7 +1233,7 @@ selectedPackage.value = initialPackageType;
                                     </Dialog>
                                     <div class="column mt-[2rem]">
                                         <button @click="proceedToPayment"
-                                            class="button-primary block text-center p-5 w-full">Proceed to Pay</button>
+                                            class="button-primary block text-center p-5 w-full max-[480px]:text-[0.875rem]">Proceed to Pay</button>
                                     </div>
                                     <div
                                         class="column text-center mt-[2rem] flex flex-col justify-center items-center gap-5">
@@ -1230,14 +1255,14 @@ selectedPackage.value = initialPackageType;
         <section class="" style="
                         background: linear-gradient(to bottom, #FFFFFF, #F8F8F8); 
                     ">
-            <div class="reviews-section mt-[3rem] full-w-container">
+            <div class="reviews-section mt-[3rem] full-w-container max-[480px]:mt-0">
                 <span class="text-[2rem] font-bold">Overall Rating</span>
 
                 <div v-if="isLoading">Loading reviews...</div>
                 <div v-else-if="reviews && reviews.length > 0">
-                    <Carousel class="relative w-full py-[4rem] px-[2rem]" :plugins="[plugin]" @mouseenter="plugin.stop"
+                    <Carousel class="relative w-full py-[4rem] px-[2rem] max-[480px]:px-0" :plugins="[plugin]" @mouseenter="plugin.stop"
                         @mouseleave="[plugin.reset(), plugin.play(), console.log('Running')]">
-                        <CarouselContent>
+                        <CarouselContent class="max-[480px]:px-5">
                             <CarouselItem v-for="review in reviews" :key="review.id"
                                 class="pl-1 md:basis-1/2 lg:basis-1/3 ml-[1rem]">
                                 <Card class="h-[15rem]">
@@ -1248,7 +1273,7 @@ selectedPackage.value = initialPackageType;
                                                     alt="User Avatar"
                                                     class="w-[50px] h-[50px] rounded-full object-cover" />
                                                 <div>
-                                                    <h4 class="text-customPrimaryColor font-medium">{{
+                                                    <h4 class="text-customPrimaryColor font-medium max-[480px]:text-[1.1rem]">{{
                                                         review.user.first_name }} {{ review.user.last_name }}</h4>
                                                     <div class="flex items-center gap-1">
                                                         <div class="star-rating">
@@ -1261,7 +1286,7 @@ selectedPackage.value = initialPackageType;
                                                     </div>
                                                 </div>
                                             </div>
-                                            <p class="mt-2">{{ review.review_text }}</p>
+                                            <p class="mt-2 max-[480px]:text-[0.875rem]">{{ review.review_text }}</p>
                                             <div v-if="review.reply_text"
                                                 class="mt-2 reply-text border-[1px] rounded-[0.75em] px-[1rem] py-[1rem] bg-[#f5f5f5]">
                                                 <p class="text-gray-600">Vendor Reply:</p>
@@ -1276,7 +1301,7 @@ selectedPackage.value = initialPackageType;
                         <CarouselNext />
                     </Carousel>
                 </div>
-                <div v-else class="mt-[2rem]">
+                <div v-else class="mt-[2rem] pb-[3rem]">
                     <p>No reviews yet.</p>
                 </div>
             </div>
@@ -1284,18 +1309,23 @@ selectedPackage.value = initialPackageType;
 
         <section class="full-w-container py-customVerticalSpacing">
             <div
-                class="mt-[2rem] flex items-center justify-center gap-5 border-[1px] border-customPrimaryColor rounded-[0.75em] px-[1rem] py-[2rem]">
-                <div class="flex flex-col items-center gap-5 w-[50%]">
+                class="mt-[2rem] max-[480px]:mt-0 flex items-center justify-center gap-5 border-[1px] border-customPrimaryColor rounded-[0.75em] px-[1rem] py-[2rem]">
+                <div class="flex flex-col items-center gap-5 w-[50%] max-[480px]:w-full">
                     <img :src="vehicle.vendor_profile?.avatar
                         ? `${vehicle.vendor_profile.avatar}`
                         : '/storage/avatars/default-avatar.svg'" alt="User Avatar"
-                        class="w-[100px] h-[100px] rounded-full object-cover" />
-                    <h4 class="text-customPrimaryColor text-[1.75rem] font-medium">
+                        class="w-[100px] h-[100px] max-[480px]:w-[60px] max-[480px]:h-[60px] rounded-full object-cover" />
+                    <h4 class="text-customPrimaryColor text-[1.75rem] font-medium max-[480px]:text-[1.2rem]">
                         {{ vehicle.user.first_name }} {{ vehicle.user.last_name }}
                     </h4>
                     <span>On VROOEM since {{ formatDate(vehicle.user.created_at) }}</span>
-                    <div class="flex justify-between w-full">
+                    <div class="flex justify-center w-full max-[480px]:flex-wrap max-[480px]:gap-5">
                         <div class="col flex flex-col items-center">
+                            <p class="capitalize text-[1.5rem] text-customPrimaryColor font-bold max-[480px]:text-[1.2rem]">{{
+                                vehicle?.vendor_profile_data.status }}</p>
+                            <span class="text-customLightGrayColor max-[480px]:text-[1rem]">Verification Status</span>
+                        </div>
+                        <!-- <div class="col flex flex-col items-center">
                             <p class="capitalize text-[1.5rem] text-customPrimaryColor font-bold">{{
                                 vehicle?.vendor_profile_data.status }}</p>
                             <span class="text-customLightGrayColor">Verification Status</span>
@@ -1309,12 +1339,7 @@ selectedPackage.value = initialPackageType;
                             <p class="capitalize text-[1.5rem] text-customPrimaryColor font-bold">{{
                                 vehicle?.vendor_profile_data.status }}</p>
                             <span class="text-customLightGrayColor">Verification Status</span>
-                        </div>
-                        <div class="col flex flex-col items-center">
-                            <p class="capitalize text-[1.5rem] text-customPrimaryColor font-bold">{{
-                                vehicle?.vendor_profile_data.status }}</p>
-                            <span class="text-customLightGrayColor">Verification Status</span>
-                        </div>
+                        </div> -->
                     </div>
                 </div>
             </div>
@@ -1324,7 +1349,7 @@ selectedPackage.value = initialPackageType;
     <Footer />
 </template>
 
-<style>
+<style scoped>
 .overview .col:not(:last-child) {
     border-bottom: 1px solid #2b2b2b;
 }
@@ -1402,5 +1427,22 @@ selectedPackage.value = initialPackageType;
     border-radius: 100%;
     display: flex;
     margin-right: 0.75rem;
+}
+
+
+@media screen and (max-width:480px) {
+    .reviews-section .next-btn {
+    top: 100%!important;
+    left: 60%;
+    justify-content: center;
+    z-index: 99;
+}
+
+.reviews-section .prev-btn {
+    top: 100%!important;
+    left: 30% !important;
+    justify-content: center;
+    z-index: 99;
+}
 }
 </style>

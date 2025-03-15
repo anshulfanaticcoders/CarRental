@@ -490,13 +490,13 @@ const searchQuery = computed(() => {
     </div>
 
     <div class="full-w-container mx-auto mb-[4rem]">
-        <div class="flex gap-4">
+        <div class="flex gap-4 max-[480px]:flex-col">
             <!-- Left Column - Vehicle List -->
             <div class="w-full">
                 <div :class="[
                     'grid gap-5',
                     showMap ? 'w-full grid-cols-2' : 'w-full grid-cols-4'
-                ]">
+                ]" class="max-[480px]:grid-cols-1">
                     <div v-if="!vehicles.data || vehicles.data.length === 0" class="text-center text-gray-500">
                         No vehicles available at the moment.
                     </div>

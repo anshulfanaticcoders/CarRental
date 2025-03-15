@@ -1,8 +1,8 @@
 <template>
     <MyProfileLayout>
-        <div class="flex flex-col gap-4 w-[95%] ml-[1.5rem]">
+        <div class="flex flex-col gap-4 w-[95%] ml-[1.5rem] max-[480px]:w-full max-[480px]:ml-0">
             <div class="flex items-center justify-between mt-[2rem]">
-                <span class="text-[1.5rem] font-semibold">My Documents</span>
+                <span class="text-[1.5rem] font-semibold max-[480px]:text-[1.2rem]">My Documents</span>
                 <Button 
                     @click="openUploadDialog" 
                     :disabled="documents.length >= 3"
@@ -79,7 +79,7 @@
                         <TableRow v-for="document in documents" :key="document.id">
                             <TableCell>{{ formatDocumentType(document.document_type) }}</TableCell>
                             <TableCell>
-                                <img :src="`${document.document_file}`" alt="Document Image" class="h-20 w-[150px] object-cover"/>
+                                <img :src="`${document.document_file}`" alt="Document Image" class="h-20 w-[150px] object-cover max-[480px]:w-[60px] max-[480px]:h-10"/>
                             </TableCell>
                             <TableCell>
                                 <Badge :variant="getStatusBadgeVariant(document.verification_status)">
@@ -197,3 +197,17 @@ const getStatusBadgeVariant = (status) => {
            status === "pending" ? "secondary" : "destructive";
 };
 </script>
+
+<style scoped>
+
+@media screen and (max-width:480px) {
+    
+    th{
+        font-size: 0.75rem;
+    }
+    td{
+        font-size: 0.75rem;
+    }
+   
+}
+</style>

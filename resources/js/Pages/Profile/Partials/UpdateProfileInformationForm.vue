@@ -284,11 +284,11 @@ const getFlagUrl = (countryCode) => {
                 </div>
 
 
-                <h2 class="text-[1.5rem] font-medium text-gray-900">Profile</h2>
+                <h2 class="text-[1.5rem] font-medium text-gray-900 max-[480px]:text-[1.2rem]">Profile</h2>
 
                 <div class="col-span-2">
-                    <p class="mb-[1rem] text-customLightGrayColor font-medium">Who am I? <i>(optional)</i></p>
-                    <InputLabel for="about" value="" />
+                    <p class="mb-[1rem] text-customLightGrayColor font-medium max-[480px]:text-[0.95rem]">Who am I? <i>(optional)</i></p>
+                    <InputLabel for="about" value="About" />
                     <TextArea id="about" class="mt-1 block w-full" v-model="form.about" />
                     <InputError class="mt-2" :message="form.errors.about" />
                 </div>
@@ -303,7 +303,7 @@ const getFlagUrl = (countryCode) => {
 
 
                 <div class="">
-                    <h2 class="text-[1.5rem] font-medium text-gray-900">Tax Identification Number</h2>
+                    <h2 class="text-[1.5rem] font-medium text-gray-900 max-[480px]:text-[1.2rem] max-[480px]:mb-4">Tax Identification Number</h2>
                     <InputLabel for="tax_identification" value="Tax Identification Number" />
                     <TextInput id="tax_identification" type="text" class="mt-1 block w-full"
                         v-model="form.tax_identification" />
@@ -346,5 +346,20 @@ select {
     background-color: #4caf50;
     /* Green color for filled portion */
     transition: width 0.5s ease-in-out;
+}
+
+@media screen and (max-width:480px) {
+    input{
+        font-size: 0.75rem;
+    }
+    select{
+        font-size: 0.75rem;
+    }
+    textarea{
+        font-size: 0.75rem;
+    }
+    label{
+        font-size: 0.75rem!important;
+    }
 }
 </style>

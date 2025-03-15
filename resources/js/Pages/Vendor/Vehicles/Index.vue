@@ -205,3 +205,16 @@ const filteredVehicles = computed(() => {
 });
 
 </script>
+
+<style scoped>
+@media screen and (max-width:480px) {
+    
+    th{
+        font-size: 0.75rem;
+    }
+    td{
+        font-size: 0.75rem;
+        text-wrap-mode: nowrap;
+    }
+}
+</style>

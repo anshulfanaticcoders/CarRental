@@ -2,7 +2,7 @@
   <MyProfileLayout>
     <div class="">
       <div class="mb-6">
-        <p class="text-[1.75rem] font-bold text-gray-800 bg-customLightPrimaryColor p-4 rounded-[12px] mb-[1rem]">
+        <p class="text-[1.75rem] font-bold text-gray-800 bg-customLightPrimaryColor p-4 rounded-[12px] mb-[1rem] max-[480px]:text-[1.2rem]">
           Payment History</p>
         <p class="text-gray-600">View and manage all your booking payments</p>
       </div>
@@ -143,3 +143,16 @@ const filteredPayments = computed(() => {
   });
 });
 </script>
+
+<style scoped>
+@media screen and (max-width:480px) {
+    
+    th{
+        font-size: 0.75rem;
+    }
+    td{
+        font-size: 0.75rem;
+        text-wrap-mode: nowrap;
+    }
+}
+</style>

@@ -13,16 +13,25 @@ import clockIcon from "../../assets/clockIcon.svg";
 import dateblockingIcon from "../../assets/dateblockingIcon.svg";
 import logoutIcon from '../../assets/logoutIcon.svg';
 
-// Get the isCollapsed state from parent component or set default
+// Get the states from parent component
 const isCollapsed = inject('isSidebarCollapsed', ref(false));
+const isMobileMenuOpen = inject('isMobileMenuOpen', ref(false));
+const isMobile = inject('isMobile', ref(false));
+
 const toggleSidebar = inject('toggleSidebar', () => {
   isCollapsed.value = !isCollapsed.value;
   // Emit the event for the parent layout
   emit('toggle-sidebar');
 });
 
+const toggleMobileMenu = inject('toggleMobileMenu', () => {
+  isMobileMenuOpen.value = !isMobileMenuOpen.value;
+  // Emit the event for the parent layout
+  emit('toggle-mobile-menu');
+});
+
 // Define emits
-const emit = defineEmits(['toggle-sidebar']);
+const emit = defineEmits(['toggle-sidebar', 'toggle-mobile-menu']);
 
 // Existing logic
 const user = ref(null);
@@ -101,7 +110,6 @@ const vendorMenus = [
       { name: "Profile", path: "/profile" },
       { name: "Overview", path: "/overview" },
       { name: "Documents", path: "/vendor/documents" },
-      { name: "Reports", path: "/vendor-reports" },
     ],
   },
   {
@@ -187,12 +195,39 @@ const fetchUserProfile = async () => {
 };
 
 onMounted(fetchUserProfile);
+
+// Function to close mobile menu when clicking a link (for mobile view)
+const handleLinkClick = (name) => {
+  if (isMobile.value) {
+    toggleMobileMenu();
+  }
+  activeLink.value = name;
+};
+
+// Function to handle submenu item click
+const handleSubmenuClick = (name) => {
+  if (isMobile.value) {
+    toggleMobileMenu();
+  }
+  setActiveSubmenu(name);
+};
 </script>
 
 <template>
   <div class="sidebar-inner">
-    <!-- Collapse toggle button -->
-    <div class="flex justify-end py-4 pr-6">
+    <!-- Mobile close button -->
+    <div v-if="isMobile && isMobileMenuOpen" class="mobile-close-btn flex justify-end py-4 px-4 absolute top-0 right-0">
+      <button @click="toggleMobileMenu" class="bg-[#153b4f] text-white p-2 rounded-full">
+        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none"
+          stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <line x1="18" y1="6" x2="6" y2="18"></line>
+          <line x1="6" y1="6" x2="18" y2="18"></line>
+        </svg>
+      </button>
+    </div>
+    
+    <!-- Collapse toggle button (desktop only) -->
+    <div v-if="!isMobile" class="flex justify-end py-4 pr-6">
       <button @click="toggleSidebar" class="collapse-toggle" :class="{ 'toggle-collapsed': isCollapsed }"
         title="collapse menu">
         <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none"
@@ -203,8 +238,8 @@ onMounted(fetchUserProfile);
       </button>
     </div>
 
-    <div :class="{ 'collapsed': isCollapsed }">
-      <div class="user-info p-4 w-full" v-if="!isCollapsed">
+    <div :class="{ 'collapsed': isCollapsed && !isMobile }">
+      <div class="user-info p-4 w-full" v-if="!isCollapsed || isMobile">
         <div class="flex items-center space-x-3">
           <img :src="user?.profile.avatar || '/storage/avatars/default-avatar.svg'" alt="User Avatar"
             class="w-10 h-10 rounded-full object-cover" />
@@ -222,28 +257,32 @@ onMounted(fetchUserProfile);
         </div>
       </div>
 
-      <!-- User avatar only when collapsed -->
-      <div class="collapsed-avatar p-4 flex justify-center" v-if="isCollapsed">
+      <!-- User avatar only when collapsed (desktop) -->
+      <div class="collapsed-avatar p-4 flex justify-center" v-if="isCollapsed && !isMobile">
         <img :src="user?.profile.avatar || '/storage/avatars/default-avatar.svg'" alt="User Avatar"
           class="w-10 h-10 rounded-full object-cover" />
       </div>
 
       <!-- Dynamic Menus -->
       <div v-for="menu in activeMenus" :key="menu.key" class="menu-item flex flex-col gap-2">
-        <button class="menu-header" :class="{ active: activeMenu === menu.key, 'collapsed-menu': isCollapsed }"
+        <button class="menu-header" 
+          :class="{ 
+            active: activeMenu === menu.key, 
+            'collapsed-menu': isCollapsed && !isMobile,
+            'justify-between': !isCollapsed || isMobile
+          }"
           @click="toggleMenu(menu.key)">
           <div class="flex gap-2 items-center">
             <img :src="menu.icon" alt="" class="icon-button active"
               :class="{ 'brightness-active': activeMenu === menu.key }" />
-            <span v-if="!isCollapsed">{{ menu.title }}</span>
+            <span v-if="!isCollapsed || isMobile">{{ menu.title }}</span>
           </div>
-          <img v-if="!isCollapsed" class="chevron" :class="{ rotated: activeMenu === menu.key }" :src="chevronIcon"
-            alt="" />
+          <img v-if="(!isCollapsed || isMobile)" class="chevron" :class="{ rotated: activeMenu === menu.key }" :src="chevronIcon" alt="" />
         </button>
-        <ul v-if="activeMenu === menu.key && !isCollapsed" class="submenu">
+        <ul v-if="activeMenu === menu.key && (!isCollapsed || isMobile)" class="submenu">
           <li v-for="item in menu.items" :key="item.name" :class="{ 'submenu-active': activeSubmenu === item.name }">
-            <Link :href="item.path" class="submenu-link flex items-center gap-2" @click="setActiveSubmenu(item.name)">
-            {{ item.name }}
+            <Link :href="item.path" class="submenu-link flex items-center gap-2" @click="handleSubmenuClick(item.name)">
+              {{ item.name }}
             </Link>
           </li>
         </ul>
@@ -252,17 +291,28 @@ onMounted(fetchUserProfile);
       <!-- Other Links -->
       <div v-for="link in activeOtherLinks" :key="link.name" class="menu-item">
         <Link :href="link.path" class="menu-link flex items-center gap-2"
-          :class="{ active: activeLink === link.name, 'collapsed-menu': isCollapsed }" @click="activeLink = link.name">
-        <img :src="link.icon" alt="" class="icon w-[24px] h-[24px]"
-          :class="{ 'brightness-active': activeLink === link.name }" />
-        <span v-if="!isCollapsed">{{ link.name }}</span>
+          :class="{ 
+            active: activeLink === link.name, 
+            'collapsed-menu': isCollapsed && !isMobile,
+            'justify-center': isCollapsed && !isMobile
+          }" 
+          @click="handleLinkClick(link.name)">
+          <img :src="link.icon" alt="" class="icon w-[24px] h-[24px]"
+            :class="{ 'brightness-active': activeLink === link.name }" />
+          <span v-if="!isCollapsed || isMobile">{{ link.name }}</span>
         </Link>
       </div>
 
-      <Link :href="route('logout')" method="post" as="button" class="text-[#EE1D52] flex items-center gap-1 mt-[4rem]"
-        :class="{ 'justify-center': isCollapsed, 'ml-[1rem]': !isCollapsed, 'ml-0': isCollapsed }">
-      <img :src="logoutIcon" alt="">
-      <span v-if="!isCollapsed">Log out</span>
+      <!-- Logout Button -->
+      <Link :href="route('logout')" method="post" as="button" 
+        class="text-[#EE1D52] flex items-center gap-1 mt-[4rem]"
+        :class="{ 
+          'justify-center': isCollapsed && !isMobile, 
+          'ml-[1rem]': !isCollapsed || isMobile, 
+          'ml-0': isCollapsed && !isMobile 
+        }">
+        <img :src="logoutIcon" alt="">
+        <span v-if="!isCollapsed || isMobile">Log out</span>
       </Link>
     </div>
   </div>
