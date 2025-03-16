@@ -818,12 +818,12 @@ selectedPackage.value = initialPackageType;
                     </span>
                 </div>
                 <div class="flex gap-2 items-center text-[1.25rem]">
-                    <div class="car_ratings flex gap-2 items-center" v-if="reviews.length > 0">
+                    <div class="car_ratings flex gap-2 items-center max-[480px]:flex-wrap" v-if="reviews.length > 0">
                         <div class="flex items-center gap-1">
                             <img v-for="n in 5" :key="n" :src="getStarIcon(averageRating, n)"
                                 :alt="getStarAltText(averageRating, n)" class="w-[20px] h-[20px]" />
                         </div>
-                        <span>{{ averageRating }} ({{ reviews.length }})</span>
+                        <span class="max-[480px]:text-[0.875rem]">{{ averageRating }} ({{ reviews.length }})</span>
                     </div>
                     <p v-else class="max-[480px]:text-[12px] max-[480px]:mt-2">No ratings yet.</p>
 
