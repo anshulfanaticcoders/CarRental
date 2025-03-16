@@ -4,18 +4,21 @@
         <div class="overlay absolute bg-[#0000002a] h-full w-full top-0"></div>
         <h2 class="text-white leading-tight tracking-wide text-shadow-md">Blogs</h2>
     </div>
-    <div class="py-customVerticalSpacing full-w-container flex">  <div class="w-3/4 pr-8">  <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+    <div class="py-customVerticalSpacing full-w-container flex max-[480px]:flex-col">  
+        <div class="w-3/4 pr-8 max-[480px]:w-full max-[480px]:pr-0">  
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                     <div v-for="blog in blogs.data" :key="blog.id" class="rounded-lg overflow-hidden shadow-md">
                         <img :src="blog.image" :alt="blog.title" class="w-full h-48 object-cover">
                         <div class="p-6">
                             <p class="text-sm flex items-center gap-1 text-gray-500">
                                 <img :src=calendarIcon alt=""> {{ formatDate(blog.created_at) }}
                             </p>
-                            <h4 class="font-semibold text-xl text-gray-800">{{ blog.title }}</h4>
-                            <p class="text-gray-600 mt-2 line-clamp-3">{{ blog.content }}</p>
-                            <Link :href="route('blog.show', blog.id)" class="inline-flex items-center mt-4 text-customPrimaryColor hover:underline">
+                            <h4 class="font-semibold text-xl text-gray-800 max-[480px]:text-[1rem]">{{ blog.title }}</h4>
+                            <p class="text-gray-600 mt-2 line-clamp-3 max-[480px]:text-[0.875rem]">{{ blog.content }}</p>
+                            <Link :href="route('blog.show', blog.id)" class="inline-flex items-center mt-4 text-customPrimaryColor hover:underline
+                            max-[480px]:text-[0.875rem]">
                                 Read More
-                                <img :src=goIcon alt="" class="w-8 ml-2">
+                                <img :src=goIcon alt="" class="w-8 ml-2 max-[480px]:w-6">
                             </Link>
                         </div>
                     </div>
@@ -35,7 +38,7 @@
                     </div>
                 </div>
             </div>
-            <aside class="w-1/3">
+            <aside class="w-1/3 max-[480px]:w-full max-[480px]:mt-10">
                 <h3 class="text-lg font-semibold mb-4">Recent Posts</h3>
                 <ul class="space-y-4">
                     <li v-for="recentBlog in recentBlogs" :key="recentBlog.id" class="flex items-start">

@@ -329,6 +329,12 @@ const searchQuery = computed(() => {
     };
 });
 
+
+const showMobileFilters = ref(false);
+const applyFilters = () => {
+    showMobileFilters.value = false;
+};
+
 </script>
 
 <template>
@@ -340,18 +346,29 @@ const searchQuery = computed(() => {
     </section>
 
     <section>
-        <div class="full-w-container py-[2rem]">
-            <div class="flex items-center gap-3 mb-[2rem]">
-                <img :src=filterIcon alt="">
+        <div class="full-w-container py-8">
+            <!-- Mobile filter button (visible only on mobile) -->
+            <div class="md:hidden mb-4">
+                <button @click="showMobileFilters = true"
+                    class="flex items-center gap-2 p-2 bg-white rounded-lg shadow">
+                    <img :src="filterIcon" alt="Filter">
+                    <span class="text-lg">Filters</span>
+                </button>
+            </div>
+
+            <!-- Desktop filter header (hidden on mobile) -->
+            <div class="hidden md:flex items-center gap-3 mb-8">
+                <img :src="filterIcon" alt="">
                 <span class="text-[1.5rem]">Filters</span>
             </div>
-            <form>
-                <div class="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-6 gap-8">
 
+            <!-- Desktop filters (hidden on mobile) -->
+            <form class="hidden md:block">
+                <div class="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-6 gap-8">
                     <!-- Seating Capacity Filter -->
                     <div class="flex flex-col p-2 shadow-lg rounded-[12px] hover:bg-customLightPrimaryColor">
                         <div class="flex gap-2">
-                            <img :src=seatingIcon alt="">
+                            <img :src="seatingIcon" alt="">
                             <label for="seating_capacity" class="block text-[1rem] font-medium">Seating Capacity</label>
                         </div>
                         <select v-model="form.seating_capacity" id="seating_capacity"
@@ -366,7 +383,7 @@ const searchQuery = computed(() => {
                     <!-- Brand Filter -->
                     <div class="flex flex-col p-2 shadow-lg rounded-[12px] hover:bg-customLightPrimaryColor">
                         <div class="flex gap-2">
-                            <img :src=brandIcon alt="" class="w-[3rem]">
+                            <img :src="brandIcon" alt="" class="w-[3rem]">
                             <label for="brand" class="block text-[1rem] font-medium">Brand</label>
                         </div>
                         <select v-model="form.brand" id="brand"
@@ -394,7 +411,7 @@ const searchQuery = computed(() => {
                     <!-- Transmission Filter -->
                     <div class="flex flex-col p-2 shadow-lg rounded-[12px] hover:bg-customLightPrimaryColor">
                         <div class="flex gap-2">
-                            <img :src=transmissionIcon alt="">
+                            <img :src="transmissionIcon" alt="">
                             <label for="transmission" class="block text-[1rem] font-medium">Transmission</label>
                         </div>
                         <select v-model="form.transmission" id="transmission"
@@ -408,7 +425,7 @@ const searchQuery = computed(() => {
                     <!-- Fuel Filter -->
                     <div class="flex flex-col p-2 shadow-lg rounded-[12px] hover:bg-customLightPrimaryColor">
                         <div class="flex gap-2">
-                            <img :src=fuelIcon alt="">
+                            <img :src="fuelIcon" alt="">
                             <label for="fuel" class="block text-[1rem] font-medium">Fuel</label>
                         </div>
                         <select v-model="form.fuel" id="fuel"
@@ -423,7 +440,7 @@ const searchQuery = computed(() => {
                     <!-- Price Range Filter -->
                     <div class="flex flex-col p-2 shadow-lg rounded-[12px] hover:bg-customLightPrimaryColor">
                         <div class="flex gap-2">
-                            <img :src=priceIcon alt="">
+                            <img :src="priceIcon" alt="">
                             <label for="price_range" class="block text-[1rem] font-medium">Price Range</label>
                         </div>
                         <select v-model="form.price_range" id="price_range"
@@ -439,7 +456,7 @@ const searchQuery = computed(() => {
                     <!-- Color Filter -->
                     <div class="flex flex-col p-2 shadow-lg rounded-[12px] hover:bg-customLightPrimaryColor">
                         <div class="flex gap-2">
-                            <img :src=colorIcon alt="" class="w-[1.5rem]">
+                            <img :src="colorIcon" alt="" class="w-[1.5rem]">
                             <label for="color" class="block text-sm font-medium">Color</label>
                         </div>
                         <select v-model="form.color" id="color"
@@ -452,7 +469,7 @@ const searchQuery = computed(() => {
                     <!-- Mileage Filter -->
                     <div class="flex flex-col p-2 shadow-lg rounded-[12px] hover:bg-customLightPrimaryColor">
                         <div class="flex gap-2">
-                            <img :src=mileageIcon2 alt="" class="w-[1.5rem]">
+                            <img :src="mileageIcon2" alt="" class="w-[1.5rem]">
                             <label for="mileage" class="block text-[1rem] font-medium">Mileage</label>
                         </div>
                         <select v-model="form.mileage" id="mileage"
@@ -479,10 +496,170 @@ const searchQuery = computed(() => {
                     </div>
                 </div>
             </form>
+
+            <!-- Mobile Filters Canvas/Sidebar -->
+            <div v-if="showMobileFilters" class="fixed inset-0 bg-black bg-opacity-50 z-50 md:hidden"
+                @click="showMobileFilters = false">
+                <div class="fixed right-0 top-0 h-full w-4/5 bg-white overflow-y-auto p-4" @click.stop>
+                    <div class="flex justify-between items-center mb-6">
+                        <div class="flex items-center gap-2">
+                            <img :src="filterIcon" alt="">
+                            <h2 class="text-xl font-medium">Filters</h2>
+                        </div>
+                        <button @click="showMobileFilters = false" class="text-2xl">&times;</button>
+                    </div>
+
+                    <form class="space-y-6">
+                        <!-- Seating Capacity Filter -->
+                        <div class="flex flex-col p-2 shadow-lg rounded-[12px] hover:bg-customLightPrimaryColor">
+                            <div class="flex gap-2">
+                                <img :src="seatingIcon" alt="">
+                                <label for="mobile_seating_capacity" class="block text-[1rem] font-medium">Seating
+                                    Capacity</label>
+                            </div>
+                            <select v-model="form.seating_capacity" id="mobile_seating_capacity"
+                                class="mt-1 block w-full rounded-md border-[1px] border-customLightGrayColor shadow-sm text-customPrimaryColor cursor-pointer p-2">
+                                <option value="">Any</option>
+                                <option v-for="capacity in $page.props.seatingCapacities" :key="capacity"
+                                    :value="capacity">
+                                    {{ capacity }}
+                                </option>
+                            </select>
+                        </div>
+
+                        <!-- Brand Filter -->
+                        <div class="flex flex-col p-2 shadow-lg rounded-[12px] hover:bg-customLightPrimaryColor">
+                            <div class="flex gap-2">
+                                <img :src="brandIcon" alt="" class="w-[3rem]">
+                                <label for="mobile_brand" class="block text-[1rem] font-medium">Brand</label>
+                            </div>
+                            <select v-model="form.brand" id="mobile_brand"
+                                class="mt-1 block w-full rounded-md border-[1px] border-customLightGrayColor shadow-sm text-customPrimaryColor cursor-pointer p-2">
+                                <option value="">All Brands</option>
+                                <option v-for="brand in $page.props.brands" :key="brand" :value="brand">{{ brand }}
+                                </option>
+                            </select>
+                        </div>
+
+                        <!-- Category Filter -->
+                        <div class="flex flex-col p-2 shadow-lg rounded-[12px] hover:bg-customLightPrimaryColor">
+                            <div class="flex gap-2">
+                                <img :src="brandIcon" alt="" class="w-[3rem]">
+                                <label for="mobile_category_id" class="block text-[1rem] font-medium">Category</label>
+                            </div>
+                            <select v-model="form.category_id" id="mobile_category_id"
+                                class="mt-1 block w-full rounded-md border-[1px] border-customLightGrayColor shadow-sm text-customPrimaryColor cursor-pointer p-2">
+                                <option value="">All Categories</option>
+                                <option v-for="category in $page.props.categories" :key="category.id"
+                                    :value="category.id">
+                                    {{ category.name }}
+                                </option>
+                            </select>
+                        </div>
+
+                        <!-- Transmission Filter -->
+                        <div class="flex flex-col p-2 shadow-lg rounded-[12px] hover:bg-customLightPrimaryColor">
+                            <div class="flex gap-2">
+                                <img :src="transmissionIcon" alt="">
+                                <label for="mobile_transmission"
+                                    class="block text-[1rem] font-medium">Transmission</label>
+                            </div>
+                            <select v-model="form.transmission" id="mobile_transmission"
+                                class="mt-1 block w-full rounded-md border-[1px] border-customLightGrayColor shadow-sm text-customPrimaryColor cursor-pointer p-2">
+                                <option value="">Any</option>
+                                <option value="automatic">Automatic</option>
+                                <option value="manual">Manual</option>
+                            </select>
+                        </div>
+
+                        <!-- Fuel Filter -->
+                        <div class="flex flex-col p-2 shadow-lg rounded-[12px] hover:bg-customLightPrimaryColor">
+                            <div class="flex gap-2">
+                                <img :src="fuelIcon" alt="">
+                                <label for="mobile_fuel" class="block text-[1rem] font-medium">Fuel</label>
+                            </div>
+                            <select v-model="form.fuel" id="mobile_fuel"
+                                class="mt-1 block w-full rounded-md border-[1px] border-customLightGrayColor shadow-sm text-customPrimaryColor cursor-pointer p-2">
+                                <option value="">Any</option>
+                                <option value="petrol">Petrol</option>
+                                <option value="diesel">Diesel</option>
+                                <option value="electric">Electric</option>
+                            </select>
+                        </div>
+
+                        <!-- Price Range Filter -->
+                        <div class="flex flex-col p-2 shadow-lg rounded-[12px] hover:bg-customLightPrimaryColor">
+                            <div class="flex gap-2">
+                                <img :src="priceIcon" alt="">
+                                <label for="mobile_price_range" class="block text-[1rem] font-medium">Price
+                                    Range</label>
+                            </div>
+                            <select v-model="form.price_range" id="mobile_price_range"
+                                class="mt-1 block w-full rounded-md border-[1px] border-customLightGrayColor shadow-sm text-customPrimaryColor cursor-pointer p-2">
+                                <option value="">Any</option>
+                                <option value="0-1000">₹0 - ₹1000</option>
+                                <option value="1000-5000">₹1000 - ₹5000</option>
+                                <option value="5000-10000">₹5000 - ₹10000</option>
+                                <option value="10000-20000">₹10000 - ₹20000</option>
+                            </select>
+                        </div>
+
+                        <!-- Color Filter -->
+                        <div class="flex flex-col p-2 shadow-lg rounded-[12px] hover:bg-customLightPrimaryColor">
+                            <div class="flex gap-2">
+                                <img :src="colorIcon" alt="" class="w-[1.5rem]">
+                                <label for="mobile_color" class="block text-sm font-medium">Color</label>
+                            </div>
+                            <select v-model="form.color" id="mobile_color"
+                                class="mt-1 block w-full rounded-md border-[1px] border-customLightGrayColor shadow-sm text-customPrimaryColor cursor-pointer p-2">
+                                <option value="">Any</option>
+                                <option v-for="color in $page.props.colors" :key="color" :value="color">{{ color }}
+                                </option>
+                            </select>
+                        </div>
+
+                        <!-- Mileage Filter -->
+                        <div class="flex flex-col p-2 shadow-lg rounded-[12px] hover:bg-customLightPrimaryColor">
+                            <div class="flex gap-2">
+                                <img :src="mileageIcon2" alt="" class="w-[1.5rem]">
+                                <label for="mobile_mileage" class="block text-[1rem] font-medium">Mileage</label>
+                            </div>
+                            <select v-model="form.mileage" id="mobile_mileage"
+                                class="mt-1 block w-full rounded-md border-[1px] border-customLightGrayColor shadow-sm text-customPrimaryColor cursor-pointer p-2">
+                                <option value="">Any</option>
+                                <option value="0-10">0 - 10 km/l</option>
+                                <option value="10-20">10 - 20 km/l</option>
+                                <option value="20-30">20 - 30 km/l</option>
+                                <option value="30-40">30 - 40 km/l</option>
+                            </select>
+                        </div>
+
+                        <!-- Package Type Filter -->
+                        <div class="flex flex-col p-2 shadow-lg rounded-[12px] hover:bg-customLightPrimaryColor">
+                            <div class="flex gap-2">
+                                <label for="mobile_package_type" class="block text-[1rem] font-medium">Package
+                                    Type</label>
+                            </div>
+                            <select v-model="form.package_type" id="mobile_package_type"
+                                class="mt-1 block w-full rounded-md border-[1px] border-customLightGrayColor shadow-sm text-customPrimaryColor cursor-pointer p-2">
+                                <option value="day">Price Per Day</option>
+                                <option value="week">Price Per Week</option>
+                                <option value="month">Price Per Month</option>
+                            </select>
+                        </div>
+
+                        <!-- Apply Filters Button -->
+                        <button @click="applyFilters"
+                            class="w-full bg-customPrimaryColor text-white py-3 px-4 rounded-lg font-medium hover:bg-opacity-90 transition">
+                            Apply Filters
+                        </button>
+                    </form>
+                </div>
+            </div>
         </div>
     </section>
 
-    <div class="full-w-container flex justify-end">
+    <div class="full-w-container flex justify-end max-[480px]:hidden">
         <div class="flex items-center space-x-2 mb-[2rem]">
             <Label for="mapToggle" class="text-customPrimaryColor">Map</Label>
             <Switch id="mapToggle" :checked="showMap" @update:checked="handleMapToggle" />
@@ -564,10 +741,10 @@ const searchQuery = computed(() => {
                                     </div>
                                 </div>
                                 <div class="extra_details flex gap-5 mt-[1rem]">
-                                  
+
                                     <div class="col flex gap-3">
                                         <img :src="mileageIcon" alt="" /><span class="text-[1.15rem]">{{ vehicle.mileage
-                                        }}km/d</span>
+                                            }}km/d</span>
                                     </div>
                                 </div>
 
@@ -602,7 +779,7 @@ const searchQuery = computed(() => {
                 </div>
             </div>
             <!-- Right Column - Map -->
-            <div class="w-full sticky top-4 h-[calc(100vh-2rem)]" v-show="showMap">
+            <div class="w-full sticky top-4 h-[calc(100vh-2rem)] max-[480px]:hidden" v-show="showMap">
                 <div class="bg-white h-full">
                     <div id="map" class="h-full rounded-lg"></div>
                 </div>
