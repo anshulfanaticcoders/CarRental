@@ -22,7 +22,7 @@ const isRegisterPage = url.includes('/register');
 <template>
     <div class="column border-b-2">
         <div class="full-w-container flex justify-between items-center py-[2rem]">
-            <Link href="/" class="max-[480px]:w-[150px]"><ApplicationLogo class="max-[480px]:w-full" /></Link>
+            <Link href="/" class="max-[480px]:w-[125px]"><ApplicationLogo class="max-[480px]:w-full" /></Link>
             <div class="flex gap-[2rem] items-center">
                 <div class="column">
                     <Link

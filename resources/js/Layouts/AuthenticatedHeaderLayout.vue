@@ -43,8 +43,8 @@ onMounted(fetchUserProfile);
                             <!-- Logo Section -->
                             <div class="flex">
                                 <div class="shrink-0 flex items-center">
-                                    <Link href="/">
-                                    <ApplicationLogo class="block fill-current text-gray-800" />
+                                    <Link href="/" class="max-[480px]:w-[125px]">
+                                    <ApplicationLogo class="max-[480px]:w-full block fill-current text-gray-800"/>
                                     </Link>
                                 </div>
                             </div>
@@ -147,7 +147,7 @@ onMounted(fetchUserProfile);
             <div v-else class="column py-[0.5rem]">
                 <div class="flex justify-between items-center">
                     <!-- Logo -->
-                    <Link href="/" class="max-[480px]:w-[150px]">
+                    <Link href="/" class="max-[480px]:w-[125px]">
                     <ApplicationLogo class="max-[480px]:w-full"/>
                     </Link>
 

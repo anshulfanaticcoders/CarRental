@@ -88,8 +88,8 @@
           </form>
           <div
             v-if="searchResults.length"
-            class="search-results absolute z-20 top-[105%] w-[50%] rounded-[12px] border-[1px] border-white left-[20%] p-5 bg-customPrimaryColor text-white"
-          >
+            class="search-results absolute z-20 top-[105%] w-[50%] rounded-[12px] border-[1px] border-white left-[20%] p-5 bg-customPrimaryColor text-white
+            max-[480px]:w-full max-[480px]:top-[35%] max-[480px]:left-0">
             <div
               v-for="result in searchResults"
               :key="result.id"
