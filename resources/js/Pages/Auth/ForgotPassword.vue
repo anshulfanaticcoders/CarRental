@@ -1,12 +1,12 @@
 <script setup>
-import GuestLayout from "@/Layouts/GuestLayout.vue";
 import InputError from "@/Components/InputError.vue";
 import InputLabel from "@/Components/InputLabel.vue";
 import PrimaryButton from "@/Components/PrimaryButton.vue";
-import TextInput from "@/Components/TextInput.vue";
 import { Head, useForm } from "@inertiajs/vue3";
-import GuestHeader from "@/Layouts/GuestHeader.vue";
 import ApplicationLogo from "@/Components/ApplicationLogo.vue";
+import { Input } from "@/Components/ui/input";
+import Footer from "@/Components/Footer.vue";
+import AuthenticatedHeaderLayout from "@/Layouts/AuthenticatedHeaderLayout.vue";
 
 defineProps({
     status: {
@@ -24,11 +24,11 @@ const submit = () => {
 </script>
 
 <template>
-    <GuestHeader />
+    <AuthenticatedHeaderLayout/>
     <Head title="Forgot Password" />
 
-    <div class="container h-[89vh] flex items-center justify-center">
-        <div class="mb-4 text-sm text-gray-600 h-full flex flex-col justify-center gap-[1rem] w-[50%]">
+    <div class="container h-[89vh] flex items-center justify-center max-[768px]:h-auto max-[768px]:py-[2rem]">
+        <div class="mb-4 text-sm text-gray-600 h-full flex flex-col justify-center gap-[1rem] w-[50%] max-[768px]:w-full">
             <ApplicationLogo/>
             <p>Forgot your password? No problem. Just let us know your email
             address and we will email you a password reset link that will allow
@@ -40,10 +40,10 @@ const submit = () => {
                 <div>
                     <InputLabel for="email" value="Email" />
 
-                    <TextInput
+                    <Input
                         id="email"
                         type="email"
-                        class="mt-1 block w-full"
+                        class="mt-1 block w-full p-5"
                         v-model="form.email"
                         required
                         autofocus
@@ -64,4 +64,6 @@ const submit = () => {
             </form>
         </div>
     </div>
+
+    <Footer/>
 </template>

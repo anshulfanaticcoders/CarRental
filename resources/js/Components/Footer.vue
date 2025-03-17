@@ -77,13 +77,13 @@ import paypalLogos from "../../assets/paymentIcons.svg";
                         <label for="" class="text-[1.25rem] max-[480px]:text-[1rem]">Location</label>
                         <ul class="flex flex-col gap-4 max-[480px]:text-[0.875rem]">
                             <li>
-                                <Link href="">India</Link>
+                                <Link href="/s?where=Dubai%2C%20Dubai%2C%20United%20Arab%20Emirates&latitude=25.116119&longitude=55.196411&radius=10000">Dubai</Link>
                             </li>
                             <li>
-                                <Link href="">London</Link>
+                                <Link href="/s?where=Marrakech%2C%20Marrakech%2C%20Marokko&latitude=32.086706&longitude=76.254158&radius=10000">Marrakech</Link>
                             </li>
                             <li>
-                                <Link href="">Paris</Link>
+                                <Link href="/s?where=Antwerpen%2C%20Antwerpen%2C%20België&latitude=32.220058&longitude=76.320129&radius=10000">Antwerpen</Link>
                             </li>
                         </ul>
                     </div>
@@ -117,7 +117,7 @@ import paypalLogos from "../../assets/paymentIcons.svg";
     <div class="bg-customDarkBlackColor py-[2rem] text-white">
      <div class="container flex justify-between items-center max-[480px]:flex-col max-[480px]:justify-center max-[480px]:gap-5">
         <div class="column max-[480px]:flex">
-            <span class="text-[1.25rem] max-[480px]:text-[0.95rem] max-[480px]:w-full max-[480px]:text-center">Copyright @ 2024 Vrooem, All rights reserved.</span>
+            <span class="text-[1.25rem] max-[480px]:text-[0.95rem] max-[480px]:w-full max-[480px]:text-center">Copyright @ 2025 Vrooem, All rights reserved.</span>
         </div>
         <div class="column">
             <img :src=paypalLogos alt="">

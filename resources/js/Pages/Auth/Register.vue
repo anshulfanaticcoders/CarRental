@@ -139,219 +139,219 @@ const submit = () => {
     <Head title="Register" />
     
     <div class="min-h-[80vh] flex justify-center items-center register">
-        <div class="w-[55rem] mx-auto">
-            <Stepper 
-                v-model="stepIndex" 
-                class="block w-full"
-            >
-                <form @submit.prevent="submit">
-                    <div class="flex w-full flex-start gap-2 mb-[4rem]">
-                        <StepperItem
-                            v-for="step in steps"
-                            :key="step.step"
-                            v-slot="{ state }"
-                            class="relative flex w-full flex-col items-center justify-center"
-                            :step="step.step"
-                            @click="handleStepChange(step.step)"
-                        >
-                            <StepperSeparator
-                                v-if="step.step !== steps[steps.length - 1].step"
-                                class="absolute left-[calc(50%+20px)] right-[calc(-50%+10px)] top-5 block h-0.5 shrink-0 rounded-full bg-muted group-data-[state=completed]:bg-primary"
-                            />
+    <div class="w-[55rem] max-w-full mx-auto px-4 max-[480px]:px-2">
+        <Stepper 
+            v-model="stepIndex" 
+            class="block w-full"
+        >
+            <form @submit.prevent="submit">
+                <div class="flex w-full flex-start gap-2 mb-[4rem] max-[480px]:mb-[2rem] max-[480px]:gap-1 max-[480px]:mt-[2rem]">
+                    <StepperItem
+                        v-for="step in steps"
+                        :key="step.step"
+                        v-slot="{ state }"
+                        class="relative flex w-full flex-col items-center justify-center"
+                        :step="step.step"
+                        @click="handleStepChange(step.step)"
+                    >
+                        <StepperSeparator
+                            v-if="step.step !== steps[steps.length - 1].step"
+                            class="absolute left-[calc(50%+20px)] right-[calc(-50%+10px)] top-5 block h-0.5 shrink-0 rounded-full bg-muted group-data-[state=completed]:bg-primary max-[480px]:left-[calc(50%+15px)] max-[480px]:right-[calc(-50%+5px)]"
+                        />
 
-                            <StepperTrigger as-child>
-                                <Button
-                                    :variant="state === 'completed' || state === 'active' ? 'default' : 'outline'"
-                                    size="icon"
-                                    class="z-10 rounded-full shrink-0"
-                                    :class="[
-                                        state === 'active' && 'ring-2 ring-ring ring-offset-2 ring-offset-background',
-                                        !canNavigateTo(step.step) && 'opacity-50 cursor-not-allowed'
-                                    ]"
-                                    :disabled="!canNavigateTo(step.step)"
-                                >
-                                    <Check v-if="state === 'completed'" class="size-5" />
-                                    <Circle v-if="state === 'active'" class="size-5" />
-                                    <Dot v-if="state === 'inactive'" class="size-5" />
-                                </Button>
-                            </StepperTrigger>
-
-                            <div class="mt-5 flex flex-col items-center text-center">
-                                <StepperTitle
-                                    :class="[state === 'active' && 'text-primary']"
-                                    class="text-sm font-semibold transition lg:text-base"
-                                >
-                                    {{ step.title }}
-                                </StepperTitle>
-                                <StepperDescription
-                                    :class="[state === 'active' && 'text-primary']"
-                                    class="sr-only text-xs text-muted-foreground transition md:not-sr-only lg:text-sm"
-                                >
-                                    {{ step.description }}
-                                </StepperDescription>
-                            </div>
-                        </StepperItem>
-                    </div>
-
-                    <!-- Personal Information -->
-                    <div v-if="stepIndex === 1">
-                        <span class="text-[3rem] text-center block font-medium text-customDarkBlackColor">
-                            Personal Information
-                        </span>
-                        <p class="text-center mb-[3rem] text-customLightGrayColor font-medium">
-                            To get started, tell us about yourself.
-                        </p>
-                        <div class="grid grid-cols-2 gap-5">
-                            <div class="column w-full">
-                                <InputLabel for="first_name" value="First Name" />
-                                <TextInput id="first_name" type="text" v-model="form.first_name" required autofocus
-                                    autocomplete="given-name" class="w-full" />
-                                <InputError class="mt-2" :message="form.errors.first_name" />
-                            </div>
-
-                            <div class="column w-full">
-                                <InputLabel for="last_name" value="Last Name" />
-                                <TextInput id="last_name" type="text" v-model="form.last_name" required
-                                    autocomplete="family-name" class="w-full" />
-                                <InputError class="mt-2" :message="form.errors.last_name" />
-                            </div>
-
-                            <div class="column w-full col-span-2">
-                                <InputLabel for="date_of_birth" value="Date of Birth" />
-                                <TextInput id="date_of_birth" type="date" v-model="form.date_of_birth" required
-                                    class="w-full" />
-                                <InputError class="mt-2" :message="form.errors.date_of_birth" />
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Contact Details -->
-                    <div v-if="stepIndex === 2">
-                        <span class="text-[3rem] text-center block font-medium text-customDarkBlackColor">
-                            Contact Details
-                        </span>
-                        <p class="text-center mb-[3rem] text-customLightGrayColor font-medium">
-                            We'll send you relevant info about your bookings.
-                        </p>
-                        <div class="grid grid-cols-1 gap-5">
-                            <div class="column w-full">
-                                <InputLabel for="phone" value="Phone Number" />
-                                <TextInput id="phone" type="tel" v-model="form.phone" required class="w-full" />
-                                <InputError class="mt-2" :message="form.errors.phone" />
-                            </div>
-
-                            <div class="column w-full">
-                                <InputLabel for="email" value="Email" />
-                                <TextInput id="email" type="email" v-model="form.email" required class="w-full" />
-                                <InputError class="mt-2" :message="form.errors.email" />
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Address -->
-                    <div v-if="stepIndex === 3">
-                        <span class="text-[3rem] text-center block font-medium text-customDarkBlackColor">
-                            Address
-                        </span>
-                        <p class="text-center mb-[3rem] text-customLightGrayColor font-medium">
-                            We'll use it for billing purposes
-                        </p>
-                        <div class="grid grid-cols-2 gap-5">
-                            <div class="column w-full col-span-2">
-                                <InputLabel for="address" value="Address" />
-                                <TextInput id="address" type="text" v-model="form.address" required class="w-full" />
-                                <InputError class="mt-2" :message="form.errors.address" />
-                            </div>
-
-                            <div class="column w-full">
-                                <InputLabel for="postcode" value="Postcode" />
-                                <TextInput id="postcode" type="text" v-model="form.postcode" required class="w-full" />
-                                <InputError class="mt-2" :message="form.errors.postcode" />
-                            </div>
-
-                            <div class="column w-full">
-                                <InputLabel for="city" value="City" />
-                                <TextInput id="city" type="text" v-model="form.city" required class="w-full" />
-                                <InputError class="mt-2" :message="form.errors.city" />
-                            </div>
-
-                            <div class="column w-full col-span-2">
-                                <InputLabel for="country" value="Country" />
-                                <TextInput id="country" type="text" v-model="form.country" required class="w-full" />
-                                <InputError class="mt-2" :message="form.errors.country" />
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Password -->
-                    <div v-if="stepIndex === 4">
-                        <span class="text-[3rem] text-center block font-medium text-customDarkBlackColor">
-                            Create Password
-                        </span>
-                        <p class="text-center mb-[3rem] text-customLightGrayColor font-medium">
-                            Secure your account
-                        </p>
-                        <div class="grid grid-cols-1 gap-5">
-                            <div class="column w-full">
-                                <InputLabel for="password" value="Password" />
-                                <TextInput id="password" type="password" v-model="form.password" required
-                                    autocomplete="new-password" class="w-full" />
-                                <InputError class="mt-2" :message="form.errors.password" />
-                            </div>
-
-                            <div class="column w-full">
-                                <InputLabel for="password_confirmation" value="Confirm Password" />
-                                <TextInput id="password_confirmation" type="password" v-model="form.password_confirmation"
-                                    required autocomplete="new-password" class="w-full" />
-                                <InputError class="mt-2" :message="form.errors.password_confirmation" />
-                            </div>
-
-                            <div class="flex items-center justify-end mt-4">
-                                <Link
-                                    :href="route('login')"
-                                    class="underline text-sm text-gray-600 hover:text-gray-900 rounded-md focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
-                                >
-                                    Already registered?
-                                </Link>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Navigation Buttons -->
-                    <div class="flex items-center justify-between mt-[3rem]">
-                        <Button 
-                            :disabled="stepIndex === 1"
-                            variant="outline" 
-                            size="lg"
-                            class="w-[30%]" 
-                            @click="prevStep"
-                        >
-                            Back
-                        </Button>
-                        <div class="flex items-center gap-3">
-                            <Button 
-                                v-if="stepIndex !== 4"
-                                size="lg"
-                                class="w-[100%]"
-                                @click="nextStep"
-                                :disabled="!isStepValid"
+                        <StepperTrigger as-child>
+                            <Button
+                                :variant="state === 'completed' || state === 'active' ? 'default' : 'outline'"
+                                size="icon"
+                                class="z-10 rounded-full shrink-0 max-[480px]:size-8"
+                                :class="[
+                                    state === 'active' && 'ring-2 ring-ring ring-offset-2 ring-offset-background',
+                                    !canNavigateTo(step.step) && 'opacity-50 cursor-not-allowed'
+                                ]"
+                                :disabled="!canNavigateTo(step.step)"
                             >
-                                Continue
+                                <Check v-if="state === 'completed'" class="size-5 max-[480px]:size-4" />
+                                <Circle v-if="state === 'active'" class="size-5 max-[480px]:size-4" />
+                                <Dot v-if="state === 'inactive'" class="size-5 max-[480px]:size-4" />
                             </Button>
-                            <PrimaryButton 
-                                v-if="stepIndex === 4"
-                                class="w-[100%]"
-                                :disabled="form.processing || !isStepValid"
-                                @click="submit"
+                        </StepperTrigger>
+
+                        <div class="mt-5 flex flex-col items-center text-center">
+                            <StepperTitle
+                                :class="[state === 'active' && 'text-primary']"
+                                class="text-sm font-semibold transition lg:text-base max-[480px]:text-xs"
                             >
-                                Register
-                            </PrimaryButton>
+                                {{ step.title }}
+                            </StepperTitle>
+                            <StepperDescription
+                                :class="[state === 'active' && 'text-primary']"
+                                class="sr-only text-xs text-muted-foreground transition md:not-sr-only lg:text-sm max-[480px]:sr-only"
+                            >
+                                {{ step.description }}
+                            </StepperDescription>
+                        </div>
+                    </StepperItem>
+                </div>
+
+                <!-- Personal Information -->
+                <div v-if="stepIndex === 1">
+                    <span class="text-[3rem] max-[480px]:text-[2rem] text-center block font-medium text-customDarkBlackColor">
+                        Personal Information
+                    </span>
+                    <p class="text-center mb-[3rem] max-[480px]:mb-[1.5rem] text-customLightGrayColor font-medium max-[480px]:text-sm">
+                        To get started, tell us about yourself.
+                    </p>
+                    <div class="grid grid-cols-2 max-[480px]:grid-cols-1 gap-5 max-[480px]:gap-3">
+                        <div class="column w-full">
+                            <InputLabel for="first_name" value="First Name" />
+                            <TextInput id="first_name" type="text" v-model="form.first_name" required autofocus
+                                autocomplete="given-name" class="w-full" />
+                            <InputError class="mt-2" :message="form.errors.first_name" />
+                        </div>
+
+                        <div class="column w-full">
+                            <InputLabel for="last_name" value="Last Name" />
+                            <TextInput id="last_name" type="text" v-model="form.last_name" required
+                                autocomplete="family-name" class="w-full" />
+                            <InputError class="mt-2" :message="form.errors.last_name" />
+                        </div>
+
+                        <div class="column w-full col-span-2 max-[480px]:col-span-1">
+                            <InputLabel for="date_of_birth" value="Date of Birth" />
+                            <TextInput id="date_of_birth" type="date" v-model="form.date_of_birth" required
+                                class="w-full" />
+                            <InputError class="mt-2" :message="form.errors.date_of_birth" />
                         </div>
                     </div>
-                </form>
-            </Stepper>
-        </div>
+                </div>
+
+                <!-- Contact Details -->
+                <div v-if="stepIndex === 2">
+                    <span class="text-[3rem] max-[480px]:text-[2rem] text-center block font-medium text-customDarkBlackColor">
+                        Contact Details
+                    </span>
+                    <p class="text-center mb-[3rem] max-[480px]:mb-[1.5rem] text-customLightGrayColor font-medium max-[480px]:text-sm">
+                        We'll send you relevant info about your bookings.
+                    </p>
+                    <div class="grid grid-cols-1 gap-5 max-[480px]:gap-3">
+                        <div class="column w-full">
+                            <InputLabel for="phone" value="Phone Number" />
+                            <TextInput id="phone" type="tel" v-model="form.phone" required class="w-full" />
+                            <InputError class="mt-2" :message="form.errors.phone" />
+                        </div>
+
+                        <div class="column w-full">
+                            <InputLabel for="email" value="Email" />
+                            <TextInput id="email" type="email" v-model="form.email" required class="w-full" />
+                            <InputError class="mt-2" :message="form.errors.email" />
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Address -->
+                <div v-if="stepIndex === 3">
+                    <span class="text-[3rem] max-[480px]:text-[2rem] text-center block font-medium text-customDarkBlackColor">
+                        Address
+                    </span>
+                    <p class="text-center mb-[3rem] max-[480px]:mb-[1.5rem] text-customLightGrayColor font-medium max-[480px]:text-sm">
+                        We'll use it for billing purposes
+                    </p>
+                    <div class="grid grid-cols-2 max-[480px]:grid-cols-1 gap-5 max-[480px]:gap-3">
+                        <div class="column w-full col-span-2 max-[480px]:col-span-1">
+                            <InputLabel for="address" value="Address" />
+                            <TextInput id="address" type="text" v-model="form.address" required class="w-full" />
+                            <InputError class="mt-2" :message="form.errors.address" />
+                        </div>
+
+                        <div class="column w-full">
+                            <InputLabel for="postcode" value="Postcode" />
+                            <TextInput id="postcode" type="text" v-model="form.postcode" required class="w-full" />
+                            <InputError class="mt-2" :message="form.errors.postcode" />
+                        </div>
+
+                        <div class="column w-full">
+                            <InputLabel for="city" value="City" />
+                            <TextInput id="city" type="text" v-model="form.city" required class="w-full" />
+                            <InputError class="mt-2" :message="form.errors.city" />
+                        </div>
+
+                        <div class="column w-full col-span-2 max-[480px]:col-span-1">
+                            <InputLabel for="country" value="Country" />
+                            <TextInput id="country" type="text" v-model="form.country" required class="w-full" />
+                            <InputError class="mt-2" :message="form.errors.country" />
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Password -->
+                <div v-if="stepIndex === 4">
+                    <span class="text-[3rem] max-[480px]:text-[2rem] text-center block font-medium text-customDarkBlackColor">
+                        Create Password
+                    </span>
+                    <p class="text-center mb-[3rem] max-[480px]:mb-[1.5rem] text-customLightGrayColor font-medium max-[480px]:text-sm">
+                        Secure your account
+                    </p>
+                    <div class="grid grid-cols-1 gap-5 max-[480px]:gap-3">
+                        <div class="column w-full">
+                            <InputLabel for="password" value="Password" />
+                            <TextInput id="password" type="password" v-model="form.password" required
+                                autocomplete="new-password" class="w-full" />
+                            <InputError class="mt-2" :message="form.errors.password" />
+                        </div>
+
+                        <div class="column w-full">
+                            <InputLabel for="password_confirmation" value="Confirm Password" />
+                            <TextInput id="password_confirmation" type="password" v-model="form.password_confirmation"
+                                required autocomplete="new-password" class="w-full" />
+                            <InputError class="mt-2" :message="form.errors.password_confirmation" />
+                        </div>
+
+                        <div class="flex items-center justify-end mt-4">
+                            <Link
+                                :href="route('login')"
+                                class="underline text-sm text-gray-600 hover:text-gray-900 rounded-md focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+                            >
+                                Already registered?
+                            </Link>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Navigation Buttons -->
+                <div class="flex items-center justify-between mt-[3rem] max-[480px]:mt-[2rem] max-[480px]:flex-col max-[480px]:gap-3">
+                    <Button 
+                        :disabled="stepIndex === 1"
+                        variant="outline" 
+                        size="lg"
+                        class="w-[30%] max-[480px]:w-full max-[480px]:order-2" 
+                        @click="prevStep"
+                    >
+                        Back
+                    </Button>
+                    <div class="flex items-center gap-3 max-[480px]:w-full max-[480px]:order-1">
+                        <Button 
+                            v-if="stepIndex !== 4"
+                            size="lg"
+                            class="w-[100%]"
+                            @click="nextStep"
+                            :disabled="!isStepValid"
+                        >
+                            Continue
+                        </Button>
+                        <PrimaryButton 
+                            v-if="stepIndex === 4"
+                            class="w-[100%]"
+                            :disabled="form.processing || !isStepValid"
+                            @click="submit"
+                        >
+                            Register
+                        </PrimaryButton>
+                    </div>
+                </div>
+            </form>
+        </Stepper>
     </div>
+</div>
 </template>
 
 <style>
