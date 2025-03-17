@@ -76,7 +76,7 @@
                     </div>
                 </div>
                 
-                <div class="space-y-2">
+                <!-- <div class="space-y-2">
                     <Label for="passport_photo">Passport Photo</Label>
                     <div class="flex items-center gap-2">
                         <Input id="passport_photo" type="file" @change="handleFileChange('passport_photo', $event)" />
@@ -87,7 +87,7 @@
                     <div v-if="form.errors.passport_photo" class="text-sm text-red-500">
                         {{ form.errors.passport_photo }}
                     </div>
-                </div>
+                </div> -->
             </div>
             <DialogFooter>
                 <Button type="button" variant="secondary" @click="$emit('close')">Cancel</Button>
@@ -147,11 +147,11 @@ const form = useForm({
     company_gst_number: props.document.vendor_profile?.company_gst_number || '',
     driving_license: null,
     passport: null,
-    passport_photo: null,
+    // passport_photo: null,
 });
 
 const viewDocument = (path) => {
-    window.open(`/storage/${path}`, '_blank');
+    window.open(`${path}`, '_blank');
 };
 
 const handleFileChange = (fileType, event) => {

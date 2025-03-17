@@ -56,20 +56,26 @@ onMounted(() => {
 
 const requiredFiles = ["driving_license", "passport", "passport_photo"]; // Define required file fields
 
+const errors = ref({});
+
 const nextStep = () => {
+    errors.value = {}; // Clear previous errors
+
     if (currentStep.value === 2) {
         const allFilesSelected = requiredFiles.every(
             (field) => form[field] !== null
         );
+
         if (!allFilesSelected) {
-            alert("Please select all required documents before proceeding.");
+            errors.value.files = "Please upload the document to proceed.";
             return;
         }
+
         localStorage.setItem("vendorFileData", JSON.stringify(fileNames.value));
     }
+
     currentStep.value++;
 };
-
 const prevStep = () => {
     currentStep.value--;
 };
@@ -131,14 +137,15 @@ const submit = () => {
 
     <Head title="Vendor Register" />
     <AuthenticatedHeaderLayout />
-    <div class="">
-        <div class="ml-[5%] flex justify-between min-h-[88vh]">
-            <div class="column flex items-center w-[40%]">
-                <form @submit.prevent="submit" class="w-full">
+    <div class="max-[480px]:mt-8">
+        <div
+            class="ml-[5%] flex justify-between min-h-[88vh] max-[480px]:ml-0 max-[480px]:min-h-auto max-[480px]:flex-col max-[480px]:gap-10">
+            <div class="column flex items-center w-[40%] max-[480px]:w-full">
+                <form @submit.prevent="submit" class="w-full max-[480px]:px-[1.5rem]">
                     <div v-if="currentStep === 0">
                         <div class="flex flex-col gap-5">
-                            <span class="text-[3rem] font-medium">Create Vendor</span>
-                            <p class="text-customLightGrayColor text-[1.15rem]">
+                            <span class="text-[3rem] font-medium max-[480px]:text-[1.2rem]">Create Vendor</span>
+                            <p class="text-customLightGrayColor text-[1.15rem] max-[480px]:text-[0.875rem]">
                                 Create your listing in a few minutes to receive
                                 rental requests! All you need is a photo, a
                                 rate, and an address and our team will contact
@@ -146,7 +153,8 @@ const submit = () => {
                                 Also, make sure you have the vehicle's
                                 registration certificate nearby.
                             </p>
-                            <PrimaryButton class="w-[30%]" type="button" @click="nextStep">Create a vendor
+                            <PrimaryButton class="w-[15rem] max-[480px]:w-[10rem] max-[480px]:text-[0.65rem]"
+                                type="button" @click="nextStep">Create a vendor
                             </PrimaryButton>
                         </div>
                     </div>
@@ -173,11 +181,11 @@ const submit = () => {
                             </div>
 
                             <div class="flex justify-between">
-                                <button class="button-secondary w-[30%]" type="button" @click="prevStep"
+                                <button class="button-secondary w-[15rem] max-[480px]:w-[10rem]" type="button" @click="prevStep"
                                     :disabled="currentStep === 0">
                                     Back
                                 </button>
-                                <PrimaryButton class="w-[30%]" type="button" @click="nextStep">Next</PrimaryButton>
+                                <PrimaryButton class="w-[15rem] max-[480px]:w-[10rem]" type="button" @click="nextStep">Next</PrimaryButton>
                             </div>
                         </div>
                     </div>
@@ -192,18 +200,18 @@ const submit = () => {
                                     <div @click="$refs.drivingLicenseInput.click()"
                                         class="document-div cursor-pointer border-[2px] border-customPrimaryColor p-4 rounded-lg text-center border-dotted">
                                         <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"
-                                            stroke-width="1.5" stroke="#153b4f"
-                                            class="w-10 h-10 mx-auto text-gray-400">
+                                            stroke-width="1.5" stroke="#153b4f" class="w-10 h-10 mx-auto text-gray-400">
                                             <path stroke-linecap="round" stroke-linejoin="round"
                                                 d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5" />
                                         </svg>
                                         <p class="mt-2 text-sm text-gray-600">Click to select an image</p>
-                                        <p class="text-xs text-gray-500 mt-1">JPG, PNG, GIF up to 2MB</p>
+                                        <p class="text-xs text-gray-500 mt-1">JPG, PNG and JPEG up to 2MB</p>
                                     </div>
 
                                     <!-- Hidden File Input -->
                                     <input type="file" ref="drivingLicenseInput" class="hidden"
                                         @change="handleFileChange('driving_license', $event)" />
+
 
                                     <!-- Show Image Preview with Remove Button -->
                                     <div v-if="filePreviews.driving_license" class="relative w-[150px]">
@@ -218,9 +226,10 @@ const submit = () => {
                                     </div>
 
                                     <!-- Show Selected File Name -->
-                                    <span v-if="fileNames.driving_license" class="text-sm text-gray-600">
+                                    <!-- <span v-if="fileNames.driving_license" class="text-sm text-gray-600">
                                         Selected file: {{ fileNames.driving_license }}
-                                    </span>
+                                    </span> -->
+                                    <div v-if="errors.files" class="text-red-500 text-sm">{{ errors.files }}</div> <!-- Error Message -->
                                 </div>
                             </div>
 
@@ -233,13 +242,12 @@ const submit = () => {
                                     <div @click="$refs.passportInput.click()"
                                         class="document-div cursor-pointer border-[2px] border-customPrimaryColor p-4 rounded-lg text-center border-dotted">
                                         <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"
-                                            stroke-width="1.5" stroke="#153b4f"
-                                            class="w-10 h-10 mx-auto text-gray-400">
+                                            stroke-width="1.5" stroke="#153b4f" class="w-10 h-10 mx-auto text-gray-400">
                                             <path stroke-linecap="round" stroke-linejoin="round"
                                                 d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5" />
                                         </svg>
                                         <p class="mt-2 text-sm text-gray-600">Click to select an image</p>
-                                        <p class="text-xs text-gray-500 mt-1">JPG, PNG, GIF up to 2MB</p>
+                                        <p class="text-xs text-gray-500 mt-1">JPG, PNG and JPEG up to 2MB</p>
                                     </div>
 
                                     <!-- Hidden File Input -->
@@ -259,20 +267,21 @@ const submit = () => {
                                     </div>
 
                                     <!-- Show Selected File Name -->
-                                    <span v-if="fileNames.passport" class="text-sm text-gray-600">
+                                    <!-- <span v-if="fileNames.passport" class="text-sm text-gray-600">
                                         Selected file: {{ fileNames.passport }}
-                                    </span>
+                                    </span> -->
+                                    <div v-if="errors.files" class="text-red-500 text-sm">{{ errors.files }}</div> <!-- Error Message -->
                                 </div>
                             </div>
 
                         </div>
                         <!-- Buttons -->
-    <div class="flex justify-between mt-[2rem]">
-       <button class="button-secondary w-[30%]" type="button" @click="prevStep">Back</button>
-       <PrimaryButton class="w-[30%]" type="button" @click="nextStep">Next</PrimaryButton>
-    </div>
+                        <div class="flex justify-between mt-[2rem]">
+                            <button class="button-secondary w-[15rem] max-[480px]:w-[10rem]" type="button" @click="prevStep">Back</button>
+                            <PrimaryButton class="w-[15rem] max-[480px]:w-[10rem]" type="button" @click="nextStep">Next</PrimaryButton>
+                        </div>
 
-                        
+
                     </div>
 
                     <div v-else-if="currentStep === 3">
@@ -297,25 +306,26 @@ const submit = () => {
                                 <InputLabel for="company_gst_number">VAT Number</InputLabel>
                                 <TextInput type="text" v-model="form.company_gst_number" class="w-full" required />
                             </div>
-                            <div class="flex justify-between">
-                                <button class="button-secondary w-[30%]" type="button" @click="prevStep">
+                            <div class="flex justify-between max-[480px]:mt-4">
+                                <button class="button-secondary w-[15rem] max-[480px]:w-[10rem]" type="button" @click="prevStep">
                                     Back
                                 </button>
-                                <PrimaryButton class="w-[30%]" type="submit">Submit</PrimaryButton>
+                                <PrimaryButton class="w-[15rem] max-[480px]:w-[10rem]" type="submit">Submit</PrimaryButton>
                             </div>
                         </div>
                     </div>
                 </form>
             </div>
 
-            <div class="column bg-customPrimaryColor w-[50%] min-h-[80vh] relative">
-                <div class="flex flex-col gap-10 items-center justify-center h-full">
-                    <div class="col text-customPrimaryColor-foreground w-[70%]">
-                        <img :src="warningSign" alt="" />
-                        <h4 class="text-[1.5rem] font-medium">
+            <div class="column bg-customPrimaryColor w-[50%] min-h-[80vh] relative 
+            max-[480px]:min-h-full max-[480px]:w-full max-[480px]:py-5 max-[480px]:mt-20">
+                <div class="flex flex-col gap-10 items-center justify-center h-full max-[480px]:px-[1.5rem]">
+                    <div class="col text-customPrimaryColor-foreground w-[70%] max-[480px]:w-full">
+                        <img :src="warningSign" alt="" class="max-[480px]:w-[40px]"/>
+                        <h4 class="text-[1.5rem] font-medium max-[480px]:text-[1.2rem] max-[480px]:py-2">
                             Temporary documents
                         </h4>
-                        <p>
+                        <p class="max-[480px]:text-[0.875rem]">
                             You can submit your ad with temporary documents
                             (order form, temporary registration certificate,
                             crossed out vehicle registration document and
@@ -323,21 +333,22 @@ const submit = () => {
                             final vehicle registration document.
                         </p>
                     </div>
-                    <div class="col text-customPrimaryColor-foreground w-[70%]">
-                        <img :src="warningSign" alt="" />
-                        <h4 class="text-[1.5rem] font-medium">
+                    <div class="col text-customPrimaryColor-foreground w-[70%] max-[480px]:w-full">
+                        <img :src="warningSign" alt="" class="max-[480px]:w-[40px]"/>
+                        <h4 class="text-[1.5rem] font-medium max-[480px]:text-[1.2rem] max-[480px]:py-2">
                             Need some help?
                         </h4>
-                        <p>Contact us on: +91 524555552</p>
+                        <p class="max-[480px]:text-[0.875rem]">Contact us on: +91 524555552</p>
                     </div>
                 </div>
-                <img :src="vendorBgimage" alt="" class="absolute bottom-0 left-[-4rem]" />
+                <img :src="vendorBgimage" alt="" class="absolute bottom-0 left-[-4rem] max-[480px]:w-[222px]
+                max-[480px]:top-[-5.5rem]" />
             </div>
         </div>
     </div>
 </template>
 
-<style>
+<style scoped>
 label {
     margin-bottom: 0.5rem;
 }
@@ -349,6 +360,7 @@ select {
     border: 1px solid rgba(43, 43, 43, 0.50) !important;
     padding: 1rem;
 }
+
 .document-div svg {
     transition: transform 0.3s ease-in-out;
 }
@@ -357,4 +369,9 @@ select {
     transform: scale(1.1);
 }
 
+@media screen and (max-width:480px) {
+    input,textarea{
+        font-size: 14px;
+    }
+}
 </style>

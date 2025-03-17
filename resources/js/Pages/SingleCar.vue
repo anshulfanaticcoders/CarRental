@@ -817,8 +817,8 @@ selectedPackage.value = initialPackageType;
                         {{ vehicle?.category.name }}
                     </span>
                 </div>
-                <div class="flex gap-2 items-center text-[1.25rem]">
-                    <div class="car_ratings flex gap-2 items-center max-[480px]:flex-wrap" v-if="reviews.length > 0">
+                <div class="flex gap-2 items-center text-[1.25rem] max-[480px]:flex-wrap">
+                    <div class="car_ratings flex gap-2 items-center" v-if="reviews.length > 0">
                         <div class="flex items-center gap-1">
                             <img v-for="n in 5" :key="n" :src="getStarIcon(averageRating, n)"
                                 :alt="getStarAltText(averageRating, n)" class="w-[20px] h-[20px]" />

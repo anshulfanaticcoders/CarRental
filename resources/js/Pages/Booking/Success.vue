@@ -108,6 +108,8 @@ const formatCurrency = (amount) => {
   }).format(amount);
 };
 
+
+// const vendorcurrency = booking.vendorProfile
 </script>
 
 <template>

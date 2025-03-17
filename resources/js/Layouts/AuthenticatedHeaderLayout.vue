@@ -1,5 +1,5 @@
 <script setup>
-import { ref, onMounted } from "vue";
+import { ref, onMounted, computed } from "vue";
 import ApplicationLogo from "@/Components/ApplicationLogo.vue";
 import Dropdown from "@/Components/Dropdown.vue";
 import DropdownLink from "@/Components/DropdownLink.vue";
@@ -30,6 +30,9 @@ const fetchUserProfile = async () => {
 
 onMounted(fetchUserProfile);
 
+const page = usePage();
+const vendorStatus = computed(() => page.props.vendorStatus);
+
 </script>
 
 <template>
@@ -44,7 +47,7 @@ onMounted(fetchUserProfile);
                             <div class="flex">
                                 <div class="shrink-0 flex items-center">
                                     <Link href="/" class="max-[480px]:w-[125px]">
-                                    <ApplicationLogo class="max-[480px]:w-full block fill-current text-gray-800"/>
+                                    <ApplicationLogo class="max-[480px]:w-full block fill-current text-gray-800" />
                                     </Link>
                                 </div>
                             </div>
@@ -53,10 +56,15 @@ onMounted(fetchUserProfile);
                             <div class="hidden sm:flex sm:items-center sm:ms-6">
                                 <!-- Vendor/Customer Specific Buttons -->
                                 <div v-if="$page.props.auth.user.role === 'vendor'" class="mr-4">
-                                    <Link href="/vehicle-listing" class="button-secondary inline-block">
-                                    Create a Listing
-                                    </Link>
+                                    <div v-if="$page.props.auth.user.role === 'vendor'" class="mr-4">
+                                        <Link
+                                            :href="vendorStatus === 'approved' ? '/vehicles/create' : '/vendor-status'"
+                                            class="button-secondary inline-block">
+                                        {{ vendorStatus === 'approved' ? 'Create a Listing' : 'Complete Verification' }}
+                                        </Link>
+                                    </div>
                                 </div>
+
                                 <div v-else-if="$page.props.auth.user.role === 'customer'">
                                     <Link href="/vendor/register" class="button-secondary inline-block">
                                     Register as Vendor
@@ -125,12 +133,32 @@ onMounted(fetchUserProfile);
                                 Dashboard
                             </ResponsiveNavLink>
                         </div> -->
-
+                        <!-- Vendor/Customer Specific Buttons -->
                         <div class="pt-4 pb-1 border-t border-gray-200">
                             <div class="px-4">
                                 <div class="font-medium text-base text-gray-800">{{ $page.props.auth.user.first_name }}
                                 </div>
                                 <div class="font-medium text-sm text-gray-500">{{ $page.props.auth.user.email }}</div>
+                            </div>
+
+                            <div class="mt-3">
+                                <div v-if="$page.props.auth.user.role === 'vendor'"
+                                    class="px-4 font-medium text-base text-gray-800">
+                                    <div v-if="$page.props.auth.user.role === 'vendor'" class="">
+                                        <Link
+                                            :href="vendorStatus === 'approved' ? '/vehicles/create' : '/vendor-status'"
+                                            class="">
+                                        {{ vendorStatus === 'approved' ? 'Create a Listing' : 'Complete Verification' }}
+                                        </Link>
+                                    </div>
+                                </div>
+
+                                <div v-else-if="$page.props.auth.user.role === 'customer'">
+                                    <Link href="/vendor/register" class="px-4 font-medium text-base text-gray-800">
+                                    Register as Vendor
+                                    </Link>
+                                </div>
+
                             </div>
 
                             <div class="mt-3 space-y-1">
@@ -148,22 +176,20 @@ onMounted(fetchUserProfile);
                 <div class="flex justify-between items-center">
                     <!-- Logo -->
                     <Link href="/" class="max-[480px]:w-[125px]">
-                    <ApplicationLogo class="max-[480px]:w-full"/>
+                    <ApplicationLogo class="max-[480px]:w-full" />
                     </Link>
 
                     <!-- Navigation -->
                     <div class="flex gap-[2rem] items-center">
                         <!-- Auth Links -->
                         <div class="column">
-                            <Link :href="route('login')"
-                                class="button-primary py-3 px-5 font-semibold text-gray-600 dark:text-gray-400 dark:hover:text-white focus:outline focus:outline-2 focus:rounded-sm
+                            <Link :href="route('login')" class="button-primary py-3 px-5 font-semibold text-gray-600 dark:text-gray-400 dark:hover:text-white focus:outline focus:outline-2 focus:rounded-sm
                                 max-[480px]:text-[0.65rem]
                                 ">
                             Log in
                             </Link>
 
-                            <Link :href="route('register')"
-                                class="button-secondary ms-4 font-semibold text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white focus:outline focus:outline-2 focus:rounded-sm
+                            <Link :href="route('register')" class="button-secondary ms-4 font-semibold text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white focus:outline focus:outline-2 focus:rounded-sm
                                 max-[480px]:text-[0.65rem]
                                 ">
                             Create an Account

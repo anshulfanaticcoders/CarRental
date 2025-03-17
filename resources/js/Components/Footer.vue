@@ -24,7 +24,7 @@ import paypalLogos from "../../assets/paymentIcons.svg";
                         <Link href=""><img :src="twitterLogo" alt="" /></Link>
                     </div>
                     <div class="column flex flex-col gap-4 mt-[1rem]">
-                <span class="text-[1.5rem]"
+                <span class="text-[1.5rem] max-[480px]:text-[1.2rem]"
                     >Subscribe to Newsletter</span
                 >
                 <div class="max-w-[450px]">
@@ -35,7 +35,7 @@ import paypalLogos from "../../assets/paymentIcons.svg";
                             class="bg-transparent rounded-[100px] text-white p-3 border-[1px] w-full pl-4"
                         />
                         <button
-                            class="h-full absolute right-0 button-tertiary w-[30%]"
+                            class="h-full absolute right-0 button-tertiary w-[30%] max-[480px]:text-[0.875rem]"
                         >
                             Subscribe
                         </button>
@@ -46,8 +46,8 @@ import paypalLogos from "../../assets/paymentIcons.svg";
                 <div class="col w-[50%] flex justify-between gap-10
                 max-[480px]:grid max-[480px]:grid-cols-2 max-[480px]:w-full max-[480px]:mt-5">
                     <div class="col flex flex-col gap-8">
-                        <label for="" class="text-[1.25rem]">Company</label>
-                        <ul class="flex flex-col gap-4">
+                        <label for="" class="text-[1.25rem] max-[480px]:text-[1rem]">Company</label>
+                        <ul class="flex flex-col gap-4 max-[480px]:text-[0.875rem]">
                             <li>
                                 <Link :href="route('pages.show', 'about-us')">About Us</Link>
                             </li>
@@ -63,8 +63,8 @@ import paypalLogos from "../../assets/paymentIcons.svg";
                         </ul>
                     </div>
                     <div class="col flex flex-col gap-8">
-                        <label for="" class="text-[1.25rem]">Information</label>
-                        <ul class="flex flex-col gap-4">
+                        <label for="" class="text-[1.25rem] max-[480px]:text-[1rem]">Information</label>
+                        <ul class="flex flex-col gap-4 max-[480px]:text-[0.875rem]">
                             <li>
                                 <Link :href="route('pages.show', 'privacy-policy')">Privacy Policy</Link>
                             </li>
@@ -74,8 +74,8 @@ import paypalLogos from "../../assets/paymentIcons.svg";
                         </ul>
                     </div>
                     <div class="col flex flex-col gap-8">
-                        <label for="" class="text-[1.25rem]">Location</label>
-                        <ul class="flex flex-col gap-4">
+                        <label for="" class="text-[1.25rem] max-[480px]:text-[1rem]">Location</label>
+                        <ul class="flex flex-col gap-4 max-[480px]:text-[0.875rem]">
                             <li>
                                 <Link href="">India</Link>
                             </li>
@@ -88,10 +88,10 @@ import paypalLogos from "../../assets/paymentIcons.svg";
                         </ul>
                     </div>
                     <div class="col flex flex-col gap-8">
-                        <label for="" class="text-[1.25rem]"
+                        <label for="" class="text-[1.25rem] max-[480px]:text-[1rem]"
                             >Rent By Type</label
                         >
-                        <ul class="flex flex-col gap-4">
+                        <ul class="flex flex-col gap-4 max-[480px]:text-[0.875rem]">
                             <li>
                                 <Link href="">Car</Link>
                             </li>

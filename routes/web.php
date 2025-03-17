@@ -231,6 +231,10 @@ Route::middleware(['auth', 'role:vendor'])->group(function () {
 
     Route::resource('vendor-vehicle-addons', VendorVehicleAddonController::class);
 
+
+    Route::get('/vendor-status', [VendorController::class, 'status'])->name('vendor.status');
+    Route::get('/vehicles/create', [VehicleController::class, 'create'])->name('vehicles.create');
+
 });
 
 
@@ -295,7 +299,7 @@ Route::middleware(['auth', 'role:customer'])->group(function () {
     Route::get('/favorites', [FavoriteController::class, 'getFavorites']);
 });
 
-
+// this route is for user, not create lsiting/or access until status is not confirmed 
 Route::middleware(['auth', 'vendor.status'])->group(function () {
     Route::get('/vehicles/create', [VehicleController::class, 'create'])->name('vehicles.create');
     Route::inertia('vehicle-listing', 'Auth/VehicleListing');

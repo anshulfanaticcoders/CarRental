@@ -110,6 +110,7 @@ const vendorMenus = [
       { name: "Profile", path: "/profile" },
       { name: "Overview", path: "/overview" },
       { name: "Documents", path: "/vendor/documents" },
+      { name: "Verification Status", path: "/vendor-status" },
     ],
   },
   {
@@ -118,7 +119,7 @@ const vendorMenus = [
     icon: vehiclesIcon,
     items: [
       { name: "All Vehicles", path: "/current-vendor-vehicles" },
-      { name: "Add New Vehicle", path: "/vehicle-listing" },
+      { name: "Add New Vehicle", path: "/vehicles/create" },
       { name: "Add Plan", path: "/plans" },
     ],
   },

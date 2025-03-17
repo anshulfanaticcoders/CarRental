@@ -213,4 +213,24 @@ class VendorController extends Controller
     }
 }
 
+
+public function status()
+{
+    $user = auth()->user();
+
+    // Get vendor profile and document
+    $vendorProfile = VendorProfile::where('user_id', $user->id)->first();
+    $vendorDocument = VendorDocument::where('user_id', $user->id)->first();
+
+    // Determine status (default to pending if no profile found)
+    $status = $vendorProfile ? $vendorProfile->status : 'pending';
+
+    return Inertia::render('Vendor/Status/Index', [
+        'status' => $status,
+        'vendorProfile' => $vendorProfile,
+        'vendorDocument' => $vendorDocument,
+    ]);
+}
+
+
 }

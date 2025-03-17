@@ -2,6 +2,7 @@
 
 namespace App\Http\Middleware;
 
+use App\Models\VendorProfile;
 use Illuminate\Http\Request;
 use Inertia\Middleware;
 use App\Models\UserDocument; // Import the UserDocument model
@@ -50,6 +51,13 @@ class HandleInertiaRequests extends Middleware
                     'name' => $request->user()->first_name,
                     'documents' => $formattedDocuments, // Add documents to shared data
                 ],
+                'vendorStatus' => function () {
+                $user = auth()->user();
+                if ($user) {
+                    $vendorProfile = VendorProfile::where('user_id', $user->id)->first();
+                    return $vendorProfile ? $vendorProfile->status : 'pending';
+                }
+            }
             ]);
         } else {
             // If the user is not authenticated
