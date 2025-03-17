@@ -937,7 +937,7 @@
                     </div>
                 </div>
             </div>
-            <div class="column min-h-full w-[50%] flex-1 bg-customPrimaryColor relative max-[768px]:w-full">
+            <div class="column min-h-full w-[50%] flex-1 bg-customPrimaryColor relative max-[768px]:w-full overflow-hidden">
                 <div class="flex flex-col gap-10 items-center justify-center h-full max-[768px]:gap-0">
                     <div class="col text-customPrimaryColor-foreground w-[70%] p-[2rem] border-b-[2px] max-[768px]:w-full">
                         <img :src="warningSign" alt="" class="max-[768px]:w-[35px]"/>
@@ -1041,7 +1041,7 @@
                 </div>
             </div>
 
-            <div class="column min-h-full w-[50%] flex-1 bg-customPrimaryColor relative max-[768px]:w-full">
+            <div class="column min-h-full w-[50%] flex-1 bg-customPrimaryColor relative max-[768px]:w-full overflow-hidden">
                 <div class="flex flex-col gap-10 items-center justify-center h-full max-[768px]:gap-0">
                     <div class="col text-customPrimaryColor-foreground w-[70%] max-[768px]:w-full p-[2rem] border-b-[2px]">
                         <img :src="warningSign" alt="" class="max-[768px]:w-[35px]"/>
