@@ -139,7 +139,7 @@ const submit = () => {
     <Head title="Register" />
     
     <div class="min-h-[80vh] flex justify-center items-center register">
-    <div class="w-[55rem] max-w-full mx-auto px-4 max-[768px]:px-2">
+    <div class="w-[55rem] max-w-full mx-auto px-4 max-[768px]:px-[1.5rem]">
         <Stepper 
             v-model="stepIndex" 
             class="block w-full"
@@ -156,7 +156,7 @@ const submit = () => {
                     >
                         <StepperSeparator
                             v-if="step.step !== steps[steps.length - 1].step"
-                            class="absolute left-[calc(50%+20px)] right-[calc(-50%+10px)] top-5 block h-0.5 shrink-0 rounded-full bg-muted group-data-[state=completed]:bg-primary max-[768px]:left-[calc(50%+15px)] max-[768px]:right-[calc(-50%+5px)]"
+                            class="absolute max-[768px]:hidden left-[calc(50%+20px)] right-[calc(-50%+10px)] top-5 block h-0.5 shrink-0 rounded-full bg-muted group-data-[state=completed]:bg-primary max-[768px]:left-[calc(50%+15px)] max-[768px]:right-[calc(-50%+5px)]"
                         />
 
                         <StepperTrigger as-child>
@@ -179,7 +179,7 @@ const submit = () => {
                         <div class="mt-5 flex flex-col items-center text-center">
                             <StepperTitle
                                 :class="[state === 'active' && 'text-primary']"
-                                class="text-sm font-semibold transition lg:text-base max-[768px]:text-xs"
+                                class="text-sm font-semibold transition lg:text-base max-[768px]:text-[0.65rem]"
                             >
                                 {{ step.title }}
                             </StepperTitle>
