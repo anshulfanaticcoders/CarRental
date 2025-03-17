@@ -12,7 +12,7 @@
                 <input type="text" v-model="searchQuery" placeholder="Search plans..." class="px-4 py-2 border border-gray-300 rounded-md w-full" />
             </div>
 
-            <div class="bg-white shadow-md rounded-lg overflow-hidden">
+            <div class="bg-white shadow-md rounded-lg overflow-x-auto">
                 <table class="min-w-full divide-y divide-gray-200">
                     <thead class="bg-gray-50">
                         <tr>
