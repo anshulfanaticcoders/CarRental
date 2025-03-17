@@ -10,13 +10,13 @@ import paypalLogos from "../../assets/paymentIcons.svg";
 <template>
     <div
         class="bg-customPrimaryColor py-customVerticalSpacing text-customPrimaryColor-foreground
-        max-[480px]:py-0"
+        max-[768px]:py-0"
     >
         <div class="container">
             <div class="column py-[3rem] flex justify-between gap-6
-            max-[480px]:flex-col">
+            max-[768px]:flex-col">
                 <div class="col w-[30%] flex flex-col gap-5
-                max-[480px]:w-full">
+                max-[768px]:w-full">
                     <Link class="w-full" href="/"><ApplicationLogo logoColor="#FFFFFF" /></Link>
                     <div class="socialIcons flex gap-6">
                         <Link href=""><img :src="facebookLogo" alt="" /></Link>
@@ -24,7 +24,7 @@ import paypalLogos from "../../assets/paymentIcons.svg";
                         <Link href=""><img :src="twitterLogo" alt="" /></Link>
                     </div>
                     <div class="column flex flex-col gap-4 mt-[1rem]">
-                <span class="text-[1.5rem] max-[480px]:text-[1.2rem]"
+                <span class="text-[1.5rem] max-[768px]:text-[1.2rem]"
                     >Subscribe to Newsletter</span
                 >
                 <div class="max-w-[450px]">
@@ -35,7 +35,7 @@ import paypalLogos from "../../assets/paymentIcons.svg";
                             class="bg-transparent rounded-[100px] text-white p-3 border-[1px] w-full pl-4"
                         />
                         <button
-                            class="h-full absolute right-0 button-tertiary w-[30%] max-[480px]:text-[0.875rem]"
+                            class="h-full absolute right-0 button-tertiary w-[30%] max-[768px]:text-[0.875rem]"
                         >
                             Subscribe
                         </button>
@@ -44,10 +44,10 @@ import paypalLogos from "../../assets/paymentIcons.svg";
             </div>
                 </div>
                 <div class="col w-[50%] flex justify-between gap-10
-                max-[480px]:grid max-[480px]:grid-cols-2 max-[480px]:w-full max-[480px]:mt-5">
+                max-[768px]:grid max-[768px]:grid-cols-2 max-[768px]:w-full max-[768px]:mt-5">
                     <div class="col flex flex-col gap-8">
-                        <label for="" class="text-[1.25rem] max-[480px]:text-[1rem]">Company</label>
-                        <ul class="flex flex-col gap-4 max-[480px]:text-[0.875rem]">
+                        <label for="" class="text-[1.25rem] max-[768px]:text-[1rem]">Company</label>
+                        <ul class="flex flex-col gap-4 max-[768px]:text-[0.875rem]">
                             <li>
                                 <Link :href="route('pages.show', 'about-us')">About Us</Link>
                             </li>
@@ -63,8 +63,8 @@ import paypalLogos from "../../assets/paymentIcons.svg";
                         </ul>
                     </div>
                     <div class="col flex flex-col gap-8">
-                        <label for="" class="text-[1.25rem] max-[480px]:text-[1rem]">Information</label>
-                        <ul class="flex flex-col gap-4 max-[480px]:text-[0.875rem]">
+                        <label for="" class="text-[1.25rem] max-[768px]:text-[1rem]">Information</label>
+                        <ul class="flex flex-col gap-4 max-[768px]:text-[0.875rem]">
                             <li>
                                 <Link :href="route('pages.show', 'privacy-policy')">Privacy Policy</Link>
                             </li>
@@ -74,8 +74,8 @@ import paypalLogos from "../../assets/paymentIcons.svg";
                         </ul>
                     </div>
                     <div class="col flex flex-col gap-8">
-                        <label for="" class="text-[1.25rem] max-[480px]:text-[1rem]">Location</label>
-                        <ul class="flex flex-col gap-4 max-[480px]:text-[0.875rem]">
+                        <label for="" class="text-[1.25rem] max-[768px]:text-[1rem]">Location</label>
+                        <ul class="flex flex-col gap-4 max-[768px]:text-[0.875rem]">
                             <li>
                                 <Link href="/s?where=Dubai%2C%20Dubai%2C%20United%20Arab%20Emirates&latitude=25.116119&longitude=55.196411&radius=10000">Dubai</Link>
                             </li>
@@ -88,10 +88,10 @@ import paypalLogos from "../../assets/paymentIcons.svg";
                         </ul>
                     </div>
                     <div class="col flex flex-col gap-8">
-                        <label for="" class="text-[1.25rem] max-[480px]:text-[1rem]"
+                        <label for="" class="text-[1.25rem] max-[768px]:text-[1rem]"
                             >Rent By Type</label
                         >
-                        <ul class="flex flex-col gap-4 max-[480px]:text-[0.875rem]">
+                        <ul class="flex flex-col gap-4 max-[768px]:text-[0.875rem]">
                             <li>
                                 <Link href="">Car</Link>
                             </li>
@@ -115,9 +115,9 @@ import paypalLogos from "../../assets/paymentIcons.svg";
     </div>
 
     <div class="bg-customDarkBlackColor py-[2rem] text-white">
-     <div class="container flex justify-between items-center max-[480px]:flex-col max-[480px]:justify-center max-[480px]:gap-5">
-        <div class="column max-[480px]:flex">
-            <span class="text-[1.25rem] max-[480px]:text-[0.95rem] max-[480px]:w-full max-[480px]:text-center">Copyright @ 2025 Vrooem, All rights reserved.</span>
+     <div class="container flex justify-between items-center max-[768px]:flex-col max-[768px]:justify-center max-[768px]:gap-5">
+        <div class="column max-[768px]:flex">
+            <span class="text-[1.25rem] max-[768px]:text-[0.95rem] max-[768px]:w-full max-[768px]:text-center">Copyright @ 2025 Vrooem, All rights reserved.</span>
         </div>
         <div class="column">
             <img :src=paypalLogos alt="">
