@@ -75,7 +75,7 @@ const formatPrice = (price, vehicle) => {
         <div v-if="favoriteVehicles.length === 0" class="text-gray-500">
             No favorite vehicles yet.
         </div>
-        <div v-else class="grid grid-cols-3 gap-6 max-[480px]:grid-cols-1">
+        <div v-else class="grid grid-cols-3 gap-6 max-[768px]:grid-cols-1">
             <div v-for="vehicle in favoriteVehicles" :key="vehicle.id"
                 class="p-[1rem] rounded-[12px] border-[1px] border-[#E7E7E7]">
                 <div class="column flex justify-end">
@@ -97,13 +97,13 @@ const formatPrice = (price, vehicle) => {
                         </span>
                     </div>
                     <div class="column mt-[2rem]">
-                        <h5 class="font-medium text-[1.5rem] text-customPrimaryColor max-[480px]:text-[1.2rem]">
+                        <h5 class="font-medium text-[1.5rem] text-customPrimaryColor max-[768px]:text-[1.2rem]">
                             {{ vehicle.brand }}
                         </h5>
                         <div class="car_short_info mt-[1rem] flex gap-3">
                             <img :src="carIcon" alt="" />
                             <div class="features">
-                                <span class="capitalize text-[1.15rem] max-[480px]:text-[0.875rem]">{{ vehicle.transmission }} .
+                                <span class="capitalize text-[1.15rem] max-[768px]:text-[0.875rem]">{{ vehicle.transmission }} .
                                     {{ vehicle.fuel }} .
                                     {{
                                         vehicle.seating_capacity
@@ -116,15 +116,15 @@ const formatPrice = (price, vehicle) => {
                                 <img :src="walkIcon" alt="" /><span class="text-[1.15rem]">9.3 KM Away</span>
                             </div> -->
                             <div class="col flex gap-3">
-                                <img :src="mileageIcon" alt="" /><span class="text-[1.15rem] max-[480px]:text-[0.875rem]">{{ vehicle.mileage
+                                <img :src="mileageIcon" alt="" /><span class="text-[1.15rem] max-[768px]:text-[0.875rem]">{{ vehicle.mileage
                                     }}km/d</span>
                             </div>
                         </div>
                         <div class="mt-[2rem] flex justify-between items-center">
                             <div>
-                                <span class="text-customPrimaryColor text-[1.875rem] font-medium max-[480px]:text-[1.35rem]">{{ formatPrice(vehicle.price_per_day, vehicle) }}</span><span>/day</span>
+                                <span class="text-customPrimaryColor text-[1.875rem] font-medium max-[768px]:text-[1.35rem]">{{ formatPrice(vehicle.price_per_day, vehicle) }}</span><span>/day</span>
                             </div>
-                            <img :src="goIcon" alt="" class="max-[480px]:w-[35px]"/>
+                            <img :src="goIcon" alt="" class="max-[768px]:w-[35px]"/>
                         </div>
                     </div>
                 </Link>

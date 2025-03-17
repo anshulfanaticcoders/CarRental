@@ -5,28 +5,28 @@
 
             <div v-if="reviews.data.length > 0">
                 <div v-for="review in reviews.data" :key="review.id" class="border rounded-lg p-6 mb-4 shadow-md">
-                    <div class="flex justify-between items-start mb-4 max-[480px]:flex-col">
-                        <div class="flex items-start gap-8 max-[480px]:flex-col">
-                            <div class="max-w-[308px] max-h-[100px] max-[480px]:max-w-full max-[480px]:max-h-[500px]">
+                    <div class="flex justify-between items-start mb-4 max-[768px]:flex-col">
+                        <div class="flex items-start gap-8 max-[768px]:flex-col">
+                            <div class="max-w-[308px] max-h-[100px] max-[768px]:max-w-full max-[768px]:max-h-[500px]">
                                 <img :src="getPrimaryImage(review)"
                                     :alt="`${review.vehicle.brand} ${review.vehicle.model}`" alt="Vehicle"
                                     class="object-cover rounded mr-4 w-full h-full" />
                             </div>
                             <div class="flex flex-col gap-4">
-                                <div class="flex items-center mb-[-1rem] max-[480px]:gap-2">
-                                    <h3 class="text-[1.5rem] font-semibold max-[480px]:text-[1rem]">{{ review.vehicle.brand }} {{
+                                <div class="flex items-center mb-[-1rem] max-[768px]:gap-2">
+                                    <h3 class="text-[1.5rem] font-semibold max-[768px]:text-[1rem]">{{ review.vehicle.brand }} {{
                                         review.vehicle.model }}
                                     </h3>
                                     <span
                                         class="bg-gray-200 text-customPrimaryColor px-4 py-3 rounded-full inline-block ml-[2rem]
-                                        max-[480px]:text-[0.75rem]  max-[480px]:ml-0">
+                                        max-[768px]:text-[0.75rem]  max-[768px]:ml-0">
                                         {{ review.vehicle.category.name }}
                                     </span>
                                 </div>
 
                                 <p class="text-sm text-gray-600 capitalize">{{ review.vehicle.transmission }} . {{
                                     review.vehicle.fuel }} . {{ review.vehicle.seating_capacity }} seats</p>
-                                <div class="flex max-[480px]:mb-3">
+                                <div class="flex max-[768px]:mb-3">
                                     <img v-if="review.vehicle.vendor_profile && review.vehicle.vendor_profile.avatar"
                                         :src="`${review.vehicle.vendor_profile.avatar}`"
                                         class="w-12 h-12 rounded-full mr-2" />

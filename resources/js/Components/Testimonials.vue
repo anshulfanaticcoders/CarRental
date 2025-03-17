@@ -62,19 +62,19 @@ const plugin = Autoplay({
 </script>
 
 <template>
-    <div class="testimonials bg-customPrimaryColor min-h-[90vh]  max-[480px]:min-h-auto flex flex-col gap-10 items-center py-customVerticalSpacing mt-[4rem]
-         max-[480px]:mt-0 max-[480px]:py-0 max-[480px]:px-[0.5rem]">
+    <div class="testimonials bg-customPrimaryColor min-h-[90vh]  max-[768px]:min-h-auto flex flex-col gap-10 items-center py-customVerticalSpacing mt-[4rem]
+         max-[768px]:mt-0 max-[768px]:py-0 max-[768px]:px-[0.5rem]">
         <div class="column text-center flex flex-col items-center text-customPrimaryColor-foreground w-[573px] py-[2rem]
-         max-[480px]:w-full">
-            <span class="text-[1.25rem]  max-[480px]:mb-5">-Testimonials-</span>
-            <h3 class="max-w-[883px] max-[480px]:max-w-full">
+         max-[768px]:w-full">
+            <span class="text-[1.25rem]  max-[768px]:mb-5">-Testimonials-</span>
+            <h3 class="max-w-[883px] max-[768px]:max-w-full">
                 What our customers are saying about us
             </h3>
         </div>
         <Carousel class="relative w-full full-w-container" :plugins="[plugin]" @mouseenter="plugin.stop" @mouseleave="
             [plugin.reset(), plugin.play(), console.log('Running')]
             " :slides-to-show="3">
-            <CarouselContent class="max-[480px]:mx-0">
+            <CarouselContent class="max-[768px]:mx-0">
                 <CarouselItem v-for="(testimonial, index) in testimonials" :key="index"
                     class="pl-1 md:basis-1/2 lg:basis-1/4">
                     <div class="p-1">
@@ -139,7 +139,7 @@ const plugin = Autoplay({
     /* background-position: center center; */
 }
 
-@media screen and (max-width:480px) {
+@media screen and (max-width:768px) {
     .testimonials .prev-btn {
         left: 60% !important;
         background-color: white;

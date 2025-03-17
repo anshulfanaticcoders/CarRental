@@ -137,15 +137,15 @@ const submit = () => {
 
     <Head title="Vendor Register" />
     <AuthenticatedHeaderLayout />
-    <div class="max-[480px]:mt-8">
+    <div class="max-[768px]:mt-8">
         <div
-            class="ml-[5%] flex justify-between min-h-[88vh] max-[480px]:ml-0 max-[480px]:min-h-auto max-[480px]:flex-col max-[480px]:gap-10">
-            <div class="column flex items-center w-[40%] max-[480px]:w-full">
-                <form @submit.prevent="submit" class="w-full max-[480px]:px-[1.5rem]">
+            class="ml-[5%] flex justify-between min-h-[88vh] max-[768px]:ml-0 max-[768px]:min-h-auto max-[768px]:flex-col max-[768px]:gap-10">
+            <div class="column flex items-center w-[40%] max-[768px]:w-full">
+                <form @submit.prevent="submit" class="w-full max-[768px]:px-[1.5rem]">
                     <div v-if="currentStep === 0">
                         <div class="flex flex-col gap-5">
-                            <span class="text-[3rem] font-medium max-[480px]:text-[1.2rem]">Create Vendor</span>
-                            <p class="text-customLightGrayColor text-[1.15rem] max-[480px]:text-[0.875rem]">
+                            <span class="text-[3rem] font-medium max-[768px]:text-[1.2rem]">Create Vendor</span>
+                            <p class="text-customLightGrayColor text-[1.15rem] max-[768px]:text-[0.875rem]">
                                 Create your listing in a few minutes to receive
                                 rental requests! All you need is a photo, a
                                 rate, and an address and our team will contact
@@ -153,7 +153,7 @@ const submit = () => {
                                 Also, make sure you have the vehicle's
                                 registration certificate nearby.
                             </p>
-                            <PrimaryButton class="w-[15rem] max-[480px]:w-[10rem] max-[480px]:text-[0.65rem]"
+                            <PrimaryButton class="w-[15rem] max-[768px]:w-[10rem] max-[768px]:text-[0.65rem]"
                                 type="button" @click="nextStep">Create a vendor
                             </PrimaryButton>
                         </div>
@@ -181,11 +181,11 @@ const submit = () => {
                             </div>
 
                             <div class="flex justify-between">
-                                <button class="button-secondary w-[15rem] max-[480px]:w-[10rem]" type="button" @click="prevStep"
+                                <button class="button-secondary w-[15rem] max-[768px]:w-[10rem]" type="button" @click="prevStep"
                                     :disabled="currentStep === 0">
                                     Back
                                 </button>
-                                <PrimaryButton class="w-[15rem] max-[480px]:w-[10rem]" type="button" @click="nextStep">Next</PrimaryButton>
+                                <PrimaryButton class="w-[15rem] max-[768px]:w-[10rem]" type="button" @click="nextStep">Next</PrimaryButton>
                             </div>
                         </div>
                     </div>
@@ -277,8 +277,8 @@ const submit = () => {
                         </div>
                         <!-- Buttons -->
                         <div class="flex justify-between mt-[2rem]">
-                            <button class="button-secondary w-[15rem] max-[480px]:w-[10rem]" type="button" @click="prevStep">Back</button>
-                            <PrimaryButton class="w-[15rem] max-[480px]:w-[10rem]" type="button" @click="nextStep">Next</PrimaryButton>
+                            <button class="button-secondary w-[15rem] max-[768px]:w-[10rem]" type="button" @click="prevStep">Back</button>
+                            <PrimaryButton class="w-[15rem] max-[768px]:w-[10rem]" type="button" @click="nextStep">Next</PrimaryButton>
                         </div>
 
 
@@ -306,11 +306,11 @@ const submit = () => {
                                 <InputLabel for="company_gst_number">VAT Number</InputLabel>
                                 <TextInput type="text" v-model="form.company_gst_number" class="w-full" required />
                             </div>
-                            <div class="flex justify-between max-[480px]:mt-4">
-                                <button class="button-secondary w-[15rem] max-[480px]:w-[10rem]" type="button" @click="prevStep">
+                            <div class="flex justify-between max-[768px]:mt-4">
+                                <button class="button-secondary w-[15rem] max-[768px]:w-[10rem]" type="button" @click="prevStep">
                                     Back
                                 </button>
-                                <PrimaryButton class="w-[15rem] max-[480px]:w-[10rem]" type="submit">Submit</PrimaryButton>
+                                <PrimaryButton class="w-[15rem] max-[768px]:w-[10rem]" type="submit">Submit</PrimaryButton>
                             </div>
                         </div>
                     </div>
@@ -318,14 +318,14 @@ const submit = () => {
             </div>
 
             <div class="column bg-customPrimaryColor w-[50%] min-h-[80vh] relative 
-            max-[480px]:min-h-full max-[480px]:w-full max-[480px]:py-5 max-[480px]:mt-20">
-                <div class="flex flex-col gap-10 items-center justify-center h-full max-[480px]:px-[1.5rem]">
-                    <div class="col text-customPrimaryColor-foreground w-[70%] max-[480px]:w-full">
-                        <img :src="warningSign" alt="" class="max-[480px]:w-[40px]"/>
-                        <h4 class="text-[1.5rem] font-medium max-[480px]:text-[1.2rem] max-[480px]:py-2">
+            max-[768px]:min-h-full max-[768px]:w-full max-[768px]:py-5 max-[768px]:mt-20">
+                <div class="flex flex-col gap-10 items-center justify-center h-full max-[768px]:px-[1.5rem]">
+                    <div class="col text-customPrimaryColor-foreground w-[70%] max-[768px]:w-full">
+                        <img :src="warningSign" alt="" class="max-[768px]:w-[40px]"/>
+                        <h4 class="text-[1.5rem] font-medium max-[768px]:text-[1.2rem] max-[768px]:py-2">
                             Temporary documents
                         </h4>
-                        <p class="max-[480px]:text-[0.875rem]">
+                        <p class="max-[768px]:text-[0.875rem]">
                             You can submit your ad with temporary documents
                             (order form, temporary registration certificate,
                             crossed out vehicle registration document and
@@ -333,16 +333,16 @@ const submit = () => {
                             final vehicle registration document.
                         </p>
                     </div>
-                    <div class="col text-customPrimaryColor-foreground w-[70%] max-[480px]:w-full">
-                        <img :src="warningSign" alt="" class="max-[480px]:w-[40px]"/>
-                        <h4 class="text-[1.5rem] font-medium max-[480px]:text-[1.2rem] max-[480px]:py-2">
+                    <div class="col text-customPrimaryColor-foreground w-[70%] max-[768px]:w-full">
+                        <img :src="warningSign" alt="" class="max-[768px]:w-[40px]"/>
+                        <h4 class="text-[1.5rem] font-medium max-[768px]:text-[1.2rem] max-[768px]:py-2">
                             Need some help?
                         </h4>
-                        <p class="max-[480px]:text-[0.875rem]">Contact us on: +91 524555552</p>
+                        <p class="max-[768px]:text-[0.875rem]">Contact us on: +91 524555552</p>
                     </div>
                 </div>
-                <img :src="vendorBgimage" alt="" class="absolute bottom-0 left-[-4rem] max-[480px]:w-[222px]
-                max-[480px]:top-[-5.5rem]" />
+                <img :src="vendorBgimage" alt="" class="absolute bottom-0 left-[-4rem] max-[768px]:w-[222px]
+                max-[768px]:top-[-5.5rem]" />
             </div>
         </div>
     </div>
@@ -369,7 +369,7 @@ select {
     transform: scale(1.1);
 }
 
-@media screen and (max-width:480px) {
+@media screen and (max-width:768px) {
     input,textarea{
         font-size: 14px;
     }

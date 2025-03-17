@@ -1,7 +1,7 @@
 <template>
     <MyProfileLayout>
         <div class="">
-            <p class="text-[1.75rem] font-bold text-gray-800 bg-customLightPrimaryColor p-4 rounded-[12px] mb-[1rem] max-[480px]:text-[1.2rem]">Booking Details</p>
+            <p class="text-[1.75rem] font-bold text-gray-800 bg-customLightPrimaryColor p-4 rounded-[12px] mb-[1rem] max-[768px]:text-[1.2rem]">Booking Details</p>
 
             <!-- Search Bar -->
             <div class="mb-4">
@@ -196,7 +196,7 @@ watch(searchQuery, (newQuery) => {
 
 
 <style scoped>
-@media screen and (max-width:480px) {
+@media screen and (max-width:768px) {
     
     th{
         font-size: 0.75rem;

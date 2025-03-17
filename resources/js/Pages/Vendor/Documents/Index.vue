@@ -1,8 +1,8 @@
 <template>
     <MyProfileLayout>
-        <div class="flex flex-col gap-4 w-[95%] ml-[1.5rem] max-[480px]:w-full max-[480px]:ml-0">
+        <div class="flex flex-col gap-4 w-[95%] ml-[1.5rem] max-[768px]:w-full max-[768px]:ml-0">
             <div class="flex items-center justify-between mt-[2rem]">
-                <span class="text-[1.5rem] font-semibold max-[480px]:text-[1.2rem]">My Vendor Documents</span>
+                <span class="text-[1.5rem] font-semibold max-[768px]:text-[1.2rem]">My Vendor Documents</span>
             </div>
 
             <Dialog v-model:open="isEditDialogOpen">
@@ -23,15 +23,15 @@
                         <TableBody>
                             <TableRow>
                                 <TableCell>
-                                    <img :src="`${document.driving_license}`" alt="Driving License" class="w-[150px] h-[100px] mb-2 object-cover max-[480px]:hidden">
-                                    <Button v-if="document.driving_license" variant="outline" size="sm" @click="viewDocument(document.driving_license)" class="w-[150px]  max-[480px]:w-full">
+                                    <img :src="`${document.driving_license}`" alt="Driving License" class="w-[150px] h-[100px] mb-2 object-cover max-[768px]:hidden">
+                                    <Button v-if="document.driving_license" variant="outline" size="sm" @click="viewDocument(document.driving_license)" class="w-[150px]  max-[768px]:w-full">
                                         View
                                     </Button>
                                     <span v-else>Not uploaded</span>
                                 </TableCell>
                                 <TableCell>
-                                    <img :src="`${document.passport}`" alt="Passport" class="w-[150px] h-[100px] mb-2 object-cover max-[480px]:hidden">
-                                    <Button v-if="document.passport" variant="outline" size="sm" @click="viewDocument(document.passport)" class="w-[150px]  max-[480px]:w-full">
+                                    <img :src="`${document.passport}`" alt="Passport" class="w-[150px] h-[100px] mb-2 object-cover max-[768px]:hidden">
+                                    <Button v-if="document.passport" variant="outline" size="sm" @click="viewDocument(document.passport)" class="w-[150px]  max-[768px]:w-full">
                                         View
                                     </Button>
                                     <span v-else>Not uploaded</span>
@@ -129,7 +129,7 @@ const getStatusBadgeVariant = (status) => {
 
 <style scoped>
 
-@media screen and (max-width:480px) {
+@media screen and (max-width:768px) {
     
     th{
         font-size: 0.75rem;

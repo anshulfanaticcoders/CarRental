@@ -96,7 +96,7 @@ const handlePageChange = (page) => {
 
       <div class="">
         <!-- Statistics Header -->
-        <p class="text-[1.75rem] font-bold text-gray-800 bg-customLightPrimaryColor p-4 rounded-[12px] mb-[2rem] max-[480px]:text-[1.2rem]">Customer Reviews</p>
+        <p class="text-[1.75rem] font-bold text-gray-800 bg-customLightPrimaryColor p-4 rounded-[12px] mb-[2rem] max-[768px]:text-[1.2rem]">Customer Reviews</p>
         <div class="bg-white rounded-lg shadow p-6 mb-6">
           <div class="grid grid-cols-2 gap-4">
             <div class="text-center">

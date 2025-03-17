@@ -22,21 +22,21 @@ const isRegisterPage = url.includes('/register');
 <template>
     <div class="column border-b-2">
         <div class="full-w-container flex justify-between items-center py-[2rem]">
-            <Link href="/" class="max-[480px]:w-[125px]"><ApplicationLogo class="max-[480px]:w-full" /></Link>
+            <Link href="/" class="max-[768px]:w-[125px]"><ApplicationLogo class="max-[768px]:w-full" /></Link>
             <div class="flex gap-[2rem] items-center">
                 <div class="column">
                     <Link
                         v-if="isRegisterPage"
                         :href="route('login')"
                         class="button-primary py-3 px-5 font-semibold text-gray-600 dark:text-gray-400 dark:hover:text-white focus:outline focus:outline-2 focus:rounded-sm
-                        max-[480px]:text-[0.75rem]"
+                        max-[768px]:text-[0.75rem]"
                     >Log in</Link>
 
                     <Link
                         v-if="isLoginPage"
                         :href="route('register')"
                         class="button-secondary ms-4 font-semibold text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white focus:outline focus:outline-2 focus:rounded-sm
-                        max-[480px]:text-[0.75rem]"
+                        max-[768px]:text-[0.75rem]"
                     >Create an Account</Link>
                 </div>
                 

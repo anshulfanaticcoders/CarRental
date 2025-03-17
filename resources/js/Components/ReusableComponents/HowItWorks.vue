@@ -34,24 +34,24 @@ const accordionItems = [
 
 <template>
     <section
-        class="how-it-works bg-contain bg-no-repeat mt-[4rem] max-[480px]:mt-0"
+        class="how-it-works bg-contain bg-no-repeat mt-[4rem] max-[768px]:mt-0"
         :style="{ backgroundImage: `url(${gridLines})` }"
     >
         <div
             class="full-w-container flex justify-between gap-20 h-[100vh] py-16 items-center
-            max-[480px]:flex-col max-[480px]:h-auto max-[480px]:pb-0"
+            max-[768px]:flex-col max-[768px]:h-auto max-[768px]:pb-0"
         >
             <div
                 class="column bg-cover bg-center rounded-[200px] h-full w-[35%]
-                max-[480px]:w-full max-[480px]:h-[450px]"
+                max-[768px]:w-full max-[768px]:h-[450px]"
                 :style="{ backgroundImage: `url(${gridLinesForegroundImage})` }"
             ></div>
             <div class="column flex flex-col gap-10 w-[55%]
-            max-[480px]:w-full">
+            max-[768px]:w-full">
                 <div class="col flex flex-col gap-5">
-                    <span class="text-cutomPrimaryColor text-[1.25rem]  max-[480px]:text-[1rem]">-How it Works -</span>
+                    <span class="text-cutomPrimaryColor text-[1.25rem]  max-[768px]:text-[1rem]">-How it Works -</span>
                     <h3 class="">Treamlined processes for a hassle-free experience</h3>
-                    <p class='text-[1.25rem] text-customLightGrayColor  max-[480px]:text-[1rem]'>
+                    <p class='text-[1.25rem] text-customLightGrayColor  max-[768px]:text-[1rem]'>
                         Our streamlined process ensures a seamless car rental
                         experience from start to finish. With easy online
                         booking, flexible pick-up and drop-off options.
@@ -69,10 +69,10 @@ const accordionItems = [
                             :key="item.value"
                             :value="item.value"
                         >
-                            <AccordionTrigger class="text-[1.5rem] text-customPrimaryColor max-[480px]:mb-2 max-[480px]:text-[1rem]">{{
+                            <AccordionTrigger class="text-[1.5rem] text-customPrimaryColor max-[768px]:mb-2 max-[768px]:text-[1rem]">{{
                                 item.title
                             }}</AccordionTrigger>
-                            <AccordionContent class="text-[1.25rem] text-customLightGrayColor max-[480px]:text-[0.95rem] max-[480px]:leading-6">
+                            <AccordionContent class="text-[1.25rem] text-customLightGrayColor max-[768px]:text-[0.95rem] max-[768px]:leading-6">
                                 {{ item.content }}
                             </AccordionContent>
                         </AccordionItem>

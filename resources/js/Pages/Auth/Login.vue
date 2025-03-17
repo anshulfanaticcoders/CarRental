@@ -39,16 +39,16 @@ const submit = () => {
         </div>
 
         <div class="ml-[10%] flex justify-between items-center gap-16 h-[100vh] sign_in
-        max-[480px]:flex-col max-[480px]:ml-0 max-[480px]:px-[1.5rem] max-[480px]:justify-center
+        max-[768px]:flex-col max-[768px]:ml-0 max-[768px]:px-[1.5rem] max-[768px]:justify-center
         ">
-         <div class="column w-[40%] max-[480px]:w-full">
+         <div class="column w-[40%] max-[768px]:w-full">
             <div class="text-center mb-[4rem] text-[#111111]">
-                <h3 class="font-medium text-[3rem] max-[480px]:text-[1.5rem] max-[480px]:text-white">Sign In</h3>
-                <p class='text-customLightGrayColor max-[480px]:text-white max-[480px]:text-[1rem] max-[480px]:mt-2'>Login for free to access to in any of our products</p>
+                <h3 class="font-medium text-[3rem] max-[768px]:text-[1.5rem] max-[768px]:text-white">Sign In</h3>
+                <p class='text-customLightGrayColor max-[768px]:text-white max-[768px]:text-[1rem] max-[768px]:mt-2'>Login for free to access to in any of our products</p>
             </div>
             <form @submit.prevent="submit">
             <div>
-                <InputLabel for="email" value="Email address" class="max-[480px]:!text-white"/>
+                <InputLabel for="email" value="Email address" class="max-[768px]:!text-white"/>
 
                 <TextInput
                     id="email"
@@ -64,7 +64,7 @@ const submit = () => {
             </div>
 
             <div class="mt-4">
-                <InputLabel for="password" value="Password" class="max-[480px]:!text-white"/>
+                <InputLabel for="password" value="Password" class="max-[768px]:!text-white"/>
 
                 <TextInput
                     id="password"
@@ -81,12 +81,12 @@ const submit = () => {
             <div class="flex mt-4 justify-between">
                 <label class="flex items-center">
                     <Checkbox name="remember" v-model:checked="form.remember" />
-                    <span class="ms-2 text-lg text-gray-600 max-[480px]:text-white max-[480px]:text-[1rem]">Remember me</span>
+                    <span class="ms-2 text-lg text-gray-600 max-[768px]:text-white max-[768px]:text-[1rem]">Remember me</span>
                 </label>
                     <Link
                     v-if="canResetPassword"
                     :href="route('password.request')"
-                    class="underline max-[480px]:text-[1rem] max-[480px]:text-white text-lg text-gray-600 hover:text-gray-900 rounded-md focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+                    class="underline max-[768px]:text-[1rem] max-[768px]:text-white text-lg text-gray-600 hover:text-gray-900 rounded-md focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
                 >
                     Forgot your password?
                 </Link>
@@ -94,15 +94,15 @@ const submit = () => {
             </div>
 
             <div class="flex flex-col gap-4 justify-end mt-4">
-                <button class="ms-4 button-primary w-full p-4 text-[1.15rem] max-[480px]:text-[1rem] max-[480px]:mt-5" :class="{ 'opacity-25': form.processing }" :disabled="form.processing">
+                <button class="ms-4 button-primary w-full p-4 text-[1.15rem] max-[768px]:text-[1rem] max-[768px]:mt-5" :class="{ 'opacity-25': form.processing }" :disabled="form.processing">
                     Sign in
                 </button>
             </div>
         </form>
          </div>
 
-         <div class="column overflow-hidden h-full w-[40%] max-[480px]:w-full max-[480px]:absolute max-[480px]:-z-10">
-            <img :src = loginBg alt="" class="w-full h-full object-cover repeat-0 max-[480px]:brightness-50">
+         <div class="column overflow-hidden h-full w-[40%] max-[768px]:w-full max-[768px]:absolute max-[768px]:-z-10">
+            <img :src = loginBg alt="" class="w-full h-full object-cover repeat-0 max-[768px]:brightness-50">
          </div>
         </div>
 

@@ -46,8 +46,8 @@ const vendorStatus = computed(() => page.props.vendorStatus);
                             <!-- Logo Section -->
                             <div class="flex">
                                 <div class="shrink-0 flex items-center">
-                                    <Link href="/" class="max-[480px]:w-[125px]">
-                                    <ApplicationLogo class="max-[480px]:w-full block fill-current text-gray-800" />
+                                    <Link href="/" class="max-[768px]:w-[125px]">
+                                    <ApplicationLogo class="max-[768px]:w-full block fill-current text-gray-800" />
                                     </Link>
                                 </div>
                             </div>
@@ -175,8 +175,8 @@ const vendorStatus = computed(() => page.props.vendorStatus);
             <div v-else class="column py-[0.5rem]">
                 <div class="flex justify-between items-center">
                     <!-- Logo -->
-                    <Link href="/" class="max-[480px]:w-[125px]">
-                    <ApplicationLogo class="max-[480px]:w-full" />
+                    <Link href="/" class="max-[768px]:w-[125px]">
+                    <ApplicationLogo class="max-[768px]:w-full" />
                     </Link>
 
                     <!-- Navigation -->
@@ -184,13 +184,13 @@ const vendorStatus = computed(() => page.props.vendorStatus);
                         <!-- Auth Links -->
                         <div class="column">
                             <Link :href="route('login')" class="button-primary py-3 px-5 font-semibold text-gray-600 dark:text-gray-400 dark:hover:text-white focus:outline focus:outline-2 focus:rounded-sm
-                                max-[480px]:text-[0.65rem]
+                                max-[768px]:text-[0.65rem]
                                 ">
                             Log in
                             </Link>
 
                             <Link :href="route('register')" class="button-secondary ms-4 font-semibold text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white focus:outline focus:outline-2 focus:rounded-sm
-                                max-[480px]:text-[0.65rem]
+                                max-[768px]:text-[0.65rem]
                                 ">
                             Create an Account
                             </Link>

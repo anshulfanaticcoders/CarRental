@@ -1,36 +1,36 @@
 <template>
     <MyProfileLayout>
         <div class="">
-            <p class="text-[1.75rem] font-semibold mb-6 bg-customLightPrimaryColor p-4 rounded-[12px] max-[480px]:text-[1.2rem]">Vendor Overview</p>
+            <p class="text-[1.75rem] font-semibold mb-6 bg-customLightPrimaryColor p-4 rounded-[12px] max-[768px]:text-[1.2rem]">Vendor Overview</p>
 
-            <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-[2rem] max-[480px]:grid-cols-2">
+            <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-[2rem] max-[768px]:grid-cols-2">
                 <Card class="bg-customLightPrimaryColor">
-                    <CardHeader><CardTitle class="text-[1.5rem] max-[480px]:text-[1rem] text-center">Total Vehicles</CardTitle></CardHeader>
-                    <CardContent class="text-[1.75rem] max-[480px]:text-[1rem] bg-customPrimaryColor text-white text-center p-0 rounded-bl-[12px] rounded-br-[12px]">{{ totalVehicles }}</CardContent>
+                    <CardHeader><CardTitle class="text-[1.5rem] max-[768px]:text-[1rem] text-center">Total Vehicles</CardTitle></CardHeader>
+                    <CardContent class="text-[1.75rem] max-[768px]:text-[1rem] bg-customPrimaryColor text-white text-center p-0 rounded-bl-[12px] rounded-br-[12px]">{{ totalVehicles }}</CardContent>
                 </Card>
                 <Card class="bg-customLightPrimaryColor">
-                    <CardHeader><CardTitle class="text-[1.5rem] max-[480px]:text-[1rem] text-center">Vehicles Available</CardTitle></CardHeader>
-                    <CardContent class="text-[1.75rem] max-[480px]:text-[1rem] bg-customPrimaryColor text-white text-center p-0 rounded-bl-[12px] rounded-br-[12px]">{{ activeVehicles }}</CardContent>
+                    <CardHeader><CardTitle class="text-[1.5rem] max-[768px]:text-[1rem] text-center">Vehicles Available</CardTitle></CardHeader>
+                    <CardContent class="text-[1.75rem] max-[768px]:text-[1rem] bg-customPrimaryColor text-white text-center p-0 rounded-bl-[12px] rounded-br-[12px]">{{ activeVehicles }}</CardContent>
                 </Card>
                 <Card class="bg-customLightPrimaryColor">
-                    <CardHeader><CardTitle class="text-[1.5rem] max-[480px]:text-[1rem] text-center">Vehicles Rented</CardTitle></CardHeader>
-                    <CardContent class="text-[1.75rem] max-[480px]:text-[1rem] bg-customPrimaryColor text-white text-center p-0 rounded-bl-[12px] rounded-br-[12px]">{{ rentedVehicles }}</CardContent>
+                    <CardHeader><CardTitle class="text-[1.5rem] max-[768px]:text-[1rem] text-center">Vehicles Rented</CardTitle></CardHeader>
+                    <CardContent class="text-[1.75rem] max-[768px]:text-[1rem] bg-customPrimaryColor text-white text-center p-0 rounded-bl-[12px] rounded-br-[12px]">{{ rentedVehicles }}</CardContent>
                 </Card>
                 <Card class="bg-customLightPrimaryColor">
-                    <CardHeader><CardTitle class="text-[1.5rem] max-[480px]:text-[1rem] text-center">Maintenance</CardTitle></CardHeader>
-                    <CardContent class="text-[1.75rem] max-[480px]:text-[1rem] bg-customPrimaryColor text-white text-center p-0 rounded-bl-[12px] rounded-br-[12px]">{{ maintenanceVehicles }}</CardContent>
+                    <CardHeader><CardTitle class="text-[1.5rem] max-[768px]:text-[1rem] text-center">Maintenance</CardTitle></CardHeader>
+                    <CardContent class="text-[1.75rem] max-[768px]:text-[1rem] bg-customPrimaryColor text-white text-center p-0 rounded-bl-[12px] rounded-br-[12px]">{{ maintenanceVehicles }}</CardContent>
                 </Card>
                 <Card class="bg-customLightPrimaryColor">
-                    <CardHeader><CardTitle class="text-[1.5rem] max-[480px]:text-[1rem] text-center">Total Bookings</CardTitle></CardHeader>
-                    <CardContent class="text-[1.75rem] max-[480px]:text-[1rem] bg-customPrimaryColor text-white text-center p-0 rounded-bl-[12px] rounded-br-[12px]">{{ totalBookings }}</CardContent>
+                    <CardHeader><CardTitle class="text-[1.5rem] max-[768px]:text-[1rem] text-center">Total Bookings</CardTitle></CardHeader>
+                    <CardContent class="text-[1.75rem] max-[768px]:text-[1rem] bg-customPrimaryColor text-white text-center p-0 rounded-bl-[12px] rounded-br-[12px]">{{ totalBookings }}</CardContent>
                 </Card>
                 <Card class="bg-customLightPrimaryColor">
-                    <CardHeader><CardTitle class="text-[1.5rem] max-[480px]:text-[1rem] text-center">Active Bookings</CardTitle></CardHeader>
-                    <CardContent class="text-[1.75rem] max-[480px]:text-[1rem] bg-customPrimaryColor text-white text-center p-0 rounded-bl-[12px] rounded-br-[12px]">{{ activeBookings }}</CardContent>
+                    <CardHeader><CardTitle class="text-[1.5rem] max-[768px]:text-[1rem] text-center">Active Bookings</CardTitle></CardHeader>
+                    <CardContent class="text-[1.75rem] max-[768px]:text-[1rem] bg-customPrimaryColor text-white text-center p-0 rounded-bl-[12px] rounded-br-[12px]">{{ activeBookings }}</CardContent>
                 </Card>
                 <Card class="bg-customLightPrimaryColor">
-                    <CardHeader><CardTitle class="text-[1.5rem] max-[480px]:text-[1rem] text-center">Total Revenue</CardTitle></CardHeader>
-                    <CardContent class="text-[1.75rem] max-[480px]:text-[1rem] bg-customPrimaryColor text-white text-center p-0 rounded-bl-[12px] rounded-br-[12px]">{{ totalRevenue }}</CardContent>
+                    <CardHeader><CardTitle class="text-[1.5rem] max-[768px]:text-[1rem] text-center">Total Revenue</CardTitle></CardHeader>
+                    <CardContent class="text-[1.75rem] max-[768px]:text-[1rem] bg-customPrimaryColor text-white text-center p-0 rounded-bl-[12px] rounded-br-[12px]">{{ totalRevenue }}</CardContent>
                 </Card>
             </div>
 

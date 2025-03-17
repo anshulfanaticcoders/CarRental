@@ -1,17 +1,17 @@
 <template>
-    <section class="full-w-container max-[480px]:pb-[2rem]" @click="closeSearchResults">
-      <div class="search_bar rounded-[20px] max-[480px]:border-[1px]">
-        <div class="flex relative max-[480px]:flex-col max-[480px]:items-center">
+    <section class="full-w-container max-[768px]:pb-[2rem]" @click="closeSearchResults">
+      <div class="search_bar rounded-[20px] max-[768px]:border-[1px]">
+        <div class="flex relative max-[768px]:flex-col max-[768px]:items-center">
           <div
-            class="column w-[20%] max-[480px]:w-[100%] max-[480px]:p-[1.5rem] bg-customPrimaryColor text-customPrimaryColor-foreground p-[2rem] rounded-tl-[20px] rounded-bl-[20px]
-            max-[480px]:rounded-tr-[16px] max-[480px]:rounded-tl-[16px] max-[480px]:rounded-bl-[0] max-[480px]:border-[1px]"
+            class="column w-[20%] max-[768px]:w-[100%] max-[768px]:p-[1.5rem] bg-customPrimaryColor text-customPrimaryColor-foreground p-[2rem] rounded-tl-[20px] rounded-bl-[20px]
+            max-[768px]:rounded-tr-[16px] max-[768px]:rounded-tl-[16px] max-[768px]:rounded-bl-[0] max-[768px]:border-[1px]"
           >
-            <span class="text-[1.75rem] font-medium max-[480px]:text-[1.5rem]">Do you need a rental car?</span>
+            <span class="text-[1.75rem] font-medium max-[768px]:text-[1.5rem]">Do you need a rental car?</span>
           </div>
           <form
             @submit.prevent="submit"
-            class="column w-[80%] max-[480px]:w-[100%] px-[2rem] py-[1rem] rounded-tr-[16px] rounded-br-[16px] bg-white grid grid-cols-5
-            max-[480px]:flex max-[480px]:flex-col max-[480px]:gap-10 max-[480px]:rounded-tr-[0] max-[480px]:rounded-bl-[16px] max-[480px]:px-[1rem]"
+            class="column w-[80%] max-[768px]:w-[100%] px-[2rem] py-[1rem] rounded-tr-[16px] rounded-br-[16px] bg-white grid grid-cols-5
+            max-[768px]:flex max-[768px]:flex-col max-[768px]:gap-10 max-[768px]:rounded-tr-[0] max-[768px]:rounded-bl-[16px] max-[768px]:px-[1rem]"
           >
             <div class="col col-span-2 flex flex-col justify-center">
               <div class="flex flex-col">
@@ -50,7 +50,7 @@
               </div>
             </div>
   
-            <div class="col border-r-2 max-[480px]:border-r-0 border-customMediumBlackColor px-5 max-[480px]:px-1 flex flex-col justify-center">
+            <div class="col border-r-2 max-[768px]:border-r-0 border-customMediumBlackColor px-5 max-[768px]:px-1 flex flex-col justify-center">
               <label class="block text-sm mb-1 text-customLightGrayColor font-medium"
                 >Pick Up Date & Time</label
               >
@@ -63,7 +63,7 @@
               />
                <p v-if="dateError && !form.date_from" class="text-red-500 text-xs mt-1">Please select a pickup date.</p>
             </div>
-            <div class="col border-r-2 max-[480px]:border-r-0 border-customMediumBlackColor px-5 max-[480px]:px-1 flex flex-col justify-center">
+            <div class="col border-r-2 max-[768px]:border-r-0 border-customMediumBlackColor px-5 max-[768px]:px-1 flex flex-col justify-center">
               <label class="block text-sm mb-1 text-customLightGrayColor font-medium"
                 >Return Date & Time</label
               >
@@ -80,7 +80,7 @@
             <div class="inner-col flex justify-center items-center">
               <button
                 type="submit"
-                class="bg-customPrimaryColor text-customPrimaryColor-foreground rounded-[40px] w-[138px] max-[480px]:w-full py-4 text-center"
+                class="bg-customPrimaryColor text-customPrimaryColor-foreground rounded-[40px] w-[138px] max-[768px]:w-full py-4 text-center"
               >
                 Search
               </button>
@@ -89,7 +89,7 @@
           <div
             v-if="searchResults.length"
             class="search-results absolute z-20 top-[105%] w-[50%] rounded-[12px] border-[1px] border-white left-[20%] p-5 bg-customPrimaryColor text-white
-            max-[480px]:w-full max-[480px]:top-[35%] max-[480px]:left-0">
+            max-[768px]:w-full max-[768px]:top-[35%] max-[768px]:left-0">
             <div
               v-for="result in searchResults"
               :key="result.id"
@@ -210,7 +210,7 @@
   }
 
 
-  @media screen and (max-width:480px) {
+  @media screen and (max-width:768px) {
     .search_bar{
       box-shadow: none;
     }

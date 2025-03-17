@@ -121,15 +121,15 @@ const formatDate = (dateStr) => {
 
 <template>
   <AuthenticatedHeaderLayout />
-  <div class="full-w-container py-customVerticalSpacing max-[480px]:pt-5">
-    <div class="flex gap-8 max-[480px]:flex-col">
+  <div class="full-w-container py-customVerticalSpacing max-[768px]:pt-5">
+    <div class="flex gap-8 max-[768px]:flex-col">
       <!-- Main Content Column -->
-      <div class="w-2/3 max-[480px]:w-full">
+      <div class="w-2/3 max-[768px]:w-full">
         <!-- Success Message (unchanged) -->
         <div class="flex flex-col gap-5 mb-8">
-          <h1 class="text-3xl font-semibold max-[480px]:text-[1.2rem]">Booking Successful</h1>
+          <h1 class="text-3xl font-semibold max-[768px]:text-[1.2rem]">Booking Successful</h1>
           <div class="p-4 bg-[#0099001A] border-[#009900] rounded-lg border">
-            <p class="text-[#009900] font-medium text-lg max-[480px]:text-[0.875rem]">
+            <p class="text-[#009900] font-medium text-lg max-[768px]:text-[0.875rem]">
               Thank you for your booking! Your reservation is confirmed.
             </p>
           </div>
@@ -142,7 +142,7 @@ const formatDate = (dateStr) => {
         </div>
 
         <!-- Booking Details -->
-        <div v-if="booking" class="bg-white rounded-lg shadow-sm p-6 mb-8 max-[480px]:p-0">
+        <div v-if="booking" class="bg-white rounded-lg shadow-sm p-6 mb-8 max-[768px]:p-0">
           <h2 class="text-2xl font-semibold mb-6">Your Trip</h2>
 
           <!-- Pickup & Return Information (unchanged) -->
@@ -202,13 +202,13 @@ const formatDate = (dateStr) => {
         </div>
 
         <div class="flex justify-between"> 
-          <Link class="button-primary px-5 py-4 max-[480px]:text-[0.75rem]" href="/messages">Chat with owner</Link>
-          <Link class="button-secondary px-5 py-4 max-[480px]:text-[0.75rem]" href="/profile/bookings/pending">Go to Bookings</Link>
+          <Link class="button-primary px-5 py-4 max-[768px]:text-[0.75rem]" href="/messages">Chat with owner</Link>
+          <Link class="button-secondary px-5 py-4 max-[768px]:text-[0.75rem]" href="/profile/bookings/pending">Go to Bookings</Link>
         </div>
       </div>
 
       <!-- Sidebar Column (unchanged) -->
-      <div class="w-1/3 max-[480px]:w-full">
+      <div class="w-1/3 max-[768px]:w-full">
         <div v-if="vehicle"
           class="rounded-[12px] sticky top-[2rem] bg-customPrimaryColor text-customPrimaryColor-foreground">
           <div class="flex flex-col justify-between gap-3 p-5">
@@ -216,32 +216,32 @@ const formatDate = (dateStr) => {
               :src="`/storage/${vehicle.images.find((image) => image.image_type === 'primary')?.image_path}`"
               alt="Primary Image" class="w-full h-[200px] object-cover rounded-lg" />
             <div class="flex gap-5 items-center">
-              <h4 class="max-[480px]:text-[1.2rem]">{{ vehicle?.brand }}</h4>
+              <h4 class="max-[768px]:text-[1.2rem]">{{ vehicle?.brand }}</h4>
               <span
                 class="bg-[#f5f5f5] inline-block px-8 py-2 text-center rounded-[40px] text-customPrimaryColor 
-                max-[480px]:text-[0.875rem]">{{ vehicle?.category.name }}</span>
+                max-[768px]:text-[0.875rem]">{{ vehicle?.category.name }}</span>
             </div>
           </div>
-          <div class="car_short_info mt-[1rem] flex gap-3 max-[480px]:mt-0">
+          <div class="car_short_info mt-[1rem] flex gap-3 max-[768px]:mt-0">
             <div class="features px-5">
-              <span class="text-[1.15rem] capitalize max-[480px]:text-[0.875rem]">{{ vehicle?.transmission }} . {{ vehicle?.fuel }} . {{
+              <span class="text-[1.15rem] capitalize max-[768px]:text-[0.875rem]">{{ vehicle?.transmission }} . {{ vehicle?.fuel }} . {{
                 vehicle?.seating_capacity }} Seats</span>
             </div>
           </div>
 
           <div class="pricing py-5 mt-[1rem] px-5">
             <div class="column flex flex-col justify-between gap-3">
-              <span class="text-[1.5rem] max-[480px]:text-[1.2rem]">Payment Details</span>
+              <span class="text-[1.5rem] max-[768px]:text-[1.2rem]">Payment Details</span>
               <div class="flex justify-between items-center text-[1.15rem]">
                 <span class="capitalize">{{booking.preferred_day}} Price</span>
                 <div>
                   <!-- <strong class="text-[1.5rem] font-medium">€{{ booking.base_price }}</strong> -->
-                   <strong class="text-[1.5rem] font-medium max-[480px]:text-[0.875rem]" v-if="booking.preferred_day==='day'">{{ vehicle.price_per_day }}</strong>
-                   <strong class="text-[1.5rem] font-medium max-[480px]:text-[0.875rem]" v-if="booking.preferred_day==='week'">{{ vehicle.price_per_week }}</strong>
-                   <strong class="text-[1.5rem] font-medium max-[480px]:text-[0.875rem]" v-if="booking.preferred_day==='month'">{{ vehicle.price_per_month }}</strong>
+                   <strong class="text-[1.5rem] font-medium max-[768px]:text-[0.875rem]" v-if="booking.preferred_day==='day'">{{ vehicle.price_per_day }}</strong>
+                   <strong class="text-[1.5rem] font-medium max-[768px]:text-[0.875rem]" v-if="booking.preferred_day==='week'">{{ vehicle.price_per_week }}</strong>
+                   <strong class="text-[1.5rem] font-medium max-[768px]:text-[0.875rem]" v-if="booking.preferred_day==='month'">{{ vehicle.price_per_month }}</strong>
                 </div>
               </div>
-              <div v-if="booking.discount_amount" class="flex justify-between items-center text-[1.1rem] mt-[-1rem] border-b-[1px] pb-[0.5rem] max-[480px]:mt-0">
+              <div v-if="booking.discount_amount" class="flex justify-between items-center text-[1.1rem] mt-[-1rem] border-b-[1px] pb-[0.5rem] max-[768px]:mt-0">
                 <span class="capitalize">Discount Price</span>
                 <strong class="text-[1.1rem] font-medium">- {{booking.discount_amount}}</strong>
               </div>
@@ -268,10 +268,10 @@ const formatDate = (dateStr) => {
           <div v-if="booking"
             class="bg-white flex justify-between text-customPrimaryColor p-5 rounded-[12px] border-[1px] border-[#153B4F]">
             <div class="flex items-center gap-2">
-              <span class="text-[1.25rem] font-medium max-[480px]:text-[0.875rem]">Paid Payment (incl. VAT)</span>
-              <img :src="infoIcon" alt="" class="w-[25px] h[25px] max-[480px]:w-[20px] max-[480px]:h-[20px]"/>
+              <span class="text-[1.25rem] font-medium max-[768px]:text-[0.875rem]">Paid Payment (incl. VAT)</span>
+              <img :src="infoIcon" alt="" class="w-[25px] h[25px] max-[768px]:w-[20px] max-[768px]:h-[20px]"/>
             </div>
-            <span class="text-customPrimaryColor text-[1.875rem] font-medium max-[480px]:text-[1.2rem]">{{ formatCurrency(booking.total_amount)
+            <span class="text-customPrimaryColor text-[1.875rem] font-medium max-[768px]:text-[1.2rem]">{{ formatCurrency(booking.total_amount)
               }}</span>
 
           </div>
@@ -320,7 +320,7 @@ const formatDate = (dateStr) => {
   z-index: 1;
 }
 
-@media screen and (max-width:480px){
+@media screen and (max-width:768px){
   #booking-map {
   min-height: 200px;
 }

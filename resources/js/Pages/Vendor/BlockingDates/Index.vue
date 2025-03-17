@@ -234,7 +234,7 @@ label {
     margin-bottom: 0.5rem;
 }
 
-@media screen and (max-width:480px) {
+@media screen and (max-width:768px) {
     
     th{
         font-size: 0.75rem;

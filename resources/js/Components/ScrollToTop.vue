@@ -2,7 +2,7 @@
     <button 
       v-if="isVisible" 
       @click="scrollToTop" 
-      class="fixed max-[480px]:hidden bottom-4 right-4 bg-customPrimaryColor rounded-xl p-4 shadow-lg hover:bg-gray-100 hover:text-customPrimaryColor transition-colors"
+      class="fixed max-[768px]:hidden bottom-4 right-4 bg-customPrimaryColor rounded-xl p-4 shadow-lg hover:bg-gray-100 hover:text-customPrimaryColor transition-colors"
     >
       <ChevronUp class='text-white hover:text-customPrimaryColor' />
     </button>

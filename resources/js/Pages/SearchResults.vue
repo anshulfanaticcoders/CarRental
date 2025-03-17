@@ -659,7 +659,7 @@ const applyFilters = () => {
         </div>
     </section>
 
-    <div class="full-w-container flex justify-end max-[480px]:hidden">
+    <div class="full-w-container flex justify-end max-[768px]:hidden">
         <div class="flex items-center space-x-2 mb-[2rem]">
             <Label for="mapToggle" class="text-customPrimaryColor">Map</Label>
             <Switch id="mapToggle" :checked="showMap" @update:checked="handleMapToggle" />
@@ -667,13 +667,13 @@ const applyFilters = () => {
     </div>
 
     <div class="full-w-container mx-auto mb-[4rem]">
-        <div class="flex gap-4 max-[480px]:flex-col">
+        <div class="flex gap-4 max-[768px]:flex-col">
             <!-- Left Column - Vehicle List -->
             <div class="w-full">
                 <div :class="[
                     'grid gap-5',
                     showMap ? 'w-full grid-cols-2' : 'w-full grid-cols-4'
-                ]" class="max-[480px]:grid-cols-1">
+                ]" class="max-[768px]:grid-cols-1">
                     <div v-if="!vehicles.data || vehicles.data.length === 0" class="text-center text-gray-500">
                         No vehicles available at the moment.
                     </div>
@@ -779,7 +779,7 @@ const applyFilters = () => {
                 </div>
             </div>
             <!-- Right Column - Map -->
-            <div class="w-full sticky top-4 h-[calc(100vh-2rem)] max-[480px]:hidden" v-show="showMap">
+            <div class="w-full sticky top-4 h-[calc(100vh-2rem)] max-[768px]:hidden" v-show="showMap">
                 <div class="bg-white h-full">
                     <div id="map" class="h-full rounded-lg"></div>
                 </div>
