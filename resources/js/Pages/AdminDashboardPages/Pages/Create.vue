@@ -54,5 +54,12 @@ const form = useForm({
 
 const submit = () => {
     form.post(route('admin.pages.store'));
+    toast.success('Page created successfully!', {
+                position: 'top-right',
+                timeout: 3000,
+                closeOnClick: true,
+                pauseOnHover: true,
+                draggable: true,
+            });
 };
 </script>

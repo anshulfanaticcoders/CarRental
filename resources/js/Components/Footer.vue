@@ -55,7 +55,7 @@ import paypalLogos from "../../assets/paymentIcons.svg";
                                 <Link href="/blogs-page">Blogs</Link>
                             </li>
                             <li>
-                                <Link href="">FAQ</Link>
+                                <Link href="/faq">FAQ</Link>
                             </li>
                             <li>
                                 <Link href="">Contact Us</Link>

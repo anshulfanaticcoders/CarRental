@@ -108,6 +108,7 @@ Route::get('/s', [SearchController::class, 'search']);
 Route::get('/api/geocoding/autocomplete', [GeocodingController::class, 'autocomplete']);
 Route::get('/blogs-page', [BlogController::class, 'showBlogPage'])->name('blogs-page');
 Route::get('/page/{slug}', [FrontendPageController::class, 'show'])->name('pages.show');
+Route::inertia('/faq', 'Faq');
 
 
 // Show Blogs on Home page

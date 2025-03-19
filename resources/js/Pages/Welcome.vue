@@ -124,16 +124,16 @@ onMounted(() => {
         </section>
 
         <section
-            class="ml-[5%] w-[105%] category-carousel mt-[8rem] min-h-[50vh] py-customVerticalSpacing overflow-hidden
+            class="ml-[5%] max-[768px]:ml-0 w-[105%] max-[768px]:w-full category-carousel mt-[8rem] min-h-[50vh] py-customVerticalSpacing overflow-hidden
             max-[768px]:mt-0 ">
             <div class="flex min-h-[inherit] items-center gap-24 
             max-[768px]:flex-col max-[768px]:gap-10 max-[768px]:items-start">
-                <div class="column">
+                <div class="column max-[768px]:px-[1.5rem]">
                     <h2>
                         Our Categories
                     </h2>
                 </div>
-                <div class="column carousel rounded-[20px] p-6" style="
+                <div class="column carousel rounded-[20px] p-6 max-[768px]:rounded-none" style="
                         background: linear-gradient(
                             90deg,
                             rgba(21, 59, 79, 0.2) 0%,

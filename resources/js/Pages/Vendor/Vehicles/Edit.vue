@@ -1,4 +1,12 @@
 <template>
+
+
+<div v-if="isLoading" class="fixed z-50 h-full w-full top-0 left-0 bg-[#0000009e]">
+                    <div class="flex justify-center flex-col items-center h-full w-full">
+                        <img :src=loader alt="" class="w-[150px]">
+                        <p class="text-[white] text-[1.5rem]">Updating..</p>
+                    </div>
+                </div>
     <MyProfileLayout>
         <div class="flex justify-between items-center">
             <h2 class="font-semibold text-xl text-gray-800">Edit Vehicle</h2>
@@ -399,16 +407,16 @@
 
 
 <script setup>
-import { ref, onMounted, computed, watch } from 'vue'
-import { useForm } from '@inertiajs/vue3'
-import { useToast } from 'vue-toastification'
-import { usePage } from '@inertiajs/vue3'
-import InputLabel from '@/Components/InputLabel.vue'
-import PrimaryButton from '@/Components/PrimaryButton.vue'
-import MyProfileLayout from '@/Layouts/MyProfileLayout.vue'
-import axios from 'axios'
-import { Link } from '@inertiajs/vue3'
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/Components/ui/tabs'
+import { ref, onMounted, computed, watch } from 'vue';
+import { useForm } from '@inertiajs/vue3';
+import { useToast } from 'vue-toastification';
+import { usePage } from '@inertiajs/vue3';
+import InputLabel from '@/Components/InputLabel.vue';
+import PrimaryButton from '@/Components/PrimaryButton.vue';
+import MyProfileLayout from '@/Layouts/MyProfileLayout.vue';
+import axios from 'axios';
+import { Link } from '@inertiajs/vue3';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/Components/ui/tabs';
 import {
     Select,
     SelectContent,
@@ -417,16 +425,26 @@ import {
     SelectLabel,
     SelectTrigger,
     SelectValue,
-} from '@/Components/ui/select'
+} from '@/Components/ui/select';
+import loader from "../../../../assets/loader.gif";
+
+import { Input } from '@/Components/ui/input';
+
+const toast = useToast();
+const { props } = usePage();
+const fileInput = ref(null);
+const selectedFiles = ref([]);
+const maxImages = 5;
+const isLoading = ref(false);
 
 
-import { Input } from '@/Components/ui/input'
-
-const toast = useToast()
-const { props } = usePage()
-const fileInput = ref(null)
-const selectedFiles = ref([])
-const maxImages = 5
+watch(isLoading, (newValue) => {
+    if (newValue) {
+        document.body.style.overflow = 'hidden';
+    } else {
+        document.body.style.overflow = '';
+    }
+});
 
 const form = useForm({
     category_id: null,
@@ -592,6 +610,8 @@ onMounted(() => {
 })
 
 const updateVehicle = () => {
+
+    isLoading.value = true;
     let formData = new FormData();
 
     // Convert boolean values to 1/0
@@ -623,11 +643,12 @@ const updateVehicle = () => {
         params: { _method: 'PUT' } // Laravel treats this as PUT
     })
         .then(() => {
-
+            isLoading.value = false;
             toast.success('Vehicle updated successfully!', { position: 'top-right', timeout: 3000 });
 
             // ✅ RESET SELECTED FILES AFTER UPLOAD
             selectedFiles.value = [];
+            window.location.href = route('current-vendor-vehicles.index');
         })
         .catch(error => {
             toast.error('Something went wrong. Please check your inputs.', { position: 'top-right', timeout: 3000 });
@@ -657,7 +678,7 @@ const getFlagUrl = (countryCode) => {
 
 </script>
 
-<style>
+<style scoped>
 select {
     width: 100%;
 }

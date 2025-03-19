@@ -26,7 +26,7 @@ class PageController extends Controller
                   ->orWhere('content', 'like', "%{$search}%");
         }
         
-        $pages = $query->latest()->paginate(10)->withQueryString();
+        $pages = $query->latest()->paginate(8)->withQueryString();
         
         return Inertia::render('AdminDashboardPages/Pages/Index', [
             'pages' => $pages,

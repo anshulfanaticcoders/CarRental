@@ -1,10 +1,13 @@
-<script setup >
+<script setup>
+import Footer from "@/Components/Footer.vue";
 import {
     Accordion,
     AccordionContent,
     AccordionItem,
 } from "@/Components/ui/accordion";
-import AccordionTriggerVariant from "./ui/accordion/AccordionTriggerVariant.vue";
+import AccordionTriggerVariant from "@/Components/ui/accordion/AccordionTriggerVariant.vue";
+
+import AuthenticatedHeaderLayout from "@/Layouts/AuthenticatedHeaderLayout.vue";
 
 const defaultValue = "item-1";
 
@@ -43,42 +46,36 @@ const accordionItems = [
 </script>
 
 <template>
+    <AuthenticatedHeaderLayout />
+
     <div class="full-w-container min-h-[80vh] bg-[#153B4F1A] rounded-[20px] py-customVerticalSpacing flex flex-col gap-16
-    max-[768px]:w-full max-[768px]:rounded-none">
-     <div class="flex  items-center justify-center ">
-        <div class="column w-[573px] max-[768px]:text-[2rem] flex flex-col gap-5 text-center max-[768px]:px-[1.5rem]">
-            <span class="text-customPrimaryColor text-[3rem] font-bold max-[768px]:text-[2rem]">FAQ's</span>
-        <p class="text-customPrimaryColor text-[1.25rem] max-[768px]:text-[1rem]"> From luxury sedans to budget-friendly compacts, we've got something for every journey</p>
+    max-[768px]:w-full max-[768px]:rounded-none my-[5rem]">
+        <div class="flex  items-center justify-center ">
+            <div
+                class="column w-[573px] max-[768px]:text-[2rem] flex flex-col gap-5 text-center max-[768px]:px-[1.5rem]">
+                <span class="text-customPrimaryColor text-[3rem] font-bold max-[768px]:text-[2rem]">FAQ's</span>
+                <p class="text-customPrimaryColor text-[1.25rem] max-[768px]:text-[1rem]"> From luxury sedans to
+                    budget-friendly compacts, we've got something for every journey</p>
+            </div>
         </div>
-     </div>
-     <div class="column px-[4rem] max-[768px]:px-[1.5rem]">
-        <Accordion
-        type="single"
-        class="w-full grid grid-cols-2 gap-10 max-[768px]:grid-cols-1"
-        collapsible
-        :default-value="defaultValue"
-    >
-        <AccordionItem
-        class="bg-white px-6 rounded-[16px]"
-            v-for="item in accordionItems"
-            :key="item.value"
-            :value="item.value"
-        >
-            <AccordionTriggerVariant class="text-[1.35rem] text-customPrimaryColor 
+        <div class="column px-[4rem] max-[768px]:px-[1.5rem]">
+            <Accordion type="single" class="w-full grid grid-cols-2 gap-10 max-[768px]:grid-cols-1" collapsible
+                :default-value="defaultValue">
+                <AccordionItem class="bg-white px-6 rounded-[16px]" v-for="item in accordionItems" :key="item.value"
+                    :value="item.value">
+                    <AccordionTriggerVariant class="text-[1.35rem] text-customPrimaryColor 
             max-[768px]:text-[1rem] max-[768px]:text-left">{{
                 item.title
-            }}</AccordionTriggerVariant>
-            <AccordionContent
-                class="text-[1.25rem] text-customLightGrayColor max-[768px]:text-[0.95rem]"
-            >
-                {{ item.content }}
-            </AccordionContent>
-        </AccordionItem>
-    </Accordion>
-     </div>
+                        }}</AccordionTriggerVariant>
+                    <AccordionContent class="text-[1.25rem] text-customLightGrayColor max-[768px]:text-[0.95rem]">
+                        {{ item.content }}
+                    </AccordionContent>
+                </AccordionItem>
+            </Accordion>
+        </div>
     </div>
+
+    <Footer />
 </template>
 
-<style scoped>
-
-</style>
+<style scoped></style>
