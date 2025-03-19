@@ -250,8 +250,14 @@ class VendorVehicleController extends Controller
             return response()->json(['message' => 'Image not found'], 404);
         }
 
-        // Delete from storage
-        Storage::disk('upcloud')->delete($image->image_url);
+    if ($image->image_url && $image->image_url !== null) {
+   
+        try {
+            Storage::disk('upcloud')->delete($image->image_url);
+        } catch (\Exception $e) {
+
+        }
+    }
        
 
         // Delete from database

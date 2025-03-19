@@ -39,7 +39,7 @@ const accordionItems = [
     >
         <div
             class="full-w-container flex justify-between gap-20 h-[100vh] py-16 items-center
-            max-[768px]:flex-col max-[768px]:h-auto max-[768px]:pb-0"
+            max-[768px]:flex-col max-[768px]:h-auto max-[768px]:pb-0 max-[768px]:py-0 max-[768px]:gap-10"
         >
             <div
                 class="column bg-cover bg-center rounded-[200px] h-full w-[35%]
@@ -83,4 +83,10 @@ const accordionItems = [
     </section>
 </template>
 
-<style></style>
+<style scoped>
+@media screen and (max-width:768px) {
+    .how-it-works{
+        background-image: none!important;
+    }
+}
+</style>

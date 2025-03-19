@@ -157,7 +157,7 @@ onMounted(() => {
             </div>
 
             <!-- Chat Window -->
-            <div v-if="!showChat" class="hidden sm:block sm:w-[65%] bg-[#154D6A0D] rounded-tr-[12px] rounded-br-[12px] p-4 flex flex-col">
+            <div v-if="!showChat" class="sm:block sm:w-[65%] bg-[#154D6A0D] rounded-tr-[12px] rounded-br-[12px] p-4 flex flex-col">
                 <div v-if="loadingChat" class="flex-1 flex items-center justify-center">
                     <p>Loading chat...</p>
                 </div>
