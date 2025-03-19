@@ -17,7 +17,12 @@ import whiteGoIcon from '../../assets/whiteGoIcon.svg';
 import calendarWhiteIcon from '../../assets/CalendarWhite.svg';
 
 const plugin = Autoplay({
-    delay: 2000,
+    delay: 3000,
+    stopOnMouseEnter: true,
+    stopOnInteraction: false,
+});
+const categoryAutoplay = Autoplay({
+    delay: 3000,
     stopOnMouseEnter: true,
     stopOnInteraction: false,
 });
@@ -140,7 +145,8 @@ onMounted(() => {
                             rgba(21, 59, 79, 0) 94.4%
                         );
                     ">
-                    <Carousel class="relative w-full max-[768px]:h-[20rem]" :opts="{ align: 'start' }">
+                    <Carousel class="relative w-full max-[768px]:h-[20rem]" :opts="{ align: 'start' }"
+                    :plugins="[categoryAutoplay]" @mouseenter="categoryAutoplay.stop" @mouseleave="[categoryAutoplay.reset(), categoryAutoplay.play()]">
                         <CarouselContent>
                             <CarouselItem v-for="category in categories" :key="category.id"
                                 class="md:basis-1/2 lg:basis-1/3">
@@ -406,6 +412,11 @@ onMounted(() => {
     transform: scale(1.1);
     cursor: pointer;
 }
+
+.category-carousel .disabled\:pointer-events-none:disabled{
+ pointer-events: unset;
+}
+
 @media screen and (max-width:768px) {
     .category-carousel .next-btn{
         right: 10%!important;

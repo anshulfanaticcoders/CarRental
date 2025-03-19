@@ -160,7 +160,7 @@ const returnDate = ref(null);
 
 // Format date for display
 const formatDate = (dateString) => {
-  if (!dateString) return "";
+  if (!dateString) return "Select date";
   const date = new Date(dateString);
   return date.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
 };
@@ -268,23 +268,23 @@ onMounted(() => {
     form.value.latitude = props.prefill.latitude;
     form.value.longitude = props.prefill.longitude;
     form.value.radius = props.prefill.radius;
-    
+
     // Initialize calendar values if prefill exists
     if (props.prefill.date_from) {
       pickupDate.value = parseDate(props.prefill.date_from);
     } else {
-      pickupDate.value = today(getLocalTimeZone());
+      pickupDate.value = null;
     }
-    
+
     if (props.prefill.date_to) {
       returnDate.value = parseDate(props.prefill.date_to);
     } else {
-      returnDate.value = today(getLocalTimeZone());
+      returnDate.value = null;
     }
   } else {
-    // Initialize with today's date if no prefill
-    pickupDate.value = today(getLocalTimeZone());
-    returnDate.value = today(getLocalTimeZone());
+    // Initialize with placeholders if no prefill
+    pickupDate.value = null;
+    returnDate.value = null;
   }
 });
 

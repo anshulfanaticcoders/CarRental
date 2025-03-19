@@ -79,7 +79,7 @@ class SearchController extends Controller
                 }
             });
         }
-        $query->with('images', 'bookings','vendorProfile');
+        $query->with('images', 'bookings','vendorProfile','benefits');
         // Distance filter (Haversine formula)
         if (!empty($validated['latitude']) && !empty($validated['longitude']) && !empty($validated['radius'])) {
             $radiusInKm = $validated['radius'] / 1000; // Convert meters to kilometers

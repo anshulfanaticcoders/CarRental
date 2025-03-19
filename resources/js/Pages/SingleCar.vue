@@ -762,6 +762,10 @@ const proceedToPayment = () => {
 const urlParams = new URLSearchParams(window.location.search);
 const initialPackageType = urlParams.get('package') || 'day';
 selectedPackage.value = initialPackageType;
+
+onMounted(() => {
+  clearStoredRentalDates();
+});
 </script>
 
 <template>
@@ -1002,10 +1006,10 @@ selectedPackage.value = initialPackageType;
                                 </li>
 
                                 <!-- Fallback Message if No Benefits Exist -->
-                                <li v-else-if="!vehicle?.benefits || Object.keys(vehicle?.benefits).length === 0">
+                                <span v-else-if="!vehicle?.benefits || Object.keys(vehicle?.benefits).length === 0">
                                     <p class="text-gray-500 text-lg">No additional benefits available for this vehicle.
                                     </p>
-                                </li>
+                                </span>
                             </ul>
 
 

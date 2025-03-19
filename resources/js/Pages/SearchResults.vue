@@ -744,20 +744,91 @@ const applyFilters = () => {
 
                                     <div class="col flex gap-3">
                                         <img :src="mileageIcon" alt="" /><span class="text-[1.15rem]">{{ vehicle.mileage
-                                            }}km/d</span>
+                                        }}km/d</span>
                                     </div>
                                 </div>
 
                                 <div class="benefits mt-[2rem] grid grid-cols-2 gap-3">
-                                    <span class="flex gap-3 items-center text-[12px]">
-                                        <img :src="check" alt="" />Free Cancellation
+                                    <!-- Free Cancellation based on the selected package type -->
+                                    <span
+                                        v-if="vehicle.benefits && filters.package_type === 'day' && vehicle.benefits.cancellation_available_per_day"
+                                        class="flex gap-3 items-center text-[12px]">
+                                        <img :src="check" alt="" />Free Cancellation ({{
+                                            vehicle.benefits.cancellation_available_per_day_date }} days)
                                     </span>
-                                    <span class="flex gap-3 items-center text-[12px]">
+                                    <span
+                                        v-else-if="vehicle.benefits && filters.package_type === 'week' && vehicle.benefits.cancellation_available_per_week"
+                                        class="flex gap-3 items-center text-[12px]">
+                                        <img :src="check" alt="" />Free Cancellation ({{
+                                            vehicle.benefits.cancellation_available_per_week_date }} days)
+                                    </span>
+                                    <span
+                                        v-else-if="vehicle.benefits && filters.package_type === 'month' && vehicle.benefits.cancellation_available_per_month"
+                                        class="flex gap-3 items-center text-[12px]">
+                                        <img :src="check" alt="" />Free Cancellation ({{
+                                            vehicle.benefits.cancellation_available_per_month_date }} days)
+                                    </span>
+
+                                    <!-- Mileage information based on the selected package type -->
+                                    <span
+                                        v-if="vehicle.benefits && filters.package_type === 'day' && !vehicle.benefits.limited_km_per_day"
+                                        class="flex gap-3 items-center text-[12px]">
                                         <img :src="check" alt="" />Unlimited mileage
                                     </span>
-                                    <span class="flex gap-3 items-center text-[12px]">
-                                        <img :src="check" alt="" />Unlimited
-                                        kilometers
+                                    <span
+                                        v-else-if="vehicle.benefits && filters.package_type === 'day' && vehicle.benefits.limited_km_per_day"
+                                        class="flex gap-3 items-center text-[12px]">
+                                        <img :src="check" alt="" />Limited to {{
+                                            vehicle.benefits.limited_km_per_day_range }} km/day
+                                    </span>
+
+                                    <span
+                                        v-if="vehicle.benefits && filters.package_type === 'week' && !vehicle.benefits.limited_km_per_week"
+                                        class="flex gap-3 items-center text-[12px]">
+                                        <img :src="check" alt="" />Unlimited mileage
+                                    </span>
+                                    <span
+                                        v-else-if="vehicle.benefits && filters.package_type === 'week' && vehicle.benefits.limited_km_per_week"
+                                        class="flex gap-3 items-center text-[12px]">
+                                        <img :src="check" alt="" />Limited to {{
+                                            vehicle.benefits.limited_km_per_week_range }} km/week
+                                    </span>
+
+                                    <span
+                                        v-if="vehicle.benefits && filters.package_type === 'month' && !vehicle.benefits.limited_km_per_month"
+                                        class="flex gap-3 items-center text-[12px]">
+                                        <img :src="check" alt="" />Unlimited mileage
+                                    </span>
+                                    <span
+                                        v-else-if="vehicle.benefits && filters.package_type === 'month' && vehicle.benefits.limited_km_per_month"
+                                        class="flex gap-3 items-center text-[12px]">
+                                        <img :src="check" alt="" />Limited to {{
+                                            vehicle.benefits.limited_km_per_month_range }} km/month
+                                    </span>
+
+                                    <!-- Additional cost per km if applicable -->
+                                    <span
+                                        v-if="vehicle.benefits && filters.package_type === 'day' && vehicle.benefits.price_per_km_per_day"
+                                        class="flex gap-3 items-center text-[12px]">
+                                        <img :src="check" alt="" />{{ vehicle.benefits.price_per_km_per_day }}/km extra above limit
+                                    </span>
+                                    <span
+                                        v-else-if="vehicle.benefits && filters.package_type === 'week' && vehicle.benefits.price_per_km_per_week"
+                                        class="flex gap-3 items-center text-[12px]">
+                                        <img :src="check" alt="" />{{ vehicle.benefits.price_per_km_per_week }}/km extra above limit
+                                    </span>
+                                    <span
+                                        v-else-if="vehicle.benefits && filters.package_type === 'month' && vehicle.benefits.price_per_km_per_month"
+                                        class="flex gap-3 items-center text-[12px]">
+                                        <img :src="check" alt="" />{{ vehicle.benefits.price_per_km_per_month }}/km
+                                        extra above limit
+                                    </span>
+
+                                    <!-- Minimum driver age if applicable -->
+                                    <span v-if="vehicle.benefits && vehicle.benefits.minimum_driver_age"
+                                        class="flex gap-3 items-center text-[12px]">
+                                        <img :src="check" alt="" />Min age: {{ vehicle.benefits.minimum_driver_age }}
+                                        years
                                     </span>
                                 </div>
 
