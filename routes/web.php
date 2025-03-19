@@ -16,6 +16,8 @@ use App\Http\Controllers\Admin\VehicleAddonsController;
 use App\Http\Controllers\Admin\VehicleDashboardController;
 
 use App\Http\Controllers\Admin\VendorsReportController;
+use App\Http\Controllers\Auth\EmailValidationController;
+use App\Http\Controllers\Auth\VerifyEmailController;
 use App\Http\Controllers\BookingController;
 use App\Http\Controllers\FavoriteController;
 use App\Http\Controllers\FrontendPageController;
@@ -109,7 +111,8 @@ Route::get('/api/geocoding/autocomplete', [GeocodingController::class, 'autocomp
 Route::get('/blogs-page', [BlogController::class, 'showBlogPage'])->name('blogs-page');
 Route::get('/page/{slug}', [FrontendPageController::class, 'show'])->name('pages.show');
 Route::inertia('/faq', 'Faq');
-
+Route::post('/validate-email', [EmailValidationController::class, 'validateEmail'])->name('validate-email');
+Route::post('/validate-contact', [EmailValidationController::class, 'validateContact'])->name('validate-contact');
 
 // Show Blogs on Home page
 // Route::get('/', [BlogController::class, 'show'])->name('welcome');

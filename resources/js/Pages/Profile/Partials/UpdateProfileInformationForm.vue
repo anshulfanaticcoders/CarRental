@@ -35,7 +35,7 @@ const form = useForm({
     postal_code: profile?.postal_code || '',
     tax_identification: profile?.tax_identification || '',
     about: profile?.about || '',
-    title: profile?.title || '',
+    title: profile?.title || 'Mr.',
     gender: profile?.gender || 'male',
     currency: profile?.currency || '',
     avatar: profile?.avatar || '',
@@ -70,14 +70,14 @@ const handleSubmit = () => {
         onSuccess: () => {
             toast.success('Profile updated successfully!', {
                 position: 'top-right',
-                timeout: 2000,
+                timeout: 1000,
                 closeOnClick: true,
                 pauseOnHover: true,
                 draggable: true,
             });
             setTimeout(() => {
                 window.location.reload();
-            }, 1000);
+            }, 1500);
         },
     });
 };
@@ -142,6 +142,17 @@ const getFlagUrl = (countryCode) => {
 };
 
 
+const minimumDateOfBirth = computed(() => {
+    const today = new Date();
+    const eighteenYearsAgo = new Date(
+        today.getFullYear() - 18,
+        today.getMonth(),
+        today.getDate()
+    );
+
+    // Format the date as YYYY-MM-DD for the max attribute
+    return eighteenYearsAgo.toISOString().split('T')[0];
+});
 </script>
 
 <template>
@@ -219,7 +230,9 @@ const getFlagUrl = (countryCode) => {
 
                 <div>
                     <InputLabel for="date_of_birth" value="Date of Birth" />
-                    <TextInput id="date_of_birth" type="date" class="mt-1 block w-full" v-model="form.date_of_birth" />
+                    <TextInput id="date_of_birth" type="date" v-model="form.date_of_birth" required
+                        :max="minimumDateOfBirth" class="w-full" />
+                    <small class="text-gray-500 mt-1 block">You must be at least 18 years old</small>
                     <InputError class="mt-2" :message="form.errors.date_of_birth" />
                 </div>
 
@@ -287,7 +300,8 @@ const getFlagUrl = (countryCode) => {
                 <h2 class="text-[1.5rem] font-medium text-gray-900 max-[768px]:text-[1.2rem]">Profile</h2>
 
                 <div class="col-span-2">
-                    <p class="mb-[1rem] text-customLightGrayColor font-medium max-[768px]:text-[0.95rem]">Who am I? <i>(optional)</i></p>
+                    <p class="mb-[1rem] text-customLightGrayColor font-medium max-[768px]:text-[0.95rem]">Who am I?
+                        <i>(optional)</i></p>
                     <InputLabel for="about" value="About" />
                     <TextArea id="about" class="mt-1 block w-full" v-model="form.about" />
                     <InputError class="mt-2" :message="form.errors.about" />
@@ -303,7 +317,8 @@ const getFlagUrl = (countryCode) => {
 
 
                 <div class="">
-                    <h2 class="text-[1.5rem] font-medium text-gray-900 max-[768px]:text-[1.2rem] max-[768px]:mb-4">Tax Identification Number</h2>
+                    <h2 class="text-[1.5rem] font-medium text-gray-900 max-[768px]:text-[1.2rem] max-[768px]:mb-4">Tax
+                        Identification Number</h2>
                     <InputLabel for="tax_identification" value="Tax Identification Number" />
                     <TextInput id="tax_identification" type="text" class="mt-1 block w-full"
                         v-model="form.tax_identification" />
@@ -349,17 +364,20 @@ select {
 }
 
 @media screen and (max-width:768px) {
-    input{
+    input {
         font-size: 0.75rem;
     }
-    select{
+
+    select {
         font-size: 0.75rem;
     }
-    textarea{
+
+    textarea {
         font-size: 0.75rem;
     }
-    label{
-        font-size: 0.75rem!important;
+
+    label {
+        font-size: 0.75rem !important;
     }
 }
 </style>
