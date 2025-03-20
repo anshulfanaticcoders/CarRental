@@ -518,37 +518,25 @@ if (blockedStartDate && blockedEndDate) {
 
 // Create a function to check if a date is booked
 const isDateBooked = (dateStr) => {
-    if (!dateStr) return false; // If dateStr is empty, return false
-    
+    if (!dateStr || (!bookedDates.value.length && !blockedDates.value.length)) return false;
+
     const checkDate = new Date(dateStr);
     checkDate.setHours(0, 0, 0, 0);
 
-    // If there are no bookings and no blocking dates, return false
-    if (!bookedDates.value.length && !blockedDates.value.length) {
-        return false;
-    }
-
-    // Check if date falls within booked dates
-    const isBooked = bookedDates.value.some(({ pickup_date, return_date }) => {
+    return bookedDates.value.some(({ pickup_date, return_date }) => {
         const pickupDate = new Date(pickup_date);
         const returnDate = new Date(return_date);
         pickupDate.setHours(0, 0, 0, 0);
         returnDate.setHours(0, 0, 0, 0);
         return checkDate >= pickupDate && checkDate <= returnDate;
-    });
-
-    // Check if date falls within blocked dates
-    const isBlocked = blockedDates.value.some(({ blocking_start_date, blocking_end_date }) => {
+    }) || blockedDates.value.some(({ blocking_start_date, blocking_end_date }) => {
         const startDate = new Date(blocking_start_date);
         const endDate = new Date(blocking_end_date);
         startDate.setHours(0, 0, 0, 0);
         endDate.setHours(0, 0, 0, 0);
         return checkDate >= startDate && checkDate <= endDate;
     });
-
-    return isBooked || isBlocked; // Return true if the date is either booked or blocked
 };
-
 
 const isDateRangeBooked = (startDateStr, endDateStr) => {
     const startDate = new Date(startDateStr);
@@ -608,13 +596,8 @@ const handleDateInput = (event, type) => {
     const selectedDate = event.target.value;
     const endDate = type === 'pickup' ? form.value.date_to : form.value.date_from;
 
-    if (type === 'pickup' && endDate && isDateRangeBooked(selectedDate, endDate)) {
-        form.value.date_from = '';
-        toast.error(`Vehicle already booked from ${blockedStartDate} to ${blockedEndDate}.`);
-    } else if (type === 'return' && endDate && isDateRangeBooked(endDate, selectedDate)) {
-        form.value.date_to = '';
-        toast.error(`Vehicle already booked from ${blockedStartDate} to ${blockedEndDate}.`);
-    } else if (isDateBooked(selectedDate)) {
+    // Check if selected date falls within a booked or blocked range
+    if (isDateBooked(selectedDate)) {
         if (type === 'pickup') {
             form.value.date_from = '';
         } else {
@@ -622,13 +605,29 @@ const handleDateInput = (event, type) => {
         }
 
         const availableDates = findNextAvailableDates(selectedDate);
+        toast.error(`Vehicle is not available on ${selectedDate}.`);
+
         if (availableDates.length) {
             toast.info(`Next available date: ${availableDates[0]}`);
         }
-    } else if (type === 'pickup') {
+        return;
+    }
+
+    // Check if the entire selected range is already booked or blocked
+    if (type === 'pickup' && endDate && isDateRangeBooked(selectedDate, endDate)) {
+        form.value.date_from = '';
+        toast.error(`Vehicle already booked from ${blockedStartDate} to ${blockedEndDate}.`);
+    } else if (type === 'return' && endDate && isDateRangeBooked(endDate, selectedDate)) {
+        form.value.date_to = '';
+        toast.error(`Vehicle already booked from ${blockedStartDate} to ${blockedEndDate}.`);
+    }
+
+    // Reset return date when a new pickup date is selected
+    if (type === 'pickup') {
         form.value.date_to = '';
     }
 };
+
 
 const findNextAvailableDates = (fromDate, count = 5) => {
     const startDate = new Date(fromDate);
