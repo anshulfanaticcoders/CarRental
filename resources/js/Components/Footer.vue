@@ -45,8 +45,8 @@ import paypalLogos from "../../assets/paymentIcons.svg";
                 </div>
                 <div class="col w-[50%] flex justify-between gap-10
                 max-[768px]:grid max-[768px]:grid-cols-2 max-[768px]:w-full max-[768px]:mt-5">
-                    <div class="col flex flex-col gap-8">
-                        <label for="" class="text-[1.25rem] max-[768px]:text-[1rem]">Company</label>
+                    <div class="col flex flex-col gap-8 max-[768px]:gap-4">
+                        <label for="" class="text-[1.25rem] font-medium max-[768px]:text-[1rem]">Company</label>
                         <ul class="flex flex-col gap-4 max-[768px]:text-[0.875rem]">
                             <li>
                                 <Link :href="route('pages.show', 'about-us')">About Us</Link>
@@ -62,8 +62,8 @@ import paypalLogos from "../../assets/paymentIcons.svg";
                             </li>
                         </ul>
                     </div>
-                    <div class="col flex flex-col gap-8">
-                        <label for="" class="text-[1.25rem] max-[768px]:text-[1rem]">Information</label>
+                    <div class="col flex flex-col gap-8 max-[768px]:gap-4">
+                        <label for="" class="text-[1.25rem] font-medium max-[768px]:text-[1rem]">Information</label>
                         <ul class="flex flex-col gap-4 max-[768px]:text-[0.875rem]">
                             <li>
                                 <Link :href="route('pages.show', 'privacy-policy')">Privacy Policy</Link>
@@ -73,8 +73,8 @@ import paypalLogos from "../../assets/paymentIcons.svg";
                             </li>
                         </ul>
                     </div>
-                    <div class="col flex flex-col gap-8">
-                        <label for="" class="text-[1.25rem] max-[768px]:text-[1rem]">Location</label>
+                    <div class="col flex flex-col gap-8 max-[768px]:gap-4">
+                        <label for="" class="text-[1.25rem] font-medium max-[768px]:text-[1rem]">Location</label>
                         <ul class="flex flex-col gap-4 max-[768px]:text-[0.875rem]">
                             <li>
                                 <Link href="/s?where=Dubai%2C%20Dubai%2C%20United%20Arab%20Emirates&latitude=25.116119&longitude=55.196411&radius=10000">Dubai</Link>
@@ -87,8 +87,8 @@ import paypalLogos from "../../assets/paymentIcons.svg";
                             </li>
                         </ul>
                     </div>
-                    <div class="col flex flex-col gap-8">
-                        <label for="" class="text-[1.25rem] max-[768px]:text-[1rem]"
+                    <div class="col flex flex-col gap-8 max-[768px]:gap-4">
+                        <label for="" class="text-[1.25rem] font-medium max-[768px]:text-[1rem]"
                             >Rent By Type</label
                         >
                         <ul class="flex flex-col gap-4 max-[768px]:text-[0.875rem]">

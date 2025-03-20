@@ -36,9 +36,9 @@ const updatePassword = () => {
 <template>
     <section class="mt-[3rem]">
         <header>
-            <h2 class="text-[1.5rem] font-medium text-gray-900">Update Password</h2>
+            <h2 class="text-[1.5rem] font-medium text-gray-900 max-[768px]:text-[1.2rem]">Update Password</h2>
 
-            <p class="mt-1 text-sm text-gray-600">
+            <p class="mt-1 text-sm text-gray-600 max-[768px]:text-[0.875rem]">
                 Ensure your account is using a long, random password to stay secure.
             </p>
         </header>
@@ -103,3 +103,14 @@ const updatePassword = () => {
         </form>
     </section>
 </template>
+
+
+<style scoped>
+input,
+textarea,
+select {
+    border-radius: 0.75rem;
+    border: 1px solid rgba(43, 43, 43, 0.50) !important;
+    padding: 1rem;
+}
+</style>

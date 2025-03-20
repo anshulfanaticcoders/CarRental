@@ -2,8 +2,8 @@
 
     <div v-if="isLoading" class="fixed z-50 h-full w-full top-0 left-0 bg-[#0000009e]">
         <div class="flex justify-center flex-col items-center h-full w-full">
-            <img :src=loader alt="" class="w-[200px]">
-            <p class="text-[white] text-[1.5rem]">Please do not refresh the page. Wait....</p>
+            <img :src=loader alt="" class="w-[200px] max-[768px]:w-[70px]">
+            <p class="text-[white] text-[1.5rem] max-[768px]:text-[1rem]">Please do not refresh the page. Wait....</p>
         </div>
     </div>
 
@@ -27,7 +27,7 @@
                         vehicle's registration certificate nearby.
                     </p>
                     <div
-                        class="buttons flex justify-between max-[768px]:text-[0.875rem] max-[768px]:px-[1.5rem] w-[30rem]">
+                        class="buttons flex justify-between gap-[1.5rem] max-[768px]:text-[0.875rem] max-[768px]:px-[1.5rem] w-[30rem]">
                         <PrimaryButton class="w-[40%] max-[768px]:w-fit" type="button" @click="nextStep">Create a
                             Listing</PrimaryButton>
                     </div>
@@ -67,7 +67,8 @@
     <!-- Step-1 -->
     <div v-if="currentStep === 1" class="overflow-x-hidden vehicle-listing">
         <div class="flex justify-between h-[100vh] max-[768px]:flex-col max-[768px]:h-auto">
-            <div class="column overflow-y-auto w-[50%] flex justify-center pb-[5rem] max-[768px]:pb-0 max-[768px]:w-full">
+            <div
+                class="column overflow-y-auto w-[50%] flex justify-center pb-[5rem] max-[768px]:pb-0 max-[768px]:w-full">
                 <div class="flex flex-col gap-10 w-[90%] max-[768px]:w-full">
                     <Link href="/" class="max-[768px]:hidden mt-[2rem]">
                     <ApplicationLogo />
@@ -97,7 +98,8 @@
                                     category.InputLabel }}</span>
                             </InputLabel>
                         </div>
-                        <span v-if="errors.category_id" class="text-red-500 max-[768px]:text-[0.75rem] text-sm">{{ errors.category_id }}</span>
+                        <span v-if="errors.category_id" class="text-red-500 max-[768px]:text-[0.75rem] text-sm">{{
+                            errors.category_id }}</span>
                     </div>
 
                     <div class="mt-[1rem] max-[768px]:px-[1.5rem]">
@@ -114,7 +116,8 @@
                             <InputLabel for="brand">Brand:</InputLabel>
                             <input type="text" v-model="form.brand" id="brand" required
                                 placeholder="Enter vehicle brand" />
-                            <span v-if="errors.brand" class="text-red-500 max-[768px]:text-[0.75rem] text-sm">{{ errors.brand }}</span>
+                            <span v-if="errors.brand" class="text-red-500 max-[768px]:text-[0.75rem] text-sm">{{
+                                errors.brand }}</span>
                         </div>
 
                         <!-- Model -->
@@ -122,7 +125,8 @@
                             <InputLabel for="model">Model:</InputLabel>
                             <input type="text" v-model="form.model" id="model" required
                                 placeholder="Enter vehicle model" />
-                            <span v-if="errors.model" class="text-red-500 max-[768px]:text-[0.75rem] text-sm">{{ errors.model }}</span>
+                            <span v-if="errors.model" class="text-red-500 max-[768px]:text-[0.75rem] text-sm">{{
+                                errors.model }}</span>
                         </div>
 
                         <!-- Color -->
@@ -130,7 +134,8 @@
                             <InputLabel for="color">Color:</InputLabel>
                             <input type="text" v-model="form.color" id="color" required
                                 placeholder="Enter vehicle color" />
-                            <span v-if="errors.color" class="text-red-500 max-[768px]:text-[0.75rem] text-sm">{{ errors.color }}</span>
+                            <span v-if="errors.color" class="text-red-500 max-[768px]:text-[0.75rem] text-sm">{{
+                                errors.color }}</span>
                         </div>
 
                         <!-- Mileage -->
@@ -140,7 +145,8 @@
                                 <input type="number" v-model="form.mileage" id="mileage" required />
                                 <span
                                     class="absolute text-[0.875rem] top-[50%] right-3 translate-y-[-50%] text-customLightGrayColor font-medium">(km/d)</span>
-                                <span v-if="errors.mileage" class="text-red-500 max-[768px]:text-[0.75rem] text-sm">{{ errors.mileage }}</span>
+                                <span v-if="errors.mileage" class="text-red-500 max-[768px]:text-[0.75rem] text-sm">{{
+                                    errors.mileage }}</span>
                             </div>
                         </div>
 
@@ -239,8 +245,9 @@
                                     </SelectGroup>
                                 </SelectContent>
                             </Select>
-                            <span v-if="errors.luggage_capacity" class="text-red-500 max-[768px]:text-[0.75rem] text-sm">{{ errors.luggage_capacity
-                            }}</span>
+                            <span v-if="errors.luggage_capacity"
+                                class="text-red-500 max-[768px]:text-[0.75rem] text-sm">{{ errors.luggage_capacity
+                                }}</span>
                         </div>
 
                         <!-- Horsepower -->
@@ -251,7 +258,8 @@
                                 <span
                                     class="absolute text-[0.875rem] top-[50%] right-3 translate-y-[-50%] text-customLightGrayColor font-medium">hp</span>
                             </div>
-                            <span v-if="errors.horsepower" class="text-red-500 max-[768px]:text-[0.75rem] text-sm">{{ errors.horsepower }}</span>
+                            <span v-if="errors.horsepower" class="text-red-500 max-[768px]:text-[0.75rem] text-sm">{{
+                                errors.horsepower }}</span>
                         </div>
 
                         <!-- CO2 Emissions -->
@@ -262,7 +270,8 @@
                                 <span
                                     class="absolute text-[0.875rem] top-[50%] right-3 translate-y-[-50%] text-customLightGrayColor font-medium">(g/km)</span>
                             </div>
-                            <span v-if="errors.co2" class="text-red-500 max-[768px]:text-[0.75rem] text-sm">{{ errors.co2 }}</span>
+                            <span v-if="errors.co2" class="text-red-500 max-[768px]:text-[0.75rem] text-sm">{{
+                                errors.co2 }}</span>
                         </div>
 
                         <!-- Status -->
@@ -288,14 +297,17 @@
                     <!-- Car Features -->
                     <div class="max-[768px]:px-[1.5rem]">
                         <div class="mt-8">
-                            <span class="text-black mb-2 text-[3rem] font-medium max-[768px]:text-[1.2rem]">Vehicle Features</span>
-                            <p class="text-customLightGrayColor text-[1.15rem] mb-[2rem] max-[768px]:text-[0.875rem] max-[768px]:mt-2">
+                            <span class="text-black mb-2 text-[3rem] font-medium max-[768px]:text-[1.2rem]">Vehicle
+                                Features</span>
+                            <p
+                                class="text-customLightGrayColor text-[1.15rem] mb-[2rem] max-[768px]:text-[0.875rem] max-[768px]:mt-2">
                                 Select all the features available in your
                                 vehicle
                             </p>
 
                             <div class="grid grid-cols-2 md:grid-cols-3 gap-4">
-                                <div v-for="feature in features" :key="feature.id" class="flex items-center space-x-2 max-[768px]:items-start">
+                                <div v-for="feature in features" :key="feature.id"
+                                    class="flex items-center space-x-2 max-[768px]:items-start">
                                     <input type="checkbox" :id="'feature-' + feature.id" :value="feature.name"
                                         v-model="form.features"
                                         class="rounded border-gray-300 text-customPrimaryColor focus:ring-customPrimaryColor" />
@@ -321,7 +333,7 @@
                             </div>
                         </div>
                     </div>
-                    <div class="buttons flex justify-between pb-[4rem] max-[768px]:px-[1.5rem]">
+                    <div class="buttons flex justify-between gap-[1.5rem] pb-[4rem] max-[768px]:px-[1.5rem]">
                         <button class="button-secondary w-[15rem] max-[768px]:w-[10rem]" @click="prevStep">
                             Back
                         </button>
@@ -331,13 +343,15 @@
             </div>
             <div class="column w-[50%] bg-customPrimaryColor relative max-[768px]:w-full overflow-hidden">
                 <div class="flex flex-col gap-10 items-center h-full justify-center max-[768px]:gap-0">
-                    <div class="col text-customPrimaryColor-foreground w-[70%] p-[2rem] border-b-[2px] max-[768px]:w-full">
-                        <img :src="warningSign" alt="" class="max-[768px]:w-[35px]"/>
+                    <div
+                        class="col text-customPrimaryColor-foreground w-[70%] p-[2rem] border-b-[2px] max-[768px]:w-full">
+                        <img :src="warningSign" alt="" class="max-[768px]:w-[35px]" />
                         <h4 class="text-[1.5rem] font-medium max-[768px]:text-[1.2rem] max-[768px]:py-2">Welcome!</h4>
                         <p class="max-[768px]:text-[0.875rem]">Placing an ad on Vrooem 100% free.</p>
                     </div>
-                    <div class="col text-customPrimaryColor-foreground w-[70%] p-[2rem] border-b-[2px] max-[768px]:w-full">
-                        <img :src="warningSign" alt="" class="max-[768px]:w-[35px]"/>
+                    <div
+                        class="col text-customPrimaryColor-foreground w-[70%] p-[2rem] border-b-[2px] max-[768px]:w-full">
+                        <img :src="warningSign" alt="" class="max-[768px]:w-[35px]" />
                         <h4 class="text-[1.5rem] font-medium max-[768px]:text-[1.2rem] max-[768px]:py-2">Tip</h4>
                         <p class="max-[768px]:text-[0.875rem]">
                             To save time while creating your ad, make sure to
@@ -345,7 +359,7 @@
                         </p>
                     </div>
                     <div class="col text-customPrimaryColor-foreground w-[70%] p-[2rem] max-[768px]:w-full">
-                        <img :src="warningSign" alt="" class="max-[768px]:w-[35px]"/>
+                        <img :src="warningSign" alt="" class="max-[768px]:w-[35px]" />
                         <h4 class="text-[1.5rem] font-medium max-[768px]:text-[1.2rem] max-[768px]:py-2">
                             Need some help?
                         </h4>
@@ -367,8 +381,10 @@
                     </Link>
                     <AuthenticatedHeaderLayout class="hidden max-[768px]:block max-[768px]:border-b-0" />
                     <div class="mt-[5rem] mb-[2rem] max-[768px]:mt-0 max-[768px]:px-[1.5rem] max-[768px]:mb-[1rem]">
-                        <span class="text-[1.75rem] font-medium max-[768px]:text-[1.2rem]">Key Technical Specifications of Your Vehicle</span>
-                        <p class="max-[768px]:text-[0.875rem] max-[768px]:mt-2">This information is needed to list your vehicle.</p>
+                        <span class="text-[1.75rem] font-medium max-[768px]:text-[1.2rem]">Key Technical Specifications
+                            of Your Vehicle</span>
+                        <p class="max-[768px]:text-[0.875rem] max-[768px]:mt-2">This information is needed to list your
+                            vehicle.</p>
                     </div>
                     <div class="grid grid-cols-2 gap-8 max-[768px]:px-[1.5rem] max-[768px]:gap-3 max-[768px]:gap-y-8">
                         <div class="col-span-2">
@@ -380,8 +396,9 @@
                             <input class="w-full" type="text" v-model="form.registration_number"
                                 id="registration_number" required
                                 placeholder="Enter your vehicle registration number" />
-                            <span v-if="errors.registration_number" class="text-red-500 max-[768px]:text-[0.75rem] text-sm">{{
-                                errors.registration_number }}</span>
+                            <span v-if="errors.registration_number"
+                                class="text-red-500 max-[768px]:text-[0.75rem] text-sm">{{
+                                    errors.registration_number }}</span>
                         </div>
 
                         <!-- Registration Country -->
@@ -411,8 +428,9 @@
                                     class="absolute right-3 top-1/2 transform -translate-y-1/2 w-[2.1rem] h-[1.5rem] rounded" />
                             </div>
 
-                            <span v-if="errors.registration_country" class="text-red-500 max-[768px]:text-[0.75rem] text-sm">{{
-                                errors.registration_country }}</span>
+                            <span v-if="errors.registration_country"
+                                class="text-red-500 max-[768px]:text-[0.75rem] text-sm">{{
+                                    errors.registration_country }}</span>
                         </div>
 
 
@@ -421,8 +439,9 @@
                             <InputLabel class="text-black" for="registration_date">Registration Date:</InputLabel>
                             <input class="w-full" type="date" v-model="form.registration_date" id="registration_date"
                                 required />
-                            <span v-if="errors.registration_date" class="text-red-500 max-[768px]:text-[0.75rem] text-sm">{{
-                                errors.registration_date }}</span>
+                            <span v-if="errors.registration_date"
+                                class="text-red-500 max-[768px]:text-[0.75rem] text-sm">{{
+                                    errors.registration_date }}</span>
                         </div>
 
                         <!-- Gross Vehicle Mass -->
@@ -453,7 +472,8 @@
                         <div class="col-span-2">
                             <InputLabel class="text-black" for="dealer_cost">Dealer Cost:</InputLabel>
                             <input class="" type="number" v-model="form.dealer_cost" id="dealer_cost" required />
-                            <span v-if="errors.dealer_cost" class="text-red-500 max-[768px]:text-[0.75rem] text-sm">{{ errors.dealer_cost }}</span>
+                            <span v-if="errors.dealer_cost" class="text-red-500 max-[768px]:text-[0.75rem] text-sm">{{
+                                errors.dealer_cost }}</span>
                         </div>
 
                         <!-- Phone Number -->
@@ -464,22 +484,27 @@
                                 to receive your requests</span>
                             <input class="w-full" type="text" v-model="form.phone_number" id="phone_number" required
                                 placeholder="+91" />
-                            <span v-if="errors.phone_number" class="text-red-500 max-[768px]:text-[0.75rem] text-sm">{{ errors.phone_number
-                            }}</span>
+                            <span v-if="errors.phone_number" class="text-red-500 max-[768px]:text-[0.75rem] text-sm">{{
+                                errors.phone_number
+                                }}</span>
                         </div>
                     </div>
-                    <div class="buttons flex justify-between mt-[2rem] pb-[4rem] max-[768px]:px-[1.5rem] max-[768px]:pb-0">
+                    <div
+                        class="buttons flex justify-between gap-[1.5rem] mt-[2rem] pb-[4rem] max-[768px]:px-[1.5rem] max-[768px]:pb-0">
                         <button class="button-secondary w-[15rem] max-[768px]:w-[10rem]" @click="prevStep">
                             Back
                         </button>
-                        <PrimaryButton class="w-[15rem] max-[768px]:w-[10rem]" type="button" @click="nextStep">Next</PrimaryButton>
+                        <PrimaryButton class="w-[15rem] max-[768px]:w-[10rem]" type="button" @click="nextStep">Next
+                        </PrimaryButton>
                     </div>
                 </div>
             </div>
-            <div class="column min-h-full w-[50%] flex-1 bg-customPrimaryColor relative max-[768px]:w-full overflow-hidden">
+            <div
+                class="column min-h-full w-[50%] flex-1 bg-customPrimaryColor relative max-[768px]:w-full overflow-hidden">
                 <div class="flex flex-col gap-10 items-center justify-center h-full max-[768px]:gap-0">
-                    <div class="col text-customPrimaryColor-foreground w-[70%] max-[768px]:w-full max-[768px]:px-[1.5rem] p-[2rem] border-b-[2px]">
-                        <img :src="warningSign" alt="" class="max-[768px]:w-[35px]"/>
+                    <div
+                        class="col text-customPrimaryColor-foreground w-[70%] max-[768px]:w-full max-[768px]:px-[1.5rem] p-[2rem] border-b-[2px]">
+                        <img :src="warningSign" alt="" class="max-[768px]:w-[35px]" />
                         <h4 class="text-[1.5rem] font-medium max-[768px]:text-[1.2rem] max-[768px]:py-2">
                             Data protection
                         </h4>
@@ -488,16 +513,19 @@
                             value remain strictly confidential and secure.
                         </p>
                     </div>
-                    <div class="col text-customPrimaryColor-foreground w-[70%] max-[768px]:w-full max-[768px]:px-[1.5rem] p-[2rem] border-b-[2px]">
-                        <img :src="warningSign" alt="" class="max-[768px]:w-[35px]"/>
-                        <h4 class="text-[1.5rem] font-medium max-[768px]:text-[1.2rem] max-[768px]:py-2">Information</h4>
+                    <div
+                        class="col text-customPrimaryColor-foreground w-[70%] max-[768px]:w-full max-[768px]:px-[1.5rem] p-[2rem] border-b-[2px]">
+                        <img :src="warningSign" alt="" class="max-[768px]:w-[35px]" />
+                        <h4 class="text-[1.5rem] font-medium max-[768px]:text-[1.2rem] max-[768px]:py-2">Information
+                        </h4>
                         <p class="max-[768px]:text-[0.875rem]">
                             All this information is necessary so that we can
                             secure your listing.
                         </p>
                     </div>
-                    <div class="col text-customPrimaryColor-foreground w-[70%] max-[768px]:w-full max-[768px]:px-[1.5rem] p-[2rem]">
-                        <img :src="warningSign" alt="" class="max-[768px]:w-[35px]"/>
+                    <div
+                        class="col text-customPrimaryColor-foreground w-[70%] max-[768px]:w-full max-[768px]:px-[1.5rem] p-[2rem]">
+                        <img :src="warningSign" alt="" class="max-[768px]:w-[35px]" />
                         <h4 class="text-[1.5rem] font-medium max-[768px]:text-[1.2rem] max-[768px]:py-2">
                             Need some help?
                         </h4>
@@ -519,8 +547,10 @@
                     </Link>
                     <AuthenticatedHeaderLayout class="hidden max-[768px]:block max-[768px]:border-b-0" />
                     <div class="mt-[5rem] mb-[2rem] max-[768px]:mt-0 max-[768px]:px-[1.5rem] max-[768px]:mb-1">
-                        <span class="text-[1.75rem] font-medium max-[768px]:text-[1.2rem]">Parking Address of the Vehicle</span>
-                        <p class="max-[768px]:text-[0.875rem] max-[768px]:mt-2">This allows renters to search by location</p>
+                        <span class="text-[1.75rem] font-medium max-[768px]:text-[1.2rem]">Parking Address of the
+                            Vehicle</span>
+                        <p class="max-[768px]:text-[0.875rem] max-[768px]:mt-2">This allows renters to search by
+                            location</p>
                     </div>
                     <div class="max-[768px]:px-[1.5rem]">
                         <span class="text-[0.875rem] text-black font-medium">Search your address</span>
@@ -553,19 +583,24 @@
                         <!-- <div id="map" class="w-full h-64 mt-4"></div> -->
                         <LocationPicker :onLocationSelect="selectLocation" />
                     </div>
-                    <span v-if="errors.location" class="text-red-500 max-[768px]:text-[0.75rem] text-sm">{{ errors.location }}</span>
-                    <div class="buttons flex justify-between mt-[2rem] pb-[4rem] max-[768px]:pb-0 max-[768px]:px-[1.5rem]">
+                    <span v-if="errors.location" class="text-red-500 max-[768px]:text-[0.75rem] text-sm">{{
+                        errors.location }}</span>
+                    <div
+                        class="buttons flex justify-between gap-[1.5rem] mt-[2rem] pb-[4rem] max-[768px]:pb-0 max-[768px]:px-[1.5rem]">
                         <button class="button-secondary w-[15rem] max-[768px]:w-[10rem]" @click="prevStep">
                             Back
                         </button>
-                        <PrimaryButton class="w-[15rem] max-[768px]:w-[10rem]" type="button" @click="nextStep">Next</PrimaryButton>
+                        <PrimaryButton class="w-[15rem] max-[768px]:w-[10rem]" type="button" @click="nextStep">Next
+                        </PrimaryButton>
                     </div>
                 </div>
             </div>
-            <div class="column min-h-full w-[50%] flex-1 bg-customPrimaryColor relative max-[768px]:w-full overflow-hidden">
+            <div
+                class="column min-h-full w-[50%] flex-1 bg-customPrimaryColor relative max-[768px]:w-full overflow-hidden">
                 <div class="flex flex-col gap-10 items-center justify-center h-full max-[768px]:gap-0">
-                    <div class="col text-customPrimaryColor-foreground w-[70%] p-[2rem] border-b-[2px] max-[768px]:w-full">
-                        <img :src="warningSign" alt="" class="max-[768px]:w-[35px]"/>
+                    <div
+                        class="col text-customPrimaryColor-foreground w-[70%] p-[2rem] border-b-[2px] max-[768px]:w-full">
+                        <img :src="warningSign" alt="" class="max-[768px]:w-[35px]" />
                         <h4 class="text-[1.5rem] font-medium max-[768px]:text-[1.2rem] max-[768px]:py-2">
                             Data protection
                         </h4>
@@ -577,7 +612,7 @@
                     </div>
 
                     <div class="col text-customPrimaryColor-foreground w-[70%] max-[768px]:w-full p-[2rem]">
-                        <img :src="warningSign" alt="" class="max-[768px]:w-[35px]"/>
+                        <img :src="warningSign" alt="" class="max-[768px]:w-[35px]" />
                         <h4 class="text-[1.5rem] font-medium max-[768px]:text-[1.2rem] max-[768px]:py-2">
                             Need some help?
                         </h4>
@@ -599,7 +634,8 @@
                     </Link>
                     <AuthenticatedHeaderLayout class="hidden max-[768px]:block max-[768px]:border-b-0" />
                     <div class="mt-[5rem] max-[768px]:mt-0 max-[768px]:px-[1.5rem]">
-                        <span class="text-[1.75rem] font-medium max-[768px]:text-[1.2rem]">Hire Cost of Your Vehicle</span>
+                        <span class="text-[1.75rem] font-medium max-[768px]:text-[1.2rem]">Hire Cost of Your
+                            Vehicle</span>
                         <div class="mt-[2rem]">
                             <span class="text-[0.875rem] text-black font-medium">Basic daily rate</span>
                             <p class="text-[0.75rem] font-medium mb-[1rem] text-customLightGrayColor">
@@ -638,7 +674,8 @@
                                     <div class="slider-container">
                                         <input type="range" v-model="form.price_per_day" id="price_per_day" min="0"
                                             max="200" step="1" class="p-1" />
-                                        <div class="price-tooltip max-[768px]:!text-[0.875rem]" :style="dailyTooltipPosition">
+                                        <div class="price-tooltip max-[768px]:!text-[0.875rem]"
+                                            :style="dailyTooltipPosition">
                                             €{{ form.price_per_day }}/day
                                         </div>
                                     </div>
@@ -653,7 +690,8 @@
                                     <div class="slider-container">
                                         <input type="range" v-model="form.price_per_week" id="price_per_week" min="0"
                                             max="1000" step="10" class="p-1" />
-                                        <div class="price-tooltip max-[768px]:!text-[0.875rem]" :style="weeklyTooltipPosition">
+                                        <div class="price-tooltip max-[768px]:!text-[0.875rem]"
+                                            :style="weeklyTooltipPosition">
                                             €{{ form.price_per_week }}/week
                                         </div>
                                     </div>
@@ -662,7 +700,7 @@
                                     </div>
                                     <div class="mt-2 flex flex-col justify-end items-end">
                                         <label for="weekly_discount" class="text-sm font-medium mb-0">Weekly Discount
-                                            </label>
+                                        </label>
                                         <input type="number" v-model="form.weekly_discount" id="weekly_discount"
                                             class="mt-1 block w-32 rounded-md border-gray-300 shadow-sm p-1 text-center" />
                                     </div>
@@ -675,7 +713,8 @@
                                     <div class="slider-container">
                                         <input type="range" v-model="form.price_per_month" id="price_per_month" min="0"
                                             max="3000" step="50" class="p-1" />
-                                        <div class="price-tooltip max-[768px]:!text-[0.875rem]" :style="monthlyTooltipPosition">
+                                        <div class="price-tooltip max-[768px]:!text-[0.875rem]"
+                                            :style="monthlyTooltipPosition">
                                             €{{ form.price_per_month }}/month
                                         </div>
                                     </div>
@@ -684,15 +723,16 @@
                                     </div>
                                     <div class="mt-2 flex flex-col justify-end items-end">
                                         <label for="monthly_discount" class="text-sm font-medium mb-0">Monthly Discount
-                                            </label>
+                                        </label>
                                         <input type="number" v-model="form.monthly_discount" id="monthly_discount"
                                             class="mt-1 block w-32 rounded-md border-gray-300 shadow-sm p-1 text-center" />
                                     </div>
 
                                 </div>
                             </div>
-                            <span v-if="errors.price_per_day" class="text-red-500 max-[768px]:text-[0.75rem] text-sm">{{ errors.price_per_day
-                            }}</span>
+                            <span v-if="errors.price_per_day" class="text-red-500 max-[768px]:text-[0.75rem] text-sm">{{
+                                errors.price_per_day
+                                }}</span>
                         </div>
                         <!-- Security Deposit -->
                         <div class="mt-[2rem] max-[768px]:px-[1.5rem]">
@@ -705,8 +745,9 @@
                             <input type="number" v-model="form.security_deposit" id="security_deposit" required min="0"
                                 step="0.01" />
                         </div>
-                        <span v-if="errors.security_deposit" class="text-red-500 max-[768px]:text-[0.75rem] text-sm">{{ errors.security_deposit
-                        }}</span>
+                        <span v-if="errors.security_deposit" class="text-red-500 max-[768px]:text-[0.75rem] text-sm">{{
+                            errors.security_deposit
+                            }}</span>
                     </div>
 
                     <!-- Payment Method -->
@@ -740,8 +781,9 @@
                                 <label class="ml-2" for="cash">Cash</label>
                             </InputLabel>
                         </div>
-                        <span v-if="errors.payment_method" class="text-red-500 max-[768px]:text-[0.75rem] text-sm">{{ errors.payment_method
-                        }}</span>
+                        <span v-if="errors.payment_method" class="text-red-500 max-[768px]:text-[0.75rem] text-sm">{{
+                            errors.payment_method
+                            }}</span>
 
                         <div v-if="paymentMethodsArray.length > 0">
                             <p class="text-[0.85rem] text-green-400">Selected Payment Methods:</p>
@@ -751,7 +793,8 @@
                             </ul>
                         </div>
                         <div v-else>
-                            <p class="text-[0.85rem] text-red-500 max-[768px]:text-[0.75rem]">No payment methods selected yet</p>
+                            <p class="text-[0.85rem] text-red-500 max-[768px]:text-[0.75rem]">No payment methods
+                                selected yet</p>
                         </div>
                     </div>
 
@@ -921,26 +964,31 @@
                                 <InputLabel for="minimum_driver_age">Minimum Driver Age</InputLabel>
                                 <input type="number" v-model="form.minimum_driver_age" id="minimum_driver_age"
                                     class="w-full" />
-                                <span v-if="errors.minimum_driver_age" class="text-red-500 max-[768px]:text-[0.75rem] text-sm">{{
-                                    errors.minimum_driver_age }}</span>
+                                <span v-if="errors.minimum_driver_age"
+                                    class="text-red-500 max-[768px]:text-[0.75rem] text-sm">{{
+                                        errors.minimum_driver_age }}</span>
                             </div>
                         </div>
                     </div>
 
 
 
-                    <div class="buttons flex justify-between mt-[2rem] pb-[4rem] max-[768px]:pb-0 max-[768px]:px-[1.5rem]">
+                    <div
+                        class="buttons flex justify-between gap-[1.5rem] mt-[2rem] pb-[4rem] max-[768px]:pb-0 max-[768px]:px-[1.5rem]">
                         <button class="button-secondary w-[15rem] max-[768px]:w-[10rem]" @click="prevStep">
                             Back
                         </button>
-                        <PrimaryButton class="w-[15rem] max-[768px]:w-[10rem]" type="button" @click="nextStep">Next</PrimaryButton>
+                        <PrimaryButton class="w-[15rem] max-[768px]:w-[10rem]" type="button" @click="nextStep">Next
+                        </PrimaryButton>
                     </div>
                 </div>
             </div>
-            <div class="column min-h-full w-[50%] flex-1 bg-customPrimaryColor relative max-[768px]:w-full overflow-hidden">
+            <div
+                class="column min-h-full w-[50%] flex-1 bg-customPrimaryColor relative max-[768px]:w-full overflow-hidden">
                 <div class="flex flex-col gap-10 items-center justify-center h-full max-[768px]:gap-0">
-                    <div class="col text-customPrimaryColor-foreground w-[70%] p-[2rem] border-b-[2px] max-[768px]:w-full">
-                        <img :src="warningSign" alt="" class="max-[768px]:w-[35px]"/>
+                    <div
+                        class="col text-customPrimaryColor-foreground w-[70%] p-[2rem] border-b-[2px] max-[768px]:w-full">
+                        <img :src="warningSign" alt="" class="max-[768px]:w-[35px]" />
                         <h4 class="text-[1.5rem] font-medium max-[768px]:text-[1.2rem] max-[768px]:py-2">Tip</h4>
                         <p class="max-[768px]:text-[0.875rem]">
                             The rate indicated corresponds to the daily rate of
@@ -948,16 +996,18 @@
                             correspond to 85% of the rate applied for the hire.
                         </p>
                     </div>
-                    <div class="col text-customPrimaryColor-foreground w-[70%] max-[768px]:w-full p-[2rem] border-b-[2px]">
-                        <img :src="warningSign" alt="" class="max-[768px]:w-[35px]"/>
-                        <h4 class="text-[1.5rem] font-medium max-[768px]:text-[1.2rem] max-[768px]:py-2">Information</h4>
+                    <div
+                        class="col text-customPrimaryColor-foreground w-[70%] max-[768px]:w-full p-[2rem] border-b-[2px]">
+                        <img :src="warningSign" alt="" class="max-[768px]:w-[35px]" />
+                        <h4 class="text-[1.5rem] font-medium max-[768px]:text-[1.2rem] max-[768px]:py-2">Information
+                        </h4>
                         <p class="max-[768px]:text-[0.875rem]">
                             All this information is necessary so that we can
                             secure your listing.
                         </p>
                     </div>
                     <div class="col text-customPrimaryColor-foreground w-[70%] max-[768px]:w-full p-[2rem]">
-                        <img :src="warningSign" alt="" class="max-[768px]:w-[35px]"/>
+                        <img :src="warningSign" alt="" class="max-[768px]:w-[35px]" />
                         <h4 class="text-[1.5rem] font-medium max-[768px]:text-[1.2rem] max-[768px]:py-2">
                             Need some help?
                         </h4>
@@ -981,19 +1031,22 @@
                     <AuthenticatedHeaderLayout class="hidden max-[768px]:block max-[768px]:border-b-0" />
 
                     <div class="mt-10 max-[768px]:mt-0 max-[768px]:px-[1.5rem]">
-                        <span class="text-[1.7rem] font-medium text-gray-800 max-[768px]:text-[1.2rem]">Choose Your Protection Plan</span>
+                        <span class="text-[1.7rem] font-medium text-gray-800 max-[768px]:text-[1.2rem]">Choose Your
+                            Protection Plan</span>
                         <p class="text-gray-600 mt-5 max-[768px]:text-[0.875rem]">
                             You can <strong>select Exclsive plan or can proceed with Free plan by default</strong>.
                             These plans will be visible to the customers and customers can select one of these methods
                             during the booking process.
-                            <strong class="underline text-red-500 max-[768px]:text-[0.75rem]">Click below Plan card to select or edit the Plan
+                            <strong class="underline text-red-500 max-[768px]:text-[0.75rem]">Click below Plan card to
+                                select or edit the Plan
                                 price </strong>
                         </p>
                     </div>
                     <!-- Protection Plan -->
                     <div class="protection_plan flex gap-10 mt-4 max-[768px]:flex-col max-[768px]:px-[1.5rem]">
 
-                        <div v-for="plan in plans" :key="plan.id" class="cursor-pointer col w-[45%] rounded-[20px] border-[1px] border-[#153B4F] p-5 flex flex-col gap-5 
+                        <div v-for="plan in plans" :key="plan.id"
+                            class="cursor-pointer col w-[45%] rounded-[20px] border-[1px] border-[#153B4F] p-5 flex flex-col gap-5 
                    hover:bg-[#153B4F0D] transition-transform duration-300 ease-in-out max-[768px]:w-full max-[768px]:gap-2" :class="{
                     'hover:scale-105 scale-105': selectedPlans.includes(plan),  // Keeps the scale effect when selected
                     'border-[#153B4F] bg-[#153B4F0D]': selectedPlans.includes(plan),
@@ -1015,9 +1068,10 @@
                                 {{ plan.plan_description }}
                             </p>
 
-                            <button class="button-primary px-5 py-2 max-[768px]:text-[0.875rem]" @click.stop="togglePlanSelection(plan)" :class="{
-                                'bg-[#016501]': selectedPlans.includes(plan),
-                            }">
+                            <button class="button-primary px-5 py-2 max-[768px]:text-[0.875rem]"
+                                @click.stop="togglePlanSelection(plan)" :class="{
+                                    'bg-[#016501]': selectedPlans.includes(plan),
+                                }">
                                 {{ selectedPlans.includes(plan) ? 'Selected' : 'Select' }}
                             </button>
 
@@ -1032,19 +1086,23 @@
                             </div>
                         </div>
                     </div>
-                    <div class="buttons flex justify-between mt-[2rem] pb-[4rem] max-[768px]:pb-0 max-[768px]:px-[1.5rem]">
+                    <div
+                        class="buttons flex justify-between gap-[1.5rem] mt-[2rem] pb-[4rem] max-[768px]:pb-0 max-[768px]:px-[1.5rem]">
                         <button class="button-secondary w-[15rem] max-[768px]:w-[10rem]" @click="prevStep">
                             Back
                         </button>
-                        <PrimaryButton class="w-[15rem] max-[768px]:w-[10rem]" type="button" @click="nextStep">Next</PrimaryButton>
+                        <PrimaryButton class="w-[15rem] max-[768px]:w-[10rem]" type="button" @click="nextStep">Next
+                        </PrimaryButton>
                     </div>
                 </div>
             </div>
 
-            <div class="column min-h-full w-[50%] flex-1 bg-customPrimaryColor relative max-[768px]:w-full overflow-hidden">
+            <div
+                class="column min-h-full w-[50%] flex-1 bg-customPrimaryColor relative max-[768px]:w-full overflow-hidden">
                 <div class="flex flex-col gap-10 items-center justify-center h-full max-[768px]:gap-0">
-                    <div class="col text-customPrimaryColor-foreground w-[70%] max-[768px]:w-full p-[2rem] border-b-[2px]">
-                        <img :src="warningSign" alt="" class="max-[768px]:w-[35px]"/>
+                    <div
+                        class="col text-customPrimaryColor-foreground w-[70%] max-[768px]:w-full p-[2rem] border-b-[2px]">
+                        <img :src="warningSign" alt="" class="max-[768px]:w-[35px]" />
                         <h4 class="text-[1.5rem] font-medium max-[768px]:text-[1.2rem] max-[768px]:py-2">Tip</h4>
                         <p class="max-[768px]:text-[0.875rem]">
                             The rate indicated corresponds to the daily rate of the hire.
@@ -1052,16 +1110,18 @@
                             applied for the hire.
                         </p>
                     </div>
-                    <div class="col text-customPrimaryColor-foreground w-[70%] max-[768px]:w-full p-[2rem] border-b-[2px]">
-                        <img :src="warningSign" alt="" class="max-[768px]:w-[35px]"/>
-                        <h4 class="text-[1.5rem] font-medium max-[768px]:text-[1.2rem] max-[768px]:py-2">Information</h4>
+                    <div
+                        class="col text-customPrimaryColor-foreground w-[70%] max-[768px]:w-full p-[2rem] border-b-[2px]">
+                        <img :src="warningSign" alt="" class="max-[768px]:w-[35px]" />
+                        <h4 class="text-[1.5rem] font-medium max-[768px]:text-[1.2rem] max-[768px]:py-2">Information
+                        </h4>
                         <p class="max-[768px]:text-[0.875rem]">
                             All this information is necessary so that we can secure your
                             listing.
                         </p>
                     </div>
                     <div class="col text-customPrimaryColor-foreground w-[70%] max-[768px]:w-full p-[2rem]">
-                        <img :src="warningSign" alt="" class="max-[768px]:w-[35px]"/>
+                        <img :src="warningSign" alt="" class="max-[768px]:w-[35px]" />
                         <h4 class="text-[1.5rem] font-medium max-[768px]:text-[1.2rem] max-[768px]:py-2">
                             Need some help?
                         </h4>
@@ -1111,28 +1171,34 @@
                             <div>
                                 <p class="text-sm text-gray-500 mb-2">Quantity</p>
                                 <div class="flex items-center gap-2">
-                                <button @click="decrementQuantity(addon.id)" class="px-2 py-1 border rounded">-</button>
-                                <span class="px-3 py-1 bg-gray-100 rounded">{{ addonQuantities[addon.id] || '00'
-                                    }}</span>
-                                <button @click="incrementQuantity(addon.id)" class="px-2 py-1 border rounded">+</button>
-                            </div>
+                                    <button @click="decrementQuantity(addon.id)"
+                                        class="px-2 py-1 border rounded">-</button>
+                                    <span class="px-3 py-1 bg-gray-100 rounded">{{ addonQuantities[addon.id] || '00'
+                                        }}</span>
+                                    <button @click="incrementQuantity(addon.id)"
+                                        class="px-2 py-1 border rounded">+</button>
+                                </div>
                             </div>
                         </div>
                     </div>
 
 
-                    <div class="buttons flex justify-between mt-[2rem] pb-[4rem] max-[768px]:pb-0 max-[768px]:px-[1.5rem]">
+                    <div
+                        class="buttons flex justify-between gap-[1.5rem] mt-[2rem] pb-[4rem] max-[768px]:pb-0 max-[768px]:px-[1.5rem]">
                         <button class="button-secondary w-[15rem] max-[768px]:w-[10rem]" @click="prevStep">
                             Back
                         </button>
-                        <PrimaryButton class="w-[15rem] max-[768px]:w-[10rem]" type="button" @click="nextStep">Next</PrimaryButton>
+                        <PrimaryButton class="w-[15rem] max-[768px]:w-[10rem]" type="button" @click="nextStep">Next
+                        </PrimaryButton>
                     </div>
                 </div>
             </div>
-            <div class="column min-h-full w-[50%] flex-1 bg-customPrimaryColor relative max-[768px]:w-full overflow-hidden">
+            <div
+                class="column min-h-full w-[50%] flex-1 bg-customPrimaryColor relative max-[768px]:w-full overflow-hidden">
                 <div class="flex flex-col gap-10 items-center justify-center h-full max-[768px]:gap-0">
-                    <div class="col text-customPrimaryColor-foreground w-[70%] max-[768px]:w-full p-[2rem] border-b-[2px]">
-                        <img :src="warningSign" alt="" class="max-[768px]:w-[35px]"/>
+                    <div
+                        class="col text-customPrimaryColor-foreground w-[70%] max-[768px]:w-full p-[2rem] border-b-[2px]">
+                        <img :src="warningSign" alt="" class="max-[768px]:w-[35px]" />
                         <h4 class="text-[1.5rem] font-medium max-[768px]:text-[1.2rem] max-[768px]:py-2">Tip</h4>
                         <p class="max-[768px]:text-[0.875rem]">
                             The rate indicated corresponds to the daily rate of the hire.
@@ -1140,16 +1206,18 @@
                             applied for the hire.
                         </p>
                     </div>
-                    <div class="col text-customPrimaryColor-foreground w-[70%] max-[768px]:w-full p-[2rem] border-b-[2px]">
-                        <img :src="warningSign" alt="" class="max-[768px]:w-[35px]"/>
-                        <h4 class="text-[1.5rem] font-medium max-[768px]:text-[1.2rem] max-[768px]:py-2">Information</h4>
+                    <div
+                        class="col text-customPrimaryColor-foreground w-[70%] max-[768px]:w-full p-[2rem] border-b-[2px]">
+                        <img :src="warningSign" alt="" class="max-[768px]:w-[35px]" />
+                        <h4 class="text-[1.5rem] font-medium max-[768px]:text-[1.2rem] max-[768px]:py-2">Information
+                        </h4>
                         <p class="max-[768px]:text-[0.875rem]">
                             All this information is necessary so that we can secure your
                             listing.
                         </p>
                     </div>
                     <div class="col text-customPrimaryColor-foreground w-[70%] max-[768px]:w-full p-[2rem]">
-                        <img :src="warningSign" alt="" class="max-[768px]:w-[35px]"/>
+                        <img :src="warningSign" alt="" class="max-[768px]:w-[35px]" />
                         <h4 class="text-[1.5rem] font-medium max-[768px]:text-[1.2rem] max-[768px]:py-2">
                             Need some help?
                         </h4>
@@ -1179,43 +1247,57 @@
                             your vehicle</span>
                     </div>
                     <!-- Image Upload Section -->
-                    <div
-                        class="flex flex-col gap-2 justify-center items-center border-[2px] rounded-[0.5rem] border-customPrimaryColor border-dashed py-10">
-                        <img :src="uploadIcon" alt="" class="max-[768px]:w-[25px]"/>
+                    <div class="flex flex-col gap-2 justify-center items-center border-[2px] rounded-[0.5rem] border-customPrimaryColor border-dashed py-10 transition-colors duration-200"
+                        @dragenter="onDragEnter" @dragleave="onDragLeave" @dragover="onDragOver" @drop="onDrop">
+                        <img :src="uploadIcon" alt="" class="max-[768px]:w-[25px]" />
                         <p class="max-[768px]:hidden">Drag & Drop to Upload Photos</p>
                         <p class="text-customLightGrayColor font-medium max-[768px]:hidden">or</p>
-                        <input type="file" id="images" @change="handleFileUpload" multiple />
-                        <div v-if="form.images.length" class="image-preview-container">
-                            <div v-for="(image, index) in form.images" :key="index" class="image-preview">
-                                <img :src="getImageUrl(image)" alt="Vehicle Image" />
-                                <button class="remove-btn" @click="removeImage(index)">✖</button>
+                        <label for="images"
+                            class="cursor-pointer bg-customPrimaryColor text-white px-4 py-2 rounded hover:bg-opacity-90 transition-colors">
+                            Browse Files
+                        </label>
+                        <input type="file" id="images" @change="handleFileUpload" multiple class="hidden"
+                            accept="image/*" />
+                        <div v-if="form.images.length"
+                            class="image-preview-container mt-4 grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3 w-full px-4">
+                            <div v-for="(image, index) in form.images" :key="index" class="image-preview relative">
+                                <img :src="getImageUrl(image)" alt="Vehicle Image"
+                                    class="w-full h-24 object-cover rounded" />
+                                <button
+                                    class="remove-btn absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center"
+                                    @click.prevent="removeImage(index)">✖</button>
                             </div>
                         </div>
-                        <p>{{ imageCountMessage }}</p>
+                        <p class="mt-2 text-sm" :class="form.images.length < 5 ? 'text-red-500' : 'text-green-500'">{{
+                            imageCountMessage }}</p>
                     </div>
 
-                    <div class="buttons flex justify-between mt-[2rem] pb-[4rem] max-[768px]:pb-0 max-[768px]:px-[1.5rem]">
-                        <button class="button-secondary w-[15rem] max-[768px]:w-[10rem]" @click="prevStep">
+                    <div
+                        class="buttons flex justify-between mt-[2rem] pb-[4rem] max-[768px]:pb-0 max-[768px]:px-[1.5rem]">
+                        <button class="button-secondary gap-[1.5rem] w-[15rem] max-[768px]:w-[10rem]" @click="prevStep">
                             Back
                         </button>
-                        <PrimaryButton class="w-[15rem] max-[768px]:w-[10rem] disabled:opacity-50" type="button" @click="submit"
-                            :disabled="!isImageCountValid">
+                        <PrimaryButton class="w-[15rem] max-[768px]:w-[10rem] disabled:opacity-50" type="button"
+                            @click="submit" :disabled="!isImageCountValid">
                             Submit</PrimaryButton>
                     </div>
                 </div>
             </div>
-            <div class="column min-h-full w-[50%] flex-1 bg-customPrimaryColor relative max-[768px]:w-full overflow-hidden">
+            <div
+                class="column min-h-full w-[50%] flex-1 bg-customPrimaryColor relative max-[768px]:w-full overflow-hidden">
                 <div class="flex flex-col gap-10 items-center justify-center h-full max-[768px]:gap-0">
-                    <div class="col text-customPrimaryColor-foreground w-[70%] max-[768px]:w-full p-[2rem] border-b-[2px]">
-                        <img :src="warningSign" alt="" class="max-[768px]:w-[35px]"/>
-                        <h4 class="text-[1.5rem] font-medium max-[768px]:text-[1.2rem] max-[768px]:py-2">Information</h4>
+                    <div
+                        class="col text-customPrimaryColor-foreground w-[70%] max-[768px]:w-full p-[2rem] border-b-[2px]">
+                        <img :src="warningSign" alt="" class="max-[768px]:w-[35px]" />
+                        <h4 class="text-[1.5rem] font-medium max-[768px]:text-[1.2rem] max-[768px]:py-2">Information
+                        </h4>
                         <p class="max-[768px]:text-[0.875rem]">
                             All this information is necessary so that we can
                             secure your listing.
                         </p>
                     </div>
                     <div class="col text-customPrimaryColor-foreground w-[70%] max-[768px]:w-full p-[2rem]">
-                        <img :src="warningSign" alt="" class="max-[768px]:w-[35px]"/>
+                        <img :src="warningSign" alt="" class="max-[768px]:w-[35px]" />
                         <h4 class="text-[1.5rem] font-medium max-[768px]:text-[1.2rem] max-[768px]:py-2">
                             Need some help?
                         </h4>
@@ -1524,9 +1606,48 @@ onMounted(() => {
 });
 
 const imageCountMessage = computed(() => {
-    return `${form.images.length} image(s) selected`;
+    const count = form.images.length;
+    if (count === 0) return "No images uploaded";
+    return `${count} image${count === 1 ? '' : 's'} uploaded${count < 5 ? ' (minimum 5 required)' : ''}`;
 });
 
+// Add these methods for drag and drop functionality
+const dragCounter = ref(0);
+
+const onDragEnter = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    dragCounter.value++;
+    e.currentTarget.classList.add('border-green-500');
+};
+
+const onDragLeave = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    dragCounter.value--;
+    if (dragCounter.value === 0) {
+        e.currentTarget.classList.remove('border-green-500');
+    }
+};
+
+const onDragOver = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+};
+
+const onDrop = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    dragCounter.value = 0;
+    e.currentTarget.classList.remove('border-green-500');
+
+    const files = Array.from(e.dataTransfer.files);
+    if (files.length) {
+        // Filter for image files only
+        const imageFiles = files.filter(file => file.type.startsWith('image/'));
+        form.images = [...form.images, ...imageFiles];
+    }
+};
 
 let map = null;
 let marker = null // Marker instance
@@ -1776,6 +1897,7 @@ select {
 .vehicle-listing label {
     font-size: 0.875rem;
 }
+
 .vehicle-listing input,
 .vehicle-listing select {
     font-size: 0.875rem;

@@ -180,7 +180,7 @@ const vendorStatus = computed(() => page.props.vendorStatus);
             <div v-else class="column py-[0.5rem]">
                 <div class="flex justify-between items-center">
                     <!-- Logo -->
-                    <Link href="/" class="max-[768px]:w-[125px]">
+                    <Link href="/" class="max-[768px]:w-[120px]">
                     <ApplicationLogo class="max-[768px]:w-full" />
                     </Link>
 
@@ -189,13 +189,13 @@ const vendorStatus = computed(() => page.props.vendorStatus);
                         <!-- Auth Links -->
                         <div class="column">
                             <Link :href="route('login')" class="button-primary py-3 px-5 font-semibold text-gray-600 dark:text-gray-400 dark:hover:text-white focus:outline focus:outline-2 focus:rounded-sm
-                                max-[768px]:text-[0.65rem]
+                                max-[768px]:text-[0.5rem]
                                 ">
                             Log in
                             </Link>
 
                             <Link :href="route('register')" class="button-secondary ms-4 font-semibold text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white focus:outline focus:outline-2 focus:rounded-sm
-                                max-[768px]:text-[0.65rem]
+                                max-[768px]:text-[0.5rem]
                                 ">
                             Create an Account
                             </Link>

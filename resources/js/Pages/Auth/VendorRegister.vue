@@ -180,12 +180,12 @@ const submit = () => {
                                 <textarea v-model="form.address" class="w-full" readonly></textarea>
                             </div>
 
-                            <div class="flex justify-between">
-                                <button class="button-secondary w-[15rem] max-[768px]:w-[10rem]" type="button" @click="prevStep"
+                            <div class="flex justify-between gap-[1.5rem]">
+                                <button class="button-secondary w-[15rem] max-[768px]:w-[10rem] max-[768px]:text-[0.65rem]" type="button" @click="prevStep"
                                     :disabled="currentStep === 0">
                                     Back
                                 </button>
-                                <PrimaryButton class="w-[15rem] max-[768px]:w-[10rem]" type="button" @click="nextStep">Next</PrimaryButton>
+                                <PrimaryButton class="w-[15rem] max-[768px]:w-[10rem] max-[768px]:text-[0.65rem]" type="button" @click="nextStep">Next</PrimaryButton>
                             </div>
                         </div>
                     </div>
@@ -276,9 +276,9 @@ const submit = () => {
 
                         </div>
                         <!-- Buttons -->
-                        <div class="flex justify-between mt-[2rem]">
-                            <button class="button-secondary w-[15rem] max-[768px]:w-[10rem]" type="button" @click="prevStep">Back</button>
-                            <PrimaryButton class="w-[15rem] max-[768px]:w-[10rem]" type="button" @click="nextStep">Next</PrimaryButton>
+                        <div class="flex justify-between mt-[2rem] gap-[1.5rem]">
+                            <button class="button-secondary w-[15rem] max-[768px]:w-[10rem] max-[768px]:text-[0.65rem]" type="button" @click="prevStep">Back</button>
+                            <PrimaryButton class="w-[15rem] max-[768px]:w-[10rem] max-[768px]:text-[0.65rem]" type="button" @click="nextStep">Next</PrimaryButton>
                         </div>
 
 

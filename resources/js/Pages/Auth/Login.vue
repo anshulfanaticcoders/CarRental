@@ -94,7 +94,7 @@ const submit = () => {
             </div>
 
             <div class="flex flex-col gap-4 justify-end mt-4">
-                <button class="ms-4 button-primary w-full p-4 text-[1.15rem] max-[768px]:text-[1rem] max-[768px]:mt-5" :class="{ 'opacity-25': form.processing }" :disabled="form.processing">
+                <button class="button-primary w-full p-4 text-[1.15rem] max-[768px]:text-[1rem] max-[768px]:mt-5" :class="{ 'opacity-25': form.processing }" :disabled="form.processing">
                     Sign in
                 </button>
             </div>

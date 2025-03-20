@@ -1,6 +1,6 @@
 <template>
     <MyProfileLayout>
-      <div class="container mx-auto px-4">
+      <div class="container mx-auto px-4 max-[768px]:px-0">
         <p
           class="text-[1.5rem] text-customPrimaryColor font-bold mb-[2rem] bg-[#154D6A0D] rounded-[12px] px-[1rem] py-[1rem]">
           Pending Bookings</p>
@@ -19,12 +19,12 @@
               <div class="w-20% max-[768px]:w-full">
                 <img v-if="booking.vehicle?.images" :src="`${booking.vehicle.images.find(
                   (image) => image.image_type === 'primary'
-                )?.image_path}`" alt="Primary Vehicle Image"
+                )?.image_url}`" alt="Primary Vehicle Image"
                   class="w-full h-[250px] object-cover rounded-md" />
               </div>
             </Link>
             <div class="w-[67%] flex flex-col gap-5 max-[768px]:w-full">
-              <div class="flex justify-between items-center">
+              <div class="flex justify-between items-center max-[768px]:flex-wrap">
                 <div class="flex justify-between items-center gap-10 max-[768px]:gap-5"><span
                     class="text-[2rem] font-medium text-customPrimaryColor max-[768px]:text-[1.2rem]">{{ booking.vehicle.brand
                     }}</span> <span class="bg-customLightPrimaryColor p-3 rounded-[99px] text-[1rem] max-[768px]:text-[0.5rem]">{{

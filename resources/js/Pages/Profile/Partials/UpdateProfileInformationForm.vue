@@ -255,7 +255,8 @@ const minimumDateOfBirth = computed(() => {
 
                     <!-- Dynamic Flag -->
                     <img v-if="form.country" :src="getFlagUrl(form.country)" alt="Country Flag"
-                        class="absolute right-3 top-1/2 transform translate-x-[-10%] translate-y-[-10%] w-[2.1rem] h-[1.5rem] rounded" />
+                        class="absolute right-3 top-1/2 transform translate-x-[-10%] translate-y-[-10%] w-[2.1rem] h-[1.5rem] rounded
+                        max-[768px]:translate-y-[-70%]" />
                 </div>
 
 
@@ -316,7 +317,7 @@ const minimumDateOfBirth = computed(() => {
                 </div>
 
 
-                <div class="">
+                <div class="max-[768px]:col-span-2">
                     <h2 class="text-[1.5rem] font-medium text-gray-900 max-[768px]:text-[1.2rem] max-[768px]:mb-4">Tax
                         Identification Number</h2>
                     <InputLabel for="tax_identification" value="Tax Identification Number" />

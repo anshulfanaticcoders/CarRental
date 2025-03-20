@@ -518,25 +518,37 @@ if (blockedStartDate && blockedEndDate) {
 
 // Create a function to check if a date is booked
 const isDateBooked = (dateStr) => {
-    if (!dateStr || (!bookedDates.value.length && !blockedDates.value.length)) return false;
-
+    if (!dateStr) return false; // If dateStr is empty, return false
+    
     const checkDate = new Date(dateStr);
     checkDate.setHours(0, 0, 0, 0);
 
-    return bookedDates.value.some(({ pickup_date, return_date }) => {
+    // If there are no bookings and no blocking dates, return false
+    if (!bookedDates.value.length && !blockedDates.value.length) {
+        return false;
+    }
+
+    // Check if date falls within booked dates
+    const isBooked = bookedDates.value.some(({ pickup_date, return_date }) => {
         const pickupDate = new Date(pickup_date);
         const returnDate = new Date(return_date);
         pickupDate.setHours(0, 0, 0, 0);
         returnDate.setHours(0, 0, 0, 0);
         return checkDate >= pickupDate && checkDate <= returnDate;
-    }) || blockedDates.value.some(({ blocking_start_date, blocking_end_date }) => {
+    });
+
+    // Check if date falls within blocked dates
+    const isBlocked = blockedDates.value.some(({ blocking_start_date, blocking_end_date }) => {
         const startDate = new Date(blocking_start_date);
         const endDate = new Date(blocking_end_date);
         startDate.setHours(0, 0, 0, 0);
         endDate.setHours(0, 0, 0, 0);
         return checkDate >= startDate && checkDate <= endDate;
     });
+
+    return isBooked || isBlocked; // Return true if the date is either booked or blocked
 };
+
 
 const isDateRangeBooked = (startDateStr, endDateStr) => {
     const startDate = new Date(startDateStr);
@@ -916,7 +928,7 @@ onMounted(() => {
 
                         <div class="features mt-[3rem]">
                             <span class="text-[2rem] font-medium max-[768px]:text-[1rem]">Features</span>
-                            <div class="grid grid-cols-4 mt-[2rem] gap-y-[2rem] max-[768px]:mt-[1rem]">
+                            <div class="grid grid-cols-4 mt-[2rem] gap-y-[2rem] max-[768px]:mt-[1rem] max-[768px]:grid-cols-2">
                                 <div class="flex items-center gap-3 max-[768px]:text-[0.95rem]" v-if="vehicle?.features" v-for="(feature, index) in JSON.parse(
                                     vehicle.features
                                 )" :key="index">

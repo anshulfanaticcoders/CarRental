@@ -711,7 +711,7 @@ const submitBooking = async () => {
                                 <button class="button-secondary py-4 w-[15rem] max-[768px]:text-[0.75rem] max-[768px]:w-[35%]" @click="moveToPrevStep">
                                     Back
                                 </button>
-                                <PrimaryButton type="submit" class="button-primary py-4 w-[15rem] max-[768px]:!text-[0.65rem] max-[768px]:w-[50%]"
+                                <PrimaryButton type="submit" class="button-primary py-4 w-[15rem] max-[768px]:!text-[0.5rem] max-[768px]:w-[50%]"
                                     @click="() => { storeFormData(); moveToNextStep(); }">
                                     Continue to payment
                                 </PrimaryButton>
@@ -813,10 +813,10 @@ const submitBooking = async () => {
                             <!-- Button Group -->
                             <div class="flex justify-between gap-4 mt-4 max-[768px]:fixed max-[768px]:bottom-0 max-[768px]:left-0
                             max-[768px]:bg-white max-[768px]:w-full max-[768px]:z-10 max-[768px]:py-2 max-[768px]:px-[1.5rem]">
-                                <button type="button" @click="moveToPrevStep" class="button-secondary w-[15rem]">
+                                <button type="button" @click="moveToPrevStep" class="button-secondary w-[15rem] max-[768px]:text-[0.75rem]">
                                     Back
                                 </button>
-                                <PrimaryButton type="submit" class=" w-[15rem]">
+                                <PrimaryButton type="submit" class=" w-[15rem] max-[768px]:text-[0.65rem]">
                                     Book Now
                                 </PrimaryButton>
                             </div>
@@ -828,8 +828,8 @@ const submitBooking = async () => {
 
                 <div v-if="isLoading" class="fixed z-50 h-full w-full top-0 left-0 bg-[#0000009e]">
                     <div class="flex justify-center flex-col items-center h-full w-full">
-                        <img :src=loader alt="" class="w-[200px]">
-                        <p class="text-[white] text-[1.5rem]">Please do not refresh the page..waiting for payment</p>
+                        <img :src=loader alt="" class="w-[200px] max-[768px]:w-[70px]">
+                        <p class="text-[white] text-[1.5rem] max-[768px]:text-[1rem]">Please do not refresh the page..waiting for payment</p>
                     </div>
                 </div>
 

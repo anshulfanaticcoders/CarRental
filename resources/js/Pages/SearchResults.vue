@@ -341,7 +341,7 @@ const applyFilters = () => {
     <AuthenticatedHeaderLayout />
     <section class="bg-customPrimaryColor py-customVerticalSpacing">
         <div class="">
-            <SearchBar class="border-[2px] rounded-[20px] border-white mt-0 mb-0" :prefill="searchQuery" />
+            <SearchBar class="border-[2px] rounded-[20px] border-white mt-0 mb-0 max-[768px]:border-none" :prefill="searchQuery" />
         </div>
     </section>
 
