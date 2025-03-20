@@ -79,7 +79,7 @@
                             <td class="px-6 py-4 whitespace-nowrap">
                                 <span :class="{
                                     'px-2 py-1 text-xs font-semibold rounded-full': true,
-                                    'bg-green-100 text-green-800': payment.payment_status === 'completed',
+                                    'bg-green-100 text-green-800': payment.payment_status === 'succeeded',
                                     'bg-yellow-100 text-yellow-800': payment.payment_status === 'pending',
                                     'bg-red-100 text-red-800': payment.payment_status === 'failed'
                                 }">
@@ -87,14 +87,14 @@
                                 </span>
                             </td>
                             <td class="px-6 py-4 whitespace-nowrap">
-                                {{ formatDate(payment.payment_date) }}
+                                {{ formatDate(payment.created_at) }}
                             </td>
                         </tr>
                     </tbody>
                 </table>
 
                 <!-- Updated Pagination -->
-                <div class="px-6 py-4 bg-gray-50 flex justify-center">
+                <div class="px-6 py-4 bg-gray-50 flex justify-end">
                     <Pagination :current-page="payments.current_page" :total-pages="payments.last_page"
                         @page-change="handlePageChange" />
                 </div>
@@ -137,13 +137,10 @@ const formatNumber = (number) => {
     }).format(number)
 }
 
-const formatDate = (date) => {
-    return new Date(date).toLocaleDateString('en-US', {
-        year: 'numeric',
-        month: 'short',
-        day: 'numeric'
-    })
-}
+const formatDate = (dateStr) => {
+    const date = new Date(dateStr);
+    return `${String(date.getMonth() + 1).padStart(2, '0')}/${String(date.getDate()).padStart(2, '0')}/${date.getFullYear()}`;
+};
 
 const handlePageChange = (page) => {
     router.get(
@@ -169,3 +166,10 @@ const updateFilters = () => {
     )
 }
 </script>
+
+
+<style scoped>
+table td{
+    font-size: 0.875rem;
+}
+</style>

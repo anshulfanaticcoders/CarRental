@@ -39,6 +39,7 @@
                             <TableHead>Status</TableHead>
                             <TableHead>Driving License</TableHead>
                             <TableHead>Passport</TableHead>
+                            <TableHead>Created at</TableHead>
                             <TableHead class="text-right">Actions</TableHead>
                         </TableRow>
                     </TableHeader>
@@ -62,6 +63,9 @@
                                 <img @click="openImageModal(`${user.vendor_document?.passport}`)"
                                     :src="`${user.vendor_document?.passport}`" alt="Passport"
                                     class="w-[100px] h-[80px] object-cover mb-2 cursor-pointer" />
+                            </TableCell>
+                            <TableCell>
+                                {{ formatDate(user.vendor_profile.created_at) }}
                             </TableCell>
                             <TableCell class="text-right">
                                 <div class="flex justify-end gap-2">
@@ -160,6 +164,11 @@ const getStatusBadgeVariant = (status) => {
         default:
             return 'default';
     }
+};
+
+const formatDate = (dateStr) => {
+    const date = new Date(dateStr);
+    return `${String(date.getMonth() + 1).padStart(2, '0')}/${String(date.getDate()).padStart(2, '0')}/${date.getFullYear()}`;
 };
 </script>
 <style>

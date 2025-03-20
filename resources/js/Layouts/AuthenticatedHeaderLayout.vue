@@ -95,7 +95,12 @@ const vendorStatus = computed(() => page.props.vendorStatus);
                                         </template>
 
                                         <template #content>
-                                            <DropdownLink :href="route('profile.edit')">Profile</DropdownLink>
+                                            <DropdownLink v-if="$page.props.auth.user.role === 'admin'"
+                                                :href="'/admin-dashboard'">
+                                                Dashboard
+                                            </DropdownLink>
+                                            <DropdownLink v-else :href="route('profile.edit')">Profile</DropdownLink>
+
                                             <DropdownLink :href="route('logout')" method="post" as="button">Log Out
                                             </DropdownLink>
                                         </template>

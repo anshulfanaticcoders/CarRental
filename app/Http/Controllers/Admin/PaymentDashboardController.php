@@ -15,6 +15,7 @@ class PaymentDashboardController extends Controller
         ->when($request->search, function ($query, $search) {
             $query->where('transaction_id', 'like', "%{$search}%")
                 ->orWhere('payment_method', 'like', "%{$search}%")
+                ->orWhere('amount', 'like', "%{$search}%")
                 ->orWhere('payment_status', 'like', "%{$search}%");
         })
         ->when($request->status, function ($query, $status) {
@@ -26,7 +27,7 @@ class PaymentDashboardController extends Controller
         }, function ($query) {
             $query->latest();
         })
-        ->paginate(10)
+        ->paginate(7)
         ->withQueryString();
 
     // Fix: Change STATUS_COMPLETED to 'succeeded' to match your database value
@@ -45,6 +46,7 @@ class PaymentDashboardController extends Controller
             'data' => $payments->items(),
             'current_page' => $payments->currentPage(),
             'last_page' => $payments->lastPage(),
+            'per_page' => $payments->perPage(),
         ],
         'stats' => $stats,
         'filters' => $request->only(['search', 'status', 'sort', 'order']),

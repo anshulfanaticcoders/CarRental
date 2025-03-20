@@ -26,6 +26,7 @@ class VendorsDashboardController extends Controller
                     ->orWhere('status', 'like', "%{$search}%");
             }
         })
+        ->orderBy('created_at', 'desc')
             ->with(['vendorProfile', 'vendorDocument'])
             ->paginate(4);
 

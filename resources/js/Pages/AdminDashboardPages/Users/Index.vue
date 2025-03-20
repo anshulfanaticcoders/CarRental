@@ -37,6 +37,7 @@
                             <TableHead>Phone</TableHead>
                             <TableHead>Role</TableHead>
                             <TableHead>Status</TableHead>
+                            <TableHead>Date Created</TableHead>
                             <TableHead class="text-right">Actions</TableHead>
                         </TableRow>
                     </TableHeader>
@@ -56,6 +57,7 @@
                                     {{ user.status }}
                                 </Badge>
                             </TableCell>
+                            <TableCell>{{ formatDate(user.created_at) }}</TableCell>
                             <TableCell class="text-right">
                                 <div class="flex justify-end gap-2">
                                     <Button size="sm" variant="outline" @click="openViewDialog(user)">
@@ -151,6 +153,11 @@ const getStatusBadgeVariant = (status) => {
         case 'inactive': return 'secondary';
         case 'suspended': return 'destructive';
     }
+};
+
+const formatDate = (dateStr) => {
+    const date = new Date(dateStr);
+    return `${String(date.getMonth() + 1).padStart(2, '0')}/${String(date.getDate()).padStart(2, '0')}/${date.getFullYear()}`;
 };
 </script>
 <style>

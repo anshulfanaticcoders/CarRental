@@ -226,7 +226,7 @@ const data = {
 
 
 import axios from "axios";
-import { Link } from '@inertiajs/vue3';
+import { Link,router } from '@inertiajs/vue3';
 import logoutIcon from '../../assets/logoutIcon.svg';
 
 const userCount = ref<number>(0); // Reactive variable for the user count
