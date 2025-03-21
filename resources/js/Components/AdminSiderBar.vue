@@ -83,6 +83,10 @@ const data = {
           title: 'All Users',
           url: '/users',
         },
+        {
+          title: 'Users Documents',
+          url: '/admin/user-documents',
+        },
       ],
     },
     {
@@ -217,6 +221,21 @@ const data = {
         {
           title: 'Business Report',
           url: '/business-report',
+        },
+      ],
+    },
+    {
+      title: 'Settings',
+      url: '#',
+      icon: FileChartColumn,
+      items: [
+        {
+          title: 'Footer',
+          url: '/admin/settings/footer',
+        },
+        {
+          title: 'FAQ',
+          url: '/admin/faq',
         },
       ],
     },

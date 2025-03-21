@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Models\FooterSetting;
 use App\Models\PopularPlace;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
@@ -123,4 +124,54 @@ class PopularPlacesController extends Controller
         return redirect()->route('popular-places.index')
             ->with('status', 'Place deleted successfully');
     }
+
+
+    public function footerSettings()
+    {
+        $places = PopularPlace::all();
+        
+        // Get selected places from the footer_settings table
+        $footerSettings = FooterSetting::where('type', 'popular_places')->first();
+        $selectedPlaces = [];
+        
+        if ($footerSettings) {
+            // Decode the JSON stored in the settings value
+            $selectedPlaces = json_decode($footerSettings->value, true) ?? [];
+        }
+
+        return Inertia::render('AdminDashboardPages/Settings/Footer/Index', [
+            'places' => $places,
+            'selectedPlaces' => $selectedPlaces,
+        ]);
+    }
+
+    public function updateFooterSettings(Request $request)
+    {
+        $selectedPlaces = $request->input('selected_places', []);
+        
+        // Save to footer_settings table - using upsert to create or update
+        FooterSetting::updateOrCreate(
+            ['type' => 'popular_places'],
+            ['value' => json_encode($selectedPlaces)]
+        );
+
+        return redirect()->route('admin.settings.footer')->with('status', 'Footer settings updated successfully');
+    }
+
+     // method to get footer places for the front-end
+     public function getFooterPlaces()
+     {
+         // Get selected place IDs from footer settings
+         $footerSettings = FooterSetting::where('type', 'popular_places')->first();
+         $selectedPlaceIds = [];
+         
+         if ($footerSettings) {
+             $selectedPlaceIds = json_decode($footerSettings->value, true) ?? [];
+         }
+         
+         // Get the actual place data for the selected IDs
+         $places = PopularPlace::whereIn('id', $selectedPlaceIds)->get();
+         
+         return response()->json($places);
+     }
 }

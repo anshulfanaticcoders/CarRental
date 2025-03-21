@@ -1049,7 +1049,7 @@ onMounted(() => {
                         <div class="paymentInfoDiv p-5 sticky top-[3rem]">
                             <div class="flex items-center justify-between gap-3 max-[768px]:mb-4">
                                 <h4 class="max-[768px]:text-[1.2rem]">{{ vehicle?.brand }} {{ vehicle?.model }}</h4>
-                                <span class="bg-[#f5f5f5] inline-block px-8 py-2 text-center rounded-[40px] max-[768px]:text-[0.95rem]">
+                                <span class="bg-[#f5f5f5] inline-block px-8 py-2 max-[768px]:text-nowrap max-[768px]:px-4 text-center rounded-[40px] max-[768px]:text-[0.75rem]">
                                     {{ vehicle?.category.name }}
                                 </span>
                                 <div class="icons flex items-center gap-3">

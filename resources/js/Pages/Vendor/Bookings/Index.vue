@@ -1,18 +1,21 @@
 <template>
     <MyProfileLayout>
         <div class="">
-            <p class="text-[1.75rem] font-bold text-gray-800 bg-customLightPrimaryColor p-4 rounded-[12px] mb-[1rem] max-[768px]:text-[1.2rem]">Booking Details</p>
+            <p
+                class="text-[1.75rem] font-bold text-gray-800 bg-customLightPrimaryColor p-4 rounded-[12px] mb-[1rem] max-[768px]:text-[1.2rem]">
+                Booking Details</p>
 
-            <!-- Search Bar -->
             <div class="mb-4">
-                <input type="text" v-model="searchQuery" placeholder="Search bookings..." class="px-4 py-2 border border-gray-300 rounded-md w-full" />
+                <input type="text" v-model="searchQuery" placeholder="Search bookings..."
+                    class="px-4 py-2 border border-gray-300 rounded-md w-full" />
             </div>
 
             <div v-if="filteredBookings.length" class="bg-white rounded-lg shadow overflow-x-auto">
                 <table class="min-w-full divide-y divide-gray-200">
                     <thead class="bg-gray-50">
                         <tr>
-                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">ID</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                ID</th>
                             <th class="px-4 py-2 text-left text-sm font-bold">Booking ID</th>
                             <th class="px-4 py-2 text-left text-sm font-bold">Customer Name</th>
                             <th class="px-4 py-2 text-left text-sm font-bold">Vehicle</th>
@@ -24,8 +27,10 @@
                         </tr>
                     </thead>
                     <tbody>
-                        <tr v-for="(booking, index) in filteredBookings" :key="booking.id" class="border-b hover:bg-gray-50">
-                            <td class="px-6 py-4 whitespace-nowrap">{{ (pagination.current_page - 1) * pagination.per_page + index + 1 }}</td>
+                        <tr v-for="(booking, index) in filteredBookings" :key="booking.id"
+                            class="border-b hover:bg-gray-50">
+                            <td class="px-6 py-4 whitespace-nowrap">{{ (pagination.current_page - 1) *
+                                pagination.per_page + index + 1 }}</td>
                             <td class="px-4 py-2 text-sm text-gray-700">{{ booking.booking_number }}</td>
                             <td class="px-4 py-2 text-sm text-gray-700">
                                 {{ booking.customer?.first_name }} {{ booking.customer?.last_name }}
@@ -66,9 +71,14 @@
                                     @click="cancelBooking(booking.id)">
                                     Cancel
                                 </button>
-                                <button @click="goToDamageProtection(booking.id)" class="text-blue-600 font-semibold hover:underline ml-4">
-                    Damage Protection
-                </button>
+                                <button @click="goToDamageProtection(booking.id)"
+                                    class="text-blue-600 font-semibold hover:underline ml-4">
+                                    Damage Protection
+                                </button>
+                                <button @click="openCustomerDocumentsDialog(booking.customer.id)"
+                                    class="text-blue-600 font-semibold hover:underline ml-4">
+                                    View Documents
+                                </button>
                             </td>
                         </tr>
                     </tbody>
@@ -78,12 +88,53 @@
             <div v-else class="text-center py-6">
                 <span class="text-gray-500">No bookings found.</span>
             </div>
-            <!-- Pagination -->
             <div class="mt-[1rem] flex justify-end">
                 <Pagination :current-page="pagination.current_page" :total-pages="pagination.last_page"
-                @page-change="handlePageChange" />
+                    @page-change="handlePageChange" />
             </div>
         </div>
+
+        <Dialog v-model:open="isCustomerDocumentsDialogOpen">
+            <DialogContent class="max-w-[700px]">
+                <DialogHeader>
+                    <DialogTitle>Customer Documents</DialogTitle>
+                </DialogHeader>
+                <div v-if="customerDocuments && customerDocuments.length" class="flex justify-between">
+                    <div v-for="document in customerDocuments" :key="document.id"
+                        class="mb-4 flex flex-col gap-2 items-center">
+                        <p class="font-semibold">{{ formatDocumentType(document.document_type) }}</p>
+                        <img :src="document.document_file" alt="Document Image"
+                            class="h-20 w-[150px] object-cover mb-2 cursor-pointer"
+                            @click="openImageModal(document.document_file)" />
+                        <p class="text-sm capitalize" :class="{
+                            'text-yellow-600': document.verification_status === 'pending',
+                            'text-green-600': document.verification_status === 'verified',
+                            'text-red-600': document.verification_status === 'rejected'
+                        }">
+                            Status: {{ document.verification_status }}
+                        </p>
+
+                        <p class="text-sm text-gray-600">Uploaded on: {{ formatDate(document.created_at) }}</p>
+                    </div>
+                </div>
+                <div v-else class="text-center py-6">
+                    <span class="text-gray-500">No documents available.</span>
+                </div>
+                <DialogFooter>
+                    <Button @click="isCustomerDocumentsDialogOpen = false">Close</Button>
+                </DialogFooter>
+            </DialogContent>
+        </Dialog>
+
+        <!-- Image Modal -->
+        <Dialog v-model:open="isImageModalOpen">
+            <DialogContent class="sm:max-w-[425px]">
+                <img :src="selectedImage" alt="Document Image" class="w-full h-auto" />
+                <DialogFooter>
+                    <Button @click="isImageModalOpen = false">Close</Button>
+                </DialogFooter>
+            </DialogContent>
+        </Dialog>
     </MyProfileLayout>
 </template>
 
@@ -94,23 +145,47 @@ import { router } from '@inertiajs/vue3';
 import axios from 'axios';
 import Pagination from './Pagination.vue';
 import { useToast } from 'vue-toastification';
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/Components/ui/dialog';
+
 const toast = useToast();
+const isCustomerDocumentsDialogOpen = ref(false);
+const isImageModalOpen = ref(false);
+const customerDocuments = ref([]);
+const selectedImage = ref(null);
+const searchQuery = ref('');
 
 const goToDamageProtection = (bookingId) => {
     router.get(route('vendor.damage-protection.index', { booking: bookingId }));
 };
+
+const openCustomerDocumentsDialog = async (customerId) => {
+    try {
+        const response = await axios.get(route('vendor.customer-documents.index', { customer: customerId }));
+        console.log(response.data); // Log the response
+        customerDocuments.value = response.data.documents || [];
+        isCustomerDocumentsDialogOpen.value = true;
+    } catch (error) {
+        console.error("Error fetching customer documents:", error);
+        toast.error("Failed to fetch customer documents. Please try again.");
+    }
+};
+
+const openImageModal = (imageUrl) => {
+    selectedImage.value = imageUrl;
+    isImageModalOpen.value = true;
+};
+
 const props = defineProps({
     bookings: {
         type: Array,
         filters: Object,
         required: true
     },
-    pagination: { 
+    pagination: {
         type: Object,
         required: true
     }
 });
-const searchQuery = ref('');
 
 const handlePageChange = (page) => {
     router.get(route('bookings.index'), { ...props.filters, page }, { preserveState: true, preserveScroll: true });
@@ -122,38 +197,36 @@ const formatDate = (dateStr) => {
 };
 
 const updateStatus = async (booking) => {
-  try {
-    await axios.put(`/bookings/${booking.id}`, {
-      booking_status: booking.booking_status
-    });
-    
-    const statusMessages = {
-      pending: 'Status changed to Pending!',
-      confirmed: 'Status changed to Confirmed!',
-      completed: 'Status changed to Completed!',
-      cancelled: 'Status changed to Cancelled!'
-    };
-    
-    toast.success(statusMessages[booking.booking_status], {
-      position: 'top-right',
-      timeout: 3000,
-      closeOnClick: true,
-      pauseOnHover: true,
-      draggable: true,
-    });
-    
-    if (booking.booking_status === 'confirmed') {
-      await axios.put(`/vehicles/${booking.vehicle_id}`, {
-        status: 'rented'
-      });
+    try {
+        await axios.put(`/bookings/${booking.id}`, {
+            booking_status: booking.booking_status
+        });
+
+        const statusMessages = {
+            pending: 'Status changed to Pending!',
+            confirmed: 'Status changed to Confirmed!',
+            completed: 'Status changed to Completed!',
+            cancelled: 'Status changed to Cancelled!'
+        };
+
+        toast.success(statusMessages[booking.booking_status], {
+            position: 'top-right',
+            timeout: 3000,
+            closeOnClick: true,
+            pauseOnHover: true,
+            draggable: true,
+        });
+
+        if (booking.booking_status === 'confirmed') {
+            await axios.put(`/vehicles/${booking.vehicle_id}`, {
+                status: 'rented'
+            });
+        }
+        router.reload();
+    } catch (error) {
+        console.error("Error updating status:", error);
+        router.reload();
     }
-    // Optionally refresh the page or show a success message
-    router.reload();
-  } catch (error) {
-    console.error("Error updating status:", error);
-    // Reset the status back in case of error
-    router.reload();
-  }
 };
 
 const cancelBooking = async (bookingId) => {
@@ -173,8 +246,8 @@ const filteredBookings = computed(() => {
     return props.bookings.filter(booking => {
         return (
             booking.booking_number.toLowerCase().includes(query) ||
-            (booking.customer?.first_name.toLowerCase().includes(query) || 
-            booking.customer?.last_name.toLowerCase().includes(query)) ||
+            (booking.customer?.first_name.toLowerCase().includes(query) ||
+                booking.customer?.last_name.toLowerCase().includes(query)) ||
             booking.vehicle?.brand.toLowerCase().includes(query) ||
             booking.vehicle?.model.toLowerCase().includes(query) ||
             booking.booking_status.toLowerCase().includes(query) ||
@@ -185,27 +258,32 @@ const filteredBookings = computed(() => {
     });
 });
 
+const formatDocumentType = (documentType) => {
+    // Add your logic to format the document type here
+    return documentType.charAt(0).toUpperCase() + documentType.slice(1).toLowerCase();
+};
+
 watch(searchQuery, (newQuery) => {
-  router.get(
-    route('bookings.index'),
-    { search: newQuery },
-    { preserveState: true, preserveScroll: true }
-  );
+    router.get(
+        route('bookings.index'),
+        { search: newQuery },
+        { preserveState: true, preserveScroll: true }
+    );
 });
 </script>
 
-
 <style scoped>
 @media screen and (max-width:768px) {
-    
-    th{
+    th {
         font-size: 0.75rem;
     }
-    td{
+
+    td {
         font-size: 0.75rem;
         text-wrap-mode: nowrap;
     }
-    table select{
+
+    table select {
         width: 100px;
     }
 }

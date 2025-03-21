@@ -255,7 +255,7 @@ const minimumDateOfBirth = computed(() => {
 
                     <!-- Dynamic Flag -->
                     <img v-if="form.country" :src="getFlagUrl(form.country)" alt="Country Flag"
-                        class="absolute right-3 top-1/2 transform translate-x-[-10%] translate-y-[-10%] w-[2.1rem] h-[1.5rem] rounded
+                        class="absolute right-3 top-1/2 transform translate-x-[-10%] translate-y-[-50%] w-[2.1rem] h-[1.5rem] rounded
                         max-[768px]:translate-y-[-70%]" />
                 </div>
 

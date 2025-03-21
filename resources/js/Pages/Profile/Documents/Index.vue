@@ -11,57 +11,57 @@
                 </Button>
             </div>
 
+            <!-- Upload Dialog -->
             <Dialog v-model:open="isUploadDialogOpen">
-                <DialogContent class="sm:max-w-[600px]">
+                <DialogContent class="sm:max-w-[425px]">
                     <DialogHeader>
                         <DialogTitle>Upload Documents</DialogTitle>
-                        <DialogDescription>
-                            You can upload up to 3 documents. Currently uploaded: {{ documents.length }}
-                        </DialogDescription>
                     </DialogHeader>
-                    
-                    <div class="grid gap-4 py-4">
-                        <div 
-                            v-for="(doc, index) in documentsToUpload" 
-                            :key="index" 
-                            class="grid grid-cols-4 items-center gap-4"
-                        >
-                            <Label class="text-right">Document {{ index + 1 }}</Label>
-                            <Select 
+                    <form @submit.prevent="uploadDocuments">
+                        <div v-for="(doc, index) in documentsToUpload" :key="index" class="mb-4">
+                            <Label class="block text-sm font-medium">Document Type</Label>
+                            <Input 
                                 v-model="doc.type" 
-                                @update:modelValue="validateDocumentTypes"
-                            >
-                                <SelectTrigger class="col-span-2">
-                                    <SelectValue placeholder="Select Document Type" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    <SelectItem 
-                                        v-for="type in availableDocumentTypes" 
-                                        :key="type" 
-                                        :value="type"
-                                    >
-                                        {{ formatDocumentType(type) }}
-                                    </SelectItem>
-                                </SelectContent>
-                            </Select>
+                                class="border p-2 w-full mb-2" 
+                                readonly 
+                            />
+                            <Label class="block text-sm font-medium">Upload Document</Label>
                             <Input 
                                 type="file" 
-                                @change="event => handleFileUpload(event, index)"
+                                @change="(event) => handleFileUpload(event, index)" 
                                 accept=".jpg,.jpeg,.png,.pdf"
-                                class="col-span-2"
+                                class="border p-2 w-full" 
                             />
                         </div>
-                    </div>
+                        <DialogFooter>
+                            <Button type="submit" :disabled="!isUploadValid">Upload</Button>
+                        </DialogFooter>
+                    </form>
+                </DialogContent>
+            </Dialog>
+
+            <!-- Edit Document Dialog -->
+            <Dialog v-model:open="isEditDialogOpen">
+                <DialogContent class="sm:max-w-[425px]">
+                    <DialogHeader>
+                        <DialogTitle>Edit Document</DialogTitle>
+                    </DialogHeader>
                     
-                    <DialogFooter>
-                        <Button 
-                            type="submit" 
-                            @click="uploadDocuments"
-                            :disabled="!isUploadValid"
-                        >
-                            Upload Documents
-                        </Button>
-                    </DialogFooter>
+                    <form @submit.prevent="updateDocument">
+                        <div class="mb-4">
+                            <Label class="block text-sm font-medium">Upload New Document</Label>
+                            <Input 
+                                type="file" 
+                                @change="handleEditFileUpload" 
+                                accept=".jpg,.jpeg,.png,.pdf"
+                                class="border p-2 w-full" 
+                            />
+                        </div>
+
+                        <DialogFooter>
+                            <Button type="submit">Update</Button>
+                        </DialogFooter>
+                    </form>
                 </DialogContent>
             </Dialog>
 
@@ -72,7 +72,7 @@
                             <TableHead>Document Type</TableHead>
                             <TableHead>Document Image</TableHead>
                             <TableHead>Status</TableHead>
-                           
+                            <TableHead>Actions</TableHead>
                         </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -85,6 +85,16 @@
                                 <Badge :variant="getStatusBadgeVariant(document.verification_status)">
                                     {{ document.verification_status }}
                                 </Badge>
+                            </TableCell>
+                            <TableCell>
+                                <Button 
+                                    variant="outline" 
+                                    size="sm" 
+                                    @click="openEditDialog(document)"
+                                    :disabled="document.verification_status === 'verified'"
+                                >
+                                    Edit
+                                </Button>
                             </TableCell>
                         </TableRow>
                     </TableBody>
@@ -106,8 +116,7 @@ import {
 } from "@/Components/ui/table";
 
 import MyProfileLayout from "@/Layouts/MyProfileLayout.vue";
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/Components/ui/dialog";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/Components/ui/select";
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/Components/ui/dialog";
 import { Input } from "@/Components/ui/input";
 import Badge from "@/Components/ui/badge/Badge.vue";
 import { Button } from "@/Components/ui/button";
@@ -115,44 +124,67 @@ import { Label } from "@/Components/ui/label";
 
 const documents = ref(usePage().props.documents);
 const isUploadDialogOpen = ref(false);
+const isEditDialogOpen = ref(false);
+const currentDocument = ref(null);
+const editFile = ref(null);
 
+// Edit document functions
+const openEditDialog = (document) => {
+    currentDocument.value = document;
+    isEditDialogOpen.value = true;
+};
+
+const handleEditFileUpload = (event) => {
+    editFile.value = event.target.files[0];
+};
+
+const updateDocument = () => {
+    if (!editFile.value) {
+        alert('Please select a file to upload');
+        return;
+    }
+
+    let formData = new FormData();
+    formData.append("document_file", editFile.value);
+    formData.append("_method", "PATCH");
+
+    router.post(`/user/documents/${currentDocument.value.id}`, formData, {
+        onSuccess: () => {
+            // Update the documents list without refreshing the page
+            const updatedDocumentUrl = URL.createObjectURL(editFile.value);
+
+            documents.value = documents.value.map(doc => 
+                doc.id === currentDocument.value.id 
+                ? { ...doc, document_file: updatedDocumentUrl } 
+                : doc
+            );
+
+            // Close dialog and reset state
+            isEditDialogOpen.value = false;
+            editFile.value = null;
+            currentDocument.value = null;
+        }
+    });
+};
+
+
+// Document upload functions
 const DOCUMENT_TYPES = ['id_proof', 'address_proof', 'driving_license'];
 
 const documentsToUpload = ref([
-    { type: null, file: null },
-    { type: null, file: null },
-    { type: null, file: null }
+    { type: 'id_proof', file: null },
+    { type: 'address_proof', file: null },
+    { type: 'driving_license', file: null }
 ]);
 
-const availableDocumentTypes = computed(() => {
-    const usedTypes = documentsToUpload.value.map(doc => doc.type).filter(Boolean);
-    return DOCUMENT_TYPES.filter(type => 
-        !usedTypes.includes(type) && 
-        !documents.value.some(doc => doc.document_type === type)
-    );
-});
-
 const isUploadValid = computed(() => {
-    return documentsToUpload.value.every(doc => 
-        doc.type && doc.file
-    );
+    return documentsToUpload.value.every(doc => doc.file);
 });
 
 const openUploadDialog = () => {
     if (documents.value.length < 3) {
         isUploadDialogOpen.value = true;
     }
-};
-
-const validateDocumentTypes = () => {
-    // Ensure no duplicate document types are selected
-    const types = documentsToUpload.value.map(doc => doc.type).filter(Boolean);
-    const uniqueTypes = new Set(types);
-    if (types.length !== uniqueTypes.size) {
-        alert('Please select unique document types');
-        return false;
-    }
-    return true;
 };
 
 const handleFileUpload = (event, index) => {
@@ -173,18 +205,19 @@ const uploadDocuments = () => {
     });
 
     router.post('/user/documents/bulk-upload', formData, {
-        onSuccess: () => {
+        onSuccess: (response) => {
             isUploadDialogOpen.value = false;
             // Reset upload form
             documentsToUpload.value = [
-                { type: null, file: null },
-                { type: null, file: null },
-                { type: null, file: null }
+                { type: 'id_proof', file: null },
+                { type: 'address_proof', file: null },
+                { type: 'driving_license', file: null }
             ];
+            // Update the documents array with the new data
+            documents.value = response.props.documents;
         }
     });
 };
-
 
 const formatDocumentType = (type) => {
     return type.split('_').map(word => 
@@ -199,15 +232,12 @@ const getStatusBadgeVariant = (status) => {
 </script>
 
 <style scoped>
-
 @media screen and (max-width:768px) {
-    
     th{
         font-size: 0.75rem;
     }
     td{
         font-size: 0.75rem;
     }
-   
 }
 </style>

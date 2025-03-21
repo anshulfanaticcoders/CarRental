@@ -732,14 +732,14 @@ const submitBooking = async () => {
                                 ({{ vehicle?.benefits?.cancellation_available_per_day_date }} days prior to pickup)
                             </p>
                         </div>
-                        <div v-if="vehicle?.benefits?.cancellation_available_per_week && packageType === 'week'"
+                        <div v-else-if="vehicle?.benefits?.cancellation_available_per_week && packageType === 'week'"
                             class="flex items-center gap-1">
                             <p class="text-[1.2rem] text-[#009900] font-medium max-[768px]:text-[0.875rem]">
                                 Free Cancellation before {{ formatDate(getCancellationDate) }}
                                 ({{ vehicle?.benefits?.cancellation_available_per_week_date }} days prior to pickup)
                             </p>
                         </div>
-                        <div v-if="vehicle?.benefits?.cancellation_available_per_month && packageType === 'month'"
+                        <div v-else-if="vehicle?.benefits?.cancellation_available_per_month && packageType === 'month'"
                             class="flex items-center gap-1">
                             <p class="text-[1.2rem] text-[#009900] font-medium max-[768px]:text-[0.875rem]">
                                 Free Cancellation before {{ formatDate(getCancellationDate) }}
@@ -747,7 +747,7 @@ const submitBooking = async () => {
                             </p>
                         </div>
 
-                        <div v-else-if="!vehicle?.benefits?.cancellation_available_per_month">
+                        <div v-else>
                             <p class="text-[1.2rem] text-[#009900] font-medium max-[768px]:text-[0.875rem]">No Cancellation Available</p>
                         </div>
 

@@ -904,7 +904,7 @@
 
                             <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
                                 <!-- Per Day Cancellation -->
-                                <div class="border rounded p-4">
+                                <div v-if="selectedTypes.day" class="border rounded p-4">
                                     <div class="flex gap-2 items-center mb-0">
                                         <input type="checkbox" v-model="form.cancellation_available_per_day"
                                             id="cancellation_available_per_day" />
@@ -921,7 +921,7 @@
                                 </div>
 
                                 <!-- Per Week Cancellation -->
-                                <div class="border rounded p-4">
+                                <div v-if="selectedTypes.week" class="border rounded p-4">
                                     <div class="flex gap-2 items-center mb-0">
                                         <input type="checkbox" v-model="form.cancellation_available_per_week"
                                             id="cancellation_available_per_week" />
@@ -938,7 +938,7 @@
                                 </div>
 
                                 <!-- Per Month Cancellation -->
-                                <div class="border rounded p-4">
+                                <div v-if="selectedTypes.month" class="border rounded p-4">
                                     <div class="flex gap-2 items-center mb-0">
                                         <input type="checkbox" v-model="form.cancellation_available_per_month"
                                             id="cancellation_available_per_month" />
@@ -1878,6 +1878,64 @@ watch(() => form.registration_country, (newVal) => {
     }
 });
 
+
+
+watch(
+  () => form.limited_km_per_day,
+  (newValue) => {
+    if (!newValue) {
+      form.limited_km_per_day_range = null;
+      form.price_per_km_per_day = null;
+    }
+  }
+);
+
+watch(
+  () => form.limited_km_per_week,
+  (newValue) => {
+    if (!newValue) {
+      form.limited_km_per_week_range = null;
+      form.price_per_km_per_week = null;
+    }
+  }
+);
+
+watch(
+  () => form.limited_km_per_month,
+  (newValue) => {
+    if (!newValue) {
+      form.limited_km_per_month_range = null;
+      form.price_per_km_per_month = null;
+    }
+  }
+);
+
+watch(
+  () => form.cancellation_available_per_day,
+  (newValue) => {
+    if (!newValue) {
+      form.cancellation_available_per_day_date = null;
+    }
+  }
+);
+
+watch(
+  () => form.cancellation_available_per_week,
+  (newValue) => {
+    if (!newValue) {
+      form.cancellation_available_per_week_date = null;
+    }
+  }
+);
+
+watch(
+  () => form.cancellation_available_per_month,
+  (newValue) => {
+    if (!newValue) {
+      form.cancellation_available_per_month_date = null;
+    }
+  }
+);
 
 </script>
 

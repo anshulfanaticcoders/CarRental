@@ -4,6 +4,8 @@ namespace App\Http\Controllers\Vendor;
 
 use App\Http\Controllers\Controller;
 use App\Models\Booking;
+use App\Models\Customer;
+use App\Models\UserDocument;
 use App\Models\Vehicle;
 use Inertia\Inertia;
 use Illuminate\Http\Request;
@@ -94,4 +96,19 @@ class VendorBookingController extends Controller
             'message' => 'Booking cancelled successfully'
         ]);
     }
+
+    public function viewCustomerDocuments($customerId)
+    {
+        // Fetch customer by ID
+        $customer = Customer::findOrFail($customerId);
+
+        // Retrieve the documents for the user associated with the customer
+        $documents = UserDocument::where('user_id', $customer->user_id)->get();
+
+        // Return the documents as JSON
+        return response()->json([
+            'documents' => $documents
+        ]);
+    }
+    
 }

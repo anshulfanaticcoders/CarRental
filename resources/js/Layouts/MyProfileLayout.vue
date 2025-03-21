@@ -28,7 +28,11 @@ const toggleMobileMenu = () => {
 
 // Function to check if mobile view
 const checkMobile = () => {
-  isMobile.value = window.innerWidth <= 480;
+  isMobile.value = window.innerWidth <= 768;
+  // Auto-collapse sidebar on mobile
+  if (isMobile.value) {
+    isSidebarCollapsed.value = true;
+  }
 };
 
 // Provide the toggle functions to child components
@@ -38,7 +42,7 @@ provide('toggleMobileMenu', toggleMobileMenu);
 onMounted(() => {
   // Check mobile on mount
   checkMobile();
-  
+
   // Add resize listener
   window.addEventListener('resize', checkMobile);
 });
@@ -51,55 +55,46 @@ onBeforeUnmount(() => {
 
 <template>
   <Head title="Dashboard" />
-  <AuthenticatedHeaderLayout/>
+  <AuthenticatedHeaderLayout />
   <main class="">
-    <!-- Mobile menu button - only visible on mobile -->
-    <button 
-      @click="toggleMobileMenu" 
-      class="hidden max-[768px]:flex items-center justify-center p-3 m-4 bg-[#153b4f] text-white rounded-md top-16 left-2 z-50"
-    >
-      <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-        <line x1="3" y1="12" x2="21" y2="12"></line>
-        <line x1="3" y1="6" x2="21" y2="6"></line>
-        <line x1="3" y1="18" x2="21" y2="18"></line>
-      </svg>
-      <span class="ml-2">Show Menu</span>
-    </button>
-    
+    <div class="hidden max-[768px]:block max-[768px]:absolute max-[768px]:top-0 max-[768px]:right-0">
+      <!-- Mobile menu button - only visible on mobile -->
+      <button @click="toggleMobileMenu"
+        class="hidden max-[768px]:flex items-center justify-center px-3 py-2 m-4 bg-[#153b4f] text-white rounded-md top-16 left-2 z-50">
+        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none"
+          stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <line x1="3" y1="12" x2="21" y2="12"></line>
+          <line x1="3" y1="6" x2="21" y2="6"></line>
+          <line x1="3" y1="18" x2="21" y2="18"></line>
+        </svg>
+      </button>
+    </div>
+
     <div class="py-customVerticalSpacing flex gap-10 max-[768px]:pt-2">
-      <!-- Sidebar container -->
-      <div 
-        class="column sidebar sticky top-[3rem] sidebar-container pl-2"
-        :class="{ 
-          'w-[20%]': !isSidebarCollapsed && !isMobile, 
+      <!-- Sidebar container with improved transition classes -->
+      <div class="column sidebar sticky top-[3rem] sidebar-container pl-2" 
+        :class="{
+          'w-[20%]': !isSidebarCollapsed && !isMobile,
           'w-[80px]': isSidebarCollapsed && !isMobile,
-          'fixed left-0 top-0 h-full w-[80%] z-50': isMobileMenuOpen,
-          'hidden max-[768px]:hidden': !isMobileMenuOpen && isMobile
-        }"
-      >
-        <SiderBar 
-          @toggle-sidebar="toggleSidebar" 
-          @toggle-mobile-menu="toggleMobileMenu"
-        />
+          'mobile-sidebar-open': isMobileMenuOpen,
+          'mobile-sidebar-closed': !isMobileMenuOpen && isMobile
+        }">
+        <SiderBar @toggle-sidebar="toggleSidebar" @toggle-mobile-menu="toggleMobileMenu" />
       </div>
-      
-      <!-- Overlay for mobile menu -->
-      <div 
-        v-if="isMobileMenuOpen" 
-        class="fixed inset-0 bg-black bg-opacity-50 z-40"
-        @click="toggleMobileMenu"
-      ></div>
-      
-      <!-- Content  -->
-      <div 
-        class="column" 
-        :class="{ 
-          'w-[75%]': !isSidebarCollapsed && !isMobile, 
+
+      <!-- Overlay for mobile menu with fade transition -->
+      <div v-if="isMobileMenuOpen" 
+           class="fixed inset-0 bg-black bg-opacity-50 z-40 overlay-transition" 
+           @click="toggleMobileMenu"></div>
+
+      <!-- Content -->
+      <div class="column transition-all duration-300 ease-in-out" 
+        :class="{
+          'w-[75%]': !isSidebarCollapsed && !isMobile,
           'w-[calc(100%-120px)]': isSidebarCollapsed && !isMobile,
           'w-full px-4': isMobile
-        }"
-      >
-        <slot/>
+        }">
+        <slot />
       </div>
     </div>
   </main>
@@ -107,17 +102,16 @@ onBeforeUnmount(() => {
 
 <style>
 .sidebar {
-  position: sticky; 
-  top: 2rem; 
+  position: sticky;
+  top: 2rem;
   height: 100vh;
-  overflow-y: auto; 
-  background-color: white;
+  overflow-y: auto;
+  background-color: #154D6A0D;
   border-radius: 12px;
-  /* z-index: 40; */
-  transition: all 0.3s ease; /* Smooth transition for width and position change */
+  transition: all 0.3s ease;
 }
 
-/* Mobile sidebar styling */
+/* Mobile sidebar styling with improved animations */
 @media (max-width: 768px) {
   .sidebar {
     position: fixed;
@@ -125,6 +119,31 @@ onBeforeUnmount(() => {
     left: 0;
     border-radius: 0;
     padding-top: 60px;
+    background-color: white;
+    height: 100vh;
+    z-index: 50;
+    box-shadow: 0 0 10px rgba(0,0,0,0.1);
   }
+  
+  .mobile-sidebar-open {
+    transform: translateX(0);
+    width: 80%;
+    transition: transform 0.3s ease-out;
+  }
+  
+  .mobile-sidebar-closed {
+    transform: translateX(-100%);
+    width: 80%;
+    transition: transform 0.3s ease-in;
+  }
+  
+  .overlay-transition {
+    animation: fadeIn 0.3s ease-out;
+  }
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
 }
 </style>

@@ -5,6 +5,19 @@ import facebookLogo from "../../assets/Facebook.svg";
 import twitterLogo from "../../assets/Twitter.svg";
 import instagramLogo from "../../assets/Instagram.svg";
 import paypalLogos from "../../assets/paymentIcons.svg";
+import { onMounted, ref } from "vue";
+
+// Fetch footer places data
+const footerPlaces = ref([]);
+
+onMounted(async () => {
+  try {
+    const response = await axios.get('/api/footer-places');
+    footerPlaces.value = response.data;
+  } catch (error) {
+    console.error('Failed to fetch footer places:', error);
+  }
+});
 </script>
 
 <template>
@@ -74,19 +87,19 @@ import paypalLogos from "../../assets/paymentIcons.svg";
                         </ul>
                     </div>
                     <div class="col flex flex-col gap-8 max-[768px]:gap-4">
-                        <label for="" class="text-[1.25rem] font-medium max-[768px]:text-[1rem]">Location</label>
-                        <ul class="flex flex-col gap-4 max-[768px]:text-[0.875rem]">
-                            <li>
-                                <Link href="/s?where=Dubai%2C%20Dubai%2C%20United%20Arab%20Emirates&latitude=25.116119&longitude=55.196411&radius=10000">Dubai</Link>
-                            </li>
-                            <li>
-                                <Link href="/s?where=Marrakech%2C%20Marrakech%2C%20Marokko&latitude=32.086706&longitude=76.254158&radius=10000">Marrakech</Link>
-                            </li>
-                            <li>
-                                <Link href="/s?where=Antwerpen%2C%20Antwerpen%2C%20België&latitude=32.220058&longitude=76.320129&radius=10000">Antwerpen</Link>
-                            </li>
-                        </ul>
-                    </div>
+    <label for="" class="text-[1.25rem] font-medium max-[768px]:text-[1rem]">Location</label>
+    <ul class="flex flex-col gap-4 max-[768px]:text-[0.875rem]">
+      <li v-for="place in footerPlaces" :key="place.id">
+        <Link :href="`/s?where=${encodeURIComponent(place.place_name + ', ' + place.city + ', ' + place.country)}&latitude=${place.latitude}&longitude=${place.longitude}&radius=10000`">
+          {{ place.place_name }}
+        </Link>
+      </li>
+      <!-- Fallback if no places are selected -->
+      <li v-if="footerPlaces.length === 0">
+        <Link href="/">No locations available</Link>
+      </li>
+    </ul>
+  </div>
                     <div class="col flex flex-col gap-8 max-[768px]:gap-4">
                         <label for="" class="text-[1.25rem] font-medium max-[768px]:text-[1rem]"
                             >Rent By Type</label

@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Admin\BlogController;
+use App\Http\Controllers\Admin\FaqController;
 use App\Http\Controllers\BookingAddonController;
 use App\Http\Controllers\BookingController;
 use App\Http\Controllers\BookingExtraController;
@@ -66,3 +67,5 @@ Route::get('/booking-success/details', [BookingController::class, 'getBookingDet
 
 // this is for recent blogs
 Route::get('/recent-blogs', [BlogController::class, 'getRecentBlogs']);
+
+Route::get('/faqs', [FaqController::class, 'getFaqs']);

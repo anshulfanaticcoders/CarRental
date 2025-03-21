@@ -1,10 +1,12 @@
 <?php
 
 use App\Http\Controllers\Admin\ActivityLogsController;
+use App\Http\Controllers\Admin\AdminUserDocumentController;
 use App\Http\Controllers\Admin\BlogController;
 use App\Http\Controllers\Admin\BookingDashboardController;
 use App\Http\Controllers\Admin\BusinessReportsController;
 use App\Http\Controllers\Admin\DashboardController;
+use App\Http\Controllers\Admin\FaqController;
 use App\Http\Controllers\Admin\PageController;
 use App\Http\Controllers\Admin\PaymentDashboardController;
 use App\Http\Controllers\Admin\PlansController;
@@ -113,6 +115,7 @@ Route::get('/page/{slug}', [FrontendPageController::class, 'show'])->name('pages
 Route::inertia('/faq', 'Faq');
 Route::post('/validate-email', [EmailValidationController::class, 'validateEmail'])->name('validate-email');
 Route::post('/validate-contact', [EmailValidationController::class, 'validateContact'])->name('validate-contact');
+Route::get('/api/footer-places', [PopularPlacesController::class, 'getFooterPlaces']);
 
 // Show Blogs on Home page
 // Route::get('/', [BlogController::class, 'show'])->name('welcome');
@@ -162,6 +165,36 @@ Route::middleware(['auth', 'role:admin'])->group(function () {
 
     Route::resource('pages', PageController::class)->names('admin.pages');
 
+
+    // Routes for user documents verifications
+    Route::prefix('admin')->group(function () {
+        Route::get('/user-documents', [App\Http\Controllers\Admin\AdminUserDocumentController::class, 'index'])
+            ->name('admin.user-documents.index');
+        Route::put('/user-documents/{userDocument}', [App\Http\Controllers\Admin\AdminUserDocumentController::class, 'update'])
+            ->name('admin.user-documents.update');
+        Route::get('/user-documents/{userDocument}', [App\Http\Controllers\Admin\AdminUserDocumentController::class, 'show'])
+            ->name('admin.user-documents.show');
+        Route::get('/user-documents-stats', [App\Http\Controllers\Admin\AdminUserDocumentController::class, 'stats'])
+            ->name('admin.user-documents.stats');
+        Route::get('/user-documents-recent', [App\Http\Controllers\Admin\AdminUserDocumentController::class, 'recent'])
+            ->name('admin.user-documents.recent');
+    });
+
+
+    // Routes for footer setting
+    Route::get('/admin/settings/footer', [PopularPlacesController::class, 'footerSettings'])
+        ->name('admin.settings.footer');
+
+    Route::post('/admin/settings/footer/update', [PopularPlacesController::class, 'updateFooterSettings'])
+        ->name('admin.settings.footer.update');
+
+
+    // route for faq
+    Route::get('admin/settings/faq', [FaqController::class, 'index'])->name('admin.settings.faq.index');
+    Route::post('admin/settings/faq', [FaqController::class, 'store'])->name('admin.settings.faq.store');
+    Route::put('admin/settings/faq/{faq}', [FaqController::class, 'update'])->name('admin.settings.faq.update');
+    Route::delete('admin/settings/faq/{faq}', [FaqController::class, 'destroy'])->name('admin.settings.faq.destroy');
+
 });
 
 
@@ -183,6 +216,7 @@ Route::middleware(['auth', 'role:vendor'])->group(function () {
     // this is for showing All Booking details of customer in vendor profile
     Route::resource('bookings', VendorBookingController::class)->names('bookings');
     Route::post('api/bookings/{booking}/cancel', [VendorBookingController::class, 'cancel'])->name('bookings.cancel');
+    Route::get('customer-documents/{customer}', [VendorBookingController::class, 'viewCustomerDocuments'])->name('vendor.customer-documents.index');
 
     // this is used to show payment history of all customers on vendor profile page
     Route::get('/vendor/payments', [BookingController::class, 'getVendorPaymentHistory'])->name('vendor.payments');
