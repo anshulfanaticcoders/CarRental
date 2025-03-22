@@ -73,7 +73,7 @@ const fetchCategories = async () => {
         categories.value = response.data; // Store the fetched categories
     } catch (error) {
         console.error("Error fetching vehicle categories:", error);
-    }finally {
+    } finally {
         isLoading.value = false;
     }
 };
@@ -109,8 +109,7 @@ onMounted(() => {
         <section class="hero_section max-[768px]:bg-customPrimaryColor">
             <div class="wrapper flex justify-between w-full
             max-[768px]:flex-col">
-                <div
-                    class="column bg-customPrimaryColor h-[65vh] w-full text-white flex flex-col items-end justify-center
+                <div class="column bg-customPrimaryColor h-[65vh] w-full text-white flex flex-col items-end justify-center
                      max-[768px]:h-auto max-[768px]:px-[1.5rem] max-[768px]:py-[1.5rem]">
                     <div class="pl-[10%] max-[768px]:pl-[0]">
                         <h1>Hit the Road with the Perfect Ride</h1>
@@ -120,106 +119,139 @@ onMounted(() => {
                         </p>
                     </div>
                 </div>
-                <div class="column h-[80vh] w-full relative max-[768px]:h-auto max-[768px]:pb-[2rem] max-[768px]:px-[1.5rem]">
-                    <img class="rounded-bl-[20px] h-full w-full object-cover max-[768px]:rounded-[20px]" :src="heroImg" alt="" />
+                <div
+                    class="column h-[80vh] w-full relative max-[768px]:h-auto max-[768px]:pb-[2rem] max-[768px]:px-[1.5rem]">
+                    <img class="rounded-bl-[20px] h-full w-full object-cover max-[768px]:rounded-[20px]" :src="heroImg"
+                        alt="" />
                     <div class="bg-customOverlayColor absolute top-0 w-full h-full rounded-bl-[20px]"></div>
                 </div>
             </div>
         </section>
 
 
-        <section class="mt-[-14rem] mb-[12rem] max-[768px]:mb-[0] max-[768px]:mt-[-1rem] max-[768px]:pt-[2rem] max-[768px]:bg-customPrimaryColor">
+        <section
+            class="mt-[-14rem] mb-[12rem] max-[768px]:mb-[0] max-[768px]:mt-[-1rem] max-[768px]:pt-[2rem] max-[768px]:bg-customPrimaryColor">
             <SearchBar />
         </section>
 
-        <section class="ml-[5%] max-[768px]:ml-0 w-[105%] max-[768px]:w-full category-carousel mt-[8rem] min-h-[50vh] py-customVerticalSpacing overflow-hidden max-[768px]:mt-0">
-        <div class="flex min-h-[inherit] items-center gap-24 max-[768px]:flex-col max-[768px]:gap-10 max-[768px]:items-start">
-            <div class="column max-[768px]:px-[1.5rem]">
-                <h2>Our Categories</h2>
+        <section
+            class="ml-[5%] max-[768px]:ml-0 w-[105%] max-[768px]:w-full category-carousel mt-[8rem] min-h-[50vh] py-customVerticalSpacing overflow-hidden max-[768px]:mt-0">
+            <div
+                class="flex min-h-[inherit] items-center gap-24 max-[768px]:flex-col max-[768px]:gap-10 max-[768px]:items-start">
+                <div class="column max-[768px]:px-[1.5rem]">
+                    <h2>Our Categories</h2>
+                </div>
+                <div class="column carousel rounded-[20px] p-6 max-[768px]:rounded-none"
+                    style="background: linear-gradient(90deg, rgba(21, 59, 79, 0.2) 0%, rgba(21, 59, 79, 0) 94.4%);">
+                    <Carousel class="relative w-full max-[768px]:h-[20rem]" :opts="{ align: 'start' }"
+                        :plugins="[categoryAutoplay]" @mouseenter="categoryAutoplay.stop"
+                        @mouseleave="[categoryAutoplay.reset(), categoryAutoplay.play()]">
+                        <CarouselContent>
+                            <!-- If data is loaded, show categories -->
+                            <template v-if="!isLoading">
+                                <CarouselItem v-for="category in categories" :key="category.id"
+                                    class="md:basis-1/2 lg:basis-1/3">
+                                    <div class="p-1">
+                                        <Link :href="`/s?category_id=${encodeURIComponent(category.id)}`">
+                                        <Card class="bg-transparent shadow-none border-none">
+                                            <CardContent
+                                                class="cardContent flex h-[515px] max-[768px]:h-[20rem] items-center justify-center p-6 relative">
+                                                <img class="rounded-[20px] h-full w-full object-cover"
+                                                    :src="`${category.image}`" alt="" />
+                                                <div
+                                                    class="category_name absolute bottom-10 left-0 flex justify-between w-full px-8">
+                                                    <span class="text-white text-[2rem] font-semibold">
+                                                        {{ category.name }}
+                                                    </span>
+                                                    <img :src="goIcon" alt="" />
+                                                </div>
+                                            </CardContent>
+                                        </Card>
+                                        </Link>
+                                    </div>
+                                </CarouselItem>
+                            </template>
+
+                            <!-- If loading, show skeletons -->
+                            <template v-else>
+                                <CarouselItem v-for="index in 3" :key="index" class="md:basis-1/2 lg:basis-1/3">
+                                    <div class="p-1">
+                                        <Card class="bg-transparent shadow-none border-none">
+                                            <CardContent
+                                                class="cardContent flex h-[515px] max-[768px]:h-[20rem] items-center justify-center p-6 relative">
+                                                <Skeleton class="h-[515px] w-[30rem] rounded-xl" />
+                                            </CardContent>
+                                        </Card>
+                                    </div>
+                                </CarouselItem>
+                            </template>
+                        </CarouselContent>
+
+                        <CarouselPrevious />
+                        <CarouselNext />
+                    </Carousel>
+
+                </div>
             </div>
-            <div class="column carousel rounded-[20px] p-6 max-[768px]:rounded-none" style="background: linear-gradient(90deg, rgba(21, 59, 79, 0.2) 0%, rgba(21, 59, 79, 0) 94.4%);">
-                <Carousel class="relative w-full max-[768px]:h-[20rem]" :opts="{ align: 'start' }" :plugins="[categoryAutoplay]" @mouseenter="categoryAutoplay.stop" @mouseleave="[categoryAutoplay.reset(), categoryAutoplay.play()]">
-                    <CarouselContent v-if="!isLoading">
-                        <CarouselItem v-for="category in categories" :key="category.id" class="md:basis-1/2 lg:basis-1/3">
-                            <div class="p-1">
-                                <Link :href="`/s?category_id=${encodeURIComponent(category.id)}`">
-                                    <Card class="bg-transparent shadow-none border-none">
-                                        <CardContent class="cardContent flex h-[515px] max-[768px]:h-[20rem] items-center justify-center p-6 relative">
-                                            <img class="rounded-[20px] h-full w-full object-cover" :src="`${category.image}`" alt="" />
-                                            <div class="category_name absolute bottom-10 left-0 flex justify-between w-full px-8">
-                                                <span class="text-white text-[2rem] font-semibold">{{ category.name }}</span>
-                                                <img class="" :src="goIcon" alt="" />
-                                            </div>
-                                        </CardContent>
-                                    </Card>
-                                </Link>
-                            </div>
-                        </CarouselItem>
-                    </CarouselContent>
-                    <CarouselContent v-else>
-                        <CarouselItem v-for="index in 3" :key="index" class="md:basis-1/2 lg:basis-1/3">
-                            <div class="p-1">
-                                <Card class="bg-transparent shadow-none border-none">
-                                    <CardContent class="cardContent flex h-[515px] max-[768px]:h-[20rem] items-center justify-center p-6 relative">
-                                        <Skeleton class="h-[515px] w-[30rem] rounded-xl" />
-                                    </CardContent>
-                                </Card>
-                            </div>
-                        </CarouselItem>
-                    </CarouselContent>
-                    <CarouselPrevious />
-                    <CarouselNext />
-                </Carousel>
-            </div>
-        </div>
-    </section>
-    
+        </section>
+
 
         <!------------------------------- Top Destination Places -------------------------------------->
         <section class="flex flex-col gap-10 py-customVerticalSpacing popular-places max-[768px]:py-[1rem]">
-        <div class="column ml-[5%]">
-            <span class="text-[1.15rem] text-customPrimaryColor">-Top Destinations -</span>
-            <h3 class="text-customDarkBlackColor mt-[1rem] max-[768px]:text-[1.75rem]">Popular places</h3>
-        </div>
-        <div class="column max-[768px]:px-[1.5rem]">
-            <Carousel class="relative w-full" :plugins="[plugin]" @mouseenter="plugin.stop" @mouseleave="[plugin.reset(), plugin.play(), console.log('Running')]">
-                <CarouselContent v-if="!isLoading">
-                    <CarouselItem v-for="place in popularPlaces" :key="place.id" class="pl-1 md:basis-1/2 lg:basis-1/5">
-                        <div class="p-1">
-                            <Link :href="`/s?where=${encodeURIComponent(`${place.place_name}, ${place.city}, ${place.country}`)}&latitude=${place.latitude}&longitude=${place.longitude}&radius=10000`">
-                                <Card class="h-[18rem] border-0 rounded-[0.75rem]">
-                                    <CardContent class="flex flex-col gap-2 justify-center px-1 h-full">
-                                        <img :src="`${place.image}`" alt="" class="rounded-[0.75rem] h-[12rem] w-full object-cover mb-2" />
-                                        <div class="px-3">
-                                            <h3 class="text-lg font-medium">{{ place.place_name }}</h3>
-                                            <p class="text-sm text-customDarkBlackColor">{{ place.city }}</p>
-                                        </div>
-                                    </CardContent>
-                                </Card>
-                            </Link>
-                        </div>
-                    </CarouselItem>
-                </CarouselContent>
-                <CarouselContent v-else>
-                    <CarouselItem v-for="index in 5" :key="index" class="pl-1 md:basis-1/2 lg:basis-1/5">
-                        <div class="p-1">
-                            <Card class="h-[18rem] border-0 rounded-[0.75rem]">
-                                <CardContent class="flex flex-col gap-2 justify-center px-1 h-full">
-                                    <Skeleton class="h-[12rem] w-full rounded-xl" />
-                                    <div class="space-y-2 px-3">
-                                        <Skeleton class="h-4 w-[70%]" />
-                                        <Skeleton class="h-4 w-[50%]" />
-                                    </div>
-                                </CardContent>
-                            </Card>
-                        </div>
-                    </CarouselItem>
-                </CarouselContent>
-                <CarouselPrevious />
-                <CarouselNext />
-            </Carousel>
-        </div>
-    </section>
+            <div class="column ml-[5%]">
+                <span class="text-[1.15rem] text-customPrimaryColor">-Top Destinations -</span>
+                <h3 class="text-customDarkBlackColor mt-[1rem] max-[768px]:text-[1.75rem]">Popular places</h3>
+            </div>
+            <div class="column max-[768px]:px-[1.5rem]">
+                <Carousel class="relative w-full" :plugins="[plugin]" @mouseenter="plugin.stop"
+                    @mouseleave="[plugin.reset(), plugin.play(), console.log('Running')]">
+                    <CarouselContent>
+                        <!-- Show actual places when data is loaded -->
+                        <template v-if="!isLoading">
+                            <CarouselItem v-for="place in popularPlaces" :key="place.id"
+                                class="pl-1 md:basis-1/2 lg:basis-1/5">
+                                <div class="p-1">
+                                    <Link
+                                        :href="`/s?where=${encodeURIComponent(`${place.place_name}, ${place.city}, ${place.country}`)}&latitude=${place.latitude}&longitude=${place.longitude}&radius=10000`">
+                                    <Card class="h-[18rem] border-0 rounded-[0.75rem]">
+                                        <CardContent class="flex flex-col gap-2 justify-center px-1 h-full">
+                                            <img :src="`${place.image}`" alt=""
+                                                class="rounded-[0.75rem] h-[12rem] w-full object-cover mb-2" />
+                                            <div class="px-3">
+                                                <h3 class="text-lg font-medium">{{ place.place_name }}</h3>
+                                                <p class="text-sm text-customDarkBlackColor">{{ place.city }}</p>
+                                            </div>
+                                        </CardContent>
+                                    </Card>
+                                    </Link>
+                                </div>
+                            </CarouselItem>
+                        </template>
+
+                        <!-- Show skeleton loaders when data is loading -->
+                        <template v-else>
+                            <CarouselItem v-for="index in 5" :key="index" class="pl-1 md:basis-1/2 lg:basis-1/5">
+                                <div class="p-1">
+                                    <Card class="h-[18rem] border-0 rounded-[0.75rem]">
+                                        <CardContent class="flex flex-col gap-2 justify-center px-1 h-full">
+                                            <Skeleton class="h-[12rem] w-full rounded-xl" />
+                                            <div class="space-y-2 px-3">
+                                                <Skeleton class="h-4 w-[70%]" />
+                                                <Skeleton class="h-4 w-[50%]" />
+                                            </div>
+                                        </CardContent>
+                                    </Card>
+                                </div>
+                            </CarouselItem>
+                        </template>
+                    </CarouselContent>
+
+                    <CarouselPrevious />
+                    <CarouselNext />
+                </Carousel>
+
+            </div>
+        </section>
         <!------------------------------ <Start>  -------------------------------------------------->
         <!------------------------------ <End>  -------------------------------------------------->
 
@@ -243,7 +275,8 @@ onMounted(() => {
                         <div class="info-card flex gap-5 items-start">
                             <img :src="locationMapIcon" alt="" />
                             <div class="flex flex-col gap-3">
-                                <span class="text-[1.5rem] text-customDarkBlackColor font-medium  max-[768px]:text-[1.25rem]">Convenient
+                                <span
+                                    class="text-[1.5rem] text-customDarkBlackColor font-medium  max-[768px]:text-[1.25rem]">Convenient
                                     Locations</span>
                                 <p class="text-customLightGrayColor text-[1.15rem]  max-[768px]:text-[0.95rem]">
                                     With multiple rental locations at airports,
@@ -256,7 +289,9 @@ onMounted(() => {
                         <div class="info-card flex gap-5 items-start">
                             <img :src="phoneIcon" alt="" />
                             <div class=" flex flex-col gap-3">
-                                <span class="text-[1.5rem] text-customDarkBlackColor font-medium  max-[768px]:text-[1.25rem]">Fast and Easy Booking
+                                <span
+                                    class="text-[1.5rem] text-customDarkBlackColor font-medium  max-[768px]:text-[1.25rem]">Fast
+                                    and Easy Booking
                                     Process</span>
                                 <p class="text-customLightGrayColor text-[1.15rem]  max-[768px]:text-[0.95rem]">
                                     Select your desired pickup and return dates,
@@ -273,7 +308,9 @@ onMounted(() => {
                         <div class="info-card flex gap-5 items-start">
                             <img :src="chipIcon" alt="" />
                             <div class=" flex flex-col gap-3">
-                                <span class="text-[1.5rem] text-customDarkBlackColor font-medium  max-[768px]:text-[1.25rem]">Modern Fleet with the
+                                <span
+                                    class="text-[1.5rem] text-customDarkBlackColor font-medium  max-[768px]:text-[1.25rem]">Modern
+                                    Fleet with the
                                     Latest
                                     Technology</span>
                                 <p class="text-customLightGrayColor text-[1.15rem]  max-[768px]:text-[0.95rem]">
@@ -285,7 +322,8 @@ onMounted(() => {
                         <div class="info-card flex gap-5 items-start">
                             <img :src="userCoverageIcon" alt="" />
                             <div class="flex flex-col gap-3 ">
-                                <span class="text-[1.5rem] text-customDarkBlackColor font-medium  max-[768px]:text-[1.25rem]">Insurance
+                                <span
+                                    class="text-[1.5rem] text-customDarkBlackColor font-medium  max-[768px]:text-[1.25rem]">Insurance
                                     Coverage</span>
                                 <p class="text-customLightGrayColor text-[1.15rem]  max-[768px]:text-[0.95rem]">
                                     Select your desired pickup and return dates,
@@ -315,67 +353,82 @@ onMounted(() => {
 
         <!-- ------------------------Blogs Section-------------------------------- -->
         <!------------------------------ <Start>  -------------------------------------------------->
-            <section class="blogs min-h-[80vh] flex flex-col gap-10 items-center py-customVerticalSpacing max-[768px]:py-0 max-[768px]:gap-0">
-        <div class="column text-center flex flex-col items-center w-[650px] py-8 max-[768px]:py-0 max-[768px]:w-full max-[768px]:mb-10">
-            <span class="text-[1.25rem] text-customPrimaryColor">-Latest Articles-</span>
-            <h3 class="max-w-[883px] text-[3rem] font-bold text-customDarkBlackColor max-[768px]:max-w-full max-[768px]:text-[1.5rem]">
-                Stay informed and inspired for your next journey
-            </h3>
-        </div>
-
-        <!-- Blog Section -->
-        <div class="flex gap-6 w-full full-w-container max-[768px]:flex-col">
-            <!-- First Blog (Large Left) -->
-            <div v-if="!isLoading && blogs.length > 0" class="w-1/2 h-[574px] relative rounded-lg overflow-hidden shadow-md blog-container max-[768px]:w-full max-[768px]:h-[380px]">
-                <img :src="blogs[0].image" :alt="blogs[0].title" class="w-full h-full object-cover rounded-lg">
-
-                <div class="absolute bottom-0 bg-gradient-to-t from-black/70 to-transparent p-4 text-white">
-                    <p class="text-[1.25rem] flex items-center gap-1">
-                        <img :src=calendarWhiteIcon alt=""> {{ formatDate(blogs[0].created_at) }}
-                    </p>
-                    <h4 class="font-semibold text-[2rem] max-[768px]:text-[1.25rem]">{{ blogs[0].title }}</h4>
-                    <Link :href="route('blog.show', blogs[0].id)" class="inline-flex items-center mt-2 text-blue-400">
-                        <img :src=whiteGoIcon alt="">
-                    </Link>
-                </div>
+        <section
+            class="blogs min-h-[80vh] flex flex-col gap-10 items-center py-customVerticalSpacing max-[768px]:py-0 max-[768px]:gap-0">
+            <div
+                class="column text-center flex flex-col items-center w-[650px] py-8 max-[768px]:py-0 max-[768px]:w-full max-[768px]:mb-10">
+                <span class="text-[1.25rem] text-customPrimaryColor">-Latest Articles-</span>
+                <h3
+                    class="max-w-[883px] text-[3rem] font-bold text-customDarkBlackColor max-[768px]:max-w-full max-[768px]:text-[1.5rem]">
+                    Stay informed and inspired for your next journey
+                </h3>
             </div>
 
-            <div v-else class="w-1/2 h-[574px] relative rounded-lg overflow-hidden shadow-md blog-container max-[768px]:w-full max-[768px]:h-[380px]">
-                <Skeleton class="h-full w-full rounded-lg" />
-            </div>
+            <!-- Blog Section -->
+            <div class="flex gap-6 w-full full-w-container max-[768px]:flex-col">
+                <!-- First Blog (Large Left) -->
+                <div v-if="!isLoading && blogs.length > 0"
+                    class="w-1/2 h-[574px] relative rounded-lg overflow-hidden shadow-md blog-container max-[768px]:w-full max-[768px]:h-[380px]">
+                    <img :src="blogs[0].image" :alt="blogs[0].title" class="w-full h-full object-cover rounded-lg">
 
-            <!-- Other Blogs (Stacked Right, Dividing Height) -->
-            <div class="flex flex-col gap-6 w-1/2 max-[768px]:w-full max-[768px]:gap-0">
-                <div v-for="index in 3" :key="index" class="relative rounded-lg h-[175px] flex justify-between gap-5 items-center">
-                    <div v-if="!isLoading && blogs.length > index" class="w-[30%] h-full blog-container max-[768px]:w-[40%] max-[768px]:h-[120px]">
-                        <Link :href="route('blog.show', blogs[index].id)">
-                            <img :src="blogs[index].image" :alt="blogs[index].title" class="w-full h-full object-cover rounded-lg">
-                        </Link>
-                    </div>
-                    <div v-else class="w-[30%] h-full blog-container max-[768px]:w-[40%] max-[768px]:h-[120px]">
-                        <Skeleton class="h-full w-full rounded-lg" />
-                    </div>
-
-                    <div class="w-[70%]">
-                        <p v-if="!isLoading && blogs.length > index" class="text-sm flex items-center gap-1 text-customLightGrayColor">
-                            <img :src=calendarIcon alt=""> {{ formatDate(blogs[index].created_at) }}
+                    <div class="absolute bottom-0 bg-gradient-to-t from-black/70 to-transparent p-4 text-white">
+                        <p class="text-[1.25rem] flex items-center gap-1">
+                            <img :src=calendarWhiteIcon alt=""> {{ formatDate(blogs[0].created_at) }}
                         </p>
-                        <h4 v-if="!isLoading && blogs.length > index" class="font-semibold text-[1.5rem] text-customDarkBlackColor max-[768px]:text-[1rem]">{{ blogs[index].title }}</h4>
-                        <Link v-if="!isLoading && blogs.length > index" :href="route('blog.show', blogs[index].id)" class="inline-flex items-center mt-2 text-customPrimaryColor">
-                            Read Story 
-                            <img :src=goIcon alt="" class="w-[1.5rem] ml-[0.75rem]">
+                        <h4 class="font-semibold text-[2rem] max-[768px]:text-[1.25rem]">{{ blogs[0].title }}</h4>
+                        <Link :href="route('blog.show', blogs[0].id)"
+                            class="inline-flex items-center mt-2 text-blue-400">
+                        <img :src=whiteGoIcon alt="">
                         </Link>
-                        <div v-else class="space-y-2">
-                            <Skeleton class="h-4 w-[70%]" />
-                            <Skeleton class="h-4 w-[50%]" />
+                    </div>
+                </div>
+
+                <div v-else
+                    class="w-1/2 h-[574px] relative rounded-lg overflow-hidden shadow-md blog-container max-[768px]:w-full max-[768px]:h-[380px]">
+                    <Skeleton class="h-full w-full rounded-lg" />
+                </div>
+
+                <!-- Other Blogs (Stacked Right, Dividing Height) -->
+                <div class="flex flex-col gap-6 w-1/2 max-[768px]:w-full max-[768px]:gap-0">
+                    <div v-for="index in 3" :key="index"
+                        class="relative rounded-lg h-[175px] flex justify-between gap-5 items-center">
+                        <div v-if="!isLoading && blogs.length > index"
+                            class="w-[30%] h-full blog-container max-[768px]:w-[40%] max-[768px]:h-[120px]">
+                            <Link :href="route('blog.show', blogs[index].id)">
+                            <img :src="blogs[index].image" :alt="blogs[index].title"
+                                class="w-full h-full object-cover rounded-lg scale-100 transition-colors hover:scale-105">
+                            </Link>
+                        </div>
+                        <div v-else class="w-[30%] h-full blog-container max-[768px]:w-[40%] max-[768px]:h-[120px]">
+                            <Skeleton class="h-full w-full rounded-lg" />
+                        </div>
+
+                        <div class="w-[70%]">
+                            <p v-if="!isLoading && blogs.length > index"
+                                class="text-sm flex items-center gap-1 text-customLightGrayColor">
+                                <img :src=calendarIcon alt=""> {{ formatDate(blogs[index].created_at) }}
+                            </p>
+                            <h4 v-if="!isLoading && blogs.length > index"
+                                class="font-semibold text-[1.5rem] text-customDarkBlackColor max-[768px]:text-[1rem]">{{
+                                    blogs[index].title }}</h4>
+                            <Link v-if="!isLoading && blogs.length > index" :href="route('blog.show', blogs[index].id)"
+                                class="inline-flex items-center mt-2 text-customPrimaryColor">
+                            Read Story
+                            <img :src=goIcon alt="" class="w-[1.5rem] ml-[0.75rem]">
+                            </Link>
+                            <div v-else class="space-y-2">
+                                <Skeleton class="h-4 w-[70%]" />
+                                <Skeleton class="h-4 w-[50%]" />
+                            </div>
                         </div>
                     </div>
                 </div>
             </div>
-        </div>
 
-        <Link href="/blogs-page" class="button-secondary text-center w-[10rem] mt-6 hover:bg-customPrimaryColor hover:text-white">More</Link>
-    </section>
+            <Link href="/blogs-page"
+                class="button-secondary text-center w-[10rem] mt-6 hover:bg-customPrimaryColor hover:text-white">More
+            </Link>
+        </section>
 
 
         <!------------------------------ <Ends>  -------------------------------------------------->
@@ -389,7 +442,7 @@ onMounted(() => {
         <!-- ---------------------------<End>---------------------------------------------------->
     </main>
 
-    <Footer/>
+    <Footer />
 </template>
 
 <style>
@@ -414,27 +467,29 @@ onMounted(() => {
 .popular-places button {
     display: none;
 }
-.blog-container > img {
+
+.blog-container>img {
     transition: transform 0.3s ease-in-out;
 }
 
-.blog-container:hover > img {
+.blog-container:hover>img {
     transform: scale(1.1);
     cursor: pointer;
 }
 
-.category-carousel .disabled\:pointer-events-none:disabled{
- pointer-events: unset;
+.category-carousel .disabled\:pointer-events-none:disabled {
+    pointer-events: unset;
 }
 
 @media screen and (max-width:768px) {
-    .category-carousel .next-btn{
-        right: 10%!important;
+    .category-carousel .next-btn {
+        right: 10% !important;
         display: none;
-        
+
     }
-    .category-carousel .prev-btn{
-        left: -4%!important;
+
+    .category-carousel .prev-btn {
+        left: -4% !important;
         display: none;
     }
 }
