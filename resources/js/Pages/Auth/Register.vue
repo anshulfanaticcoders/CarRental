@@ -7,7 +7,9 @@ import { Head, Link, useForm } from '@inertiajs/vue3';
 import { ref, watch, computed, onMounted } from 'vue';
 import AuthenticatedHeaderLayout from '@/Layouts/AuthenticatedHeaderLayout.vue';
 import { Button } from '@/Components/ui/button';
-import { Check, Circle, Dot } from 'lucide-vue-next';
+import { Calendar } from '@/Components/ui/calendar';
+import { Popover, PopoverContent, PopoverTrigger } from '@/Components/ui/popover';
+import { getLocalTimeZone, today, parseDate } from '@internationalized/date';
 import {
     Stepper,
     StepperItem,
@@ -192,13 +194,13 @@ const minimumDateOfBirth = computed(() => {
 
     <Head title="Register" />
 
-    <div class="min-h-[80vh] flex justify-center items-center register">
+    <div class="flex justify-center items-center register py-customVerticalSpacing">
         <div class="w-[55rem] max-w-full mx-auto px-4 max-[768px]:px-[1.5rem]">
             <Stepper v-model="stepIndex" class="block w-full">
                 <form @submit.prevent="submit">
                     <div
                         class="flex w-full flex-start gap-2 mb-[4rem] max-[768px]:mb-[2rem] max-[768px]:gap-1 max-[768px]:mt-[2rem]">
-                        <StepperItem v-for="step in steps" :key="step.step" v-slot="{ state }"
+                        <StepperItem v-for="(step, index) in steps" :key="step.step" v-slot="{ state }"
                             class="relative flex w-full flex-col items-center justify-center" :step="step.step"
                             @click="handleStepChange(step.step)">
                             <StepperSeparator v-if="step.step !== steps[steps.length - 1].step"
@@ -206,13 +208,14 @@ const minimumDateOfBirth = computed(() => {
 
                             <StepperTrigger as-child>
                                 <Button :variant="state === 'completed' || state === 'active' ? 'default' : 'outline'"
-                                    size="icon" class="z-10 rounded-full shrink-0 max-[768px]:size-8" :class="[
+                                    size="icon"
+                                    class="z-10 rounded-full shrink-0 max-[768px]:size-8 flex items-center justify-center"
+                                    :class="[
                                         state === 'active' && 'ring-2 ring-ring ring-offset-2 ring-offset-background',
                                         !canNavigateTo(step.step) && 'opacity-50 cursor-not-allowed'
                                     ]" :disabled="!canNavigateTo(step.step)">
-                                    <Check v-if="state === 'completed'" class="size-5 max-[768px]:size-4" />
-                                    <Circle v-if="state === 'active'" class="size-5 max-[768px]:size-4" />
-                                    <Dot v-if="state === 'inactive'" class="size-5 max-[768px]:size-4" />
+                                    <!-- Replace icons with numbers -->
+                                    <span class="text-sm font-medium">{{ index + 1 }}</span>
                                 </Button>
                             </StepperTrigger>
 
@@ -338,7 +341,7 @@ const minimumDateOfBirth = computed(() => {
 
                                 <!-- Dynamic Flag -->
                                 <img v-if="form.country" :src="getFlagUrl(form.country)" alt="Country Flag"
-                                    class="absolute right-3 top-1/2 transform translate-x-[-10%] translate-y-[-10%] w-[2.1rem] h-[1.5rem] rounded" />
+                                    class="absolute right-3 top-1/2 transform translate-x-[-10%] translate-y-[-50%] w-[2.1rem] h-[1.5rem] rounded" />
                             </div>
                         </div>
                     </div>

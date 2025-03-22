@@ -29,6 +29,8 @@ import infoIcon from "../../assets/WarningCircle.svg";
 import { Head, Link } from "@inertiajs/vue3";
 import { computed, ref, watch } from "vue";
 import AuthenticatedHeaderLayout from "@/Layouts/AuthenticatedHeaderLayout.vue";
+import { Skeleton } from '@/Components/ui/skeleton';
+
 import {
     Carousel,
     CarouselContent,
@@ -387,6 +389,7 @@ import { Alert, AlertDescription } from '@/Components/ui/alert';
 import { CardHeader, CardTitle } from "@/Components/ui/card";
 import { Inertia } from "@inertiajs/inertia";
 import { Button } from "@/Components/ui/button";
+import Lightbox from "@/Components/Lightbox.vue";
 
 const selectedPackage = ref('day');
 const dateError = ref('');
@@ -775,8 +778,35 @@ const initialPackageType = urlParams.get('package') || 'day';
 selectedPackage.value = initialPackageType;
 
 onMounted(() => {
-  clearStoredRentalDates();
+    clearStoredRentalDates();
 });
+
+
+// Lightbox for gallery
+const lightboxRef = ref(null);
+
+// Computed properties for easier access
+const primaryImage = computed(() => {
+    if (!props.vehicle?.images) return null;
+    return props.vehicle.images.find(image => image.image_type === 'primary');
+});
+
+const galleryImages = computed(() => {
+    if (!props.vehicle?.images) return [];
+    return props.vehicle.images.filter(image => image.image_type === 'gallery');
+});
+
+const allImages = computed(() => {
+    if (!props.vehicle?.images) return [];
+    // Create an array with primary image first, followed by gallery images
+    const primary = primaryImage.value ? [primaryImage.value] : [];
+    return [...primary, ...galleryImages.value];
+});
+
+// Method to open the lightbox
+const openLightbox = (index) => {
+    lightboxRef.value.openLightbox(index);
+};
 </script>
 
 <template>
@@ -807,46 +837,55 @@ onMounted(() => {
                         <span>{{ vehicle?.location }}</span>
                     </div>
                 </div>
-                <div class="w-full mt-[1rem] flex gap-2 max-[768px]:flex-col">
-                    <div class="primary-image w-[60%] max-h-[500px] max-[768px]:w-full max-[768px]:max-h-auto">
-                        <img v-if="vehicle?.images" :src="`${vehicle.images.find(
-                            (image) => image.image_type === 'primary'
-                        )?.image_url
-                            }`" alt="Primary Image" class="w-full h-full object-cover rounded-lg" />
-                    </div>
+                <div>
+                    <div class="w-full mt-4 flex gap-2 max-[768px]:flex-col">
+                        <!-- Primary image -->
+                        <div class="primary-image w-[60%] max-h-[500px] max-[768px]:w-full max-[768px]:max-h-auto cursor-pointer"
+                            @click="openLightbox(0)">
+                            <img v-if="!isLoading && vehicle?.images" :src="primaryImage?.image_url" alt="Primary Image"
+                                class="w-full h-full object-cover rounded-lg" />
+                            <Skeleton v-else class="w-full h-[500px] object-cover rounded-lg max-[768px]:w-full max-[768px]:max-h-[200px]" />
+                        </div>
 
-                    <!-- Display the gallery images -->
-                    <div class="gallery w-[50%] grid grid-cols-2 gap-2 max-h-[245px] max-[768px]:w-full max-[768px]:flex max-[768px]:h-[100px]">
-                        <div v-for="(image, index) in vehicle?.images.filter(
-                            (image) => image.image_type === 'gallery'
-                        )" :key="image.id" class="gallery-item max-[768px]:flex-1">
-                            <img :src="`${image.image_url}`" :alt="`Gallery Image ${index + 1}`"
-                                class="w-full h-[245px] object-cover rounded-lg max-[768px]:h-full" />
+                        <!-- Gallery images -->
+                        <div
+                            class="gallery w-[40%] grid grid-cols-2 gap-2 max-h-[500px] max-[768px]:w-full max-[768px]:flex max-[768px]:h-[100px]">
+                            <div v-for="(image, index) in galleryImages" :key="image.id"
+                                class="gallery-item max-[768px]:flex-1 cursor-pointer" @click="openLightbox(index + 1)">
+                                <img v-if="!isLoading && vehicle" :src="image.image_url"
+                                    :alt="`Gallery Image ${index + 1}`"
+                                    class="w-full h-[245px] object-cover rounded-lg max-[768px]:h-full" />
+                                <Skeleton v-else class="w-full h-[245px] object-cover rounded-lg max-[768px]:h-full" />
+                            </div>
                         </div>
                     </div>
+
+                    <!-- Import the Lightbox component -->
+                    <Lightbox ref="lightboxRef" :images="allImages" />
                 </div>
                 <div class="mobile_display hidden max-[768px]:block max-[768px]:mt-8">
                     <div class="flex gap-2 items-center mb-1">
-                    <h4 class="font-medium max-[768px]:text-[1.25rem]">{{ vehicle?.brand }}</h4>
-                    <span class="bg-[#f5f5f5] inline-block px-8 py-2 text-center rounded-[40px] max-[768px]:text-[1rem]">
-                        {{ vehicle?.category.name }}
-                    </span>
-                </div>
-                <div class="flex gap-2 items-center text-[1.25rem] max-[768px]:flex-wrap">
-                    <div class="car_ratings flex gap-2 items-center" v-if="reviews.length > 0">
-                        <div class="flex items-center gap-1">
-                            <img v-for="n in 5" :key="n" :src="getStarIcon(averageRating, n)"
-                                :alt="getStarAltText(averageRating, n)" class="w-[20px] h-[20px]" />
+                        <h4 class="font-medium max-[768px]:text-[1.25rem]">{{ vehicle?.brand }}</h4>
+                        <span
+                            class="bg-[#f5f5f5] inline-block px-8 py-2 text-center rounded-[40px] max-[768px]:text-[1rem]">
+                            {{ vehicle?.category.name }}
+                        </span>
+                    </div>
+                    <div class="flex gap-2 items-center text-[1.25rem] max-[768px]:flex-wrap">
+                        <div class="car_ratings flex gap-2 items-center" v-if="reviews.length > 0">
+                            <div class="flex items-center gap-1">
+                                <img v-for="n in 5" :key="n" :src="getStarIcon(averageRating, n)"
+                                    :alt="getStarAltText(averageRating, n)" class="w-[20px] h-[20px]" />
+                            </div>
+                            <span class="max-[768px]:text-[0.875rem]">{{ averageRating }} ({{ reviews.length }})</span>
                         </div>
-                        <span class="max-[768px]:text-[0.875rem]">{{ averageRating }} ({{ reviews.length }})</span>
-                    </div>
-                    <p v-else class="max-[768px]:text-[12px] max-[768px]:mt-2">No ratings yet.</p>
+                        <p v-else class="max-[768px]:text-[12px] max-[768px]:mt-2">No ratings yet.</p>
 
-                    <div class="dot_seperator"><strong>.</strong></div>
-                    <div class="car_location">
-                        <span class="max-[768px]:text-[12px]">{{ vehicle?.location }}</span>
+                        <div class="dot_seperator"><strong>.</strong></div>
+                        <div class="car_location">
+                            <span class="max-[768px]:text-[12px]">{{ vehicle?.location }}</span>
+                        </div>
                     </div>
-                </div>
                 </div>
                 <div class="flex justify-between mt-[4rem] max-[768px]:flex-col max-[768px]:mt-10">
                     <div class="column w-[50%] max-[768px]:w-full">
@@ -855,69 +894,90 @@ onMounted(() => {
                             <span class="text-[2rem] font-medium max-[768px]:text-[1rem]">Car Overview</span>
                             <div class="features grid grid-cols-4 gap-x-[2rem] gap-y-[2rem] max-[768px]:grid-cols-3">
                                 <div class="feature-item items-center flex gap-3">
-                                    <img :src="peopleIcon" alt="" class='w-[30px] h-[30px] max-[768px]:w-[24px] max-[768px]:h-[24px]' />
+                                    <img :src="peopleIcon" alt=""
+                                        class='w-[30px] h-[30px] max-[768px]:w-[24px] max-[768px]:h-[24px]' />
                                     <div class="flex flex-col">
-                                        <span class="text-customLightGrayColor text-[1rem] max-[768px]:text-[0.75rem]">People</span>
+                                        <span
+                                            class="text-customLightGrayColor text-[1rem] max-[768px]:text-[0.75rem]">People</span>
                                         <span class="font-medium text-[1rem] max-[768px]:text-[0.85rem]">{{
                                             vehicle?.seating_capacity
                                         }}</span>
                                     </div>
                                 </div>
                                 <div class="feature-item items-center flex gap-3">
-                                    <img :src="doorIcon" alt="" class='w-[30px] h-[30px] max-[768px]:w-[24px] max-[768px]:h-[24px]' />
+                                    <img :src="doorIcon" alt=""
+                                        class='w-[30px] h-[30px] max-[768px]:w-[24px] max-[768px]:h-[24px]' />
                                     <div class="flex flex-col">
-                                        <span class="text-customLightGrayColor text-[1rem] max-[768px]:text-[0.75rem]">Doors</span>
+                                        <span
+                                            class="text-customLightGrayColor text-[1rem] max-[768px]:text-[0.75rem]">Doors</span>
                                         <span class="font-medium text-[1rem] max-[768px]:text-[0.85rem]">{{
                                             vehicle?.number_of_doors
                                         }}</span>
                                     </div>
                                 </div>
                                 <div class="feature-item items-center flex gap-3">
-                                    <img :src="luggageIcon" alt="" class='w-[30px] h-[30px] max-[768px]:w-[24px] max-[768px]:h-[24px]' />
+                                    <img :src="luggageIcon" alt=""
+                                        class='w-[30px] h-[30px] max-[768px]:w-[24px] max-[768px]:h-[24px]' />
                                     <div class="flex flex-col">
-                                        <span class="text-customLightGrayColor text-[1rem] max-[768px]:text-[0.75rem]">Luggage</span>
+                                        <span
+                                            class="text-customLightGrayColor text-[1rem] max-[768px]:text-[0.75rem]">Luggage</span>
                                         <span class="font-medium text-[1rem] max-[768px]:text-[0.85rem]">{{
                                             vehicle?.luggage_capacity
                                         }}</span>
                                     </div>
                                 </div>
                                 <div class="feature-item items-center flex gap-3">
-                                    <img :src="transmisionIcon" alt="" class='w-[30px] h-[30px] max-[768px]:w-[24px] max-[768px]:h-[24px]' />
+                                    <img :src="transmisionIcon" alt=""
+                                        class='w-[30px] h-[30px] max-[768px]:w-[24px] max-[768px]:h-[24px]' />
                                     <div class="flex flex-col">
-                                        <span class="text-customLightGrayColor text-[1rem] max-[768px]:text-[0.75rem]">Transmission</span>
+                                        <span
+                                            class="text-customLightGrayColor text-[1rem] max-[768px]:text-[0.75rem]">Transmission</span>
                                         <span class="font-medium capitalize max-[768px]:text-[0.85rem]">{{
                                             vehicle?.transmission
                                         }}</span>
                                     </div>
                                 </div>
                                 <div class="feature-item items-center flex gap-3">
-                                    <img :src="fuelIcon" alt="" class='w-[30px] h-[30px] max-[768px]:w-[24px] max-[768px]:h-[24px]' />
+                                    <img :src="fuelIcon" alt=""
+                                        class='w-[30px] h-[30px] max-[768px]:w-[24px] max-[768px]:h-[24px]' />
                                     <div class="flex flex-col">
-                                        <span class="text-customLightGrayColor text-[1rem] max-[768px]:text-[0.75rem]">Fuel Type</span>
+                                        <span
+                                            class="text-customLightGrayColor text-[1rem] max-[768px]:text-[0.75rem]">Fuel
+                                            Type</span>
                                         <span class="font-medium capitalize max-[768px]:text-[0.85rem]">{{
                                             vehicle?.fuel
                                         }}</span>
                                     </div>
                                 </div>
                                 <div class="feature-item items-center flex gap-3">
-                                    <img :src="enginepowerIcon" alt="" class='w-[30px] h-[30px] max-[768px]:w-[24px] max-[768px]:h-[24px]' />
+                                    <img :src="enginepowerIcon" alt=""
+                                        class='w-[30px] h-[30px] max-[768px]:w-[24px] max-[768px]:h-[24px]' />
                                     <div class="flex flex-col">
-                                        <span class="text-customLightGrayColor text-[1rem] max-[768px]:text-[0.75rem]">Horsepower</span>
-                                        <span class="font-medium text-[1rem] max-[768px]:text-[0.85rem]">{{ vehicle?.horsepower }} hp</span>
+                                        <span
+                                            class="text-customLightGrayColor text-[1rem] max-[768px]:text-[0.75rem]">Horsepower</span>
+                                        <span class="font-medium text-[1rem] max-[768px]:text-[0.85rem]">{{
+                                            vehicle?.horsepower }} hp</span>
                                     </div>
                                 </div>
                                 <div class="feature-item items-center flex gap-3">
-                                    <img :src="carbonIcon" alt="" class='w-[30px] h-[30px] max-[768px]:w-[24px] max-[768px]:h-[24px]' />
+                                    <img :src="carbonIcon" alt=""
+                                        class='w-[30px] h-[30px] max-[768px]:w-[24px] max-[768px]:h-[24px]' />
                                     <div class="flex flex-col">
-                                        <span class="text-customLightGrayColor text-[1rem] max-[768px]:text-[0.75rem]">Co2 Emission</span>
-                                        <span class="font-medium text-[1rem] max-[768px]:text-[0.85rem]">{{ vehicle?.co2 }} (g/km)</span>
+                                        <span
+                                            class="text-customLightGrayColor text-[1rem] max-[768px]:text-[0.75rem]">Co2
+                                            Emission</span>
+                                        <span class="font-medium text-[1rem] max-[768px]:text-[0.85rem]">{{ vehicle?.co2
+                                        }} (g/km)</span>
                                     </div>
                                 </div>
                                 <div class="feature-item items-center flex gap-3">
-                                    <img :src="mileageIcon" alt="" class='w-[30px] h-[30px] max-[768px]:w-[24px] max-[768px]:h-[24px]' />
+                                    <img :src="mileageIcon" alt=""
+                                        class='w-[30px] h-[30px] max-[768px]:w-[24px] max-[768px]:h-[24px]' />
                                     <div class="flex flex-col">
-                                        <span class="text-customLightGrayColor text-[1rem] max-[768px]:text-[0.75rem]">Mileage</span>
-                                        <span class="font-medium text-[1rem] max-[768px]:text-[0.85rem]">{{ vehicle?.mileage }} km/d</span>
+                                        <span
+                                            class="text-customLightGrayColor text-[1rem] max-[768px]:text-[0.75rem]">Mileage</span>
+                                        <span class="font-medium text-[1rem] max-[768px]:text-[0.85rem]">{{
+                                            vehicle?.mileage }} km/d</span>
                                     </div>
                                 </div>
 
@@ -927,10 +987,12 @@ onMounted(() => {
 
                         <div class="features mt-[3rem]">
                             <span class="text-[2rem] font-medium max-[768px]:text-[1rem]">Features</span>
-                            <div class="grid grid-cols-4 mt-[2rem] gap-y-[2rem] max-[768px]:mt-[1rem] max-[768px]:grid-cols-2">
-                                <div class="flex items-center gap-3 max-[768px]:text-[0.95rem]" v-if="vehicle?.features" v-for="(feature, index) in JSON.parse(
-                                    vehicle.features
-                                )" :key="index">
+                            <div
+                                class="grid grid-cols-4 mt-[2rem] gap-y-[2rem] max-[768px]:mt-[1rem] max-[768px]:grid-cols-2">
+                                <div class="flex items-center gap-3 max-[768px]:text-[0.95rem]" v-if="vehicle?.features"
+                                    v-for="(feature, index) in JSON.parse(
+                                        vehicle.features
+                                    )" :key="index">
                                     <img :src="featureIconMap[feature]" alt="Feature Icon"
                                         class="feature-icon w-[30px] h-[30px] max-[768px]:w-[24px] max-[768px]:h-[24px" />
                                     {{ feature }}
@@ -950,11 +1012,13 @@ onMounted(() => {
                         </div>
 
                         <div class="mt-[5rem] benefits max-[768px]:mt-[2rem]">
-                            <span class="text-[2rem] font-medium mb-5 inline-block max-[768px]:text-[1rem]">Rental Conditions & Banefits</span>
+                            <span class="text-[2rem] font-medium mb-5 inline-block max-[768px]:text-[1rem]">Rental
+                                Conditions & Banefits</span>
                             <ul class="vehicle-benefits p-4 border rounded-lg shadow-sm bg-white flex flex-col gap-2">
                                 <!-- Limited Kilometer Display -->
                                 <li v-if="vehicle?.benefits?.limited_km_per_day" class="flex items-center gap-1">
-                                    <p class="text-[1.2rem] max-[768px]:text-[0.95rem] text-customPrimaryColor font-medium">
+                                    <p
+                                        class="text-[1.2rem] max-[768px]:text-[0.95rem] text-customPrimaryColor font-medium">
                                         Limited Kilometer Per Day: {{ vehicle?.benefits?.limited_km_per_day_range }} km
                                     </p>
                                     <span class="text-customDarkBlackColor font-medium">
@@ -963,7 +1027,8 @@ onMounted(() => {
                                     </span>
                                 </li>
                                 <li v-if="vehicle?.benefits?.limited_km_per_week" class="flex items-center gap-1">
-                                    <p class="text-[1.2rem] max-[768px]:text-[0.95rem] text-customPrimaryColor font-medium">
+                                    <p
+                                        class="text-[1.2rem] max-[768px]:text-[0.95rem] text-customPrimaryColor font-medium">
                                         Limited Kilometer Per Week: {{ vehicle?.benefits?.limited_km_per_week_range }}
                                         km
                                     </p>
@@ -973,7 +1038,8 @@ onMounted(() => {
                                     </span>
                                 </li>
                                 <li v-if="vehicle?.benefits?.limited_km_per_month" class="flex items-center gap-1">
-                                    <p class="text-[1.2rem] max-[768px]:text-[0.95rem] text-customPrimaryColor font-medium">
+                                    <p
+                                        class="text-[1.2rem] max-[768px]:text-[0.95rem] text-customPrimaryColor font-medium">
                                         Limited Kilometer Per Month: {{ vehicle?.benefits?.limited_km_per_month_range }}
                                         km
                                     </p>
@@ -986,7 +1052,8 @@ onMounted(() => {
                                 <!-- Cancellation Availability Display -->
                                 <li v-if="vehicle?.benefits?.cancellation_available_per_day"
                                     class="flex items-center gap-1">
-                                    <p class="text-[1.2rem] max-[768px]:text-[0.95rem] text-customPrimaryColor font-medium">
+                                    <p
+                                        class="text-[1.2rem] max-[768px]:text-[0.95rem] text-customPrimaryColor font-medium">
                                         Cancellation Available (for daily package): {{
                                             vehicle?.benefits?.cancellation_available_per_day_date }} days before rental
                                         date
@@ -994,7 +1061,8 @@ onMounted(() => {
                                 </li>
                                 <li v-if="vehicle?.benefits?.cancellation_available_per_week"
                                     class="flex items-center gap-1">
-                                    <p class="text-[1.2rem] max-[768px]:text-[0.95rem] text-customPrimaryColor font-medium">
+                                    <p
+                                        class="text-[1.2rem] max-[768px]:text-[0.95rem] text-customPrimaryColor font-medium">
                                         Cancellation Available (for weekly package): {{
                                             vehicle?.benefits?.cancellation_available_per_week_date }} days before rental
                                         date
@@ -1002,7 +1070,8 @@ onMounted(() => {
                                 </li>
                                 <li v-if="vehicle?.benefits?.cancellation_available_per_month"
                                     class="flex items-center gap-1">
-                                    <p class="text-[1.2rem] max-[768px]:text-[0.95rem] text-customPrimaryColor font-medium">
+                                    <p
+                                        class="text-[1.2rem] max-[768px]:text-[0.95rem] text-customPrimaryColor font-medium">
                                         Cancellation Available (for monthly package): {{
                                             vehicle?.benefits?.cancellation_available_per_month_date }} days before rental
                                         date
@@ -1011,14 +1080,15 @@ onMounted(() => {
 
                                 <!-- Minimum Driver Age -->
                                 <li v-if="vehicle?.benefits?.minimum_driver_age" class="flex items-center gap-1">
-                                    <p class="text-[1.2rem] max-[768px]:text-[0.95rem] text-customPrimaryColor font-medium">
+                                    <p
+                                        class="text-[1.2rem] max-[768px]:text-[0.95rem] text-customPrimaryColor font-medium">
                                         Minimum Driver Age: {{ vehicle?.benefits?.minimum_driver_age }} years
                                     </p>
                                 </li>
 
                                 <!-- Fallback Message if No Benefits Exist -->
                                 <span v-else-if="!vehicle?.benefits || Object.keys(vehicle?.benefits).length === 0">
-                                    <p class="text-gray-500 text-lg">No additional benefits available for this vehicle.
+                                    <p class="text-gray-500 text-lg max-[768px]:text-[0.875rem]">No additional benefits available for this vehicle.
                                     </p>
                                 </span>
                             </ul>
@@ -1028,18 +1098,21 @@ onMounted(() => {
 
                         <div class="mt-[5rem] max-[768px]:mt-[2rem]">
                             <span class="text-[2rem] font-medium max-[768px]:text-[1rem]">Meet Vehicle Vendor</span>
-                            <div
-                                class="mt-[2rem] flex gap-5 border-[1px] border-customPrimaryColor
+                            <div class="mt-[2rem] flex gap-5 border-[1px] border-customPrimaryColor
                                  rounded-[0.75em] px-[1rem] py-[2rem] max-[768px]:py-[1rem]">
                                 <img :src="vehicle.vendor_profile?.avatar
                                     ? `${vehicle.vendor_profile.avatar}`
                                     : '/storage/avatars/default-avatar.svg'" alt="User Avatar"
-                                    class="w-[100px] h-[100px] max-[768px]:w-[60px] max-[768px]:h-[60px] rounded-full object-cover" />
+                                    class="w-[100px] h-[100px] max-[768px]:w-[60px] max-[768px]:h-[60px] rounded-full object-cover" 
+                                    v-if="!isLoading"/>
+                                     <Skeleton v-else class="w-[100px] h-[100px] max-[768px]:w-[60px] max-[768px]:h-[60px] rounded-full object-cover" />
                                 <div>
-                                    <h4 class="text-customPrimaryColor text-[1.75rem] font-medium max-[768px]:text-[1rem]">
+                                    <h4
+                                        class="text-customPrimaryColor text-[1.75rem] font-medium max-[768px]:text-[1rem]">
                                         {{ vehicle.user.first_name }} {{ vehicle.user.last_name }}
                                     </h4>
-                                    <p class="text-customLightGrayColor max-[768px]:text-[0.95rem]">{{ vehicle.vendor_profile.about }}</p>
+                                    <p class="text-customLightGrayColor max-[768px]:text-[0.95rem]">{{
+                                        vehicle.vendor_profile.about }}</p>
                                 </div>
                             </div>
                         </div>
@@ -1049,7 +1122,8 @@ onMounted(() => {
                         <div class="paymentInfoDiv p-5 sticky top-[3rem]">
                             <div class="flex items-center justify-between gap-3 max-[768px]:mb-4">
                                 <h4 class="max-[768px]:text-[1.2rem]">{{ vehicle?.brand }} {{ vehicle?.model }}</h4>
-                                <span class="bg-[#f5f5f5] inline-block px-8 py-2 max-[768px]:text-nowrap max-[768px]:px-4 text-center rounded-[40px] max-[768px]:text-[0.75rem]">
+                                <span
+                                    class="bg-[#f5f5f5] inline-block px-8 py-2 max-[768px]:text-nowrap max-[768px]:px-4 text-center rounded-[40px] max-[768px]:text-[0.75rem]">
                                     {{ vehicle?.category.name }}
                                 </span>
                                 <div class="icons flex items-center gap-3">
@@ -1070,7 +1144,7 @@ onMounted(() => {
                                 </span>
                             </div>
                             <div class="car_short_info mt-[1rem] flex gap-3">
-                                <img :src="carIcon" alt="" class="max-[768px]:w-[24px]"/>
+                                <img :src="carIcon" alt="" class="max-[768px]:w-[24px]" />
                                 <div class="features">
                                     <span class="text-[1.15rem] capitalize max-[768px]:text-[0.85rem]">
                                         {{ vehicle?.transmission }} .
@@ -1080,9 +1154,9 @@ onMounted(() => {
                                 </div>
                             </div>
                             <div class="extra_details flex gap-5 mt-[1rem]">
-                                
+
                                 <div class="col flex gap-3">
-                                    <img :src="mileageIcon" alt="" class="max-[768px]:w-[24px]"/>
+                                    <img :src="mileageIcon" alt="" class="max-[768px]:w-[24px]" />
                                     <span class="text-[1.15rem] max-[768px]:text-[0.85rem]">{{ vehicle?.mileage }}
                                         km/d</span>
                                 </div>
@@ -1091,18 +1165,21 @@ onMounted(() => {
                             <div class="ratings"></div>
 
                             <div class="location mt-[2rem]">
-                                <span class="text-[1.5rem] font-medium mb-[1rem] inline-block max-[768px]:text-[1.2rem]">Location</span>
+                                <span
+                                    class="text-[1.5rem] font-medium mb-[1rem] inline-block max-[768px]:text-[1.2rem]">Location</span>
                                 <div class="col flex items-start gap-4">
-                                    <img :src="pickupLocationIcon" alt="" class="max-[768px]:w-[24px]"/>
+                                    <img :src="pickupLocationIcon" alt="" class="max-[768px]:w-[24px]" />
                                     <div class="flex flex-col gap-1">
-                                        <span class="text-[1.25rem] text-medium max-[768px]:text-[1rem]">{{ vehicle?.location }}</span>
+                                        <span class="text-[1.25rem] text-medium max-[768px]:text-[1rem]">{{
+                                            vehicle?.location }}</span>
                                         <span class="max-[768px]:text-[0.95rem]">{{ route().params.pickup_date }}</span>
                                     </div>
                                 </div>
                                 <div class="col flex items-start gap-4 mt-10">
-                                    <img :src="returnLocationIcon" alt="" class="max-[768px]:w-[24px]"/>
+                                    <img :src="returnLocationIcon" alt="" class="max-[768px]:w-[24px]" />
                                     <div class="flex flex-col gap-1">
-                                        <span class="text-[1.25rem] text-medium max-[768px]:text-[1rem]">{{ vehicle?.location }}</span>
+                                        <span class="text-[1.25rem] text-medium max-[768px]:text-[1rem]">{{
+                                            vehicle?.location }}</span>
                                         <span class="max-[768px]:text-[0.95rem]">{{ route().params.return_date }}</span>
                                     </div>
                                 </div>
@@ -1213,7 +1290,8 @@ onMounted(() => {
                                                             Discount: -{{formatPrice(pricingPackages.find(pkg => pkg.id
                                                                 === selectedPackage).discount)}}
                                                         </p>
-                                                        <p class="text-[1.75rem] max-[768px]:text-[1.5rem] font-semibold">
+                                                        <p
+                                                            class="text-[1.75rem] max-[768px]:text-[1.5rem] font-semibold">
                                                             Total Price: {{ formatPrice(calculateTotalPrice) }}
                                                         </p>
                                                         <p class="text-sm text-gray-600">
@@ -1248,7 +1326,8 @@ onMounted(() => {
                                     </Dialog>
                                     <div class="column mt-[2rem]">
                                         <button @click="proceedToPayment"
-                                            class="button-primary block text-center p-5 w-full max-[768px]:text-[0.875rem]">Proceed to Pay</button>
+                                            class="button-primary block text-center p-5 w-full max-[768px]:text-[0.875rem]">Proceed
+                                            to Pay</button>
                                     </div>
                                     <div
                                         class="column text-center mt-[2rem] flex flex-col justify-center items-center gap-5">
@@ -1267,60 +1346,58 @@ onMounted(() => {
             <Faq />
         </section>
 
-        <section class="" style="
-                        background: linear-gradient(to bottom, #FFFFFF, #F8F8F8); 
-                    ">
-            <div class="reviews-section mt-[3rem] full-w-container max-[768px]:mt-0">
-                <span class="text-[2rem] font-bold">Overall Rating</span>
+        <section class="" style="background: linear-gradient(to bottom, #FFFFFF, #F8F8F8);">
+    <div class="reviews-section mt-[3rem] full-w-container max-[768px]:mt-0">
+        <span class="text-[2rem] font-bold">Overall Rating</span>
 
-                <div v-if="isLoading">Loading reviews...</div>
-                <div v-else-if="reviews && reviews.length > 0">
-                    <Carousel class="relative w-full py-[4rem] px-[2rem] max-[768px]:px-0" :plugins="[plugin]" @mouseenter="plugin.stop"
-                        @mouseleave="[plugin.reset(), plugin.play(), console.log('Running')]">
-                        <CarouselContent class="max-[768px]:px-5">
-                            <CarouselItem v-for="review in reviews" :key="review.id"
-                                class="pl-1 md:basis-1/2 lg:basis-1/3 ml-[1rem]">
-                                <Card class="h-[15rem]">
-                                    <CardContent>
-                                        <div class="review-item  px-[1rem] py-[2rem] h-full">
-                                            <div class="flex items-center gap-3">
-                                                <img :src="review.user.profile?.avatar ? `${review.user.profile?.avatar}` : '/storage/avatars/default-avatar.svg'"
-                                                    alt="User Avatar"
-                                                    class="w-[50px] h-[50px] rounded-full object-cover" />
-                                                <div>
-                                                    <h4 class="text-customPrimaryColor font-medium max-[768px]:text-[1.1rem]">{{
-                                                        review.user.first_name }} {{ review.user.last_name }}</h4>
-                                                    <div class="flex items-center gap-1">
-                                                        <div class="star-rating">
-                                                            <img v-for="n in 5" :key="n"
-                                                                :src="getStarIcon(review.rating, n)"
-                                                                :alt="getStarAltText(review.rating, n)"
-                                                                class="w-[20px] h-[20px]" />
-                                                        </div>
-                                                        <span>{{ review.rating }}</span>
-                                                    </div>
+        <div v-if="isLoading">
+            <div class="flex gap-4">
+                <Skeleton v-for="n in 3" :key="n" class="h-[15rem] w-[30%] rounded-lg" />
+            </div>
+        </div>
+        <div v-else-if="reviews && reviews.length > 0">
+            <Carousel class="relative w-full py-[4rem] px-[2rem] max-[768px]:px-0" :plugins="[plugin]"
+                @mouseenter="plugin.stop" @mouseleave="[plugin.reset(), plugin.play(), console.log('Running')]">
+                <CarouselContent class="max-[768px]:px-5">
+                    <CarouselItem v-for="review in reviews" :key="review.id" class="pl-1 md:basis-1/2 lg:basis-1/3 ml-[1rem]">
+                        <Card class="h-[15rem]">
+                            <CardContent>
+                                <div class="review-item px-[1rem] py-[2rem] h-full">
+                                    <div class="flex items-center gap-3">
+                                        <img :src="review.user.profile?.avatar ? `${review.user.profile?.avatar}` : '/storage/avatars/default-avatar.svg'"
+                                            alt="User Avatar" class="w-[50px] h-[50px] rounded-full object-cover" />
+                                        <div>
+                                            <h4 class="text-customPrimaryColor font-medium max-[768px]:text-[1.1rem]">
+                                                {{ review.user.first_name }} {{ review.user.last_name }}
+                                            </h4>
+                                            <div class="flex items-center gap-1">
+                                                <div class="star-rating">
+                                                    <img v-for="n in 5" :key="n" :src="getStarIcon(review.rating, n)"
+                                                        :alt="getStarAltText(review.rating, n)" class="w-[20px] h-[20px]" />
                                                 </div>
-                                            </div>
-                                            <p class="mt-2 max-[768px]:text-[0.875rem]">{{ review.review_text }}</p>
-                                            <div v-if="review.reply_text"
-                                                class="mt-2 reply-text border-[1px] rounded-[0.75em] px-[1rem] py-[1rem] bg-[#f5f5f5]">
-                                                <p class="text-gray-600">Vendor Reply:</p>
-                                                <p>{{ review.reply_text }}</p>
+                                                <span>{{ review.rating }}</span>
                                             </div>
                                         </div>
-                                    </CardContent>
-                                </Card>
-                            </CarouselItem>
-                        </CarouselContent>
-                        <CarouselPrevious />
-                        <CarouselNext />
-                    </Carousel>
-                </div>
-                <div v-else class="mt-[2rem] pb-[3rem]">
-                    <p>No reviews yet.</p>
-                </div>
-            </div>
-        </section>
+                                    </div>
+                                    <p class="mt-2 max-[768px]:text-[0.875rem]">{{ review.review_text }}</p>
+                                    <div v-if="review.reply_text" class="mt-2 reply-text border-[1px] rounded-[0.75em] px-[1rem] py-[1rem] bg-[#f5f5f5]">
+                                        <p class="text-gray-600">Vendor Reply:</p>
+                                        <p>{{ review.reply_text }}</p>
+                                    </div>
+                                </div>
+                            </CardContent>
+                        </Card>
+                    </CarouselItem>
+                </CarouselContent>
+                <CarouselPrevious />
+                <CarouselNext />
+            </Carousel>
+        </div>
+        <div v-else class="mt-[2rem] pb-[3rem]">
+            <p>No reviews yet.</p>
+        </div>
+    </div>
+</section>
 
         <section class="full-w-container py-customVerticalSpacing">
             <div
@@ -1329,15 +1406,20 @@ onMounted(() => {
                     <img :src="vehicle.vendor_profile?.avatar
                         ? `${vehicle.vendor_profile.avatar}`
                         : '/storage/avatars/default-avatar.svg'" alt="User Avatar"
-                        class="w-[100px] h-[100px] max-[768px]:w-[60px] max-[768px]:h-[60px] rounded-full object-cover" />
+                        class="w-[100px] h-[100px] max-[768px]:w-[60px] max-[768px]:h-[60px] rounded-full object-cover"
+                         v-if="!isLoading"/>
+                        <Skeleton v-else class="w-[100px] h-[100px] max-[768px]:w-[60px] max-[768px]:h-[60px] rounded-full object-cover" />
+
                     <h4 class="text-customPrimaryColor text-[1.75rem] font-medium max-[768px]:text-[1.2rem]">
                         {{ vehicle.user.first_name }} {{ vehicle.user.last_name }}
                     </h4>
                     <span>On VROOEM since {{ formatDate(vehicle.user.created_at) }}</span>
                     <div class="flex justify-center w-full max-[768px]:flex-wrap max-[768px]:gap-5">
                         <div class="col flex flex-col items-center">
-                            <p class="capitalize text-[1.5rem] text-customPrimaryColor font-bold max-[768px]:text-[1.2rem]">{{
-                                vehicle?.vendor_profile_data.status }}</p>
+                            <p
+                                class="capitalize text-[1.5rem] text-customPrimaryColor font-bold max-[768px]:text-[1.2rem]">
+                                {{
+                                    vehicle?.vendor_profile_data.status }}</p>
                             <span class="text-customLightGrayColor max-[768px]:text-[1rem]">Verification Status</span>
                         </div>
                         <!-- <div class="col flex flex-col items-center">
@@ -1447,17 +1529,22 @@ onMounted(() => {
 
 @media screen and (max-width:768px) {
     .reviews-section .next-btn {
-    top: 100%!important;
-    left: 60%;
-    justify-content: center;
-    z-index: 99;
+        top: 100% !important;
+        left: 60%;
+        justify-content: center;
+        z-index: 99;
+    }
+
+    .reviews-section .prev-btn {
+        top: 100% !important;
+        left: 30% !important;
+        justify-content: center;
+        z-index: 99;
+    }
+
+    #map {
+    height: 200px;
 }
 
-.reviews-section .prev-btn {
-    top: 100%!important;
-    left: 30% !important;
-    justify-content: center;
-    z-index: 99;
-}
 }
 </style>

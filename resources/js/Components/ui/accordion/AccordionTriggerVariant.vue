@@ -22,16 +22,21 @@ const delegatedProps = computed(() => {
       v-bind="delegatedProps"
       :class="
         cn(
-          'flex flex-1 items-center justify-between py-4 text-sm font-medium transition-all [&[data-state=open]>svg]:rotate-180',
+          'flex flex-1 items-center justify-between py-4 text-sm font-medium transition-all group',
           props.class,
         )
       "
     >
       <slot />
       <slot name="icon">
-        <PlusIcon
-          class="h-8 w-8 shrink-0 [&[data-state=open] text-muted-foreground transition-transform duration-200 bg-[#153B4F1A] rounded-[8px] p-1"
+        <div class="relative h-8 w-8 ml-2">
+          <PlusIcon
+          class="h-8 w-8 absolute top-0 right-0 shrink-0 group-data-[state=closed]:opacity-100 group-data-[state=closed]:rotate-0 group-data-[state=open]:opacity-0 group-data-[state=open]:rotate-90 text-muted-foreground transition-transform duration-200 bg-[#153B4F1A] rounded-[8px] p-1"
         />
+        <MinusIcon
+          class="h-8 w-8 absolute top-0 right-0 shrink-0 group-data-[state=closed]:opacity-0 group-data-[state=closed]:rotate-0 group-data-[state=open]:opacity-100 group-data-[state=open]:rotate-180 text-muted-foreground transition-transform duration-200 bg-[#153B4F1A] rounded-[8px] p-1"
+        />
+        </div>
       </slot>
     </AccordionTrigger>
   </AccordionHeader>
