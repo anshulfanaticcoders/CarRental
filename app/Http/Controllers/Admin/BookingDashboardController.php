@@ -59,7 +59,8 @@ class BookingDashboardController extends Controller
             $bookings->where('booking_status', $status);
         }
 
-        $bookings = $bookings->with(['customer', 'vehicle.vendorProfileData'])->paginate(4);
+        $bookings = $bookings->orderBy('created_at', 'desc')->with(['customer', 'vehicle.vendorProfileData','payments','vendorProfile'])->paginate(4);
+        
 
         return Inertia::render('AdminDashboardPages/Bookings/Index', [
             'users' => $bookings,

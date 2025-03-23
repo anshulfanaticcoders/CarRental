@@ -1,4 +1,8 @@
 <script setup lang=ts>
+
+import axios from "axios";
+import { Link,router } from '@inertiajs/vue3';
+import logoutIcon from '../../assets/logoutIcon.svg';
 import {
   Collapsible,
   CollapsibleContent,
@@ -33,7 +37,9 @@ import {
   Activity,
   Notebook,
   DollarSign,
-  FileChartColumn
+  FileChartColumn,
+  Settings,
+  BookOpenText,
 } from 'lucide-vue-next'
 import { onMounted, ref } from 'vue'
 
@@ -162,13 +168,13 @@ const data = {
       ],
     },
     {
-      title: 'Activity Logs',
+      title: 'Pages',
       url: '#',
-      icon: Activity,
+      icon: BookOpenText,
       items: [
         {
-          title: 'All Activities',
-          url: '/activity-logs',
+          title: 'All Pages',
+          url: '/pages',
         },
       ],
     },
@@ -183,17 +189,7 @@ const data = {
         },
       ],
     },
-    {
-      title: 'Pages',
-      url: '#',
-      icon: Notebook,
-      items: [
-        {
-          title: 'All Pages',
-          url: '/pages',
-        },
-      ],
-    },
+    
     {
       title: 'Payments',
       url: '#',
@@ -225,9 +221,20 @@ const data = {
       ],
     },
     {
+      title: 'Activity Logs',
+      url: '#',
+      icon: Activity,
+      items: [
+        {
+          title: 'All Activities',
+          url: '/activity-logs',
+        },
+      ],
+    },
+    {
       title: 'Settings',
       url: '#',
-      icon: FileChartColumn,
+      icon: Settings,
       items: [
         {
           title: 'Footer',
@@ -235,18 +242,12 @@ const data = {
         },
         {
           title: 'FAQ',
-          url: '/admin/faq',
+          url: '/admin/settings/faq',
         },
       ],
     },
   ],
 }
-
-
-
-import axios from "axios";
-import { Link,router } from '@inertiajs/vue3';
-import logoutIcon from '../../assets/logoutIcon.svg';
 
 const userCount = ref<number>(0); // Reactive variable for the user count
 const users = ref<Array<Record<string, any>>>([]);
@@ -283,10 +284,10 @@ onMounted(() => {
 
 <template>
   <SidebarProvider>
-    <Sidebar collapsible="icon" class="bg-customPrimaryColor text-white">
+    <Sidebar collapsible="icon" class="bg-customDarkBlackColor text-white">
       <SidebarContent>
         <SidebarGroup>
-        <Link href="/">
+        <Link href="/" class="mt-4">
           <svg xmlns="http://www.w3.org/2000/svg" width="200" height="25" viewBox="0 0 200 25" fill="none" class="mb-[1rem]">
             <g clip-path="url(#clip0_551_18033)">
               <path

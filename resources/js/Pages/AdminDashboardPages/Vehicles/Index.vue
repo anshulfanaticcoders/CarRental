@@ -14,7 +14,7 @@
             </Dialog>
 
             <Dialog v-model:open="isViewDialogOpen">
-                <ViewUser :user="viewForm" @close="isViewDialogOpen = false" />
+                <ViewUser :user="viewForm" @close="isViewDialogOpen = false"/>
             </Dialog>
 
             <div class="rounded-md border p-5  mt-[1rem] bg-[#153B4F0D]">
@@ -25,24 +25,43 @@
                             <TableHead>User Name</TableHead>
                             <TableHead>Model</TableHead>
                             <TableHead>Brand</TableHead>
-                            <TableHead>Seating Capacity</TableHead>
                             <TableHead>Color</TableHead>
                             <TableHead>Location</TableHead>
-                            <TableHead>Price per day</TableHead>
+                            <TableHead>Country</TableHead>
+                            <TableHead>Price</TableHead>
                             <TableHead>Status</TableHead>
                             <TableHead class="text-right">Actions</TableHead>
                         </TableRow>
                     </TableHeader>
                     <TableBody>
-                        <TableRow v-for="(user,index) in users.data" :key="user.id">
+                        <TableRow v-for="(user, index) in users.data" :key="user.id">
                             <TableCell>{{ (users.current_page - 1) * users.per_page + index + 1 }}</TableCell>
                             <TableCell>{{ user.user.first_name }} {{ user.user.last_name }}</TableCell>
                             <TableCell>{{ user.model }}</TableCell>
                             <TableCell>{{ user.brand }}</TableCell>
-                            <TableCell>{{ user.seating_capacity }}</TableCell>
                             <TableCell>{{ user.color }}</TableCell>
                             <TableCell>{{ user.location }}</TableCell>
-                            <TableCell>{{ user.price_per_day }}</TableCell>
+                            <TableCell>{{ user.vendor_profile.country }}</TableCell>
+                            <TableCell>
+                                <template v-if="user.price_per_day || user.price_per_week || user.price_per_month">
+                                    <span v-if="user.price_per_day">
+                                        {{ user.vendor_profile.currency }}  {{ user.price_per_day }}/Day
+                                    </span>
+                                    <span v-if="user.price_per_day && (user.price_per_week || user.price_per_month)"> |
+                                    </span>
+
+                                    <span v-if="user.price_per_week">
+                                        {{ user.vendor_profile.currency }}{{ user.price_per_week }}/Week
+                                    </span>
+                                    <span v-if="user.price_per_week && user.price_per_month"> | </span>
+
+                                    <span v-if="user.price_per_month">
+                                        {{ user.vendor_profile.currency }}{{ user.price_per_month }}/Month
+                                    </span>
+                                </template>
+                                <span v-else>-</span> <!-- Placeholder if no prices are available -->
+                            </TableCell>
+
                             <TableCell>
                                 <Badge :variant="getStatusBadgeVariant(user.vendor_profile?.status)">
                                     {{ user.status }}
@@ -106,7 +125,7 @@ const handleSearch = () => {
 };
 
 const openViewDialog = (user) => {
-   
+
     viewForm.value = { ...user };
     isViewDialogOpen.value = true;
 };
@@ -120,16 +139,16 @@ const handlePageChange = (page) => {
 };
 const getStatusBadgeVariant = (status) => {
     switch (status) {
-      case 'available':
-        return 'default';
-      case 'rented':
-        return 'secondary';
-      case 'maintenance':
-        return 'destructive';
-      default:
-        return 'default';
+        case 'available':
+            return 'default';
+        case 'rented':
+            return 'secondary';
+        case 'maintenance':
+            return 'destructive';
+        default:
+            return 'default';
     }
-  };
+};
 </script>
 <style>
 .search-box {

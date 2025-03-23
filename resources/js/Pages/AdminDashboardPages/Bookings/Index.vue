@@ -6,11 +6,17 @@
                 <div class="flex items-center gap-4">
                     <Input v-model="search" placeholder="Search bookings..." class="w-[300px]" @input="handleSearch" />
                     <div class="flex gap-2">
-                        <Button class="" :variant="currentStatus === 'all' ? 'primary' : 'secondary'" @click="navigateTo('all')">All</Button>
-                        <Button class="bg-[#FFC633]" :variant="currentStatus === 'pending' ? 'primary' : 'secondary'" @click="navigateTo('pending')">Pending</Button>
-                        <Button class="bg-[#0099001A]" :variant="currentStatus === 'confirmed' ? 'primary' : 'secondary'" @click="navigateTo('confirmed')">Confirmed</Button>
-                        <Button class="bg-[#009900]" :variant="currentStatus === 'completed' ? 'primary' : 'secondary'" @click="navigateTo('completed')">Completed</Button>
-                        <Button class="bg-[#EA3C3C]" :variant="currentStatus === 'cancelled' ? 'primary' : 'secondary'" @click="navigateTo('cancelled')">Cancelled</Button>
+                        <Button class="" :variant="currentStatus === 'all' ? 'primary' : 'secondary'"
+                            @click="navigateTo('all')">All</Button>
+                        <Button class="bg-[#FFC633]" :variant="currentStatus === 'pending' ? 'primary' : 'secondary'"
+                            @click="navigateTo('pending')">Pending</Button>
+                        <Button class="bg-[#0099001A]"
+                            :variant="currentStatus === 'confirmed' ? 'primary' : 'secondary'"
+                            @click="navigateTo('confirmed')">Confirmed</Button>
+                        <Button class="bg-[#009900]" :variant="currentStatus === 'completed' ? 'primary' : 'secondary'"
+                            @click="navigateTo('completed')">Completed</Button>
+                        <Button class="bg-[#EA3C3C]" :variant="currentStatus === 'cancelled' ? 'primary' : 'secondary'"
+                            @click="navigateTo('cancelled')">Cancelled</Button>
 
                     </div>
                 </div>
@@ -44,7 +50,7 @@
                         </TableRow>
                     </TableHeader>
                     <TableBody>
-                        <TableRow v-for="(user,index) in users.data" :key="user.id">
+                        <TableRow v-for="(user, index) in users.data" :key="user.id">
                             <TableCell>{{ (users.current_page - 1) * users.per_page + index + 1 }}</TableCell>
                             <TableCell>{{ user.booking_number }}</TableCell>
                             <TableCell>{{ user.plan }}</TableCell>
@@ -52,14 +58,24 @@
                             <TableCell>{{ user.customer.email }}</TableCell>
                             <TableCell>{{ user.pickup_location }}</TableCell>
                             <TableCell>{{ user.vehicle.brand }}</TableCell>
-                            <TableCell>{{formatDate( user.vehicle.created_at) }}</TableCell>
+                            <TableCell>{{ formatDate(user.vehicle.created_at) }}</TableCell>
                             <TableCell>{{ user.total_days }}</TableCell>
                             <TableCell>{{ user.total_amount }}</TableCell>
                             <TableCell>
-                                <Badge :variant="getStatusBadgeVariant(user.payment_status)">
-                                    {{ user.payment_status }}
-                                </Badge>
+                                <span v-if="user.payments?.length > 0" :class="{
+                                    'px-2 py-1 text-xs font-semibold rounded-full': true,
+                                    'bg-green-100 text-green-800': user.payments[0].payment_status === 'succeeded',
+                                    'bg-yellow-100 text-yellow-800': user.payments[0].payment_status === 'pending',
+                                    'bg-red-100 text-red-800': user.payments[0].payment_status === 'failed'
+                                }">
+                                    {{ user.payments[0].payment_status }}
+                                </span>
+                                <span v-else
+                                    class="px-2 py-1 text-xs font-semibold rounded-full bg-gray-100 text-gray-800">
+                                    No Payment
+                                </span>
                             </TableCell>
+
                             <TableCell>
                                 <Badge :variant="getStatusBadgeBooking(user.booking_status)">
                                     {{ user.booking_status }}
@@ -138,40 +154,28 @@ const deleteUser = (id) => {
 };
 const status = ref(props.currentStatus || 'all');
 const handlePageChange = (page) => {
-  let routeName = 'customer-bookings.index'; // Default
-  const params = { page: page, search: search.value }; // Common params
+    let routeName = 'customer-bookings.index'; // Default
+    const params = { page: page, search: search.value }; // Common params
 
-  if (status.value !== 'all') {
-    routeName = `customer-bookings.${status.value}`;
-  }
+    if (status.value !== 'all') {
+        routeName = `customer-bookings.${status.value}`;
+    }
 
-  router.get(route(routeName, params), { preserveState: true, replace: true });
+    router.get(route(routeName, params), { preserveState: true, replace: true });
 };
 
 const navigateTo = (newStatus) => {
-  status.value = newStatus; // Update status ref
-  let routeName = 'customer-bookings.index'; // Default
-  const params = { search: search.value }; // Common params
+    status.value = newStatus; // Update status ref
+    let routeName = 'customer-bookings.index'; // Default
+    const params = { search: search.value }; // Common params
 
-  if (newStatus !== 'all') {
-    routeName = `customer-bookings.${newStatus}`;
-  }
-
-  router.get(route(routeName, params), { preserveState: true, replace: true });
-};
-
-const getStatusBadgeVariant = (status) => {
-    switch (status) {
-        case 'available':
-            return 'default';
-        case 'rented':
-            return 'secondary';
-        case 'maintenance':
-            return 'destructive';
-        default:
-            return 'default';
+    if (newStatus !== 'all') {
+        routeName = `customer-bookings.${newStatus}`;
     }
+
+    router.get(route(routeName, params), { preserveState: true, replace: true });
 };
+
 
 const getStatusBadgeBooking = (status) => {
     switch (status) {

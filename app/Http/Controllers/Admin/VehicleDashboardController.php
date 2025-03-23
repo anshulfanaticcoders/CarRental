@@ -28,8 +28,8 @@ class VehicleDashboardController extends Controller
                     ->orWhere('last_name', 'like', "%{$search}%");
             }
         })
-            ->with(['User'])
-            ->paginate(4);
+            ->with(['User','vendorProfile'])
+            ->paginate(6);
 
         return Inertia::render('AdminDashboardPages/Vehicles/Index', [
             'users' => $vehicles,

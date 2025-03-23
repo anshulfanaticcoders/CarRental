@@ -71,7 +71,7 @@
                                 {{ payment.transaction_id }}
                             </td>
                             <td class="px-6 py-4 whitespace-nowrap">
-                                €{{ formatNumber(payment.amount) }}
+                                {{ payment.currency }}{{ formatNumber(payment.amount) }}
                             </td>
                             <td class="px-6 py-4 whitespace-nowrap">
                                 {{ payment.payment_method }}

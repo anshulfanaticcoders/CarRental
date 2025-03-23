@@ -40,7 +40,7 @@ class AdminUserDocumentController extends Controller
 
         // Get paginated results
         $documents = $query->orderBy('created_at', 'desc')
-            ->paginate(10)
+            ->paginate(6)
             ->withQueryString();
 
         return Inertia::render('AdminDashboardPages/UserDocument/Index', [

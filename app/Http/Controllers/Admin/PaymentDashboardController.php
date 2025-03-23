@@ -11,7 +11,7 @@ class PaymentDashboardController extends Controller
 {
     public function index(Request $request)
 {
-    $payments = BookingPayment::with('booking')
+    $payments = BookingPayment::with('booking.vehicle.vendorProfile')
         ->when($request->search, function ($query, $search) {
             $query->where('transaction_id', 'like', "%{$search}%")
                 ->orWhere('payment_method', 'like', "%{$search}%")
@@ -29,6 +29,12 @@ class PaymentDashboardController extends Controller
         })
         ->paginate(7)
         ->withQueryString();
+
+        $payments->getCollection()->transform(function ($payment) {
+            $payment->currency = optional($payment->booking?->vehicle?->vendorProfile)->currency ?? '€'; // Default to EUR
+            return $payment;
+        });
+        
 
     // Fix: Change STATUS_COMPLETED to 'succeeded' to match your database value
     $stats = [
