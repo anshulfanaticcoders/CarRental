@@ -6,11 +6,7 @@ import fuelIcon from "../../assets/fuel.svg";
 import transmisionIcon from "../../assets/transmision.svg";
 import peopleIcon from "../../assets/people.svg";
 import carbonIcon from "../../assets/carbon-emmision.svg";
-import ageIcon from "../../assets/age.svg";
 import enginepowerIcon from "../../assets/enginepower.svg";
-import unlimitedKmIcon from "../../assets/unlimitedKm.svg";
-import cancellationIcon from "../../assets/cancellationAvailable.svg";
-import starIcon from "../../assets/stars.svg";
 import MapPin from "../../assets/MapPin.svg";
 import fullStar from "../../assets/fullstar.svg";
 import halfStar from "../../assets/halfstar.svg";
@@ -20,12 +16,10 @@ import ShareIcon from "../../assets/ShareNetwork.svg";
 import Heart from "../../assets/Heart.svg";
 import FilledHeart from "../../assets/FilledHeart.svg";
 import carIcon from "../../assets/carIcon.svg";
-import walkIcon from "../../assets/walking.svg";
 import mileageIcon from "../../assets/mileageIcon.svg";
 import pickupLocationIcon from "../../assets/pickupLocationIcon.svg";
 import returnLocationIcon from "../../assets/returnLocationIcon.svg";
 import partnersIcon from "../../assets/partners.svg";
-import infoIcon from "../../assets/WarningCircle.svg";
 import { Head, Link } from "@inertiajs/vue3";
 import { computed, ref, watch } from "vue";
 import AuthenticatedHeaderLayout from "@/Layouts/AuthenticatedHeaderLayout.vue";
@@ -476,6 +470,7 @@ const validateDates = () => {
     const returnDate = new Date(form.value.date_to);
     const diffDays = rentalDuration.value;
 
+    dateError.value = ''; // Clear any existing error messages
 
     switch (selectedPackage.value) {
         case 'week':
@@ -503,6 +498,11 @@ const validateDates = () => {
                 toast.error(dateError.value);
             }
             break;
+    }
+
+    // If there are no errors, store rental data
+    if (!dateError.value) {
+        storeRentalData();
     }
 };
 
@@ -773,14 +773,29 @@ const proceedToPayment = () => {
 };
 
 // Get package type from query parameter
-const urlParams = new URLSearchParams(window.location.search);
-const initialPackageType = urlParams.get('package') || 'day';
+// const urlParams = new URLSearchParams(window.location.search);
+// const initialPackageType = urlParams.get('package') || 'day';
+// selectedPackage.value = initialPackageType;
+
+// onMounted(() => {
+//     clearStoredRentalDates();
+// });
+
+const queryParams = new URLSearchParams(window.location.search);
+const initialPickupDate = queryParams.get('pickup_date') || '';
+const initialReturnDate = queryParams.get('return_date') || '';
+const initialPackageType = queryParams.get('package') || 'day';
 selectedPackage.value = initialPackageType;
+form.value.date_from = initialPickupDate;
+form.value.date_to = initialReturnDate;
 
 onMounted(() => {
     clearStoredRentalDates();
+    loadSavedDates(); // Ensure this function respects the initial values set above
+    // Additional logic to ensure the dates are properly set in the form
+    form.value.date_from = initialPickupDate;
+    form.value.date_to = initialReturnDate;
 });
-
 
 // Lightbox for gallery
 const lightboxRef = ref(null);
