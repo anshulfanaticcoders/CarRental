@@ -49,7 +49,7 @@
         "papaparse": "^5.5.2",
         "primeicons": "^7.0.0",
         "radix-vue": "^1.9.12",
-        "reka-ui": "^2.1.0",
+        "reka-ui": "^2.1.1",
         "tailwind-merge": "^2.6.0",
         "tailwindcss-animate": "^1.0.7",
         "vue-router": "^4.5.0",

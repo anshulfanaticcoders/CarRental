@@ -457,8 +457,8 @@ const applyFilters = () => {
                     <!-- Color Filter -->
                     <div class="flex flex-col p-2 shadow-lg rounded-[12px] hover:bg-customLightPrimaryColor">
                         <div class="flex gap-2">
-                            <img :src="colorIcon" alt="" class="w-[1.5rem]">
-                            <label for="color" class="block text-sm font-medium">Color</label>
+                            <img :src="colorIcon" alt="" class="w-[1.75rem]">
+                            <label for="color" class="block text-[1rem] font-medium">Color</label>
                         </div>
                         <select v-model="form.color" id="color"
                             class="mt-1 block w-full rounded-md border-[1px] border-customLightGrayColor shadow-sm text-customPrimaryColor cursor-pointer p-2">
@@ -609,7 +609,7 @@ const applyFilters = () => {
                         <div class="flex flex-col p-2 shadow-lg rounded-[12px] hover:bg-customLightPrimaryColor">
                             <div class="flex gap-2">
                                 <img :src="colorIcon" alt="" class="w-[1.5rem]">
-                                <label for="mobile_color" class="block text-sm font-medium">Color</label>
+                                <label for="mobile_color" class="block  font-medium">Color</label>
                             </div>
                             <select v-model="form.color" id="mobile_color"
                                 class="mt-1 block w-full rounded-md border-[1px] border-customLightGrayColor shadow-sm text-customPrimaryColor cursor-pointer p-2">

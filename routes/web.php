@@ -117,6 +117,7 @@ Route::inertia('/faq', 'Faq');
 Route::post('/validate-email', [EmailValidationController::class, 'validateEmail'])->name('validate-email');
 Route::post('/validate-contact', [EmailValidationController::class, 'validateContact'])->name('validate-contact');
 Route::get('/api/footer-places', [PopularPlacesController::class, 'getFooterPlaces']);
+Route::get('/api/footer-categories', [VehicleCategoriesController::class, 'getFooterCategories']);
 
 // Show Blogs on Home page
 // Route::get('/', [BlogController::class, 'show'])->name('welcome');
@@ -188,6 +189,13 @@ Route::middleware(['auth', 'role:admin'])->group(function () {
 
     Route::post('/admin/settings/footer/update', [PopularPlacesController::class, 'updateFooterSettings'])
         ->name('admin.settings.footer.update');
+
+        Route::get('/admin/settings/footer-categories', [VehicleCategoriesController::class, 'footerSettings'])
+    ->name('admin.settings.footer-categories');
+
+Route::post('/admin/settings/footer-categories/update', [VehicleCategoriesController::class, 'updateFooterSettings'])
+    ->name('admin.settings.footer-categories.update');
+
 
 
     // route for faq

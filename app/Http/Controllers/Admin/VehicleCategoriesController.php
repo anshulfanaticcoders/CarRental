@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Models\FooterCategorySetting;
 use App\Models\VehicleCategory;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
@@ -101,5 +102,56 @@ class VehicleCategoriesController extends Controller
         }
         $vehicleCategory->delete();
         return redirect()->route('vehicles-categories.index')->with('success', 'Vehicle Category deleted successfully.');
+    }
+
+
+
+    public function footerSettings()
+    {
+        $categories = VehicleCategory::all();
+
+        // Get selected categories from the footer_category_settings table
+        $footerSettings = FooterCategorySetting::where('type', 'categories')->first();
+        $selectedCategories = [];
+
+        if ($footerSettings) {
+            // Decode the JSON stored in the settings value
+            $selectedCategories = json_decode($footerSettings->value, true) ?? [];
+        }
+
+        return Inertia::render('AdminDashboardPages/Settings/FooterCategory/Index', [
+            'categories' => $categories,
+            'selectedCategories' => $selectedCategories,
+        ]);
+    }
+
+    public function updateFooterSettings(Request $request)
+    {
+        $selectedCategories = $request->input('selected_categories', []);
+
+        // Save to footer_category_settings table - using upsert to create or update
+        FooterCategorySetting::updateOrCreate(
+            ['type' => 'categories'],
+            ['value' => json_encode($selectedCategories)]
+        );
+
+        return redirect()->route('admin.settings.footer-categories')->with('status', 'Footer settings updated successfully');
+    }
+
+    // Method to get footer categories for the front-end
+    public function getFooterCategories()
+    {
+        // Get selected category IDs from footer settings
+        $footerSettings = FooterCategorySetting::where('type', 'categories')->first();
+        $selectedCategoryIds = [];
+
+        if ($footerSettings) {
+            $selectedCategoryIds = json_decode($footerSettings->value, true) ?? [];
+        }
+
+        // Get the actual category data for the selected IDs
+        $categories = VehicleCategory::whereIn('id', $selectedCategoryIds)->get();
+
+        return response()->json($categories);
     }
 }

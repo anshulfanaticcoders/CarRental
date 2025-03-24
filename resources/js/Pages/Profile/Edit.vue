@@ -19,7 +19,7 @@ defineProps({
     <MyProfileLayout>
         <Head title="Profile" />
         <div class="">
-            <h4 class="text-[1.5rem] mb-[2rem] ml-[1rem] text-customPrimaryColor font-medium">My Profile</h4>
+            <h4 class="text-[1.5rem] mb-[2rem] ml-[1rem] text-customPrimaryColor font-medium max-[768px]:ml-0">My Profile</h4>
             <div class=" mx-auto">
                 <div class="">
                     <UpdateProfileInformationForm

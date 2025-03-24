@@ -2,7 +2,7 @@
   <MyProfileLayout>
     <div class="container mx-auto px-4 max-[768px]:px-0">
       <p
-        class="text-[1.5rem] text-customPrimaryColor font-bold mb-[2rem] bg-[#154D6A0D] rounded-[12px] px-[1rem] py-[1rem]">
+        class="text-[1.5rem] max-[768px]:text-[1.2rem] text-customPrimaryColor font-bold mb-[2rem] bg-[#154D6A0D] rounded-[12px] px-[1rem] py-[1rem]">
         Confirmed Bookings</p>
 
       <div v-if="bookings.length === 0" class="text-center text-gray-500">
@@ -13,7 +13,7 @@
       </div>
 
       <div v-else>
-        <div v-for="booking in bookings" :key="booking.id"
+        <div v-for="booking in bookings.data" :key="booking.id"
           class="bg-white shadow-md rounded-lg p-6 gap-10 flex justify-between mb-6 max-[768px]:flex-col">
           <Link :href="`/vehicle/${booking.vehicle.id}`">
           <div class="w-20% max-[768px]:w-full"> 
@@ -64,10 +64,19 @@
               </div>
             </div>
             <div>
-              <span class="text-customPrimaryColor text-[1.5rem] font-medium">${{ booking.total_amount }}</span>
+              <span class="text-customPrimaryColor text-[1.5rem] font-medium">{{ formatPrice(booking.total_amount) }}</span>
             </div>
           </div>
         </div>
+
+         <!-- Pagination -->
+         <div class="mt-4 flex justify-end">
+            <Pagination 
+              :current-page="bookings.current_page" 
+              :total-pages="bookings.last_page" 
+              @page-change="handlePageChange" 
+            />
+          </div>
       </div>
     </div>
   </MyProfileLayout>
@@ -79,11 +88,16 @@ import bookingstatusIcon from '../../../../assets/bookingstatusIcon.svg';
 import carIcon from '../../../../assets/carIcon.svg'; // Import car icon
 import { defineProps } from 'vue';
 import { Link } from '@inertiajs/vue3';
+import Pagination from './Pagination.vue';
 
 const props = defineProps({
   bookings: {
-    type: Array,
-    default: () => []
+    type: Object,
+    default: () => ({
+      data: [],
+      current_page: 1,
+      last_page: 1,
+    })
   }
 });
 
@@ -92,6 +106,19 @@ const formatDate = (dateString) => {
     year: 'numeric',
     month: 'long',
     day: 'numeric'
+  });
+};
+
+const formatPrice = (price, vehicle) => {
+    const currencySymbol = vehicle?.vendor_profile?.currency ?? '$'; // Default to '$' if missing
+    return `${currencySymbol}${price}`;
+};
+
+// Handle pagination
+const handlePageChange = (page) => {
+  router.get('/profile/bookings/confirmedbookings', { page }, {
+    preserveState: true,
+    replace: true,
   });
 };
 </script>

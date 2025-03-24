@@ -241,6 +241,10 @@ const data = {
           url: '/admin/settings/footer',
         },
         {
+          title: 'Footer Category',
+          url: '/admin/settings/footer-categories',
+        },
+        {
           title: 'FAQ',
           url: '/admin/settings/faq',
         },

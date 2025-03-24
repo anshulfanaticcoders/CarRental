@@ -57,6 +57,8 @@ class BookingController extends Controller
             'extras.*.price' => 'required|numeric|min:0',
         ]);
 
+        // Ensure extra_charges is set to 0 if not provided
+        $validatedData['extra_charges'] = $validatedData['extra_charges'] ?? 0;
         // Customer logic (unchanged from your implementation)
         $customer = Customer::where('email', $request->input('customer.email'))->first();
 
@@ -99,7 +101,7 @@ class BookingController extends Controller
             'total_days' => $request->input('total_days'),
             'base_price' => $request->input('base_price'),
             'preferred_day' => $request->input('preferred_day'),
-            'extra_charges' => $request->input('extra_charges', 0),
+            'extra_charges' => $validatedData['extra_charges'],
             'tax_amount' => $request->input('tax_amount', 0),
             'discount_amount' => $request->input('discount_amount', 0),
             'total_amount' => $request->input('total_amount'),
@@ -299,8 +301,8 @@ public function getConfirmedBookings()
             ->where('booking_status', 'confirmed')
             ->with('vehicle.images','vehicle.category', 'payments')
             ->orderBy('created_at', 'desc')
-            ->get() : 
-        collect();
+            ->paginate(3) : 
+            collect();
 
     return Inertia::render('Profile/Bookings/ConfirmedBookings', [
         'bookings' => $confirmedBookings

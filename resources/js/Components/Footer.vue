@@ -1,4 +1,4 @@
-<script setup >
+<script setup>
 import ApplicationLogo from "./ApplicationLogo.vue";
 import { Link } from "@inertiajs/vue3";
 import facebookLogo from "../../assets/Facebook.svg";
@@ -7,54 +7,54 @@ import instagramLogo from "../../assets/Instagram.svg";
 import paypalLogos from "../../assets/paymentIcons.svg";
 import { onMounted, ref } from "vue";
 
-// Fetch footer places data
+// Fetch footer places and categories data
 const footerPlaces = ref([]);
+const footerCategories = ref([]);
 
 onMounted(async () => {
   try {
-    const response = await axios.get('/api/footer-places');
-    footerPlaces.value = response.data;
+    const [placesResponse, categoriesResponse] = await Promise.all([
+      axios.get('/api/footer-places'),
+      axios.get('/api/footer-categories'),
+    ]);
+
+    footerPlaces.value = placesResponse.data;
+    footerCategories.value = categoriesResponse.data;
   } catch (error) {
-    console.error('Failed to fetch footer places:', error);
+    console.error('Failed to fetch footer data:', error);
   }
 });
 </script>
 
 <template>
-    <div
-        class="bg-customPrimaryColor py-customVerticalSpacing text-customPrimaryColor-foreground
-        max-[768px]:py-0"
-    >
+    <div class="bg-customPrimaryColor py-customVerticalSpacing text-customPrimaryColor-foreground
+        max-[768px]:py-0">
         <div class="container">
             <div class="column py-[3rem] flex justify-between gap-6
             max-[768px]:flex-col">
                 <div class="col w-[30%] flex flex-col gap-5
                 max-[768px]:w-full">
-                    <Link class="w-full" href="/"><ApplicationLogo logoColor="#FFFFFF" /></Link>
+                    <Link class="w-full" href="/">
+                    <ApplicationLogo logoColor="#FFFFFF" />
+                    </Link>
                     <div class="socialIcons flex gap-6">
                         <Link href=""><img :src="facebookLogo" alt="" /></Link>
                         <Link href=""><img :src="instagramLogo" alt="" /></Link>
                         <Link href=""><img :src="twitterLogo" alt="" /></Link>
                     </div>
                     <div class="column flex flex-col gap-4 mt-[1rem]">
-                <span class="text-[1.5rem] max-[768px]:text-[1.2rem]"
-                    >Subscribe to Newsletter</span
-                >
-                <div class="max-w-[450px]">
-                    <div class="relative">
-                        <input
-                            type="text"
-                            placeholder="Email address"
-                            class="bg-transparent rounded-[100px] text-white p-3 border-[1px] w-full pl-4"
-                        />
-                        <button
-                            class="h-full absolute right-0 button-tertiary w-[30%] max-[768px]:text-[0.875rem]"
-                        >
-                            Subscribe
-                        </button>
+                        <span class="text-[1.5rem] max-[768px]:text-[1.2rem]">Subscribe to Newsletter</span>
+                        <div class="max-w-[450px]">
+                            <div class="relative">
+                                <input type="text" placeholder="Email address"
+                                    class="bg-transparent rounded-[100px] text-white p-3 border-[1px] w-full pl-4" />
+                                <button
+                                    class="h-full absolute right-0 button-tertiary w-[30%] max-[768px]:text-[0.875rem]">
+                                    Subscribe
+                                </button>
+                            </div>
+                        </div>
                     </div>
-                </div>
-            </div>
                 </div>
                 <div class="col w-[50%] flex justify-between gap-10
                 max-[768px]:grid max-[768px]:grid-cols-2 max-[768px]:w-full max-[768px]:mt-5">
@@ -87,55 +87,47 @@ onMounted(async () => {
                         </ul>
                     </div>
                     <div class="col flex flex-col gap-8 max-[768px]:gap-4">
-    <label for="" class="text-[1.25rem] font-medium max-[768px]:text-[1rem]">Location</label>
-    <ul class="flex flex-col gap-4 max-[768px]:text-[0.875rem]">
-      <li v-for="place in footerPlaces" :key="place.id">
-        <Link :href="`/s?where=${encodeURIComponent(place.place_name + ', ' + place.city + ', ' + place.country)}&latitude=${place.latitude}&longitude=${place.longitude}&radius=10000`">
-          {{ place.place_name }}
-        </Link>
-      </li>
-      <!-- Fallback if no places are selected -->
-      <li v-if="footerPlaces.length === 0">
-        <Link href="/">No locations available</Link>
-      </li>
-    </ul>
-  </div>
-                    <div class="col flex flex-col gap-8 max-[768px]:gap-4">
-                        <label for="" class="text-[1.25rem] font-medium max-[768px]:text-[1rem]"
-                            >Rent By Type</label
-                        >
+                        <label for="" class="text-[1.25rem] font-medium max-[768px]:text-[1rem]">Location</label>
                         <ul class="flex flex-col gap-4 max-[768px]:text-[0.875rem]">
-                            <li>
-                                <Link href="">Car</Link>
+                            <li v-for="place in footerPlaces" :key="place.id">
+                                <Link
+                                    :href="`/s?where=${encodeURIComponent(place.place_name + ', ' + place.city + ', ' + place.country)}&latitude=${place.latitude}&longitude=${place.longitude}&radius=10000`">
+                                {{ place.place_name }}
+                                </Link>
                             </li>
-                            <li>
-                                <Link href="">SUV</Link>
-                            </li>
-                            <li>
-                                <Link href="">Sports</Link>
-                            </li>
-                            <li>
-                                <Link href="">Van</Link>
-                            </li>
-                            <li>
-                                <Link href="">TRuck</Link>
+                            <!-- Fallback if no places are selected -->
+                            <li v-if="footerPlaces.length === 0">
+                                <Link href="/">No locations available</Link>
                             </li>
                         </ul>
                     </div>
+                    <div class="col flex flex-col gap-8 max-[768px]:gap-4">
+            <label for="" class="text-[1.25rem] font-medium max-[768px]:text-[1rem]">Categories</label>
+            <ul class="flex flex-col gap-4 max-[768px]:text-[0.875rem]">
+              <li v-for="category in footerCategories" :key="category.id">
+                <Link :href="`/search/category/${category.id}`">{{ category.name }}</Link>
+              </li>
+              <!-- Fallback if no categories are selected -->
+              <li v-if="footerCategories.length === 0"><Link href="/">No categories available</Link></li>
+            </ul>
+          </div>
                 </div>
             </div>
         </div>
     </div>
 
     <div class="bg-customDarkBlackColor py-[2rem] text-white">
-     <div class="container flex justify-between items-center max-[768px]:flex-col max-[768px]:justify-center max-[768px]:gap-5">
-        <div class="column max-[768px]:flex">
-            <span class="text-[1.25rem] max-[768px]:text-[0.95rem] max-[768px]:w-full max-[768px]:text-center">Copyright @ 2025 Vrooem, All rights reserved.</span>
+        <div
+            class="container flex justify-between items-center max-[768px]:flex-col max-[768px]:justify-center max-[768px]:gap-5">
+            <div class="column max-[768px]:flex">
+                <span
+                    class="text-[1.25rem] max-[768px]:text-[0.95rem] max-[768px]:w-full max-[768px]:text-center">Copyright
+                    @ 2025 Vrooem, All rights reserved.</span>
+            </div>
+            <div class="column">
+                <img :src=paypalLogos alt="">
+            </div>
         </div>
-        <div class="column">
-            <img :src=paypalLogos alt="">
-        </div>
-     </div>
     </div>
 </template>
 

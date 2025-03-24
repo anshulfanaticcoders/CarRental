@@ -1,7 +1,7 @@
 <template>
   <MyProfileLayout>
     <div class="container mx-auto px-4 max-[768px]:px-0">
-      <p class="text-[1.5rem] text-customPrimaryColor font-bold mb-[2rem] bg-[#154D6A0D] rounded-[12px] px-[1rem] py-[1rem]">Completed Bookings</p>
+      <p class="text-[1.5rem] max-[768px]:text-[1.2rem] text-customPrimaryColor font-bold mb-[2rem] bg-[#154D6A0D] rounded-[12px] px-[1rem] py-[1rem]">Completed Bookings</p>
 
       <div v-if="bookings.data.length === 0" class="text-center text-gray-500">
         <div class="flex flex-col justify-center items-center">
@@ -23,7 +23,7 @@
           </div>
         </Link>
           <div class="w-[67%] flex flex-col gap-5 max-[768px]:w-full">
-            <div class="flex justify-between items-center max-[768px]:flex-wrap">
+            <div class="flex justify-between items-center max-[768px]:flex-wrap max-[768px]:gap-4">
               <div class="flex justify-between items-center gap-10 max-[768px]:gap-5">
                 <span class="text-[2rem] font-medium text-customPrimaryColor max-[768px]:text-[1.2rem]">{{ booking.vehicle.brand }}</span>
                 <span class="bg-customLightPrimaryColor p-3 rounded-[99px] text-[1rem] max-[768px]:text-[0.5rem]">{{ booking.vehicle?.category?.name }}</span>

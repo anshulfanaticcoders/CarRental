@@ -69,3 +69,4 @@ Route::get('/booking-success/details', [BookingController::class, 'getBookingDet
 Route::get('/recent-blogs', [BlogController::class, 'getRecentBlogs']);
 
 Route::get('/faqs', [FaqController::class, 'getFaqs']);
+

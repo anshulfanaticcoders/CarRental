@@ -80,6 +80,7 @@ const menus = [
       { name: "Profile", path: "/profile" },
       { name: "Travel Documents", path: "/user/documents" },
       { name: "Issued Payments", path: "/issued-payments" },
+      { name: "Register as vendor", path: "/vendor/register" },
     ],
   },
   {

@@ -2,7 +2,7 @@
     <MyProfileLayout>
       <div class="container mx-auto px-4 max-[768px]:px-0">
         <p
-          class="text-[1.5rem] text-customPrimaryColor font-bold mb-[2rem] bg-[#154D6A0D] rounded-[12px] px-[1rem] py-[1rem]">
+          class="text-[1.5rem] max-[768px]:text-[1.2rem] text-customPrimaryColor font-bold mb-[2rem] bg-[#154D6A0D] rounded-[12px] px-[1rem] py-[1rem]">
           Pending Bookings</p>
   
         <div v-if="bookings.data.length === 0" class="text-center text-gray-500">
@@ -24,12 +24,13 @@
               </div>
             </Link>
             <div class="w-[67%] flex flex-col gap-5 max-[768px]:w-full">
-              <div class="flex justify-between items-center max-[768px]:flex-wrap">
+              <div class="flex justify-between items-center max-[768px]:flex-wrap max-[768px]:gap-4">
                 <div class="flex justify-between items-center gap-10 max-[768px]:gap-5"><span
                     class="text-[2rem] font-medium text-customPrimaryColor max-[768px]:text-[1.2rem]">{{ booking.vehicle.brand
                     }}</span> <span class="bg-customLightPrimaryColor p-3 rounded-[99px] text-[1rem] max-[768px]:text-[0.5rem]">{{
                       booking.vehicle?.category.name
-                    }}</span></div>
+                    }}</span>
+                    </div>
                 <span class="bg-[#906F001A] text-[#906F00] px-[1.5rem] py-[0.75rem] rounded-[99px] max-[768px]:text-[0.75rem]">Booking
                   under progress</span>
               </div>
@@ -41,11 +42,6 @@
                 <span class="capitalize text-customLightGrayColor">{{ booking.vehicle.fuel }} .</span>
                 <span class="capitalize text-customLightGrayColor">{{ booking.vehicle.seating_capacity }}
                   Seats</span>
-              </div>
-  
-              <div class="flex items-end gap-2">
-                <img :src="walkIcon" alt="">
-                <span class="capitalize text-customLightGrayColor">10 KM away</span>
               </div>
   
               <div class="flex justify-between w-[70%] max-[768px]:w-full max-[768px]:flex-col max-[768px]:gap-5">
@@ -73,11 +69,11 @@
               <div>
                 <div>
                   <strong class="text-[1.5rem] font-medium" v-if="booking.preferred_day === 'day'">{{
-                    booking.vehicle.price_per_day }}</strong>
+                    formatPrice(booking.vehicle.price_per_day) }}</strong>
                   <strong class="text-[1.5rem] font-medium" v-if="booking.preferred_day === 'week'">{{
-                    booking.vehicle.price_per_week }}</strong>
+                    formatPrice(booking.vehicle.price_per_week) }}</strong>
                   <strong class="text-[1.5rem] font-medium" v-if="booking.preferred_day === 'month'">{{
-                    booking.vehicle.price_per_month }}</strong>
+                    formatPrice(booking.vehicle.price_per_month) }}</strong>
                 </div>
               </div>
             </div>
@@ -101,7 +97,6 @@
   import bookingstatusIcon from '../../../../assets/bookingstatusIcon.svg';
   import carIcon from '../../../../assets/carIcon.svg';
   import walkIcon from '../../../../assets/walking.svg';
-  import { defineProps } from 'vue';
   import { Link, usePage } from '@inertiajs/vue3';
   import Pagination from './Pagination.vue';
   import { ref } from 'vue';
@@ -123,4 +118,9 @@
       replace: true,
     });
   };
+
+  const formatPrice = (price, vehicle) => {
+    const currencySymbol = vehicle?.vendor_profile?.currency ?? '$'; // Default to '$' if missing
+    return `${currencySymbol}${price}`;
+};
   </script>

@@ -69,7 +69,7 @@ const formatPrice = (price, vehicle) => {
 
 <template>
     <MyProfileLayout>
-        <p class="text-[1.5rem] text-customPrimaryColor font-bold mb-[2rem] bg-[#154D6A0D] rounded-[12px] px-[1rem] py-[1rem]">
+        <p class="text-[1.5rem] max-[768px]:text-[1.2rem] text-customPrimaryColor font-bold mb-[2rem] bg-[#154D6A0D] rounded-[12px] px-[1rem] py-[1rem]">
             My Favorite Vehicles
         </p>
         <div v-if="favoriteVehicles.length === 0" class="text-gray-500">

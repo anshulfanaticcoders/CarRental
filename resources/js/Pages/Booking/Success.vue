@@ -213,8 +213,8 @@ const formatDate = (dateStr) => {
           class="rounded-[12px] sticky top-[2rem] bg-customPrimaryColor text-customPrimaryColor-foreground">
           <div class="flex flex-col justify-between gap-3 p-5">
             <img v-if="vehicle?.images"
-              :src="`/storage/${vehicle.images.find((image) => image.image_type === 'primary')?.image_path}`"
-              alt="Primary Image" class="w-full h-[200px] object-cover rounded-lg" />
+              :src="`${vehicle.images.find((image) => image.image_type === 'primary')?.image_url}`"
+              alt="Primary Image" class="w-full h-[250px] object-cover rounded-lg" />
             <div class="flex gap-5 items-center">
               <h4 class="max-[768px]:text-[1.2rem]">{{ vehicle?.brand }}</h4>
               <span
@@ -259,9 +259,9 @@ const formatDate = (dateStr) => {
                   </li>
                 </ul>
               </div>
-              <div class="flex justify-between">
-                <span>{{plan.plan_type }}</span>
-                <span>+ {{formatCurrency (plan.plan_value )}}</span>
+              <div v-if="plan" class="flex justify-between">
+                <span>{{ plan.plan_type }}</span>
+                <span>+ {{ formatCurrency(plan.plan_value) }}</span>
               </div>
             </div>
           </div>

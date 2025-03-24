@@ -72,7 +72,7 @@ onBeforeUnmount(() => {
 
     <div class="py-customVerticalSpacing flex gap-10 max-[768px]:pt-2">
       <!-- Sidebar container with improved transition classes -->
-      <div class="column sidebar sticky top-[3rem] sidebar-container pl-2" 
+      <div class="column sidebar sticky top-[3rem] sidebar-container px-2 max-[768px]:!pt-1" 
         :class="{
           'w-[20%]': !isSidebarCollapsed && !isMobile,
           'w-[80px]': isSidebarCollapsed && !isMobile,

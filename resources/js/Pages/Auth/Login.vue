@@ -39,7 +39,7 @@ const submit = () => {
         </div>
 
         <div class="ml-[10%] flex justify-between items-center gap-16 h-[100vh] sign_in
-        max-[768px]:flex-col max-[768px]:ml-0 max-[768px]:px-[1.5rem] max-[768px]:justify-center
+        max-[768px]:flex-col max-[768px]:ml-0 max-[768px]:px-[1.5rem] max-[768px]:justify-center relative
         ">
          <div class="column w-[40%] max-[768px]:w-full">
             <div class="text-center mb-[4rem] text-[#111111]">
@@ -101,7 +101,7 @@ const submit = () => {
         </form>
          </div>
 
-         <div class="column overflow-hidden h-full w-[40%] max-[768px]:w-full max-[768px]:absolute max-[768px]:-z-10">
+         <div class="column overflow-hidden h-full w-[40%] max-[768px]:w-full max-[768px]:absolute max-[768px]:top-0 max-[768px]:-z-10">
             <img :src = loginBg alt="" class="w-full h-full object-cover repeat-0 max-[768px]:brightness-50">
          </div>
         </div>

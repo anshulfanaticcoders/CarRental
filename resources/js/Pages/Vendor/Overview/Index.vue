@@ -38,7 +38,7 @@
                 <Card>
                     <CardHeader><CardTitle>Booking Overview</CardTitle></CardHeader>
                     <CardContent>
-                        <BarChart :data="bookingOverview" :categories="['completed', 'confirmed', 'pending', 'cancelled']"
+                        <BarChart class="vendor-overview-barchart" :data="bookingOverview" :categories="['completed', 'confirmed', 'pending', 'cancelled']"
                             index="name" :colors="['#10B981', '#153B4F', '#FFC633', '#EA3C3C']" stacked rounded-corners="4" />
                     </CardContent>
                 </Card>
@@ -95,3 +95,8 @@ const formatPrice = (price) => {
 };
 
 </script>
+
+
+<style scoped>
+
+</style>

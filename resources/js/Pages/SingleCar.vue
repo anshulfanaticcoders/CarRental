@@ -597,7 +597,7 @@ const maxPickupDate = computed(() => {
 
 const handleDateInput = (event, type) => {
     const selectedDate = event.target.value;
-    const endDate = type === 'pickup' ? form.value.date_to : form.value.date_from;
+    const otherDate = type === 'pickup' ? form.value.date_to : form.value.date_from;
 
     // Check if selected date falls within a booked or blocked range
     if (isDateBooked(selectedDate)) {
@@ -608,7 +608,7 @@ const handleDateInput = (event, type) => {
         }
 
         const availableDates = findNextAvailableDates(selectedDate);
-        toast.error(`Vehicle is not available on ${selectedDate}.`);
+        // toast.error(`Vehicle is not available on ${selectedDate}.`);
 
         if (availableDates.length) {
             toast.info(`Next available date: ${availableDates[0]}`);
@@ -617,12 +617,28 @@ const handleDateInput = (event, type) => {
     }
 
     // Check if the entire selected range is already booked or blocked
-    if (type === 'pickup' && endDate && isDateRangeBooked(selectedDate, endDate)) {
-        form.value.date_from = '';
-        toast.error(`Vehicle already booked from ${blockedStartDate} to ${blockedEndDate}.`);
-    } else if (type === 'return' && endDate && isDateRangeBooked(endDate, selectedDate)) {
-        form.value.date_to = '';
-        toast.error(`Vehicle already booked from ${blockedStartDate} to ${blockedEndDate}.`);
+    if (otherDate) {
+        const startDate = type === 'pickup' ? selectedDate : otherDate;
+        const endDate = type === 'pickup' ? otherDate : selectedDate;
+
+        // Find conflicting booking
+        const conflictingBooking = findConflictingBooking(startDate, endDate);
+
+        if (conflictingBooking) {
+            if (type === 'pickup') {
+                form.value.date_from = '';
+            } else {
+                form.value.date_to = '';
+            }
+
+            // Use the actual conflicting dates in the error message
+            const conflictStart = new Date(conflictingBooking.pickup_date || conflictingBooking.blocking_start_date)
+                .toISOString().split('T')[0];
+            const conflictEnd = new Date(conflictingBooking.return_date || conflictingBooking.blocking_end_date)
+                .toISOString().split('T')[0];
+
+            toast.error(`Vehicle already booked from ${conflictStart} to ${conflictEnd}.`);
+        }
     }
 
     // Reset return date when a new pickup date is selected
@@ -630,6 +646,94 @@ const handleDateInput = (event, type) => {
         form.value.date_to = '';
     }
 };
+
+// Helper function to find a conflicting booking
+const findConflictingBooking = (startDateStr, endDateStr) => {
+    const startDate = new Date(startDateStr);
+    const endDate = new Date(endDateStr);
+    startDate.setHours(0, 0, 0, 0);
+    endDate.setHours(0, 0, 0, 0);
+
+    // Check booked dates
+    const conflictingBooked = bookedDates.value.find(({ pickup_date, return_date }) => {
+        const pickupDate = new Date(pickup_date);
+        const returnDate = new Date(return_date);
+        pickupDate.setHours(0, 0, 0, 0);
+        returnDate.setHours(0, 0, 0, 0);
+        return (startDate <= returnDate && endDate >= pickupDate);
+    });
+
+    if (conflictingBooked) return conflictingBooked;
+
+    // Check blocked dates
+    const conflictingBlocked = blockedDates.value.find(({ blocking_start_date, blocking_end_date }) => {
+        const blockStartDate = new Date(blocking_start_date);
+        const blockEndDate = new Date(blocking_end_date);
+        blockStartDate.setHours(0, 0, 0, 0);
+        blockEndDate.setHours(0, 0, 0, 0);
+        return (startDate <= blockEndDate && endDate >= blockStartDate);
+    });
+
+    return conflictingBlocked;
+};
+
+// Add this method
+const validateInitialDates = () => {
+    // Skip if no dates are prefilled
+    if (!form.value.date_from || !form.value.date_to) return;
+
+    const startDate = form.value.date_from;
+    const endDate = form.value.date_to;
+
+    // Check if any single date is booked
+    if (isDateBooked(startDate)) {
+        const availableDates = findNextAvailableDates(startDate);
+        // toast.error(`Vehicle is not available on ${startDate}.`);
+        if (availableDates.length) {
+            toast.info(`Next available date: ${availableDates[0]}`);
+        }
+        form.value.date_from = '';
+        form.value.date_to = '';
+        return;
+    }
+
+    if (isDateBooked(endDate)) {
+        const availableDates = findNextAvailableDates(endDate);
+        // toast.error(`Vehicle is not available on ${endDate}.`);
+        if (availableDates.length) {
+            toast.info(`Next available date: ${availableDates[0]}`);
+        }
+        form.value.date_to = '';
+        return;
+    }
+
+    // Check if the entire range conflicts
+    const conflictingBooking = findConflictingBooking(startDate, endDate);
+    if (conflictingBooking) {
+        const conflictStart = new Date(conflictingBooking.pickup_date || conflictingBooking.blocking_start_date)
+            .toISOString().split('T')[0];
+        const conflictEnd = new Date(conflictingBooking.return_date || conflictingBooking.blocking_end_date)
+            .toISOString().split('T')[0];
+
+        toast.error(`Selected dates conflict with existing booking from ${conflictStart} to ${conflictEnd}.`);
+        form.value.date_from = '';
+        form.value.date_to = '';
+    } else {
+        // If dates are valid, also validate against rental package rules
+        validateDates();
+    }
+};
+
+// Call this in your component's created/mounted hook
+onMounted(() => {
+    validateInitialDates();
+});
+
+// You could also watch for changes to prefilled data
+watch(() => props.booked_dates, () => {
+    bookedDates.value = props.booked_dates || [];
+    validateInitialDates();
+});
 
 
 const findNextAvailableDates = (fromDate, count = 5) => {
@@ -647,6 +751,7 @@ const findNextAvailableDates = (fromDate, count = 5) => {
 
     return availableDates;
 };
+
 
 const minReturnDate = computed(() => {
     if (!form.value.date_from) return getCurrentDate();
@@ -859,7 +964,8 @@ const openLightbox = (index) => {
                             @click="openLightbox(0)">
                             <img v-if="!isLoading && vehicle?.images" :src="primaryImage?.image_url" alt="Primary Image"
                                 class="w-full h-full object-cover rounded-lg" />
-                            <Skeleton v-else class="w-full h-[500px] object-cover rounded-lg max-[768px]:w-full max-[768px]:max-h-[200px]" />
+                            <Skeleton v-else
+                                class="w-full h-[500px] object-cover rounded-lg max-[768px]:w-full max-[768px]:max-h-[200px]" />
                         </div>
 
                         <!-- Gallery images -->
@@ -916,7 +1022,7 @@ const openLightbox = (index) => {
                                             class="text-customLightGrayColor text-[1rem] max-[768px]:text-[0.75rem]">People</span>
                                         <span class="font-medium text-[1rem] max-[768px]:text-[0.85rem]">{{
                                             vehicle?.seating_capacity
-                                        }}</span>
+                                            }}</span>
                                     </div>
                                 </div>
                                 <div class="feature-item items-center flex gap-3">
@@ -927,7 +1033,7 @@ const openLightbox = (index) => {
                                             class="text-customLightGrayColor text-[1rem] max-[768px]:text-[0.75rem]">Doors</span>
                                         <span class="font-medium text-[1rem] max-[768px]:text-[0.85rem]">{{
                                             vehicle?.number_of_doors
-                                        }}</span>
+                                            }}</span>
                                     </div>
                                 </div>
                                 <div class="feature-item items-center flex gap-3">
@@ -938,7 +1044,7 @@ const openLightbox = (index) => {
                                             class="text-customLightGrayColor text-[1rem] max-[768px]:text-[0.75rem]">Luggage</span>
                                         <span class="font-medium text-[1rem] max-[768px]:text-[0.85rem]">{{
                                             vehicle?.luggage_capacity
-                                        }}</span>
+                                            }}</span>
                                     </div>
                                 </div>
                                 <div class="feature-item items-center flex gap-3">
@@ -949,7 +1055,7 @@ const openLightbox = (index) => {
                                             class="text-customLightGrayColor text-[1rem] max-[768px]:text-[0.75rem]">Transmission</span>
                                         <span class="font-medium capitalize max-[768px]:text-[0.85rem]">{{
                                             vehicle?.transmission
-                                        }}</span>
+                                            }}</span>
                                     </div>
                                 </div>
                                 <div class="feature-item items-center flex gap-3">
@@ -961,7 +1067,7 @@ const openLightbox = (index) => {
                                             Type</span>
                                         <span class="font-medium capitalize max-[768px]:text-[0.85rem]">{{
                                             vehicle?.fuel
-                                        }}</span>
+                                            }}</span>
                                     </div>
                                 </div>
                                 <div class="feature-item items-center flex gap-3">
@@ -982,7 +1088,7 @@ const openLightbox = (index) => {
                                             class="text-customLightGrayColor text-[1rem] max-[768px]:text-[0.75rem]">Co2
                                             Emission</span>
                                         <span class="font-medium text-[1rem] max-[768px]:text-[0.85rem]">{{ vehicle?.co2
-                                        }} (g/km)</span>
+                                            }} (g/km)</span>
                                     </div>
                                 </div>
                                 <div class="feature-item items-center flex gap-3">
@@ -1026,89 +1132,106 @@ const openLightbox = (index) => {
                             <div id="map" class="h-full rounded-lg mt-4"></div>
                         </div>
 
-                        <div class="mt-[5rem] benefits max-[768px]:mt-[2rem]">
-                            <span class="text-[2rem] font-medium mb-5 inline-block max-[768px]:text-[1rem]">Rental
-                                Conditions & Banefits</span>
-                            <ul class="vehicle-benefits p-4 border rounded-lg shadow-sm bg-white flex flex-col gap-2">
-                                <!-- Limited Kilometer Display -->
-                                <li v-if="vehicle?.benefits?.limited_km_per_day" class="flex items-center gap-1">
-                                    <p
-                                        class="text-[1.2rem] max-[768px]:text-[0.95rem] text-customPrimaryColor font-medium">
-                                        Limited Kilometer Per Day: {{ vehicle?.benefits?.limited_km_per_day_range }} km
-                                    </p>
-                                    <span class="text-customDarkBlackColor font-medium">
-                                        -> After that {{ formatPrice(vehicle?.benefits?.price_per_km_per_day) }}/km will
-                                        be charged.
-                                    </span>
-                                </li>
-                                <li v-if="vehicle?.benefits?.limited_km_per_week" class="flex items-center gap-1">
-                                    <p
-                                        class="text-[1.2rem] max-[768px]:text-[0.95rem] text-customPrimaryColor font-medium">
-                                        Limited Kilometer Per Week: {{ vehicle?.benefits?.limited_km_per_week_range }}
-                                        km
-                                    </p>
-                                    <span class="text-customDarkBlackColor font-medium">
-                                        -> After that {{ formatPrice(vehicle?.benefits?.price_per_km_per_week) }}/km
-                                        will be charged.
-                                    </span>
-                                </li>
-                                <li v-if="vehicle?.benefits?.limited_km_per_month" class="flex items-center gap-1">
-                                    <p
-                                        class="text-[1.2rem] max-[768px]:text-[0.95rem] text-customPrimaryColor font-medium">
-                                        Limited Kilometer Per Month: {{ vehicle?.benefits?.limited_km_per_month_range }}
-                                        km
-                                    </p>
-                                    <span class="text-customDarkBlackColor font-medium">
-                                        -> After that {{ formatPrice(vehicle?.benefits?.price_per_km_per_month) }}/km
-                                        will be charged.
-                                    </span>
-                                </li>
+                        <div class="mt-8 md:mt-16 max-w-4xl mx-auto">
+                            <h2 class="text-xl md:text-2xl lg:text-3xl font-medium mb-4 md:mb-6">Rental Conditions &
+                                Benefits</h2>
 
-                                <!-- Cancellation Availability Display -->
-                                <li v-if="vehicle?.benefits?.cancellation_available_per_day"
-                                    class="flex items-center gap-1">
-                                    <p
-                                        class="text-[1.2rem] max-[768px]:text-[0.95rem] text-customPrimaryColor font-medium">
-                                        Cancellation Available (for daily package): {{
-                                            vehicle?.benefits?.cancellation_available_per_day_date }} days before rental
-                                        date
-                                    </p>
-                                </li>
-                                <li v-if="vehicle?.benefits?.cancellation_available_per_week"
-                                    class="flex items-center gap-1">
-                                    <p
-                                        class="text-[1.2rem] max-[768px]:text-[0.95rem] text-customPrimaryColor font-medium">
-                                        Cancellation Available (for weekly package): {{
-                                            vehicle?.benefits?.cancellation_available_per_week_date }} days before rental
-                                        date
-                                    </p>
-                                </li>
-                                <li v-if="vehicle?.benefits?.cancellation_available_per_month"
-                                    class="flex items-center gap-1">
-                                    <p
-                                        class="text-[1.2rem] max-[768px]:text-[0.95rem] text-customPrimaryColor font-medium">
-                                        Cancellation Available (for monthly package): {{
-                                            vehicle?.benefits?.cancellation_available_per_month_date }} days before rental
-                                        date
-                                    </p>
-                                </li>
+                            <div class="p-4 md:p-6 border rounded-lg shadow-sm bg-white">
+                                <!-- If there are benefits, display them -->
+                                <div v-if="vehicle?.benefits && Object.keys(vehicle?.benefits).length > 0"
+                                    class="space-y-4">
+                                    <!-- Kilometer Limitations -->
+                                    <div v-if="vehicle?.benefits?.limited_km_per_day || vehicle?.benefits?.limited_km_per_week || vehicle?.benefits?.limited_km_per_month"
+                                        class="border-b pb-4">
+                                        <h3 class="text-lg md:text-xl font-medium mb-3 text-gray-800">Distance
+                                            Limitations</h3>
 
-                                <!-- Minimum Driver Age -->
-                                <li v-if="vehicle?.benefits?.minimum_driver_age" class="flex items-center gap-1">
-                                    <p
-                                        class="text-[1.2rem] max-[768px]:text-[0.95rem] text-customPrimaryColor font-medium">
-                                        Minimum Driver Age: {{ vehicle?.benefits?.minimum_driver_age }} years
-                                    </p>
-                                </li>
+                                        <div class="space-y-3">
+                                            <div v-if="vehicle?.benefits?.limited_km_per_day"
+                                                class="flex flex-col md:flex-row md:items-center gap-1 md:gap-2">
+                                                <span class="font-medium text-blue-700">Daily Limit:</span>
+                                                <span class="text-base">{{ vehicle?.benefits?.limited_km_per_day_range
+                                                    }} km</span>
+                                                <span class="text-gray-700">
+                                                    (Extra: {{ formatPrice(vehicle?.benefits?.price_per_km_per_day)
+                                                    }}/km)
+                                                </span>
+                                            </div>
+
+                                            <div v-if="vehicle?.benefits?.limited_km_per_week"
+                                                class="flex flex-col md:flex-row md:items-center gap-1 md:gap-2">
+                                                <span class="font-medium text-blue-700">Weekly Limit:</span>
+                                                <span class="text-base">{{ vehicle?.benefits?.limited_km_per_week_range
+                                                    }} km</span>
+                                                <span class="text-gray-700">
+                                                    (Extra: {{ formatPrice(vehicle?.benefits?.price_per_km_per_week)
+                                                    }}/km)
+                                                </span>
+                                            </div>
+
+                                            <div v-if="vehicle?.benefits?.limited_km_per_month"
+                                                class="flex flex-col md:flex-row md:items-center gap-1 md:gap-2">
+                                                <span class="font-medium text-blue-700">Monthly Limit:</span>
+                                                <span class="text-base">{{ vehicle?.benefits?.limited_km_per_month_range
+                                                    }} km</span>
+                                                <span class="text-gray-700">
+                                                    (Extra: {{ formatPrice(vehicle?.benefits?.price_per_km_per_month)
+                                                    }}/km)
+                                                </span>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <!-- Cancellation Policies -->
+                                    <div v-if="vehicle?.benefits?.cancellation_available_per_day || vehicle?.benefits?.cancellation_available_per_week || vehicle?.benefits?.cancellation_available_per_month"
+                                        class="border-b pb-4">
+                                        <h3 class="text-lg md:text-xl font-medium mb-3 text-gray-800">Cancellation
+                                            Policy</h3>
+
+                                        <div class="space-y-3">
+                                            <div v-if="vehicle?.benefits?.cancellation_available_per_day"
+                                                class="flex flex-col md:flex-row md:items-center gap-1 md:gap-2">
+                                                <span class="font-medium text-blue-700">Daily Package:</span>
+                                                <span class="text-base">Free cancellation up to {{
+                                                    vehicle?.benefits?.cancellation_available_per_day_date }} days
+                                                    before rental</span>
+                                            </div>
+
+                                            <div v-if="vehicle?.benefits?.cancellation_available_per_week"
+                                                class="flex flex-col md:flex-row md:items-center gap-1 md:gap-2">
+                                                <span class="font-medium text-blue-700">Weekly Package:</span>
+                                                <span class="text-base">Free cancellation up to {{
+                                                    vehicle?.benefits?.cancellation_available_per_week_date }} days
+                                                    before rental</span>
+                                            </div>
+
+                                            <div v-if="vehicle?.benefits?.cancellation_available_per_month"
+                                                class="flex flex-col md:flex-row md:items-center gap-1 md:gap-2">
+                                                <span class="font-medium text-blue-700">Monthly Package:</span>
+                                                <span class="text-base">Free cancellation up to {{
+                                                    vehicle?.benefits?.cancellation_available_per_month_date }} days
+                                                    before rental</span>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <!-- Other Requirements -->
+                                    <div v-if="vehicle?.benefits?.minimum_driver_age">
+                                        <h3 class="text-lg md:text-xl font-medium mb-3 text-gray-800">Requirements</h3>
+
+                                        <div class="flex flex-col md:flex-row md:items-center gap-1 md:gap-2">
+                                            <span class="font-medium text-blue-700">Minimum Driver Age:</span>
+                                            <span class="text-base">{{ vehicle?.benefits?.minimum_driver_age }}
+                                                years</span>
+                                        </div>
+                                    </div>
+                                </div>
 
                                 <!-- Fallback Message if No Benefits Exist -->
-                                <span v-else-if="!vehicle?.benefits || Object.keys(vehicle?.benefits).length === 0">
-                                    <p class="text-gray-500 text-lg max-[768px]:text-[0.875rem]">No additional benefits available for this vehicle.
-                                    </p>
-                                </span>
-                            </ul>
-
-
+                                <p v-else class="text-gray-500 text-base md:text-lg">
+                                    No additional benefits available for this vehicle.
+                                </p>
+                            </div>
                         </div>
 
                         <div class="mt-[5rem] max-[768px]:mt-[2rem]">
@@ -1118,9 +1241,10 @@ const openLightbox = (index) => {
                                 <img :src="vehicle.vendor_profile?.avatar
                                     ? `${vehicle.vendor_profile.avatar}`
                                     : '/storage/avatars/default-avatar.svg'" alt="User Avatar"
-                                    class="w-[100px] h-[100px] max-[768px]:w-[60px] max-[768px]:h-[60px] rounded-full object-cover" 
-                                    v-if="!isLoading"/>
-                                     <Skeleton v-else class="w-[100px] h-[100px] max-[768px]:w-[60px] max-[768px]:h-[60px] rounded-full object-cover" />
+                                    class="w-[100px] h-[100px] max-[768px]:w-[60px] max-[768px]:h-[60px] rounded-full object-cover"
+                                    v-if="!isLoading" />
+                                <Skeleton v-else
+                                    class="w-[100px] h-[100px] max-[768px]:w-[60px] max-[768px]:h-[60px] rounded-full object-cover" />
                                 <div>
                                     <h4
                                         class="text-customPrimaryColor text-[1.75rem] font-medium max-[768px]:text-[1rem]">
@@ -1222,7 +1346,7 @@ const openLightbox = (index) => {
                                                             <div class="flex items-center gap-3 mb-2">
                                                                 <component :is="pkg.icon" class="w-6 h-6" />
                                                                 <span class="font-semibold text-[1rem]">{{ pkg.label
-                                                                    }}</span>
+                                                                }}</span>
                                                             </div>
                                                             <p class="text-sm text-gray-600 mb-2">{{ pkg.description }}
                                                             </p>
@@ -1362,57 +1486,63 @@ const openLightbox = (index) => {
         </section>
 
         <section class="" style="background: linear-gradient(to bottom, #FFFFFF, #F8F8F8);">
-    <div class="reviews-section mt-[3rem] full-w-container max-[768px]:mt-0">
-        <span class="text-[2rem] font-bold">Overall Rating</span>
+            <div class="reviews-section mt-[3rem] full-w-container max-[768px]:mt-0">
+                <span class="text-[2rem] font-bold">Overall Rating</span>
 
-        <div v-if="isLoading">
-            <div class="flex gap-4">
-                <Skeleton v-for="n in 3" :key="n" class="h-[15rem] w-[30%] rounded-lg" />
-            </div>
-        </div>
-        <div v-else-if="reviews && reviews.length > 0">
-            <Carousel class="relative w-full py-[4rem] px-[2rem] max-[768px]:px-0" :plugins="[plugin]"
-                @mouseenter="plugin.stop" @mouseleave="[plugin.reset(), plugin.play(), console.log('Running')]">
-                <CarouselContent class="max-[768px]:px-5">
-                    <CarouselItem v-for="review in reviews" :key="review.id" class="pl-1 md:basis-1/2 lg:basis-1/3 ml-[1rem]">
-                        <Card class="h-[15rem]">
-                            <CardContent>
-                                <div class="review-item px-[1rem] py-[2rem] h-full">
-                                    <div class="flex items-center gap-3">
-                                        <img :src="review.user.profile?.avatar ? `${review.user.profile?.avatar}` : '/storage/avatars/default-avatar.svg'"
-                                            alt="User Avatar" class="w-[50px] h-[50px] rounded-full object-cover" />
-                                        <div>
-                                            <h4 class="text-customPrimaryColor font-medium max-[768px]:text-[1.1rem]">
-                                                {{ review.user.first_name }} {{ review.user.last_name }}
-                                            </h4>
-                                            <div class="flex items-center gap-1">
-                                                <div class="star-rating">
-                                                    <img v-for="n in 5" :key="n" :src="getStarIcon(review.rating, n)"
-                                                        :alt="getStarAltText(review.rating, n)" class="w-[20px] h-[20px]" />
+                <div v-if="isLoading">
+                    <div class="flex gap-4">
+                        <Skeleton v-for="n in 3" :key="n" class="h-[15rem] w-[30%] rounded-lg" />
+                    </div>
+                </div>
+                <div v-else-if="reviews && reviews.length > 0">
+                    <Carousel class="relative w-full py-[4rem] px-[2rem] max-[768px]:px-0" :plugins="[plugin]"
+                        @mouseenter="plugin.stop" @mouseleave="[plugin.reset(), plugin.play(), console.log('Running')]">
+                        <CarouselContent class="max-[768px]:px-5">
+                            <CarouselItem v-for="review in reviews" :key="review.id"
+                                class="pl-1 md:basis-1/2 lg:basis-1/3 ml-[1rem]">
+                                <Card class="h-[15rem]">
+                                    <CardContent>
+                                        <div class="review-item px-[1rem] py-[2rem] h-full">
+                                            <div class="flex items-center gap-3">
+                                                <img :src="review.user.profile?.avatar ? `${review.user.profile?.avatar}` : '/storage/avatars/default-avatar.svg'"
+                                                    alt="User Avatar"
+                                                    class="w-[50px] h-[50px] rounded-full object-cover" />
+                                                <div>
+                                                    <h4
+                                                        class="text-customPrimaryColor font-medium max-[768px]:text-[1.1rem]">
+                                                        {{ review.user.first_name }} {{ review.user.last_name }}
+                                                    </h4>
+                                                    <div class="flex items-center gap-1">
+                                                        <div class="star-rating">
+                                                            <img v-for="n in 5" :key="n"
+                                                                :src="getStarIcon(review.rating, n)"
+                                                                :alt="getStarAltText(review.rating, n)"
+                                                                class="w-[20px] h-[20px]" />
+                                                        </div>
+                                                        <span>{{ review.rating }}</span>
+                                                    </div>
                                                 </div>
-                                                <span>{{ review.rating }}</span>
+                                            </div>
+                                            <p class="mt-2 max-[768px]:text-[0.875rem]">{{ review.review_text }}</p>
+                                            <div v-if="review.reply_text"
+                                                class="mt-2 reply-text border-[1px] rounded-[0.75em] px-[1rem] py-[1rem] bg-[#f5f5f5]">
+                                                <p class="text-gray-600">Vendor Reply:</p>
+                                                <p>{{ review.reply_text }}</p>
                                             </div>
                                         </div>
-                                    </div>
-                                    <p class="mt-2 max-[768px]:text-[0.875rem]">{{ review.review_text }}</p>
-                                    <div v-if="review.reply_text" class="mt-2 reply-text border-[1px] rounded-[0.75em] px-[1rem] py-[1rem] bg-[#f5f5f5]">
-                                        <p class="text-gray-600">Vendor Reply:</p>
-                                        <p>{{ review.reply_text }}</p>
-                                    </div>
-                                </div>
-                            </CardContent>
-                        </Card>
-                    </CarouselItem>
-                </CarouselContent>
-                <CarouselPrevious />
-                <CarouselNext />
-            </Carousel>
-        </div>
-        <div v-else class="mt-[2rem] pb-[3rem]">
-            <p>No reviews yet.</p>
-        </div>
-    </div>
-</section>
+                                    </CardContent>
+                                </Card>
+                            </CarouselItem>
+                        </CarouselContent>
+                        <CarouselPrevious />
+                        <CarouselNext />
+                    </Carousel>
+                </div>
+                <div v-else class="mt-[2rem] pb-[3rem]">
+                    <p>No reviews yet.</p>
+                </div>
+            </div>
+        </section>
 
         <section class="full-w-container py-customVerticalSpacing">
             <div
@@ -1422,8 +1552,9 @@ const openLightbox = (index) => {
                         ? `${vehicle.vendor_profile.avatar}`
                         : '/storage/avatars/default-avatar.svg'" alt="User Avatar"
                         class="w-[100px] h-[100px] max-[768px]:w-[60px] max-[768px]:h-[60px] rounded-full object-cover"
-                         v-if="!isLoading"/>
-                        <Skeleton v-else class="w-[100px] h-[100px] max-[768px]:w-[60px] max-[768px]:h-[60px] rounded-full object-cover" />
+                        v-if="!isLoading" />
+                    <Skeleton v-else
+                        class="w-[100px] h-[100px] max-[768px]:w-[60px] max-[768px]:h-[60px] rounded-full object-cover" />
 
                     <h4 class="text-customPrimaryColor text-[1.75rem] font-medium max-[768px]:text-[1.2rem]">
                         {{ vehicle.user.first_name }} {{ vehicle.user.last_name }}
@@ -1558,8 +1689,8 @@ const openLightbox = (index) => {
     }
 
     #map {
-    height: 200px;
-}
+        height: 200px;
+    }
 
 }
 </style>
