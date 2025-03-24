@@ -133,5 +133,98 @@ class SearchController extends Controller
             'categories' => $categories,
         ]);
     }
+
+     // New function to handle category-based search
+     public function searchByCategory(Request $request, $category_id)
+     {
+         $validated = $request->validate([
+             'seating_capacity' => 'nullable|integer',
+             'brand' => 'nullable|string',
+             'transmission' => 'nullable|string|in:automatic,manual',
+             'fuel' => 'nullable|string|in:petrol,diesel,electric',
+             'price_range' => 'nullable|string',
+             'color' => 'nullable|string',
+             'mileage' => 'nullable|string',
+             'date_from' => 'nullable|date',
+             'date_to' => 'nullable|date|after:date_from',
+             'where' => 'nullable|string',
+             'package_type' => 'nullable|string|in:day,week,month',
+         ]);
+ 
+         // Fetch filter options
+         $brands = Vehicle::distinct('brand')->pluck('brand');
+         $colors = Vehicle::distinct('color')->pluck('color');
+         $seatingCapacities = Vehicle::distinct('seating_capacity')->pluck('seating_capacity');
+ 
+         // Base query
+         $query = Vehicle::query()->where('category_id', $category_id)->whereIn('status', ['available', 'rented']);
+ 
+         // Apply filters
+         if (!empty($validated['seating_capacity'])) {
+             $query->where('seating_capacity', $validated['seating_capacity']);
+         }
+         if (!empty($validated['brand'])) {
+             $query->where('brand', $validated['brand']);
+         }
+         if (!empty($validated['transmission'])) {
+             $query->where('transmission', $validated['transmission']);
+         }
+         if (!empty($validated['fuel'])) {
+             $query->where('fuel', $validated['fuel']);
+         }
+         if (!empty($validated['price_range'])) {
+             $range = explode('-', $validated['price_range']);
+             $query->whereBetween('price_per_day', [(int) $range[0], (int) $range[1]]);
+         }
+         if (!empty($validated['color'])) {
+             $query->where('color', $validated['color']);
+         }
+         if (!empty($validated['mileage'])) {
+             $range = explode('-', $validated['mileage']);
+             $query->whereBetween('mileage', [(int) $range[0], (int) $range[1]]);
+         }
+         if (!empty($validated['where'])) {
+             $locationParts = array_map('trim', explode(',', $validated['where']));
+             $query->where(function ($q) use ($locationParts) {
+                 foreach ($locationParts as $part) {
+                     $searchTerm = '%' . trim($part) . '%';
+                     $q->orWhere('location', 'like', $searchTerm);
+                 }
+             });
+         }
+         $query->with('images', 'bookings', 'vendorProfile', 'benefits');
+ 
+         // Package type filter
+         if (!empty($validated['package_type'])) {
+             switch ($validated['package_type']) {
+                 case 'week':
+                     $query->whereNotNull('price_per_week')->orderBy('price_per_week');
+                     break;
+                 case 'month':
+                     $query->whereNotNull('price_per_month')->orderBy('price_per_month');
+                     break;
+                 default:
+                     $query->whereNotNull('price_per_day')->orderBy('price_per_day');
+                     break;
+             }
+         }
+ 
+         // Paginate results
+         $vehicles = $query->paginate(4)->withQueryString();
+ 
+         // Fetch categories
+         $categories = VehicleCategory::all();
+ 
+         // Return Inertia response
+         return Inertia::render('SearchResults', [
+             'vehicles' => $vehicles,
+             'filters' => $validated,
+             'pagination_links' => $vehicles->links()->toHtml(),
+             'brands' => $brands,
+             'colors' => $colors,
+             'seatingCapacities' => $seatingCapacities,
+             'categories' => $categories,
+         ]);
+     }
 }
 

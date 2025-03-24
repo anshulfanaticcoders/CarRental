@@ -60,7 +60,8 @@ const form = useForm({
 
 // Debounced filter submission
 const submitFilters = debounce(() => {
-    form.get('/s', {
+    const endpoint = form.category_id ? `/search/category/${form.category_id}` : '/s';
+    form.get(endpoint, {
         preserveState: true,
         preserveScroll: true,
         onSuccess: (response) => {
@@ -682,7 +683,7 @@ const applyFilters = () => {
                         <div class="flex justify-between mb-3">
                             <div>
                                 <span v-if="vehicle.status === 'available'"
-                                    class="capitalize bg-green-200 text-customPrimaryColor rounded-[99px] py-1 px-3 font-medium">
+                                    class="capitalize bg-green-200 text-customPrimaryColor rounded-[99px] py-1 px-3 font-medium max-[768px]:text-[0.875rem]">
                                     Available
                                 </span>
 
@@ -719,20 +720,20 @@ const applyFilters = () => {
                                     (image) =>
                                         image.image_type === 'primary'
                                 )?.image_url
-                                    }`" alt="Primary Image" class="w-full h-[250px] object-cover rounded-lg" />
-                                <span class="bg-[#f5f5f5] inline-block px-8 py-2 text-center rounded-[40px]">
+                                    }`" alt="Primary Image" class="w-full h-[250px] object-cover rounded-lg max-[768px]:h-[200px]" />
+                                <span class="bg-[#f5f5f5] inline-block px-8 py-2 text-center rounded-[40px] max-[768px]:text-[0.95rem]">
                                     {{ vehicle.model }}
                                 </span>
                             </div>
 
                             <div class="column mt-[2rem]">
-                                <h5 class="font-medium text-[1.5rem] text-customPrimaryColor">
+                                <h5 class="font-medium text-[1.5rem] text-customPrimaryColor max-[768px]:text-[1.2rem]">
                                     {{ vehicle.brand }}
                                 </h5>
                                 <div class="car_short_info mt-[1rem] flex gap-3">
                                     <img :src="carIcon" alt="" />
                                     <div class="features">
-                                        <span class="capitalize text-[1.15rem]">{{ vehicle.transmission }} .
+                                        <span class="capitalize text-[1.15rem] max-[768px]:text-[1rem]">{{ vehicle.transmission }} .
                                             {{ vehicle.fuel }} .
                                             {{
                                                 vehicle.seating_capacity
@@ -743,7 +744,7 @@ const applyFilters = () => {
                                 <div class="extra_details flex gap-5 mt-[1rem]">
 
                                     <div class="col flex gap-3">
-                                        <img :src="mileageIcon" alt="" /><span class="text-[1.15rem]">{{ vehicle.mileage
+                                        <img :src="mileageIcon" alt="" /><span class="text-[1.15rem] max-[768px]:text-[0.95rem]">{{ vehicle.mileage
                                         }}km/d</span>
                                     </div>
                                 </div>
@@ -834,11 +835,11 @@ const applyFilters = () => {
 
                                 <div class="mt-[2rem] flex justify-between items-center">
                                     <div>
-                                        <span class="text-customPrimaryColor text-[1.875rem] font-medium">{{
+                                        <span class="text-customPrimaryColor text-[1.875rem] font-medium max-[768px]:text-[1.3rem] max-[768px]:font-bold">{{
                                             vehicle.vendor_profile.currency }}{{
                                                 vehicle[priceField] }}</span><span>/{{ priceUnit }}</span>
                                     </div>
-                                    <img :src="goIcon" alt="" />
+                                    <img :src="goIcon" alt="" class="max-[768px]:w-[35px]"/>
                                 </div>
                             </div>
                         </a>

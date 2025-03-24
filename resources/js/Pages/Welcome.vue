@@ -152,7 +152,7 @@ onMounted(() => {
                                 <CarouselItem v-for="category in categories" :key="category.id"
                                     class="md:basis-1/2 lg:basis-1/3">
                                     <div class="p-1">
-                                        <Link :href="`/s?category_id=${encodeURIComponent(category.id)}`">
+                                        <Link :href="`/search/category/${category.id}`">
                                         <Card class="bg-transparent shadow-none border-none">
                                             <CardContent
                                                 class="cardContent flex h-[515px] max-[768px]:h-[20rem] items-center justify-center p-6 relative">
@@ -396,7 +396,7 @@ onMounted(() => {
                             class="w-[30%] h-full blog-container max-[768px]:w-[40%] max-[768px]:h-[120px]">
                             <Link :href="route('blog.show', blogs[index].id)">
                             <img :src="blogs[index].image" :alt="blogs[index].title"
-                                class="w-full h-full object-cover rounded-lg scale-100 transition-colors hover:scale-105">
+                            class="w-full h-full object-cover rounded-lg transform transition-transform duration-300 ease-in-out hover:scale-105">
                             </Link>
                         </div>
                         <div v-else class="w-[30%] h-full blog-container max-[768px]:w-[40%] max-[768px]:h-[120px]">
