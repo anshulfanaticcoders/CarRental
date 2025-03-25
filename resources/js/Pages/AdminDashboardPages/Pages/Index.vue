@@ -117,4 +117,11 @@ const handlePageChange = (page) => {
     border-color: #3b82f6;
     box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2);
 }
+
+table th{
+    font-size: 0.95rem;
+}
+table td{
+    font-size: 0.875rem;
+}
 </style>

@@ -194,3 +194,13 @@ const formatDate = (dateStr) => {
     return `${String(date.getMonth() + 1).padStart(2, '0')}/${String(date.getDate()).padStart(2, '0')}/${date.getFullYear()}`;
 };
 </script>
+
+
+<style scoped>
+table th{
+    font-size: 0.95rem;
+}
+table td{
+    font-size: 0.875rem;
+}
+</style>

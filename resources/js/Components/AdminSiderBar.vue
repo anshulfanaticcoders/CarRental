@@ -176,6 +176,10 @@ const data = {
           title: 'All Pages',
           url: '/pages',
         },
+        {
+          title: 'Contact Us',
+          url: 'admin/contact-us',
+        },
       ],
     },
     {
@@ -237,7 +241,7 @@ const data = {
       icon: Settings,
       items: [
         {
-          title: 'Footer',
+          title: 'Footer Location',
           url: '/admin/settings/footer',
         },
         {

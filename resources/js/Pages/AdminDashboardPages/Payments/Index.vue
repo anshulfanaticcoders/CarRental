@@ -169,6 +169,9 @@ const updateFilters = () => {
 
 
 <style scoped>
+table th{
+    font-size: 0.95rem;
+}
 table td{
     font-size: 0.875rem;
 }

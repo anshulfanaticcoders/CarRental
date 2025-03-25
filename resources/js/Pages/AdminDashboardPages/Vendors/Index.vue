@@ -207,7 +207,7 @@ const formatDate = (dateStr) => {
     return `${String(date.getMonth() + 1).padStart(2, '0')}/${String(date.getDate()).padStart(2, '0')}/${date.getFullYear()}`;
 };
 </script>
-<style>
+<style scoped>
 .search-box {
     width: 300px;
     padding: 0.5rem;
@@ -220,4 +220,13 @@ const formatDate = (dateStr) => {
     border-color: #3b82f6;
     box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2);
 }
+
+
+table th{
+    font-size: 0.95rem;
+}
+table td{
+    font-size: 0.875rem;
+}
+
 </style>

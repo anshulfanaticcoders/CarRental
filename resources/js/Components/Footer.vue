@@ -71,7 +71,7 @@ onMounted(async () => {
                                 <Link href="/faq">FAQ</Link>
                             </li>
                             <li>
-                                <Link href="">Contact Us</Link>
+                                <Link href="/contact-us">Contact Us</Link>
                             </li>
                         </ul>
                     </div>

@@ -141,12 +141,12 @@ onMounted(() => {
                 <div class="column max-[768px]:px-[1.5rem]">
                     <h2>Our Categories</h2>
                 </div>
-                <div class="column carousel rounded-[20px] p-6 max-[768px]:rounded-none"
+                <div class="column carousel rounded-[20px] p-6 max-[768px]:rounded-none max-[768px]:pl-3 max-[768px]:py-6"
                     style="background: linear-gradient(90deg, rgba(21, 59, 79, 0.2) 0%, rgba(21, 59, 79, 0) 94.4%);">
-                    <Carousel class="relative w-full max-[768px]:h-[20rem]" :opts="{ align: 'start' }"
+                    <Carousel class="relative w-full max-[768px]:h-[17rem]" :opts="{ align: 'start' }"
                         :plugins="[categoryAutoplay]" @mouseenter="categoryAutoplay.stop"
                         @mouseleave="[categoryAutoplay.reset(), categoryAutoplay.play()]">
-                        <CarouselContent>
+                        <CarouselContent class="max-[768px]:pr-10 max-[768px]:pl-3">
                             <!-- If data is loaded, show categories -->
                             <template v-if="!isLoading">
                                 <CarouselItem v-for="category in categories" :key="category.id"
@@ -155,7 +155,7 @@ onMounted(() => {
                                         <Link :href="`/search/category/${category.id}`">
                                         <Card class="bg-transparent shadow-none border-none">
                                             <CardContent
-                                                class="cardContent flex h-[515px] max-[768px]:h-[20rem] items-center justify-center p-6 relative">
+                                                class="cardContent flex h-[515px] max-[768px]:h-[17rem] items-center justify-center p-6 relative">
                                                 <img class="rounded-[20px] h-full w-full object-cover"
                                                     :src="`${category.image}`" alt="" />
                                                 <div
@@ -205,7 +205,7 @@ onMounted(() => {
             <div class="column max-[768px]:px-[1.5rem]">
                 <Carousel class="relative w-full" :plugins="[plugin]" @mouseenter="plugin.stop"
                     @mouseleave="[plugin.reset(), plugin.play(), console.log('Running')]">
-                    <CarouselContent>
+                    <CarouselContent class="pl-10 max-[768px]:pr-10 max-[768px]:pl-2">
                         <!-- Show actual places when data is loaded -->
                         <template v-if="!isLoading">
                             <CarouselItem v-for="place in popularPlaces" :key="place.id"

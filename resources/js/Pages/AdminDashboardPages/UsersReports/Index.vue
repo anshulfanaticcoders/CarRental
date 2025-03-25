@@ -7,10 +7,7 @@
         </div>
         <Tabs default-value="overview" class="space-y-4">
           <TabsList>
-            <TabsTrigger value="overview">Overview</TabsTrigger>
-            <TabsTrigger value="analytics" disabled>Users</TabsTrigger>
-            <TabsTrigger value="reports" disabled>Analytics</TabsTrigger>
-            <TabsTrigger value="notifications" disabled>Reports</TabsTrigger>
+
             <div class="flex flex-col items-end">
               <div>
                 <select v-model="selectedReport" class="p-2 border rounded">

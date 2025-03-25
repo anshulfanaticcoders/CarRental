@@ -5,6 +5,7 @@ use App\Http\Controllers\Admin\AdminUserDocumentController;
 use App\Http\Controllers\Admin\BlogController;
 use App\Http\Controllers\Admin\BookingDashboardController;
 use App\Http\Controllers\Admin\BusinessReportsController;
+use App\Http\Controllers\Admin\ContactUsPageController;
 use App\Http\Controllers\Admin\DashboardController;
 use App\Http\Controllers\Admin\FaqController;
 use App\Http\Controllers\Admin\PageController;
@@ -118,6 +119,7 @@ Route::post('/validate-email', [EmailValidationController::class, 'validateEmail
 Route::post('/validate-contact', [EmailValidationController::class, 'validateContact'])->name('validate-contact');
 Route::get('/api/footer-places', [PopularPlacesController::class, 'getFooterPlaces']);
 Route::get('/api/footer-categories', [VehicleCategoriesController::class, 'getFooterCategories']);
+Route::get('/contact-us', [ContactUsPageController::class, 'show'])->name('contact-us');
 
 // Show Blogs on Home page
 // Route::get('/', [BlogController::class, 'show'])->name('welcome');
@@ -190,11 +192,11 @@ Route::middleware(['auth', 'role:admin'])->group(function () {
     Route::post('/admin/settings/footer/update', [PopularPlacesController::class, 'updateFooterSettings'])
         ->name('admin.settings.footer.update');
 
-        Route::get('/admin/settings/footer-categories', [VehicleCategoriesController::class, 'footerSettings'])
-    ->name('admin.settings.footer-categories');
+    Route::get('/admin/settings/footer-categories', [VehicleCategoriesController::class, 'footerSettings'])
+        ->name('admin.settings.footer-categories');
 
-Route::post('/admin/settings/footer-categories/update', [VehicleCategoriesController::class, 'updateFooterSettings'])
-    ->name('admin.settings.footer-categories.update');
+    Route::post('/admin/settings/footer-categories/update', [VehicleCategoriesController::class, 'updateFooterSettings'])
+        ->name('admin.settings.footer-categories.update');
 
 
 
@@ -203,6 +205,20 @@ Route::post('/admin/settings/footer-categories/update', [VehicleCategoriesContro
     Route::post('admin/settings/faq', [FaqController::class, 'store'])->name('admin.settings.faq.store');
     Route::put('admin/settings/faq/{faq}', [FaqController::class, 'update'])->name('admin.settings.faq.update');
     Route::delete('admin/settings/faq/{faq}', [FaqController::class, 'destroy'])->name('admin.settings.faq.destroy');
+
+
+
+    Route::get('admin/contact-us', [ContactUsPageController::class, 'index'])
+        ->name('admin.contact-us.index');
+
+    Route::get('admin/contact-us/edit', [ContactUsPageController::class, 'edit'])
+        ->name('admin.contact-us.edit');
+
+    Route::post('admin/contact-us/update', [ContactUsPageController::class, 'update'])
+        ->name('admin.contact-us.update');
+
+    Route::delete('admin/contact-us/delete', [ContactUsPageController::class, 'destroy'])
+        ->name('admin.contact-us.delete');
 
 });
 

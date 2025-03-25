@@ -254,23 +254,30 @@ const minimumDateOfBirth = computed(() => {
                     <InputError class="mt-2" :message="form.errors.country" />
 
                     <!-- Dynamic Flag -->
-                    <img v-if="form.country" :src="getFlagUrl(form.country)" alt="Country Flag"
-                        class="absolute right-3 top-1/2 transform translate-x-[-10%] translate-y-[-50%] w-[2.1rem] h-[1.5rem] rounded
+                    <img v-if="form.country" :src="getFlagUrl(form.country)" alt="Country Flag" class="absolute right-3 top-1/2 transform translate-x-[-10%] translate-y-[-50%] w-[2.1rem] h-[1.5rem] rounded
                         max-[768px]:translate-y-[-70%]" />
                 </div>
 
 
 
-                <div class="">
-                    <InputLabel for="currency" value="Currency" />
-                    <select id="currency" class="mt-1 block w-full" v-model="selectedCurrency">
-                        <option value="">Select Currency</option>
-                        <option v-for="currency in currencies" :key="currency.code" :value="currency.code">
-                            {{ currency.code }}
-                        </option>
-                    </select>
+                <div>
+                    <InputLabel for="currency" value="Currency" class="mb-1"/>
+                    <Select v-model="selectedCurrency">
+                        <SelectTrigger class="w-full p-[1.7rem] border-customLightGrayColor rounded-[12px]">
+                            <SelectValue placeholder="Select Currency" />
+                        </SelectTrigger>
+                        <SelectContent>
+                            <SelectGroup>
+                                <SelectLabel>Currency</SelectLabel>
+                                <SelectItem v-for="currency in currencies" :key="currency.code" :value="currency.code">
+                                    {{ currency.code }}
+                                </SelectItem>
+                            </SelectGroup>
+                        </SelectContent>
+                    </Select>
                     <InputError class="mt-2" :message="form.errors.currency" />
                 </div>
+
 
                 <div>
                     <InputLabel for="city" value="City" />
@@ -302,7 +309,8 @@ const minimumDateOfBirth = computed(() => {
 
                 <div class="col-span-2">
                     <p class="mb-[1rem] text-customLightGrayColor font-medium max-[768px]:text-[0.95rem]">Who am I?
-                        <i>(optional)</i></p>
+                        <i>(optional)</i>
+                    </p>
                     <InputLabel for="about" value="About" />
                     <TextArea id="about" class="mt-1 block w-full" v-model="form.about" />
                     <InputError class="mt-2" :message="form.errors.about" />

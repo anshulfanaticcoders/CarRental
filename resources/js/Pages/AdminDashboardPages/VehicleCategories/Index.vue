@@ -61,7 +61,7 @@
                                         Edit
                                         <img :src=editIcon alt="">
                                     </Button>
-                                    <Button size="sm" variant="destructive" @click="deleteUser(user.id)">Delete</Button>
+                                    <Button size="sm" variant="destructive" @click="openDeleteDialog(user.id)">Delete</Button>
                                 </div>
                             </TableCell>
                         </TableRow>
@@ -73,6 +73,22 @@
                         @page-change="handlePageChange" />
                 </div>
             </div>
+
+            <!-- Alert Dialog for Delete Confirmation -->
+            <AlertDialog v-model:open="isDeleteDialogOpen">
+                <AlertDialogContent>
+                    <AlertDialogHeader>
+                        <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+                        <AlertDialogDescription>
+                            Do you really want to delete this category? This action cannot be undone.
+                        </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                        <AlertDialogCancel @click="isDeleteDialogOpen = false">Cancel</AlertDialogCancel>
+                        <AlertDialogAction @click="confirmDelete">Delete</AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
         </div>
     </AdminDashboardLayout>
 </template>
@@ -96,7 +112,17 @@ import CreateUser from "@/Pages/AdminDashboardPages/VehicleCategories/CreateUser
 import EditUser from "@/Pages/AdminDashboardPages/VehicleCategories/EditUser.vue";
 import ViewUser from "@/Pages/AdminDashboardPages/VehicleCategories/ViewUser.vue";
 import Pagination from "@/Pages/AdminDashboardPages/VehicleCategories/Pagination.vue";
-
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from '@/Components/ui/alert-dialog'
 
 const props = defineProps({
     users: Object,
@@ -106,8 +132,10 @@ const search = ref(props.filters.search || ''); // Initialize search with the fi
 const isCreateDialogOpen = ref(false);
 const isEditDialogOpen = ref(false);
 const isViewDialogOpen = ref(false);
+const isDeleteDialogOpen = ref(false);
 const editForm = ref({});
 const viewForm = ref({});
+const deleteUserId = ref(null);
 
 // Handle search input
 const handleSearch = () => {
@@ -127,8 +155,21 @@ const openViewDialog = (user) => {
     isViewDialogOpen.value = true;
 };
 
-const deleteUser = (id) => {
-    router.delete(`/vehicles-categories/${id}`);
+const openDeleteDialog = (id) => {
+    deleteUserId.value = id;
+    isDeleteDialogOpen.value = true;
+};
+
+const confirmDelete = () => {
+    router.delete(`/vehicles-categories/${deleteUserId.value}`, {
+        onSuccess: () => {
+            console.log('Category deleted successfully');
+            isDeleteDialogOpen.value = false;
+        },
+        onError: (errors) => {
+            console.error(errors);
+        }
+    });
 };
 
 const handlePageChange = (page) => {
@@ -136,7 +177,7 @@ const handlePageChange = (page) => {
 };
 
 </script>
-<style>
+<style scoped>
 .search-box {
     width: 300px;
     padding: 0.5rem;
@@ -149,4 +190,12 @@ const handlePageChange = (page) => {
     border-color: #3b82f6;
     box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2);
 }
+
+table th{
+    font-size: 0.95rem;
+}
+table td{
+    font-size: 0.875rem;
+}
+
 </style>

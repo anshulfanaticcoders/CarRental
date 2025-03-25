@@ -63,7 +63,7 @@
                                         Edit
                                         <img :src=editIcon alt="">
                                     </Button>
-                                    <Button size="sm" variant="destructive" @click="deletePlan(plan.id)">Delete</Button>
+                                    <Button size="sm" variant="destructive" @click="openDeleteDialog(plan.id)">Delete</Button>
                                 </div>
                             </TableCell>
                         </TableRow>
@@ -75,6 +75,22 @@
                         @page-change="handlePageChange" />
                 </div>
             </div>
+
+            <!-- Alert Dialog for Delete Confirmation -->
+            <AlertDialog v-model:open="isDeleteDialogOpen">
+                <AlertDialogContent>
+                    <AlertDialogHeader>
+                        <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+                        <AlertDialogDescription>
+                            Do you really want to delete this plan? This action cannot be undone.
+                        </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                        <AlertDialogCancel @click="isDeleteDialogOpen = false">Cancel</AlertDialogCancel>
+                        <AlertDialogAction @click="confirmDelete">Delete</AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
         </div>
     </AdminDashboardLayout>
 </template>
@@ -97,7 +113,17 @@ import CreateUser from "@/Pages/AdminDashboardPages/Plans/CreateUser.vue";
 import EditUser from "@/Pages/AdminDashboardPages/Plans/EditUser.vue";
 import ViewUser from "@/Pages/AdminDashboardPages/Plans/ViewUser.vue";
 import Pagination from "@/Pages/AdminDashboardPages/Plans/Pagination.vue";
-
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from '@/Components/ui/alert-dialog'
 
 const props = defineProps({
     plans: Object,
@@ -107,8 +133,10 @@ const search = ref(props.filters.search || ''); // Initialize search with the fi
 const isCreateDialogOpen = ref(false);
 const isEditDialogOpen = ref(false);
 const isViewDialogOpen = ref(false);
+const isDeleteDialogOpen = ref(false);
 const editForm = ref({});
 const viewForm = ref({});
+const deletePlanId = ref(null);
 
 // Handle search input
 const handleSearch = () => {
@@ -117,7 +145,6 @@ const handleSearch = () => {
         replace: true,
     });
 };
-
 
 const openEditDialog = (plan) => {
     editForm.value = { ...plan };
@@ -129,10 +156,16 @@ const openViewDialog = (plan) => {
     isViewDialogOpen.value = true;
 };
 
-const deletePlan = (id) => {
-    router.delete(`/admin/plans/${id}`, {
+const openDeleteDialog = (id) => {
+    deletePlanId.value = id;
+    isDeleteDialogOpen.value = true;
+};
+
+const confirmDelete = () => {
+    router.delete(`/admin/plans/${deletePlanId.value}`, {
         onSuccess: () => {
             console.log('Plan deleted successfully');
+            isDeleteDialogOpen.value = false;
         },
         onError: (errors) => {
             console.error(errors);
@@ -157,5 +190,12 @@ const handlePageChange = (page) => {
 .search-box:focus {
     border-color: #3b82f6;
     box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2);
+}
+
+table th{
+    font-size: 0.95rem;
+}
+table td{
+    font-size: 0.875rem;
 }
 </style>

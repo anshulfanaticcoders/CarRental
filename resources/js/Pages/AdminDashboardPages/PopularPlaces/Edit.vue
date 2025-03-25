@@ -4,7 +4,7 @@
          <!-- Loader -->
          <div v-if="isLoading" class="fixed z-50 h-full w-full top-0 left-0 bg-[#0000009e] flex items-center justify-center">
             <div class="flex flex-col items-center">
-                <img :src="loader" alt="Loading..." class="w-[200px]" />
+                <img :src="loader" alt="Loading..." class="w-[150px]" />
                 <p class="text-white text-2xl">Updating...</p>
             </div>
         </div>
@@ -13,7 +13,7 @@
                 <span class="text-[1.5rem] font-semibold">Edit Popular Place</span>
                 <Link 
                     :href="route('popular-places.index')" 
-                    class="px-4 py-2 bg-gray-500 text-white rounded hover:bg-gray-600"
+                    class="px-4 py-2 bg-gray-800 text-white rounded hover:bg-gray-600"
                 >
                     Back to List
                 </Link>

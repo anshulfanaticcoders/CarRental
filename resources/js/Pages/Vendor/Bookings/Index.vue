@@ -21,6 +21,7 @@
                             <th class="px-4 py-2 text-left text-sm font-bold">Vehicle</th>
                             <th class="px-4 py-2 text-left text-sm font-bold">Booking Date</th>
                             <th class="px-4 py-2 text-left text-sm font-bold">Return Date</th>
+                            <th class="px-4 py-2 text-left text-sm font-bold">Payment</th>
                             <th class="px-4 py-2 text-left text-sm font-bold">Payment Status</th>
                             <th class="px-4 py-2 text-left text-sm font-bold">Booking Status</th>
                             <th class="px-4 py-2 text-left text-sm font-bold">Actions</th>
@@ -42,6 +43,7 @@
                             </td>
                             <td class="px-4 py-2 text-sm text-gray-700">{{ formatDate(booking.pickup_date) }}</td>
                             <td class="px-4 py-2 text-sm text-gray-700">{{ formatDate(booking.return_date) }}</td>
+                            <td class="px-4 py-2 text-sm text-gray-700">{{ booking.vendor_profile?.currency }} {{ booking.payments[0]?.amount || 'N/A' }}</td>
                             <td class="px-4 py-2 text-sm capitalize">
                                 <span :class="{
                                     'text-green-600 font-semibold': booking.payments[0]?.payment_status === 'succeeded',

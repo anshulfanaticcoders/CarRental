@@ -229,7 +229,7 @@ const handleSubmenuClick = (name) => {
     </div>
     
     <!-- Collapse toggle button (desktop only) -->
-    <div v-if="!isMobile" class="flex justify-end py-4 pr-6">
+    <div v-if="!isMobile" class="flex justify-end py-4 pr-4">
       <button @click="toggleSidebar" class="collapse-toggle" :class="{ 'toggle-collapsed': isCollapsed }"
         title="collapse menu">
         <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none"
@@ -260,7 +260,7 @@ const handleSubmenuClick = (name) => {
       </div>
 
       <!-- User avatar only when collapsed (desktop) -->
-      <div class="collapsed-avatar p-4 flex justify-center" v-if="isCollapsed && !isMobile">
+      <div class="collapsed-avatar mt-4 flex justify-center" v-if="isCollapsed && !isMobile">
         <img :src="user?.profile.avatar || '/storage/avatars/default-avatar.svg'" alt="User Avatar"
           class="w-10 h-10 rounded-full object-cover" />
       </div>
@@ -307,7 +307,7 @@ const handleSubmenuClick = (name) => {
 
       <!-- Logout Button -->
       <Link :href="route('logout')" method="post" as="button" 
-        class="text-[#EE1D52] flex items-center gap-1 mt-[4rem]"
+        class="text-[#EE1D52] flex items-center gap-1 mt-[4rem] w-full"
         :class="{ 
           'justify-center': isCollapsed && !isMobile, 
           'ml-[1rem]': !isCollapsed || isMobile, 

@@ -800,6 +800,7 @@ const maxReturnDate = computed(() => {
     return maxDate.toISOString().split('T')[0];
 });
 
+
 // Watch for package changes
 watch(selectedPackage, () => {
     form.value.date_to = ''; // Reset return date when package changes

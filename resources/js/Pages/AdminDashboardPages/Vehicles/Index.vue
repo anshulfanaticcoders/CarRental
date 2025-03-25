@@ -6,7 +6,6 @@
                 <div class="flex items-center gap-4">
                     <Input v-model="search" placeholder="Search vehicles..." class="w-[300px]" @input="handleSearch" />
                 </div>
-
             </div>
 
             <Dialog v-model:open="isEditDialogOpen">
@@ -73,7 +72,7 @@
                                         View
                                     </Button>
 
-                                    <Button size="sm" variant="destructive" @click="deleteUser(user.id)">Delete</Button>
+                                    <Button size="sm" variant="destructive" @click="openDeleteDialog(user.id)">Delete</Button>
                                 </div>
                             </TableCell>
                         </TableRow>
@@ -85,6 +84,22 @@
                         @page-change="handlePageChange" />
                 </div>
             </div>
+
+            <!-- Alert Dialog for Delete Confirmation -->
+            <AlertDialog v-model:open="isDeleteDialogOpen">
+                <AlertDialogContent>
+                    <AlertDialogHeader>
+                        <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+                        <AlertDialogDescription>
+                            Do you really want to delete this vehicle? This action cannot be undone.
+                        </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                        <AlertDialogCancel @click="isDeleteDialogOpen = false">Cancel</AlertDialogCancel>
+                        <AlertDialogAction @click="confirmDelete">Delete</AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
         </div>
     </AdminDashboardLayout>
 </template>
@@ -105,7 +120,17 @@ import { Dialog, DialogTrigger } from "@/Components/ui/dialog";
 import AdminDashboardLayout from "@/Layouts/AdminDashboardLayout.vue";
 import ViewUser from "@/Pages/AdminDashboardPages/Vehicles/ViewUser.vue";
 import Pagination from "@/Pages/AdminDashboardPages/Vehicles/Pagination.vue";
-
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from '@/Components/ui/alert-dialog'
 
 const props = defineProps({
     users: Object,
@@ -114,7 +139,9 @@ const props = defineProps({
 
 const search = ref(props.filters.search || ''); // Initialize search with the filter value
 const isViewDialogOpen = ref(false);
+const isDeleteDialogOpen = ref(false);
 const viewForm = ref({});
+const deleteUserId = ref(null);
 
 // Handle search input
 const handleSearch = () => {
@@ -125,18 +152,31 @@ const handleSearch = () => {
 };
 
 const openViewDialog = (user) => {
-
     viewForm.value = { ...user };
     isViewDialogOpen.value = true;
 };
 
-const deleteUser = (id) => {
-    router.delete(`/vendor-vehicles/${id}`);
+const openDeleteDialog = (id) => {
+    deleteUserId.value = id;
+    isDeleteDialogOpen.value = true;
+};
+
+const confirmDelete = () => {
+    router.delete(`/vendor-vehicles/${deleteUserId.value}`, {
+        onSuccess: () => {
+            console.log('Vehicle deleted successfully');
+            isDeleteDialogOpen.value = false;
+        },
+        onError: (errors) => {
+            console.error(errors);
+        }
+    });
 };
 
 const handlePageChange = (page) => {
     router.get(`/vendor-vehicles?page=${page}`);
 };
+
 const getStatusBadgeVariant = (status) => {
     switch (status) {
         case 'available':
@@ -150,7 +190,7 @@ const getStatusBadgeVariant = (status) => {
     }
 };
 </script>
-<style>
+<style scoped>
 .search-box {
     width: 300px;
     padding: 0.5rem;
@@ -163,4 +203,13 @@ const getStatusBadgeVariant = (status) => {
     border-color: #3b82f6;
     box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2);
 }
+
+
+table th{
+    font-size: 0.95rem;
+}
+table td{
+    font-size: 0.875rem;
+}
+
 </style>

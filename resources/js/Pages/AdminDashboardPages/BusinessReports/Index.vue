@@ -82,7 +82,7 @@
                 <CardContent>
                   <div class="text-2xl font-bold">{{ fleetUtilization }}%</div>
                   <p class="text-xs text-muted-foreground">
-                    {{ utilizationGrowth >= 0 ? `↑ ${utilizationGrowth}%` : `↓ ${Math.abs(utilizationGrowth)}%` }} this
+                    {{ fleetUtilizationGrowth >= 0 ? `↑ ${fleetUtilizationGrowth}%` : `↓ ${Math.abs(fleetUtilizationGrowth)}%` }} this
                     week
                   </p>
                 </CardContent>
@@ -154,7 +154,7 @@ const props = defineProps([
   'activeBookings',
   'bookingsChange',
   'fleetUtilization',
-  'utilizationGrowth',
+  'fleetUtilizationGrowth',
   'monthlyData',
   'weeklyData',
   'dailyData',

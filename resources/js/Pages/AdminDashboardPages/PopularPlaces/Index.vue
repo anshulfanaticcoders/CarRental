@@ -53,7 +53,7 @@
                                     </Link>
                                     <Button 
                                         variant="destructive"
-                                        @click="deletePlace(place.id)"
+                                        @click="openDeleteDialog(place.id)"
                                     >
                                         Delete
                                     </Button>
@@ -72,6 +72,22 @@
                     />
                 </div>
             </div>
+
+            <!-- Alert Dialog for Delete Confirmation -->
+            <AlertDialog v-model:open="isDeleteDialogOpen">
+                <AlertDialogContent>
+                    <AlertDialogHeader>
+                        <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+                        <AlertDialogDescription>
+                            Do you really want to delete this place? This action cannot be undone.
+                        </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                        <AlertDialogCancel @click="isDeleteDialogOpen = false">Cancel</AlertDialogCancel>
+                        <AlertDialogAction @click="confirmDelete">Delete</AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
         </div>
     </AdminDashboardLayout>
 </template>
@@ -84,6 +100,17 @@ import { Button } from '@/Components/ui/button';
 import Pagination from "@/Pages/AdminDashboardPages/PopularPlaces/Pagination.vue";
 import { ref } from 'vue';
 import { Input } from '@/Components/ui/input';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from '@/Components/ui/alert-dialog'
 
 const props = defineProps({
     places: Object,
@@ -91,11 +118,20 @@ const props = defineProps({
 });
 
 const search = ref(props.filters?.search || '');
-const deletePlace = (id) => {
-    if (confirm('Are you sure you want to delete this place?')) {
-        router.delete(route('popular-places.destroy', id));
-    }
+const isDeleteDialogOpen = ref(false);
+const deletePlaceId = ref(null);
+
+const openDeleteDialog = (id) => {
+    deletePlaceId.value = id;
+    isDeleteDialogOpen.value = true;
 };
+
+const confirmDelete = () => {
+    router.delete(route('popular-places.destroy', deletePlaceId.value)).then(() => {
+        isDeleteDialogOpen.value = false;
+    });
+};
+
 // Handle search input
 const handleSearch = () => {
     router.get('/popular-places', { search: search.value }, {
@@ -103,6 +139,7 @@ const handleSearch = () => {
         replace: true,
     });
 };
+
 const handlePageChange = (page) => {
     router.get(route('popular-places.index', { page }), {
         preserveState: true,
@@ -123,5 +160,12 @@ const handlePageChange = (page) => {
 .search-box:focus {
     border-color: #3b82f6;
     box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2);
+}
+
+table th{
+    font-size: 0.95rem;
+}
+table td{
+    font-size: 0.875rem;
 }
 </style>

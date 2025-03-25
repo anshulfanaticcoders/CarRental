@@ -53,9 +53,10 @@ class Booking extends Model
     {
         return $this->belongsTo(Vehicle::class);
     }
+    // New relationship to get vendorProfile through vehicle
     public function vendorProfile()
     {
-        return $this->belongsTo(UserProfile::class, 'vendor_id', 'user_id');
+        return $this->hasOneThrough(UserProfile::class, Vehicle::class, 'id', 'user_id', 'vehicle_id', 'vendor_id');
     }
     // Generate unique booking number
     public static function generateBookingNumber(): string

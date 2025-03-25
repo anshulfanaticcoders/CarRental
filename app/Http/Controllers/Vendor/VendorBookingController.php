@@ -17,7 +17,7 @@ class VendorBookingController extends Controller
     $vendorId = auth()->id();
     $searchQuery = $request->input('search', '');
 
-    $bookings = Booking::with(['customer', 'vehicle', 'payments'])
+    $bookings = Booking::with(['customer', 'vehicle', 'payments','vendorProfile'])
         ->whereHas('vehicle', function ($query) use ($vendorId) {
             $query->where('vendor_id', $vendorId);
         })

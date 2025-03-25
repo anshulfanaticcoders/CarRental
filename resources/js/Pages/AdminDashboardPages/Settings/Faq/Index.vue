@@ -48,13 +48,29 @@
                             <TableCell class="text-right">
                                 <div class="flex justify-end gap-2">
                                     <Button variant="outline" @click="editFaq(faq)">Edit</Button>
-                                    <Button variant="destructive" @click="deleteFaq(faq.id)">Delete</Button>
+                                    <Button variant="destructive" @click="openDeleteDialog(faq.id)">Delete</Button>
                                 </div>
                             </TableCell>
                         </TableRow>
                     </TableBody>
                 </Table>
             </div>
+
+            <!-- Alert Dialog for Delete Confirmation -->
+            <AlertDialog v-model:open="isDeleteDialogOpen">
+                <AlertDialogContent>
+                    <AlertDialogHeader>
+                        <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+                        <AlertDialogDescription>
+                            Do you really want to delete this FAQ? This action cannot be undone.
+                        </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                        <AlertDialogCancel @click="isDeleteDialogOpen = false">Cancel</AlertDialogCancel>
+                        <AlertDialogAction @click="confirmDelete">Delete</AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
         </div>
     </AdminDashboardLayout>
 </template>
@@ -68,6 +84,17 @@ import { Button } from "@/Components/ui/button";
 import { Input } from "@/Components/ui/input";
 import { Textarea } from "@/Components/ui/textarea";
 import { Dialog, DialogTrigger, DialogContent, DialogHeader, DialogTitle } from "@/Components/ui/dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from '@/Components/ui/alert-dialog'
 
 const props = defineProps({
     faqs: Array,
@@ -78,7 +105,9 @@ const search = ref(props.search || "");
 const faqs = ref([...props.faqs]); // Keep local state for immediate UI updates
 const isDialogOpen = ref(false);
 const isEditing = ref(false);
+const isDeleteDialogOpen = ref(false);
 const faqForm = ref({ id: null, question: "", answer: "" });
+const deleteFaqId = ref(null);
 
 const openDialog = () => {
     isEditing.value = false;
@@ -121,14 +150,18 @@ const updateFaq = async () => {
     }
 };
 
-const deleteFaq = async (id) => {
-    if (confirm("Are you sure you want to delete this FAQ?")) {
-        try {
-            await router.delete(route("admin.settings.faq.destroy", id));
-            faqs.value = faqs.value.filter((faq) => faq.id !== id); // Remove from local list
-        } catch (error) {
-            console.error(error);
-        }
+const openDeleteDialog = (id) => {
+    deleteFaqId.value = id;
+    isDeleteDialogOpen.value = true;
+};
+
+const confirmDelete = async () => {
+    try {
+        await router.delete(route("admin.settings.faq.destroy", deleteFaqId.value));
+        faqs.value = faqs.value.filter((faq) => faq.id !== deleteFaqId.value); // Remove from local list
+        isDeleteDialogOpen.value = false;
+    } catch (error) {
+        console.error(error);
     }
 };
 
@@ -149,3 +182,12 @@ const filteredFaqs = computed(() => {
     );
 });
 </script>
+
+<style scoped>
+table th{
+    font-size: 0.95rem;
+}
+table td{
+    font-size: 0.875rem;
+}
+</style>

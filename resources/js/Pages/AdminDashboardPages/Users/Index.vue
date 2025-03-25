@@ -27,6 +27,22 @@
                 <ViewUser :user="viewForm" @close="isViewDialogOpen = false" />
             </Dialog>
 
+            <!-- Alert Dialog for Delete Confirmation -->
+            <AlertDialog v-model:open="isDeleteDialogOpen">
+                <AlertDialogContent>
+                    <AlertDialogHeader>
+                        <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+                        <AlertDialogDescription>
+                            Do you really want to delete this user? This action cannot be undone.
+                        </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                        <AlertDialogCancel @click="isDeleteDialogOpen = false">Cancel</AlertDialogCancel>
+                        <AlertDialogAction @click="confirmDelete">Delete</AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
+
             <div class="rounded-md border p-5  mt-[1rem] bg-[#153B4F0D]">
                 <Table>
                     <TableHeader>
@@ -67,7 +83,7 @@
                                         Edit
                                         <img :src=editIcon alt="">
                                     </Button>
-                                    <Button size="sm" variant="destructive" @click="deleteUser(user.id)">Delete</Button>
+                                    <Button size="sm" variant="destructive" @click="openDeleteDialog(user.id)">Delete</Button>
                                 </div>
                             </TableCell>
                         </TableRow>
@@ -102,7 +118,17 @@ import CreateUser from "@/Pages/AdminDashboardPages/Users/CreateUser.vue";
 import EditUser from "@/Pages/AdminDashboardPages/Users/EditUser.vue";
 import ViewUser from "@/Pages/AdminDashboardPages/Users/ViewUser.vue";
 import Pagination from "@/Pages/AdminDashboardPages/Users/Pagination.vue";
-
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from '@/Components/ui/alert-dialog'
 
 const props = defineProps({
     users: Object,
@@ -112,8 +138,10 @@ const search = ref(props.filters.search || ''); // Initialize search with the fi
 const isCreateDialogOpen = ref(false);
 const isEditDialogOpen = ref(false);
 const isViewDialogOpen = ref(false);
+const isDeleteDialogOpen = ref(false);
 const editForm = ref({});
 const viewForm = ref({});
+const deleteUserId = ref(null);
 
 // Handle search input
 const handleSearch = () => {
@@ -133,8 +161,15 @@ const openViewDialog = (user) => {
     isViewDialogOpen.value = true;
 };
 
-const deleteUser = (id) => {
-    router.delete(`/users/${id}`);
+const openDeleteDialog = (id) => {
+    deleteUserId.value = id;
+    isDeleteDialogOpen.value = true;
+};
+
+const confirmDelete = () => {
+    router.delete(`/users/${deleteUserId.value}`).then(() => {
+        isDeleteDialogOpen.value = false;
+    });
 };
 
 const getRoleBadgeVariant = (role) => {
@@ -160,7 +195,7 @@ const formatDate = (dateStr) => {
     return `${String(date.getMonth() + 1).padStart(2, '0')}/${String(date.getDate()).padStart(2, '0')}/${date.getFullYear()}`;
 };
 </script>
-<style>
+<style scoped>
 .search-box {
     width: 300px;
     padding: 0.5rem;
@@ -173,4 +208,13 @@ const formatDate = (dateStr) => {
     border-color: #3b82f6;
     box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2);
 }
+
+
+table th{
+    font-size: 0.95rem;
+}
+table td{
+    font-size: 0.875rem;
+}
+
 </style>

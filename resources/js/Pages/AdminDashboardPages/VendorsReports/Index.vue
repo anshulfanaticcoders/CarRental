@@ -7,10 +7,7 @@
           </div>
           <Tabs default-value="overview" class="space-y-4">
             <TabsList>
-              <TabsTrigger value="overview">Overview</TabsTrigger>
-              <TabsTrigger value="analytics" disabled>Vendors</TabsTrigger>
-              <TabsTrigger value="reports" disabled>Analytics</TabsTrigger>
-              <TabsTrigger value="notifications" disabled>Reports</TabsTrigger>
+              
               <div class="flex flex-col items-end">
                 <div>
                   <select v-model="exportFormat" class="p-2 border rounded">
