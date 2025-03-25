@@ -52,4 +52,13 @@ class VendorsDashboardController extends Controller
 
         return redirect()->route('vendors.index')->with('success', 'User updated successfully.');
     }
+
+    public function destroy($id)
+{
+    $vendor = User::where('id', $id)->where('role', 'vendor')->firstOrFail();
+    $vendor->delete();
+
+    return redirect()->route('vendors.index')->with('success', 'Vendor deleted successfully.');
+}
+
 }

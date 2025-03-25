@@ -6,7 +6,6 @@
                 <div class="flex items-center gap-4">
                     <Input v-model="search" placeholder="Search vendor..." class="w-[300px]" @input="handleSearch" />
                 </div>
-
             </div>
 
             <Dialog v-model:open="isEditDialogOpen">
@@ -28,6 +27,23 @@
                     </DialogFooter>
                 </DialogContent>
             </Dialog>
+
+            <!-- Alert Dialog for Delete Confirmation -->
+            <AlertDialog v-model:open="isDeleteDialogOpen">
+                <AlertDialogContent>
+                    <AlertDialogHeader>
+                        <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+                        <AlertDialogDescription>
+                            Do you really want to delete this vendor? This action cannot be undone.
+                        </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                        <AlertDialogCancel @click="isDeleteDialogOpen = false">Cancel</AlertDialogCancel>
+                        <AlertDialogAction @click="confirmDelete">Delete</AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
+
             <div class="rounded-md border p-5  mt-[1rem] bg-[#153B4F0D]">
                 <Table>
                     <TableHeader>
@@ -76,7 +92,7 @@
                                         Edit
                                         <img :src=editIcon alt="">
                                     </Button>
-                                    <Button size="sm" variant="destructive" @click="deleteUser(user.id)">Delete</Button>
+                                    <Button size="sm" variant="destructive" @click="openDeleteDialog(user.id)">Delete</Button>
                                 </div>
                             </TableCell>
                         </TableRow>
@@ -110,7 +126,17 @@ import AdminDashboardLayout from "@/Layouts/AdminDashboardLayout.vue";
 import EditUser from "@/Pages/AdminDashboardPages/Vendors/EditUser.vue";
 import ViewUser from "@/Pages/AdminDashboardPages/Vendors/ViewUser.vue";
 import Pagination from "@/Pages/AdminDashboardPages/Vendors/Pagination.vue";
-
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from '@/Components/ui/alert-dialog'
 
 const props = defineProps({
     users: Object,
@@ -120,9 +146,11 @@ const search = ref(props.filters.search || ''); // Initialize search with the fi
 const isEditDialogOpen = ref(false);
 const isViewDialogOpen = ref(false);
 const isImageModalOpen = ref(false)
+const isDeleteDialogOpen = ref(false)
 const selectedImage = ref('')
 const editForm = ref({});
 const viewForm = ref({});
+const deleteUserId = ref(null);
 
 // Handle search input
 const handleSearch = () => {
@@ -146,8 +174,16 @@ const openImageModal = (imageUrl) => {
     selectedImage.value = imageUrl
     isImageModalOpen.value = true
 }
-const deleteUser = (id) => {
-    router.delete(`/vendors/${id}`);
+
+const openDeleteDialog = (id) => {
+    deleteUserId.value = id;
+    isDeleteDialogOpen.value = true;
+};
+
+const confirmDelete = () => {
+    router.delete(`/vendors/${deleteUserId.value}`).then(() => {
+        isDeleteDialogOpen.value = false;
+    });
 };
 
 const handlePageChange = (page) => {
