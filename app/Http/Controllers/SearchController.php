@@ -36,7 +36,22 @@ class SearchController extends Controller
         $seatingCapacities = Vehicle::distinct('seating_capacity')->pluck('seating_capacity');
 
         // Base query
-        $query = Vehicle::query()->whereIn('status', ['available', 'rented']);
+        $query = Vehicle::query()->whereIn('status', ['available','rented']);
+
+        // Exclude vehicles that are booked in the selected date range
+if (!empty($validated['date_from']) && !empty($validated['date_to'])) {
+    $query->whereDoesntHave('bookings', function ($q) use ($validated) {
+        $q->where(function ($query) use ($validated) {
+            $query->whereBetween('bookings.pickup_date', [$validated['date_from'], $validated['date_to']])
+                  ->orWhereBetween('bookings.return_date', [$validated['date_from'], $validated['date_to']])
+                  ->orWhere(function ($q) use ($validated) {
+                      $q->where('bookings.pickup_date', '<=', $validated['date_from'])
+                        ->where('bookings.return_date', '>=', $validated['date_to']);
+                  });
+        });
+    });
+}
+
 
         // Apply filters
         if (!empty($validated['seating_capacity'])) {

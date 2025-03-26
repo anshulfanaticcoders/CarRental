@@ -680,31 +680,7 @@ const applyFilters = () => {
                     </div>
                     <div v-for="vehicle in vehicles.data" :key="vehicle.id"
                         class="p-[1rem] rounded-[12px] border-[1px] border-[#E7E7E7]">
-                        <div class="flex justify-between mb-3">
-                            <div>
-                                <span v-if="vehicle.status === 'available'"
-                                    class="capitalize bg-green-200 text-customPrimaryColor rounded-[99px] py-1 px-3 font-medium max-[768px]:text-[0.875rem]">
-                                    Available
-                                </span>
-
-                                <div v-if="vehicle.status === 'rented'">
-                                    <span
-                                        class="capitalize bg-[#906F001A] text-[#906F00] rounded-[99px] py-1 px-3 font-medium">
-                                        Rented
-                                    </span>
-                                    <button @click="showRentalDates = !showRentalDates"
-                                        class="ml-2 text-customPrimaryColor underline cursor-pointer">
-                                        {{ showRentalDates ? 'Hide Rental Dates' : 'View Rental Dates' }}
-                                    </button>
-
-                                    <div v-if="showRentalDates" class="mt-2 bg-gray-100 p-2 rounded-lg shadow-md mb-2">
-                                        <span v-for="booking in vehicle.bookings" :key="booking.id">
-                                            {{ formatDate(booking.pickup_date) }} To {{ formatDate(booking.return_date)
-                                            }}
-                                        </span>
-                                    </div>
-                                </div>
-                            </div>
+                        <div class="flex justify-end mb-3">
                             <div class="column flex justify-end">
                                 <button @click.stop="toggleFavourite(vehicle)" class="heart-icon"
                                     :class="{ 'filled-heart': favoriteStatus[vehicle.id] }">
