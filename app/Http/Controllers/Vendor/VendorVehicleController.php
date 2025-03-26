@@ -18,7 +18,7 @@ class VendorVehicleController extends Controller
         $vendorId = auth()->id();
         $searchQuery = $request->input('search', '');
 
-        $vehicles = Vehicle::with(['specifications', 'images', 'category', 'user', 'vendorProfile','benefits'])
+        $vehicles = Vehicle::with(['specifications', 'images', 'category', 'user', 'vendorProfile', 'benefits'])
             ->where('vendor_id', $vendorId)
             ->when($searchQuery, function ($query, $searchQuery) {
                 $query->where(function ($q) use ($searchQuery) {
@@ -93,6 +93,9 @@ class VendorVehicleController extends Controller
                 ->with('error', 'You do not have permission to update this vehicle');
         }
 
+        // echo "<pre>";
+        // print_r($request->all());
+
         // Validate incoming request data
         $validated = $request->validate([
             'category_id' => 'required|exists:vehicle_categories,id',
@@ -130,26 +133,24 @@ class VendorVehicleController extends Controller
             'images.*' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048',
 
             // Vehicle benefits fields
-            'limited_km_per_day' => 'boolean',
-            'limited_km_per_week' => 'boolean',
-            'limited_km_per_month' => 'boolean',
-            'limited_km_per_day_range' => 'nullable|integer|min:0',
-            'limited_km_per_week_range' => 'nullable|integer|min:0',
-            'limited_km_per_month_range' => 'nullable|integer|min:0',
-            'cancellation_available_per_day' => 'boolean',
-            'cancellation_available_per_week' => 'boolean',
-            'cancellation_available_per_month' => 'boolean',
-            'cancellation_available_per_day_date' => 'nullable|integer|min:0',
-            'cancellation_available_per_week_date' => 'nullable|integer|min:0',
-            'cancellation_available_per_month_date' => 'nullable|integer|min:0',
-            'price_per_km_per_day' => 'nullable|numeric|min:0',
-            'price_per_km_per_week' => 'nullable|numeric|min:0',
-            'price_per_km_per_month' => 'nullable|numeric|min:0',
-            'minimum_driver_age' => 'required|integer|min:18',
+            'benefits.limited_km_per_day' => 'boolean',
+            'benefits.limited_km_per_week' => 'boolean',
+            'benefits.limited_km_per_month' => 'boolean',
+            'benefits.limited_km_per_day_range' => 'nullable|integer|min:0',
+            'benefits.limited_km_per_week_range' => 'nullable|integer|min:0',
+            'benefits.limited_km_per_month_range' => 'nullable|integer|min:0',
+            'benefits.cancellation_available_per_day' => 'boolean',
+            'benefits.cancellation_available_per_week' => 'boolean',
+            'benefits.cancellation_available_per_month' => 'boolean',
+            'benefits.cancellation_available_per_day_date' => 'nullable|integer|min:0',
+            'benefits.cancellation_available_per_week_date' => 'nullable|integer|min:0',
+            'benefits.cancellation_available_per_month_date' => 'nullable|integer|min:0',
+            'benefits.price_per_km_per_day' => 'nullable|numeric|min:0',
+            'benefits.price_per_km_per_week' => 'nullable|numeric|min:0',
+            'benefits.price_per_km_per_month' => 'nullable|numeric|min:0',
+            'benefits.minimum_driver_age' => 'required|integer|min:18'
         ]);
 
-        $validated['limited_km'] = filter_var($request->limited_km, FILTER_VALIDATE_BOOLEAN);
-        $validated['cancellation_available'] = filter_var($request->cancellation_available, FILTER_VALIDATE_BOOLEAN);
         // Set default values for nullable fields
         $latitude = $request->latitude ?? 0;
         $longitude = $request->longitude ?? 0;
@@ -186,28 +187,32 @@ class VendorVehicleController extends Controller
         ]);
 
 
+
         // Update or create vehicle benefits
-        $vehicle->benefits()->updateOrCreate(
-            ['vehicle_id' => $vehicle->id],
-            [
-                'limited_km_per_day' => $request->limited_km_per_day ?? false,
-                'limited_km_per_week' => $request->limited_km_per_week ?? false,
-                'limited_km_per_month' => $request->limited_km_per_month ?? false,
-                'limited_km_per_day_range' => $request->limited_km_per_day_range,
-                'limited_km_per_week_range' => $request->limited_km_per_week_range,
-                'limited_km_per_month_range' => $request->limited_km_per_month_range,
-                'cancellation_available_per_day' => $request->cancellation_available_per_day ?? false,
-                'cancellation_available_per_week' => $request->cancellation_available_per_week ?? false,
-                'cancellation_available_per_month' => $request->cancellation_available_per_month ?? false,
-                'cancellation_available_per_day_date' => $request->cancellation_available_per_day_date,
-                'cancellation_available_per_week_date' => $request->cancellation_available_per_week_date,
-                'cancellation_available_per_month_date' => $request->cancellation_available_per_month_date,
-                'price_per_km_per_day' => $request->price_per_km_per_day,
-                'price_per_km_per_week' => $request->price_per_km_per_week,
-                'price_per_km_per_month' => $request->price_per_km_per_month,
-                'minimum_driver_age' => $request->minimum_driver_age,
-            ]
-        );
+        $benefitsData = [
+            'limited_km_per_day' => (bool) ($request->input('benefits.limited_km_per_day', false)),
+            'limited_km_per_week' => (bool) ($request->input('benefits.limited_km_per_week', false)),
+            'limited_km_per_month' => (bool) ($request->input('benefits.limited_km_per_month', false)),
+            'limited_km_per_day_range' => $request->input('benefits.limited_km_per_day_range'),
+            'limited_km_per_week_range' => $request->input('benefits.limited_km_per_week_range'),
+            'limited_km_per_month_range' => $request->input('benefits.limited_km_per_month_range'),
+            'cancellation_available_per_day' => (bool) ($request->input('benefits.cancellation_available_per_day', false)),
+            'cancellation_available_per_week' => (bool) ($request->input('benefits.cancellation_available_per_week', false)),
+            'cancellation_available_per_month' => (bool) ($request->input('benefits.cancellation_available_per_month', false)),
+            'cancellation_available_per_day_date' => $request->input('benefits.cancellation_available_per_day_date'),
+            'cancellation_available_per_week_date' => $request->input('benefits.cancellation_available_per_week_date'),
+            'cancellation_available_per_month_date' => $request->input('benefits.cancellation_available_per_month_date'),
+            'price_per_km_per_day' => $request->input('benefits.price_per_km_per_day'),
+            'price_per_km_per_week' => $request->input('benefits.price_per_km_per_week'),
+            'price_per_km_per_month' => $request->input('benefits.price_per_km_per_month'),
+            'minimum_driver_age' => $request->input('benefits.minimum_driver_age'),
+        ];
+
+        if ($vehicle->benefits) {
+            $vehicle->benefits()->update($benefitsData);
+        } else {
+            $vehicle->benefits()->create($benefitsData);
+        }
 
         // Update or create specifications
         if ($vehicle->specifications) {

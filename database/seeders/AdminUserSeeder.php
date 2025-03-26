@@ -15,12 +15,12 @@ class AdminUserSeeder extends Seeder
     {
         // Seed the admin user
         DB::table('users')->updateOrInsert(
-            ['email' => 'admin@example.com'],
+            ['email' => 'info@vrooem.com'],
             [
                 'first_name' => 'Admin',
                 'last_name' => 'User',
                 'phone' => '1234567890', 
-                'password' => Hash::make('password123'), 
+                'password' => Hash::make('infowaxx@123'), 
                 'role' => 'admin',
                 'status' => 'active',
                 'email_verified_at' => now(),
