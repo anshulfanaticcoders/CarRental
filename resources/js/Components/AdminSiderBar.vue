@@ -178,7 +178,7 @@ const data = {
         },
         {
           title: 'Contact Us',
-          url: 'admin/contact-us',
+          url: '/admin/contact-us',
         },
       ],
     },
