@@ -540,88 +540,110 @@ const submitBooking = async () => {
 
                         <!-- Protection Plan -->
                         <div class="protection_plan flex gap-10 max-[768px]:flex-col">
-                            <div v-for="plan in plans" :key="plan.id" class="cursor-pointer col w-[45%] rounded-[20px] border-[1px] border-[#153B4F] p-5 flex flex-col gap-5 
-                                   transition-transform duration-300 ease-in-out max-[768px]:w-full" :class="{
-                                    'hover:scale-105 scale-105': selectedPlan?.plan_id === plan.plan_id, // Keeps the scale effect when selected
-                                    'border-[#153B4F] bg-[#153B4F0D]': selectedPlan?.plan_id === plan.plan_id,
-                                }" @click="selectPlan(plan)">
-                                <span class="text-[1.5rem] text-center max-[768px]:text-[1.1rem]" :class="{
-                                    'text-[#016501]': plan.plan_id === 2,
-                                }">
-                                    {{ plan.plan_type }}
-                                </span>
+                            <template v-if="plans.length">
+                                <div v-for="plan in plans" :key="plan.id" class="cursor-pointer col w-[45%] rounded-[20px] border-[1px] border-[#153B4F] p-5 flex flex-col gap-5 
+                transition-transform duration-300 ease-in-out max-[768px]:w-full" :class="{
+                    'hover:scale-105 scale-105': selectedPlan?.plan_id === plan.plan_id,
+                    'border-[#153B4F] bg-[#153B4F0D]': selectedPlan?.plan_id === plan.plan_id,
+                }" @click="selectPlan(plan)">
+                                    <span class="text-[1.5rem] text-center max-[768px]:text-[1.1rem]"
+                                        :class="{ 'text-[#016501]': plan.plan_id === 2 }">
+                                        {{ plan.plan_type }}
+                                    </span>
 
-                                <strong class="text-[3rem] font-medium text-center max-[768px]:text-[1.25rem]">
-                                    {{ formatPrice(plan.price) }}
-                                </strong>
+                                    <strong class="text-[3rem] font-medium text-center max-[768px]:text-[1.25rem]">
+                                        {{ formatPrice(plan.price) }}
+                                    </strong>
 
-                                <p class="text-[1.25rem] text-[#2B2B2B] text-center max-[768px]:text-[0.95rem]">
-                                    Access to basic features without any subscription fee.
-                                </p>
+                                    <p class="text-[1.25rem] text-[#2B2B2B] text-center max-[768px]:text-[0.95rem]">
+                                        Access to basic features without any subscription fee.
+                                    </p>
 
-                                <button class="button-primary px-5 py-2 max-[768px]:text-[0.875rem]"
-                                    @click.stop="selectPlan(plan)" :class="{
-                                        'bg-[#016501]': selectedPlan?.plan_id === plan.plan_id,
-                                    }">
-                                    {{ selectedPlan?.plan_id === plan.plan_id ? 'Selected' : 'Select' }}
-                                </button>
+                                    <button class="button-primary px-5 py-2 max-[768px]:text-[0.875rem]"
+                                        @click.stop="selectPlan(plan)"
+                                        :class="{ 'bg-[#016501]': selectedPlan?.plan_id === plan.plan_id }">
+                                        {{ selectedPlan?.plan_id === plan.plan_id ? 'Selected' : 'Select' }}
+                                    </button>
 
-                                <div class="checklist features">
-                                    <ul
-                                        class="check-list text-center mt-[1rem] inline-flex flex-col items-center w-full gap-3">
-                                        <li v-for="(feature, index) in parsedFeatures(plan.features)" :key="index"
-                                            class="checklist-item max-[768px]:text-[0.75rem]">
-                                            {{ feature }}
-                                        </li>
-                                    </ul>
+                                    <div class="checklist features">
+                                        <ul
+                                            class="check-list text-center mt-[1rem] inline-flex flex-col items-center w-full gap-3">
+                                            <li v-for="(feature, index) in parsedFeatures(plan.features)" :key="index"
+                                                class="checklist-item max-[768px]:text-[0.75rem]">
+                                                {{ feature }}
+                                            </li>
+                                        </ul>
+                                    </div>
                                 </div>
+                            </template>
+
+                            <!-- If there are no plans available -->
+                            <div v-else class="text-center text-gray-500 w-full py-6 bg-customLightPrimaryColor">
+                                No protection plans available.
                             </div>
                         </div>
+
 
                         <!-- Additional Equipment -->
                         <div class="additional-equipment">
-                            <h4 class="text-[2.5rem] max-[768px]:text-[1.2rem] max-[768px]:mb-5">Additional Equipment
+                            <h4 class="text-[2.5rem] max-[768px]:text-[1.2rem] max-[768px]:mb-5">
+                                Additional Equipment
                             </h4>
-                            <p class="max-[768px]:text-[0.875rem]">
+                            
+
+                            <template v-if="bookingExtras.length">
+                                <p class="max-[768px]:text-[0.875rem]">
                                 Please note these additional extras are payable locally and do not form part of the
-                                rental price
-                                shown. Prices are displayed by pressing the title of each extra.
+                                rental price shown. Prices are displayed by pressing the title of each extra.
                             </p>
-                            <div class="equipment-list">
-                                <div v-for="extra in bookingExtras" :key="extra.id"
-                                    class="equipment-item flex max-[768px]:flex-col max-[768px]:items-start justify-between items-center mt-[2rem] gap-4 p-5 border-[1px] rounded-[12px] border-customPrimaryColor">
-                                    <div class="col flex-1">
-                                        <span class="text-[1.25rem] text-customPrimaryColor font-bold max-[768px]:text-[1rem]">
-                                            {{ extra.extra_name }}
-                                        </span>
-                                        <p class="text-customLightGrayColor max-[768px]:text-[0.875rem]">
-                                            {{ extra.description }}
-                                        </p>
-                                    </div>
-                                    <div class="col flex-[0.5]">
-                                        <span class="text-[1.25rem] text-customPrimaryColor font-bold max-[768px]:text-[0.95rem]">
-                                            {{ formatPrice(extra.price) }} Per day
-                                        </span>
-                                    </div>
-                                    <div class="col flex=[0.5]">
-                                        <div class="quantity-counter">
-                                            <button @click="decrementQuantity(extra)" class="decrement"
-                                                :disabled="extra.quantity === 0">
-                                                -
-                                            </button>
-                                            <input type="number" v-model.number="extra.quantity" class="value" min="0"
-                                                :max="extra.maxQuantity" @input="validateQuantity(extra)" />
-                                            <button @click="incrementQuantity(extra)" class="increment"
-                                                :disabled="extra.quantity >= extra.maxQuantity">
-                                                +
-                                            </button>
+                                <div class="equipment-list">
+                                    <div v-for="extra in bookingExtras" :key="extra.id"
+                                        class="equipment-item flex max-[768px]:flex-col max-[768px]:items-start justify-between items-center mt-[2rem] gap-4 p-5 border-[1px] rounded-[12px] border-customPrimaryColor">
+
+                                        <div class="col flex-1">
+                                            <span
+                                                class="text-[1.25rem] text-customPrimaryColor font-bold max-[768px]:text-[1rem]">
+                                                {{ extra.extra_name }}
+                                            </span>
+                                            <p class="text-customLightGrayColor max-[768px]:text-[0.875rem]">
+                                                {{ extra.description }}
+                                            </p>
+                                        </div>
+
+                                        <div class="col flex-[0.5]">
+                                            <span
+                                                class="text-[1.25rem] text-customPrimaryColor font-bold max-[768px]:text-[0.95rem]">
+                                                {{ formatPrice(extra.price) }} Per day
+                                            </span>
+                                        </div>
+
+                                        <div class="col flex-[0.5]">
+                                            <div class="quantity-counter">
+                                                <button @click="decrementQuantity(extra)" class="decrement"
+                                                    :disabled="extra.quantity === 0">
+                                                    -
+                                                </button>
+                                                <input type="number" v-model.number="extra.quantity" class="value"
+                                                    min="0" :max="extra.maxQuantity" @input="validateQuantity(extra)" />
+                                                <button @click="incrementQuantity(extra)" class="increment"
+                                                    :disabled="extra.quantity >= extra.maxQuantity">
+                                                    +
+                                                </button>
+                                            </div>
                                         </div>
                                     </div>
                                 </div>
+                            </template>
+
+                            <!-- If there are no additional equipment items available -->
+                            <div v-else class="text-center text-gray-500 w-full py-6 bg-customLightPrimaryColor mt-5">
+                                No additional equipment available.
                             </div>
                         </div>
 
-                        <div class="flex items-start max-[768px]:fixed max-[768px]:bottom-0 max-[768px]:left-0
+
+                        <div
+                            class="flex items-start max-[768px]:fixed max-[768px]:bottom-0 max-[768px]:left-0
                         max-[768px]:bg-white max-[768px]:w-full max-[768px]:z-10 max-[768px]:py-2 max-[768px]:justify-center">
                             <PrimaryButton class="button-primary py-5 w-[15rem] max-[768px]:text-[0.5rem] max-[768px]:w-[90%]
                             " @click="moveToNextStep">
@@ -706,12 +728,16 @@ const submitBooking = async () => {
                                 payment. You can choose your payment method in
                                 the next step.
                             </p>
-                            <div class="flex justify-between max-[768px]:fixed max-[768px]:bottom-0 max-[768px]:left-0
+                            <div
+                                class="flex justify-between max-[768px]:fixed max-[768px]:bottom-0 max-[768px]:left-0
                             max-[768px]:w-full max-[768px]:bg-white max-[768px]:py-2 max-[768px]:px-[1.5rem] max-[768px]:z-10">
-                                <button class="button-secondary py-4 w-[15rem] max-[768px]:text-[0.75rem] max-[768px]:w-[35%]" @click="moveToPrevStep">
+                                <button
+                                    class="button-secondary py-4 w-[15rem] max-[768px]:text-[0.75rem] max-[768px]:w-[35%]"
+                                    @click="moveToPrevStep">
                                     Back
                                 </button>
-                                <PrimaryButton type="submit" class="button-primary py-4 w-[15rem] max-[768px]:!text-[0.5rem] max-[768px]:w-[50%]"
+                                <PrimaryButton type="submit"
+                                    class="button-primary py-4 w-[15rem] max-[768px]:!text-[0.5rem] max-[768px]:w-[50%]"
                                     @click="() => { storeFormData(); moveToNextStep(); }">
                                     Continue to payment
                                 </PrimaryButton>
@@ -720,7 +746,8 @@ const submitBooking = async () => {
                     </div>
                 </div>
 
-                <div class="column w-[65%] flex flex-col gap-10 max-[768px]:w-full max-[768px]:gap-5" v-if="currentStep === 3">
+                <div class="column w-[65%] flex flex-col gap-10 max-[768px]:w-full max-[768px]:gap-5"
+                    v-if="currentStep === 3">
                     <h4 class="text-[2rem] font-medium max-[768px]:text-[1.2rem]">Payment Method</h4>
                     <div class="free_cancellation p-5 bg-[#0099001A] border-[#009900] rounded-[8px] border-[1px]">
 
@@ -748,12 +775,15 @@ const submitBooking = async () => {
                         </div>
 
                         <div v-else>
-                            <p class="text-[1.2rem] text-[#009900] font-medium max-[768px]:text-[0.875rem]">No Cancellation Available</p>
+                            <p class="text-[1.2rem] text-[#009900] font-medium max-[768px]:text-[0.875rem]">No
+                                Cancellation Available
+                            </p>
                         </div>
 
 
                     </div>
-                    <h3 class="text-[2rem] font-medium max-[768px]:text-[1.2rem] max-[768px]:mt-4">Pay Now to Lock in this Deal</h3>
+                    <h3 class="text-[2rem] font-medium max-[768px]:text-[1.2rem] max-[768px]:mt-4">Pay Now to Lock in
+                        this Deal</h3>
 
                     <div class="stripe-payment-form p-6 border rounded-lg">
                         <p class="text-[1.5rem] mb-6 max-[768px]:text-[1.2rem]">Choose Card</p>
@@ -795,7 +825,8 @@ const submitBooking = async () => {
 
                                 <!-- Terms Checkbox -->
                                 <div class="flex items-center gap-2 max-[768px]:items-start">
-                                    <input type="checkbox" id="terms" class="rounded border-gray-300 max-[768px]:mt-1" required />
+                                    <input type="checkbox" id="terms" class="rounded border-gray-300 max-[768px]:mt-1"
+                                        required />
                                     <label for="terms" class="text-sm">
                                         I have read, understood, and accepted vroome.com
                                         <a href="#" class="text-customDarkBlackColor font-bold">Terms & Conditions</a>
@@ -811,9 +842,11 @@ const submitBooking = async () => {
                             </div>
 
                             <!-- Button Group -->
-                            <div class="flex justify-between gap-4 mt-4 max-[768px]:fixed max-[768px]:bottom-0 max-[768px]:left-0
+                            <div
+                                class="flex justify-between gap-4 mt-4 max-[768px]:fixed max-[768px]:bottom-0 max-[768px]:left-0
                             max-[768px]:bg-white max-[768px]:w-full max-[768px]:z-10 max-[768px]:py-2 max-[768px]:px-[1.5rem]">
-                                <button type="button" @click="moveToPrevStep" class="button-secondary w-[15rem] max-[768px]:text-[0.75rem]">
+                                <button type="button" @click="moveToPrevStep"
+                                    class="button-secondary w-[15rem] max-[768px]:text-[0.75rem]">
                                     Back
                                 </button>
                                 <PrimaryButton type="submit" class=" w-[15rem] max-[768px]:text-[0.65rem]">
@@ -829,7 +862,9 @@ const submitBooking = async () => {
                 <div v-if="isLoading" class="fixed z-50 h-full w-full top-0 left-0 bg-[#0000009e]">
                     <div class="flex justify-center flex-col items-center h-full w-full">
                         <img :src=loader alt="" class="w-[200px] max-[768px]:w-[70px]">
-                        <p class="text-[white] text-[1.5rem] max-[768px]:text-[1rem]">Please do not refresh the page..waiting for payment</p>
+                        <p class="text-[white] text-[1.5rem] max-[768px]:text-[1rem]">Please do not refresh the
+                            page..waiting for
+                            payment</p>
                     </div>
                 </div>
 
@@ -838,8 +873,7 @@ const submitBooking = async () => {
                         class="rounded-[12px] border-[1px] border-[#153B4F] p-5 sticky top-[2rem] bg-customPrimaryColor text-customPrimaryColor-foreground">
                         <div class="flex items-center justify-between gap-3">
                             <h4 class="max-[768px]:text-[1.4rem]">{{ vehicle?.brand }}</h4>
-                            <span
-                                class="bg-[#f5f5f5] inline-block px-8 py-2 text-center rounded-[40px] text-customPrimaryColor
+                            <span class="bg-[#f5f5f5] inline-block px-8 py-2 text-center rounded-[40px] text-customPrimaryColor
                                 max-[768px]:text-[0.75rem]">{{
                                     vehicle?.category.name }}</span>
                         </div>
@@ -866,13 +900,15 @@ const submitBooking = async () => {
                         <div class="ratings"></div>
 
                         <div class="location mt-[2rem]">
-                            <span class="text-[1.5rem] font-medium mb-[1rem] inline-block max-[768px]:text-[1.2rem]">Location</span>
+                            <span
+                                class="text-[1.5rem] font-medium mb-[1rem] inline-block max-[768px]:text-[1.2rem]">Location</span>
                             <div class="col flex items-start gap-4">
                                 <img :src="pickupLocationIcon" alt="" />
                                 <div class="flex flex-col gap-1">
                                     <span class="text-[1.25rem] text-medium max-[768px]:text-[1rem]">{{
                                         vehicle?.location
-                                    }}</span><span class="max-[768px]:text-[0.85rem]">From: {{ dateFrom }} {{ timeFrom }}</span>
+                                        }}</span><span class="max-[768px]:text-[0.85rem]">From: {{ dateFrom }} {{
+                                        timeFrom }}</span>
                                 </div>
                             </div>
                             <div class="col flex items-start gap-4 mt-[2.5rem]">
@@ -880,7 +916,8 @@ const submitBooking = async () => {
                                 <div class="flex flex-col gap-1">
                                     <span class="text-[1.25rem] text-medium max-[768px]:text-[1rem]">{{
                                         vehicle?.location
-                                    }}</span><span class="max-[768px]:text-[0.85rem]">To: {{ dateTo }} {{ timeTo }}</span>
+                                        }}</span><span class="max-[768px]:text-[0.85rem]">To: {{ dateTo }} {{ timeTo
+                                        }}</span>
                                 </div>
                             </div>
 
@@ -899,11 +936,11 @@ const submitBooking = async () => {
                                     <div v-if="selectedPlan" class="flex justify-between items-center text-[1.15rem]">
                                         <span>{{
                                             selectedPlan.plan_type
-                                        }}</span>
+                                            }}</span>
                                         <div>
                                             <strong class="text-[1.5rem] font-medium max-[768px]:text-[1.1rem]">{{
                                                 formatPrice(selectedPlan.price)
-                                                }}</strong>
+                                            }}</strong>
 
                                         </div>
                                     </div>
@@ -920,7 +957,7 @@ const submitBooking = async () => {
                                         <div>
                                             <strong class="text-[1.5rem] font-medium max-[768px]:text-[1.1rem]">{{
                                                 formatPrice(extra.price * extra.quantity)
-                                                }}</strong>
+                                            }}</strong>
 
                                         </div>
                                     </div>
@@ -964,7 +1001,7 @@ const submitBooking = async () => {
                                                 class="flex justify-between text-[1.25rem] font-bold border-t pt-3 mt-3">
                                                 <span>Total (incl. VAT)</span>
                                                 <p class="font-medium">{{ formatPrice(calculateTotal + discountAmount)
-                                                }}
+                                                    }}
                                                 </p>
                                             </div>
                                             <div v-if="discountAmount"
@@ -974,7 +1011,7 @@ const submitBooking = async () => {
                                                     <p class="border-b-2 mb-1 text-red-500 font-medium">-{{
                                                         formatPrice(discountAmount) }}</p>
                                                     <strong class="text-[1.3rem]">{{ formatPrice(calculateTotal)
-                                                        }}</strong>
+                                                    }}</strong>
                                                 </div>
                                             </div>
                                         </div>
@@ -1112,10 +1149,12 @@ const submitBooking = async () => {
 .payment-method-card.selected {
     background-color: #19304D;
 }
-label{
- font-size: 0.85rem;
+
+label {
+    font-size: 0.85rem;
 }
-input{
+
+input {
     font-size: 0.85rem;
 }
 </style>

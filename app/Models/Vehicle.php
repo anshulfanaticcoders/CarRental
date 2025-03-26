@@ -53,8 +53,8 @@ class Vehicle extends Model
         'phone_number',
 
         // Blocking dates
-        'blocking_start_date',
-        'blocking_end_date',
+        // 'blocking_start_date',
+        // 'blocking_end_date',
 
     ];
 
@@ -125,5 +125,10 @@ public function addons()
 {
     return $this->hasMany(VendorVehicleAddon::class, 'vehicle_id');
 }
+
+public function blockings()
+    {
+        return $this->hasMany(BlockingDate::class, 'vehicle_id');
+    }
 
 }

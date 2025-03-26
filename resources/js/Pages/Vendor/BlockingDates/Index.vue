@@ -40,9 +40,10 @@
 
         <!-- Search Bar -->
         <div class="mb-4">
-            <input type="text" v-model="searchQuery" placeholder="Search vehicles..." class="px-4 py-2 border border-gray-300 rounded-md w-full" />
+            <input type="text" v-model="searchQuery" placeholder="Search vehicles..."
+                class="px-4 py-2 border border-gray-300 rounded-md w-full" />
         </div>
-        
+
         <div v-if="filteredVehicles.length" class="bg-white rounded-lg shadow overflow-x-auto">
             <table class="min-w-full divide-y divide-gray-200">
                 <thead class="bg-gray-50">
@@ -50,46 +51,81 @@
                         <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">ID</th>
                         <th class="px-4 py-2 text-left text-sm font-bold">Brand</th>
                         <th class="px-4 py-2 text-left text-sm font-bold">Model</th>
+                        <th class="px-4 py-2 text-left text-sm font-bold">Location</th>
+                        <th class="px-4 py-2 text-left text-sm font-bold">Booking Dates</th>
                         <th class="px-4 py-2 text-left text-sm font-bold">Blocking Start Date</th>
                         <th class="px-4 py-2 text-left text-sm font-bold">Blocking End Date</th>
                         <th class="px-4 py-2 text-left text-sm font-bold">Actions</th>
                     </tr>
                 </thead>
                 <tbody>
-                    <tr v-for="(vehicle,index) in filteredVehicles" :key="vehicle.id" class="border-b hover:bg-gray-50">
-                        <td class="px-6 py-4 whitespace-nowrap">{{ (pagination.current_page - 1) * pagination.per_page + index + 1 }}</td>
+                    <tr v-for="(vehicle, index) in filteredVehicles" :key="vehicle.id"
+                        class="border-b hover:bg-gray-50">
+                        <td class="px-6 py-4 whitespace-nowrap">{{ (pagination.current_page - 1) * pagination.per_page +
+                            index + 1 }}</td>
                         <td class="px-4 py-2 text-sm text-gray-700">{{ vehicle.brand }}</td>
                         <td class="px-4 py-2 text-sm text-gray-700">{{ vehicle.model }}</td>
-                        <td class="px-4 py-2 text-sm text-gray-700">{{ vehicle.blocking_start_date || 'N/A' }}</td>
-                        <td class="px-4 py-2 text-sm text-gray-700">{{ vehicle.blocking_end_date || 'N/A' }}</td>
+                        <td class="px-4 py-2 text-sm text-gray-700">{{ vehicle.location }}</td>
+                        <td class="px-4 py-2 text-sm text-gray-700">
+                            <div v-if="vehicle.bookings && vehicle.bookings.length > 0">
+                                <div v-for="(booking, index) in vehicle.bookings" :key="index" class="mb-1">
+                                    Pickup: {{ formatDate(booking.pickup_date) }} - Return: {{ formatDate(booking.return_date) }}
+                                </div>
+                            </div>
+                            <span v-else>N/A</span>
+                        </td>
+
+                        <td class="px-4 py-2 text-sm text-gray-700">
+                            <div v-if="vehicle.blockings && vehicle.blockings.length > 0">
+                                <div v-for="(blocking, index) in vehicle.blockings" :key="index" class="mb-1">
+                                    {{ blocking.blocking_start_date }}
+                                </div>
+                            </div>
+                            <span v-else>N/A</span>
+                        </td>
+                        <td class="px-4 py-2 text-sm text-gray-700">
+                            <div v-if="vehicle.blockings && vehicle.blockings.length > 0">
+                                <div v-for="(blocking, index) in vehicle.blockings" :key="index" class="mb-1">
+                                    {{ blocking.blocking_end_date }}
+                                </div>
+                            </div>
+                            <span v-else>N/A</span>
+                        </td>
                         <td class="px-4 py-2 text-sm">
-                            <Dialog>
-                                <DialogTrigger class="text-blue-600 hover:underline">Edit</DialogTrigger>
-                                <DialogContent>
-                                    <DialogHeader>
-                                        <DialogTitle>Edit Blocking Date</DialogTitle>
-                                        <DialogDescription>Modify the blocking dates for this vehicle.</DialogDescription>
-                                    </DialogHeader>
-                                    <form @submit.prevent="updateBlockingDate(vehicle.id)">
-                                        <div class="mb-4">
-                                            <label class="block text-sm font-medium text-gray-700">Start Date</label>
-                                            <input type="date" v-model="vehicle.blocking_start_date" class="w-full border rounded p-2" />
-                                        </div>
-                                        <div class="mb-4">
-                                            <label class="block text-sm font-medium text-gray-700">End Date</label>
-                                            <input type="date" v-model="vehicle.blocking_end_date" class="w-full border rounded p-2" />
-                                        </div>
-                                        <DialogFooter>
-                                            <button type="submit" class="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700">
-                                                Save Changes
-                                            </button>
-                                        </DialogFooter>
-                                    </form>
-                                </DialogContent>
-                            </Dialog>
-                            <button @click="removeBlockingDates(vehicle.id)" class="text-red-600 ml-2 hover:underline">
-                                Remove
-                            </button>
+                            <div v-for="blocking in vehicle.blockings" :key="blocking.id" class="flex mb-1">
+                                <Dialog>
+                                    <DialogTrigger class="text-blue-600 hover:underline mr-2">Edit</DialogTrigger>
+                                    <DialogContent>
+                                        <DialogHeader>
+                                            <DialogTitle>Edit Blocking Date</DialogTitle>
+                                            <DialogDescription>Modify the blocking dates for this vehicle.
+                                            </DialogDescription>
+                                        </DialogHeader>
+                                        <form @submit.prevent="updateBlockingDate(vehicle.id, blocking.id)">
+                                            <div class="mb-4">
+                                                <label class="block text-sm font-medium text-gray-700">Start
+                                                    Date</label>
+                                                <input type="date" v-model="blocking.blocking_start_date"
+                                                    class="w-full border rounded p-2" />
+                                            </div>
+                                            <div class="mb-4">
+                                                <label class="block text-sm font-medium text-gray-700">End Date</label>
+                                                <input type="date" v-model="blocking.blocking_end_date"
+                                                    class="w-full border rounded p-2" />
+                                            </div>
+                                            <DialogFooter>
+                                                <button type="submit"
+                                                    class="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700">
+                                                    Save Changes
+                                                </button>
+                                            </DialogFooter>
+                                        </form>
+                                    </DialogContent>
+                                </Dialog>
+                                <button @click="removeBlockingDates(blocking.id)" class="text-red-600 hover:underline">
+                                    Remove
+                                </button>
+                            </div>
                         </td>
                     </tr>
                 </tbody>
@@ -101,16 +137,16 @@
 
         <!-- Pagination -->
         <div class="mt-[1rem] flex justify-end">
-    <Pagination :current-page="pagination.current_page" :total-pages="pagination.last_page"
-        @page-change="handlePageChange" />
-</div>
+            <Pagination :current-page="pagination.current_page" :total-pages="pagination.last_page"
+                @page-change="handlePageChange" />
+        </div>
     </MyProfileLayout>
 </template>
 
 <script setup>
 import MyProfileLayout from '@/Layouts/MyProfileLayout.vue';
 import { ref, computed, watch } from 'vue';
-import { usePage, router  } from '@inertiajs/vue3';
+import { usePage, router } from '@inertiajs/vue3';
 import { useToast } from 'vue-toastification';
 import axios from 'axios';
 import {
@@ -136,7 +172,7 @@ const props = defineProps({
         filters: Object,
         required: true
     },
-    pagination: { 
+    pagination: {
         type: Object,
         required: true
     }
@@ -148,13 +184,7 @@ const handlePageChange = (page) => {
 const submitForm = async () => {
     try {
         await axios.post(route('vendor.blocking-dates.store'), form.value);
-        toast.success('Blocking date added successfully!', {
-                position: 'top-right',
-                timeout: 1000,
-                closeOnClick: true,
-                pauseOnHover: true,
-                draggable: true,
-            });
+        toast.success('Blocking date added successfully!');
         setTimeout(() => {
             window.location.reload();
         }, 1000);
@@ -163,19 +193,13 @@ const submitForm = async () => {
     }
 };
 
-const updateBlockingDate = async (vehicleId) => {
+const updateBlockingDate = async (vehicleId, blockingId) => {
     try {
-        await axios.put(route('vendor.blocking-dates.update', vehicleId), {
-            blocking_start_date: vehicles.value.find(v => v.id === vehicleId).blocking_start_date,
-            blocking_end_date: vehicles.value.find(v => v.id === vehicleId).blocking_end_date,
+        await axios.put(route('vendor.blocking-dates.update', blockingId), {
+            blocking_start_date: form.value.blocking_start_date,
+            blocking_end_date: form.value.blocking_end_date,
         });
-        toast.success('Blocking date updated successfully!', {
-                position: 'top-right',
-                timeout: 1000,
-                closeOnClick: true,
-                pauseOnHover: true,
-                draggable: true,
-            });
+        toast.success('Blocking date updated successfully!');
         setTimeout(() => {
             window.location.reload();
         }, 1000);
@@ -184,25 +208,20 @@ const updateBlockingDate = async (vehicleId) => {
     }
 };
 
-const removeBlockingDates = async (vehicleId) => {
-    if (confirm('Are you sure you want to remove blocking dates for this vehicle?')) {
+const removeBlockingDates = async (blockingId) => {
+    if (confirm('Are you sure you want to remove this blocking date?')) {
         try {
-            await axios.delete(route('vendor.blocking-dates.destroy', vehicleId));
-            toast.success('Blocking date removed successfully!', {
-                position: 'top-right',
-                timeout: 1000,
-                closeOnClick: true,
-                pauseOnHover: true,
-                draggable: true,
-            });
+            await axios.delete(route('vendor.blocking-dates.destroy', blockingId));
+            toast.success('Blocking date removed successfully!');
             setTimeout(() => {
                 window.location.reload();
             }, 1000);
         } catch (error) {
-            toast.error('Failed to remove blocking dates. Please try again.');
+            toast.error('Failed to remove blocking date. Please try again.');
         }
     }
 };
+
 
 const filteredVehicles = computed(() => {
     const query = searchQuery.value.toLowerCase();
@@ -217,12 +236,19 @@ const filteredVehicles = computed(() => {
 });
 
 watch(searchQuery, (newQuery) => {
-  router.get(
-    route('vendor.blocking-dates.index'),
-    { search: newQuery },
-    { preserveState: true, preserveScroll: true }
-  );
+    router.get(
+        route('vendor.blocking-dates.index'),
+        { search: newQuery },
+        { preserveState: true, preserveScroll: true }
+    );
 });
+
+const formatDate = (dateString) => {
+    if (!dateString) return 'N/A';
+    const options = { year: 'numeric', month: 'short', day: '2-digit' };
+    return new Date(dateString).toLocaleDateString('en-US', options);
+};
+
 </script>
 
 <style scoped>
@@ -235,10 +261,10 @@ label {
 }
 
 @media screen and (max-width:768px) {
-    
-    th{
+
+    th {
         font-size: 0.75rem;
     }
-   
+
 }
 </style>

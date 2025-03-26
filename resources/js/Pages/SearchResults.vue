@@ -248,10 +248,13 @@ const fetchFavoriteStatus = async () => {
         console.error("Error fetching favorite status:", error);
     }
 };
+const $page = usePage();
 
-// ✅ Toggle Favorite Status
+
+const popEffect = ref({}); // Store animation state
+
 const toggleFavourite = async (vehicle) => {
-    if (!props.auth?.user) {
+    if (!$page.props.auth?.user) {
         return Inertia.visit('/login'); // Redirect if not logged in
     }
 
@@ -262,6 +265,14 @@ const toggleFavourite = async (vehicle) => {
     try {
         await axios.post(endpoint);
         favoriteStatus.value[vehicle.id] = !favoriteStatus.value[vehicle.id];
+
+        // Trigger pop effect
+        if (favoriteStatus.value[vehicle.id]) {
+            popEffect.value[vehicle.id] = true;
+            setTimeout(() => {
+                popEffect.value[vehicle.id] = false;
+            }, 300); // Remove class after animation duration
+        }
 
         toast.success(`Vehicle ${favoriteStatus.value[vehicle.id] ? 'added to' : 'removed from'} favorites!`, {
             position: 'top-right',
@@ -342,7 +353,8 @@ const applyFilters = () => {
     <AuthenticatedHeaderLayout />
     <section class="bg-customPrimaryColor py-customVerticalSpacing">
         <div class="">
-            <SearchBar class="border-[2px] rounded-[20px] border-white mt-0 mb-0 max-[768px]:border-none" :prefill="searchQuery" />
+            <SearchBar class="border-[2px] rounded-[20px] border-white mt-0 mb-0 max-[768px]:border-none"
+                :prefill="searchQuery" />
         </div>
     </section>
 
@@ -682,8 +694,10 @@ const applyFilters = () => {
                         class="p-[1rem] rounded-[12px] border-[1px] border-[#E7E7E7]">
                         <div class="flex justify-end mb-3">
                             <div class="column flex justify-end">
-                                <button @click.stop="toggleFavourite(vehicle)" class="heart-icon"
-                                    :class="{ 'filled-heart': favoriteStatus[vehicle.id] }">
+                                <button @click.stop="toggleFavourite(vehicle)" class="heart-icon" :class="{
+                                    'filled-heart': favoriteStatus[vehicle.id],
+                                    'pop-animation': popEffect[vehicle.id] // Apply animation class dynamically
+                                }">
                                     <img :src="favoriteStatus[vehicle.id] ? FilledHeart : Heart" alt="Favorite"
                                         class="w-[1.5rem] transition-colors duration-300" />
                                 </button>
@@ -696,8 +710,10 @@ const applyFilters = () => {
                                     (image) =>
                                         image.image_type === 'primary'
                                 )?.image_url
-                                    }`" alt="Primary Image" class="w-full h-[250px] object-cover rounded-lg max-[768px]:h-[200px]" />
-                                <span class="bg-[#f5f5f5] inline-block px-8 py-2 text-center rounded-[40px] max-[768px]:text-[0.95rem]">
+                                    }`" alt="Primary Image"
+                                    class="w-full h-[250px] object-cover rounded-lg max-[768px]:h-[200px]" />
+                                <span
+                                    class="bg-[#f5f5f5] inline-block px-8 py-2 text-center rounded-[40px] max-[768px]:text-[0.95rem]">
                                     {{ vehicle.model }}
                                 </span>
                             </div>
@@ -709,7 +725,8 @@ const applyFilters = () => {
                                 <div class="car_short_info mt-[1rem] flex gap-3">
                                     <img :src="carIcon" alt="" />
                                     <div class="features">
-                                        <span class="capitalize text-[1.15rem] max-[768px]:text-[1rem]">{{ vehicle.transmission }} .
+                                        <span class="capitalize text-[1.15rem] max-[768px]:text-[1rem]">{{
+                                            vehicle.transmission }} .
                                             {{ vehicle.fuel }} .
                                             {{
                                                 vehicle.seating_capacity
@@ -720,8 +737,9 @@ const applyFilters = () => {
                                 <div class="extra_details flex gap-5 mt-[1rem]">
 
                                     <div class="col flex gap-3">
-                                        <img :src="mileageIcon" alt="" /><span class="text-[1.15rem] max-[768px]:text-[0.95rem]">{{ vehicle.mileage
-                                        }}km/d</span>
+                                        <img :src="mileageIcon" alt="" /><span
+                                            class="text-[1.15rem] max-[768px]:text-[0.95rem]">{{ vehicle.mileage
+                                            }}km/d</span>
                                     </div>
                                 </div>
 
@@ -787,12 +805,14 @@ const applyFilters = () => {
                                     <span
                                         v-if="vehicle.benefits && filters.package_type === 'day' && vehicle.benefits.price_per_km_per_day"
                                         class="flex gap-3 items-center text-[12px]">
-                                        <img :src="check" alt="" />{{ vehicle.benefits.price_per_km_per_day }}/km extra above limit
+                                        <img :src="check" alt="" />{{ vehicle.benefits.price_per_km_per_day }}/km extra
+                                        above limit
                                     </span>
                                     <span
                                         v-else-if="vehicle.benefits && filters.package_type === 'week' && vehicle.benefits.price_per_km_per_week"
                                         class="flex gap-3 items-center text-[12px]">
-                                        <img :src="check" alt="" />{{ vehicle.benefits.price_per_km_per_week }}/km extra above limit
+                                        <img :src="check" alt="" />{{ vehicle.benefits.price_per_km_per_week }}/km extra
+                                        above limit
                                     </span>
                                     <span
                                         v-else-if="vehicle.benefits && filters.package_type === 'month' && vehicle.benefits.price_per_km_per_month"
@@ -811,11 +831,12 @@ const applyFilters = () => {
 
                                 <div class="mt-[2rem] flex justify-between items-center">
                                     <div>
-                                        <span class="text-customPrimaryColor text-[1.875rem] font-medium max-[768px]:text-[1.3rem] max-[768px]:font-bold">{{
-                                            vehicle.vendor_profile.currency }}{{
+                                        <span
+                                            class="text-customPrimaryColor text-[1.875rem] font-medium max-[768px]:text-[1.3rem] max-[768px]:font-bold">{{
+                                                vehicle.vendor_profile.currency }}{{
                                                 vehicle[priceField] }}</span><span>/{{ priceUnit }}</span>
                                     </div>
-                                    <img :src="goIcon" alt="" class="max-[768px]:w-[35px]"/>
+                                    <img :src="goIcon" alt="" class="max-[768px]:w-[35px]" />
                                 </div>
                             </div>
                         </a>
@@ -909,5 +930,24 @@ const applyFilters = () => {
 #map {
     height: 100%;
     width: 100%;
+}
+
+
+@keyframes pop {
+    0% {
+        transform: scale(1);
+    }
+
+    50% {
+        transform: scale(1.3);
+    }
+
+    100% {
+        transform: scale(1);
+    }
+}
+
+.pop-animation {
+    animation: pop 0.3s ease-in-out;
 }
 </style>
