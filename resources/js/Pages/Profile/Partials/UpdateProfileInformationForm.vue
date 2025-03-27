@@ -188,12 +188,20 @@ const minimumDateOfBirth = computed(() => {
             </div>
             <div class="grid grid-cols-2 gap-8">
                 <div class="col-span-2 w-[6rem]">
-                    <InputLabel for="title" value="Title" />
-                    <select id="title" class="mt-1 block w-full" v-model="form.title">
-                        <option value="Mr." selected>Mr.</option>
-                        <option value="Miss">Miss</option>
-                    </select>
+                    <Select v-model="form.title">
+                        <SelectTrigger class="w-full p-[1.7rem] border-customLightGrayColor rounded-[12px]">
+                            <SelectValue placeholder="Select Title" />
+                        </SelectTrigger>
+                        <SelectContent>
+                            <SelectGroup>
+                                <SelectLabel>Title</SelectLabel>
+                                <SelectItem value="Mr.">Mr.</SelectItem>
+                                <SelectItem value="Miss">Miss</SelectItem>
+                            </SelectGroup>
+                        </SelectContent>
+                    </Select>
                     <InputError class="mt-2" :message="form.errors.title" />
+
                 </div>
 
                 <!-- First and Last Name -->
@@ -230,7 +238,7 @@ const minimumDateOfBirth = computed(() => {
 
                 <div>
                     <InputLabel for="date_of_birth" value="Date of Birth" />
-                    <TextInput id="date_of_birth" type="date" v-model="form.date_of_birth" required
+                    <input id="date_of_birth" type="date" v-model="form.date_of_birth" required
                         :max="minimumDateOfBirth" class="w-full" />
                     <small class="text-gray-500 mt-1 block">You must be at least 18 years old</small>
                     <InputError class="mt-2" :message="form.errors.date_of_birth" />
@@ -261,7 +269,7 @@ const minimumDateOfBirth = computed(() => {
 
 
                 <div>
-                    <InputLabel for="currency" value="Currency" class="mb-1"/>
+                    <InputLabel for="currency" value="Currency" class="mb-1" />
                     <Select v-model="selectedCurrency">
                         <SelectTrigger class="w-full p-[1.7rem] border-customLightGrayColor rounded-[12px]">
                             <SelectValue placeholder="Select Currency" />
@@ -305,7 +313,7 @@ const minimumDateOfBirth = computed(() => {
                 </div>
 
 
-                <h2 class="text-[1.5rem] font-medium text-gray-900 max-[768px]:text-[1.2rem]">Profile</h2>
+                <h2 class="text-[1.5rem] font-medium text-gray-900 max-[768px]:text-[1.2rem] leading-4 mt-10">Profile</h2>
 
                 <div class="col-span-2">
                     <p class="mb-[1rem] text-customLightGrayColor font-medium max-[768px]:text-[0.95rem]">Who am I?
@@ -326,8 +334,8 @@ const minimumDateOfBirth = computed(() => {
 
 
                 <div class="max-[768px]:col-span-2">
-                    <h2 class="text-[1.5rem] font-medium text-gray-900 max-[768px]:text-[1.2rem] max-[768px]:mb-4">Tax
-                        Identification Number</h2>
+                    <span class="text-[1.5rem] font-medium text-gray-900 max-[768px]:text-[1.2rem] mb-4 inline-block mt-5 max-[768px]:mb-4">Tax
+                        Identification Number</span>
                     <InputLabel for="tax_identification" value="Tax Identification Number" />
                     <TextInput id="tax_identification" type="text" class="mt-1 block w-full"
                         v-model="form.tax_identification" />

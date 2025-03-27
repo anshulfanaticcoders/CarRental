@@ -213,4 +213,19 @@ input[type="checkbox"] {
         font-size: 1.5rem;
         line-height: 1.1em;
     }
+
+    input[type="checkbox"] {
+        width: 8px;
+        height: 8px;
+        accent-color: #153B4F; /* Changes checkbox color */
+        cursor: pointer;
+    }
+    input[type="date"] {
+        -webkit-appearance: none;
+        appearance: none;
+        min-height: 20px;
+        padding: 10px;
+        border: 1px solid #ccc;
+        border-radius: 4px;
+      }
 }

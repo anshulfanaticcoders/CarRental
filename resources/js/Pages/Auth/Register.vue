@@ -277,7 +277,7 @@ const minimumDateOfBirth = computed(() => {
 
                             <div class="column w-full col-span-2 max-[768px]:col-span-1">
                                 <InputLabel for="date_of_birth" value="Date of Birth" />
-                                <TextInput id="date_of_birth" type="date" v-model="form.date_of_birth" required
+                                <input id="date_of_birth" type="date" v-model="form.date_of_birth" required
                                     :max="minimumDateOfBirth" class="w-full" />
                                 <small class="text-gray-500 mt-1 block">You must be at least 18 years old</small>
                                 <InputError class="mt-2" :message="form.errors.date_of_birth" />
