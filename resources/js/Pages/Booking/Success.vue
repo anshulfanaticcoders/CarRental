@@ -16,6 +16,7 @@ const vehicle = ref(null);
 const error = ref(null);
 const map = ref(null);
 const plan = ref(null);
+const vendorProfile = ref(null);
 
 // Map initialization function
 const initMap = () => {
@@ -87,6 +88,7 @@ onMounted(async () => {
       payment.value = response.data.payment;
       vehicle.value = response.data.vehicle;
       plan.value = response.data.plan;
+      vendorProfile.value = response.data.vendorProfile; 
 
       // Initialize map after data is loaded
       nextTick(() => {
@@ -175,7 +177,7 @@ const formatDate = (dateStr) => {
               </tr>
               <tr class="border-b">
                 <td class="text-customDarkBlackColor py-2">Total Amount</td>
-                <td class="text-customPrimaryColor font-medium text-right py-2">{{ formatCurrency(booking.total_amount)
+                <td class="text-customPrimaryColor font-medium text-right py-2">{{ vendorProfile.currency }}{{ booking.total_amount
                   }}</td>
               </tr>
             </table>
@@ -194,7 +196,7 @@ const formatDate = (dateStr) => {
               </tr>
               <tr class="border-b">
                 <td class="text-customDarkBlackColor py-2">Amount Paid</td>
-                <td class="text-customPrimaryColor font-medium text-right py-2">{{ formatCurrency(payment.amount) }}
+                <td class="text-customPrimaryColor font-medium text-right py-2">{{ vendorProfile.currency }}{{ payment.amount }}
                 </td>
               </tr>
             </table>
@@ -236,32 +238,32 @@ const formatDate = (dateStr) => {
                 <span class="capitalize">{{booking.preferred_day}} Price</span>
                 <div>
                   <!-- <strong class="text-[1.5rem] font-medium">€{{ booking.base_price }}</strong> -->
-                   <strong class="text-[1.5rem] font-medium max-[768px]:text-[0.875rem]" v-if="booking.preferred_day==='day'">{{ vehicle.price_per_day }}</strong>
-                   <strong class="text-[1.5rem] font-medium max-[768px]:text-[0.875rem]" v-if="booking.preferred_day==='week'">{{ vehicle.price_per_week }}</strong>
-                   <strong class="text-[1.5rem] font-medium max-[768px]:text-[0.875rem]" v-if="booking.preferred_day==='month'">{{ vehicle.price_per_month }}</strong>
+                   <strong class="text-[1.5rem] font-medium max-[768px]:text-[0.875rem]" v-if="booking.preferred_day==='day'">{{ vendorProfile.currency }}{{ vehicle.price_per_day }}/day</strong>
+                   <strong class="text-[1.5rem] font-medium max-[768px]:text-[0.875rem]" v-if="booking.preferred_day==='week'">{{ vendorProfile.currency }}{{ vehicle.price_per_week }}/week</strong>
+                   <strong class="text-[1.5rem] font-medium max-[768px]:text-[0.875rem]" v-if="booking.preferred_day==='month'">{{ vendorProfile.currency }}{{ vehicle.price_per_month }}/month</strong>
                 </div>
               </div>
               <div v-if="booking.discount_amount" class="flex justify-between items-center text-[1.1rem] mt-[-1rem] border-b-[1px] pb-[0.5rem] max-[768px]:mt-0">
                 <span class="capitalize">Discount Price</span>
-                <strong class="text-[1.1rem] font-medium">- {{booking.discount_amount}}</strong>
+                <strong class="text-[1.1rem] font-medium">- {{ vendorProfile.currency }}{{booking.discount_amount}}</strong>
               </div>
 
               <div class="flex justify-between">
                 <span>Final Price</span>
-                <strong class="text-[1.1rem] font-medium">{{ booking.base_price }}</strong>
+                <strong class="text-[1.1rem] font-medium">{{ vendorProfile.currency }}{{ booking.base_price }}</strong>
               </div>
               
               <div class="">
                 <ul class="list-none pl-0">
                   <li v-for="extra in booking.extras" :key="extra.id" class="flex justify-between mb-2">
                     <span>{{ extra.extra_name }} x ({{ extra.quantity }})</span>
-                    <span>+ {{ formatCurrency(extra.price) }}</span>
+                    <span>+ {{ vendorProfile.currency }}{{ extra.price}}</span>
                   </li>
                 </ul>
               </div>
               <div v-if="plan" class="flex justify-between">
                 <span>{{ plan.plan_type }}</span>
-                <span>+ {{ formatCurrency(plan.plan_value) }}</span>
+                <span>+ {{ vendorProfile.currency }}{{ plan.plan_value }}</span>
               </div>
             </div>
           </div>
@@ -271,7 +273,7 @@ const formatDate = (dateStr) => {
               <span class="text-[1.25rem] font-medium max-[768px]:text-[0.875rem]">Paid Payment (incl. VAT)</span>
               <img :src="infoIcon" alt="" class="w-[25px] h[25px] max-[768px]:w-[20px] max-[768px]:h-[20px]"/>
             </div>
-            <span class="text-customPrimaryColor text-[1.875rem] font-medium max-[768px]:text-[1.2rem]">{{ formatCurrency(booking.total_amount)
+            <span class="text-customPrimaryColor text-[1.875rem] font-medium max-[768px]:text-[1.2rem]">{{ vendorProfile.currency }}{{ booking.total_amount
               }}</span>
 
           </div>

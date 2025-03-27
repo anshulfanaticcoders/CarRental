@@ -88,7 +88,7 @@
                             <input type="radio" :id="category.id" v-model="form.category_id" :value="category.id"
                                 class="peer sr-only" />
                             <InputLabel :for="category.id" class="flex flex-col items-center p-4 cursor-pointer rounded-lg border-2 
-                            border-gray-200 hover:border-customLightGrayColor transition-colors 
+                            border-gray-200 hover:border-customLightGrayColor 
                             peer-checked:border-customPrimaryColor peer-checked:bg-blue-50 peer-checked:scale-105 transition-transform duration-300 ease-in-out
                                 max-[768px]:p-1">
                                 <img :src="`${category.image}`" :alt="category.InputLabel"

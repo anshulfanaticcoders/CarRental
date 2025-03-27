@@ -18,7 +18,7 @@ return new class extends Migration {
             $table->string('return_location');
             $table->string('pickup_time');
             $table->string('return_time');
-            $table->string('plan');
+            $table->string('plan')->nullable();
             $table->integer('total_days');
             $table->decimal('base_price', 10, 2);
             $table->decimal('extra_charges', 10, 2)->default(0);

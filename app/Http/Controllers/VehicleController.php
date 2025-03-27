@@ -279,7 +279,7 @@ class VehicleController extends Controller
     //This is for getting particular vehicle information to the booking page 
     public function booking(Request $request, $id)
     {
-        $vehicle = Vehicle::with(['specifications', 'images', 'category', 'user', 'vendorProfile','benefits', 'vendorPlans','addons'])
+        $vehicle = Vehicle::with(['specifications', 'images', 'category', 'user', 'vendorProfile','benefits', 'vendorPlans','addons','vendorProfileData'])
             ->findOrFail($id);
 
         return Inertia::render('Booking', [

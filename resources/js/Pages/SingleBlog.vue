@@ -1,6 +1,20 @@
 <template>
     <AuthenticatedHeaderLayout/>
-    <section class="blog-single min-h-screen flex flex-col gap-8 items-center py-16 max-[768px]:py-0 max-[768px]:pb-8">
+    <section class="blog-single min-h-screen flex flex-col gap-8 items-center pb-16 py-10 max-[768px]:py-0 max-[768px]:pb-8">
+        <!-- Breadcrumb -->
+        <nav class="w-full full-w-container max-[768px]:px-[1.5rem] py-4">
+            <ul class="flex items-center text-gray-600 text-[1rem]">
+                <li>
+                    <Link :href="route('welcome')" class="hover:underline text-customPrimaryColor">Home</Link>
+                </li>
+                <span class="mx-2 text-customPrimaryColor font-medium">></span>
+                <li>
+                    <Link :href="route('blogs-page')" class="hover:underline text-customPrimaryColor">Blog</Link>
+                </li>
+                <span class="mx-2 text-customPrimaryColor font-medium">></span>
+                <li class="text-gray-900 font-semibold">{{ blog.title }}</li>
+            </ul>
+        </nav>
         <div class="w-full full-w-container max-[768px]:w-full">
             <img :src="blog.image" :alt="blog.title" class="w-full h-[500px] max-[768px]:h-[350px] object-cover rounded-lg shadow-lg max-[768px]:rounded-none">
             <div class="max-[768px]:px-[1.5rem]">
@@ -20,6 +34,7 @@
 <script setup>
 import Footer from '@/Components/Footer.vue';
 import AuthenticatedHeaderLayout from '@/Layouts/AuthenticatedHeaderLayout.vue';
+import { Link } from '@inertiajs/vue3';
 import { defineProps } from 'vue';
 
 const props = defineProps({

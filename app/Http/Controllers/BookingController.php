@@ -48,7 +48,7 @@ class BookingController extends Controller
             'extra_charges' => 'nullable|numeric|min:0',
             'total_amount' => 'required|numeric|min:0',
             'payment_method_id' => 'required|string',
-            'plan' => 'required|string|max:255',
+            'plan' => 'nullable|string|max:255',
             // Extras validation
             'extras' => 'nullable|array',
             'extras.*.extra_type' => 'required|string|max:255',

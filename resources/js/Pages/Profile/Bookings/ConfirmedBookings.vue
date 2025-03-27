@@ -66,6 +66,7 @@
             <div>
               <span class="text-customPrimaryColor text-[1.5rem] font-medium">{{ formatPrice(booking.total_amount) }}</span>
             </div>
+            <Link :href="`/booking-success/details?payment_intent=${booking.payments[0]?.transaction_id}`" class="underline">View Booking Details</Link>
           </div>
         </div>
 

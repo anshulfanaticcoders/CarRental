@@ -50,10 +50,10 @@ const validateQuantity = (extra) => {
 // Multiple step form
 const currentStep = ref(1);
 const validateSteps = () => {
-    if (!selectedPlan.value) {
-        alert("Please select a protection plan before proceeding.");
-        return false;
-    }
+    // if (!selectedPlan.value) {
+    //     alert("Please select a protection plan before proceeding.");
+    //     return false;
+    // }
 
     if (currentStep.value === 2) {
         // Add any additional validation for Step 2 here
@@ -128,7 +128,12 @@ const formatDate = (dateString) => {
 const plans = ref(props.plans);
 const selectedPlan = ref(null);
 const selectPlan = (plan) => {
-    selectedPlan.value = plan;
+    // If the clicked plan is already selected, deselect it.
+    if (selectedPlan.value?.plan_id === plan.plan_id) {
+        selectedPlan.value = null;
+    } else {
+        selectedPlan.value = plan; // Otherwise, select the new plan
+    }
 };
 
 const parsedFeatures = (features) => {
@@ -140,20 +145,20 @@ const parsedFeatures = (features) => {
 };
 onMounted(() => {
     // Check if you should be using plan.plan_id instead of plan.id
-    const freePlan = plans.value.find(plan => plan.plan_id === 2);
-    if (freePlan) {
-        selectedPlan.value = freePlan;
-    } else {
-        // Fallback to check for id if plan_id doesn't exist
-        const fallbackPlan = plans.value.find(plan => plan.id === 2);
-        if (fallbackPlan) {
-            selectedPlan.value = fallbackPlan;
-        }
-        // If no plan with ID 2 is found, you might want to select the first plan
-        else if (plans.value.length > 0) {
-            selectedPlan.value = plans.value[0];
-        }
-    }
+    // const freePlan = plans.value.find(plan => plan.plan_id === 2);
+    // if (freePlan) {
+    //     selectedPlan.value = freePlan;
+    // } else {
+    //     // Fallback to check for id if plan_id doesn't exist
+    //     const fallbackPlan = plans.value.find(plan => plan.id === 2);
+    //     if (fallbackPlan) {
+    //         selectedPlan.value = fallbackPlan;
+    //     }
+    //     // If no plan with ID 2 is found, you might want to select the first plan
+    //     else if (plans.value.length > 0) {
+    //         selectedPlan.value = plans.value[0];
+    //     }
+    // }
 
     // Store the selection in session storage
     if (selectedPlan.value) {
@@ -422,7 +427,7 @@ const submitBooking = async () => {
             extra_charges: extraCharges > 0 ? extraCharges : null,
             total_amount: calculateTotal.value,
             discount_amount: Number(discountAmount.value),
-            plan: selectedPlan.value.plan_type,
+            plan: selectedPlan.value ? selectedPlan.value.plan_type : null,
             extras: extras.value,
             vehicle_id: vehicle.value?.id,
         };
@@ -562,8 +567,9 @@ const submitBooking = async () => {
                                     <button class="button-primary px-5 py-2 max-[768px]:text-[0.875rem]"
                                         @click.stop="selectPlan(plan)"
                                         :class="{ 'bg-[#016501]': selectedPlan?.plan_id === plan.plan_id }">
-                                        {{ selectedPlan?.plan_id === plan.plan_id ? 'Selected' : 'Select' }}
+                                        {{ selectedPlan?.plan_id === plan.plan_id ? 'Deselect' : 'Select' }}
                                     </button>
+
 
                                     <div class="checklist features">
                                         <ul
@@ -589,13 +595,13 @@ const submitBooking = async () => {
                             <h4 class="text-[2.5rem] max-[768px]:text-[1.2rem] max-[768px]:mb-5">
                                 Additional Equipment
                             </h4>
-                            
+
 
                             <template v-if="bookingExtras.length">
                                 <p class="max-[768px]:text-[0.875rem]">
-                                Please note these additional extras are payable locally and do not form part of the
-                                rental price shown. Prices are displayed by pressing the title of each extra.
-                            </p>
+                                    Please note these additional extras are payable locally and do not form part of the
+                                    rental price shown. Prices are displayed by pressing the title of each extra.
+                                </p>
                                 <div class="equipment-list">
                                     <div v-for="extra in bookingExtras" :key="extra.id"
                                         class="equipment-item flex max-[768px]:flex-col max-[768px]:items-start justify-between items-center mt-[2rem] gap-4 p-5 border-[1px] rounded-[12px] border-customPrimaryColor">
@@ -879,8 +885,10 @@ const submitBooking = async () => {
                         </div>
                         <div class="max-[768px]:text-[0.85rem] max-[768px]:mt-2">
                             <span>Hosted by
-                                <span class="vendorName uppercase">{{ vehicle?.user.first_name }}
-                                    {{ vehicle?.user.last_name }}</span></span>
+                                <span class="vendorName uppercase">
+                                    {{ vehicle?.vendor_profile_data.company_name }}
+
+                                </span></span>
                         </div>
                         <div class="car_short_info mt-[1rem] flex gap-3">
                             <div class="features">
@@ -907,8 +915,8 @@ const submitBooking = async () => {
                                 <div class="flex flex-col gap-1">
                                     <span class="text-[1.25rem] text-medium max-[768px]:text-[1rem]">{{
                                         vehicle?.location
-                                        }}</span><span class="max-[768px]:text-[0.85rem]">From: {{ dateFrom }} {{
-                                        timeFrom }}</span>
+                                    }}</span><span class="max-[768px]:text-[0.85rem]">From: {{ dateFrom }} {{
+                                            timeFrom }}</span>
                                 </div>
                             </div>
                             <div class="col flex items-start gap-4 mt-[2.5rem]">
@@ -916,7 +924,7 @@ const submitBooking = async () => {
                                 <div class="flex flex-col gap-1">
                                     <span class="text-[1.25rem] text-medium max-[768px]:text-[1rem]">{{
                                         vehicle?.location
-                                        }}</span><span class="max-[768px]:text-[0.85rem]">To: {{ dateTo }} {{ timeTo
+                                    }}</span><span class="max-[768px]:text-[0.85rem]">To: {{ dateTo }} {{ timeTo
                                         }}</span>
                                 </div>
                             </div>
@@ -936,11 +944,11 @@ const submitBooking = async () => {
                                     <div v-if="selectedPlan" class="flex justify-between items-center text-[1.15rem]">
                                         <span>{{
                                             selectedPlan.plan_type
-                                            }}</span>
+                                        }}</span>
                                         <div>
                                             <strong class="text-[1.5rem] font-medium max-[768px]:text-[1.1rem]">{{
                                                 formatPrice(selectedPlan.price)
-                                            }}</strong>
+                                                }}</strong>
 
                                         </div>
                                     </div>
@@ -957,7 +965,7 @@ const submitBooking = async () => {
                                         <div>
                                             <strong class="text-[1.5rem] font-medium max-[768px]:text-[1.1rem]">{{
                                                 formatPrice(extra.price * extra.quantity)
-                                            }}</strong>
+                                                }}</strong>
 
                                         </div>
                                     </div>
@@ -1001,7 +1009,7 @@ const submitBooking = async () => {
                                                 class="flex justify-between text-[1.25rem] font-bold border-t pt-3 mt-3">
                                                 <span>Total (incl. VAT)</span>
                                                 <p class="font-medium">{{ formatPrice(calculateTotal + discountAmount)
-                                                    }}
+                                                }}
                                                 </p>
                                             </div>
                                             <div v-if="discountAmount"
@@ -1011,7 +1019,7 @@ const submitBooking = async () => {
                                                     <p class="border-b-2 mb-1 text-red-500 font-medium">-{{
                                                         formatPrice(discountAmount) }}</p>
                                                     <strong class="text-[1.3rem]">{{ formatPrice(calculateTotal)
-                                                    }}</strong>
+                                                        }}</strong>
                                                 </div>
                                             </div>
                                         </div>
