@@ -45,6 +45,7 @@ const user = ref(null);
 const reviews = ref([]);
 const isLoading = ref(true);
 
+
 // getting authenticated user role info 
 const authUser = props.auth?.user; // Get authenticated user
 const isVendor = authUser?.role;
@@ -959,51 +960,56 @@ const openLightbox = (index) => {
                 </div>
                 <div>
                     <div class="w-full mt-4 flex gap-2 max-[768px]:flex-col">
-    <!-- Primary image -->
-    <div class="primary-image w-[60%] max-h-[500px] max-[768px]:w-full max-[768px]:max-h-auto cursor-pointer"
-        @click="openLightbox(0)">
-        <img v-if="!isLoading && vehicle?.images" :src="primaryImage?.image_url" alt="Primary Image"
-            class="w-full h-full object-cover rounded-lg transition-all duration-300 hover:brightness-90" />
-        <Skeleton v-else
-            class="w-full h-[500px] object-cover rounded-lg max-[768px]:w-full max-[768px]:max-h-[200px]" />
-    </div>
+                        <!-- Primary image -->
+                        <div class="primary-image w-[60%] max-h-[500px] max-[768px]:w-full max-[768px]:max-h-auto cursor-pointer"
+                            @click="openLightbox(0)">
+                            <img v-if="!isLoading && vehicle?.images" :src="primaryImage?.image_url" alt="Primary Image"
+                                class="w-full h-full object-cover rounded-lg transition-all duration-300 hover:brightness-90" />
+                            <Skeleton v-else
+                                class="w-full h-[500px] object-cover rounded-lg max-[768px]:w-full max-[768px]:max-h-[200px]" />
+                        </div>
 
-    <!-- Gallery images -->
-    <div
-        class="gallery w-[40%] grid grid-cols-2 gap-2 max-h-[500px] max-[768px]:w-full max-[768px]:flex max-[768px]:h-[100px]">
-        <template v-if="vehicle?.images && vehicle.images.length > 5">
-            <div v-for="(image, index) in galleryImages.slice(0, 3)" :key="image.id"
-                class="gallery-item max-[768px]:flex-1 cursor-pointer" @click="openLightbox(index + 1)">
-                <img v-if="!isLoading && vehicle" :src="image.image_url"
-                    :alt="`Gallery Image ${index + 1}`"
-                    class="w-full h-[245px] object-cover rounded-lg max-[768px]:h-full transition-all duration-300 hover:brightness-90" />
-                <Skeleton v-else class="w-full h-[245px] object-cover rounded-lg max-[768px]:h-full" />
-            </div>
+                        <!-- Gallery images -->
+                        <div
+                            class="gallery w-[40%] grid grid-cols-2 gap-2 max-h-[500px] max-[768px]:w-full max-[768px]:flex max-[768px]:h-[100px]">
+                            <template v-if="vehicle?.images && vehicle.images.length > 5">
+                                <div v-for="(image, index) in galleryImages.slice(0, 3)" :key="image.id"
+                                    class="gallery-item max-[768px]:flex-1 cursor-pointer"
+                                    @click="openLightbox(index + 1)">
+                                    <img v-if="!isLoading && vehicle" :src="image.image_url"
+                                        :alt="`Gallery Image ${index + 1}`"
+                                        class="w-full h-[245px] object-cover rounded-lg max-[768px]:h-full transition-all duration-300 hover:brightness-90" />
+                                    <Skeleton v-else
+                                        class="w-full h-[245px] object-cover rounded-lg max-[768px]:h-full" />
+                                </div>
 
-            <!-- View All overlay -->
-            <div class="gallery-item max-[768px]:flex-1 cursor-pointer relative" @click="openLightbox(4)">
-                <div class="absolute inset-0 bg-black/50 flex items-center justify-center rounded-lg z-10">
-                    <span class="text-white text-lg font-semibold">
-                        +{{ vehicle.images.length - 5 }} View All
-                    </span>
-                </div>
-                <img v-if="!isLoading && vehicle" :src="galleryImages[3].image_url"
-                    alt="View All Images"
-                    class="w-full h-[245px] object-cover rounded-lg max-[768px]:h-full opacity-50" />
-                <Skeleton v-else class="w-full h-[245px] object-cover rounded-lg max-[768px]:h-full" />
-            </div>
-        </template>
-        
-        <!-- Default gallery rendering when 5 or fewer images -->
-        <div v-else v-for="(image, index) in galleryImages" :key="image.id"
-            class="gallery-item max-[768px]:flex-1 cursor-pointer" @click="openLightbox(index + 1)">
-            <img v-if="!isLoading && vehicle" :src="image.image_url"
-                :alt="`Gallery Image ${index + 1}`"
-                class="w-full h-[245px] object-cover rounded-lg max-[768px]:h-full transition-all duration-300 hover:brightness-90" />
-            <Skeleton v-else class="w-full h-[245px] object-cover rounded-lg max-[768px]:h-full" />
-        </div>
-    </div>
-</div>
+                                <!-- View All overlay -->
+                                <div class="gallery-item max-[768px]:flex-1 cursor-pointer relative"
+                                    @click="openLightbox(4)">
+                                    <div
+                                        class="absolute inset-0 bg-black/50 flex items-center justify-center rounded-lg z-10">
+                                        <span class="text-white text-lg font-semibold">
+                                            +{{ vehicle.images.length - 5 }} View All
+                                        </span>
+                                    </div>
+                                    <img v-if="!isLoading && vehicle" :src="galleryImages[3].image_url"
+                                        alt="View All Images"
+                                        class="w-full h-[245px] object-cover rounded-lg max-[768px]:h-full opacity-50" />
+                                    <Skeleton v-else
+                                        class="w-full h-[245px] object-cover rounded-lg max-[768px]:h-full" />
+                                </div>
+                            </template>
+
+                            <!-- Default gallery rendering when 5 or fewer images -->
+                            <div v-else v-for="(image, index) in galleryImages" :key="image.id"
+                                class="gallery-item max-[768px]:flex-1 cursor-pointer" @click="openLightbox(index + 1)">
+                                <img v-if="!isLoading && vehicle" :src="image.image_url"
+                                    :alt="`Gallery Image ${index + 1}`"
+                                    class="w-full h-[245px] object-cover rounded-lg max-[768px]:h-full transition-all duration-300 hover:brightness-90" />
+                                <Skeleton v-else class="w-full h-[245px] object-cover rounded-lg max-[768px]:h-full" />
+                            </div>
+                        </div>
+                    </div>
 
                     <!-- Import the Lightbox component -->
                     <Lightbox ref="lightboxRef" :images="allImages" />
@@ -1046,7 +1052,7 @@ const openLightbox = (index) => {
                                             class="text-customLightGrayColor text-[1rem] max-[768px]:text-[0.75rem]">People</span>
                                         <span class="font-medium text-[1rem] max-[768px]:text-[0.85rem]">{{
                                             vehicle?.seating_capacity
-                                        }}</span>
+                                            }}</span>
                                     </div>
                                 </div>
                                 <div class="feature-item items-center flex gap-3">
@@ -1057,7 +1063,7 @@ const openLightbox = (index) => {
                                             class="text-customLightGrayColor text-[1rem] max-[768px]:text-[0.75rem]">Doors</span>
                                         <span class="font-medium text-[1rem] max-[768px]:text-[0.85rem]">{{
                                             vehicle?.number_of_doors
-                                        }}</span>
+                                            }}</span>
                                     </div>
                                 </div>
                                 <div class="feature-item items-center flex gap-3">
@@ -1068,7 +1074,7 @@ const openLightbox = (index) => {
                                             class="text-customLightGrayColor text-[1rem] max-[768px]:text-[0.75rem]">Luggage</span>
                                         <span class="font-medium text-[1rem] max-[768px]:text-[0.85rem]">{{
                                             vehicle?.luggage_capacity
-                                        }}</span>
+                                            }}</span>
                                     </div>
                                 </div>
                                 <div class="feature-item items-center flex gap-3">
@@ -1079,7 +1085,7 @@ const openLightbox = (index) => {
                                             class="text-customLightGrayColor text-[1rem] max-[768px]:text-[0.75rem]">Transmission</span>
                                         <span class="font-medium capitalize max-[768px]:text-[0.85rem]">{{
                                             vehicle?.transmission
-                                        }}</span>
+                                            }}</span>
                                     </div>
                                 </div>
                                 <div class="feature-item items-center flex gap-3">
@@ -1091,7 +1097,7 @@ const openLightbox = (index) => {
                                             Type</span>
                                         <span class="font-medium capitalize max-[768px]:text-[0.85rem]">{{
                                             vehicle?.fuel
-                                        }}</span>
+                                            }}</span>
                                     </div>
                                 </div>
                                 <div class="feature-item items-center flex gap-3">
@@ -1112,7 +1118,7 @@ const openLightbox = (index) => {
                                             class="text-customLightGrayColor text-[1rem] max-[768px]:text-[0.75rem]">Co2
                                             Emission</span>
                                         <span class="font-medium text-[1rem] max-[768px]:text-[0.85rem]">{{ vehicle?.co2
-                                        }} (g/km)</span>
+                                            }} (g/km)</span>
                                     </div>
                                 </div>
                                 <div class="feature-item items-center flex gap-3">
@@ -1175,7 +1181,7 @@ const openLightbox = (index) => {
                                                 class="flex flex-col md:flex-row md:items-center gap-1 md:gap-2">
                                                 <span class="font-medium text-blue-700">Daily Limit:</span>
                                                 <span class="text-base">{{ vehicle?.benefits?.limited_km_per_day_range
-                                                }} km</span>
+                                                    }} km</span>
                                                 <span class="text-gray-700">
                                                     (Extra: {{ formatPrice(vehicle?.benefits?.price_per_km_per_day)
                                                     }}/km)
@@ -1186,7 +1192,7 @@ const openLightbox = (index) => {
                                                 class="flex flex-col md:flex-row md:items-center gap-1 md:gap-2">
                                                 <span class="font-medium text-blue-700">Weekly Limit:</span>
                                                 <span class="text-base">{{ vehicle?.benefits?.limited_km_per_week_range
-                                                }} km</span>
+                                                    }} km</span>
                                                 <span class="text-gray-700">
                                                     (Extra: {{ formatPrice(vehicle?.benefits?.price_per_km_per_week)
                                                     }}/km)
@@ -1197,7 +1203,7 @@ const openLightbox = (index) => {
                                                 class="flex flex-col md:flex-row md:items-center gap-1 md:gap-2">
                                                 <span class="font-medium text-blue-700">Monthly Limit:</span>
                                                 <span class="text-base">{{ vehicle?.benefits?.limited_km_per_month_range
-                                                }} km</span>
+                                                    }} km</span>
                                                 <span class="text-gray-700">
                                                     (Extra: {{ formatPrice(vehicle?.benefits?.price_per_km_per_month)
                                                     }}/km)
@@ -1303,8 +1309,7 @@ const openLightbox = (index) => {
                             <div class="max-[768px]:text-[0.85rem]">
                                 <span>Hosted by
                                     <span class="vendorName uppercase">
-                                        {{ vehicle?.user.first_name }}
-                                        {{ vehicle?.user.last_name }}
+                                        {{ vehicle.vendor_profile_data.company_name }}
                                     </span>
                                 </span>
                             </div>
@@ -1372,7 +1377,7 @@ const openLightbox = (index) => {
                                                             <div class="flex items-center gap-3 mb-2">
                                                                 <component :is="pkg.icon" class="w-6 h-6" />
                                                                 <span class="font-semibold text-[1rem]">{{ pkg.label
-                                                                    }}</span>
+                                                                }}</span>
                                                             </div>
                                                             <p class="text-sm text-gray-600 mb-2">{{ pkg.description }}
                                                             </p>

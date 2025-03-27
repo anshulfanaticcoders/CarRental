@@ -25,7 +25,7 @@ class EmailValidationController extends Controller
     {
         $validator = Validator::make($request->all(), [
             'email' => 'required|email|unique:users,email',
-            'phone' => 'required|numeric|digits_between:10,15|unique:users,phone',
+            'phone' => ['required', 'string', 'max:20', 'unique:users,phone', new \App\Rules\PhoneNumber()],
         ]);
 
         if ($validator->fails()) {

@@ -264,6 +264,7 @@ class VehicleController extends Controller
                 $query->select('vehicle_id', 'pickup_date', 'return_date');
             }
         ])->findOrFail($id);
+
         return Inertia::render('SingleCar', [
             'vehicle' => $vehicle,
             'booked_dates' => $vehicle->bookings->map(function ($booking) {

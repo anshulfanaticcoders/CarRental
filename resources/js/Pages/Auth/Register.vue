@@ -156,7 +156,9 @@ const submit = () => {
 
 
 const countries = ref([]);
-const selectedCountry = ref("");
+
+const selectedPhoneCode = ref("");
+const phoneNumber = ref("");
 
 
 const fetchCountries = async () => {
@@ -174,6 +176,22 @@ onMounted(fetchCountries);
 const getFlagUrl = (countryCode) => {
     return `https://flagcdn.com/w40/${countryCode.toLowerCase()}.png`;
 };
+
+watch(selectedPhoneCode, (newCode) => {
+    form.phone = newCode;
+});
+
+
+onMounted(async () => {
+    try {
+        const response = await fetch("/countries.json");
+        const data = await response.json();
+        countries.value = data;
+        selectedPhoneCode.value = data[0]?.phone_code || "";
+    } catch (error) {
+        console.error("Error loading countries:", error);
+    }
+});
 
 
 const minimumDateOfBirth = computed(() => {
@@ -278,11 +296,35 @@ const minimumDateOfBirth = computed(() => {
                             We'll send you relevant info about your bookings.
                         </p>
                         <div class="grid grid-cols-1 gap-5 max-[768px]:gap-3">
-                            <div class="column w-full">
-                                <InputLabel for="phone" value="Phone Number" />
-                                <TextInput id="phone" type="tel" v-model="form.phone" required class="w-full" />
-                                <InputError class="mt-2" :message="form.errors.phone" />
+
+                            <div>
+                            <div class="flex items-end">
+                                <div class="w-[8rem]">
+                                    <InputLabel for="phone" value="Phone Number" />
+                                    <Select v-model="selectedPhoneCode">
+                                        <SelectTrigger
+                                            class="w-full p-[1.75rem] border-customLightGrayColor bg-customLightPrimaryColor rounded-[12px] !rounded-r-none border-r-0">
+                                            <SelectValue placeholder="Select Code" />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            <SelectGroup>
+                                                <SelectLabel>Phone Code</SelectLabel>
+                                                <SelectItem v-for="country in countries" :key="country.phone_code"
+                                                    :value="country.phone_code">
+                                                    {{ country.phone_code }}
+                                                </SelectItem>
+                                            </SelectGroup>
+                                        </SelectContent>
+                                    </Select>
+                                </div>
+
+                                <div class="column w-full">
+                                    <TextInput id="phone" type="text" v-model="form.phone" required
+                                        class="w-full !rounded-l-none" />
+                                </div>
                             </div>
+                            <InputError class="mt-2" :message="form.errors.phone" />
+                        </div>
 
                             <div class="column w-full">
                                 <InputLabel for="email" value="Email" />
@@ -341,7 +383,7 @@ const minimumDateOfBirth = computed(() => {
 
                                 <!-- Dynamic Flag -->
                                 <img v-if="form.country" :src="getFlagUrl(form.country)" alt="Country Flag"
-                                    class="absolute right-3 top-1/2 transform translate-x-[-10%] translate-y-[-50%] w-[2.1rem] h-[1.5rem] rounded" />
+                                    class="absolute right-3 top-1/2 transform translate-x-[0%] translate-y-[-50%] w-[2.1rem] h-[1.5rem] rounded" />
                             </div>
                         </div>
                     </div>
