@@ -191,6 +191,11 @@ input[type="checkbox"] {
     cursor: pointer;
 }
 
+input[type='date'], input[type='time'] {
+    -webkit-appearance: none;
+    -webkit-min-logical-width: calc(100% - 16px);
+}
+
 /* input,textarea,select {
     border-radius: 0.75rem;
     border: 1px solid rgba(43, 43, 43, 0.50)!important;
@@ -220,12 +225,4 @@ input[type="checkbox"] {
         accent-color: #153B4F; /* Changes checkbox color */
         cursor: pointer;
     }
-    input[type="date"] {
-        -webkit-appearance: none;
-        appearance: none;
-        min-height: 20px;
-        padding: 10px;
-        border: 1px solid #ccc;
-        border-radius: 4px;
-      }
 }
