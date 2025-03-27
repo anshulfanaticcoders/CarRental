@@ -486,7 +486,7 @@
                                 placeholder="+91" />
                             <span v-if="errors.phone_number" class="text-red-500 max-[768px]:text-[0.75rem] text-sm">{{
                                 errors.phone_number
-                                }}</span>
+                            }}</span>
                         </div>
                     </div>
                     <div
@@ -732,7 +732,7 @@
                             </div>
                             <span v-if="errors.price_per_day" class="text-red-500 max-[768px]:text-[0.75rem] text-sm">{{
                                 errors.price_per_day
-                                }}</span>
+                            }}</span>
                         </div>
                         <!-- Security Deposit -->
                         <div class="mt-[2rem] max-[768px]:px-[1.5rem]">
@@ -747,7 +747,7 @@
                         </div>
                         <span v-if="errors.security_deposit" class="text-red-500 max-[768px]:text-[0.75rem] text-sm">{{
                             errors.security_deposit
-                            }}</span>
+                        }}</span>
                     </div>
 
                     <!-- Payment Method -->
@@ -783,7 +783,7 @@
                         </div>
                         <span v-if="errors.payment_method" class="text-red-500 max-[768px]:text-[0.75rem] text-sm">{{
                             errors.payment_method
-                            }}</span>
+                        }}</span>
 
                         <div v-if="paymentMethodsArray.length > 0">
                             <p class="text-[0.85rem] text-green-400">Selected Payment Methods:</p>
@@ -819,157 +819,144 @@
 
 
                     <div class="max-[768px]:px-[1.5rem]">
-                        <!-- Limited Kilometer Section -->
-                        <div class="mb-6">
-                            <h3 class="font-medium text-lg mb-2">Kilometer Limitations</h3>
+    <!-- Limited Kilometer Section -->
+    <div class="mb-6">
+        <h3 class="font-medium text-lg mb-2">Kilometer Limitations</h3>
 
-                            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-                                <!-- Per Day Limitation -->
-                                <div v-if="selectedTypes.day" class="border rounded p-4">
-                                    <div class="flex gap-2 items-center mb-0">
-                                        <input type="checkbox" v-model="form.limited_km_per_day"
-                                            id="limited_km_per_day" />
-                                        <InputLabel for="limited_km_per_day" class="!mb-0">Limited Kilometer Per Day
-                                        </InputLabel>
-                                    </div>
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <!-- Per Day Limitation -->
+            <div v-if="selectedTypes.day" class="border rounded p-4">
+                <div class="flex gap-2 items-center mb-0">
+                    <input type="checkbox" v-model="form.limited_km_per_day" id="limited_km_per_day" />
+                    <InputLabel for="limited_km_per_day" class="!mb-0">Limited Kilometer Per Day</InputLabel>
+                </div>
 
-                                    <div v-if="form.limited_km_per_day">
-                                        <div class="mb-0">
-                                            <InputLabel for="limited_km_per_day_range">KM Limit</InputLabel>
-                                            <input type="number" v-model="form.limited_km_per_day_range"
-                                                id="limited_km_per_day_range" class="w-full" />
-                                        </div>
-
-                                        <div>
-                                            <InputLabel for="price_per_km_per_day">Price Per Extra KM</InputLabel>
-                                            <input type="number" v-model="form.price_per_km_per_day"
-                                                id="price_per_km_per_day" class="w-full" />
-                                        </div>
-                                    </div>
-                                </div>
-
-                                <!-- Per Week Limitation -->
-                                <div v-if="selectedTypes.week" class="border rounded p-4">
-                                    <div class="flex gap-2 items-center mb-0">
-                                        <input type="checkbox" v-model="form.limited_km_per_week"
-                                            id="limited_km_per_week" />
-                                        <InputLabel for="limited_km_per_week" class="!mb-0">Limited Kilometer Per Week
-                                        </InputLabel>
-                                    </div>
-
-                                    <div v-if="form.limited_km_per_week">
-                                        <div class="mb-0">
-                                            <InputLabel for="limited_km_per_week_range">KM Limit</InputLabel>
-                                            <input type="number" v-model="form.limited_km_per_week_range"
-                                                id="limited_km_per_week_range" class="w-full" />
-                                        </div>
-
-                                        <div>
-                                            <InputLabel for="price_per_km_per_week">Price Per Extra KM</InputLabel>
-                                            <input type="number" v-model="form.price_per_km_per_week"
-                                                id="price_per_km_per_week" class="w-full" />
-                                        </div>
-                                    </div>
-                                </div>
-
-                                <!-- Per Month Limitation -->
-                                <div v-if="selectedTypes.month" class="border rounded p-4">
-                                    <div class="flex gap-2 items-center mb-0">
-                                        <input type="checkbox" v-model="form.limited_km_per_month"
-                                            id="limited_km_per_month" />
-                                        <InputLabel for="limited_km_per_month" class="!mb-0">Limited Kilometer Per Month
-                                        </InputLabel>
-                                    </div>
-
-                                    <div v-if="form.limited_km_per_month">
-                                        <div class="mb-0">
-                                            <InputLabel for="limited_km_per_month_range">KM Limit</InputLabel>
-                                            <input type="number" v-model="form.limited_km_per_month_range"
-                                                id="limited_km_per_month_range" class="w-full" />
-                                        </div>
-
-                                        <div>
-                                            <InputLabel for="price_per_km_per_month">Price Per Extra KM</InputLabel>
-                                            <input type="number" v-model="form.price_per_km_per_month"
-                                                id="price_per_km_per_month" class="w-full" />
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-
-                        <!-- Cancellation Policy Section -->
-                        <div class="mb-6">
-                            <h3 class="font-medium text-lg mb-2">Cancellation Policy</h3>
-
-                            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-                                <!-- Per Day Cancellation -->
-                                <div v-if="selectedTypes.day" class="border rounded p-4">
-                                    <div class="flex gap-2 items-center mb-0">
-                                        <input type="checkbox" v-model="form.cancellation_available_per_day"
-                                            id="cancellation_available_per_day" />
-                                        <InputLabel for="cancellation_available_per_day" class="!mb-0">Cancellation
-                                            Available Per Day</InputLabel>
-                                    </div>
-
-                                    <div v-if="form.cancellation_available_per_day">
-                                        <InputLabel for="cancellation_available_per_day_date">Days Prior Notice Required
-                                        </InputLabel>
-                                        <input type="number" v-model="form.cancellation_available_per_day_date"
-                                            id="cancellation_available_per_day_date" class="w-full" />
-                                    </div>
-                                </div>
-
-                                <!-- Per Week Cancellation -->
-                                <div v-if="selectedTypes.week" class="border rounded p-4">
-                                    <div class="flex gap-2 items-center mb-0">
-                                        <input type="checkbox" v-model="form.cancellation_available_per_week"
-                                            id="cancellation_available_per_week" />
-                                        <InputLabel for="cancellation_available_per_week" class="!mb-0">Cancellation
-                                            Available Per Week</InputLabel>
-                                    </div>
-
-                                    <div v-if="form.cancellation_available_per_week">
-                                        <InputLabel for="cancellation_available_per_week_date">Days Prior Notice
-                                            Required</InputLabel>
-                                        <input type="number" v-model="form.cancellation_available_per_week_date"
-                                            id="cancellation_available_per_week_date" class="w-full" />
-                                    </div>
-                                </div>
-
-                                <!-- Per Month Cancellation -->
-                                <div v-if="selectedTypes.month" class="border rounded p-4">
-                                    <div class="flex gap-2 items-center mb-0">
-                                        <input type="checkbox" v-model="form.cancellation_available_per_month"
-                                            id="cancellation_available_per_month" />
-                                        <InputLabel for="cancellation_available_per_month" class="!mb-0">Cancellation
-                                            Available Per Month</InputLabel>
-                                    </div>
-
-                                    <div v-if="form.cancellation_available_per_month">
-                                        <InputLabel for="cancellation_available_per_month_date">Days Prior Notice
-                                            Required</InputLabel>
-                                        <input type="number" v-model="form.cancellation_available_per_month_date"
-                                            id="cancellation_available_per_month_date" class="w-full" />
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-
-                        <!-- Driver Requirements Section -->
-                        <div>
-                            <h3 class="font-medium text-lg mb-2">Driver Requirements</h3>
-
-                            <div class="max-w-xs">
-                                <InputLabel for="minimum_driver_age">Minimum Driver Age</InputLabel>
-                                <input type="number" v-model="form.minimum_driver_age" id="minimum_driver_age"
-                                    class="w-full" />
-                                <span v-if="errors.minimum_driver_age"
-                                    class="text-red-500 max-[768px]:text-[0.75rem] text-sm">{{
-                                        errors.minimum_driver_age }}</span>
-                            </div>
-                        </div>
+                <div v-if="form.limited_km_per_day">
+                    <div class="mb-0">
+                        <InputLabel for="limited_km_per_day_range">KM Limit</InputLabel>
+                        <input type="number" v-model="form.limited_km_per_day_range" id="limited_km_per_day_range" class="w-full" />
+                        <span v-if="errors.limited_km_per_day_range" class="text-red-500 text-sm">
+                            {{ errors.limited_km_per_day_range }}
+                        </span>
                     </div>
+
+                    <div>
+                        <InputLabel for="price_per_km_per_day">Price Per Extra KM</InputLabel>
+                        <input type="number" v-model="form.price_per_km_per_day" id="price_per_km_per_day" class="w-full" />
+                        <span v-if="errors.price_per_km_per_day" class="text-red-500 text-sm">
+                            {{ errors.price_per_km_per_day }}
+                        </span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Per Week Limitation -->
+            <div v-if="selectedTypes.week" class="border rounded p-4">
+                <div class="flex gap-2 items-center mb-0">
+                    <input type="checkbox" v-model="form.limited_km_per_week" id="limited_km_per_week" />
+                    <InputLabel for="limited_km_per_week" class="!mb-0">Limited Kilometer Per Week</InputLabel>
+                </div>
+
+                <div v-if="form.limited_km_per_week">
+                    <div class="mb-0">
+                        <InputLabel for="limited_km_per_week_range">KM Limit</InputLabel>
+                        <input type="number" v-model="form.limited_km_per_week_range" id="limited_km_per_week_range" class="w-full" />
+                        <span v-if="errors.limited_km_per_week_range" class="text-red-500 text-sm">
+                            {{ errors.limited_km_per_week_range }}
+                        </span>
+                    </div>
+
+                    <div>
+                        <InputLabel for="price_per_km_per_week">Price Per Extra KM</InputLabel>
+                        <input type="number" v-model="form.price_per_km_per_week" id="price_per_km_per_week" class="w-full" />
+                        <span v-if="errors.price_per_km_per_week" class="text-red-500 text-sm">
+                            {{ errors.price_per_km_per_week }}
+                        </span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Per Month Limitation -->
+            <div v-if="selectedTypes.month" class="border rounded p-4">
+                <div class="flex gap-2 items-center mb-0">
+                    <input type="checkbox" v-model="form.limited_km_per_month" id="limited_km_per_month" />
+                    <InputLabel for="limited_km_per_month" class="!mb-0">Limited Kilometer Per Month</InputLabel>
+                </div>
+
+                <div v-if="form.limited_km_per_month">
+                    <div class="mb-0">
+                        <InputLabel for="limited_km_per_month_range">KM Limit</InputLabel>
+                        <input type="number" v-model="form.limited_km_per_month_range" id="limited_km_per_month_range" class="w-full" />
+                        <span v-if="errors.limited_km_per_month_range" class="text-red-500 text-sm">
+                            {{ errors.limited_km_per_month_range }}
+                        </span>
+                    </div>
+
+                    <div>
+                        <InputLabel for="price_per_km_per_month">Price Per Extra KM</InputLabel>
+                        <input type="number" v-model="form.price_per_km_per_month" id="price_per_km_per_month" class="w-full" />
+                        <span v-if="errors.price_per_km_per_month" class="text-red-500 text-sm">
+                            {{ errors.price_per_km_per_month }}
+                        </span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Cancellation Policy Section -->
+    <div class="mb-6">
+        <h3 class="font-medium text-lg mb-2">Cancellation Policy</h3>
+
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <!-- Per Day Cancellation -->
+            <div v-if="selectedTypes.day" class="border rounded p-4">
+                <div class="flex gap-2 items-center mb-0">
+                    <input type="checkbox" v-model="form.cancellation_available_per_day" id="cancellation_available_per_day" />
+                    <InputLabel for="cancellation_available_per_day" class="!mb-0">Cancellation Available Per Day</InputLabel>
+                </div>
+
+                <div v-if="form.cancellation_available_per_day">
+                    <InputLabel for="cancellation_available_per_day_date">Days Prior Notice Required</InputLabel>
+                    <input type="number" v-model="form.cancellation_available_per_day_date" id="cancellation_available_per_day_date" class="w-full" />
+                    <span v-if="errors.cancellation_available_per_day_date" class="text-red-500 text-sm">
+                        {{ errors.cancellation_available_per_day_date }}
+                    </span>
+                </div>
+            </div>
+
+            <!-- Per Week Cancellation -->
+            <div v-if="selectedTypes.week" class="border rounded p-4">
+                <div class="flex gap-2 items-center mb-0">
+                    <input type="checkbox" v-model="form.cancellation_available_per_week" id="cancellation_available_per_week" />
+                    <InputLabel for="cancellation_available_per_week" class="!mb-0">Cancellation Available Per Week</InputLabel>
+                </div>
+
+                <div v-if="form.cancellation_available_per_week">
+                    <InputLabel for="cancellation_available_per_week_date">Days Prior Notice Required</InputLabel>
+                    <input type="number" v-model="form.cancellation_available_per_week_date" id="cancellation_available_per_week_date" class="w-full" />
+                    <span v-if="errors.cancellation_available_per_week_date" class="text-red-500 text-sm">
+                        {{ errors.cancellation_available_per_week_date }}
+                    </span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Driver Requirements Section -->
+    <div>
+        <h3 class="font-medium text-lg mb-2">Driver Requirements</h3>
+
+        <div class="max-w-xs">
+            <InputLabel for="minimum_driver_age">Minimum Driver Age</InputLabel>
+            <input type="number" v-model="form.minimum_driver_age" id="minimum_driver_age" class="w-full" />
+            <span v-if="errors.minimum_driver_age" class="text-red-500 text-sm">
+                {{ errors.minimum_driver_age }}
+            </span>
+        </div>
+    </div>
+</div>
+
 
 
 
@@ -1174,7 +1161,7 @@
                                     <button @click="decrementQuantity(addon.id)"
                                         class="px-2 py-1 border rounded">-</button>
                                     <span class="px-3 py-1 bg-gray-100 rounded">{{ addonQuantities[addon.id] || '00'
-                                        }}</span>
+                                    }}</span>
                                     <button @click="incrementQuantity(addon.id)"
                                         class="px-2 py-1 border rounded">+</button>
                                 </div>
@@ -1760,7 +1747,50 @@ const nextStep = () => {
                 isValid = false;
                 errors.price_per_day = 'Please enter at least one pricing option';
             }
+
+            // Kilometer Limit Validation
+            if (form.limited_km_per_day && !form.limited_km_per_day_range) {
+                isValid = false;
+                errors.limited_km_per_day_range = 'Please enter KM limit per day';
+            }
+            if (form.limited_km_per_day && !form.price_per_km_per_day) {
+                isValid = false;
+                errors.price_per_km_per_day = 'Please enter price per extra KM per day';
+            }
+
+            if (form.limited_km_per_week && !form.limited_km_per_week_range) {
+                isValid = false;
+                errors.limited_km_per_week_range = 'Please enter KM limit per week';
+            }
+            if (form.limited_km_per_week && !form.price_per_km_per_week) {
+                isValid = false;
+                errors.price_per_km_per_week = 'Please enter price per extra KM per week';
+            }
+
+            if (form.limited_km_per_month && !form.limited_km_per_month_range) {
+                isValid = false;
+                errors.limited_km_per_month_range = 'Please enter KM limit per month';
+            }
+            if (form.limited_km_per_month && !form.price_per_km_per_month) {
+                isValid = false;
+                errors.price_per_km_per_month = 'Please enter price per extra KM per month';
+            }
+
+            // Cancellation Policy Validation
+            if (form.cancellation_available_per_day && !form.cancellation_available_per_day_date) {
+                isValid = false;
+                errors.cancellation_available_per_day_date = 'Please enter required notice days for daily cancellation';
+            }
+            if (form.cancellation_available_per_week && !form.cancellation_available_per_week_date) {
+                isValid = false;
+                errors.cancellation_available_per_week_date = 'Please enter required notice days for weekly cancellation';
+            }
+            if (form.cancellation_available_per_month && !form.cancellation_available_per_month_date) {
+                isValid = false;
+                errors.cancellation_available_per_month_date = 'Please enter required notice days for monthly cancellation';
+            }
             break;
+
 
         case 5: // Plan Selection
             if (selectedPlans.value.length === 0) {
@@ -1881,60 +1911,60 @@ watch(() => form.registration_country, (newVal) => {
 
 
 watch(
-  () => form.limited_km_per_day,
-  (newValue) => {
-    if (!newValue) {
-      form.limited_km_per_day_range = null;
-      form.price_per_km_per_day = null;
+    () => form.limited_km_per_day,
+    (newValue) => {
+        if (!newValue) {
+            form.limited_km_per_day_range = null;
+            form.price_per_km_per_day = null;
+        }
     }
-  }
 );
 
 watch(
-  () => form.limited_km_per_week,
-  (newValue) => {
-    if (!newValue) {
-      form.limited_km_per_week_range = null;
-      form.price_per_km_per_week = null;
+    () => form.limited_km_per_week,
+    (newValue) => {
+        if (!newValue) {
+            form.limited_km_per_week_range = null;
+            form.price_per_km_per_week = null;
+        }
     }
-  }
 );
 
 watch(
-  () => form.limited_km_per_month,
-  (newValue) => {
-    if (!newValue) {
-      form.limited_km_per_month_range = null;
-      form.price_per_km_per_month = null;
+    () => form.limited_km_per_month,
+    (newValue) => {
+        if (!newValue) {
+            form.limited_km_per_month_range = null;
+            form.price_per_km_per_month = null;
+        }
     }
-  }
 );
 
 watch(
-  () => form.cancellation_available_per_day,
-  (newValue) => {
-    if (!newValue) {
-      form.cancellation_available_per_day_date = null;
+    () => form.cancellation_available_per_day,
+    (newValue) => {
+        if (!newValue) {
+            form.cancellation_available_per_day_date = null;
+        }
     }
-  }
 );
 
 watch(
-  () => form.cancellation_available_per_week,
-  (newValue) => {
-    if (!newValue) {
-      form.cancellation_available_per_week_date = null;
+    () => form.cancellation_available_per_week,
+    (newValue) => {
+        if (!newValue) {
+            form.cancellation_available_per_week_date = null;
+        }
     }
-  }
 );
 
 watch(
-  () => form.cancellation_available_per_month,
-  (newValue) => {
-    if (!newValue) {
-      form.cancellation_available_per_month_date = null;
+    () => form.cancellation_available_per_month,
+    (newValue) => {
+        if (!newValue) {
+            form.cancellation_available_per_month_date = null;
+        }
     }
-  }
 );
 
 </script>

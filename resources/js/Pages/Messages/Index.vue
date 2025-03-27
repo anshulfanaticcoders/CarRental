@@ -53,10 +53,10 @@ onMounted(() => {
 
 <template>
     <MyProfileLayout>
-        <div class="flex flex-col sm:flex-row justify-between items-center bg-[#154D6A0D] rounded-[12px] px-4 py-3 mb-4">
+        <div class="flex flex-col max-[768px]:!flex-row justify-between items-center bg-[#154D6A0D] rounded-[12px] px-4 py-3 mb-4">
             <p class="text-lg sm:text-xl text-customPrimaryColor font-bold">Inbox</p>
             <input v-model="searchQuery" type="text" placeholder="Search bookings..."
-                class="w-full sm:w-64 px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 mt-2 sm:mt-0" />
+                class="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 mt-2 sm:mt-0" />
         </div>
 
         <div v-if="filteredBookings.length === 0" class="text-center py-8">
@@ -73,7 +73,7 @@ onMounted(() => {
                     <div class="flex items-center gap-4 w-full py-3 px-3 hover:bg-gray-50">
                         <div class="relative w-12 h-12 flex-shrink-0">
                             <img :src="booking.vehicle?.vendor_profile?.avatar || '/storage/avatars/default-avatar.svg'"
-                                alt="User Avatar" class="rounded-full object-cover h-full w-full" />
+                                alt="" class="rounded-full object-cover h-full w-full" />
                             <p class="w-3 h-3 bg-[#009900] rounded-full absolute bottom-0 right-0 border-2"></p>
                         </div>
                         <div class="w-full">
@@ -97,7 +97,7 @@ onMounted(() => {
             </div>
 
             <!-- Chat Window -->
-            <div v-if="showChat" class="w-full sm:w-2/3 bg-[#154D6A0D] rounded-tr-[12px] rounded-br-[12px] p-4 flex flex-col">
+            <div v-if="showChat" class="w-full sm:w-2/3 max-[768px]:h-[100vh] bg-[#154D6A0D] rounded-tr-[12px] rounded-br-[12px] p-4 flex flex-col">
                 <button @click="showChat = false" class="sm:hidden text-blue-500 mb-2">Back to Inbox</button>
                 <div v-if="loadingChat" class="flex-1 flex items-center justify-center">
                     <p>Loading chat...</p>

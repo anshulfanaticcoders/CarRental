@@ -8,7 +8,6 @@ import { createInertiaApp } from '@inertiajs/vue3';
 import { resolvePageComponent } from 'laravel-vite-plugin/inertia-helpers';
 import { ZiggyVue } from '../../vendor/tightenco/ziggy';
 import ScrollToTop from '@/Components/ScrollToTop.vue';
-import directives from '@/directives'; 
 
 const appName = import.meta.env.VITE_APP_NAME || 'Laravel';
 
@@ -24,7 +23,6 @@ createInertiaApp({
             components: { ScrollToTop}
         })
             .use(plugin)
-            .use(directives)
             .use(Toast)
             .use(ZiggyVue)
             .mount(el);

@@ -61,7 +61,9 @@
               </div>
             </div>
             <div class='flex justify-between items-center'>
-              <span class="text-customPrimaryColor text-[1.5rem] font-medium"> {{ formatPrice(booking.total_amount, booking.vehicle) }}</span>
+              <span class="text-customPrimaryColor text-[1.5rem] font-medium"> 
+                {{ formatPrice(booking.total_amount, booking.vehicle) }}
+              </span>
               <div>
                 <button 
                   v-if="!booking.review"

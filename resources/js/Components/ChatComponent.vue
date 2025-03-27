@@ -197,8 +197,8 @@ onMounted(() => {
 
         <!-- Message Input -->
         <div class="flex gap-5 mt-auto relative">
-            <input v-model="newMessage" type="text" placeholder="Type your message..."
-                class="flex-1 px-4 py-4 rounded-[99px] focus:outline-none focus:ring-2 focus:ring-customPrimaryColor"
+            <textarea v-model="newMessage" type="text" placeholder="Type your message..."
+                class="flex-1 pl-4 pr-[3rem] pt-4 rounded-[99px] focus:outline-none focus:ring-2 focus:ring-customPrimaryColor"
                 @keyup.enter="sendMessage" />
             <button @click="sendMessage" :disabled="isLoading || !newMessage.trim()"
                 class="cursor-pointer absolute right-4 top-1 translate-x-[0%] translate-y-[50%]">
