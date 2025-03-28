@@ -53,7 +53,8 @@
                             <TableHead>Company Name</TableHead>
                             <TableHead>Company Email</TableHead>
                             <TableHead>Status</TableHead>
-                            <TableHead>Driving License</TableHead>
+                            <TableHead>Driving License Front</TableHead>
+                            <TableHead>Driving License Back</TableHead>
                             <TableHead>Passport</TableHead>
                             <TableHead>Created at</TableHead>
                             <TableHead class="text-right">Actions</TableHead>
@@ -71,8 +72,13 @@
                                 </Badge>
                             </TableCell>
                             <TableCell>
-                                <img @click="openImageModal(`${user.vendor_document?.driving_license}`)"
-                                    :src="`${user.vendor_document?.driving_license}`" alt="Driving License"
+                                <img @click="openImageModal(`${user.vendor_document?.driving_license_front}`)"
+                                    :src="`${user.vendor_document?.driving_license_front}`" alt="Driving License"
+                                    class="w-[100px] h-[80px] object-cover mb-2 cursor-pointer" />
+                            </TableCell>
+                            <TableCell>
+                                <img @click="openImageModal(`${user.vendor_document?.driving_license_back}`)"
+                                    :src="`${user.vendor_document?.driving_license_back}`" alt="Driving License"
                                     class="w-[100px] h-[80px] object-cover mb-2 cursor-pointer" />
                             </TableCell>
                             <TableCell>

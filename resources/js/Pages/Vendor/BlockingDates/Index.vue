@@ -14,11 +14,11 @@
                     <form @submit.prevent="submitForm">
                         <div class="mb-4">
                             <label class="block text-sm font-medium text-gray-700">Vehicle</label>
-                            <select v-model="form.vehicle_id" class="w-full border rounded p-2">
+                            <Select v-model="form.vehicle_id" class="w-full border rounded p-2">
                                 <option v-for="vehicle in vehicles" :key="vehicle.id" :value="vehicle.id">
                                     {{ vehicle.brand }} - {{ vehicle.model }}
                                 </option>
-                            </select>
+                            </Select>
                         </div>
                         <div class="mb-4">
                             <label class="block text-sm font-medium text-gray-700">Start Date</label>

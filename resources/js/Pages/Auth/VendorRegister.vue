@@ -16,7 +16,8 @@ const form = useForm({
     phone: props.user.phone,
     email: props.user.email,
     address: props.userProfile.address_line1,
-    driving_license: null,
+    driving_license_front: null,
+    driving_license_back: null,
     passport: null,
     company_name: "",
     company_phone_number: "",
@@ -30,19 +31,32 @@ const fullName = `${props.user.first_name} ${props.user.last_name}`;
 
 // Add refs to store file names for display
 const fileNames = ref({
-    driving_license: "",
+    driving_license_front: "",
+    driving_license_back: "",
     passport: "",
 });
 
 const filePreviews = ref({
-    driving_license: null,
+    driving_license_front: null,
+    driving_license_back: null,
     passport: null,
 });
 
 const removeFile = (type) => {
     fileNames.value[type] = "";
     filePreviews.value[type] = null;
+    form[type] = null; // Clear the file from the form as well
+
+    // Update local storage to reflect the changes
+    localStorage.setItem(
+        "vendorFileData",
+        JSON.stringify({
+            fileNames: fileNames.value,
+            filePreviews: filePreviews.value,
+        })
+    );
 };
+
 
 
 // Load saved file data on component mount
@@ -54,7 +68,7 @@ onMounted(() => {
     }
 });
 
-const requiredFiles = ["driving_license", "passport", "passport_photo"]; // Define required file fields
+const requiredFiles = ["driving_license_front", , 'driving_license_back', "passport"]; // Define required file fields
 
 const errors = ref({});
 
@@ -67,7 +81,7 @@ const nextStep = () => {
         );
 
         if (!allFilesSelected) {
-            errors.value.files = "Please upload the document to proceed.";
+            errors.value.files = "Please upload all the document to proceed.";
             return;
         }
 
@@ -181,55 +195,80 @@ const submit = () => {
                             </div>
 
                             <div class="flex justify-between gap-[1.5rem]">
-                                <button class="button-secondary w-[15rem] max-[768px]:w-[10rem] max-[768px]:text-[0.65rem]" type="button" @click="prevStep"
-                                    :disabled="currentStep === 0">
+                                <button
+                                    class="button-secondary w-[15rem] max-[768px]:w-[10rem] max-[768px]:text-[0.65rem]"
+                                    type="button" @click="prevStep" :disabled="currentStep === 0">
                                     Back
                                 </button>
-                                <PrimaryButton class="w-[15rem] max-[768px]:w-[10rem] max-[768px]:text-[0.65rem]" type="button" @click="nextStep">Next</PrimaryButton>
+                                <PrimaryButton class="w-[15rem] max-[768px]:w-[10rem] max-[768px]:text-[0.65rem]"
+                                    type="button" @click="nextStep">Next</PrimaryButton>
                             </div>
                         </div>
                     </div>
                     <div v-else-if="currentStep === 2">
-                        <div class="grid grid-cols-1 gap-5">
+                        <div class="grid grid-cols-1 gap-5 document_section">
                             <!-- Driving License -->
                             <div class="column w-full">
-                                <InputLabel for="driving_license">Driving License</InputLabel>
                                 <div class="flex flex-col gap-2">
 
-                                    <!-- Clickable Upload Area -->
-                                    <div @click="$refs.drivingLicenseInput.click()"
-                                        class="document-div cursor-pointer border-[2px] border-customPrimaryColor p-4 rounded-lg text-center border-dotted">
-                                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"
-                                            stroke-width="1.5" stroke="#153b4f" class="w-10 h-10 mx-auto text-gray-400">
-                                            <path stroke-linecap="round" stroke-linejoin="round"
-                                                d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5" />
-                                        </svg>
-                                        <p class="mt-2 text-sm text-gray-600">Click to select an image</p>
-                                        <p class="text-xs text-gray-500 mt-1">JPG, PNG and JPEG up to 2MB</p>
+                                    <div class="grid grid-cols-2 gap-5">
+                                        <!-- Clickable Upload Area -->
+                                        <div class="flex flex-col gap-4">
+                                            <InputLabel for="driving_license" class="!mb-0">Driving License Front</InputLabel>
+                                        <div @click="$refs.drivingLicenseFrontInput.click()"
+                                            class="document-div cursor-pointer border-[2px] border-customPrimaryColor p-4 rounded-lg text-center border-dotted">
+                                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"
+                                                stroke-width="1.5" stroke="#153b4f"
+                                                class="w-10 h-10 mx-auto text-gray-400">
+                                                <path stroke-linecap="round" stroke-linejoin="round"
+                                                    d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5" />
+                                            </svg>
+                                            <p class="mt-2 text-sm text-gray-600">Click to select an image</p>
+                                            <p class="text-xs text-gray-500 mt-1">JPG, PNG and JPEG up to 2MB</p>
+                                        </div>
+                                        <!-- Show Image Preview with Remove Button -->
+                                        <div v-if="filePreviews.driving_license_front" class="relative w-[150px]">
+                                            <img :src="filePreviews.driving_license_front" alt="Preview"
+                                                class="w-full h-[100px] object-cover rounded-md border shadow-md" />
+
+                                            <!-- Remove File Button -->
+                                            <button @click.stop="removeFile('driving_license_front')"
+                                                class="absolute top-1 right-1 bg-red-500 text-white w-[20px] h-[20px] rounded-full text-[0.65rem]">
+                                                ✕
+                                            </button>
+                                        </div>
+                                        </div>
+                                        <div class="flex flex-col gap-4">
+                                            <InputLabel for="driving_license" class="!mb-0">Driving License Back</InputLabel>
+                                        <div @click="$refs.drivingLicenseBackInput.click()"
+                                            class="document-div cursor-pointer border-[2px] border-customPrimaryColor p-4 rounded-lg text-center border-dotted">
+                                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"
+                                                stroke-width="1.5" stroke="#153b4f"
+                                                class="w-10 h-10 mx-auto text-gray-400">
+                                                <path stroke-linecap="round" stroke-linejoin="round"
+                                                    d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5" />
+                                            </svg>
+                                            <p class="mt-2 text-sm text-gray-600">Click to select an image</p>
+                                            <p class="text-xs text-gray-500 mt-1">JPG, PNG and JPEG up to 2MB</p>
+                                        </div>
+                                        <div v-if="filePreviews.driving_license_back" class="relative w-[150px]">
+                                            <img :src="filePreviews.driving_license_back" alt="Preview"
+                                                class="w-full h-[100px] object-cover rounded-md border shadow-md" />
+
+                                            <!-- Remove File Button -->
+                                            <button @click.stop="removeFile('driving_license_back')"
+                                                class="absolute top-1 right-1 bg-red-500 text-white w-[20px] h-[20px] rounded-full text-[0.65rem]">
+                                                ✕
+                                            </button>
+                                        </div>
+                                        </div>
                                     </div>
 
                                     <!-- Hidden File Input -->
-                                    <input type="file" ref="drivingLicenseInput" class="hidden"
-                                        @change="handleFileChange('driving_license', $event)" />
-
-
-                                    <!-- Show Image Preview with Remove Button -->
-                                    <div v-if="filePreviews.driving_license" class="relative w-[150px]">
-                                        <img :src="filePreviews.driving_license" alt="Preview"
-                                            class="w-full h-[100px] object-cover rounded-md border shadow-md" />
-
-                                        <!-- Remove File Button -->
-                                        <button @click.stop="removeFile('driving_license')"
-                                            class="absolute top-1 right-1 bg-red-500 text-white p-1 rounded-full text-xs">
-                                            ✕
-                                        </button>
-                                    </div>
-
-                                    <!-- Show Selected File Name -->
-                                    <!-- <span v-if="fileNames.driving_license" class="text-sm text-gray-600">
-                                        Selected file: {{ fileNames.driving_license }}
-                                    </span> -->
-                                    <div v-if="errors.files" class="text-red-500 text-sm">{{ errors.files }}</div> <!-- Error Message -->
+                                    <input type="file" ref="drivingLicenseFrontInput" class="hidden"
+                                        @change="handleFileChange('driving_license_front', $event)" />
+                                    <input type="file" ref="drivingLicenseBackInput" class="hidden"
+                                        @change="handleFileChange('driving_license_back', $event)" />
                                 </div>
                             </div>
 
@@ -261,24 +300,23 @@ const submit = () => {
 
                                         <!-- Remove File Button -->
                                         <button @click.stop="removeFile('passport')"
-                                            class="absolute top-1 right-1 bg-red-500 text-white p-1 rounded-full text-xs">
+                                            class="absolute top-1 right-1 bg-red-500 text-white w-[20px] h-[20px] rounded-full text-[0.65rem]">
                                             ✕
                                         </button>
                                     </div>
 
-                                    <!-- Show Selected File Name -->
-                                    <!-- <span v-if="fileNames.passport" class="text-sm text-gray-600">
-                                        Selected file: {{ fileNames.passport }}
-                                    </span> -->
-                                    <div v-if="errors.files" class="text-red-500 text-sm">{{ errors.files }}</div> <!-- Error Message -->
+                                  
                                 </div>
                             </div>
-
+                            
+                            <div v-if="errors.files" class="text-red-500 text-sm text-center">{{ errors.files }}</div>
                         </div>
                         <!-- Buttons -->
                         <div class="flex justify-between mt-[2rem] gap-[1.5rem]">
-                            <button class="button-secondary w-[15rem] max-[768px]:w-[10rem] max-[768px]:text-[0.65rem]" type="button" @click="prevStep">Back</button>
-                            <PrimaryButton class="w-[15rem] max-[768px]:w-[10rem] max-[768px]:text-[0.65rem]" type="button" @click="nextStep">Next</PrimaryButton>
+                            <button class="button-secondary w-[15rem] max-[768px]:w-[10rem] max-[768px]:text-[0.65rem]"
+                                type="button" @click="prevStep">Back</button>
+                            <PrimaryButton class="w-[15rem] max-[768px]:w-[10rem] max-[768px]:text-[0.65rem]"
+                                type="button" @click="nextStep">Next</PrimaryButton>
                         </div>
 
 
@@ -307,10 +345,12 @@ const submit = () => {
                                 <TextInput type="text" v-model="form.company_gst_number" class="w-full" required />
                             </div>
                             <div class="flex justify-between max-[768px]:mt-4">
-                                <button class="button-secondary w-[15rem] max-[768px]:w-[10rem]" type="button" @click="prevStep">
+                                <button class="button-secondary w-[15rem] max-[768px]:w-[10rem]" type="button"
+                                    @click="prevStep">
                                     Back
                                 </button>
-                                <PrimaryButton class="w-[15rem] max-[768px]:w-[10rem]" type="submit">Submit</PrimaryButton>
+                                <PrimaryButton class="w-[15rem] max-[768px]:w-[10rem]" type="submit">Submit
+                                </PrimaryButton>
                             </div>
                         </div>
                     </div>
@@ -321,7 +361,7 @@ const submit = () => {
             max-[768px]:min-h-full max-[768px]:w-full max-[768px]:py-5 max-[768px]:mt-20">
                 <div class="flex flex-col gap-10 items-center justify-center h-full max-[768px]:px-[1.5rem]">
                     <div class="col text-customPrimaryColor-foreground w-[70%] max-[768px]:w-full">
-                        <img :src="warningSign" alt="" class="max-[768px]:w-[40px]"/>
+                        <img :src="warningSign" alt="" class="max-[768px]:w-[40px]" />
                         <h4 class="text-[1.5rem] font-medium max-[768px]:text-[1.2rem] max-[768px]:py-2">
                             Temporary documents
                         </h4>
@@ -334,7 +374,7 @@ const submit = () => {
                         </p>
                     </div>
                     <div class="col text-customPrimaryColor-foreground w-[70%] max-[768px]:w-full">
-                        <img :src="warningSign" alt="" class="max-[768px]:w-[40px]"/>
+                        <img :src="warningSign" alt="" class="max-[768px]:w-[40px]" />
                         <h4 class="text-[1.5rem] font-medium max-[768px]:text-[1.2rem] max-[768px]:py-2">
                             Need some help?
                         </h4>
@@ -370,8 +410,14 @@ select {
 }
 
 @media screen and (max-width:768px) {
-    input,textarea{
+
+    input,
+    textarea {
         font-size: 14px;
+    }
+    
+    .document_section svg{
+        width: 28px;
     }
 }
 </style>

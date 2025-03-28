@@ -7,9 +7,6 @@ import { Head, Link, useForm } from '@inertiajs/vue3';
 import { ref, watch, computed, onMounted } from 'vue';
 import AuthenticatedHeaderLayout from '@/Layouts/AuthenticatedHeaderLayout.vue';
 import { Button } from '@/Components/ui/button';
-import { Calendar } from '@/Components/ui/calendar';
-import { Popover, PopoverContent, PopoverTrigger } from '@/Components/ui/popover';
-import { getLocalTimeZone, today, parseDate } from '@internationalized/date';
 import {
     Stepper,
     StepperItem,
@@ -67,6 +64,9 @@ const isStepValid = computed(() => {
     const currentStepFields = steps[stepIndex.value - 1].fields;
     return currentStepFields.every(field => {
         const value = form[field];
+        if (field === "phone") {
+            return value !== null && value !== undefined && value.trim() !== "" && value.length >= 7;
+        }
         return value !== null && value !== undefined && value.trim() !== '';
     });
 });
@@ -222,7 +222,7 @@ const minimumDateOfBirth = computed(() => {
                             class="relative flex w-full flex-col items-center justify-center" :step="step.step"
                             @click="handleStepChange(step.step)">
                             <StepperSeparator v-if="step.step !== steps[steps.length - 1].step"
-                                class="absolute max-[768px]:hidden left-[calc(50%+20px)] right-[calc(-50%+10px)] top-5 block h-0.5 shrink-0 rounded-full bg-muted group-data-[state=completed]:bg-primary max-[768px]:left-[calc(50%+15px)] max-[768px]:right-[calc(-50%+5px)]" />
+                                class="absolute left-[calc(50%+20px)] right-[calc(-50%+10px)] top-5 max-[768px]:top-4 block h-0.5 shrink-0 rounded-full bg-muted group-data-[state=completed]:bg-primary max-[768px]:left-[calc(50%+15px)] max-[768px]:right-[calc(-50%+5px)]" />
 
                             <StepperTrigger as-child>
                                 <Button :variant="state === 'completed' || state === 'active' ? 'default' : 'outline'"
@@ -303,7 +303,7 @@ const minimumDateOfBirth = computed(() => {
                                     <InputLabel for="phone" value="Phone Number" />
                                     <Select v-model="selectedPhoneCode">
                                         <SelectTrigger
-                                            class="w-full p-[1.75rem] border-customLightGrayColor bg-customLightPrimaryColor rounded-[12px] !rounded-r-none border-r-0">
+                                            class="w-full p-[1.75rem] border-customLightGrayColor bg-customPrimaryColor text-white rounded-[12px] !rounded-r-none border-r-0">
                                             <SelectValue placeholder="Select Code" />
                                         </SelectTrigger>
                                         <SelectContent>

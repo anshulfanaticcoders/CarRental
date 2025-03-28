@@ -11,6 +11,8 @@ class CreateVendorDocumentsTable extends Migration
             $table->id();
             $table->foreignId('user_id')->constrained('users')->onDelete('cascade');
             $table->string('driving_license')->nullable();
+            $table->string('driving_license_front')->nullable();
+            $table->string('driving_license_back')->nullable();
             $table->string('passport')->nullable();
             $table->string('passport_photo')->nullable();
             $table->timestamps();

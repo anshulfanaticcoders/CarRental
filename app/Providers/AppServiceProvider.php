@@ -4,6 +4,7 @@ namespace App\Providers;
 
 use Illuminate\Support\Facades\URL;
 use Illuminate\Support\ServiceProvider;
+use Inertia\Inertia;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -23,5 +24,12 @@ class AppServiceProvider extends ServiceProvider
         if (env('APP_ENV') !== 'local') {
             URL::forceScheme('https'); // Force HTTPS for all routes
         }
+
+        Inertia::share('flash', function () {
+            return [
+                'success' => session('success'),
+                'error' => session('error'),
+            ];
+        });
     }
 }

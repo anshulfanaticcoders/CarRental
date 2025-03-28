@@ -51,15 +51,27 @@
                 </div>
                 
                 <div class="space-y-2">
-                    <Label for="driving_license">Driving License</Label>
+                    <Label for="driving_license_front">Driving License Front</Label>
                     <div class="flex items-center gap-2">
-                        <Input id="driving_license" type="file" @change="handleFileChange('driving_license', $event)" />
-                        <Button v-if="document.driving_license" variant="outline" size="sm" @click.prevent="viewDocument(document.driving_license)">
+                        <Input id="driving_license_front" type="file" @change="handleFileChange('driving_license_front', $event)" />
+                        <Button v-if="document.driving_license_front" variant="outline" size="sm" @click.prevent="viewDocument(document.driving_license_front)">
                             View Current
                         </Button>
                     </div>
-                    <div v-if="form.errors.driving_license" class="text-sm text-red-500">
-                        {{ form.errors.driving_license }}
+                    <div v-if="form.errors.driving_license_front" class="text-sm text-red-500">
+                        {{ form.errors.driving_license_front }}
+                    </div>
+                </div>
+                <div class="space-y-2">
+                    <Label for="driving_license_back">Driving License Back</Label>
+                    <div class="flex items-center gap-2">
+                        <Input id="driving_license_back" type="file" @change="handleFileChange('driving_license_back', $event)" />
+                        <Button v-if="document.driving_license_back" variant="outline" size="sm" @click.prevent="viewDocument(document.driving_license_back)">
+                            View Current
+                        </Button>
+                    </div>
+                    <div v-if="form.errors.driving_license_back" class="text-sm text-red-500">
+                        {{ form.errors.driving_license_back }}
                     </div>
                 </div>
                 
@@ -145,7 +157,8 @@ const form = useForm({
     company_email: props.document.vendor_profile?.company_email || '',
     company_address: props.document.vendor_profile?.company_address || '',
     company_gst_number: props.document.vendor_profile?.company_gst_number || '',
-    driving_license: null,
+    driving_license_front: null,
+    driving_license_back: null,
     passport: null,
     // passport_photo: null,
 });

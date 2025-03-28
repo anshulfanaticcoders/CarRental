@@ -22,6 +22,7 @@ use App\Http\Controllers\Admin\VendorsReportController;
 use App\Http\Controllers\Auth\EmailValidationController;
 use App\Http\Controllers\Auth\VerifyEmailController;
 use App\Http\Controllers\BookingController;
+use App\Http\Controllers\ContactFormController;
 use App\Http\Controllers\FavoriteController;
 use App\Http\Controllers\FrontendPageController;
 use App\Http\Controllers\GeocodingController;
@@ -121,6 +122,7 @@ Route::post('/validate-contact', [EmailValidationController::class, 'validateCon
 Route::get('/api/footer-places', [PopularPlacesController::class, 'getFooterPlaces']);
 Route::get('/api/footer-categories', [VehicleCategoriesController::class, 'getFooterCategories']);
 Route::get('/contact-us', [ContactUsPageController::class, 'show'])->name('contact-us');
+Route::post('/contact', [ContactFormController::class, 'store'])->name('contact.submit');
 
 // Show Blogs on Home page
 // Route::get('/', [BlogController::class, 'show'])->name('welcome');

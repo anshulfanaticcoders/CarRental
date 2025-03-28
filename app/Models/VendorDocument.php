@@ -11,9 +11,9 @@ class VendorDocument extends Model
 
     protected $fillable = [
         'user_id',
-        'driving_license',
+        'driving_license_front',
+        'driving_license_back',
         'passport',
-        'passport_photo',
     ];
 
     public function user()
