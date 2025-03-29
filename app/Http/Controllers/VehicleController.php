@@ -161,37 +161,32 @@ class VehicleController extends Controller
         ]);
 
 
-         // Save the selected plan details
-    if ($request->has('selected_plans')) {
-        $selectedPlans = $request->input('selected_plans');
+        // Save the selected plan details
+        if ($request->has('selected_plans')) {
+            $selectedPlans = $request->input('selected_plans');
 
-        foreach ($selectedPlans as $selectedPlan) {
-            VendorVehiclePlan::create([
-                'vendor_id' => $request->user()->id,
-                'vehicle_id' => $vehicle->id,
-                'plan_id' => $selectedPlan['id'],
-                'plan_type' => $selectedPlan['plan_type'],
-                'price' => $selectedPlan['plan_value'],
-                'features' => isset($selectedPlan['features']) ? json_encode($selectedPlan['features']) : null,
-            ]);
+            foreach ($selectedPlans as $selectedPlan) {
+                VendorVehiclePlan::create([
+                    'vendor_id' => $request->user()->id,
+                    'vehicle_id' => $vehicle->id,
+                    'plan_id' => $selectedPlan['id'],
+                    'plan_type' => $selectedPlan['plan_type'],
+                    'price' => $selectedPlan['plan_value'],
+                    'features' => isset($selectedPlan['features']) ? json_encode($selectedPlan['features']) : null,
+                    'plan_description' => isset($selectedPlan['plan_description']) ? $selectedPlan['plan_description'] : null,
+                ]);
+            }
         }
-    }
 
-
-    // Save the selected addon details
-    if ($request->has('selected_addons')) {
-        $selectedAddons = $request->input('selected_addons');
-        $addonPrices = $request->input('addon_prices');
-        $addonQuantities = $request->input('addon_quantities');
-
+        // Save the selected addon details
         if ($request->has('selected_addons')) {
             $selectedAddons = $request->input('selected_addons');
             $addonPrices = $request->input('addon_prices');
             $addonQuantities = $request->input('addon_quantities');
-    
+
             foreach ($selectedAddons as $addonId) {
                 $addon = BookingAddon::find($addonId); // Fetch the addon details
-    
+
                 VendorVehicleAddon::create([
                     'vendor_id' => $request->user()->id,
                     'vehicle_id' => $vehicle->id,
@@ -204,7 +199,6 @@ class VehicleController extends Controller
                 ]);
             }
         }
-    }
 
         // Handle vehicle images
         $primaryImageUploaded = false;
@@ -226,7 +220,7 @@ class VehicleController extends Controller
             ]);
         }
 
-        
+
         ActivityLogHelper::logActivity('create', 'Created a new vehicle', $vehicle, $request);
         return redirect('/profile')->with([
             'message' => 'Vehicle added successfully!',
@@ -279,7 +273,7 @@ class VehicleController extends Controller
     //This is for getting particular vehicle information to the booking page 
     public function booking(Request $request, $id)
     {
-        $vehicle = Vehicle::with(['specifications', 'images', 'category', 'user', 'vendorProfile','benefits', 'vendorPlans','addons','vendorProfileData'])
+        $vehicle = Vehicle::with(['specifications', 'images', 'category', 'user', 'vendorProfile', 'benefits', 'vendorPlans', 'addons', 'vendorProfileData'])
             ->findOrFail($id);
 
         return Inertia::render('Booking', [

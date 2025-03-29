@@ -15,6 +15,7 @@ class VendorVehiclePlan extends Model
         'plan_id',
         'plan_type',
         'price',
+        'plan_description',
         'features'
     ];
 

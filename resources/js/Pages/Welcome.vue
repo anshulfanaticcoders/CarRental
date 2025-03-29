@@ -367,7 +367,7 @@ onMounted(() => {
             <!-- Blog Section -->
             <div class="flex gap-6 w-full full-w-container max-[768px]:flex-col">
                 <!-- First Blog (Large Left) -->
-                <div v-if="!isLoading && blogs.length > 0"
+                <Link :href="route('blog.show', blogs[0].id)" v-if="!isLoading && blogs.length > 0"
                     class="w-1/2 h-[574px] relative rounded-lg overflow-hidden shadow-md blog-container max-[768px]:w-full max-[768px]:h-[380px]">
                     <img :src="blogs[0].image" :alt="blogs[0].title" class="w-full h-full object-cover rounded-lg">
 
@@ -381,7 +381,7 @@ onMounted(() => {
                         <img :src=whiteGoIcon alt="">
                         </Link>
                     </div>
-                </div>
+                </Link>
 
                 <div v-else
                     class="w-1/2 h-[574px] relative rounded-lg overflow-hidden shadow-md blog-container max-[768px]:w-full max-[768px]:h-[380px]">
@@ -412,9 +412,9 @@ onMounted(() => {
                                 class="font-semibold text-[1.5rem] text-customDarkBlackColor max-[768px]:text-[1rem]">{{
                                     blogs[index].title }}</h4>
                             <Link v-if="!isLoading && blogs.length > index" :href="route('blog.show', blogs[index].id)"
-                                class="inline-flex items-center mt-2 text-customPrimaryColor">
+                                class="inline-flex items-center mt-2 text-customPrimaryColor read-story">
                             Read Story
-                            <img :src=goIcon alt="" class="w-[1.5rem] ml-[0.75rem]">
+                            <img :src=goIcon alt="" class="w-[1.5rem]">
                             </Link>
                             <div v-else class="space-y-2">
                                 <Skeleton class="h-4 w-[70%]" />
@@ -479,6 +479,14 @@ onMounted(() => {
 
 .category-carousel .disabled\:pointer-events-none:disabled {
     pointer-events: unset;
+}
+
+.read-story img{
+    margin-left: 0.75rem;
+    transition: all 0.2s ease-in-out;
+}
+.read-story:hover img{
+    margin-left: 1.5rem;
 }
 
 @media screen and (max-width:768px) {

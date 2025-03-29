@@ -552,7 +552,7 @@ const submitBooking = async () => {
                     'border-[#153B4F] bg-[#153B4F0D]': selectedPlan?.plan_id === plan.plan_id,
                 }" @click="selectPlan(plan)">
                                     <span class="text-[1.5rem] text-center max-[768px]:text-[1.1rem]"
-                                        :class="{ 'text-[#016501]': plan.plan_id === 2 }">
+                                    :class="{ 'text-[#016501]': selectedPlan?.plan_id === plan.plan_id }">
                                         {{ plan.plan_type }}
                                     </span>
 
@@ -561,13 +561,13 @@ const submitBooking = async () => {
                                     </strong>
 
                                     <p class="text-[1.25rem] text-[#2B2B2B] text-center max-[768px]:text-[0.95rem]">
-                                        Access to basic features without any subscription fee.
+                                        {{plan.plan_description}}
                                     </p>
 
                                     <button class="button-primary px-5 py-2 max-[768px]:text-[0.875rem]"
                                         @click.stop="selectPlan(plan)"
                                         :class="{ 'bg-[#016501]': selectedPlan?.plan_id === plan.plan_id }">
-                                        {{ selectedPlan?.plan_id === plan.plan_id ? 'Deselect' : 'Select' }}
+                                        {{ selectedPlan?.plan_id === plan.plan_id ? 'Selected' : 'Select' }}
                                     </button>
 
 
@@ -915,7 +915,7 @@ const submitBooking = async () => {
                                 <div class="flex flex-col gap-1">
                                     <span class="text-[1.25rem] text-medium max-[768px]:text-[1rem]">{{
                                         vehicle?.location
-                                    }}</span><span class="max-[768px]:text-[0.85rem]">From: {{ dateFrom }} {{
+                                        }}</span><span class="max-[768px]:text-[0.85rem]">From: {{ dateFrom }} {{
                                             timeFrom }}</span>
                                 </div>
                             </div>
@@ -924,7 +924,7 @@ const submitBooking = async () => {
                                 <div class="flex flex-col gap-1">
                                     <span class="text-[1.25rem] text-medium max-[768px]:text-[1rem]">{{
                                         vehicle?.location
-                                    }}</span><span class="max-[768px]:text-[0.85rem]">To: {{ dateTo }} {{ timeTo
+                                        }}</span><span class="max-[768px]:text-[0.85rem]">To: {{ dateTo }} {{ timeTo
                                         }}</span>
                                 </div>
                             </div>
@@ -944,11 +944,11 @@ const submitBooking = async () => {
                                     <div v-if="selectedPlan" class="flex justify-between items-center text-[1.15rem]">
                                         <span>{{
                                             selectedPlan.plan_type
-                                        }}</span>
+                                            }}</span>
                                         <div>
                                             <strong class="text-[1.5rem] font-medium max-[768px]:text-[1.1rem]">{{
                                                 formatPrice(selectedPlan.price)
-                                                }}</strong>
+                                            }}</strong>
 
                                         </div>
                                     </div>
@@ -965,7 +965,7 @@ const submitBooking = async () => {
                                         <div>
                                             <strong class="text-[1.5rem] font-medium max-[768px]:text-[1.1rem]">{{
                                                 formatPrice(extra.price * extra.quantity)
-                                                }}</strong>
+                                            }}</strong>
 
                                         </div>
                                     </div>
@@ -1009,7 +1009,7 @@ const submitBooking = async () => {
                                                 class="flex justify-between text-[1.25rem] font-bold border-t pt-3 mt-3">
                                                 <span>Total (incl. VAT)</span>
                                                 <p class="font-medium">{{ formatPrice(calculateTotal + discountAmount)
-                                                }}
+                                                    }}
                                                 </p>
                                             </div>
                                             <div v-if="discountAmount"
@@ -1019,7 +1019,7 @@ const submitBooking = async () => {
                                                     <p class="border-b-2 mb-1 text-red-500 font-medium">-{{
                                                         formatPrice(discountAmount) }}</p>
                                                     <strong class="text-[1.3rem]">{{ formatPrice(calculateTotal)
-                                                        }}</strong>
+                                                    }}</strong>
                                                 </div>
                                             </div>
                                         </div>

@@ -17,6 +17,7 @@ return new class extends Migration {
             $table->foreignId('plan_id')->constrained('plans')->onDelete('cascade');
             $table->string('plan_type');
             $table->decimal('price', 10, 2);
+            $table->text('plan_description')->nullable();
             $table->json('features')->nullable();
             $table->timestamps();
         });

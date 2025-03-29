@@ -33,7 +33,8 @@ class VendorVehiclePlanController extends Controller
             'plan_id' => 'required|exists:plans,id',
             'plan_type' => 'required|string',
             'price' => 'required|numeric|min:0',
-            'features' => 'nullable|array'
+            'features' => 'nullable|array',
+            'plan_description' => 'required|string',
         ]);
         
         $validated['vendor_id'] = auth()->id();

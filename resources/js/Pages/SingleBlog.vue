@@ -2,17 +2,17 @@
     <AuthenticatedHeaderLayout/>
     <section class="blog-single min-h-screen flex flex-col gap-8 items-center pb-16 py-10 max-[768px]:py-0 max-[768px]:pb-8">
         <!-- Breadcrumb -->
-        <nav class="w-full full-w-container max-[768px]:px-[1.5rem] py-4">
-            <ul class="flex items-center text-gray-600 text-[1rem]">
+        <nav class="w-full full-w-container max-[768px]:px-0 py-4 max-[768px]:pb-0">
+            <ul class="flex items-center text-gray-600 text-[1rem] max-[768px]:items-start">
                 <li>
-                    <Link :href="route('welcome')" class="hover:underline text-customPrimaryColor">Home</Link>
+                    <Link :href="route('welcome')" class="hover:underline text-customPrimaryColor max-[768px]:text-[0.75rem]">Home</Link>
                 </li>
                 <span class="mx-2 text-customPrimaryColor font-medium">></span>
                 <li>
-                    <Link :href="route('blogs-page')" class="hover:underline text-customPrimaryColor">Blog</Link>
+                    <Link :href="route('blogs-page')" class="hover:underline text-customPrimaryColor max-[768px]:text-[0.75rem]">Blog</Link>
                 </li>
                 <span class="mx-2 text-customPrimaryColor font-medium">></span>
-                <li class="text-gray-900 font-semibold">{{ blog.title }}</li>
+                <li class="text-gray-900 font-semibold max-[768px]:text-[0.75rem]">{{ blog.title }}</li>
             </ul>
         </nav>
         <div class="w-full full-w-container max-[768px]:w-full">

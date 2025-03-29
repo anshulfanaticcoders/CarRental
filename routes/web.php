@@ -293,6 +293,8 @@ Route::middleware(['auth', 'role:vendor'])->group(function () {
     Route::get('/plans', [PlanController::class, 'index'])->name('VendorPlanIndex');
     Route::get('vendor/plans/{id}/edit', [PlanController::class, 'edit'])->name('VendorPlanEdit');
     Route::put('vendor/plans/{id}', [PlanController::class, 'update'])->name('VendorPlanUpdate');
+    Route::post('/vendor/plan', [PlanController::class, 'store'])->name('VendorPlanStore');
+    Route::delete('vendor/plans/{id}', [PlanController::class, 'destroy'])->name('VendorPlanDestroy');
 
 
     Route::resource('vendor-vehicle-addons', VendorVehicleAddonController::class);

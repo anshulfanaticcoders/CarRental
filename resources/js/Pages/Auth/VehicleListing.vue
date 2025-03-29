@@ -144,7 +144,7 @@
                             <div class="relative">
                                 <input type="number" v-model="form.mileage" id="mileage" required />
                                 <span
-                                    class="absolute text-[0.875rem] top-[50%] right-3 translate-y-[-50%] text-customLightGrayColor font-medium">(km/d)</span>
+                                    class="absolute bg-white text-[0.875rem] top-[50%] right-3 translate-y-[-50%] text-customLightGrayColor font-medium">(km/d)</span>
                                 <span v-if="errors.mileage" class="text-red-500 max-[768px]:text-[0.75rem] text-sm">{{
                                     errors.mileage }}</span>
                             </div>
@@ -256,7 +256,7 @@
                             <div class="relative">
                                 <input type="number" v-model="form.horsepower" id="horsepower" required min="0" />
                                 <span
-                                    class="absolute text-[0.875rem] top-[50%] right-3 translate-y-[-50%] text-customLightGrayColor font-medium">hp</span>
+                                    class="absolute bg-white text-[0.875rem] top-[50%] right-3 translate-y-[-50%] text-customLightGrayColor font-medium">hp</span>
                             </div>
                             <span v-if="errors.horsepower" class="text-red-500 max-[768px]:text-[0.75rem] text-sm">{{
                                 errors.horsepower }}</span>
@@ -268,7 +268,7 @@
                             <div class="relative">
                                 <input type="text" v-model="form.co2" id="co2" required />
                                 <span
-                                    class="absolute text-[0.875rem] top-[50%] right-3 translate-y-[-50%] text-customLightGrayColor font-medium">(g/km)</span>
+                                    class="absolute bg-white text-[0.875rem] top-[50%] right-3 translate-y-[-50%] text-customLightGrayColor font-medium">(g/km)</span>
                             </div>
                             <span v-if="errors.co2" class="text-red-500 max-[768px]:text-[0.75rem] text-sm">{{
                                 errors.co2 }}</span>
@@ -451,7 +451,7 @@
                                 <input class="w-full" type="number" v-model="form.gross_vehicle_mass"
                                     id="gross_vehicle_mass" />
                                 <span
-                                    class="absolute text-[0.875rem] top-[50%] right-3 translate-y-[-50%] text-customLightGrayColor font-medium">in
+                                    class="absolute bg-white text-[0.875rem] top-[50%] right-3 translate-y-[-50%] text-customLightGrayColor font-medium">in
                                     (lb's)</span>
                             </div>
                         </div>
@@ -462,7 +462,7 @@
                             <div class="relative">
                                 <input class="w-full" type="number" v-model="form.vehicle_height" id="vehicle_height" />
                                 <span
-                                    class="absolute text-[0.875rem] top-[50%] right-3 translate-y-[-50%] text-customLightGrayColor font-medium">in
+                                    class="absolute bg-white text-[0.875rem] top-[50%] right-3 translate-y-[-50%] text-customLightGrayColor font-medium">in
                                     m(meters)</span>
                             </div>
 
@@ -560,27 +560,6 @@
                         </p>
                     </div>
                     <div class="search-container">
-                        <!-- <div>
-                            <InputLabel for="location">Location:</InputLabel>
-                            <input
-                               v-model="form.location"
-                               type="text"
-                               @input="handleSearchInput"
-                               placeholder="Search location"
-                               class="w-full p-2 border rounded"
-                             />
-                        </div>
-                        <div v-if="searchResults.length" class="search-results">
-                          <div
-                            v-for="result in searchResults"
-                            :key="result.id"
-                            @click="selectLocation(result)"
-                            class="p-2 hover:bg-gray-100 cursor-pointer"
-                          >
-                            {{ result.properties?.label || 'Unknown Location' }}  
-                          </div>
-                        </div> -->
-                        <!-- <div id="map" class="w-full h-64 mt-4"></div> -->
                         <LocationPicker :onLocationSelect="selectLocation" />
                     </div>
                     <span v-if="errors.location" class="text-red-500 max-[768px]:text-[0.75rem] text-sm">{{
@@ -819,143 +798,188 @@
 
 
                     <div class="max-[768px]:px-[1.5rem]">
-    <!-- Limited Kilometer Section -->
-    <div class="mb-6">
-        <h3 class="font-medium text-lg mb-2">Kilometer Limitations</h3>
+                        <!-- Limited Kilometer Section -->
+                        <div class="mb-6">
+                            <h3 class="font-medium text-lg mb-2">Kilometer Limitations</h3>
 
-        <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <!-- Per Day Limitation -->
-            <div v-if="selectedTypes.day" class="border rounded p-4">
-                <div class="flex gap-2 items-center mb-0">
-                    <input type="checkbox" v-model="form.limited_km_per_day" id="limited_km_per_day" />
-                    <InputLabel for="limited_km_per_day" class="!mb-0">Limited Kilometer Per Day</InputLabel>
-                </div>
+                            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                                <!-- Per Day Limitation -->
+                                <div v-if="selectedTypes.day" class="border rounded p-4">
+                                    <div class="flex gap-2 items-center mb-0">
+                                        <input type="checkbox" v-model="form.limited_km_per_day"
+                                            id="limited_km_per_day" />
+                                        <InputLabel for="limited_km_per_day" class="!mb-0">Limited Kilometer Per Day
+                                        </InputLabel>
+                                    </div>
 
-                <div v-if="form.limited_km_per_day">
-                    <div class="mb-0">
-                        <InputLabel for="limited_km_per_day_range">KM Limit</InputLabel>
-                        <input type="number" v-model="form.limited_km_per_day_range" id="limited_km_per_day_range" class="w-full" />
-                        <span v-if="errors.limited_km_per_day_range" class="text-red-500 text-sm">
-                            {{ errors.limited_km_per_day_range }}
-                        </span>
+                                    <div v-if="form.limited_km_per_day">
+                                        <div class="mb-0">
+                                            <InputLabel for="limited_km_per_day_range">KM Limit</InputLabel>
+                                            <input type="number" v-model="form.limited_km_per_day_range"
+                                                id="limited_km_per_day_range" class="w-full" />
+                                            <span v-if="errors.limited_km_per_day_range" class="text-red-500 text-sm">
+                                                {{ errors.limited_km_per_day_range }}
+                                            </span>
+                                        </div>
+
+                                        <div>
+                                            <InputLabel for="price_per_km_per_day">Price Per Extra KM</InputLabel>
+                                            <input type="number" v-model="form.price_per_km_per_day"
+                                                id="price_per_km_per_day" class="w-full" />
+                                            <span v-if="errors.price_per_km_per_day" class="text-red-500 text-sm">
+                                                {{ errors.price_per_km_per_day }}
+                                            </span>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Per Week Limitation -->
+                                <div v-if="selectedTypes.week" class="border rounded p-4">
+                                    <div class="flex gap-2 items-center mb-0">
+                                        <input type="checkbox" v-model="form.limited_km_per_week"
+                                            id="limited_km_per_week" />
+                                        <InputLabel for="limited_km_per_week" class="!mb-0">Limited Kilometer Per Week
+                                        </InputLabel>
+                                    </div>
+
+                                    <div v-if="form.limited_km_per_week">
+                                        <div class="mb-0">
+                                            <InputLabel for="limited_km_per_week_range">KM Limit</InputLabel>
+                                            <input type="number" v-model="form.limited_km_per_week_range"
+                                                id="limited_km_per_week_range" class="w-full" />
+                                            <span v-if="errors.limited_km_per_week_range" class="text-red-500 text-sm">
+                                                {{ errors.limited_km_per_week_range }}
+                                            </span>
+                                        </div>
+
+                                        <div>
+                                            <InputLabel for="price_per_km_per_week">Price Per Extra KM</InputLabel>
+                                            <input type="number" v-model="form.price_per_km_per_week"
+                                                id="price_per_km_per_week" class="w-full" />
+                                            <span v-if="errors.price_per_km_per_week" class="text-red-500 text-sm">
+                                                {{ errors.price_per_km_per_week }}
+                                            </span>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Per Month Limitation -->
+                                <div v-if="selectedTypes.month" class="border rounded p-4">
+                                    <div class="flex gap-2 items-center mb-0">
+                                        <input type="checkbox" v-model="form.limited_km_per_month"
+                                            id="limited_km_per_month" />
+                                        <InputLabel for="limited_km_per_month" class="!mb-0">Limited Kilometer Per Month
+                                        </InputLabel>
+                                    </div>
+
+                                    <div v-if="form.limited_km_per_month">
+                                        <div class="mb-0">
+                                            <InputLabel for="limited_km_per_month_range">KM Limit</InputLabel>
+                                            <input type="number" v-model="form.limited_km_per_month_range"
+                                                id="limited_km_per_month_range" class="w-full" />
+                                            <span v-if="errors.limited_km_per_month_range" class="text-red-500 text-sm">
+                                                {{ errors.limited_km_per_month_range }}
+                                            </span>
+                                        </div>
+
+                                        <div>
+                                            <InputLabel for="price_per_km_per_month">Price Per Extra KM</InputLabel>
+                                            <input type="number" v-model="form.price_per_km_per_month"
+                                                id="price_per_km_per_month" class="w-full" />
+                                            <span v-if="errors.price_per_km_per_month" class="text-red-500 text-sm">
+                                                {{ errors.price_per_km_per_month }}
+                                            </span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Cancellation Policy Section -->
+                        <div class="mb-6">
+                            <h3 class="font-medium text-lg mb-2">Cancellation Policy</h3>
+
+                            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                                <!-- Per Day Cancellation -->
+                                <div v-if="selectedTypes.day" class="border rounded p-4">
+                                    <div class="flex gap-2 items-center mb-0">
+                                        <input type="checkbox" v-model="form.cancellation_available_per_day"
+                                            id="cancellation_available_per_day" />
+                                        <InputLabel for="cancellation_available_per_day" class="!mb-0">Cancellation
+                                            Available Per Day</InputLabel>
+                                    </div>
+
+                                    <div v-if="form.cancellation_available_per_day">
+                                        <InputLabel for="cancellation_available_per_day_date">Days Prior Notice Required
+                                        </InputLabel>
+                                        <input type="number" v-model="form.cancellation_available_per_day_date"
+                                            id="cancellation_available_per_day_date" class="w-full" />
+                                        <span v-if="errors.cancellation_available_per_day_date"
+                                            class="text-red-500 text-sm">
+                                            {{ errors.cancellation_available_per_day_date }}
+                                        </span>
+                                    </div>
+                                </div>
+
+                                <!-- Per Week Cancellation -->
+                                <div v-if="selectedTypes.week" class="border rounded p-4">
+                                    <div class="flex gap-2 items-center mb-0">
+                                        <input type="checkbox" v-model="form.cancellation_available_per_week"
+                                            id="cancellation_available_per_week" />
+                                        <InputLabel for="cancellation_available_per_week" class="!mb-0">Cancellation
+                                            Available Per Week</InputLabel>
+                                    </div>
+
+                                    <div v-if="form.cancellation_available_per_week">
+                                        <InputLabel for="cancellation_available_per_week_date">Days Prior Notice
+                                            Required</InputLabel>
+                                        <input type="number" v-model="form.cancellation_available_per_week_date"
+                                            id="cancellation_available_per_week_date" class="w-full" />
+                                        <span v-if="errors.cancellation_available_per_week_date"
+                                            class="text-red-500 text-sm">
+                                            {{ errors.cancellation_available_per_week_date }}
+                                        </span>
+                                    </div>
+                                </div>
+
+                                <!-- Per Month Cancellation -->
+                                <div v-if="selectedTypes.month" class="border rounded p-4">
+                                    <div class="flex gap-2 items-center mb-0">
+                                        <input type="checkbox" v-model="form.cancellation_available_per_month"
+                                            id="cancellation_available_per_month" />
+                                        <InputLabel for="cancellation_available_per_month" class="!mb-0">Cancellation
+                                            Available Per Month</InputLabel>
+                                    </div>
+
+                                    <div v-if="form.cancellation_available_per_month">
+                                        <InputLabel for="cancellation_available_per_month_date">Days Prior Notice
+                                            Required</InputLabel>
+                                        <input type="number" v-model="form.cancellation_available_per_month_date"
+                                            id="cancellation_available_per_month_date" class="w-full" />
+                                        <span v-if="errors.cancellation_available_per_month_date"
+                                            class="text-red-500 text-sm">
+                                            {{ errors.cancellation_available_per_month_date }}
+                                        </span>
+                                    </div>
+                                </div>
+
+                            </div>
+                        </div>
+
+                        <!-- Driver Requirements Section -->
+                        <div>
+                            <h3 class="font-medium text-lg mb-2">Driver Requirements</h3>
+
+                            <div class="max-w-xs">
+                                <InputLabel for="minimum_driver_age">Minimum Driver Age</InputLabel>
+                                <input type="number" v-model="form.minimum_driver_age" id="minimum_driver_age"
+                                    class="w-full" />
+                                <span v-if="errors.minimum_driver_age" class="text-red-500 text-sm">
+                                    {{ errors.minimum_driver_age }}
+                                </span>
+                            </div>
+                        </div>
                     </div>
-
-                    <div>
-                        <InputLabel for="price_per_km_per_day">Price Per Extra KM</InputLabel>
-                        <input type="number" v-model="form.price_per_km_per_day" id="price_per_km_per_day" class="w-full" />
-                        <span v-if="errors.price_per_km_per_day" class="text-red-500 text-sm">
-                            {{ errors.price_per_km_per_day }}
-                        </span>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Per Week Limitation -->
-            <div v-if="selectedTypes.week" class="border rounded p-4">
-                <div class="flex gap-2 items-center mb-0">
-                    <input type="checkbox" v-model="form.limited_km_per_week" id="limited_km_per_week" />
-                    <InputLabel for="limited_km_per_week" class="!mb-0">Limited Kilometer Per Week</InputLabel>
-                </div>
-
-                <div v-if="form.limited_km_per_week">
-                    <div class="mb-0">
-                        <InputLabel for="limited_km_per_week_range">KM Limit</InputLabel>
-                        <input type="number" v-model="form.limited_km_per_week_range" id="limited_km_per_week_range" class="w-full" />
-                        <span v-if="errors.limited_km_per_week_range" class="text-red-500 text-sm">
-                            {{ errors.limited_km_per_week_range }}
-                        </span>
-                    </div>
-
-                    <div>
-                        <InputLabel for="price_per_km_per_week">Price Per Extra KM</InputLabel>
-                        <input type="number" v-model="form.price_per_km_per_week" id="price_per_km_per_week" class="w-full" />
-                        <span v-if="errors.price_per_km_per_week" class="text-red-500 text-sm">
-                            {{ errors.price_per_km_per_week }}
-                        </span>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Per Month Limitation -->
-            <div v-if="selectedTypes.month" class="border rounded p-4">
-                <div class="flex gap-2 items-center mb-0">
-                    <input type="checkbox" v-model="form.limited_km_per_month" id="limited_km_per_month" />
-                    <InputLabel for="limited_km_per_month" class="!mb-0">Limited Kilometer Per Month</InputLabel>
-                </div>
-
-                <div v-if="form.limited_km_per_month">
-                    <div class="mb-0">
-                        <InputLabel for="limited_km_per_month_range">KM Limit</InputLabel>
-                        <input type="number" v-model="form.limited_km_per_month_range" id="limited_km_per_month_range" class="w-full" />
-                        <span v-if="errors.limited_km_per_month_range" class="text-red-500 text-sm">
-                            {{ errors.limited_km_per_month_range }}
-                        </span>
-                    </div>
-
-                    <div>
-                        <InputLabel for="price_per_km_per_month">Price Per Extra KM</InputLabel>
-                        <input type="number" v-model="form.price_per_km_per_month" id="price_per_km_per_month" class="w-full" />
-                        <span v-if="errors.price_per_km_per_month" class="text-red-500 text-sm">
-                            {{ errors.price_per_km_per_month }}
-                        </span>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- Cancellation Policy Section -->
-    <div class="mb-6">
-        <h3 class="font-medium text-lg mb-2">Cancellation Policy</h3>
-
-        <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <!-- Per Day Cancellation -->
-            <div v-if="selectedTypes.day" class="border rounded p-4">
-                <div class="flex gap-2 items-center mb-0">
-                    <input type="checkbox" v-model="form.cancellation_available_per_day" id="cancellation_available_per_day" />
-                    <InputLabel for="cancellation_available_per_day" class="!mb-0">Cancellation Available Per Day</InputLabel>
-                </div>
-
-                <div v-if="form.cancellation_available_per_day">
-                    <InputLabel for="cancellation_available_per_day_date">Days Prior Notice Required</InputLabel>
-                    <input type="number" v-model="form.cancellation_available_per_day_date" id="cancellation_available_per_day_date" class="w-full" />
-                    <span v-if="errors.cancellation_available_per_day_date" class="text-red-500 text-sm">
-                        {{ errors.cancellation_available_per_day_date }}
-                    </span>
-                </div>
-            </div>
-
-            <!-- Per Week Cancellation -->
-            <div v-if="selectedTypes.week" class="border rounded p-4">
-                <div class="flex gap-2 items-center mb-0">
-                    <input type="checkbox" v-model="form.cancellation_available_per_week" id="cancellation_available_per_week" />
-                    <InputLabel for="cancellation_available_per_week" class="!mb-0">Cancellation Available Per Week</InputLabel>
-                </div>
-
-                <div v-if="form.cancellation_available_per_week">
-                    <InputLabel for="cancellation_available_per_week_date">Days Prior Notice Required</InputLabel>
-                    <input type="number" v-model="form.cancellation_available_per_week_date" id="cancellation_available_per_week_date" class="w-full" />
-                    <span v-if="errors.cancellation_available_per_week_date" class="text-red-500 text-sm">
-                        {{ errors.cancellation_available_per_week_date }}
-                    </span>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- Driver Requirements Section -->
-    <div>
-        <h3 class="font-medium text-lg mb-2">Driver Requirements</h3>
-
-        <div class="max-w-xs">
-            <InputLabel for="minimum_driver_age">Minimum Driver Age</InputLabel>
-            <input type="number" v-model="form.minimum_driver_age" id="minimum_driver_age" class="w-full" />
-            <span v-if="errors.minimum_driver_age" class="text-red-500 text-sm">
-                {{ errors.minimum_driver_age }}
-            </span>
-        </div>
-    </div>
-</div>
 
 
 
@@ -1030,49 +1054,154 @@
                         </p>
                     </div>
                     <!-- Protection Plan -->
-                    <div class="protection_plan flex gap-10 mt-4 max-[768px]:flex-col max-[768px]:px-[1.5rem]">
+                <!-- Protection Plan -->
+<div class="protection_plan flex gap-10 mt-4 max-[768px]:flex-col max-[768px]:px-[1.5rem]">
+    <div v-for="plan in plans" :key="plan.id"
+        class="cursor-pointer col w-[45%] rounded-[20px] border-[1px] border-[#153B4F] p-5 flex flex-col gap-5 
+        hover:bg-[#153B4F0D] transition-transform duration-300 ease-in-out max-[768px]:w-full max-[768px]:gap-2" 
+        :class="{
+            'hover:scale-105 scale-105': selectedPlans.some(p => p.id === plan.id),
+            'border-[#153B4F] bg-[#153B4F0D]': selectedPlans.some(p => p.id === plan.id),
+        }">
+        
+        <!-- Edit button at top right -->
+        <div class="flex justify-end">
+            <button 
+                class="p-2 rounded-full hover:bg-gray-200"
+                @click.stop="openEditDialog(plan)">
+                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-pencil">
+                    <path d="M17 3a2.85 2.85 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"></path>
+                    <path d="m15 5 4 4"></path>
+                </svg>
+            </button>
+        </div>
+        
+        <span class="text-[1.5rem] text-center max-[768px]:text-[1.2rem]" 
+            :class="{
+                'text-[#016501]': selectedPlans.some(p => p.id === plan.id),
+            }">
+            {{ plan.plan_type }}
+        </span>
 
-                        <div v-for="plan in plans" :key="plan.id"
-                            class="cursor-pointer col w-[45%] rounded-[20px] border-[1px] border-[#153B4F] p-5 flex flex-col gap-5 
-                   hover:bg-[#153B4F0D] transition-transform duration-300 ease-in-out max-[768px]:w-full max-[768px]:gap-2" :class="{
-                    'hover:scale-105 scale-105': selectedPlans.includes(plan),  // Keeps the scale effect when selected
-                    'border-[#153B4F] bg-[#153B4F0D]': selectedPlans.includes(plan),
-                }" @click="togglePlanSelection(plan)">
-                            <span class="text-[1.5rem] text-center max-[768px]:text-[1.2rem]" :class="{
-                                'text-[#016501]': selectedPlans.includes(plan),
-                            }">
-                                {{ plan.plan_type }}
-                            </span>
+        <strong class="text-[3rem] font-medium text-center max-[768px]:text-[1.2rem]">
+            {{ plan.plan_value }}
+        </strong>
 
-                            <strong class="text-[3rem] font-medium text-center max-[768px]:text-[1.2rem]">
-                                <input v-if="plan.id === 1 && selectedPlans.includes(plan)" v-model="plan.plan_value"
-                                    type="number" class="w-full text-center p-0" @click.stop />
-                                <span v-else>{{ plan.plan_value }}</span>
-                                <img src="" alt="">
-                            </strong>
+        <p class="text-[1.25rem] text-[#2B2B2B] text-center max-[768px]:text-[0.95rem]">
+            {{ plan.plan_description }}
+        </p>
 
-                            <p class="text-[1.25rem] text-[#2B2B2B] text-center max-[768px]:text-[0.95rem]">
-                                {{ plan.plan_description }}
-                            </p>
+        <button class="button-primary px-5 py-2 max-[768px]:text-[0.875rem]"
+            @click.stop="togglePlanSelection(plan)" 
+            :class="{
+                'bg-[#016501]': selectedPlans.some(p => p.id === plan.id),
+            }">
+            {{ selectedPlans.some(p => p.id === plan.id) ? 'Selected' : 'Select' }}
+        </button>
 
-                            <button class="button-primary px-5 py-2 max-[768px]:text-[0.875rem]"
-                                @click.stop="togglePlanSelection(plan)" :class="{
-                                    'bg-[#016501]': selectedPlans.includes(plan),
-                                }">
-                                {{ selectedPlans.includes(plan) ? 'Selected' : 'Select' }}
-                            </button>
+        <div class="checklist features">
+            <ul class="check-list text-center mt-[1rem] inline-flex flex-col items-center w-full gap-3 max-[768px]:text-[0.95rem]">
+                <li v-for="(feature, index) in plan.features" :key="index"
+                    class="checklist-item list-disc">
+                    {{ feature }}
+                </li>
+            </ul>
+        </div>
+    </div>
+</div>
 
-                            <div class="checklist features">
-                                <ul
-                                    class="check-list text-center mt-[1rem] inline-flex flex-col items-center w-full gap-3 max-[768px]:text-[0.95rem]">
-                                    <li v-for="(feature, index) in plan.features" :key="index"
-                                        class="checklist-item list-disc">
-                                        {{ feature }}
-                                    </li>
-                                </ul>
-                            </div>
-                        </div>
-                    </div>
+<!-- Edit Plan Dialog -->
+<Dialog :open="isEditDialogOpen" @update:open="isEditDialogOpen = $event">
+    <DialogContent class="sm:max-w-[500px]">
+        <DialogHeader>
+            <DialogTitle>Edit Protection Plan</DialogTitle>
+            <DialogDescription>
+                Make changes to the plan details below.
+            </DialogDescription>
+        </DialogHeader>
+        
+        <div class="grid gap-4 py-4">
+            <div class="space-y-2">
+                <label for="plan-type" class="text-sm font-medium">Plan Type</label>
+                <input
+                    id="plan-type"
+                    v-model="editPlanData.plan_type"
+                    class="w-full p-2 border rounded-md"
+                    placeholder="Enter plan type"
+                />
+            </div>
+            
+            <div class="space-y-2">
+                <label for="plan-value" class="text-sm font-medium">Plan Value</label>
+                <input
+                    id="plan-value"
+                    v-model="editPlanData.plan_value"
+                    type="number"
+                    class="w-full p-2 border rounded-md"
+                    placeholder="Enter plan value"
+                />
+            </div>
+            
+            <div class="space-y-2">
+                <label for="plan-description" class="text-sm font-medium">Plan Description</label>
+                <textarea
+                    id="plan-description"
+                    v-model="editPlanData.plan_description"
+                    class="w-full p-2 border rounded-md"
+                    placeholder="Enter plan description"
+                    rows="3"
+                ></textarea>
+            </div>
+            
+            <div class="space-y-2">
+                <div class="flex items-center justify-between">
+                    <label class="text-sm font-medium">Plan Features</label>
+                    <button 
+                        @click="addFeature"
+                        class="text-sm px-2 py-1 bg-blue-500 text-white rounded hover:bg-blue-600"
+                    >
+                        Add Feature
+                    </button>
+                </div>
+                
+                <div v-for="(feature, index) in editPlanData.features" :key="index" class="flex gap-2">
+                    <input
+                        v-model="editPlanData.features[index]"
+                        class="w-full p-2 border rounded-md"
+                        placeholder="Enter feature"
+                    />
+                    <button 
+                        @click="removeFeature(index)"
+                        class="p-2 text-red-500 hover:bg-red-50 rounded-md"
+                    >
+                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-trash-2">
+                            <path d="M3 6h18"></path>
+                            <path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"></path>
+                            <path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"></path>
+                            <line x1="10" x2="10" y1="11" y2="17"></line>
+                            <line x1="14" x2="14" y1="11" y2="17"></line>
+                        </svg>
+                    </button>
+                </div>
+            </div>
+        </div>
+        
+        <DialogFooter>
+            <button 
+                @click="isEditDialogOpen = false"
+                class="px-4 py-2 border rounded-md hover:bg-gray-100"
+            >
+                Cancel
+            </button>
+            <button 
+                @click="saveEditedPlan"
+                class="px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 ml-2"
+            >
+                Save Changes
+            </button>
+        </DialogFooter>
+    </DialogContent>
+</Dialog>
                     <div
                         class="buttons flex justify-between gap-[1.5rem] mt-[2rem] pb-[4rem] max-[768px]:pb-0 max-[768px]:px-[1.5rem]">
                         <button class="button-secondary w-[15rem] max-[768px]:w-[10rem]" @click="prevStep">
@@ -1319,6 +1448,15 @@ import { SelectContent, SelectGroup, SelectLabel, SelectTrigger, SelectValue } f
 import loader from "../../../assets/loader.gif";
 import { usePage } from '@inertiajs/vue3';
 import AuthenticatedHeaderLayout from "@/Layouts/AuthenticatedHeaderLayout.vue";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from '@/Components/ui/dialog'
 
 const toast = useToast(); // Initialize toast
 const addons = ref([]);
@@ -1414,31 +1552,99 @@ const selectedTypes = reactive({
 // This is for protection Plans
 const plans = ref([]);
 const selectedPlans = ref([]);
+const isEditDialogOpen = ref(false);
+const currentEditingPlan = ref(null);
+
+// Temporary plan data for editing
+const editPlanData = ref({
+    plan_type: '',
+    plan_value: 0,
+    plan_description: '',
+    features: []
+});
 
 const fetchPlans = async () => {
     try {
         const response = await axios.get('/api/plans');
         plans.value = response.data;
-        const freePlan = plans.value.find((plan) => plan.id === 2);
-        if (freePlan) {
-            selectedPlans.value.push(freePlan);
-        }
+       
     } catch (error) {
         console.error('Error fetching plans:', error);
     }
 };
 
 const togglePlanSelection = (plan) => {
-    // Prevent deselecting the free plan (ID = 2)
-    if (plan.id === 2) return;
-
     const index = selectedPlans.value.findIndex((p) => p.id === plan.id);
+
     if (index > -1) {
+        // If the plan is already selected, allow deselection
         selectedPlans.value.splice(index, 1);
     } else {
-        selectedPlans.value.push(plan);
+        // Add plan to selected list
+        selectedPlans.value.push({...plan});
     }
 };
+
+
+const openEditDialog = (plan) => {
+    currentEditingPlan.value = plan;
+    // Clone the plan data to avoid direct mutation
+    editPlanData.value = {
+        plan_type: plan.plan_type,
+        plan_value: plan.plan_value,
+        plan_description: plan.plan_description,
+        features: [...plan.features]
+    };
+    isEditDialogOpen.value = true;
+};
+
+const saveEditedPlan = () => {
+    if (!currentEditingPlan.value) return;
+    
+    // Update the plan in the plans array
+    const planIndex = plans.value.findIndex(p => p.id === currentEditingPlan.value.id);
+    if (planIndex > -1) {
+        plans.value[planIndex] = {
+            ...plans.value[planIndex],
+            plan_type: editPlanData.value.plan_type,
+            plan_value: editPlanData.value.plan_value,
+            plan_description: editPlanData.value.plan_description,
+            features: editPlanData.value.features
+        };
+    }
+    
+    // Also update the plan if it's in the selectedPlans array
+    const selectedPlanIndex = selectedPlans.value.findIndex(p => p.id === currentEditingPlan.value.id);
+    if (selectedPlanIndex > -1) {
+        selectedPlans.value[selectedPlanIndex] = {
+            ...selectedPlans.value[selectedPlanIndex],
+            plan_type: editPlanData.value.plan_type,
+            plan_value: editPlanData.value.plan_value,
+            plan_description: editPlanData.value.plan_description,
+            features: editPlanData.value.features
+        };
+    }
+    
+    isEditDialogOpen.value = false;
+    currentEditingPlan.value = null;
+    
+    toast.success('Plan details updated successfully!', {
+        position: 'top-right',
+        timeout: 3000,
+        closeOnClick: true,
+        pauseOnHover: true,
+        draggable: true,
+    });
+};
+
+const addFeature = () => {
+    editPlanData.value.features.push('');
+};
+
+const removeFeature = (index) => {
+    editPlanData.value.features.splice(index, 1);
+};
+
 
 onMounted(() => {
     fetchPlans();
@@ -1794,8 +2000,7 @@ const nextStep = () => {
 
         case 5: // Plan Selection
             if (selectedPlans.value.length === 0) {
-                isValid = false;
-                errors.selected_plans = 'Please select at least one plan';
+                isValid = true;
             }
             break;
 

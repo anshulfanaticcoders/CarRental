@@ -117,6 +117,7 @@
   { "name": "New Zealand", "code": "NZ", "phone_code": "+64" },
   { "name": "Nigeria", "code": "NG", "phone_code": "+234" },
   { "name": "Norway", "code": "NO", "phone_code": "+47" },
+  { "name": "Oman", "code": "OM", "phone_code": "+968" },
   { "name": "Pakistan", "code": "PK", "phone_code": "+92" },
   { "name": "Peru", "code": "PE", "phone_code": "+51" },
   { "name": "Philippines", "code": "PH", "phone_code": "+63" },
@@ -124,6 +125,8 @@
   { "name": "Qatar", "code": "QA", "phone_code": "+974" },
   { "name": "Russia", "code": "RU", "phone_code": "+7" },
   { "name": "South Africa", "code": "ZA", "phone_code": "+27" },
+  { "name": "Saudi Arabia", "code": "SA", "phone_code": "+966" },
+  { "name": "United Arab Emirates", "code": "AE", "phone_code": "+971" },
   { "name": "United Kingdom", "code": "GB", "phone_code": "+44" },
   { "name": "United States", "code": "US", "phone_code": "+1" },
   { "name": "Zimbabwe", "code": "ZW", "phone_code": "+263" }
