@@ -243,13 +243,14 @@ const formatDate = (dateStr) => {
                    <strong class="text-[1.5rem] font-medium max-[768px]:text-[0.875rem]" v-if="booking.preferred_day==='month'">{{ vendorProfile.currency }}{{ vehicle.price_per_month }}/month</strong>
                 </div>
               </div>
-              <div v-if="booking.discount_amount" class="flex justify-between items-center text-[1.1rem] mt-[-1rem] border-b-[1px] pb-[0.5rem] max-[768px]:mt-0">
+              <div v-if="booking.discount_amount" class="flex justify-between items-center text-[1.1rem] mt-[0rem] border-b-[1px] pb-[0.5rem] max-[768px]:mt-0">
                 <span class="capitalize">Discount Price</span>
-                <strong class="text-[1.1rem] font-medium">- {{ vendorProfile.currency }}{{booking.discount_amount}}</strong>
+                <strong v-if="booking.discount_amount > 1" class="text-[1.1rem] font-medium text-green-400">- {{ vendorProfile.currency }}{{booking.discount_amount}}</strong>
+                <strong v-else class="text-[1.1rem] font-medium text-red-500">- {{ vendorProfile.currency }}{{booking.discount_amount}}</strong>
               </div>
 
               <div class="flex justify-between">
-                <span>Final Price</span>
+                <span v-if="booking.preferred_day==='day'">Vehicle Price for {{ booking.total_days }} days</span>
                 <strong class="text-[1.1rem] font-medium">{{ vendorProfile.currency }}{{ booking.base_price }}</strong>
               </div>
               
@@ -261,10 +262,20 @@ const formatDate = (dateStr) => {
                   </li>
                 </ul>
               </div>
-              <div v-if="plan" class="flex justify-between">
+              <!-- <div v-if="plan" class="flex justify-between">
                 <span>{{ plan.plan_type }}</span>
                 <span>+ {{ vendorProfile.currency }}{{ plan.plan_value }}</span>
+              </div> -->
+
+              <div v-if="vehicle?.vendor_plans" class="">
+                <div v-for="vendorPlan in vehicle.vendor_plans" :key="vendorPlan.id" class="flex justify-between gap-2">
+                  {{ vendorPlan.plan_type }}
+                  <span class="text-[1.1rem] font-medium">
+                    {{ vendorProfile.currency }} {{ vendorPlan.price }}
+                  </span>
+                </div>
               </div>
+              
             </div>
           </div>
           <div v-if="booking"

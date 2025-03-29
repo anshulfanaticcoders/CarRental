@@ -212,9 +212,8 @@ class BookingController extends Controller
         // Fetch booking details
         $booking = Booking::with(['extras', 'customer','vehicle.vendorProfile'])->find($payment->booking_id);
         $vehicleId = $booking->vehicle_id;
-        $vehicle = Vehicle::with(['specifications', 'images', 'category', 'user'])->find($vehicleId);
+        $vehicle = Vehicle::with(['specifications', 'images', 'category', 'user','vendorPlans'])->find($vehicleId);
         $plan = Plan::where('plan_type', $booking->plan)->first();
-
         // Return booking and payment details in JSON format
         return response()->json([
             'booking' => $booking,
