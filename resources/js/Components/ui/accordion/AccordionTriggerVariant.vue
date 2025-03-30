@@ -34,7 +34,7 @@ const delegatedProps = computed(() => {
           class="h-8 w-8 absolute top-0 right-0 shrink-0 group-data-[state=closed]:opacity-100 group-data-[state=closed]:rotate-0 group-data-[state=open]:opacity-0 group-data-[state=open]:rotate-90 text-muted-foreground transition-transform duration-200 bg-[#153B4F1A] rounded-[8px] p-1"
         />
         <MinusIcon
-          class="h-8 w-8 absolute top-0 right-0 shrink-0 group-data-[state=closed]:opacity-0 group-data-[state=closed]:rotate-0 group-data-[state=open]:opacity-100 group-data-[state=open]:rotate-180 text-muted-foreground transition-transform duration-200 bg-[#153B4F1A] rounded-[8px] p-1"
+          class="h-8 w-8 absolute bg-customPrimaryColor text-white top-0 right-0 shrink-0 group-data-[state=closed]:opacity-0 group-data-[state=closed]:rotate-0 group-data-[state=open]:opacity-100 group-data-[state=open]:rotate-180 text-muted-foreground transition-transform duration-200 rounded-[8px] p-1"
         />
         </div>
       </slot>

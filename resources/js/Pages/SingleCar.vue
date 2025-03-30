@@ -1278,7 +1278,7 @@ const openLightbox = (index) => {
                                 <div>
                                     <h4
                                         class="text-customPrimaryColor text-[1.75rem] font-medium max-[768px]:text-[1rem]">
-                                        {{ vehicle.user.first_name }} {{ vehicle.user.last_name }}
+                                        {{ vehicle.vendor_profile_data.company_name }}
                                     </h4>
                                     <p class="text-customLightGrayColor max-[768px]:text-[0.95rem]">{{
                                         vehicle.vendor_profile.about }}</p>
@@ -1588,7 +1588,7 @@ const openLightbox = (index) => {
                         class="w-[100px] h-[100px] max-[768px]:w-[60px] max-[768px]:h-[60px] rounded-full object-cover" />
 
                     <h4 class="text-customPrimaryColor text-[1.75rem] font-medium max-[768px]:text-[1.2rem]">
-                        {{ vehicle.user.first_name }} {{ vehicle.user.last_name }}
+                        {{ vehicle.vendor_profile_data.company_name }}
                     </h4>
                     <span>On VROOEM since {{ formatDate(vehicle.user.created_at) }}</span>
                     <div class="flex justify-center w-full max-[768px]:flex-wrap max-[768px]:gap-5">
