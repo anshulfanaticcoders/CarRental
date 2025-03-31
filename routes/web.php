@@ -223,6 +223,11 @@ Route::middleware(['auth', 'role:admin'])->group(function () {
     Route::delete('admin/contact-us/delete', [ContactUsPageController::class, 'destroy'])
         ->name('admin.contact-us.delete');
 
+        // route for contact form submittions and notifications
+    Route::get('/contact-us-mails', [ContactFormController::class, 'fetchSubmissions'])->name('contact.mails');
+    Route::get('/notifications/unread', [ContactFormController::class, 'unreadNotifications'])->name('notifications.unread');
+    Route::post('/notifications/mark-as-read/{id}', [ContactFormController::class, 'markAsRead'])->name('notifications.markAsRead');
+
 });
 
 

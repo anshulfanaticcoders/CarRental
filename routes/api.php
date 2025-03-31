@@ -6,6 +6,7 @@ use App\Http\Controllers\BookingAddonController;
 use App\Http\Controllers\BookingController;
 use App\Http\Controllers\BookingExtraController;
 use App\Http\Controllers\CurrencyController;
+use App\Http\Controllers\Notifications\ContactUsNotificationController;
 use App\Http\Controllers\PlanController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\ReviewController;
@@ -70,3 +71,5 @@ Route::get('/recent-blogs', [BlogController::class, 'getRecentBlogs']);
 
 Route::get('/faqs', [FaqController::class, 'getFaqs']);
 
+Route::get('/notifications/unread', [ContactUsNotificationController::class, 'getUnreadNotifications']);
+Route::post('/notifications/mark-as-read', [ContactUsNotificationController::class, 'markAsRead']);

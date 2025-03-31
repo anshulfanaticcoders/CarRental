@@ -40,8 +40,10 @@ import {
   FileChartColumn,
   Settings,
   BookOpenText,
+  Mail,
 } from 'lucide-vue-next'
-import { onMounted, ref } from 'vue'
+import { onMounted, ref } from 'vue';
+
 
 // This is sample data.
 const data = {
@@ -221,6 +223,17 @@ const data = {
         {
           title: 'Business Report',
           url: '/business-report',
+        },
+      ],
+    },
+    {
+      title: 'Email Logs',
+      url: '#',
+      icon: Mail,
+      items: [
+        {
+          title: 'Contact Mails',
+          url: '/contact-us-mails',
         },
       ],
     },

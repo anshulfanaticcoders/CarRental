@@ -3,8 +3,14 @@
 namespace App\Http\Controllers;
 
 use App\Models\ContactSubmission;
+use App\Models\User;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Validator;
+use App\Notifications\ContactUsNotification;
+use Inertia\Inertia;
+use Inertia\Response;
+
 
 class ContactFormController extends Controller
 {
@@ -33,7 +39,10 @@ class ContactFormController extends Controller
 
         // Optional: Add a notification or email logic here
         // For example, you might want to send an admin notification
-
+        $admin = User::where('email', 'anshul@fanaticcoders.com')->first();
+        if ($admin) {
+            $admin->notify(new ContactUsNotification($submission));
+        }
         // Redirect back with a success message
         return back()->with('success', 'Your message has been sent successfully!');
     }
@@ -43,5 +52,34 @@ class ContactFormController extends Controller
     {
         $submissions = ContactSubmission::latest()->paginate(20);
         return view('admin.contact-submissions', compact('submissions'));
+    }
+
+    public function fetchSubmissions(): Response
+    {
+        $submissions = ContactSubmission::latest()->get();
+
+        return Inertia::render('MailServices/ContactUsMails/Index', [
+            'submissions' => $submissions
+        ]);
+    }
+
+
+    public function unreadNotifications()
+    {
+        return response()->json([
+            'unread_count' => Auth::user()->unreadNotifications->count(),
+            'notifications' => Auth::user()->unreadNotifications
+        ]);
+    }
+
+    public function markAsRead($id)
+    {
+        $notification = Auth::user()->notifications()->where('id', $id)->first();
+
+        if ($notification) {
+            $notification->markAsRead();
+        }
+
+        return response()->json(['success' => true]);
     }
 }
