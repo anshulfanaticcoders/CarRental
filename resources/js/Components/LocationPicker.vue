@@ -60,7 +60,11 @@ const handleLocationSelect = (result) => {
   };
 
   updateMap(location.latitude, location.longitude, location.address);
+
+  // Clear search results to hide dropdown
+  searchResults.value = [];
 };
+
 
 const locateUser = () => {
   if (!navigator.geolocation) {
@@ -121,12 +125,14 @@ const updateMap = (lat, lon, address) => {
     <div class="relative mb-4">
       <div class="relative flex items-center">
         <input
-          type="text"
-          v-model="searchQuery"
-          @input="handleSearch(searchQuery)"
-          placeholder="Search location..."
-          class="w-full p-2 pl-10 pr-12 border rounded-lg"
-        />
+  type="text"
+  v-model="searchQuery"
+  @input="handleSearch(searchQuery)"
+  @blur="setTimeout(() => searchResults = [], 200)"
+  placeholder="Search location..."
+  class="w-full p-2 pl-10 pr-12 border rounded-lg"
+/>
+
         <Search class="absolute left-3 top-2.5 h-5 w-5 text-gray-400" />
 
         <!-- Locate Me Button -->

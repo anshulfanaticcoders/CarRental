@@ -486,7 +486,7 @@
                                 placeholder="+91" />
                             <span v-if="errors.phone_number" class="text-red-500 max-[768px]:text-[0.75rem] text-sm">{{
                                 errors.phone_number
-                            }}</span>
+                                }}</span>
                         </div>
                     </div>
                     <div
@@ -647,16 +647,13 @@
                                     </div>
                                 </div>
 
+                                <div class="grid grid-cols-2 gap-10 max-[768px]:grid-cols-1 max-[768px]:gap-2">
                                 <!-- Daily Price Slider -->
-                                <div v-if="selectedTypes.day" class="price-slider mb-8">
+                                <div v-if="selectedTypes.day" class="price-slider mb-8 bg-gray-50 p-5 rounded-[12px]">
                                     <label for="price_per_day" class="font-medium">Daily Rate:</label>
                                     <div class="slider-container">
-                                        <input type="range" v-model="form.price_per_day" id="price_per_day" min="0"
-                                            max="200" step="1" class="p-1" />
-                                        <div class="price-tooltip max-[768px]:!text-[0.875rem]"
-                                            :style="dailyTooltipPosition">
-                                            €{{ form.price_per_day }}/day
-                                        </div>
+                                        <input type="number" v-model="form.price_per_day" id="price_per_day" min="0"
+                                            class="mt-1 block w-32 rounded-md border-gray-300 shadow-sm px-2" />
                                     </div>
                                     <div class="mt-2 flex flex-col items-end gap-1">
                                         <span class="text-sm text-gray-600">Recommended: €67-€74/day</span>
@@ -664,54 +661,47 @@
                                 </div>
 
                                 <!-- Weekly Price Slider -->
-                                <div v-if="selectedTypes.week" class="price-slider mb-8">
+                                <div v-if="selectedTypes.week" class="price-slider mb-8 bg-gray-50 p-5 rounded-[12px]">
                                     <label for="price_per_week" class="font-medium">Weekly Rate:</label>
                                     <div class="slider-container">
-                                        <input type="range" v-model="form.price_per_week" id="price_per_week" min="0"
-                                            max="1000" step="10" class="p-1" />
-                                        <div class="price-tooltip max-[768px]:!text-[0.875rem]"
-                                            :style="weeklyTooltipPosition">
-                                            €{{ form.price_per_week }}/week
-                                        </div>
+                                        <input type="number" v-model="form.price_per_week" id="price_per_week" min="0"
+                                            class="mt-1 block w-32 rounded-md border-gray-300 shadow-sm px-2" />
                                     </div>
                                     <div class="mt-2 flex flex-col items-end gap-1">
                                         <span class="text-sm text-gray-600">Recommended: €400-€450/week</span>
                                     </div>
-                                    <div class="mt-2 flex flex-col justify-end items-end">
+                                    <div class="mt-2 flex flex-col">
                                         <label for="weekly_discount" class="text-sm font-medium mb-0">Weekly Discount
                                         </label>
                                         <input type="number" v-model="form.weekly_discount" id="weekly_discount"
-                                            class="mt-1 block w-32 rounded-md border-gray-300 shadow-sm p-1 text-center" />
+                                            class="mt-1 block w-32 rounded-md border-gray-300 shadow-sm px-2" />
                                     </div>
 
                                 </div>
 
                                 <!-- Monthly Price Slider -->
-                                <div v-if="selectedTypes.month" class="price-slider mb-8">
+                                <div v-if="selectedTypes.month" class="price-slider mb-8 bg-gray-50 p-5 rounded-[12px]">
                                     <label for="price_per_month" class="font-medium">Monthly Rate:</label>
                                     <div class="slider-container">
-                                        <input type="range" v-model="form.price_per_month" id="price_per_month" min="0"
-                                            max="3000" step="50" class="p-1" />
-                                        <div class="price-tooltip max-[768px]:!text-[0.875rem]"
-                                            :style="monthlyTooltipPosition">
-                                            €{{ form.price_per_month }}/month
-                                        </div>
+                                        <input type="number" v-model="form.price_per_month" id="price_per_month" min="0"
+                                            class="mt-1 block w-32 rounded-md border-gray-300 shadow-sm px-2" />
                                     </div>
                                     <div class="mt-2 flex flex-col items-end gap-1">
                                         <span class="text-sm text-gray-600">Recommended: €1500-€1800/month</span>
                                     </div>
-                                    <div class="mt-2 flex flex-col justify-end items-end">
+                                    <div class="mt-2 flex flex-col">
                                         <label for="monthly_discount" class="text-sm font-medium mb-0">Monthly Discount
                                         </label>
                                         <input type="number" v-model="form.monthly_discount" id="monthly_discount"
-                                            class="mt-1 block w-32 rounded-md border-gray-300 shadow-sm p-1 text-center" />
+                                            class="mt-1 block w-32 rounded-md border-gray-300 shadow-sm px-2" />
                                     </div>
 
                                 </div>
                             </div>
+                            </div>
                             <span v-if="errors.price_per_day" class="text-red-500 max-[768px]:text-[0.75rem] text-sm">{{
                                 errors.price_per_day
-                            }}</span>
+                                }}</span>
                         </div>
                         <!-- Security Deposit -->
                         <div class="mt-[2rem] max-[768px]:px-[1.5rem]">
@@ -726,7 +716,7 @@
                         </div>
                         <span v-if="errors.security_deposit" class="text-red-500 max-[768px]:text-[0.75rem] text-sm">{{
                             errors.security_deposit
-                        }}</span>
+                            }}</span>
                     </div>
 
                     <!-- Payment Method -->
@@ -762,7 +752,7 @@
                         </div>
                         <span v-if="errors.payment_method" class="text-red-500 max-[768px]:text-[0.75rem] text-sm">{{
                             errors.payment_method
-                        }}</span>
+                            }}</span>
 
                         <div v-if="paymentMethodsArray.length > 0">
                             <p class="text-[0.85rem] text-green-400">Selected Payment Methods:</p>
@@ -1054,154 +1044,132 @@
                         </p>
                     </div>
                     <!-- Protection Plan -->
-                <!-- Protection Plan -->
-<div class="protection_plan flex gap-10 mt-4 max-[768px]:flex-col max-[768px]:px-[1.5rem]">
-    <div v-for="plan in plans" :key="plan.id"
-        class="cursor-pointer col w-[45%] rounded-[20px] border-[1px] border-[#153B4F] p-5 flex flex-col gap-5 
-        hover:bg-[#153B4F0D] transition-transform duration-300 ease-in-out max-[768px]:w-full max-[768px]:gap-2" 
-        :class="{
-            'hover:scale-105 scale-105': selectedPlans.some(p => p.id === plan.id),
-            'border-[#153B4F] bg-[#153B4F0D]': selectedPlans.some(p => p.id === plan.id),
-        }">
-        
-        <!-- Edit button at top right -->
-        <div class="flex justify-end">
-            <button 
-                class="p-2 rounded-full hover:bg-gray-200"
-                @click.stop="openEditDialog(plan)">
-                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-pencil">
-                    <path d="M17 3a2.85 2.85 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"></path>
-                    <path d="m15 5 4 4"></path>
-                </svg>
-            </button>
-        </div>
-        
-        <span class="text-[1.5rem] text-center max-[768px]:text-[1.2rem]" 
-            :class="{
-                'text-[#016501]': selectedPlans.some(p => p.id === plan.id),
-            }">
-            {{ plan.plan_type }}
-        </span>
+                    <!-- Protection Plan -->
+                    <div class="protection_plan flex gap-10 mt-4 max-[768px]:flex-col max-[768px]:px-[1.5rem]">
+                        <div v-for="plan in plans" :key="plan.id" class="cursor-pointer col w-[45%] rounded-[20px] border-[1px] border-[#153B4F] p-5 flex flex-col gap-5 
+        hover:bg-[#153B4F0D] transition-transform duration-300 ease-in-out max-[768px]:w-full max-[768px]:gap-2"
+                            :class="{
+                                'hover:scale-105 scale-105': selectedPlans.some(p => p.id === plan.id),
+                                'border-[#153B4F] bg-[#153B4F0D]': selectedPlans.some(p => p.id === plan.id),
+                            }">
 
-        <strong class="text-[3rem] font-medium text-center max-[768px]:text-[1.2rem]">
-            {{ plan.plan_value }}
-        </strong>
+                            <!-- Edit button at top right -->
+                            <div class="flex justify-end">
+                                <button class="p-2 rounded-full hover:bg-gray-200" @click.stop="openEditDialog(plan)">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24"
+                                        fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                                        stroke-linejoin="round" class="lucide lucide-pencil">
+                                        <path d="M17 3a2.85 2.85 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"></path>
+                                        <path d="m15 5 4 4"></path>
+                                    </svg>
+                                </button>
+                            </div>
 
-        <p class="text-[1.25rem] text-[#2B2B2B] text-center max-[768px]:text-[0.95rem]">
-            {{ plan.plan_description }}
-        </p>
+                            <span class="text-[1.5rem] text-center max-[768px]:text-[1.2rem]" :class="{
+                                'text-[#016501]': selectedPlans.some(p => p.id === plan.id),
+                            }">
+                                {{ plan.plan_type }}
+                            </span>
 
-        <button class="button-primary px-5 py-2 max-[768px]:text-[0.875rem]"
-            @click.stop="togglePlanSelection(plan)" 
-            :class="{
-                'bg-[#016501]': selectedPlans.some(p => p.id === plan.id),
-            }">
-            {{ selectedPlans.some(p => p.id === plan.id) ? 'Selected' : 'Select' }}
-        </button>
+                            <strong class="text-[3rem] font-medium text-center max-[768px]:text-[1.2rem]">
+                                {{ plan.plan_value }}
+                            </strong>
 
-        <div class="checklist features">
-            <ul class="check-list text-center mt-[1rem] inline-flex flex-col items-center w-full gap-3 max-[768px]:text-[0.95rem]">
-                <li v-for="(feature, index) in plan.features" :key="index"
-                    class="checklist-item list-disc">
-                    {{ feature }}
-                </li>
-            </ul>
-        </div>
-    </div>
-</div>
+                            <p class="text-[1.25rem] text-[#2B2B2B] text-center max-[768px]:text-[0.95rem]">
+                                {{ plan.plan_description }}
+                            </p>
 
-<!-- Edit Plan Dialog -->
-<Dialog :open="isEditDialogOpen" @update:open="isEditDialogOpen = $event">
-    <DialogContent class="sm:max-w-[500px]">
-        <DialogHeader>
-            <DialogTitle>Edit Protection Plan</DialogTitle>
-            <DialogDescription>
-                Make changes to the plan details below.
-            </DialogDescription>
-        </DialogHeader>
-        
-        <div class="grid gap-4 py-4">
-            <div class="space-y-2">
-                <label for="plan-type" class="text-sm font-medium">Plan Type</label>
-                <input
-                    id="plan-type"
-                    v-model="editPlanData.plan_type"
-                    class="w-full p-2 border rounded-md"
-                    placeholder="Enter plan type"
-                />
-            </div>
-            
-            <div class="space-y-2">
-                <label for="plan-value" class="text-sm font-medium">Plan Value</label>
-                <input
-                    id="plan-value"
-                    v-model="editPlanData.plan_value"
-                    type="number"
-                    class="w-full p-2 border rounded-md"
-                    placeholder="Enter plan value"
-                />
-            </div>
-            
-            <div class="space-y-2">
-                <label for="plan-description" class="text-sm font-medium">Plan Description</label>
-                <textarea
-                    id="plan-description"
-                    v-model="editPlanData.plan_description"
-                    class="w-full p-2 border rounded-md"
-                    placeholder="Enter plan description"
-                    rows="3"
-                ></textarea>
-            </div>
-            
-            <div class="space-y-2">
-                <div class="flex items-center justify-between">
-                    <label class="text-sm font-medium">Plan Features</label>
-                    <button 
-                        @click="addFeature"
-                        class="text-sm px-2 py-1 bg-blue-500 text-white rounded hover:bg-blue-600"
-                    >
-                        Add Feature
-                    </button>
-                </div>
-                
-                <div v-for="(feature, index) in editPlanData.features" :key="index" class="flex gap-2">
-                    <input
-                        v-model="editPlanData.features[index]"
-                        class="w-full p-2 border rounded-md"
-                        placeholder="Enter feature"
-                    />
-                    <button 
-                        @click="removeFeature(index)"
-                        class="p-2 text-red-500 hover:bg-red-50 rounded-md"
-                    >
-                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-trash-2">
-                            <path d="M3 6h18"></path>
-                            <path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"></path>
-                            <path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"></path>
-                            <line x1="10" x2="10" y1="11" y2="17"></line>
-                            <line x1="14" x2="14" y1="11" y2="17"></line>
-                        </svg>
-                    </button>
-                </div>
-            </div>
-        </div>
-        
-        <DialogFooter>
-            <button 
-                @click="isEditDialogOpen = false"
-                class="px-4 py-2 border rounded-md hover:bg-gray-100"
-            >
-                Cancel
-            </button>
-            <button 
-                @click="saveEditedPlan"
-                class="px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 ml-2"
-            >
-                Save Changes
-            </button>
-        </DialogFooter>
-    </DialogContent>
-</Dialog>
+                            <button class="button-primary px-5 py-2 max-[768px]:text-[0.875rem]"
+                                @click.stop="togglePlanSelection(plan)" :class="{
+                                    'bg-[#016501]': selectedPlans.some(p => p.id === plan.id),
+                                }">
+                                {{selectedPlans.some(p => p.id === plan.id) ? 'Selected' : 'Select'}}
+                            </button>
+
+                            <div class="checklist features">
+                                <ul
+                                    class="check-list text-center mt-[1rem] inline-flex flex-col items-center w-full gap-3 max-[768px]:text-[0.95rem]">
+                                    <li v-for="(feature, index) in plan.features" :key="index"
+                                        class="checklist-item list-disc">
+                                        {{ feature }}
+                                    </li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Edit Plan Dialog -->
+                    <Dialog :open="isEditDialogOpen" @update:open="isEditDialogOpen = $event">
+                        <DialogContent class="sm:max-w-[500px]">
+                            <DialogHeader>
+                                <DialogTitle>Edit Protection Plan</DialogTitle>
+                                <DialogDescription>
+                                    Make changes to the plan details below.
+                                </DialogDescription>
+                            </DialogHeader>
+
+                            <div class="grid gap-4 py-4">
+                                <div class="space-y-2">
+                                    <label for="plan-type" class="text-sm font-medium">Plan Type</label>
+                                    <input id="plan-type" v-model="editPlanData.plan_type"
+                                        class="w-full p-2 border rounded-md" placeholder="Enter plan type" />
+                                </div>
+
+                                <div class="space-y-2">
+                                    <label for="plan-value" class="text-sm font-medium">Plan Value</label>
+                                    <input id="plan-value" v-model="editPlanData.plan_value" type="number"
+                                        class="w-full p-2 border rounded-md" placeholder="Enter plan value" />
+                                </div>
+
+                                <div class="space-y-2">
+                                    <label for="plan-description" class="text-sm font-medium">Plan Description</label>
+                                    <textarea id="plan-description" v-model="editPlanData.plan_description"
+                                        class="w-full p-2 border rounded-md" placeholder="Enter plan description"
+                                        rows="3"></textarea>
+                                </div>
+
+                                <div class="space-y-2">
+                                    <div class="flex items-center justify-between">
+                                        <label class="text-sm font-medium">Plan Features</label>
+                                        <button @click="addFeature"
+                                            class="text-sm px-2 py-1 bg-blue-500 text-white rounded hover:bg-blue-600">
+                                            Add Feature
+                                        </button>
+                                    </div>
+
+                                    <div v-for="(feature, index) in editPlanData.features" :key="index"
+                                        class="flex gap-2">
+                                        <input v-model="editPlanData.features[index]"
+                                            class="w-full p-2 border rounded-md" placeholder="Enter feature" />
+                                        <button @click="removeFeature(index)"
+                                            class="p-2 text-red-500 hover:bg-red-50 rounded-md">
+                                            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20"
+                                                viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                                                stroke-linecap="round" stroke-linejoin="round"
+                                                class="lucide lucide-trash-2">
+                                                <path d="M3 6h18"></path>
+                                                <path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"></path>
+                                                <path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"></path>
+                                                <line x1="10" x2="10" y1="11" y2="17"></line>
+                                                <line x1="14" x2="14" y1="11" y2="17"></line>
+                                            </svg>
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <DialogFooter>
+                                <button @click="isEditDialogOpen = false"
+                                    class="px-4 py-2 border rounded-md hover:bg-gray-100">
+                                    Cancel
+                                </button>
+                                <button @click="saveEditedPlan"
+                                    class="px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 ml-2">
+                                    Save Changes
+                                </button>
+                            </DialogFooter>
+                        </DialogContent>
+                    </Dialog>
                     <div
                         class="buttons flex justify-between gap-[1.5rem] mt-[2rem] pb-[4rem] max-[768px]:pb-0 max-[768px]:px-[1.5rem]">
                         <button class="button-secondary w-[15rem] max-[768px]:w-[10rem]" @click="prevStep">
@@ -1290,7 +1258,7 @@
                                     <button @click="decrementQuantity(addon.id)"
                                         class="px-2 py-1 border rounded">-</button>
                                     <span class="px-3 py-1 bg-gray-100 rounded">{{ addonQuantities[addon.id] || '00'
-                                    }}</span>
+                                        }}</span>
                                     <button @click="incrementQuantity(addon.id)"
                                         class="px-2 py-1 border rounded">+</button>
                                 </div>
@@ -1449,13 +1417,13 @@ import loader from "../../../assets/loader.gif";
 import { usePage } from '@inertiajs/vue3';
 import AuthenticatedHeaderLayout from "@/Layouts/AuthenticatedHeaderLayout.vue";
 import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
+    Dialog,
+    DialogContent,
+    DialogDescription,
+    DialogFooter,
+    DialogHeader,
+    DialogTitle,
+    DialogTrigger,
 } from '@/Components/ui/dialog'
 
 const toast = useToast(); // Initialize toast
@@ -1567,7 +1535,7 @@ const fetchPlans = async () => {
     try {
         const response = await axios.get('/api/plans');
         plans.value = response.data;
-       
+
     } catch (error) {
         console.error('Error fetching plans:', error);
     }
@@ -1581,7 +1549,7 @@ const togglePlanSelection = (plan) => {
         selectedPlans.value.splice(index, 1);
     } else {
         // Add plan to selected list
-        selectedPlans.value.push({...plan});
+        selectedPlans.value.push({ ...plan });
     }
 };
 
@@ -1600,7 +1568,7 @@ const openEditDialog = (plan) => {
 
 const saveEditedPlan = () => {
     if (!currentEditingPlan.value) return;
-    
+
     // Update the plan in the plans array
     const planIndex = plans.value.findIndex(p => p.id === currentEditingPlan.value.id);
     if (planIndex > -1) {
@@ -1612,7 +1580,7 @@ const saveEditedPlan = () => {
             features: editPlanData.value.features
         };
     }
-    
+
     // Also update the plan if it's in the selectedPlans array
     const selectedPlanIndex = selectedPlans.value.findIndex(p => p.id === currentEditingPlan.value.id);
     if (selectedPlanIndex > -1) {
@@ -1624,10 +1592,10 @@ const saveEditedPlan = () => {
             features: editPlanData.value.features
         };
     }
-    
+
     isEditDialogOpen.value = false;
     currentEditingPlan.value = null;
-    
+
     toast.success('Plan details updated successfully!', {
         position: 'top-right',
         timeout: 3000,
@@ -2200,7 +2168,7 @@ label {
     margin-bottom: 0.5rem;
 }
 
-.price-slider {
+/* .price-slider {
     position: relative;
     width: 100%;
     max-width: 500px;
@@ -2208,12 +2176,9 @@ label {
 
 .price-slider input {
     padding: 0.25rem 0;
-}
+} */
 
-.slider-container {
-    position: relative;
-    padding-top: 30px;
-}
+
 
 input[type="range"] {
     width: 100%;
