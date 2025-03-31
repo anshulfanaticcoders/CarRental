@@ -427,7 +427,7 @@ const submitBooking = async () => {
             extra_charges: extraCharges > 0 ? extraCharges : null,
             total_amount: calculateTotal.value,
             discount_amount: Number(discountAmount.value),
-            plan: selectedPlan.value ? selectedPlan.value.plan_type : null,
+            plan: selectedPlan.value ? selectedPlan.value.plan_type : "Free",
             extras: extras.value,
             vehicle_id: vehicle.value?.id,
         };

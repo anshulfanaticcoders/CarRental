@@ -42,6 +42,7 @@
             </div>
         </div>
         <aside class="w-1/3 max-[768px]:w-full max-[768px]:mt-10">
+            <div class="sticky top-8 shadow-md rounded-sm p-4 max-[768px]:static">
             <h3 class="text-lg font-semibold mb-4">Recent Posts</h3>
             <ul class="space-y-4">
                 <li v-for="recentBlog in recentBlogs" :key="recentBlog.id" class="flex items-start">
@@ -56,6 +57,7 @@
                     </div>
                 </li>
             </ul>
+        </div>
         </aside>
     </div>
 

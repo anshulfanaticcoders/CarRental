@@ -111,7 +111,7 @@ class BlogController extends Controller
 
     public function showBlogPage(Request $request)
     {
-        $blogs = Blog::latest()->paginate(10);
+        $blogs = Blog::latest()->paginate(9);
 
         return Inertia::render('BlogPage', [
             'blogs' => $blogs,

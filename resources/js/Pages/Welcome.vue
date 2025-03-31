@@ -205,7 +205,7 @@ onMounted(() => {
             <div class="column max-[768px]:px-[1.5rem]">
                 <Carousel class="relative w-full" :plugins="[plugin]" @mouseenter="plugin.stop"
                     @mouseleave="[plugin.reset(), plugin.play(), console.log('Running')]">
-                    <CarouselContent class="pl-10 max-[768px]:pr-10 max-[768px]:pl-2">
+                    <CarouselContent class="pl-10 pt-[2rem] max-[768px]:pr-10 max-[768px]:pl-2 max-[768px]:pt-0">
                         <!-- Show actual places when data is loaded -->
                         <template v-if="!isLoading">
                             <CarouselItem v-for="place in popularPlaces" :key="place.id"
@@ -213,7 +213,7 @@ onMounted(() => {
                                 <div class="p-1">
                                     <Link
                                         :href="`/s?where=${encodeURIComponent(`${place.place_name}, ${place.city}, ${place.country}`)}&latitude=${place.latitude}&longitude=${place.longitude}&radius=10000`">
-                                    <Card class="h-[18rem] border-0 rounded-[0.75rem]">
+                                    <Card class="h-[18rem] border-0 rounded-[0.75rem] transition-all duration-300 hover:mt-[-1rem] max-[768px]:hover:mt-0">
                                         <CardContent class="flex flex-col gap-2 justify-center px-1 h-full">
                                             <img :src="`${place.image}`" alt=""
                                                 class="rounded-[0.75rem] h-[12rem] w-full object-cover mb-2" />
@@ -483,11 +483,8 @@ onMounted(() => {
 
 .read-story img{
     margin-left: 0.75rem;
-    transition: all 0.2s ease-in-out;
 }
-.read-story:hover img{
-    margin-left: 1.5rem;
-}
+
 
 @media screen and (max-width:768px) {
     .category-carousel .next-btn {
