@@ -29,7 +29,7 @@ onMounted(async () => {
 <template>
     <div class="bg-customPrimaryColor py-customVerticalSpacing text-customPrimaryColor-foreground
         max-[768px]:py-0">
-        <div class="container">
+        <div class="full-w-container">
             <div class="column py-[3rem] flex justify-between gap-6
             max-[768px]:flex-col">
                 <div class="col w-[30%] flex flex-col gap-5
@@ -118,7 +118,7 @@ onMounted(async () => {
 
     <div class="bg-customDarkBlackColor py-[2rem] text-white">
         <div
-            class="container flex justify-between items-center max-[768px]:flex-col max-[768px]:justify-center max-[768px]:gap-5">
+            class="full-w-container flex justify-between items-center max-[768px]:flex-col max-[768px]:justify-center max-[768px]:gap-5">
             <div class="column max-[768px]:flex">
                 <span
                     class="text-[1.25rem] max-[768px]:text-[0.95rem] max-[768px]:w-full max-[768px]:text-center">Copyright

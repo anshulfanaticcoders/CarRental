@@ -121,7 +121,7 @@ body{
     cursor: pointer;
 }
 .full-w-container{
-    width: 90%;
+    width: 96%;
     margin-inline: auto;
 }
 .custom-checkbox input {
@@ -217,5 +217,9 @@ input[type='date'], input[type='time'] {
     h3{
         font-size: 1.5rem;
         line-height: 1.1em;
+    }
+    .full-w-container{
+        width: 90%;
+        margin-inline: auto;
     }
 }

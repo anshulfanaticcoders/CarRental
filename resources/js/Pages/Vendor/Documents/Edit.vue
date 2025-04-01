@@ -75,31 +75,51 @@
                     </div>
                 </div>
                 
-                <div class="space-y-2">
-                    <Label for="passport">Passport</Label>
-                    <div class="flex items-center gap-2">
-                        <Input id="passport" type="file" @change="handleFileChange('passport', $event)" />
-                        <Button v-if="document.passport" variant="outline" size="sm" @click.prevent="viewDocument(document.passport)">
-                            View Current
-                        </Button>
-                    </div>
-                    <div v-if="form.errors.passport" class="text-sm text-red-500">
-                        {{ form.errors.passport }}
-                    </div>
-                </div>
-                
-                <!-- <div class="space-y-2">
-                    <Label for="passport_photo">Passport Photo</Label>
-                    <div class="flex items-center gap-2">
-                        <Input id="passport_photo" type="file" @change="handleFileChange('passport_photo', $event)" />
-                        <Button v-if="document.passport_photo" variant="outline" size="sm" @click.prevent="viewDocument(document.passport_photo)">
-                            View Current
-                        </Button>
-                    </div>
-                    <div v-if="form.errors.passport_photo" class="text-sm text-red-500">
-                        {{ form.errors.passport_photo }}
-                    </div>
-                </div> -->
+                <!-- Passport Front -->
+<div class="space-y-2">
+    <Label for="passport_front">Passport Front</Label>
+    <div class="flex items-center gap-2">
+        <Input 
+            id="passport_front" 
+            type="file" 
+            @change="handleFileChange('passport_front', $event)" 
+        />
+        <Button 
+            v-if="document.passport_front" 
+            variant="outline" 
+            size="sm" 
+            @click.prevent="viewDocument(document.passport_front)"
+        >
+            View Current
+        </Button>
+    </div>
+    <div v-if="form.errors.passport_front" class="text-sm text-red-500">
+        {{ form.errors.passport_front }}
+    </div>
+</div>
+
+<!-- Passport Back -->
+<div class="space-y-2">
+    <Label for="passport_back">Passport Back</Label>
+    <div class="flex items-center gap-2">
+        <Input 
+            id="passport_back" 
+            type="file" 
+            @change="handleFileChange('passport_back', $event)" 
+        />
+        <Button 
+            v-if="document.passport_back" 
+            variant="outline" 
+            size="sm" 
+            @click.prevent="viewDocument(document.passport_back)"
+        >
+            View Current
+        </Button>
+    </div>
+    <div v-if="form.errors.passport_back" class="text-sm text-red-500">
+        {{ form.errors.passport_back }}
+    </div>
+</div>
             </div>
             <DialogFooter>
                 <Button type="button" variant="secondary" @click="$emit('close')">Cancel</Button>
@@ -159,7 +179,8 @@ const form = useForm({
     company_gst_number: props.document.vendor_profile?.company_gst_number || '',
     driving_license_front: null,
     driving_license_back: null,
-    passport: null,
+    passport_front: null,
+    passport_back: null,
     // passport_photo: null,
 });
 

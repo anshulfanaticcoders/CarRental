@@ -16,7 +16,8 @@
                             <TableRow>
                                 <TableHead>Driving License Front</TableHead>
                                 <TableHead>Driving License Back</TableHead>
-                                <TableHead>Passport</TableHead>
+                                <TableHead>Passport Front</TableHead>
+                                <TableHead>Passport Back</TableHead>
                                 <TableHead>Status</TableHead>
                                 <TableHead class="text-right">Actions</TableHead>
                             </TableRow>
@@ -38,8 +39,15 @@
                                     <span v-else>Not uploaded</span>
                                 </TableCell>
                                 <TableCell>
-                                    <img :src="`${document.passport}`" alt="Passport" class="w-[150px] h-[100px] mb-2 object-cover max-[768px]:hidden">
-                                    <Button v-if="document.passport" variant="outline" size="sm" @click="viewDocument(document.passport)" class="w-[150px]  max-[768px]:w-full">
+                                    <img :src="`${document.passport_front}`" alt="Passport" class="w-[150px] h-[100px] mb-2 object-cover max-[768px]:hidden">
+                                    <Button v-if="document.passport_front" variant="outline" size="sm" @click="viewDocument(document.passport_front)" class="w-[150px]  max-[768px]:w-full">
+                                        View
+                                    </Button>
+                                    <span v-else>Not uploaded</span>
+                                </TableCell>
+                                <TableCell>
+                                    <img :src="`${document.passport_back}`" alt="Passport" class="w-[150px] h-[100px] mb-2 object-cover max-[768px]:hidden">
+                                    <Button v-if="document.passport_back" variant="outline" size="sm" @click="viewDocument(document.passport_back)" class="w-[150px]  max-[768px]:w-full">
                                         View
                                     </Button>
                                     <span v-else>Not uploaded</span>

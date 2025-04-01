@@ -10,7 +10,13 @@ import AuthenticatedHeaderLayout from "@/Layouts/AuthenticatedHeaderLayout.vue";
 import vendorBgimage from "../../../assets/vendorRegisterbgImage.png";
 import warningSign from "../../../assets/WhiteWarningCircle.svg";
 
-const props = defineProps(["user", "userProfile"]);
+const props = defineProps({
+    user: Object,
+    userProfile: Object,
+    flash: Object,  // Add flash prop
+    errors: Object, // Add errors prop
+});
+const isLoading = ref(false);
 
 const form = useForm({
     phone: props.user.phone,
@@ -18,7 +24,8 @@ const form = useForm({
     address: props.userProfile.address_line1,
     driving_license_front: null,
     driving_license_back: null,
-    passport: null,
+    passport_front: null,
+    passport_back: null,
     company_name: "",
     company_phone_number: "",
     company_email: "",
@@ -33,13 +40,15 @@ const fullName = `${props.user.first_name} ${props.user.last_name}`;
 const fileNames = ref({
     driving_license_front: "",
     driving_license_back: "",
-    passport: "",
+    passport_front: "",
+    passport_back: "",
 });
 
 const filePreviews = ref({
     driving_license_front: null,
     driving_license_back: null,
-    passport: null,
+    passport_front: null,
+    passport_back: null,
 });
 
 const removeFile = (type) => {
@@ -68,7 +77,7 @@ onMounted(() => {
     }
 });
 
-const requiredFiles = ["driving_license_front", , 'driving_license_back', "passport"]; // Define required file fields
+const requiredFiles = ["driving_license_front", , 'driving_license_back',  "passport_front", "passport_back",]; // Define required file fields
 
 const errors = ref({});
 
@@ -121,8 +130,10 @@ const handleFileChange = (field, event) => {
 
 
 const submit = () => {
+    isLoading.value = true;
     form.post(route("vendor.store"), {
         onSuccess: () => {
+            const errorMessage = props.flash?.error || props.errors?.error || 'Something went wrong. Please check your inputs.';
             toast.success('Vendor registration completed successfully! Wait for confimation', {
                 position: 'top-right',
                 timeout: 3000,
@@ -132,8 +143,11 @@ const submit = () => {
             });
             localStorage.removeItem("vendorFileData");
             form.reset();
+
+            isLoading.value = false;
         },
         onError: (errors) => {
+            const errorMessage = props.flash?.error || props.errors?.error || 'Something went wrong. Please check your inputs.';
             toast.error('Something went wrong. Please check your inputs.', {
                 position: 'top-right',
                 timeout: 3000,
@@ -142,6 +156,7 @@ const submit = () => {
                 draggable: true,
             });
             console.error(errors);
+            isLoading.value = false;
         },
     });
 };
@@ -214,53 +229,55 @@ const submit = () => {
                                     <div class="grid grid-cols-2 gap-5">
                                         <!-- Clickable Upload Area -->
                                         <div class="flex flex-col gap-4">
-                                            <InputLabel for="driving_license" class="!mb-0">Driving License Front</InputLabel>
-                                        <div @click="$refs.drivingLicenseFrontInput.click()"
-                                            class="document-div cursor-pointer border-[2px] border-customPrimaryColor p-4 rounded-lg text-center border-dotted">
-                                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"
-                                                stroke-width="1.5" stroke="#153b4f"
-                                                class="w-10 h-10 mx-auto text-gray-400">
-                                                <path stroke-linecap="round" stroke-linejoin="round"
-                                                    d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5" />
-                                            </svg>
-                                            <p class="mt-2 text-sm text-gray-600">Click to select an image</p>
-                                            <p class="text-xs text-gray-500 mt-1">JPG, PNG and JPEG up to 2MB</p>
-                                        </div>
-                                        <!-- Show Image Preview with Remove Button -->
-                                        <div v-if="filePreviews.driving_license_front" class="relative w-[150px]">
-                                            <img :src="filePreviews.driving_license_front" alt="Preview"
-                                                class="w-full h-[100px] object-cover rounded-md border shadow-md" />
+                                            <InputLabel for="driving_license" class="!mb-0">Driving License Front
+                                            </InputLabel>
+                                            <div @click="$refs.drivingLicenseFrontInput.click()"
+                                                class="document-div cursor-pointer border-[2px] border-customPrimaryColor p-4 rounded-lg text-center border-dotted">
+                                                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"
+                                                    stroke-width="1.5" stroke="#153b4f"
+                                                    class="w-10 h-10 mx-auto text-gray-400">
+                                                    <path stroke-linecap="round" stroke-linejoin="round"
+                                                        d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5" />
+                                                </svg>
+                                                <p class="mt-2 text-sm text-gray-600">Click to select an image</p>
+                                                <p class="text-xs text-gray-500 mt-1">JPG, PNG and JPEG up to 2MB</p>
+                                            </div>
+                                            <!-- Show Image Preview with Remove Button -->
+                                            <div v-if="filePreviews.driving_license_front" class="relative w-[150px]">
+                                                <img :src="filePreviews.driving_license_front" alt="Preview"
+                                                    class="w-full h-[100px] object-cover rounded-md border shadow-md" />
 
-                                            <!-- Remove File Button -->
-                                            <button @click.stop="removeFile('driving_license_front')"
-                                                class="absolute top-1 right-1 bg-red-500 text-white w-[20px] h-[20px] rounded-full text-[0.65rem]">
-                                                ✕
-                                            </button>
-                                        </div>
+                                                <!-- Remove File Button -->
+                                                <button @click.stop="removeFile('driving_license_front')"
+                                                    class="absolute top-1 right-1 bg-red-500 text-white w-[20px] h-[20px] rounded-full text-[0.65rem]">
+                                                    ✕
+                                                </button>
+                                            </div>
                                         </div>
                                         <div class="flex flex-col gap-4">
-                                            <InputLabel for="driving_license" class="!mb-0">Driving License Back</InputLabel>
-                                        <div @click="$refs.drivingLicenseBackInput.click()"
-                                            class="document-div cursor-pointer border-[2px] border-customPrimaryColor p-4 rounded-lg text-center border-dotted">
-                                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"
-                                                stroke-width="1.5" stroke="#153b4f"
-                                                class="w-10 h-10 mx-auto text-gray-400">
-                                                <path stroke-linecap="round" stroke-linejoin="round"
-                                                    d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5" />
-                                            </svg>
-                                            <p class="mt-2 text-sm text-gray-600">Click to select an image</p>
-                                            <p class="text-xs text-gray-500 mt-1">JPG, PNG and JPEG up to 2MB</p>
-                                        </div>
-                                        <div v-if="filePreviews.driving_license_back" class="relative w-[150px]">
-                                            <img :src="filePreviews.driving_license_back" alt="Preview"
-                                                class="w-full h-[100px] object-cover rounded-md border shadow-md" />
+                                            <InputLabel for="driving_license" class="!mb-0">Driving License Back
+                                            </InputLabel>
+                                            <div @click="$refs.drivingLicenseBackInput.click()"
+                                                class="document-div cursor-pointer border-[2px] border-customPrimaryColor p-4 rounded-lg text-center border-dotted">
+                                                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"
+                                                    stroke-width="1.5" stroke="#153b4f"
+                                                    class="w-10 h-10 mx-auto text-gray-400">
+                                                    <path stroke-linecap="round" stroke-linejoin="round"
+                                                        d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5" />
+                                                </svg>
+                                                <p class="mt-2 text-sm text-gray-600">Click to select an image</p>
+                                                <p class="text-xs text-gray-500 mt-1">JPG, PNG and JPEG up to 2MB</p>
+                                            </div>
+                                            <div v-if="filePreviews.driving_license_back" class="relative w-[150px]">
+                                                <img :src="filePreviews.driving_license_back" alt="Preview"
+                                                    class="w-full h-[100px] object-cover rounded-md border shadow-md" />
 
-                                            <!-- Remove File Button -->
-                                            <button @click.stop="removeFile('driving_license_back')"
-                                                class="absolute top-1 right-1 bg-red-500 text-white w-[20px] h-[20px] rounded-full text-[0.65rem]">
-                                                ✕
-                                            </button>
-                                        </div>
+                                                <!-- Remove File Button -->
+                                                <button @click.stop="removeFile('driving_license_back')"
+                                                    class="absolute top-1 right-1 bg-red-500 text-white w-[20px] h-[20px] rounded-full text-[0.65rem]">
+                                                    ✕
+                                                </button>
+                                            </div>
                                         </div>
                                     </div>
 
@@ -272,43 +289,77 @@ const submit = () => {
                                 </div>
                             </div>
 
-                            <!-- Passport/ID -->
-                            <div class="column w-full">
-                                <InputLabel for="passport">Passport/ID</InputLabel>
-                                <div class="flex flex-col gap-2">
 
-                                    <!-- Clickable Upload Area -->
-                                    <div @click="$refs.passportInput.click()"
-                                        class="document-div cursor-pointer border-[2px] border-customPrimaryColor p-4 rounded-lg text-center border-dotted">
-                                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"
-                                            stroke-width="1.5" stroke="#153b4f" class="w-10 h-10 mx-auto text-gray-400">
-                                            <path stroke-linecap="round" stroke-linejoin="round"
-                                                d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5" />
-                                        </svg>
-                                        <p class="mt-2 text-sm text-gray-600">Click to select an image</p>
-                                        <p class="text-xs text-gray-500 mt-1">JPG, PNG and JPEG up to 2MB</p>
+
+
+                            <div class="grid grid-cols-2 gap-5">
+
+                                <!-- Passport Front -->
+                                <div class="column w-full">
+                                    <InputLabel for="passport_front">Passport Front</InputLabel>
+                                    <div class="flex flex-col gap-2">
+                                        <!-- Clickable Upload Area -->
+                                        <div @click="$refs.passportFrontInput.click()"
+                                            class="document-div cursor-pointer border-[2px] border-customPrimaryColor p-4 rounded-lg text-center border-dotted">
+                                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"
+                                                stroke-width="1.5" stroke="#153b4f"
+                                                class="w-10 h-10 mx-auto text-gray-400">
+                                                <path stroke-linecap="round" stroke-linejoin="round"
+                                                    d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5" />
+                                            </svg>
+                                            <p class="mt-2 text-sm text-gray-600">Click to select an image</p>
+                                            <p class="text-xs text-gray-500 mt-1">JPG, PNG and JPEG up to 2MB</p>
+                                        </div>
+
+                                        <!-- Hidden File Input -->
+                                        <input type="file" ref="passportFrontInput" class="hidden"
+                                            @change="handleFileChange('passport_front', $event)" />
+
+                                        <!-- Show Image Preview with Remove Button -->
+                                        <div v-if="filePreviews.passport_front" class="relative w-[150px]">
+                                            <img :src="filePreviews.passport_front" alt="Preview"
+                                                class="w-full h-[100px] object-cover rounded-md border shadow-md" />
+                                            <button @click.stop="removeFile('passport_front')"
+                                                class="absolute top-1 right-1 bg-red-500 text-white w-[20px] h-[20px] rounded-full text-[0.65rem]">
+                                                ✕
+                                            </button>
+                                        </div>
                                     </div>
+                                </div>
+                                <!-- Passport Back -->
+                                <div class="column w-full">
+                                    <InputLabel for="passport_back">Passport Back</InputLabel>
+                                    <div class="flex flex-col gap-2">
+                                        <!-- Clickable Upload Area -->
+                                        <div @click="$refs.passportBackInput.click()"
+                                            class="document-div cursor-pointer border-[2px] border-customPrimaryColor p-4 rounded-lg text-center border-dotted">
+                                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"
+                                                stroke-width="1.5" stroke="#153b4f"
+                                                class="w-10 h-10 mx-auto text-gray-400">
+                                                <path stroke-linecap="round" stroke-linejoin="round"
+                                                    d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5" />
+                                            </svg>
+                                            <p class="mt-2 text-sm text-gray-600">Click to select an image</p>
+                                            <p class="text-xs text-gray-500 mt-1">JPG, PNG and JPEG up to 2MB</p>
+                                        </div>
 
-                                    <!-- Hidden File Input -->
-                                    <input type="file" ref="passportInput" class="hidden"
-                                        @change="handleFileChange('passport', $event)" />
+                                        <!-- Hidden File Input -->
+                                        <input type="file" ref="passportBackInput" class="hidden"
+                                            @change="handleFileChange('passport_back', $event)" />
 
-                                    <!-- Show Image Preview with Remove Button -->
-                                    <div v-if="filePreviews.passport" class="relative w-[150px]">
-                                        <img :src="filePreviews.passport" alt="Preview"
-                                            class="w-full h-[100px] object-cover rounded-md border shadow-md" />
-
-                                        <!-- Remove File Button -->
-                                        <button @click.stop="removeFile('passport')"
-                                            class="absolute top-1 right-1 bg-red-500 text-white w-[20px] h-[20px] rounded-full text-[0.65rem]">
-                                            ✕
-                                        </button>
+                                        <!-- Show Image Preview with Remove Button -->
+                                        <div v-if="filePreviews.passport_back" class="relative w-[150px]">
+                                            <img :src="filePreviews.passport_back" alt="Preview"
+                                                class="w-full h-[100px] object-cover rounded-md border shadow-md" />
+                                            <button @click.stop="removeFile('passport_back')"
+                                                class="absolute top-1 right-1 bg-red-500 text-white w-[20px] h-[20px] rounded-full text-[0.65rem]">
+                                                ✕
+                                            </button>
+                                        </div>
                                     </div>
-
-                                  
                                 </div>
                             </div>
-                            
+
                             <div v-if="errors.files" class="text-red-500 text-sm text-center">{{ errors.files }}</div>
                         </div>
                         <!-- Buttons -->
@@ -349,7 +400,16 @@ const submit = () => {
                                     @click="prevStep">
                                     Back
                                 </button>
-                                <PrimaryButton class="w-[15rem] max-[768px]:w-[10rem]" type="submit">Submit
+                                <PrimaryButton class="w-[15rem] max-[768px]:w-[10rem]" type="submit">
+                                    <!-- Show loader or text based on isLoading -->
+                    <span v-if="isLoading" class="flex items-center justify-center">
+                        <svg class="animate-spin h-5 w-5 mr-2 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                        </svg>
+                        Loading...
+                    </span>
+                    <span v-else>Submit</span>
                                 </PrimaryButton>
                             </div>
                         </div>
@@ -409,14 +469,23 @@ select {
     transform: scale(1.1);
 }
 
+.animate-spin {
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
 @media screen and (max-width:768px) {
 
     input,
     textarea {
         font-size: 14px;
     }
-    
-    .document_section svg{
+
+    .document_section svg {
         width: 28px;
     }
 }

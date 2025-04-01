@@ -7,12 +7,13 @@ import AuthenticatedHeaderLayout from "@/Layouts/AuthenticatedHeaderLayout.vue";
 import Footer from "@/Components/Footer.vue";
 import goIcon from "../../assets/goIcon.svg";
 import carIcon from "../../assets/carIcon.svg";
-import walkIcon from "../../assets/walking.svg";
 import mileageIcon from "../../assets/mileageIcon.svg";
 import Heart from "../../assets/Heart.svg";
 import FilledHeart from "../../assets/FilledHeart.svg";
 import check from "../../assets/Check.svg";
 import priceIcon from "../../assets/percent.svg";
+import categoryIcon from "../../assets/categoryIcon.png";
+import priceperdayicon from "../../assets/priceFilter.png";
 import fuelIcon from "../../assets/fuel.svg";
 import transmissionIcon from "../../assets/transmittionIcon.svg";
 import mileageIcon2 from "../../assets/unlimitedKm.svg";
@@ -23,6 +24,7 @@ import filterIcon from "../../assets/filterIcon.svg";
 import SearchBar from "@/Components/SearchBar.vue";
 import { Label } from "@/Components/ui/label";
 import { Switch } from "@/Components/ui/switch";
+import CaretDown from '../../assets/CaretDown.svg'
 
 const props = defineProps({
     vehicles: Object,
@@ -30,6 +32,8 @@ const props = defineProps({
     pagination_links: String,
     categories: Array,
 });
+
+
 // Debounce function
 const debounce = (fn, delay) => {
     let timeoutId;
@@ -38,6 +42,7 @@ const debounce = (fn, delay) => {
         timeoutId = setTimeout(() => fn(...args), delay);
     };
 };
+
 
 // Use Inertia's form handling
 const form = useForm({
@@ -140,12 +145,13 @@ const initMap = () => {
     }, 100);
 };
 
-const createCustomIcon = (price) => {
+
+const createCustomIcon = (price, currency) => {
     return L.divIcon({
         className: "custom-div-icon",
         html: `
     <div class="marker-pin">
-      <span>₹${price}</span>
+      <span>${currency || '₹'}${price}</span>
     </div>
   `,
         iconSize: [50, 30],
@@ -167,10 +173,11 @@ const addMarkers = () => {
     const markerGroup = L.featureGroup();
 
     props.vehicles.data.forEach((vehicle) => {
-        const marker = L.marker([vehicle.latitude, vehicle.longitude], {
-            icon: createCustomIcon(vehicle.price_per_day),
-            pane: "markers",
-        }).bindPopup(`
+    const currency = vehicle.vendor_profile?.currency || '₹';
+    const marker = L.marker([vehicle.latitude, vehicle.longitude], {
+        icon: createCustomIcon(vehicle.price_per_day, currency),
+        pane: "markers",
+    }).bindPopup(`
     <div class="text-center">
       <p class="font-semibold">${vehicle.brand}</p>
       <p class="">${vehicle.location}</p>
@@ -182,9 +189,9 @@ const addMarkers = () => {
     </div>
   `);
 
-        markerGroup.addLayer(marker);
-        markers.push(marker);
-    });
+    markerGroup.addLayer(marker);
+    markers.push(marker);
+});
 
     markerGroup.addTo(map);
 
@@ -347,6 +354,7 @@ const applyFilters = () => {
     showMobileFilters.value = false;
 };
 
+
 </script>
 
 <template>
@@ -377,135 +385,146 @@ const applyFilters = () => {
 
             <!-- Desktop filters (hidden on mobile) -->
             <form class="hidden md:block">
-                <div class="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-6 gap-8">
+                <div class="flex gap-6 flex-wrap filter-slot items-center">
                     <!-- Seating Capacity Filter -->
-                    <div class="flex flex-col p-2 shadow-lg rounded-[12px] hover:bg-customLightPrimaryColor">
-                        <div class="flex gap-2">
-                            <img :src="seatingIcon" alt="">
-                            <label for="seating_capacity" class="block text-[1rem] font-medium">Seating Capacity</label>
-                        </div>
+                    <div class="relative w-full md:w-auto">
+                        <img :src="seatingIcon" alt="Seating Icon"
+                            class="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 pointer-events-none">
                         <select v-model="form.seating_capacity" id="seating_capacity"
-                            class="mt-1 block w-full rounded-md border-[1px] border-customLightGrayColor shadow-sm text-customPrimaryColor cursor-pointer p-2">
-                            <option value="">Any</option>
+                            class="pl-10 py-2 pr-10 cursor-pointer border border-[#e7e7e7] rounded-sm w-full">
+                            <option value="">Seating Capacity</option>
                             <option v-for="capacity in $page.props.seatingCapacities" :key="capacity" :value="capacity">
                                 {{ capacity }}
                             </option>
                         </select>
+                        <img :src=CaretDown alt="" 
+                        class="absolute right-3 top-1/2 transform -translate-y-1/2 w-5 h-5 transition-transform duration-300 
+                        ease-in-out pointer-events-none caret-rotate">
                     </div>
 
                     <!-- Brand Filter -->
-                    <div class="flex flex-col p-2 shadow-lg rounded-[12px] hover:bg-customLightPrimaryColor">
-                        <div class="flex gap-2">
-                            <img :src="brandIcon" alt="" class="w-[3rem]">
-                            <label for="brand" class="block text-[1rem] font-medium">Brand</label>
-                        </div>
+                    <div class="relative w-full md:w-auto">
+                        <img :src="brandIcon" alt="Brand Icon"
+                            class="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 pointer-events-none">
                         <select v-model="form.brand" id="brand"
-                            class="mt-1 block w-full rounded-md border-[1px] border-customLightGrayColor shadow-sm text-customPrimaryColor cursor-pointer p-2">
+                            class="pl-10 pr-10 py-2 cursor-pointer border border-[#e7e7e7] rounded-sm w-full">
                             <option value="">All Brands</option>
                             <option v-for="brand in $page.props.brands" :key="brand" :value="brand">{{ brand }}</option>
                         </select>
+                        <img :src=CaretDown alt="" 
+                        class="absolute right-3 top-1/2 transform -translate-y-1/2 w-5 h-5 transition-transform duration-300 
+                        ease-in-out pointer-events-none caret-rotate">
                     </div>
 
                     <!-- Category Filter -->
-                    <div class="flex flex-col p-2 shadow-lg rounded-[12px] hover:bg-customLightPrimaryColor">
-                        <div class="flex gap-2">
-                            <img :src="brandIcon" alt="" class="w-[3rem]">
-                            <label for="category_id" class="block text-[1rem] font-medium">Category</label>
-                        </div>
+                    <div class="relative w-full md:w-auto">
+                        <img :src="categoryIcon" alt="Category Icon"
+                            class="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 pointer-events-none">
                         <select v-model="form.category_id" id="category_id"
-                            class="mt-1 block w-full rounded-md border-[1px] border-customLightGrayColor shadow-sm text-customPrimaryColor cursor-pointer p-2">
+                            class="pl-10 pr-10 py-2 cursor-pointer border border-[#e7e7e7] rounded-sm w-full">
                             <option value="">All Categories</option>
                             <option v-for="category in $page.props.categories" :key="category.id" :value="category.id">
                                 {{ category.name }}
                             </option>
                         </select>
+                        <img :src=CaretDown alt="" 
+                        class="absolute right-3 top-1/2 transform -translate-y-1/2 w-5 h-5 transition-transform duration-300 
+                        ease-in-out pointer-events-none caret-rotate">
                     </div>
 
                     <!-- Transmission Filter -->
-                    <div class="flex flex-col p-2 shadow-lg rounded-[12px] hover:bg-customLightPrimaryColor">
-                        <div class="flex gap-2">
-                            <img :src="transmissionIcon" alt="">
-                            <label for="transmission" class="block text-[1rem] font-medium">Transmission</label>
-                        </div>
+                    <div class="relative w-full md:w-auto">
+                        <img :src="transmissionIcon" alt="Transmission Icon"
+                            class="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 pointer-events-none">
                         <select v-model="form.transmission" id="transmission"
-                            class="mt-1 block w-full rounded-md border-[1px] border-customLightGrayColor shadow-sm text-customPrimaryColor cursor-pointer p-2">
-                            <option value="">Any</option>
+                            class="pl-10 pr-10 py-2 cursor-pointer border border-[#e7e7e7] rounded-sm w-full">
+                            <option value="">Transmission</option>
                             <option value="automatic">Automatic</option>
                             <option value="manual">Manual</option>
                         </select>
+                        <img :src=CaretDown alt="" 
+                        class="absolute right-3 top-1/2 transform -translate-y-1/2 w-5 h-5 transition-transform duration-300 
+                        ease-in-out pointer-events-none caret-rotate">
                     </div>
 
                     <!-- Fuel Filter -->
-                    <div class="flex flex-col p-2 shadow-lg rounded-[12px] hover:bg-customLightPrimaryColor">
-                        <div class="flex gap-2">
-                            <img :src="fuelIcon" alt="">
-                            <label for="fuel" class="block text-[1rem] font-medium">Fuel</label>
-                        </div>
+                    <div class="relative w-full md:w-auto">
+                        <img :src="fuelIcon" alt="Fuel Icon"
+                            class="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 pointer-events-none">
                         <select v-model="form.fuel" id="fuel"
-                            class="mt-1 block w-full rounded-md border-[1px] border-customLightGrayColor shadow-sm text-customPrimaryColor cursor-pointer p-2">
-                            <option value="">Any</option>
+                            class="pl-10 pr-10 py-2 cursor-pointer border border-[#e7e7e7] rounded-sm w-full">
+                            <option value="">Fuel Type</option>
                             <option value="petrol">Petrol</option>
                             <option value="diesel">Diesel</option>
                             <option value="electric">Electric</option>
                         </select>
+                        <img :src=CaretDown alt="" 
+                        class="absolute right-3 top-1/2 transform -translate-y-1/2 w-5 h-5 transition-transform duration-300 
+                        ease-in-out pointer-events-none caret-rotate">
                     </div>
 
                     <!-- Price Range Filter -->
-                    <div class="flex flex-col p-2 shadow-lg rounded-[12px] hover:bg-customLightPrimaryColor">
-                        <div class="flex gap-2">
-                            <img :src="priceIcon" alt="">
-                            <label for="price_range" class="block text-[1rem] font-medium">Price Range</label>
-                        </div>
+                    <div class="relative w-full md:w-auto">
+                        <img :src="priceIcon" alt="Price Icon"
+                            class="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 pointer-events-none">
                         <select v-model="form.price_range" id="price_range"
-                            class="mt-1 block w-full rounded-md border-[1px] border-customLightGrayColor shadow-sm text-customPrimaryColor cursor-pointer p-2">
-                            <option value="">Any</option>
+                            class="pl-10 pr-10 py-2 cursor-pointer border border-[#e7e7e7] rounded-sm w-full">
+                            <option value="">Price Range</option>
                             <option value="0-1000">₹0 - ₹1000</option>
                             <option value="1000-5000">₹1000 - ₹5000</option>
                             <option value="5000-10000">₹5000 - ₹10000</option>
                             <option value="10000-20000">₹10000 - ₹20000</option>
                         </select>
+                        <img :src=CaretDown alt="" 
+                        class="absolute right-3 top-1/2 transform -translate-y-1/2 w-5 h-5 transition-transform duration-300 
+                        ease-in-out pointer-events-none caret-rotate">
                     </div>
 
                     <!-- Color Filter -->
-                    <div class="flex flex-col p-2 shadow-lg rounded-[12px] hover:bg-customLightPrimaryColor">
-                        <div class="flex gap-2">
-                            <img :src="colorIcon" alt="" class="w-[1.75rem]">
-                            <label for="color" class="block text-[1rem] font-medium">Color</label>
-                        </div>
+                    <div class="relative w-full md:w-auto">
+                        <img :src="colorIcon" alt="Color Icon"
+                            class="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 pointer-events-none">
                         <select v-model="form.color" id="color"
-                            class="mt-1 block w-full rounded-md border-[1px] border-customLightGrayColor shadow-sm text-customPrimaryColor cursor-pointer p-2">
-                            <option value="">Any</option>
+                            class="pl-10 pr-10 py-2 cursor-pointer border border-[#e7e7e7] rounded-sm w-full">
+                            <option value="">Color</option>
                             <option v-for="color in $page.props.colors" :key="color" :value="color">{{ color }}</option>
                         </select>
+                        <img :src=CaretDown alt="" 
+                        class="absolute right-3 top-1/2 transform -translate-y-1/2 w-5 h-5 transition-transform duration-300 
+                        ease-in-out pointer-events-none caret-rotate">
                     </div>
 
                     <!-- Mileage Filter -->
-                    <div class="flex flex-col p-2 shadow-lg rounded-[12px] hover:bg-customLightPrimaryColor">
-                        <div class="flex gap-2">
-                            <img :src="mileageIcon2" alt="" class="w-[1.5rem]">
-                            <label for="mileage" class="block text-[1rem] font-medium">Mileage</label>
-                        </div>
+                    <div class="relative w-full md:w-auto">
+                        <img :src="mileageIcon2" alt="Mileage Icon"
+                            class="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 pointer-events-none">
                         <select v-model="form.mileage" id="mileage"
-                            class="mt-1 block w-full rounded-md border-[1px] border-customLightGrayColor shadow-sm text-customPrimaryColor cursor-pointer p-2">
-                            <option value="">Any</option>
-                            <option value="0-10">0 - 10 km/l</option>
-                            <option value="10-20">10 - 20 km/l</option>
-                            <option value="20-30">20 - 30 km/l</option>
-                            <option value="30-40">30 - 40 km/l</option>
+                            class="pl-10 pr-10 py-2 cursor-pointer border border-[#e7e7e7] rounded-sm w-full">
+                            <option value="">Mileage</option>
+                            <option value="0-10">0 - 10 km/d</option>
+                            <option value="10-20">10 - 20 km/d</option>
+                            <option value="20-30">20 - 30 km/d</option>
+                            <option value="30-40">30 - 40 km/d</option>
                         </select>
+                        <img :src=CaretDown alt="" 
+                        class="absolute right-3 top-1/2 transform -translate-y-1/2 w-5 h-5 transition-transform duration-300 
+                        ease-in-out pointer-events-none caret-rotate">
                     </div>
 
                     <!-- Package Type Filter -->
-                    <div class="flex flex-col p-2 shadow-lg rounded-[12px] hover:bg-customLightPrimaryColor">
-                        <div class="flex gap-2">
-                            <label for="package_type" class="block text-[1rem] font-medium">Package Type</label>
-                        </div>
+                    <div class="relative w-full md:w-auto">
+                        <!-- Assuming you need an icon for package type -->
+                        <img :src="priceperdayicon" alt="Package Type Icon"
+                            class="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 pointer-events-none">
                         <select v-model="form.package_type" id="package_type"
-                            class="mt-1 block w-full rounded-md border-[1px] border-customLightGrayColor shadow-sm text-customPrimaryColor cursor-pointer p-2">
+                            class="pl-10 pr-10 py-2 cursor-pointer border border-[#e7e7e7] rounded-sm w-full">
                             <option value="day">Price Per Day</option>
                             <option value="week">Price Per Week</option>
                             <option value="month">Price Per Month</option>
                         </select>
+                        <img :src=CaretDown alt="" 
+                        class="absolute right-3 top-1/2 transform -translate-y-1/2 w-5 h-5 transition-transform duration-300 
+                        ease-in-out pointer-events-none caret-rotate">
                     </div>
                 </div>
             </form>
@@ -513,7 +532,7 @@ const applyFilters = () => {
             <!-- Mobile Filters Canvas/Sidebar -->
             <div v-if="showMobileFilters" class="fixed inset-0 bg-black bg-opacity-50 z-50 md:hidden"
                 @click="showMobileFilters = false">
-                <div class="fixed right-0 top-0 h-full w-4/5 bg-white overflow-y-auto p-4" @click.stop>
+                <div class="fixed right-0 top-0 h-full w-3/5 bg-white overflow-y-auto p-4" @click.stop>
                     <div class="flex justify-between items-center mb-6">
                         <div class="flex items-center gap-2">
                             <img :src="filterIcon" alt="">
@@ -522,144 +541,147 @@ const applyFilters = () => {
                         <button @click="showMobileFilters = false" class="text-2xl">&times;</button>
                     </div>
 
-                    <form class="space-y-6">
+                    <form class="space-y-6 filter-slot">
                         <!-- Seating Capacity Filter -->
-                        <div class="flex flex-col p-2 shadow-lg rounded-[12px] hover:bg-customLightPrimaryColor">
-                            <div class="flex gap-2">
-                                <img :src="seatingIcon" alt="">
-                                <label for="mobile_seating_capacity" class="block text-[1rem] font-medium">Seating
-                                    Capacity</label>
-                            </div>
-                            <select v-model="form.seating_capacity" id="mobile_seating_capacity"
-                                class="mt-1 block w-full rounded-md border-[1px] border-customLightGrayColor shadow-sm text-customPrimaryColor cursor-pointer p-2">
-                                <option value="">Any</option>
-                                <option v-for="capacity in $page.props.seatingCapacities" :key="capacity"
-                                    :value="capacity">
-                                    {{ capacity }}
-                                </option>
-                            </select>
-                        </div>
+                    <div class="relative w-full md:w-auto">
+                        <img :src="seatingIcon" alt="Seating Icon"
+                            class="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 pointer-events-none">
+                        <select v-model="form.seating_capacity" id="seating_capacity"
+                            class="pl-10 py-2 pr-10 cursor-pointer border border-[#e7e7e7] rounded-sm w-full">
+                            <option value="">Seating Capacity</option>
+                            <option v-for="capacity in $page.props.seatingCapacities" :key="capacity" :value="capacity">
+                                {{ capacity }}
+                            </option>
+                        </select>
+                        <img :src=CaretDown alt="" 
+                        class="absolute right-3 top-1/2 transform -translate-y-1/2 w-5 h-5 transition-transform duration-300 
+                        ease-in-out pointer-events-none caret-rotate">
+                    </div>
 
-                        <!-- Brand Filter -->
-                        <div class="flex flex-col p-2 shadow-lg rounded-[12px] hover:bg-customLightPrimaryColor">
-                            <div class="flex gap-2">
-                                <img :src="brandIcon" alt="" class="w-[3rem]">
-                                <label for="mobile_brand" class="block text-[1rem] font-medium">Brand</label>
-                            </div>
-                            <select v-model="form.brand" id="mobile_brand"
-                                class="mt-1 block w-full rounded-md border-[1px] border-customLightGrayColor shadow-sm text-customPrimaryColor cursor-pointer p-2">
-                                <option value="">All Brands</option>
-                                <option v-for="brand in $page.props.brands" :key="brand" :value="brand">{{ brand }}
-                                </option>
-                            </select>
-                        </div>
+                    <!-- Brand Filter -->
+                    <div class="relative w-full md:w-auto">
+                        <img :src="brandIcon" alt="Brand Icon"
+                            class="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 pointer-events-none">
+                        <select v-model="form.brand" id="brand"
+                            class="pl-10 pr-10 py-2 cursor-pointer border border-[#e7e7e7] rounded-sm w-full">
+                            <option value="">All Brands</option>
+                            <option v-for="brand in $page.props.brands" :key="brand" :value="brand">{{ brand }}</option>
+                        </select>
+                        <img :src=CaretDown alt="" 
+                        class="absolute right-3 top-1/2 transform -translate-y-1/2 w-5 h-5 transition-transform duration-300 
+                        ease-in-out pointer-events-none caret-rotate">
+                    </div>
 
-                        <!-- Category Filter -->
-                        <div class="flex flex-col p-2 shadow-lg rounded-[12px] hover:bg-customLightPrimaryColor">
-                            <div class="flex gap-2">
-                                <img :src="brandIcon" alt="" class="w-[3rem]">
-                                <label for="mobile_category_id" class="block text-[1rem] font-medium">Category</label>
-                            </div>
-                            <select v-model="form.category_id" id="mobile_category_id"
-                                class="mt-1 block w-full rounded-md border-[1px] border-customLightGrayColor shadow-sm text-customPrimaryColor cursor-pointer p-2">
-                                <option value="">All Categories</option>
-                                <option v-for="category in $page.props.categories" :key="category.id"
-                                    :value="category.id">
-                                    {{ category.name }}
-                                </option>
-                            </select>
-                        </div>
+                    <!-- Category Filter -->
+                    <div class="relative w-full md:w-auto">
+                        <img :src="categoryIcon" alt="Category Icon"
+                            class="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 pointer-events-none">
+                        <select v-model="form.category_id" id="category_id"
+                            class="pl-10 pr-10 py-2 cursor-pointer border border-[#e7e7e7] rounded-sm w-full">
+                            <option value="">All Categories</option>
+                            <option v-for="category in $page.props.categories" :key="category.id" :value="category.id">
+                                {{ category.name }}
+                            </option>
+                        </select>
+                        <img :src=CaretDown alt="" 
+                        class="absolute right-3 top-1/2 transform -translate-y-1/2 w-5 h-5 transition-transform duration-300 
+                        ease-in-out pointer-events-none caret-rotate">
+                    </div>
 
-                        <!-- Transmission Filter -->
-                        <div class="flex flex-col p-2 shadow-lg rounded-[12px] hover:bg-customLightPrimaryColor">
-                            <div class="flex gap-2">
-                                <img :src="transmissionIcon" alt="">
-                                <label for="mobile_transmission"
-                                    class="block text-[1rem] font-medium">Transmission</label>
-                            </div>
-                            <select v-model="form.transmission" id="mobile_transmission"
-                                class="mt-1 block w-full rounded-md border-[1px] border-customLightGrayColor shadow-sm text-customPrimaryColor cursor-pointer p-2">
-                                <option value="">Any</option>
-                                <option value="automatic">Automatic</option>
-                                <option value="manual">Manual</option>
-                            </select>
-                        </div>
+                    <!-- Transmission Filter -->
+                    <div class="relative w-full md:w-auto">
+                        <img :src="transmissionIcon" alt="Transmission Icon"
+                            class="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 pointer-events-none">
+                        <select v-model="form.transmission" id="transmission"
+                            class="pl-10 pr-10 py-2 cursor-pointer border border-[#e7e7e7] rounded-sm w-full">
+                            <option value="">Transmission</option>
+                            <option value="automatic">Automatic</option>
+                            <option value="manual">Manual</option>
+                        </select>
+                        <img :src=CaretDown alt="" 
+                        class="absolute right-3 top-1/2 transform -translate-y-1/2 w-5 h-5 transition-transform duration-300 
+                        ease-in-out pointer-events-none caret-rotate">
+                    </div>
 
-                        <!-- Fuel Filter -->
-                        <div class="flex flex-col p-2 shadow-lg rounded-[12px] hover:bg-customLightPrimaryColor">
-                            <div class="flex gap-2">
-                                <img :src="fuelIcon" alt="">
-                                <label for="mobile_fuel" class="block text-[1rem] font-medium">Fuel</label>
-                            </div>
-                            <select v-model="form.fuel" id="mobile_fuel"
-                                class="mt-1 block w-full rounded-md border-[1px] border-customLightGrayColor shadow-sm text-customPrimaryColor cursor-pointer p-2">
-                                <option value="">Any</option>
-                                <option value="petrol">Petrol</option>
-                                <option value="diesel">Diesel</option>
-                                <option value="electric">Electric</option>
-                            </select>
-                        </div>
+                    <!-- Fuel Filter -->
+                    <div class="relative w-full md:w-auto">
+                        <img :src="fuelIcon" alt="Fuel Icon"
+                            class="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 pointer-events-none">
+                        <select v-model="form.fuel" id="fuel"
+                            class="pl-10 pr-10 py-2 cursor-pointer border border-[#e7e7e7] rounded-sm w-full">
+                            <option value="">Fuel Type</option>
+                            <option value="petrol">Petrol</option>
+                            <option value="diesel">Diesel</option>
+                            <option value="electric">Electric</option>
+                        </select>
+                        <img :src=CaretDown alt="" 
+                        class="absolute right-3 top-1/2 transform -translate-y-1/2 w-5 h-5 transition-transform duration-300 
+                        ease-in-out pointer-events-none caret-rotate">
+                    </div>
 
-                        <!-- Price Range Filter -->
-                        <div class="flex flex-col p-2 shadow-lg rounded-[12px] hover:bg-customLightPrimaryColor">
-                            <div class="flex gap-2">
-                                <img :src="priceIcon" alt="">
-                                <label for="mobile_price_range" class="block text-[1rem] font-medium">Price
-                                    Range</label>
-                            </div>
-                            <select v-model="form.price_range" id="mobile_price_range"
-                                class="mt-1 block w-full rounded-md border-[1px] border-customLightGrayColor shadow-sm text-customPrimaryColor cursor-pointer p-2">
-                                <option value="">Any</option>
-                                <option value="0-1000">₹0 - ₹1000</option>
-                                <option value="1000-5000">₹1000 - ₹5000</option>
-                                <option value="5000-10000">₹5000 - ₹10000</option>
-                                <option value="10000-20000">₹10000 - ₹20000</option>
-                            </select>
-                        </div>
+                    <!-- Price Range Filter -->
+                    <div class="relative w-full md:w-auto">
+                        <img :src="priceIcon" alt="Price Icon"
+                            class="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 pointer-events-none">
+                        <select v-model="form.price_range" id="price_range"
+                            class="pl-10 pr-10 py-2 cursor-pointer border border-[#e7e7e7] rounded-sm w-full">
+                            <option value="">Price Range</option>
+                            <option value="0-1000">₹0 - ₹1000</option>
+                            <option value="1000-5000">₹1000 - ₹5000</option>
+                            <option value="5000-10000">₹5000 - ₹10000</option>
+                            <option value="10000-20000">₹10000 - ₹20000</option>
+                        </select>
+                        <img :src=CaretDown alt="" 
+                        class="absolute right-3 top-1/2 transform -translate-y-1/2 w-5 h-5 transition-transform duration-300 
+                        ease-in-out pointer-events-none caret-rotate">
+                    </div>
 
-                        <!-- Color Filter -->
-                        <div class="flex flex-col p-2 shadow-lg rounded-[12px] hover:bg-customLightPrimaryColor">
-                            <div class="flex gap-2">
-                                <img :src="colorIcon" alt="" class="w-[1.5rem]">
-                                <label for="mobile_color" class="block  font-medium">Color</label>
-                            </div>
-                            <select v-model="form.color" id="mobile_color"
-                                class="mt-1 block w-full rounded-md border-[1px] border-customLightGrayColor shadow-sm text-customPrimaryColor cursor-pointer p-2">
-                                <option value="">Any</option>
-                                <option v-for="color in $page.props.colors" :key="color" :value="color">{{ color }}
-                                </option>
-                            </select>
-                        </div>
+                    <!-- Color Filter -->
+                    <div class="relative w-full md:w-auto">
+                        <img :src="colorIcon" alt="Color Icon"
+                            class="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 pointer-events-none">
+                        <select v-model="form.color" id="color"
+                            class="pl-10 pr-10 py-2 cursor-pointer border border-[#e7e7e7] rounded-sm w-full">
+                            <option value="">Color</option>
+                            <option v-for="color in $page.props.colors" :key="color" :value="color">{{ color }}</option>
+                        </select>
+                        <img :src=CaretDown alt="" 
+                        class="absolute right-3 top-1/2 transform -translate-y-1/2 w-5 h-5 transition-transform duration-300 
+                        ease-in-out pointer-events-none caret-rotate">
+                    </div>
 
-                        <!-- Mileage Filter -->
-                        <div class="flex flex-col p-2 shadow-lg rounded-[12px] hover:bg-customLightPrimaryColor">
-                            <div class="flex gap-2">
-                                <img :src="mileageIcon2" alt="" class="w-[1.5rem]">
-                                <label for="mobile_mileage" class="block text-[1rem] font-medium">Mileage</label>
-                            </div>
-                            <select v-model="form.mileage" id="mobile_mileage"
-                                class="mt-1 block w-full rounded-md border-[1px] border-customLightGrayColor shadow-sm text-customPrimaryColor cursor-pointer p-2">
-                                <option value="">Any</option>
-                                <option value="0-10">0 - 10 km/l</option>
-                                <option value="10-20">10 - 20 km/l</option>
-                                <option value="20-30">20 - 30 km/l</option>
-                                <option value="30-40">30 - 40 km/l</option>
-                            </select>
-                        </div>
+                    <!-- Mileage Filter -->
+                    <div class="relative w-full md:w-auto">
+                        <img :src="mileageIcon2" alt="Mileage Icon"
+                            class="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 pointer-events-none">
+                        <select v-model="form.mileage" id="mileage"
+                            class="pl-10 pr-10 py-2 cursor-pointer border border-[#e7e7e7] rounded-sm w-full">
+                            <option value="">Mileage</option>
+                            <option value="0-10">0 - 10 km/l</option>
+                            <option value="10-20">10 - 20 km/l</option>
+                            <option value="20-30">20 - 30 km/l</option>
+                            <option value="30-40">30 - 40 km/l</option>
+                        </select>
+                        <img :src=CaretDown alt="" 
+                        class="absolute right-3 top-1/2 transform -translate-y-1/2 w-5 h-5 transition-transform duration-300 
+                        ease-in-out pointer-events-none caret-rotate">
+                    </div>
 
-                        <!-- Package Type Filter -->
-                        <div class="flex flex-col p-2 shadow-lg rounded-[12px] hover:bg-customLightPrimaryColor">
-                            <div class="flex gap-2">
-                                <label for="mobile_package_type" class="block text-[1rem] font-medium">Package
-                                    Type</label>
-                            </div>
-                            <select v-model="form.package_type" id="mobile_package_type"
-                                class="mt-1 block w-full rounded-md border-[1px] border-customLightGrayColor shadow-sm text-customPrimaryColor cursor-pointer p-2">
-                                <option value="day">Price Per Day</option>
-                                <option value="week">Price Per Week</option>
-                                <option value="month">Price Per Month</option>
-                            </select>
-                        </div>
+                    <!-- Package Type Filter -->
+                    <div class="relative w-full md:w-auto">
+                        <!-- Assuming you need an icon for package type -->
+                        <img :src="priceperdayicon" alt="Package Type Icon"
+                            class="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 pointer-events-none">
+                        <select v-model="form.package_type" id="package_type"
+                            class="pl-10 pr-10 py-2 cursor-pointer border border-[#e7e7e7] rounded-sm w-full">
+                            <option value="day">Price Per Day</option>
+                            <option value="week">Price Per Week</option>
+                            <option value="month">Price Per Month</option>
+                        </select>
+                        <img :src=CaretDown alt="" 
+                        class="absolute right-3 top-1/2 transform -translate-y-1/2 w-5 h-5 transition-transform duration-300 
+                        ease-in-out pointer-events-none caret-rotate">
+                    </div>
 
                         <!-- Apply Filters Button -->
                         <button @click="applyFilters"
@@ -691,10 +713,10 @@ const applyFilters = () => {
                         No vehicles available at the moment.
                     </div>
                     <div v-for="vehicle in vehicles.data" :key="vehicle.id"
-                        class="p-[1rem] rounded-[12px] border-[1px] border-[#E7E7E7]">
-                        <div class="flex justify-end mb-3">
+                        class="rounded-[12px] border-[1px] border-[#E7E7E7] relative overflow-hidden">
+                        <div class="flex justify-end mb-3 absolute right-3 top-3">
                             <div class="column flex justify-end">
-                                <button @click.stop="toggleFavourite(vehicle)" class="heart-icon" :class="{
+                                <button @click.stop="toggleFavourite(vehicle)" class="heart-icon bg-white rounded-[99px] p-2" :class="{
                                     'filled-heart': favoriteStatus[vehicle.id],
                                     'pop-animation': popEffect[vehicle.id] // Apply animation class dynamically
                                 }">
@@ -711,14 +733,14 @@ const applyFilters = () => {
                                         image.image_type === 'primary'
                                 )?.image_url
                                     }`" alt="Primary Image"
-                                    class="w-full h-[250px] object-cover rounded-lg max-[768px]:h-[200px]" />
+                                    class="w-full h-[250px] object-cover rounded-tl-lg rounded-tr-lg max-[768px]:h-[200px]" />
                                 <span
-                                    class="bg-[#f5f5f5] inline-block px-8 py-2 text-center rounded-[40px] max-[768px]:text-[0.95rem]">
+                                    class="bg-[#f5f5f5] ml-[1rem] inline-block px-8 py-2 text-center rounded-[40px] max-[768px]:text-[0.95rem]">
                                     {{ vehicle.model }}
                                 </span>
                             </div>
 
-                            <div class="column mt-[2rem]">
+                            <div class="column p-[1rem]">
                                 <h5 class="font-medium text-[1.5rem] text-customPrimaryColor max-[768px]:text-[1.2rem]">
                                     {{ vehicle.brand }}
                                 </h5>
@@ -932,6 +954,17 @@ const applyFilters = () => {
     width: 100%;
 }
 
+.filter-slot > div:hover > select {
+    background-color: rgba(128, 128, 128, 0.145);
+}
+.filter-slot > div > select {
+    -webkit-appearance: none;
+}
+
+/* Rotate caret when select is focused */
+select:focus + .caret-rotate {
+  transform: translateY(-50%) rotate(180deg);
+}
 
 @keyframes pop {
     0% {
@@ -949,5 +982,12 @@ const applyFilters = () => {
 
 .pop-animation {
     animation: pop 0.3s ease-in-out;
+}
+
+@media screen and (max-width:768px) {
+    .filter-slot>div {
+        width: 100%;
+        justify-content: space-between;
+    }
 }
 </style>

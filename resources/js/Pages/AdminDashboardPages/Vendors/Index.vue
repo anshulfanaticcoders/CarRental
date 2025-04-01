@@ -55,7 +55,8 @@
                             <TableHead>Status</TableHead>
                             <TableHead>Driving License Front</TableHead>
                             <TableHead>Driving License Back</TableHead>
-                            <TableHead>Passport</TableHead>
+                            <TableHead>Passport Front</TableHead>
+                            <TableHead>Passport Back</TableHead>
                             <TableHead>Created at</TableHead>
                             <TableHead class="text-right">Actions</TableHead>
                         </TableRow>
@@ -82,8 +83,13 @@
                                     class="w-[100px] h-[80px] object-cover mb-2 cursor-pointer" />
                             </TableCell>
                             <TableCell>
-                                <img @click="openImageModal(`${user.vendor_document?.passport}`)"
-                                    :src="`${user.vendor_document?.passport}`" alt="Passport"
+                                <img @click="openImageModal(`${user.vendor_document?.passport_front}`)"
+                                    :src="`${user.vendor_document?.passport_front}`" alt="Passport"
+                                    class="w-[100px] h-[80px] object-cover mb-2 cursor-pointer" />
+                            </TableCell>
+                            <TableCell>
+                                <img @click="openImageModal(`${user.vendor_document?.passport_back}`)"
+                                    :src="`${user.vendor_document?.passport_back}`" alt="Passport"
                                     class="w-[100px] h-[80px] object-cover mb-2 cursor-pointer" />
                             </TableCell>
                             <TableCell>

@@ -135,7 +135,7 @@ onMounted(() => {
         </section>
 
         <section
-            class="ml-[5%] max-[768px]:ml-0 w-[105%] max-[768px]:w-full category-carousel mt-[8rem] min-h-[50vh] py-customVerticalSpacing overflow-hidden max-[768px]:mt-0">
+            class="ml-[2%] max-[768px]:ml-0 w-[105%] max-[768px]:w-full category-carousel mt-[8rem] min-h-[50vh] py-customVerticalSpacing overflow-hidden max-[768px]:mt-0">
             <div
                 class="flex min-h-[inherit] items-center gap-24 max-[768px]:flex-col max-[768px]:gap-10 max-[768px]:items-start">
                 <div class="column max-[768px]:px-[1.5rem]">
@@ -198,7 +198,7 @@ onMounted(() => {
 
         <!------------------------------- Top Destination Places -------------------------------------->
         <section class="flex flex-col gap-10 py-customVerticalSpacing popular-places max-[768px]:py-[1rem]">
-            <div class="column ml-[5%]">
+            <div class="column ml-[2%]">
                 <span class="text-[1.15rem] text-customPrimaryColor">-Top Destinations -</span>
                 <h3 class="text-customDarkBlackColor mt-[1rem] max-[768px]:text-[1.75rem]">Popular places</h3>
             </div>

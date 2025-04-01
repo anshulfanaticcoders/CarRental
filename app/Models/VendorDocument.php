@@ -13,7 +13,9 @@ class VendorDocument extends Model
         'user_id',
         'driving_license_front',
         'driving_license_back',
-        'passport',
+
+        'passport_front',
+        'passport_back',
     ];
 
     public function user()

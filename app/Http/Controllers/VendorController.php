@@ -29,7 +29,8 @@ class VendorController extends Controller
             $request->validate([
                 'driving_license_front' => 'nullable|file|mimes:jpg,png,pdf',
                 'driving_license_back' => 'nullable|file|mimes:jpg,png,pdf',
-                'passport' => 'nullable|file|mimes:jpg,png,pdf',
+                'passport_front' => 'nullable|file|mimes:jpg,png,pdf',
+                'passport_back' => 'nullable|file|mimes:jpg,png,pdf',
                 'company_name' => 'required|string|max:255',
                 'company_phone_number' => 'required|string|max:15',
                 'company_email' => 'required|email|max:255',
@@ -54,10 +55,18 @@ class VendorController extends Controller
                 $drivingLicenseBack = Storage::disk('upcloud')->url($path);
             }
 
-            $passport = null;
-            if ($request->hasFile('passport')) {
-                $path = $request->file('passport')->store($folderName, 'upcloud');
-                $passport = Storage::disk('upcloud')->url($path);
+            
+
+            $passport_front = null;
+            if ($request->hasFile('passport_front')) {
+                $path = $request->file('passport_front')->store($folderName, 'upcloud');
+                $passport_front = Storage::disk('upcloud')->url($path);
+            }
+
+            $passport_back = null;
+            if ($request->hasFile('passport_back')) {
+                $path = $request->file('passport_back')->store($folderName, 'upcloud');
+                $passport_back = Storage::disk('upcloud')->url($path);
             }
 
             // Create the vendor document
@@ -65,7 +74,8 @@ class VendorController extends Controller
                 'user_id' => $userId,
                 'driving_license_front' => $drivingLicenseFront,
                 'driving_license_back' => $drivingLicenseBack,
-                'passport' => $passport,
+                'passport_front' => $passport_front,
+                'passport_back' => $passport_back,
                 'status' => 'pending',
             ]);
 
@@ -137,7 +147,8 @@ class VendorController extends Controller
             $request->validate([
                 'driving_license_front' => 'nullable|file|mimes:jpg,png,pdf',
                 'driving_license_back' => 'nullable|file|mimes:jpg,png,pdf',
-                'passport' => 'nullable|file|mimes:jpg,png,pdf',
+                'passport_front' => 'nullable|file|mimes:jpg,png,pdf',
+                'passport_back' => 'nullable|file|mimes:jpg,png,pdf',
                 'company_name' => 'required|string|max:255',
                 'company_phone_number' => 'required|string|max:15',
                 'company_email' => 'required|email|max:255',
@@ -154,7 +165,8 @@ class VendorController extends Controller
             // Handle file uploads
             $drivingLicenseFront = $document ? $document->driving_license_front : null;
             $drivingLicenseBack = $document ? $document->driving_license_back : null;
-            $passport = $document ? $document->passport : null;
+            $passport_front = $document ? $document->passport_front : null;
+            $passport_back = $document ? $document->passport_back : null;
             // $passportPhoto = $document ? $document->passport_photo : null;
 
             if ($request->hasFile('driving_license_front')) {
@@ -172,21 +184,31 @@ class VendorController extends Controller
                 $drivingLicenseBack = Storage::disk('upcloud')->url($path);
             }
 
-            if ($request->hasFile('passport')) {
-                if ($document && $document->passport) {
-                    Storage::disk('upcloud')->delete($document->passport);
+            
+
+            if ($request->hasFile('passport_front')) {
+                if ($document && $document->passport_front) {
+                    Storage::disk('upcloud')->delete($document->passport_front);
                 }
-                $path = $request->file('passport')->store($folderName, 'upcloud');
-                $passport = Storage::disk('upcloud')->url($path);
+                $path = $request->file('passport_front')->store($folderName, 'upcloud');
+                $passport_front = Storage::disk('upcloud')->url($path);
             }
 
+            if ($request->hasFile('passport_back')) {
+                if ($document && $document->passport_back) {
+                    Storage::disk('upcloud')->delete($document->passport_back);
+                }
+                $path = $request->file('passport_back')->store($folderName, 'upcloud');
+                $passport_back = Storage::disk('upcloud')->url($path);
+            }
             // Update or create the vendor document
             VendorDocument::updateOrCreate(
                 ['user_id' => $userId],
                 [
                     'driving_license_front' => $drivingLicenseFront,
                     'driving_license_back' => $drivingLicenseBack,
-                    'passport' => $passport,
+                    'passport_front' => $passport_front,
+                    'passport_back' => $passport_back,
                     'status' => 'pending',
                 ]
             );

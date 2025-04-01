@@ -10,11 +10,11 @@ class CreateVendorDocumentsTable extends Migration
         Schema::create('vendor_documents', function (Blueprint $table) {
             $table->id();
             $table->foreignId('user_id')->constrained('users')->onDelete('cascade');
-            $table->string('driving_license')->nullable();
+            // $table->string('driving_license')->nullable();
             $table->string('driving_license_front')->nullable();
             $table->string('driving_license_back')->nullable();
             $table->string('passport')->nullable();
-            $table->string('passport_photo')->nullable();
+            // $table->string('passport_photo')->nullable();
             $table->timestamps();
         });
     }
