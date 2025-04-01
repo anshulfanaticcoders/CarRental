@@ -1264,6 +1264,13 @@ const openLightbox = (index) => {
                             </div>
                         </div>
 
+                        <div class="mt-[3rem]">
+                            <h2 class="text-xl md:text-2xl lg:text-3xl font-medium mb-4 md:mb-6"> Guarantee Deposite</h2>
+                            <div>
+                                {{ formatPrice(vehicle.security_deposit) }}
+                            </div>
+                        </div>
+
                         <div class="mt-[5rem] max-[768px]:mt-[2rem]">
                             <span class="text-[2rem] font-medium max-[768px]:text-[1rem]">Meet Vehicle Vendor</span>
                             <div class="mt-[2rem] flex gap-5 border-[1px] border-customPrimaryColor

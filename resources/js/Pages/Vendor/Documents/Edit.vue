@@ -24,7 +24,7 @@
                         </div>
                     </div>
                 </div>
-                
+
                 <div class="grid grid-cols-2 gap-4">
                     <div class="space-y-2">
                         <Label for="company_email">Company Email</Label>
@@ -41,7 +41,7 @@
                         </div>
                     </div>
                 </div>
-                
+
                 <div class="space-y-2">
                     <Label for="company_address">Company Address</Label>
                     <Textarea id="company_address" v-model="form.company_address" />
@@ -49,12 +49,16 @@
                         {{ form.errors.company_address }}
                     </div>
                 </div>
-                
+
+                <div class="grid grid-cols-2 gap-5">
+
                 <div class="space-y-2">
                     <Label for="driving_license_front">Driving License Front</Label>
                     <div class="flex items-center gap-2">
-                        <Input id="driving_license_front" type="file" @change="handleFileChange('driving_license_front', $event)" />
-                        <Button v-if="document.driving_license_front" variant="outline" size="sm" @click.prevent="viewDocument(document.driving_license_front)">
+                        <Input id="driving_license_front" type="file"
+                            @change="handleFileChange('driving_license_front', $event)" />
+                        <Button v-if="document.driving_license_front" variant="outline" size="sm"
+                            @click.prevent="viewDocument(document.driving_license_front)">
                             View Current
                         </Button>
                     </div>
@@ -65,8 +69,10 @@
                 <div class="space-y-2">
                     <Label for="driving_license_back">Driving License Back</Label>
                     <div class="flex items-center gap-2">
-                        <Input id="driving_license_back" type="file" @change="handleFileChange('driving_license_back', $event)" />
-                        <Button v-if="document.driving_license_back" variant="outline" size="sm" @click.prevent="viewDocument(document.driving_license_back)">
+                        <Input id="driving_license_back" type="file"
+                            @change="handleFileChange('driving_license_back', $event)" />
+                        <Button v-if="document.driving_license_back" variant="outline" size="sm"
+                            @click.prevent="viewDocument(document.driving_license_back)">
                             View Current
                         </Button>
                     </div>
@@ -74,52 +80,37 @@
                         {{ form.errors.driving_license_back }}
                     </div>
                 </div>
-                
-                <!-- Passport Front -->
-<div class="space-y-2">
-    <Label for="passport_front">Passport Front</Label>
-    <div class="flex items-center gap-2">
-        <Input 
-            id="passport_front" 
-            type="file" 
-            @change="handleFileChange('passport_front', $event)" 
-        />
-        <Button 
-            v-if="document.passport_front" 
-            variant="outline" 
-            size="sm" 
-            @click.prevent="viewDocument(document.passport_front)"
-        >
-            View Current
-        </Button>
-    </div>
-    <div v-if="form.errors.passport_front" class="text-sm text-red-500">
-        {{ form.errors.passport_front }}
-    </div>
-</div>
 
-<!-- Passport Back -->
-<div class="space-y-2">
-    <Label for="passport_back">Passport Back</Label>
-    <div class="flex items-center gap-2">
-        <Input 
-            id="passport_back" 
-            type="file" 
-            @change="handleFileChange('passport_back', $event)" 
-        />
-        <Button 
-            v-if="document.passport_back" 
-            variant="outline" 
-            size="sm" 
-            @click.prevent="viewDocument(document.passport_back)"
-        >
-            View Current
-        </Button>
-    </div>
-    <div v-if="form.errors.passport_back" class="text-sm text-red-500">
-        {{ form.errors.passport_back }}
-    </div>
-</div>
+                <!-- Passport Front -->
+                <div class="space-y-2">
+                    <Label for="passport_front">Passport Front</Label>
+                    <div class="flex items-center gap-2">
+                        <Input id="passport_front" type="file" @change="handleFileChange('passport_front', $event)" />
+                        <Button v-if="document.passport_front" variant="outline" size="sm"
+                            @click.prevent="viewDocument(document.passport_front)">
+                            View Current
+                        </Button>
+                    </div>
+                    <div v-if="form.errors.passport_front" class="text-sm text-red-500">
+                        {{ form.errors.passport_front }}
+                    </div>
+                </div>
+
+                <!-- Passport Back -->
+                <div class="space-y-2">
+                    <Label for="passport_back">Passport Back</Label>
+                    <div class="flex items-center gap-2">
+                        <Input id="passport_back" type="file" @change="handleFileChange('passport_back', $event)" />
+                        <Button v-if="document.passport_back" variant="outline" size="sm"
+                            @click.prevent="viewDocument(document.passport_back)">
+                            View Current
+                        </Button>
+                    </div>
+                    <div v-if="form.errors.passport_back" class="text-sm text-red-500">
+                        {{ form.errors.passport_back }}
+                    </div>
+                </div>
+            </div>
             </div>
             <DialogFooter>
                 <Button type="button" variant="secondary" @click="$emit('close')">Cancel</Button>
@@ -135,7 +126,8 @@
                 <DialogTitle>Warning</DialogTitle>
             </DialogHeader>
             <div class="p-4">
-                <p>If you change the driving license, passport photo, or passport, you will not be able to create a vehicle listing because it will go to pending status.</p>
+                <p>If you change the driving license, passport photo, or passport, you will not be able to create a
+                    vehicle listing because it will go to pending status.</p>
             </div>
             <DialogFooter>
                 <Button @click="confirmUpdate">Proceed</Button>
@@ -148,13 +140,13 @@
 <script setup>
 import { ref } from 'vue';
 import { useForm } from '@inertiajs/vue3';
-import { 
+import {
     Dialog,
     DialogDescription,
-    DialogContent, 
-    DialogHeader, 
-    DialogTitle, 
-    DialogFooter 
+    DialogContent,
+    DialogHeader,
+    DialogTitle,
+    DialogFooter
 } from '@/Components/ui/dialog';
 import { Input } from '@/Components/ui/input';
 import { Label } from '@/Components/ui/label';
