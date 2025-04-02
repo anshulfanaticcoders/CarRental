@@ -9,8 +9,8 @@ class AddDiscountFieldsToVehiclesTable extends Migration
     public function up()
     {
         Schema::table('vehicles', function (Blueprint $table) {
-            $table->decimal('weekly_discount', 5, 2)->nullable()->after('price_per_week');
-            $table->decimal('monthly_discount', 5, 2)->nullable()->after('price_per_month');
+            $table->decimal('weekly_discount', 10, 2)->nullable()->after('price_per_week');
+            $table->decimal('monthly_discount', 10, 2)->nullable()->after('price_per_month');
         });
     }
 

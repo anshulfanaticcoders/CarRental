@@ -151,6 +151,7 @@ const selectPlan = (plan) => {
         selectedPlan.value = null;
     } else {
         selectedPlan.value = plan; // Otherwise, select the new plan
+        bookingData.plan_price = plan.price;
     }
 };
 
@@ -446,6 +447,7 @@ const submitBooking = async () => {
             total_amount: calculateTotal.value,
             discount_amount: Number(discountAmount.value),
             plan: selectedPlan.value ? selectedPlan.value.plan_type : "Free",
+            plan_price: selectedPlan.value ? Number(selectedPlan.value.price) : 0,
             extras: extras.value,
             vehicle_id: vehicle.value?.id,
         };
