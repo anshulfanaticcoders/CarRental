@@ -651,7 +651,7 @@
                                     <div v-if="selectedTypes.day" class="price-slider  bg-gray-50 p-5 rounded-[12px]">
                                         <label for="price_per_day" class="font-medium">Daily Rate:</label>
                                         <div class="slider-container">
-                                            <input type="number" v-model="form.price_per_day" id="price_per_day" min="0"
+                                            <input type="number" v-model="form.price_per_day" id="price_per_day"
                                                 class="mt-1 block w-32 rounded-md border-gray-300 shadow-sm px-2" />
                                         </div>
                                         <div class="mt-2 flex flex-col items-end gap-1">
@@ -664,7 +664,7 @@
                                         <label for="price_per_week" class="font-medium">Weekly Rate:</label>
                                         <div class="slider-container">
                                             <input type="number" v-model="form.price_per_week" id="price_per_week"
-                                                min="0"
+                                                
                                                 class="mt-1 block w-32 rounded-md border-gray-300 shadow-sm px-2" />
                                         </div>
                                         <div class="mt-2 flex flex-col items-end gap-1">
@@ -685,7 +685,7 @@
                                         <label for="price_per_month" class="font-medium">Monthly Rate:</label>
                                         <div class="slider-container">
                                             <input type="number" v-model="form.price_per_month" id="price_per_month"
-                                                min="0"
+                                               
                                                 class="mt-1 block w-32 rounded-md border-gray-300 shadow-sm px-2" />
                                         </div>
                                         <div class="mt-2 flex flex-col items-end gap-1">
