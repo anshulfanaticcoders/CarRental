@@ -55,6 +55,7 @@ class VehicleController extends Controller
             // 'payment_method' => 'required|string',
             'payment_method' => 'required|array',
             'payment_method.*' => 'string|in:credit_card,cheque,bank_wire,cryptocurrency,cash',
+            'guidelines' => 'nullable|string|max:50000',
             'price_per_day' => 'nullable|decimal:0,2|min:0',
             'price_per_week' => 'nullable|decimal:0,2|min:0',
             'weekly_discount' => 'nullable|decimal:0,2|min:0|max:1000000',
@@ -90,6 +91,11 @@ class VehicleController extends Controller
             'price_per_km_per_week' => 'nullable|decimal:0,2|min:0',
             'price_per_km_per_month' => 'nullable|decimal:0,2|min:0',
             'minimum_driver_age' => 'nullable|integer|min:18',
+
+            'pickup_times' => 'required|array|min:1',
+    
+            'return_times' => 'required|array|min:1',
+       
         ]);
 
         // Create the vehicle
@@ -116,6 +122,7 @@ class VehicleController extends Controller
             'security_deposit' => $request->security_deposit,
             // 'payment_method' => $request->payment_method,
             'payment_method' => json_encode($request->payment_method),
+            'guidelines' => $request->guidelines,
             'price_per_day' => $request->price_per_day,
             'price_per_week' => $request->price_per_week,
             'weekly_discount' => $request->weekly_discount,
@@ -125,6 +132,9 @@ class VehicleController extends Controller
             'limited_km' => $request->limited_km ?? false,
             'cancellation_available' => $request->cancellation_available ?? false,
             'price_per_km' => $request->price_per_km,
+
+            'pickup_times' => $request->pickup_times,
+'return_times' => $request->return_times,
         ]);
 
 

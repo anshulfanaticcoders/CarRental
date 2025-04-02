@@ -67,6 +67,7 @@ function handleAvatarUpload(event) {
 }
 const handleSubmit = () => {
     form.post(route('profile.update'), {
+        preserveScroll: true, // Keeps scroll position unless overridden
         onSuccess: () => {
             toast.success('Profile updated successfully!', {
                 position: 'top-right',
@@ -78,6 +79,23 @@ const handleSubmit = () => {
             setTimeout(() => {
                 window.location.reload();
             }, 1500);
+        },
+        onError: (errors) => {
+            // Log errors for debugging
+            console.log('Validation errors:', errors);
+
+            // Get the first error field
+            const firstErrorField = Object.keys(errors)[0];
+            if (firstErrorField) {
+                // Find the input element by its ID
+                const inputElement = document.getElementById(firstErrorField);
+                if (inputElement) {
+                    // Scroll to the input smoothly
+                    inputElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    // Optionally focus the input
+                    inputElement.focus();
+                }
+            }
         },
     });
 };

@@ -33,6 +33,7 @@ class Vehicle extends Model
         'featured',
         'security_deposit',
         'payment_method',
+        'guidelines',
         'price_per_day',
         'price_per_week',
         'weekly_discount',
@@ -42,6 +43,8 @@ class Vehicle extends Model
         'limited_km',
         'cancellation_available',
         'price_per_km',
+        'pickup_times',
+        'return_times',
 
         // vehicle specifications fillables
         'registration_number',
@@ -110,25 +113,31 @@ class Vehicle extends Model
     }
 
     public function benefits()
-{
-    return $this->hasOne(VehicleBenefit::class);
-}
+    {
+        return $this->hasOne(VehicleBenefit::class);
+    }
 
-// In Vehicle.php model
-public function vendorPlans()
-{
-    return $this->hasMany(VendorVehiclePlan::class);
-}
+    // In Vehicle.php model
+    public function vendorPlans()
+    {
+        return $this->hasMany(VendorVehiclePlan::class);
+    }
 
-// Add the relationship for VendorVehicleAddon
-public function addons()
-{
-    return $this->hasMany(VendorVehicleAddon::class, 'vehicle_id');
-}
+    // Add the relationship for VendorVehicleAddon
+    public function addons()
+    {
+        return $this->hasMany(VendorVehicleAddon::class, 'vehicle_id');
+    }
 
-public function blockings()
+    public function blockings()
     {
         return $this->hasMany(BlockingDate::class, 'vehicle_id');
     }
 
+
+    // If using JSON columns, add casts
+    protected $casts = [
+        'pickup_times' => 'array',
+        'return_times' => 'array',
+    ];
 }

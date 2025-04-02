@@ -88,6 +88,24 @@ const timeFrom = ref(props.query?.timeFrom || null);
 const timeTo = ref(props.query?.timeTo || null);
 
 
+// Convert dates to Date objects and calculate the difference in days
+const totalDays = computed(() => {
+    if (!dateFrom.value || !dateTo.value) return 0; // Return 0 if dates are not set
+
+    const startDate = new Date(dateFrom.value);
+    const endDate = new Date(dateTo.value);
+
+    // Calculate the difference in milliseconds
+    const diffTime = endDate.getTime() - startDate.getTime();
+
+    // Convert milliseconds to days
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)); 
+
+    return diffDays > 0 ? diffDays : 1; // Ensure minimum 1 day rental
+});
+
+
+
 // Calculate cancellation date based on package type
 const getCancellationDate = computed(() => {
     if (!dateFrom.value) return null;
@@ -307,12 +325,12 @@ const calculateTotal = computed(() => {
 
     total += Number(totalPrice.value);
     // Add plan value
-    total += Number(selectedPlan.value?.price || 0);
+    total += Number(selectedPlan.value?.price || 0)* totalDays.value;
 
     // Add extras with quantity multiplication
     bookingExtras.value.forEach((extra) => {
         if (extra.quantity > 0) {
-            total += Number(extra.price) * Number(extra.quantity);
+            total += Number(extra.price) * Number(extra.quantity)* totalDays.value;
         }
     });
 
@@ -933,9 +951,9 @@ const submitBooking = async () => {
 
                                     <div class="flex justify-between items-center text-[1.15rem]">
 
-                                        <span>Price</span>
+                                        <span>Price ( package type ({{ packageType }}) )</span>
                                         <strong class="text-[1.5rem] font-medium max-[768px]:text-[1.1rem]">
-                                            {{ formatPrice(totalPrice) }}/{{ packageType }} </strong>
+                                            {{ formatPrice(totalPrice) }} </strong>
 
                                     </div>
                                     <!-- Selected Plan -->
@@ -944,9 +962,15 @@ const submitBooking = async () => {
                                             selectedPlan.plan_type
                                         }}</span>
                                         <div>
+                                            <div class="flex items-center gap-1">
+                                            <span>
+                                                {{formatPrice(selectedPlan.price)}} * {{ totalDays }} days = 
+                                            </span>
+
                                             <strong class="text-[1.5rem] font-medium max-[768px]:text-[1.1rem]">{{
-                                                formatPrice(selectedPlan.price)
+                                                formatPrice(selectedPlan.price * totalDays)
                                                 }}</strong>
+                                            </div>
 
                                         </div>
                                     </div>
@@ -960,10 +984,13 @@ const submitBooking = async () => {
                                                     ? `(x${extra.quantity})`
                                                     : ""
                                             }}</span>
-                                        <div>
-                                            <strong class="text-[1.5rem] font-medium max-[768px]:text-[1.1rem]">{{
-                                                formatPrice(extra.price * extra.quantity)
-                                                }}</strong>
+                                        <div class="flex items-center gap-1">
+                                            <span>
+                                                {{formatPrice(extra.price * extra.quantity)}} * {{ totalDays }} days
+                                            =
+                                            </span>
+                                            <strong class="text-[1.5rem] font-medium max-[768px]:text-[1.1rem]">
+                                                 {{formatPrice(extra.price * extra.quantity * totalDays)}}</strong>
 
                                         </div>
                                     </div>
@@ -986,20 +1013,19 @@ const submitBooking = async () => {
 
                                             <div class="flex justify-between text-[1.15rem]">
                                                 <span>Base Price</span>
-                                                <p class="font-medium">{{ formatPrice(totalPrice + discountAmount) }}/{{
-                                                    packageType }}</p>
+                                                <p class="font-medium">{{ formatPrice(totalPrice + discountAmount) }}</p>
                                             </div>
 
                                             <div v-if="selectedPlan" class="flex justify-between text-[1.15rem]">
                                                 <span>Plan: {{ selectedPlan.plan_type }}</span>
-                                                <p class="font-medium">{{ formatPrice(selectedPlan.price) }}</p>
+                                                <p class="font-medium">{{ formatPrice(selectedPlan.price * totalDays) }}</p>
                                             </div>
 
                                             <div v-for="extra in bookingExtras" :key="extra.id"
                                                 v-show="extra.quantity > 0" class="flex justify-between text-[1.15rem]">
                                                 <span>{{ extra.extra_name }} {{ extra.quantity > 1 ?
                                                     `(x${extra.quantity})` : "" }}</span>
-                                                <p class="font-medium">{{ formatPrice(extra.price * extra.quantity) }}
+                                                <p class="font-medium">{{ formatPrice(extra.price * extra.quantity * totalDays) }}
                                                 </p>
                                             </div>
 

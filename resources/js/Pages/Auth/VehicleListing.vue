@@ -1,5 +1,4 @@
 <template>
-
     <div v-if="isLoading" class="fixed z-50 h-full w-full top-0 left-0 bg-[#0000009e]">
         <div class="flex justify-center flex-col items-center h-full w-full">
             <img :src=loader alt="" class="w-[200px] max-[768px]:w-[70px]">
@@ -305,7 +304,7 @@
                                 vehicle
                             </p>
 
-                            <div class="grid grid-cols-2 md:grid-cols-3 gap-4">
+                            <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
                                 <div v-for="feature in features" :key="feature.id"
                                     class="flex items-center space-x-2 max-[768px]:items-start">
                                     <input type="checkbox" :id="'feature-' + feature.id" :value="feature.name"
@@ -648,56 +647,60 @@
                                 </div>
 
                                 <div class="grid grid-cols-2 gap-10 max-[768px]:grid-cols-1 max-[768px]:gap-2">
-                                <!-- Daily Price Slider -->
-                                <div v-if="selectedTypes.day" class="price-slider mb-8 bg-gray-50 p-5 rounded-[12px]">
-                                    <label for="price_per_day" class="font-medium">Daily Rate:</label>
-                                    <div class="slider-container">
-                                        <input type="number" v-model="form.price_per_day" id="price_per_day" min="0"
-                                            class="mt-1 block w-32 rounded-md border-gray-300 shadow-sm px-2" />
+                                    <!-- Daily Price Slider -->
+                                    <div v-if="selectedTypes.day" class="price-slider  bg-gray-50 p-5 rounded-[12px]">
+                                        <label for="price_per_day" class="font-medium">Daily Rate:</label>
+                                        <div class="slider-container">
+                                            <input type="number" v-model="form.price_per_day" id="price_per_day" min="0"
+                                                class="mt-1 block w-32 rounded-md border-gray-300 shadow-sm px-2" />
+                                        </div>
+                                        <div class="mt-2 flex flex-col items-end gap-1">
+                                            <span class="text-sm text-gray-600">Recommended: €67-€74/day</span>
+                                        </div>
                                     </div>
-                                    <div class="mt-2 flex flex-col items-end gap-1">
-                                        <span class="text-sm text-gray-600">Recommended: €67-€74/day</span>
+
+                                    <!-- Weekly Price Slider -->
+                                    <div v-if="selectedTypes.week" class="price-slider  bg-gray-50 p-5 rounded-[12px]">
+                                        <label for="price_per_week" class="font-medium">Weekly Rate:</label>
+                                        <div class="slider-container">
+                                            <input type="number" v-model="form.price_per_week" id="price_per_week"
+                                                min="0"
+                                                class="mt-1 block w-32 rounded-md border-gray-300 shadow-sm px-2" />
+                                        </div>
+                                        <div class="mt-2 flex flex-col items-end gap-1">
+                                            <span class="text-sm text-gray-600">Recommended: €400-€450/week</span>
+                                        </div>
+                                        <div class="mt-2 flex flex-col">
+                                            <label for="weekly_discount" class="text-sm font-medium mb-0">Weekly
+                                                Discount
+                                            </label>
+                                            <input type="number" v-model="form.weekly_discount" id="weekly_discount"
+                                                class="mt-1 block w-32 rounded-md border-gray-300 shadow-sm px-2" />
+                                        </div>
+
+                                    </div>
+
+                                    <!-- Monthly Price Slider -->
+                                    <div v-if="selectedTypes.month" class="price-slider  bg-gray-50 p-5 rounded-[12px]">
+                                        <label for="price_per_month" class="font-medium">Monthly Rate:</label>
+                                        <div class="slider-container">
+                                            <input type="number" v-model="form.price_per_month" id="price_per_month"
+                                                min="0"
+                                                class="mt-1 block w-32 rounded-md border-gray-300 shadow-sm px-2" />
+                                        </div>
+                                        <div class="mt-2 flex flex-col items-end gap-1">
+                                            <span class="text-sm text-gray-600">Recommended: €1500-€1800/month</span>
+                                        </div>
+                                        <div class="mt-2 flex flex-col">
+                                            <label for="monthly_discount" class="text-sm font-medium mb-0">Monthly
+                                                Discount
+                                            </label>
+                                            <input type="number" v-model="form.monthly_discount" id="monthly_discount"
+                                                class="mt-1 block w-32 rounded-md border-gray-300 shadow-sm px-2" />
+                                        </div>
+
                                     </div>
                                 </div>
-
-                                <!-- Weekly Price Slider -->
-                                <div v-if="selectedTypes.week" class="price-slider mb-8 bg-gray-50 p-5 rounded-[12px]">
-                                    <label for="price_per_week" class="font-medium">Weekly Rate:</label>
-                                    <div class="slider-container">
-                                        <input type="number" v-model="form.price_per_week" id="price_per_week" min="0"
-                                            class="mt-1 block w-32 rounded-md border-gray-300 shadow-sm px-2" />
-                                    </div>
-                                    <div class="mt-2 flex flex-col items-end gap-1">
-                                        <span class="text-sm text-gray-600">Recommended: €400-€450/week</span>
-                                    </div>
-                                    <div class="mt-2 flex flex-col">
-                                        <label for="weekly_discount" class="text-sm font-medium mb-0">Weekly Discount
-                                        </label>
-                                        <input type="number" v-model="form.weekly_discount" id="weekly_discount"
-                                            class="mt-1 block w-32 rounded-md border-gray-300 shadow-sm px-2" />
-                                    </div>
-
-                                </div>
-
-                                <!-- Monthly Price Slider -->
-                                <div v-if="selectedTypes.month" class="price-slider mb-8 bg-gray-50 p-5 rounded-[12px]">
-                                    <label for="price_per_month" class="font-medium">Monthly Rate:</label>
-                                    <div class="slider-container">
-                                        <input type="number" v-model="form.price_per_month" id="price_per_month" min="0"
-                                            class="mt-1 block w-32 rounded-md border-gray-300 shadow-sm px-2" />
-                                    </div>
-                                    <div class="mt-2 flex flex-col items-end gap-1">
-                                        <span class="text-sm text-gray-600">Recommended: €1500-€1800/month</span>
-                                    </div>
-                                    <div class="mt-2 flex flex-col">
-                                        <label for="monthly_discount" class="text-sm font-medium mb-0">Monthly Discount
-                                        </label>
-                                        <input type="number" v-model="form.monthly_discount" id="monthly_discount"
-                                            class="mt-1 block w-32 rounded-md border-gray-300 shadow-sm px-2" />
-                                    </div>
-
-                                </div>
-                            </div>
                             </div>
                             <span v-if="errors.price_per_day" class="text-red-500 max-[768px]:text-[0.75rem] text-sm">{{
                                 errors.price_per_day
@@ -717,6 +720,54 @@
                         <span v-if="errors.security_deposit" class="text-red-500 max-[768px]:text-[0.75rem] text-sm">{{
                             errors.security_deposit
                             }}</span>
+                    </div>
+
+                    <!-- Guidelines -->
+                    <div>
+                        <InputLabel for="brand">Guidelines:</InputLabel>
+                        <textarea type="text" v-model="form.guidelines" id="guidelines" required
+                            placeholder="Enter vehicle guidelines" class="w-full min-h-[150px]" />
+                    </div>
+
+                    <div class="time-selector p-6 bg-gray-50 rounded-xl shadow-lg w-[50%]">
+                        <p>Choose Your Pickup and Return Time for the vehicle</p>
+                        <!-- Pickup Times Section -->
+                        <label class="block text-lg font-semibold text-gray-800 mb-2">Pickup Times</label>
+                        <div v-for="(time, index) in form.pickup_times" :key="'pickup-' + index"
+                            class="time-input-group flex items-center mb-3">
+                            <input type="time" v-model="form.pickup_times[index]"
+                                class="time-input w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition duration-200 bg-white shadow-sm" />
+                            <button type="button" @click="removePickupTime(index)" title="Remove"
+                                class="px-3 py-1 ml-1 bg-red-500 text-white rounded-[99px] hover:bg-red-600 transition duration-200 shadow-md">
+                                X
+                            </button>
+                        </div>
+                        <span v-if="errors.pickup_times" class="text-red-500 text-sm block mb-3 italic">
+                            {{ errors.pickup_times }}
+                        </span>
+                        <button type="button" @click="addPickupTime"
+                            class="w-full py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition duration-200 font-medium shadow-md">
+                            + Add Pickup Time
+                        </button>
+
+                        <!-- Return Times Section -->
+                        <label class="block text-lg font-semibold text-gray-800 mt-6 mb-2">Return Times</label>
+                        <div v-for="(time, index) in form.return_times" :key="'return-' + index"
+                            class="time-input-group flex items-center mb-3">
+                            <input type="time" v-model="form.return_times[index]"
+                                class="time-input w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition duration-200 bg-white shadow-sm" />
+                            <button type="button" @click="removeReturnTime(index)" title="Remove"
+                                class="px-3 py-1 ml-1 bg-red-500 text-white rounded-[99px] hover:bg-red-600 transition duration-200 shadow-md">
+                                X
+                            </button>
+                        </div>
+                        <span v-if="errors.return_times" class="text-red-500 text-sm block mb-3 italic">
+                            {{ errors.return_times }}
+                        </span>
+                        <button type="button" @click="addReturnTime"
+                            class="w-full py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition duration-200 font-medium shadow-md">
+                            + Add Return Time
+                        </button>
                     </div>
 
                     <!-- Payment Method -->
@@ -1454,6 +1505,7 @@ const form = useForm({
     security_deposit: 0,
     // payment_method: "",
     payment_method: [],
+    guidelines: "",
     price_per_day: null,
     price_per_week: null,
     price_per_month: null,
@@ -1475,6 +1527,8 @@ const form = useForm({
 
     // vehicle images
     images: [],
+    pickup_times: [],
+    return_times: [],
     radius: 831867.4340914232,
 
 
@@ -1611,6 +1665,23 @@ const addFeature = () => {
 
 const removeFeature = (index) => {
     editPlanData.value.features.splice(index, 1);
+};
+
+
+const addPickupTime = () => {
+    form.pickup_times.push(""); // Push empty value for a new time input
+};
+
+const removePickupTime = (index) => {
+    form.pickup_times.splice(index, 1);
+};
+
+const addReturnTime = () => {
+    form.return_times.push("");
+};
+
+const removeReturnTime = (index) => {
+    form.return_times.splice(index, 1);
 };
 
 
@@ -1836,7 +1907,9 @@ const errors = reactive({
     price_per_week: '',
     price_per_month: '',
     addon_prices: '',
-    images: ''
+    images: '',
+    pickup_times: '',
+    return_times: '',
 });
 
 const nextStep = () => {
@@ -1962,6 +2035,14 @@ const nextStep = () => {
             if (form.cancellation_available_per_month && !form.cancellation_available_per_month_date) {
                 isValid = false;
                 errors.cancellation_available_per_month_date = 'Please enter required notice days for monthly cancellation';
+            }
+            if (!form.pickup_times || form.pickup_times.length < 1) {
+                isValid = false;
+                errors.pickup_times = 'Please add at least one pickup time';
+            }
+            if (!form.return_times || form.return_times.length < 1) {
+                isValid = false;
+                errors.return_times = 'Please add at least one return time';
             }
             break;
 

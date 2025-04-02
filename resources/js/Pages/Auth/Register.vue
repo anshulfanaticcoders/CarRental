@@ -51,6 +51,7 @@ const form = useForm({
     last_name: '',
     date_of_birth: '',
     phone: '',
+    phone_code: '',
     email: '',
     address: '',
     postcode: '',
@@ -67,9 +68,15 @@ const isStepValid = computed(() => {
         if (field === "phone") {
             return value !== null && value !== undefined && value.trim() !== "" && value.length >= 7;
         }
+        // Add validation for phone_code
+        if (field === "phone_code") {
+            return value !== null && value !== undefined && value.trim() !== '';
+        }
         return value !== null && value !== undefined && value.trim() !== '';
     });
 });
+
+
 
 const isPreviousStepsValid = computed(() => {
     for (let i = 1; i < stepIndex.value; i++) {
@@ -109,11 +116,15 @@ const handleStepChange = (newStep) => {
     }
 };
 
+// Update nextStep to send both fields
 const nextStep = () => {
     if (stepIndex.value < steps.length && isStepValid.value) {
-        // Perform backend validation for the email and phone fields on step 2
         if (stepIndex.value === 2) {
-            axios.post(route('validate-contact'), { email: form.email, phone: form.phone })
+            axios.post(route('validate-contact'), {
+                email: form.email,
+                phone: form.phone,
+                phone_code: form.phone_code  // Added phone_code
+            })
                 .then(() => {
                     stepIndex.value++;
                 })
@@ -124,6 +135,9 @@ const nextStep = () => {
                         }
                         if (error.response.data.errors.phone) {
                             form.errors.phone = error.response.data.errors.phone[0];
+                        }
+                        if (error.response.data.errors.phone_code) {
+                            form.errors.phone_code = error.response.data.errors.phone_code[0];
                         }
                     }
                 });
@@ -159,7 +173,25 @@ const countries = ref([]);
 
 const selectedPhoneCode = ref("");
 const phoneNumber = ref("");
+// Update the fullPhone computed property to combine code and number
+const fullPhone = computed({
+    get: () => `${form.phone_code} ${form.phone}`,
+    set: (value) => {
+        // This won't be needed for display-only purposes
+    }
+});
+const selectedCountryCode = computed(() => {
+    if (!form.phone_code || !countries.value || countries.value.length === 0) return null;
 
+    // Find the country that matches the selected phone code
+    const country = countries.value.find(c => c.phone_code === form.phone_code);
+    return country ? country.code : null;
+});
+
+// Update watch to handle phone_code properly
+watch(selectedPhoneCode, (newCode) => {
+    form.phone_code = newCode;
+});
 
 const fetchCountries = async () => {
     try {
@@ -176,11 +208,6 @@ onMounted(fetchCountries);
 const getFlagUrl = (countryCode) => {
     return `https://flagcdn.com/w40/${countryCode.toLowerCase()}.png`;
 };
-
-watch(selectedPhoneCode, (newCode) => {
-    form.phone = newCode;
-});
-
 
 onMounted(async () => {
     try {
@@ -298,33 +325,43 @@ const minimumDateOfBirth = computed(() => {
                         <div class="grid grid-cols-1 gap-5 max-[768px]:gap-3">
 
                             <div>
-                            <div class="flex items-end">
-                                <div class="w-[8rem]">
-                                    <InputLabel for="phone" value="Phone Number" />
-                                    <Select v-model="selectedPhoneCode">
-                                        <SelectTrigger
-                                            class="w-full p-[1.75rem] border-customLightGrayColor bg-customPrimaryColor text-white rounded-[12px] !rounded-r-none border-r-0">
-                                            <SelectValue placeholder="Select Code" />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                            <SelectGroup>
-                                                <SelectLabel>Phone Code</SelectLabel>
-                                                <SelectItem v-for="country in countries" :key="country.phone_code"
-                                                    :value="country.phone_code">
-                                                    {{ country.phone_code }}
-                                                </SelectItem>
-                                            </SelectGroup>
-                                        </SelectContent>
-                                    </Select>
-                                </div>
+                                <div class="flex items-end">
+                                    <div class="w-[8rem]">
+                                        <InputLabel for="phone" value="Phone Number" />
+                                        <Select v-model="form.phone_code">
+                                            <SelectTrigger
+                                                class="w-full p-[1.75rem] border-customLightGrayColor bg-customPrimaryColor text-white rounded-[12px] !rounded-r-none border-r-0">
+                                                <div class="flex items-center">
+                                                    <img v-if="selectedCountryCode"
+                                                        :src="getFlagUrl(selectedCountryCode)" alt="Country Flag"
+                                                        class="mr-2 w-6 h-4 rounded" />
+                                                    <SelectValue placeholder="Select Code" />
+                                                </div>
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                                <SelectGroup>
+                                                    <SelectLabel>Phone Code</SelectLabel>
+                                                    <SelectItem v-for="country in countries" :key="country.phone_code"
+                                                        :value="country.phone_code">
+                                                        {{ country.phone_code }}
+                                                    </SelectItem>
+                                                </SelectGroup>
+                                            </SelectContent>
+                                        </Select>
+                                    </div>
 
-                                <div class="column w-full">
-                                    <TextInput id="phone" type="text" v-model="form.phone" required
-                                        class="w-full !rounded-l-none" />
+                                    <div class="column w-full">
+                                        <TextInput id="phone" type="text" v-model="form.phone" required
+                                            class="w-full !rounded-l-none" placeholder="Enter phone number" />
+                                    </div>
                                 </div>
+                                <!-- Display full phone number -->
+                                <div class="mt-2 text-sm text-gray-500" v-if="form.phone_code && form.phone">
+                                    Full number: {{ fullPhone }}
+                                </div>
+                                <InputError class="mt-2" :message="form.errors.phone" />
+                                <InputError class="mt-2" :message="form.errors.phone_code" />
                             </div>
-                            <InputError class="mt-2" :message="form.errors.phone" />
-                        </div>
 
                             <div class="column w-full">
                                 <InputLabel for="email" value="Email" />

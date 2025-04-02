@@ -95,15 +95,7 @@ const fetchReviews = async () => {
         isLoading.value = false;
     }
 };
-const formatTime = (timeString) => {
-    if (!timeString) return ''; // Handle null or undefined time
 
-    const [hours, minutes] = timeString.split(':').map(Number);
-    const period = hours >= 12 ? 'PM' : 'AM';
-    const formattedHours = hours % 12 === 0 ? 12 : hours % 12;
-
-    return `${formattedHours}:${minutes.toString().padStart(2, '0')} ${period}`;
-};
 const averageRating = computed(() => {
     if (!reviews.value.length) return 0; // No reviews, return 0
     const totalRating = reviews.value.reduce((sum, review) => sum + review.rating, 0);
@@ -237,15 +229,20 @@ const getCurrentDate = () => {
     return new Date().toISOString().split('T')[0];
 };
 // Add these helper functions
-const departureTimeOptions = [
-    { value: '09:00', label: 'From 9 AM' },
-    { value: '14:00', label: 'From 2 PM' },
-];
+const departureTimeOptions = computed(() => {
+    return vehicle.value.pickup_times?.map(time => ({
+        value: time,
+        label: time
+    })) || [];
+});
 
-const returnTimeOptions = [
-    { value: '12:00', label: 'Before 12 PM' },
-    { value: '20:00', label: 'Before 8 PM' },
-];
+const returnTimeOptions = computed(() => {
+    return vehicle.value.return_times?.map(time => ({
+        value: time,
+        label: time
+    })) || [];
+});
+
 
 // Function to update URL and session storage
 const updateDateTimeSelection = () => {
@@ -839,6 +836,15 @@ const storeRentalData = () => {
     localStorage.setItem('rentalData', JSON.stringify(rentalData));
 };
 
+const isValidJSON = (str) => {
+    try {
+        JSON.parse(str);
+        return true;
+    } catch (e) {
+        return false;
+    }
+};
+
 // Watch for date changes
 watch([() => form.value.date_from, () => form.value.date_to], () => {
     if (form.value.date_from && form.value.date_to) {
@@ -1265,10 +1271,31 @@ const openLightbox = (index) => {
                         </div>
 
                         <div class="mt-[3rem]">
-                            <h2 class="text-xl md:text-2xl lg:text-3xl font-medium mb-4 md:mb-6"> Guarantee Deposite</h2>
-                            <div>
-                                {{ formatPrice(vehicle.security_deposit) }}
+                            <h2 class="text-xl md:text-2xl lg:text-3xl font-medium mb-4 md:mb-6"> Guarantee Deposite (
+                                {{
+                                    formatPrice(vehicle.security_deposit) }} )</h2>
+
+                            <!-- Payment Methods Section -->
+                            <div class="flex flex-col gap-3">
+                                <span>You can make payment to vendor for security deposite using these <strong>payment
+                                        methods...</strong></span>
+                                <div v-if="isValidJSON(vehicle.payment_method)" class="flex gap-3">
+                                    <span v-for="(payment_method, index) in JSON.parse(vehicle.payment_method)"
+                                        :key="index"
+                                        class="bg-customLightPrimaryColor py-2 px-3 rounded-sm capitalize border-[1px] border-customLightGrayColor">{{
+                                            payment_method }}
+                                    </span>
+                                </div>
                             </div>
+                        </div>
+
+                        <div v-if="vehicle.guidelines" class="mt-[3rem]">
+                            <h2 class="text-xl md:text-2xl lg:text-3xl font-medium mb-4 md:mb-6">Guidelines</h2>
+                            <p>{{ vehicle.guidelines }}</p>
+                        </div>
+
+                        <div v-else>
+
                         </div>
 
                         <div class="mt-[5rem] max-[768px]:mt-[2rem]">
@@ -1423,7 +1450,7 @@ const openLightbox = (index) => {
                                                                 class="w-full p-2 border rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500" />
                                                         </div>
                                                         <div>
-                                                            <!-- Time Dropdown -->
+                                                            <!-- Departure Time Dropdown -->
                                                             <label
                                                                 class="block text-sm mt-3 mb-1 text-customLightGrayColor font-medium">Departure
                                                                 Time</label>
@@ -1439,7 +1466,7 @@ const openLightbox = (index) => {
                                                         </div>
 
                                                         <div>
-                                                            <!-- Time Dropdown -->
+                                                            <!-- Return Time Dropdown -->
                                                             <label
                                                                 class="block text-sm mt-3 mb-1 text-customLightGrayColor font-medium">Return
                                                                 Time</label>
@@ -1453,6 +1480,7 @@ const openLightbox = (index) => {
                                                                 </option>
                                                             </select>
                                                         </div>
+
                                                     </div>
 
                                                     <!-- Show Total Price -->
