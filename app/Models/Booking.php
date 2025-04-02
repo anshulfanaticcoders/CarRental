@@ -21,6 +21,7 @@ class Booking extends Model
         'pickup_time',
         'return_time',
         'plan',
+        'plan_price',
         'total_days',
         'base_price',
         'preferred_day',

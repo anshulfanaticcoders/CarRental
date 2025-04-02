@@ -49,6 +49,7 @@ class BookingController extends Controller
             'total_amount' => 'required|numeric|min:0',
             'payment_method_id' => 'required|string',
             'plan' => 'nullable|string|max:255',
+            'plan_price' => 'nullable|integer',
             // Extras validation
             'extras' => 'nullable|array',
             'extras.*.extra_type' => 'required|string|max:255',
@@ -108,6 +109,7 @@ class BookingController extends Controller
             'payment_status' => 'pending',
             'booking_status' => 'pending',
             'plan' => $request->input('plan'),
+            'plan_price' => $request->input('plan_price'),
         ]);
 
         $extrasData = [];
