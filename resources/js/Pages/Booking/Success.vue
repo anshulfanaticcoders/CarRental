@@ -265,7 +265,7 @@ const formatDate = (dateStr) => {
               <div class="">
                 <ul class="list-none pl-0">
                   <li v-for="extra in booking.extras" :key="extra.id" class="flex justify-between">
-                    <span>{{ extra.extra_name }}({{ extra.quantity }}) {{ vendorProfile.currency }}{{ extra.price }} x {{ booking.total_days }}</span>
+                    <span>{{ extra.extra_name }}({{ extra.quantity }}) {{ vendorProfile.currency }}{{ extra.price }} <strong class="text-green-400">x {{ booking.total_days }}</strong></span>
                     <span class="text-[1.1rem] font-medium">+ {{ vendorProfile.currency }}{{ extra.price * booking.total_days}}</span>
                   </li>
                 </ul>
@@ -277,9 +277,9 @@ const formatDate = (dateStr) => {
 
               
                 <div class="flex justify-between gap-2">
-                  {{ booking.plan }}
+                  {{ booking.plan }} for {{ booking.total_days }} days
                   <span class="text-[1.1rem] font-medium">
-                    + {{ vendorProfile.currency }}{{ booking.plan_price }}
+                    + {{ vendorProfile.currency }}{{ booking.plan_price * booking.total_days }}
                   </span>
                 </div>
               

@@ -5,7 +5,7 @@
           class="text-[1.5rem] max-[768px]:text-[1.2rem] text-customPrimaryColor font-bold mb-[2rem] bg-[#154D6A0D] rounded-[12px] px-[1rem] py-[1rem]">
           Pending Bookings</p>
   
-        <div v-if="bookings.data.length === 0" class="text-center text-gray-500">
+          <div v-if="!bookings.data || bookings.data.length === 0" class="text-center text-gray-500">
           <div class="flex flex-col justify-center items-center">
             <img :src="bookingstatusIcon" alt="" class="w-[30rem] max-[768px]:w-full">
             <p>No pending bookings found.</p>

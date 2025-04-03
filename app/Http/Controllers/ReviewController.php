@@ -11,11 +11,15 @@ class ReviewController extends Controller
 {
     public function store(Request $request)
     {
+
+        // print_r($request->all());
+        // die();
         $validated = $request->validate([
             'booking_id' => 'required|exists:bookings,id',
             'vehicle_id' => 'required|exists:vehicles,id',
             'rating' => 'required|integer|min:1|max:5',
             'review_text' => 'required|string|min:10',
+            'vendor_profile_id' => 'required|exists:vendor_profiles,id',
         ]);
 
         // Add user_id to the validated data
@@ -34,77 +38,101 @@ class ReviewController extends Controller
         // Create the review
         $review = Review::create($validated);
 
-        return back()->with('success', 'Review submitted successfully!');
+        return redirect()->route('profile.bookings.completed')->with('success', 'Review submitted successfully!');
+
     }
 
 
-    public function getApprovedReviews(Vehicle $vehicle)
-    {
-        $approvedReviews = $vehicle->reviews()
-            ->with(['user.profile'])
-            ->where('status', 'approved')
-            ->get();
-
-        return response()->json(['reviews' => $approvedReviews]);
+    public function getApprovedReviews($vendorProfileId)
+{
+    if (!$vendorProfileId) {
+        return response()->json(['error' => 'Vendor profile ID is required'], 400);
     }
+
+    $approvedReviews = Review::where('vendor_profile_id', $vendorProfileId) // Fix: Correct field
+        ->where('status', 'approved')
+        ->with(['user.profile'])
+        ->get();
+
+    return response()->json(['reviews' => $approvedReviews]);
+}
+
 
     public function vendorReviews(Request $request)
-{
-    $vendor = auth()->user();
-    $searchQuery = $request->input('search', '');
-
-    // Get all reviews for the vendor's vehicles
-    $reviews = Review::whereHas('vehicle', function ($query) use ($vendor) {
-            $query->where('vendor_id', $vendor->id);
-        })
-        ->with(['user.profile', 'vehicle', 'booking'])
-        ->when($searchQuery, function ($query, $searchQuery) {
-            $query->where(function ($q) use ($searchQuery) {
-                $q->whereHas('user', function ($q) use ($searchQuery) {
-                    $q->where('first_name', 'like', '%' . $searchQuery . '%')
-                      ->orWhere('last_name', 'like', '%' . $searchQuery . '%');
-                })->orWhereHas('vehicle', function ($q) use ($searchQuery) {
-                    $q->where('brand', 'like', '%' . $searchQuery . '%')
-                      ->orWhere('model', 'like', '%' . $searchQuery . '%');
-                })->orWhere('review_text', 'like', '%' . $searchQuery . '%');
-            });
-        })
-        ->orderBy('created_at', 'desc')
-        ->paginate(5);
-
-    return Inertia::render('Vendor/Review/Index', [
-        'reviews' => $reviews,
-        'statistics' => [
-            'total_reviews' => $reviews->total(),
-            'average_rating' => Review::whereHas('vehicle', function ($query) use ($vendor) {
-                $query->where('vendor_id', $vendor->id);
-            })->avg('rating') ?? 0,
-        ],
-        'filters' => $request->only('search')
-    ]);
-}
+    {
+        $vendor = auth()->user();
+        $searchQuery = $request->input('search', '');
+    
+        // Fetch vendor reviews
+        $reviews = Review::whereHas('vehicle.vendorProfileData', function ($query) use ($vendor) {
+                $query->where('user_id', $vendor->id);
+            })
+            ->with(['user.profile', 'booking', 'vehicle'])
+            ->when($searchQuery, function ($query, $searchQuery) {
+                $query->where(function ($q) use ($searchQuery) {
+                    $q->where('review_text', 'like', '%' . $searchQuery . '%')
+                      ->orWhereHas('user', function ($q) use ($searchQuery) {
+                          $q->where('first_name', 'like', '%' . $searchQuery . '%')
+                            ->orWhere('last_name', 'like', '%' . $searchQuery . '%');
+                      })
+                      ->orWhereHas('vehicle', function ($q) use ($searchQuery) {
+                          $q->where('brand', 'like', '%' . $searchQuery . '%')
+                            ->orWhere('model', 'like', '%' . $searchQuery . '%');
+                      });
+                });
+            })
+            ->orderByDesc('created_at')
+            ->paginate(5);
+    
+        // Calculate statistics
+        $totalReviews = Review::whereHas('vehicle.vendorProfile', function ($query) use ($vendor) {
+            $query->where('user_id', $vendor->id);
+        })->count();
+    
+        $averageRating = Review::whereHas('vehicle.vendorProfile', function ($query) use ($vendor) {
+            $query->where('user_id', $vendor->id);
+        })->avg('rating') ?? 0;
+    
+        return Inertia::render('Vendor/Review/Index', [
+            'reviews' => $reviews,
+            'statistics' => [
+                'total_reviews' => $totalReviews,
+                'average_rating' => round($averageRating, 1),
+            ],
+            'filters' => $request->only('search')
+        ]);
+    }
+    
 
 
     // ReviewController.php
-public function userReviews()
-{
-    $user = auth()->user();
-
-    $reviews = Review::where('user_id', $user->id)
-        ->with(['vehicle', 'booking','user','vehicle.images','vehicle.category','vehicle.user','vehicle.vendorProfile',])
-        ->orderBy('created_at', 'desc')
-        ->paginate(8);
-
-    $averageRating = Review::where('user_id', $user->id)->avg('rating');
-
-    return Inertia::render('Profile/Review/Index', [
-        'reviews' => $reviews,
-        'statistics' => [
-            'total_reviews' => $reviews->total(),
-            'average_rating' => $averageRating !== null ? $averageRating : 0, // Ensure it's 0 if null
-        ]
-    ]);
-}
+    public function userReviews()
+    {
+        $user = auth()->user();
+    
+        $reviews = Review::where('user_id', $user->id)
+            ->with([
+                'vendorProfileData', 
+                'booking', 
+                'user', 
+                'vehicle.category',  // Include vehicle category
+                'vehicle.user',      // Include vehicle owner
+                'vehicle.images',    // Include vehicle images
+                'vehicle.vendorProfile'  // Include vendor profile
+            ])
+            ->orderBy('created_at', 'desc')
+            ->paginate(8);
+    
+        $averageRating = Review::where('user_id', $user->id)->avg('rating');
+    
+        return Inertia::render('Profile/Review/Index', [
+            'reviews' => $reviews,
+            'statistics' => [
+                'total_reviews' => $reviews->total(),
+                'average_rating' => $averageRating !== null ? $averageRating : 0,
+            ]
+        ]);
+    }
 
     public function updateStatus(Review $review, Request $request)
     {

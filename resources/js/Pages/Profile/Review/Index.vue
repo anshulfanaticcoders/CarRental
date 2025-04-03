@@ -31,9 +31,9 @@
                                         :src="`${review.vehicle.vendor_profile.avatar}`"
                                         class="w-12 h-12 rounded-full mr-2" />
                                     <div>
-                                        <p class="text-[1.1rem]">{{ review.vehicle.user.first_name }}</p>
+                                        <p class="text-[1.1rem]">{{ review.vendor_profile_data.company_name }}</p>
                                         <p class="text-[0.75rem] text-customLightGrayColor font-medium">Verified
-                                            Customer</p>
+                                            Company</p>
 
                                     </div>
                                 </div>
@@ -56,7 +56,7 @@
                                         review.booking.pickup_location }}</p>
                                     <div class="flex gap-1">
                                         <p class="text-gray-600">{{ formatDate(review.booking.pickup_date) }},</p>
-                                        <p class="text-gray-600">{{ formatTime(review.booking.pickup_time) }}</p>
+                                        <p class="text-gray-600">{{ review.booking.pickup_time}}</p>
                                     </div>
                                 </div>
                                 <div class="flex flex-col gap-1">
@@ -65,7 +65,7 @@
                                         review.booking.return_location }}</p>
                                     <div class="flex gap-1">
                                         <p class="text-gray-600">{{ formatDate(review.booking.return_date) }},</p>
-                                        <p class="text-gray-600">{{ formatTime(review.booking.return_time) }}</p>
+                                        <p class="text-gray-600">{{ review.booking.return_time }}</p>
                                     </div>
                                 </div>
                             </div>

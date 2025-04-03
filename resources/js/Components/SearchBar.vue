@@ -52,7 +52,7 @@
           </div>
         </form>
         <div v-if="searchResults.length" class="search-results absolute z-20 top-[105%] w-[50%] rounded-[12px] border-[1px] border-white left-[20%] p-5 bg-customPrimaryColor text-white
-          max-[768px]:w-full max-[768px]:top-[35%] max-[768px]:left-0">
+          max-[768px]:w-full max-[768px]:top-[45%] max-[768px]:left-0">
           <div v-for="result in searchResults" :key="result.id" @click="selectLocation(result, 'pickupLocation')"
             class="p-2 hover:bg-white hover:text-customPrimaryColor cursor-pointer">
             {{ result.properties?.label || "Unknown Location" }}

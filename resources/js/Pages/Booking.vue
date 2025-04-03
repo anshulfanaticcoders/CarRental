@@ -265,7 +265,7 @@ onMounted(() => {
 });
 
 // stripe payment
-const stripePromise = loadStripe('pk_test_51KNyHdSDGjAmjQxjhTSx7hrI5uBOE75wqXRZNFdw83XSTU8gvwpFusz2W8FAy7PkV8K0aGHqhC620kbMWTg32ZpS00p3ktAi86'); // Replace with your Stripe publishable key
+const stripePromise = loadStripe(import.meta.env.VITE_STRIPE_KEY);
 let stripe;
 let elements;
 let cardNumber;
@@ -885,7 +885,7 @@ const submitBooking = async () => {
 
                 <div v-if="isLoading" class="fixed z-50 h-full w-full top-0 left-0 bg-[#0000009e]">
                     <div class="flex justify-center flex-col items-center h-full w-full">
-                        <img :src=loader alt="" class="w-[200px] max-[768px]:w-[70px]">
+                        <img :src=loader alt="" class="w-[150px] max-[768px]:w-[70px]">
                         <p class="text-[white] text-[1.5rem] max-[768px]:text-[1rem]">Please do not refresh the
                             page..waiting for
                             payment</p>

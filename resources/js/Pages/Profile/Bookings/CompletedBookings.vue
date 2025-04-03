@@ -1,9 +1,11 @@
 <template>
   <MyProfileLayout>
     <div class="container mx-auto px-4 max-[768px]:px-0">
-      <p class="text-[1.5rem] max-[768px]:text-[1.2rem] text-customPrimaryColor font-bold mb-[2rem] bg-[#154D6A0D] rounded-[12px] px-[1rem] py-[1rem]">Completed Bookings</p>
+      <p
+        class="text-[1.5rem] max-[768px]:text-[1.2rem] text-customPrimaryColor font-bold mb-[2rem] bg-[#154D6A0D] rounded-[12px] px-[1rem] py-[1rem]">
+        Completed Bookings</p>
 
-      <div v-if="bookings.data.length === 0" class="text-center text-gray-500">
+        <div v-if="!bookings.data || bookings.data.length === 0" class="text-center text-gray-500">
         <div class="flex flex-col justify-center items-center">
           <img :src="bookingstatusIcon" alt="" class="w-[30rem] max-[768px]:w-full">
           <p>No completed bookings found.</p>
@@ -12,23 +14,28 @@
 
       <div v-else>
         <div v-for="booking in bookings.data" :key="booking.id"
-             class="bg-white shadow-md rounded-lg p-6 gap-10 flex justify-between mb-6 max-[768px]:flex-col">
-             <Link :href="`/vehicle/${booking.vehicle.id}`">
+          class="bg-white shadow-md rounded-lg p-6 gap-10 flex justify-between mb-6 max-[768px]:flex-col">
+          <Link :href="`/vehicle/${booking.vehicle.id}`">
           <div class="w-20% max-[768px]:w-full">
             <img v-if="booking.vehicle?.images"
-                 :src="`${booking.vehicle.images.find(image => image.image_type === 'primary')?.image_url}`"
-                 alt="Image of the booked {{ booking.vehicle.brand }} {{ booking.vehicle.model }}"
-                 class="w-full h-[250px] object-cover rounded-md" />
-            <img v-else src="/path/to/placeholder-image.jpg" alt="Placeholder Image" class="w-full h-[250px] object-cover rounded-md" />
+              :src="`${booking.vehicle.images.find(image => image.image_type === 'primary')?.image_url}`"
+              alt="Image of the booked {{ booking.vehicle.brand }} {{ booking.vehicle.model }}"
+              class="w-full h-[250px] object-cover rounded-md" />
+            <img v-else src="/path/to/placeholder-image.jpg" alt="Placeholder Image"
+              class="w-full h-[250px] object-cover rounded-md" />
           </div>
-        </Link>
+          </Link>
           <div class="w-[67%] flex flex-col gap-5 max-[768px]:w-full">
             <div class="flex justify-between items-center max-[768px]:flex-wrap max-[768px]:gap-4">
               <div class="flex justify-between items-center gap-10 max-[768px]:gap-5">
-                <span class="text-[2rem] font-medium text-customPrimaryColor max-[768px]:text-[1.2rem]">{{ booking.vehicle.brand }}</span>
-                <span class="bg-customLightPrimaryColor p-3 rounded-[99px] text-[1rem] max-[768px]:text-[0.5rem]">{{ booking.vehicle?.category?.name }}</span>
+                <span class="text-[2rem] font-medium text-customPrimaryColor max-[768px]:text-[1.2rem]">{{
+                  booking.vehicle.brand }}</span>
+                <span class="bg-customLightPrimaryColor p-3 rounded-[99px] text-[1rem] max-[768px]:text-[0.5rem]">{{
+                  booking.vehicle?.category?.name }}</span>
               </div>
-              <span class="bg-[#0099001A] text-[#009900] px-[1.5rem] py-[0.75rem] rounded-[99px] max-[768px]:text-[0.75rem]">Trip Completed</span>
+              <span
+                class="bg-[#0099001A] text-[#009900] px-[1.5rem] py-[0.75rem] rounded-[99px] max-[768px]:text-[0.75rem]">Trip
+                Completed</span>
             </div>
 
             <div class="flex items-end gap-2 max-[768px]:text-[0.875rem]">
@@ -61,17 +68,19 @@
               </div>
             </div>
             <div class='flex justify-between items-center'>
-              <span class="text-customPrimaryColor text-[1.5rem] font-medium"> 
+              <span class="text-customPrimaryColor text-[1.5rem] font-medium">
                 {{ formatPrice(booking.total_amount, booking.vehicle) }}
               </span>
               <div>
-                <button 
-                  v-if="!booking.review"
-                  @click="openReviewModal(booking)" 
-                  class="button-primary px-[1.5rem] py-[0.75rem] max-[768px]:text-[0.75rem]"
-                >
+                <button v-if="!booking.review" @click="openReviewModal(booking)"
+                  class="button-primary px-[1.5rem] py-[0.75rem] max-[768px]:text-[0.75rem]">
                   Write a Review
                 </button>
+                <div v-else class="text-green-600 flex items-center gap-2">
+                  <CheckCircle class="w-5 h-5" />
+                  <span>Review Submitted</span>
+                </div>
+
                 <div v-else class="text-green-600 flex items-center gap-2">
                   <CheckCircle class="w-5 h-5" />
                   <span>Review Submitted</span>
@@ -83,11 +92,8 @@
 
         <!-- Pagination -->
         <div class="mt-4 flex justify-end">
-          <Pagination 
-            :current-page="bookings.current_page" 
-            :total-pages="bookings.last_page" 
-            @page-change="handlePageChange" 
-          />
+          <Pagination :current-page="bookings.current_page" :total-pages="bookings.last_page"
+            @page-change="handlePageChange" />
         </div>
       </div>
 
@@ -96,21 +102,15 @@
           <DialogHeader>
             <DialogTitle>Write a Review</DialogTitle>
           </DialogHeader>
-          <FormReview 
-            :booking="selectedBooking" 
-            @close="closeReviewModal" 
-            @reviewSubmitted="handleReviewSubmitted" 
-          />
+          <FormReview :booking="selectedBooking" @close="closeReviewModal" @reviewSubmitted="handleReviewSubmitted" />
         </DialogContent>
       </Dialog>
 
       <!-- Toast Notifications -->
-      <div v-if="notification.show" 
-           :class="[
-             'fixed bottom-4 right-4 p-4 rounded-md shadow-lg transition-all duration-500',
-             notification.type === 'success' ? 'bg-green-500' : 'bg-red-500'
-           ]"
-      >
+      <div v-if="notification.show" :class="[
+        'fixed bottom-4 right-4 p-4 rounded-md shadow-lg transition-all duration-500',
+        notification.type === 'success' ? 'bg-green-500' : 'bg-red-500'
+      ]">
         <div class="text-white">{{ notification.message }}</div>
       </div>
     </div>
@@ -139,6 +139,9 @@ const props = defineProps({
   }
 });
 
+console.log(props.bookings.data);
+
+
 const notification = ref({
   show: false,
   message: '',
@@ -151,7 +154,7 @@ const showNotification = (message, type = 'success') => {
     message,
     type
   };
-  
+
   setTimeout(() => {
     notification.value.show = false;
   }, 3000);
@@ -183,7 +186,7 @@ const closeReviewModal = () => {
 const handleReviewSubmitted = () => {
   showNotification('Review submitted successfully!');
   closeReviewModal();
-  
+
   // Update the local booking to show review submitted
   if (selectedBooking.value) {
     const bookingIndex = props.bookings.data.findIndex(b => b.id === selectedBooking.value.id);
@@ -213,8 +216,8 @@ onMounted(() => {
 });
 
 const formatPrice = (price, vehicle) => {
-    const currencySymbol = vehicle?.vendor_profile?.currency ?? '$'; // Default to '$' if missing
-    return `${currencySymbol}${price}`;
+  const currencySymbol = vehicle?.vendor_profile?.currency ?? '$'; // Default to '$' if missing
+  return `${currencySymbol}${price}`;
 };
 
 

@@ -66,6 +66,7 @@
   const form = useForm({
     booking_id: props.booking.id,
     vehicle_id: props.booking.vehicle.id,
+    vendor_profile_id: props.booking.vehicle.vendor_profile_data.id,
     rating: 0,
     review_text: '',
   });

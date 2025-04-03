@@ -90,4 +90,10 @@ class Booking extends Model
         return $this->hasOne(DamageProtection::class);
     }
 
+    public function review()
+{
+    return $this->hasOne(Review::class, 'booking_id');
+}
+
+
 }

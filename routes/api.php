@@ -62,7 +62,8 @@ Route::get('/booking-success/details', [BookingController::class, 'getBookingDet
 Route::get('/currencies', [CurrencyController::class, 'index']);
 // Route::get('/vendor/payments', [BookingController::class, 'getVendorPaymentHistory'])->name('vendor.payments');
 // In your api.php routes file
-Route::get('/vehicles/{vehicle}/reviews', [ReviewController::class, 'getApprovedReviews']);
+Route::get('/vendors/{vendorProfileId}/reviews', [ReviewController::class, 'getApprovedReviews']);
+
 Route::get('/booking-success/details', [BookingController::class, 'getBookingDetails'])->name('booking-success.details');
 
 

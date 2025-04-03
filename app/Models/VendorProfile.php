@@ -29,4 +29,10 @@ class VendorProfile extends Model
      {
          return $this->hasMany(Vehicle::class, 'user_id');
      }
+
+     public function reviews()
+{
+    return $this->hasMany(Review::class, 'vendor_profile_id');
+}
+
 }

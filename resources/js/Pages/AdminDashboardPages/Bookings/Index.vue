@@ -87,7 +87,7 @@
                                         View
                                     </Button>
 
-                                    <Button size="sm" variant="destructive" @click="deleteUser(user.id)">Delete</Button>
+                                    <!-- <Button size="sm" variant="destructive" @click="deleteUser(user.id)">Delete</Button> -->
                                 </div>
                             </TableCell>
                         </TableRow>

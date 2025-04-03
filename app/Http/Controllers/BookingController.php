@@ -319,7 +319,7 @@ public function getCompletedBookings()
     $completedBookings = $customer ? 
         Booking::where('customer_id', $customer->id)
             ->where('booking_status', 'completed')
-            ->with('vehicle.images','vehicle.category', 'payments','vehicle.vendorProfile')
+            ->with('vehicle.images','vehicle.category', 'payments','vehicle.vendorProfile','vehicle.vendorProfileData','review')
             ->orderBy('created_at', 'desc')
             ->paginate(3) : 
         collect();

@@ -13,6 +13,7 @@ class Review extends Model
         'booking_id',
         'user_id',
         'vehicle_id',
+        'vendor_profile_id',
         'rating',
         'review_text',
         'reply_text',
@@ -33,4 +34,10 @@ class Review extends Model
     {
         return $this->belongsTo(Vehicle::class);
     }
+
+    public function vendorProfileData()
+{
+    return $this->belongsTo(VendorProfile::class, 'vendor_profile_id'); 
+}
+
 }

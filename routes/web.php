@@ -338,6 +338,7 @@ Route::middleware(['auth', 'role:customer'])->group(function () {
     Route::get('/vendor/register', [VendorController::class, 'create'])->name('vendor.register');
 
     // Booking Routes
+    Route::inertia('/booking-unsuccess', 'Booking/Unsuccess');
     Route::get('/booking/{id}', [VehicleController::class, 'booking'])->name('booking.show');
     // Route::get('/booking-success', [BookingController::class, 'success'])->name('booking.success');
     Route::get('/booking-success/details', [BookingController::class, 'getBookingDetails'])->name('booking-success.details');

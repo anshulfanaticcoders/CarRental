@@ -25,6 +25,7 @@ import { computed, ref, watch } from "vue";
 import AuthenticatedHeaderLayout from "@/Layouts/AuthenticatedHeaderLayout.vue";
 import { Skeleton } from '@/Components/ui/skeleton';
 
+
 import {
     Carousel,
     CarouselContent,
@@ -44,6 +45,15 @@ const vehicle = ref(props.vehicle);
 const user = ref(null);
 const reviews = ref([]);
 const isLoading = ref(true);
+
+// Reference to the reviews section
+const reviewsSection = ref(null);
+
+const scrollToReviews = () => {
+  if (reviewsSection.value) {
+    reviewsSection.value.scrollIntoView({ behavior: "smooth" });
+  }
+};
 
 
 // getting authenticated user role info 
@@ -87,14 +97,22 @@ onMounted(async () => {
 const fetchReviews = async () => {
     isLoading.value = true;
     try {
-        const response = await axios.get(`/api/vehicles/${props.vehicle.id}/reviews`);
+        const vendorProfileId = vehicle.value.vendor_profile_data?.id; // Fix: Correct path
+        console.log("🚀 Fetching reviews for Vendor Profile ID:", vendorProfileId);
+
+        if (!vendorProfileId) {
+            throw new Error("❌ Vendor profile ID is missing");
+        }
+
+        const response = await axios.get(`/api/vendors/${vendorProfileId}/reviews`);
         reviews.value = response.data.reviews;
     } catch (error) {
-        console.error("Error fetching reviews:", error);
+        console.error("❌ Error fetching reviews:", error);
     } finally {
         isLoading.value = false;
     }
 };
+
 
 const averageRating = computed(() => {
     if (!reviews.value.length) return 0; // No reviews, return 0
@@ -950,7 +968,7 @@ const openLightbox = (index) => {
                     </span>
                 </div>
                 <div class="flex gap-2 items-center text-[1.25rem] max-[768px]:hidden">
-                    <div class="car_ratings flex gap-2 items-center" v-if="reviews.length > 0">
+                    <div class="car_ratings flex gap-2 items-center cursor-pointer" v-if="reviews.length > 0" @click="scrollToReviews">
                         <div class="flex items-center gap-1">
                             <img v-for="n in 5" :key="n" :src="getStarIcon(averageRating, n)"
                                 :alt="getStarAltText(averageRating, n)" class="w-[20px] h-[20px]" />
@@ -1551,7 +1569,7 @@ const openLightbox = (index) => {
             <Faq />
         </section>
 
-        <section class="" style="background: linear-gradient(to bottom, #FFFFFF, #F8F8F8);">
+        <section ref="reviewsSection" class="" style="background: linear-gradient(to bottom, #FFFFFF, #F8F8F8);">
             <div class="reviews-section mt-[3rem] full-w-container max-[768px]:mt-0">
                 <span class="text-[2rem] font-bold">Overall Rating</span>
 
