@@ -182,8 +182,6 @@ const fullPhone = computed({
 });
 const selectedCountryCode = computed(() => {
     if (!form.phone_code || !countries.value || countries.value.length === 0) return null;
-
-    // Find the country that matches the selected phone code
     const country = countries.value.find(c => c.phone_code === form.phone_code);
     return country ? country.code : null;
 });
@@ -325,43 +323,62 @@ const minimumDateOfBirth = computed(() => {
                         <div class="grid grid-cols-1 gap-5 max-[768px]:gap-3">
 
                             <div>
-                                <div class="flex items-end">
-                                    <div class="w-[8rem]">
-                                        <InputLabel for="phone" value="Phone Number" />
-                                        <Select v-model="form.phone_code">
-                                            <SelectTrigger
-                                                class="w-full p-[1.75rem] border-customLightGrayColor bg-customPrimaryColor text-white rounded-[12px] !rounded-r-none border-r-0">
-                                                <div class="flex items-center">
-                                                    <img v-if="selectedCountryCode"
-                                                        :src="getFlagUrl(selectedCountryCode)" alt="Country Flag"
-                                                        class="mr-2 w-6 h-4 rounded" />
-                                                    <SelectValue placeholder="Select Code" />
-                                                </div>
-                                            </SelectTrigger>
-                                            <SelectContent>
-                                                <SelectGroup>
-                                                    <SelectLabel>Phone Code</SelectLabel>
-                                                    <SelectItem v-for="country in countries" :key="country.phone_code"
-                                                        :value="country.phone_code">
-                                                        {{ country.phone_code }}
-                                                    </SelectItem>
-                                                </SelectGroup>
-                                            </SelectContent>
-                                        </Select>
-                                    </div>
-
-                                    <div class="column w-full">
-                                        <TextInput id="phone" type="text" v-model="form.phone" required
-                                            class="w-full !rounded-l-none" placeholder="Enter phone number" />
-                                    </div>
-                                </div>
-                                <!-- Display full phone number -->
-                                <div class="mt-2 text-sm text-gray-500" v-if="form.phone_code && form.phone">
-                                    Full number: {{ fullPhone }}
-                                </div>
-                                <InputError class="mt-2" :message="form.errors.phone" />
-                                <InputError class="mt-2" :message="form.errors.phone_code" />
+    <div class="flex items-end">
+        <div class="w-[8rem]">
+            <InputLabel for="phone" value="Phone Number" />
+            <Select v-model="form.phone_code">
+                <SelectTrigger 
+                    class="w-full p-[1.75rem] border-customLightGrayColor bg-customPrimaryColor text-white rounded-[12px] !rounded-r-none border-r-0">
+                    <div class="flex items-center">
+                        <img 
+                            v-if="selectedCountryCode"
+                            :src="getFlagUrl(selectedCountryCode)" 
+                            alt="Country Flag"
+                            class="mr-2 w-6 h-4 rounded" />
+                        <SelectValue placeholder="Select Code">
+                            <!-- Show only the phone code when selected -->
+                            {{ form.phone_code }}
+                        </SelectValue>
+                    </div>
+                </SelectTrigger>
+                <SelectContent>
+                    <SelectGroup>
+                        <SelectLabel>Phone Code</SelectLabel>
+                        <SelectItem 
+                            v-for="country in countries" 
+                            :key="country.phone_code"
+                            :value="country.phone_code"
+                            class="flex items-center">
+                            <div class="flex items-center w-full">
+                                <img 
+                                    :src="getFlagUrl(country.code)" 
+                                    alt="Country Flag"
+                                    class="mr-2 w-6 h-4 rounded" />
+                                <span>{{ country.name }} ({{ country.phone_code }})</span>
                             </div>
+                        </SelectItem>
+                    </SelectGroup>
+                </SelectContent>
+            </Select>
+        </div>
+
+        <div class="column w-full">
+            <TextInput 
+                id="phone" 
+                type="text" 
+                v-model="form.phone" 
+                required
+                class="w-full !rounded-l-none" 
+                placeholder="Enter phone number" />
+        </div>
+    </div>
+    <!-- Display full phone number -->
+    <div class="mt-2 text-sm text-gray-500" v-if="form.phone_code && form.phone">
+        Full number: {{ fullPhone }}
+    </div>
+    <InputError class="mt-2" :message="form.errors.phone" />
+    <InputError class="mt-2" :message="form.errors.phone_code" />
+</div>
 
                             <div class="column w-full">
                                 <InputLabel for="email" value="Email" />
@@ -484,7 +501,7 @@ const minimumDateOfBirth = computed(() => {
     </div>
 </template>
 
-<style>
+<style scoped>
 .register label {
     margin-bottom: 0.5rem;
     color: #2B2B2BBF;

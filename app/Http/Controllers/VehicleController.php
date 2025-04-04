@@ -266,6 +266,9 @@ class VehicleController extends Controller
             'vendorProfileData',
             'bookings' => function ($query) {
                 $query->select('vehicle_id', 'pickup_date', 'return_date');
+            },
+            'blockings' => function ($query) {
+                $query->select('vehicle_id', 'blocking_start_date', 'blocking_end_date');
             }
         ])->findOrFail($id);
 
@@ -275,6 +278,12 @@ class VehicleController extends Controller
                 return [
                     'pickup_date' => $booking->pickup_date->format('Y-m-d'),
                     'return_date' => $booking->return_date->format('Y-m-d'),
+                ];
+            }),
+            'blocked_dates' => $vehicle->blockings->map(function ($blocking) {
+                return [
+                    'blocking_start_date' => $blocking->blocking_start_date->format('Y-m-d'),
+                    'blocking_end_date' => $blocking->blocking_end_date->format('Y-m-d'),
                 ];
             })
         ]);

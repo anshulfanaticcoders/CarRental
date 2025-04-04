@@ -24,6 +24,8 @@ import { Head, Link } from "@inertiajs/vue3";
 import { computed, ref, watch } from "vue";
 import AuthenticatedHeaderLayout from "@/Layouts/AuthenticatedHeaderLayout.vue";
 import { Skeleton } from '@/Components/ui/skeleton';
+import '@vuepic/vue-datepicker/dist/main.css';
+import VueDatepicker from '@vuepic/vue-datepicker';
 
 
 import {
@@ -487,59 +489,41 @@ const formatPrice = (price) => {
 
 const validateDates = () => {
     if (!form.value.date_from || !form.value.date_to) return;
-
     const pickupDate = new Date(form.value.date_from);
     const returnDate = new Date(form.value.date_to);
-    const diffDays = rentalDuration.value;
+    const diffDays = Math.ceil((returnDate - pickupDate) / (1000 * 60 * 60 * 24));
 
-    dateError.value = ''; // Clear any existing error messages
-
+    let dateError = '';
     switch (selectedPackage.value) {
         case 'week':
             if (diffDays % 7 !== 0 || diffDays > 28) {
-                dateError.value = 'Weekly rentals must be for 7, 14, 21, or 28 days';
+                dateError = 'Weekly rentals must be for 7, 14, 21, or 28 days';
                 form.value.date_to = '';
-                toast.error(dateError.value);
             }
             break;
-
         case 'month':
             const monthDiff = (returnDate.getMonth() - pickupDate.getMonth()) +
                 (12 * (returnDate.getFullYear() - pickupDate.getFullYear()));
             if (monthDiff !== 1) {
-                dateError.value = 'Monthly rentals must be for exactly one month';
+                dateError = 'Monthly rentals must be for exactly one month';
                 form.value.date_to = '';
-                toast.error(dateError.value);
             }
             break;
-
         case 'day':
             if (diffDays > 30) {
-                dateError.value = 'Daily rentals cannot exceed 30 days';
+                dateError = 'Daily rentals cannot exceed 30 days';
                 form.value.date_to = '';
-                toast.error(dateError.value);
             }
             break;
     }
-
-    // If there are no errors, store rental data
-    if (!dateError.value) {
-        storeRentalData();
-    }
+    if (dateError) toast.error(dateError);
 };
 
 
-const blockedStartDate = props.vehicle.blocking_start_date;
-const blockedEndDate = props.vehicle.blocking_end_date;
+
 const bookedDates = ref(props.booked_dates || []);
-const blockedDates = ref([]);
-// Add blocked dates to blockedDates array
-if (blockedStartDate && blockedEndDate) {
-    blockedDates.value.push({
-        blocking_start_date: blockedStartDate,
-        blocking_end_date: blockedEndDate
-    });
-}
+const blockedDates = ref(props.blocked_dates || []);
+
 
 // Create a function to check if a date is booked
 const isDateBooked = (dateStr) => {
@@ -563,59 +547,27 @@ const isDateBooked = (dateStr) => {
     });
 };
 
-const isDateRangeBooked = (startDateStr, endDateStr) => {
-    const startDate = new Date(startDateStr);
-    const endDate = new Date(endDateStr);
-    startDate.setHours(0, 0, 0, 0);
-    endDate.setHours(0, 0, 0, 0);
 
-    return bookedDates.value.some(({ pickup_date, return_date }) => {
-        const pickupDate = new Date(pickup_date);
-        const returnDate = new Date(return_date);
-        pickupDate.setHours(0, 0, 0, 0);
-        returnDate.setHours(0, 0, 0, 0);
-        return (startDate <= returnDate && endDate >= pickupDate);
-    }) || blockedDates.value.some(({ blocking_start_date, blocking_end_date }) => {
-        const blockStartDate = new Date(blocking_start_date);
-        const blockEndDate = new Date(blocking_end_date);
-        blockStartDate.setHours(0, 0, 0, 0);
-        blockEndDate.setHours(0, 0, 0, 0);
-        return (startDate <= blockEndDate && endDate >= blockStartDate);
-    });
-};
 
 // Create a function that returns all disabled dates as an array
 const getDisabledDates = () => {
     const disabledDates = [];
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-
     const addDisabledDates = (dates, startProp, endProp) => {
         dates.forEach(dateRange => {
             const start = new Date(dateRange[startProp]);
             const end = new Date(dateRange[endProp]);
             for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
-                if (d >= today) {
-                    disabledDates.push(new Date(d).toISOString().split('T')[0]);
-                }
+                disabledDates.push(new Date(d));
             }
         });
     };
-
     addDisabledDates(bookedDates.value, 'pickup_date', 'return_date');
     addDisabledDates(blockedDates.value, 'blocking_start_date', 'blocking_end_date');
-
     return disabledDates;
 };
 const disabledDates = computed(() => getDisabledDates());
 
-const maxPickupDate = computed(() => {
-    // Find the furthest future date that isn't booked
-    const today = new Date();
-    const futureDate = new Date(today);
-    futureDate.setMonth(today.getMonth() + 3); // Look 3 months ahead
-    return futureDate.toISOString().split('T')[0];
-});
+
 
 const handleDateInput = (event, type) => {
     const selectedDate = event.target.value;
@@ -774,13 +726,39 @@ const findNextAvailableDates = (fromDate, count = 5) => {
     return availableDates;
 };
 
+const getDayClass = (date) => {
+    const dateStr = date.toISOString().split('T')[0];
+    const isBooked = bookedDates.value.some(range => {
+        const start = new Date(range.pickup_date);
+        const end = new Date(range.return_date);
+        return date >= start && date <= end;
+    });
+    const isBlocked = blockedDates.value.some(range => {
+        const start = new Date(range.blocking_start_date);
+        const end = new Date(range.blocking_end_date);
+        return date >= start && date <= end;
+    });
+    if (isBooked) return 'booked-date';
+    if (isBlocked) return 'blocked-date';
+    return '';
+};
 
+// Minimum date (today)
+const minDate = computed(() => new Date());
+
+// Maximum pickup date (e.g., 3 months from now)
+const maxPickupDate = computed(() => {
+    const today = new Date();
+    const futureDate = new Date(today);
+    futureDate.setMonth(today.getMonth() + 3);
+    return futureDate;
+});
+
+// Minimum return date based on package and pickup date
 const minReturnDate = computed(() => {
-    if (!form.value.date_from) return getCurrentDate();
-
+    if (!form.value.date_from) return new Date();
     const pickupDate = new Date(form.value.date_from);
     const minDate = new Date(pickupDate);
-
     switch (selectedPackage.value) {
         case 'week':
             minDate.setDate(pickupDate.getDate() + 7);
@@ -791,36 +769,41 @@ const minReturnDate = computed(() => {
         default:
             minDate.setDate(pickupDate.getDate() + 1);
     }
-
-    [...bookedDates.value, ...blockedDates.value].forEach(({ return_date, blocking_end_date }) => {
-        const endDate = new Date(return_date || blocking_end_date);
-        if (endDate >= minDate) {
-            minDate.setDate(endDate.getDate() + 1);
-        }
-    });
-
-    return minDate.toISOString().split('T')[0];
+    return minDate;
 });
 
+// Maximum return date based on package
 const maxReturnDate = computed(() => {
-    if (!form.value.date_from) return '';
-
+    if (!form.value.date_from) return null;
     const pickupDate = new Date(form.value.date_from);
     const maxDate = new Date(pickupDate);
-
     switch (selectedPackage.value) {
         case 'week':
-            maxDate.setDate(pickupDate.getDate() + 28); // Max 4 weeks
+            maxDate.setDate(pickupDate.getDate() + 28);
             break;
         case 'month':
-            maxDate.setMonth(pickupDate.getMonth() + 1); // Exactly 1 month
+            maxDate.setMonth(pickupDate.getMonth() + 1);
             break;
         default:
-            maxDate.setDate(pickupDate.getDate() + 30); // Max 30 days
+            maxDate.setDate(pickupDate.getDate() + 30);
     }
-
-    return maxDate.toISOString().split('T')[0];
+    return maxDate;
 });
+
+// Handle date selection
+const handleDateFrom = (date) => {
+    form.value.date_from = date ? date.toISOString().split('T')[0] : '';
+    form.value.date_to = ''; // Reset return date when pickup changes
+    updateDateTimeSelection();
+    validateDates();
+};
+
+const handleDateTo = (date) => {
+    form.value.date_to = date ? date.toISOString().split('T')[0] : '';
+    updateDateTimeSelection();
+    validateDates();
+};
+
 
 
 // Watch for package changes
@@ -1446,26 +1429,34 @@ const openLightbox = (index) => {
 
                                                     <!-- Date Selection -->
                                                     <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                                        <!-- Pickup Date -->
                                                         <div>
                                                             <label
                                                                 class="block text-sm font-medium text-gray-700 mb-2">Pickup
                                                                 Date</label>
-                                                            <input type="date" v-model="form.date_from"
-                                                                :min="getCurrentDate()" :max="maxPickupDate"
-                                                                @input="handleDateInput($event, 'pickup')"
-                                                                @change="updateDateTimeSelection"
-                                                                class="w-full p-2 border rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500" />
+                                                            <VueDatepicker v-model="form.date_from" :min-date="minDate"
+                                                                :max-date="maxPickupDate"
+                                                                :day-class="getDayClass"
+                                                                :disabled-dates="disabledDates"
+                                                                @update:model-value="handleDateFrom"
+                                                                placeholder="Select pickup date" class="w-full"
+                                                                :enable-time-picker="false" :clearable="true"
+                                                                :format="'yyyy-MM-dd'" />
                                                         </div>
 
+                                                        <!-- Return Date -->
                                                         <div>
                                                             <label
                                                                 class="block text-sm font-medium text-gray-700 mb-2">Return
                                                                 Date</label>
-                                                            <input type="date" v-model="form.date_to"
-                                                                :min="minReturnDate" :max="maxReturnDate"
-                                                                @input="handleDateInput($event, 'return')"
-                                                                @change="updateDateTimeSelection"
-                                                                class="w-full p-2 border rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500" />
+                                                            <VueDatepicker v-model="form.date_to"
+                                                                :min-date="minReturnDate" :max-date="maxReturnDate"
+                                                                :day-class="getDayClass"
+                                                                :disabled-dates="disabledDates"
+                                                                @update:model-value="handleDateTo"
+                                                                placeholder="Select return date" class="w-full"
+                                                                :enable-time-picker="false" :clearable="true"
+                                                                :format="'yyyy-MM-dd'" />
                                                         </div>
                                                         <div>
                                                             <!-- Departure Time Dropdown -->
@@ -1772,6 +1763,19 @@ const openLightbox = (index) => {
 
 .pop-animation {
     animation: pop 0.3s ease-in-out;
+}
+
+
+:deep(.dp__cell_inner.booked-date) {
+    color: red !important;
+    background-color: rgba(255, 0, 0, 0.1);
+}
+:deep(.dp__cell_inner.blocked-date) {
+    color: red !important;
+    background-color: rgba(255, 0, 0, 0.1);
+}
+:deep(.dp__cell_inner.dp__cell_disabled) {
+    opacity: 0.6;
 }
 
 

@@ -55,6 +55,7 @@ class BlockingDateController extends Controller
     public function update(Request $request, $id)
     {
         $validated = $request->validate([
+            'vehicle_id' => 'required|exists:vehicles,id',
             'blocking_start_date' => 'required|date',
             'blocking_end_date' => 'required|date|after_or_equal:blocking_start_date',
         ]);

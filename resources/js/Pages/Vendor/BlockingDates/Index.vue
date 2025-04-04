@@ -14,11 +14,12 @@
                     <form @submit.prevent="submitForm">
                         <div class="mb-4">
                             <label class="block text-sm font-medium text-gray-700">Vehicle</label>
-                            <Select v-model="form.vehicle_id" class="w-full border rounded p-2">
-                                <option v-for="vehicle in vehicles" :key="vehicle.id" :value="vehicle.id">
+                            <select v-model="form.vehicle_id" class="w-full border rounded p-2">
+                                <option value="">Select a vehicle</option>
+                                <option v-for="vehicle in props.vehicles" :key="vehicle.id" :value="vehicle.id">
                                     {{ vehicle.brand }} - {{ vehicle.model }}
                                 </option>
-                            </Select>
+                            </select>
                         </div>
                         <div class="mb-4">
                             <label class="block text-sm font-medium text-gray-700">Start Date</label>
@@ -78,7 +79,7 @@
                         <td class="px-4 py-2 text-sm text-gray-700">
                             <div v-if="vehicle.blockings && vehicle.blockings.length > 0">
                                 <div v-for="(blocking, index) in vehicle.blockings" :key="index" class="mb-1">
-                                    {{ blocking.blocking_start_date }}
+                                    {{ formatDate(blocking.blocking_start_date) }}
                                 </div>
                             </div>
                             <span v-else>N/A</span>
@@ -86,46 +87,49 @@
                         <td class="px-4 py-2 text-sm text-gray-700">
                             <div v-if="vehicle.blockings && vehicle.blockings.length > 0">
                                 <div v-for="(blocking, index) in vehicle.blockings" :key="index" class="mb-1">
-                                    {{ blocking.blocking_end_date }}
+                                    {{ formatDate(blocking.blocking_end_date) }}
                                 </div>
                             </div>
                             <span v-else>N/A</span>
                         </td>
                         <td class="px-4 py-2 text-sm">
-                            <div v-for="blocking in vehicle.blockings" :key="blocking.id" class="flex mb-1">
-                                <Dialog>
-                                    <DialogTrigger class="text-blue-600 hover:underline mr-2">Edit</DialogTrigger>
-                                    <DialogContent>
-                                        <DialogHeader>
-                                            <DialogTitle>Edit Blocking Date</DialogTitle>
-                                            <DialogDescription>Modify the blocking dates for this vehicle.
-                                            </DialogDescription>
-                                        </DialogHeader>
-                                        <form @submit.prevent="updateBlockingDate(vehicle.id, blocking.id)">
-                                            <div class="mb-4">
-                                                <label class="block text-sm font-medium text-gray-700">Start
-                                                    Date</label>
-                                                <input type="date" v-model="blocking.blocking_start_date"
-                                                    class="w-full border rounded p-2" />
-                                            </div>
-                                            <div class="mb-4">
-                                                <label class="block text-sm font-medium text-gray-700">End Date</label>
-                                                <input type="date" v-model="blocking.blocking_end_date"
-                                                    class="w-full border rounded p-2" />
-                                            </div>
-                                            <DialogFooter>
-                                                <button type="submit"
-                                                    class="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700">
-                                                    Save Changes
-                                                </button>
-                                            </DialogFooter>
-                                        </form>
-                                    </DialogContent>
-                                </Dialog>
-                                <button @click="removeBlockingDates(blocking.id)" class="text-red-600 hover:underline">
-                                    Remove
-                                </button>
+                            <div v-if="vehicle.blockings && vehicle.blockings.length > 0">
+                                <div v-for="blocking in vehicle.blockings" :key="blocking.id" class="flex mb-1">
+                                    <Dialog>
+                                        <DialogTrigger class="text-blue-600 hover:underline mr-2" @click="prepareEditForm(blocking)">Edit</DialogTrigger>
+                                        <DialogContent>
+                                            <DialogHeader>
+                                                <DialogTitle>Edit Blocking Date</DialogTitle>
+                                                <DialogDescription>Modify the blocking dates for this vehicle.
+                                                </DialogDescription>
+                                            </DialogHeader>
+                                            <form @submit.prevent="updateBlockingDate(blocking.id)">
+                                                <div class="mb-4">
+                                                    <label class="block text-sm font-medium text-gray-700">Start
+                                                        Date</label>
+                                                    <input type="date" v-model="editForm.blocking_start_date"
+                                                        class="w-full border rounded p-2" />
+                                                </div>
+                                                <div class="mb-4">
+                                                    <label class="block text-sm font-medium text-gray-700">End Date</label>
+                                                    <input type="date" v-model="editForm.blocking_end_date"
+                                                        class="w-full border rounded p-2" />
+                                                </div>
+                                                <DialogFooter>
+                                                    <button type="submit"
+                                                        class="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700">
+                                                        Save Changes
+                                                    </button>
+                                                </DialogFooter>
+                                            </form>
+                                        </DialogContent>
+                                    </Dialog>
+                                    <button @click="removeBlockingDates(blocking.id)" class="text-red-600 hover:underline">
+                                        Remove
+                                    </button>
+                                </div>
                             </div>
+                            <span v-else>N/A</span>
                         </td>
                     </tr>
                 </tbody>
@@ -136,7 +140,7 @@
         </div>
 
         <!-- Pagination -->
-        <div class="mt-[1rem] flex justify-end">
+        <div class="mt-4 flex justify-end">
             <Pagination :current-page="pagination.current_page" :total-pages="pagination.last_page"
                 @page-change="handlePageChange" />
         </div>
@@ -145,7 +149,7 @@
 
 <script setup>
 import MyProfileLayout from '@/Layouts/MyProfileLayout.vue';
-import { ref, computed, watch } from 'vue';
+import { ref, computed, watch, onMounted } from 'vue';
 import { usePage, router } from '@inertiajs/vue3';
 import { useToast } from 'vue-toastification';
 import axios from 'axios';
@@ -161,43 +165,81 @@ import {
 import Pagination from './Pagination.vue';
 
 const toast = useToast();
-// const { props } = usePage();
-// const vehicles = ref(props.vehicles);
-const form = ref({ vehicle_id: '', blocking_start_date: '', blocking_end_date: '' });
+const form = ref({ 
+    vehicle_id: '', 
+    blocking_start_date: '', 
+    blocking_end_date: '' 
+});
+const editForm = ref({
+    blocking_start_date: '',
+    blocking_end_date: ''
+});
 const searchQuery = ref('');
 
 const props = defineProps({
     vehicles: {
         type: Array,
-        filters: Object,
         required: true
     },
     pagination: {
         type: Object,
         required: true
+    },
+    filters: {
+        type: Object,
+        default: () => ({})
     }
 });
+
 const handlePageChange = (page) => {
-    router.get(route('vendor.blocking-dates.index'), { ...props.filters, page }, { preserveState: true, preserveScroll: true });
+    router.get(route('vendor.blocking-dates.index'), 
+        { ...props.filters, page }, 
+        { preserveState: true, preserveScroll: true }
+    );
 };
 
 const submitForm = async () => {
+    // Form validation
+    if (!form.value.vehicle_id) {
+        toast.error('Please select a vehicle');
+        return;
+    }
+    
+    if (!form.value.blocking_start_date) {
+        toast.error('Please select a start date');
+        return;
+    }
+    
+    if (!form.value.blocking_end_date) {
+        toast.error('Please select an end date');
+        return;
+    }
+    
     try {
         await axios.post(route('vendor.blocking-dates.store'), form.value);
         toast.success('Blocking date added successfully!');
+        // Reset form
+        form.value = { vehicle_id: '', blocking_start_date: '', blocking_end_date: '' };
+        // Reload to see changes
         setTimeout(() => {
             window.location.reload();
         }, 1000);
     } catch (error) {
-        toast.error('Failed to add blocking date. Please try again.');
+        console.error('Error:', error.response?.data || error);
+        toast.error(error.response?.data?.message || 'Failed to add blocking date. Please try again.');
     }
 };
 
-const updateBlockingDate = async (vehicleId, blockingId) => {
+const prepareEditForm = (blocking) => {
+    editForm.value.blocking_start_date = blocking.blocking_start_date;
+    editForm.value.blocking_end_date = blocking.blocking_end_date;
+};
+
+const updateBlockingDate = async (blockingId) => {
     try {
         await axios.put(route('vendor.blocking-dates.update', blockingId), {
-            blocking_start_date: form.value.blocking_start_date,
-            blocking_end_date: form.value.blocking_end_date,
+            blocking_start_date: editForm.value.blocking_start_date,
+            blocking_end_date: editForm.value.blocking_end_date,
         });
         toast.success('Blocking date updated successfully!');
         setTimeout(() => {
@@ -222,15 +264,13 @@ const removeBlockingDates = async (blockingId) => {
     }
 };
 
-
 const filteredVehicles = computed(() => {
     const query = searchQuery.value.toLowerCase();
     return props.vehicles.filter(vehicle => {
         return (
             vehicle.brand.toLowerCase().includes(query) ||
             vehicle.model.toLowerCase().includes(query) ||
-            (vehicle.blocking_start_date || 'N/A').toLowerCase().includes(query) ||
-            (vehicle.blocking_end_date || 'N/A').toLowerCase().includes(query)
+            vehicle.location?.toLowerCase().includes(query)
         );
     });
 });
@@ -249,6 +289,12 @@ const formatDate = (dateString) => {
     return new Date(dateString).toLocaleDateString('en-US', options);
 };
 
+// Initialize searchQuery from URL params
+onMounted(() => {
+    if (props.filters?.search) {
+        searchQuery.value = props.filters.search;
+    }
+});
 </script>
 
 <style scoped>
@@ -261,10 +307,8 @@ label {
 }
 
 @media screen and (max-width:768px) {
-
     th {
         font-size: 0.75rem;
     }
-
 }
 </style>

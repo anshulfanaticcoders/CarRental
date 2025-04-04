@@ -15,6 +15,11 @@ class BlockingDate extends Model
         'blocking_end_date',
     ];
 
+    protected $casts = [
+        'blocking_start_date' => 'date',
+        'blocking_end_date' => 'date',
+    ];
+    
     public function vehicle()
     {
         return $this->belongsTo(Vehicle::class);
