@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Review;
 use App\Models\Vehicle;
 use App\Models\VehicleCategory;
 use Illuminate\Http\Request;
@@ -23,9 +24,9 @@ class SearchController extends Controller
             'date_from' => 'nullable|date',
             'date_to' => 'nullable|date|after:date_from',
             'where' => 'nullable|string',
-            'latitude' => 'required|numeric',
-            'longitude' => 'required|numeric',
-            'radius' => 'required|numeric',
+            'latitude' => 'nullable|numeric',
+            'longitude' => 'nullable|numeric',
+            'radius' => 'nullable|numeric',
             'package_type' => 'nullable|string|in:day,week,month',
             'category_id' => 'nullable|exists:vehicle_categories,id',
         ]);
@@ -142,10 +143,20 @@ class SearchController extends Controller
         $vehicles = $query->paginate(4)->withQueryString();
 
         // Transform distance_in_km to integer
+        // Transform the collection to include review data and distance
         $vehicles->getCollection()->transform(function ($vehicle) {
+            // Add review statistics
+            $reviews = Review::where('vehicle_id', $vehicle->id)
+                ->where('status', 'approved')
+                ->get();
+            $vehicle->review_count = $reviews->count();
+            $vehicle->average_rating = $reviews->avg('rating') ?? 0;
+
+            // Transform distance_in_km to integer if it exists
             if (isset($vehicle->distance_in_km)) {
                 $vehicle->distance_in_km = intval($vehicle->distance_in_km);
             }
+
             return $vehicle;
         });
 
