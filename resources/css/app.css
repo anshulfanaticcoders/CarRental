@@ -202,7 +202,25 @@ input[type='date'], input[type='time'] {
     padding: 1rem;
 } */
 
-
+.dp__active_date{
+    background: #dd0e5d!important;
+}
+.dp__action_select{
+    background: #153b4f!important;
+}
+.dp__today{
+    border: #dd0e5d!important;
+}
+.dp__action_row{
+    background: #dd0e5d!important;
+}
+.dp__selection_preview{
+    color: white!important;
+    font-weight: 500;
+}
+.dp__action_cancel{
+    color: white!important;
+}
 /* Media query */
 
 @media screen and (max-width:768px) {

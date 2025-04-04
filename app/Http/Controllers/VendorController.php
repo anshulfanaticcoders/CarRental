@@ -3,6 +3,7 @@ namespace App\Http\Controllers;
 
 use App\Models\VendorDocument;
 use App\Models\VendorProfile;
+use App\Notifications\VendorRegisteredNotification;
 use App\Providers\RouteServiceProvider;
 use Illuminate\Http\Request;
 use App\Models\User;
@@ -94,6 +95,12 @@ class VendorController extends Controller
             $user = User::find($userId);
             $user->role = 'vendor';
             $user->save();
+
+            // Notify the admin
+            $admin = User::where('email', 'anshul@fanaticcoders.com')->first(); // Replace with your admin email
+            if ($admin) {
+                $admin->notify(new VendorRegisteredNotification($vendorProfile, $user));
+            }
 
             // Return a JSON response for Inertia
             return redirect(RouteServiceProvider::HOMEPAGE)->with([

@@ -142,7 +142,6 @@ class SearchController extends Controller
         // Paginate results
         $vehicles = $query->paginate(4)->withQueryString();
 
-        // Transform distance_in_km to integer
         // Transform the collection to include review data and distance
         $vehicles->getCollection()->transform(function ($vehicle) {
             // Add review statistics
@@ -275,6 +274,22 @@ class SearchController extends Controller
 
         // Paginate results
         $vehicles = $query->paginate(4)->withQueryString();
+
+        $vehicles->getCollection()->transform(function ($vehicle) {
+            // Add review statistics
+            $reviews = Review::where('vehicle_id', $vehicle->id)
+                ->where('status', 'approved')
+                ->get();
+            $vehicle->review_count = $reviews->count();
+            $vehicle->average_rating = $reviews->avg('rating') ?? 0;
+
+            // Transform distance_in_km to integer if it exists
+            if (isset($vehicle->distance_in_km)) {
+                $vehicle->distance_in_km = intval($vehicle->distance_in_km);
+            }
+
+            return $vehicle;
+        });
 
         // Fetch categories
         $categories = VehicleCategory::all();

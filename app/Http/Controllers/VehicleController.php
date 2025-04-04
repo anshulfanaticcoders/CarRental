@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Helpers\ActivityLogHelper;
 use App\Models\BookingAddon;
+use App\Models\User;
 use App\Models\Vehicle;
 use App\Models\VehicleBenefit;
 use App\Models\VehicleFeature;
@@ -11,6 +12,7 @@ use App\Models\VehicleImage;
 use App\Models\VehicleSpecification;
 use App\Models\VendorVehicleAddon;
 use App\Models\VendorVehiclePlan;
+use App\Notifications\VehicleCreatedNotification;
 use App\Providers\RouteServiceProvider;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -232,6 +234,15 @@ class VehicleController extends Controller
 
 
         ActivityLogHelper::logActivity('create', 'Created a new vehicle', $vehicle, $request);
+
+
+        // Notify the admin
+        $admin = User::where('email', 'anshul@fanaticcoders.com')->first(); // Replace with your admin email
+        if ($admin) {
+            $admin->notify(new VehicleCreatedNotification($vehicle));
+        }
+
+
         return redirect('/profile')->with([
             'message' => 'Vehicle added successfully!',
             'type' => 'success'
