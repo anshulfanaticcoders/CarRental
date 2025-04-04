@@ -44,55 +44,55 @@ class ReviewController extends Controller
 
 
     public function getApprovedReviews($vendorProfileId)
-{
-    if (!$vendorProfileId) {
-        return response()->json(['error' => 'Vendor profile ID is required'], 400);
+    {
+        if (!$vendorProfileId) {
+            return response()->json(['error' => 'Vendor profile ID is required'], 400);
+        }
+
+        $approvedReviews = Review::where('vendor_profile_id', $vendorProfileId) // Fix: Correct field
+            ->where('status', 'approved')
+            ->with(['user.profile'])
+            ->get();
+
+        return response()->json(['reviews' => $approvedReviews]);
     }
-
-    $approvedReviews = Review::where('vendor_profile_id', $vendorProfileId) // Fix: Correct field
-        ->where('status', 'approved')
-        ->with(['user.profile'])
-        ->get();
-
-    return response()->json(['reviews' => $approvedReviews]);
-}
 
 
     public function vendorReviews(Request $request)
     {
         $vendor = auth()->user();
         $searchQuery = $request->input('search', '');
-    
+
         // Fetch vendor reviews
         $reviews = Review::whereHas('vehicle.vendorProfileData', function ($query) use ($vendor) {
-                $query->where('user_id', $vendor->id);
-            })
+            $query->where('user_id', $vendor->id);
+        })
             ->with(['user.profile', 'booking', 'vehicle'])
             ->when($searchQuery, function ($query, $searchQuery) {
                 $query->where(function ($q) use ($searchQuery) {
                     $q->where('review_text', 'like', '%' . $searchQuery . '%')
-                      ->orWhereHas('user', function ($q) use ($searchQuery) {
-                          $q->where('first_name', 'like', '%' . $searchQuery . '%')
-                            ->orWhere('last_name', 'like', '%' . $searchQuery . '%');
-                      })
-                      ->orWhereHas('vehicle', function ($q) use ($searchQuery) {
-                          $q->where('brand', 'like', '%' . $searchQuery . '%')
-                            ->orWhere('model', 'like', '%' . $searchQuery . '%');
-                      });
+                        ->orWhereHas('user', function ($q) use ($searchQuery) {
+                            $q->where('first_name', 'like', '%' . $searchQuery . '%')
+                                ->orWhere('last_name', 'like', '%' . $searchQuery . '%');
+                        })
+                        ->orWhereHas('vehicle', function ($q) use ($searchQuery) {
+                            $q->where('brand', 'like', '%' . $searchQuery . '%')
+                                ->orWhere('model', 'like', '%' . $searchQuery . '%');
+                        });
                 });
             })
             ->orderByDesc('created_at')
             ->paginate(5);
-    
+
         // Calculate statistics
         $totalReviews = Review::whereHas('vehicle.vendorProfile', function ($query) use ($vendor) {
             $query->where('user_id', $vendor->id);
         })->count();
-    
+
         $averageRating = Review::whereHas('vehicle.vendorProfile', function ($query) use ($vendor) {
             $query->where('user_id', $vendor->id);
         })->avg('rating') ?? 0;
-    
+
         return Inertia::render('Vendor/Review/Index', [
             'reviews' => $reviews,
             'statistics' => [
@@ -102,19 +102,19 @@ class ReviewController extends Controller
             'filters' => $request->only('search')
         ]);
     }
-    
+
 
 
     // ReviewController.php
     public function userReviews()
     {
         $user = auth()->user();
-    
+
         $reviews = Review::where('user_id', $user->id)
             ->with([
-                'vendorProfileData', 
-                'booking', 
-                'user', 
+                'vendorProfileData',
+                'booking',
+                'user',
                 'vehicle.category',  // Include vehicle category
                 'vehicle.user',      // Include vehicle owner
                 'vehicle.images',    // Include vehicle images
@@ -122,9 +122,9 @@ class ReviewController extends Controller
             ])
             ->orderBy('created_at', 'desc')
             ->paginate(8);
-    
+
         $averageRating = Review::where('user_id', $user->id)->avg('rating');
-    
+
         return Inertia::render('Profile/Review/Index', [
             'reviews' => $reviews,
             'statistics' => [
@@ -155,4 +155,38 @@ class ReviewController extends Controller
 
         return back()->with('success', 'Review status updated successfully');
     }
+
+    public function vendorAllReviews($vendorProfileId)
+{
+    $reviews = Review::where('vendor_profile_id', $vendorProfileId)
+        ->where('status', 'approved')
+        ->with(['user.profile', 'vehicle'])
+        ->orderBy('created_at', 'desc')
+        ->paginate(12);
+
+    // Calculate rating distribution
+    $ratingStats = Review::where('vendor_profile_id', $vendorProfileId)
+        ->where('status', 'approved')
+        ->selectRaw('rating, COUNT(*) as count')
+        ->groupBy('rating')
+        ->pluck('count', 'rating')
+        ->all();
+
+    // Fill in all ratings (1 to 5) with 0 if no reviews exist for that rating
+    $totalReviews = array_sum($ratingStats);
+    $ratingDistribution = [];
+    for ($i = 5; $i >= 1; $i--) {
+        $ratingDistribution[$i] = [
+            'count' => $ratingStats[$i] ?? 0,
+            'percentage' => $totalReviews > 0 ? round(($ratingStats[$i] ?? 0) / $totalReviews * 200) : 0,
+        ];
+    }
+
+    return Inertia::render('CompanyReviews', [
+        'reviews' => $reviews,
+        'vendorProfileId' => $vendorProfileId,
+        'ratingDistribution' => $ratingDistribution,
+        'pagination_links' => $reviews->links()->toHtml(),
+    ]);
+}
 }

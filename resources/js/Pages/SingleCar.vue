@@ -1612,6 +1612,10 @@ const openLightbox = (index) => {
                         <CarouselPrevious />
                         <CarouselNext />
                     </Carousel>
+                    <div class="flex justify-center pb-[3rem]">
+                        <a v-if="reviews && reviews.length > 0" :href="`/vendor/${vehicle.vendor_profile_data?.id}/reviews`" 
+                            class="button-primary px-[2rem] py-[0.75rem]">View all</a>
+                    </div>
                 </div>
                 <div v-else class="mt-[2rem] pb-[3rem]">
                     <p>No reviews yet.</p>
