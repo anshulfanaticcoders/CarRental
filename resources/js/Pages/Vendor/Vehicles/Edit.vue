@@ -1,6 +1,4 @@
 <template>
-
-
     <div v-if="isLoading" class="fixed z-50 h-full w-full top-0 left-0 bg-[#0000009e]">
         <div class="flex justify-center flex-col items-center h-full w-full">
             <img :src=loader alt="" class="w-[150px]">
@@ -15,10 +13,11 @@
             <div class="mx-auto">
                 <form @submit.prevent="updateVehicle">
                     <Tabs defaultValue="basic" class="w-full">
-                        <TabsList class="grid w-full grid-cols-4">
+                        <TabsList class="grid w-full grid-cols-5">
                             <TabsTrigger value="basic">Basic Information</TabsTrigger>
                             <TabsTrigger value="specifications">Specifications</TabsTrigger>
                             <TabsTrigger value="pricing">Pricing & Features</TabsTrigger>
+                            <TabsTrigger value="guidelines">Guidelines & Timings</TabsTrigger>
                             <TabsTrigger value="images">Images</TabsTrigger>
                         </TabsList>
 
@@ -404,6 +403,50 @@
                             </div>
                         </TabsContent>
 
+                        <TabsContent value="guidelines">
+                            <div>
+                                    <InputLabel for="guidelines">Guidelines:</InputLabel>
+                                    <textarea type="text" v-model="form.guidelines" id="guidelines" required 
+                                    class="border p-2 rounded-lg w-full"/>
+                                </div>
+                                <div class="time-selector p-6 bg-gray-50 rounded-xl shadow-lg w-full">
+                        <p>Choose Your Pickup and Return Time for the vehicle</p>
+                        <!-- Pickup Times Section -->
+                        <label class="block text-lg font-semibold text-gray-800 mb-2">Pickup Times</label>
+                        <div v-for="(time, index) in form.pickup_times" :key="'pickup-' + index"
+                            class="time-input-group flex items-center mb-3">
+                            <input type="time" v-model="form.pickup_times[index]"
+                                class="time-input w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition duration-200 bg-white shadow-sm" />
+                            <button type="button" @click="removePickupTime(index)" title="Remove"
+                                class="px-3 py-1 ml-1 bg-red-500 text-white rounded-[99px] hover:bg-red-600 transition duration-200 shadow-md">
+                                X
+                            </button>
+                        </div>
+                        
+                        <button type="button" @click="addPickupTime"
+                            class="w-full py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition duration-200 font-medium shadow-md">
+                            + Add Pickup Time
+                        </button>
+
+                        <!-- Return Times Section -->
+                        <label class="block text-lg font-semibold text-gray-800 mt-6 mb-2">Return Times</label>
+                        <div v-for="(time, index) in form.return_times" :key="'return-' + index"
+                            class="time-input-group flex items-center mb-3">
+                            <input type="time" v-model="form.return_times[index]"
+                                class="time-input w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition duration-200 bg-white shadow-sm" />
+                            <button type="button" @click="removeReturnTime(index)" title="Remove"
+                                class="px-3 py-1 ml-1 bg-red-500 text-white rounded-[99px] hover:bg-red-600 transition duration-200 shadow-md">
+                                X
+                            </button>
+                        </div>
+                   
+                        <button type="button" @click="addReturnTime"
+                            class="w-full py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition duration-200 font-medium shadow-md">
+                            + Add Return Time
+                        </button>
+                    </div>
+                        </TabsContent>
+
                         <TabsContent value="images">
                             <div class="grid gap-6">
                                 <!-- Current Images -->
@@ -556,6 +599,7 @@ const form = useForm({
     featured: false,
     security_deposit: 0.00,
     payment_method: [],
+    guidelines: "",
     price_per_day: 0.00,
     price_per_week: 0.00,
     price_per_month: 0.00,
@@ -570,6 +614,8 @@ const form = useForm({
     dealer_cost: 0.00,
     phone_number: '',
     images: [],
+    pickup_times: [],
+    return_times: [],
     benefits: {
         limited_km_per_day: 0,
         limited_km_per_week: 0,
@@ -595,8 +641,16 @@ const remainingImageSlots = computed(() => {
     return Math.max(0, maxImages - props.vehicle.images.length)
 })
 
-const categories = ref([])
-const features = ref([])
+const categories = ref([]);
+const features = ref([]);
+const addPickupTime = () => {
+    form.pickup_times.push(""); // Push empty value for a new time input
+};
+
+const removePickupTime = (index) => {
+    form.pickup_times.splice(index, 1);
+};
+
 
 const fetchCategoriesAndFeatures = async () => {
     try {
@@ -697,6 +751,8 @@ onMounted(() => {
         form.weekly_discount = parseFloat(props.vehicle.weekly_discount) || 0.00
         form.monthly_discount = parseFloat(props.vehicle.monthly_discount) || 0.00
         form.preferred_price_type = props.vehicle.preferred_price_type
+        form.guidelines = props.vehicle.guidelines
+        form
          
         
          // Handle benefits
@@ -729,6 +785,22 @@ onMounted(() => {
             form.vehicle_height = parseFloat(props.vehicle.specifications.vehicle_height) || 0.00
             form.dealer_cost = parseFloat(props.vehicle.specifications.dealer_cost) || 0.00
             form.phone_number = props.vehicle.specifications.phone_number
+        }
+        if (props.vehicle.pickup_times && typeof props.vehicle.pickup_times === 'string') {
+            form.pickup_times = props.vehicle.pickup_times.split(',').filter(Boolean);
+        } else if (Array.isArray(props.vehicle.pickup_times)) {
+            form.pickup_times = [...props.vehicle.pickup_times];
+        } else {
+            form.pickup_times = ["09:00"]; // Default time
+        }
+
+        // Handle return_times similarly
+        if (props.vehicle.return_times && typeof props.vehicle.return_times === 'string') {
+            form.return_times = props.vehicle.return_times.split(',').filter(Boolean);
+        } else if (Array.isArray(props.vehicle.return_times)) {
+            form.return_times = [...props.vehicle.return_times];
+        } else {
+            form.return_times = ["17:00"]; // Default time
         }
     }
 

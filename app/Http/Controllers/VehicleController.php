@@ -95,9 +95,9 @@ class VehicleController extends Controller
             'minimum_driver_age' => 'nullable|integer',
 
             'pickup_times' => 'required|array',
-    
+
             'return_times' => 'required|array',
-       
+
         ]);
 
         // Create the vehicle
@@ -136,7 +136,7 @@ class VehicleController extends Controller
             'price_per_km' => $request->price_per_km,
 
             'pickup_times' => $request->pickup_times,
-'return_times' => $request->return_times,
+            'return_times' => $request->return_times,
         ]);
 
 

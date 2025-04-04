@@ -148,7 +148,10 @@ class VendorVehicleController extends Controller
             'benefits.price_per_km_per_day' => 'nullable|numeric|min:0',
             'benefits.price_per_km_per_week' => 'nullable|numeric|min:0',
             'benefits.price_per_km_per_month' => 'nullable|numeric|min:0',
-            'benefits.minimum_driver_age' => 'required|integer|min:18'
+            'benefits.minimum_driver_age' => 'required|integer|min:18',
+            'guidelines' => 'nullable|string|max:50000',
+            'pickup_times' => 'required|array',
+            'return_times' => 'required|array',
         ]);
 
         // Set default values for nullable fields
@@ -184,6 +187,9 @@ class VendorVehicleController extends Controller
             'price_per_month' => $request->price_per_month == 0 ? null : $request->price_per_month,
             'monthly_discount' => $request->monthly_discount == 0 ? null : $request->monthly_discount,
             'preferred_price_type' => $request->preferred_price_type,
+            'guidelines' => $request->guidelines,
+            'pickup_times' => $request->pickup_times,
+            'return_times' => $request->return_times,
         ]);
 
 
