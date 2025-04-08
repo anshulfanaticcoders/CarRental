@@ -12,13 +12,13 @@ class CreateUserProfilesTable extends Migration
             $table->foreignId('user_id')->constrained('users')->onDelete('cascade');
             $table->string('title')->nullable();
             $table->string('avatar')->nullable();
-            $table->string('address_line1');
+            $table->string('address_line1')->nullable();;
             $table->string('address_line2')->nullable();
-            $table->string('city');
+            $table->string('city')->nullable();;
             $table->string('state')->nullable();
             $table->string('country');
-            $table->string('postal_code');
-            $table->date('date_of_birth');
+            $table->string('postal_code')->nullable();;
+            $table->date('date_of_birth')->nullable();;
             $table->enum('gender', ['male', 'female'])->nullable();
             $table->text('about')->nullable();
             $table->string('tax_identification')->nullable();

@@ -16,6 +16,8 @@ import {
     SelectTrigger,
     SelectValue
 } from '@/Components/ui/select';
+import VueDatePicker from '@vuepic/vue-datepicker';
+import '@vuepic/vue-datepicker/dist/main.css';
 
 const toast = useToast();
 const user = usePage().props.auth.user;
@@ -76,6 +78,8 @@ const handleSubmit = () => {
                 pauseOnHover: true,
                 draggable: true,
             });
+            // Scroll to top before reload
+            window.scrollTo({ top: 0, behavior: 'smooth' });
             setTimeout(() => {
                 window.location.reload();
             }, 1500);
@@ -160,17 +164,30 @@ const getFlagUrl = (countryCode) => {
 };
 
 
+const dateOfBirth = ref(null);
+
 const minimumDateOfBirth = computed(() => {
     const today = new Date();
-    const eighteenYearsAgo = new Date(
-        today.getFullYear() - 18,
-        today.getMonth(),
-        today.getDate()
-    );
-
-    // Format the date as YYYY-MM-DD for the max attribute
+    const eighteenYearsAgo = new Date(today.getFullYear() - 18, today.getMonth(), today.getDate());
     return eighteenYearsAgo.toISOString().split('T')[0];
 });
+
+// Watch dateOfBirth to update form.date_of_birth
+watch(dateOfBirth, (newValue) => {
+    if (newValue) {
+        form.date_of_birth = newValue.toISOString().split('T')[0];
+    } else {
+        form.date_of_birth = '';
+    }
+});
+
+// Initialize dateOfBirth with existing value on mount
+onMounted(() => {
+    if (form.date_of_birth) {
+        dateOfBirth.value = new Date(form.date_of_birth);
+    }
+});
+
 </script>
 
 <template>
@@ -255,9 +272,10 @@ const minimumDateOfBirth = computed(() => {
 
 
                 <div>
-                    <InputLabel for="date_of_birth" value="Date of Birth" />
-                    <input id="date_of_birth" type="date" v-model="form.date_of_birth" required
-                        :max="minimumDateOfBirth" class="w-full" />
+                    <InputLabel for="date_of_birth" value="Date of Birth" class="mb-1" />
+                    <VueDatePicker v-model="dateOfBirth" :enable-time-picker="false" uid="date-of-birth"
+                        placeholder="Select Date of Birth" class="w-full" :max-date="minimumDateOfBirth"
+                        :start-date="minimumDateOfBirth" />
                     <small class="text-gray-500 mt-1 block">You must be at least 18 years old</small>
                     <InputError class="mt-2" :message="form.errors.date_of_birth" />
                 </div>
@@ -331,7 +349,8 @@ const minimumDateOfBirth = computed(() => {
                 </div>
 
 
-                <h2 class="text-[1.5rem] font-medium text-gray-900 max-[768px]:text-[1.2rem] leading-4 mt-10">Profile</h2>
+                <h2 class="text-[1.5rem] font-medium text-gray-900 max-[768px]:text-[1.2rem] leading-4 mt-10">Profile
+                </h2>
 
                 <div class="col-span-2">
                     <p class="mb-[1rem] text-customLightGrayColor font-medium max-[768px]:text-[0.95rem]">Who am I?
@@ -352,7 +371,8 @@ const minimumDateOfBirth = computed(() => {
 
 
                 <div class="max-[768px]:col-span-2">
-                    <span class="text-[1.5rem] font-medium text-gray-900 max-[768px]:text-[1.2rem] mb-4 inline-block mt-5 max-[768px]:mb-4">Tax
+                    <span
+                        class="text-[1.5rem] font-medium text-gray-900 max-[768px]:text-[1.2rem] mb-4 inline-block mt-5 max-[768px]:mb-4">Tax
                         Identification Number</span>
                     <InputLabel for="tax_identification" value="Tax Identification Number" />
                     <TextInput id="tax_identification" type="text" class="mt-1 block w-full"

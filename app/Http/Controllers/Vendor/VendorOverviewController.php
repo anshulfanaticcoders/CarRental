@@ -24,13 +24,21 @@ class VendorOverviewController extends Controller
 
         $activeBookings = Booking::whereHas('vehicle', function ($query) use ($vendorId) {
             $query->where('vendor_id', $vendorId);
-        })->where('booking_status', 'confirmed')->count(); // Or your definition of "active"
+        })->where('booking_status', 'confirmed')->count();
+        $completedBookings = Booking::whereHas('vehicle', function ($query) use ($vendorId) {
+            $query->where('vendor_id', $vendorId);
+        })->where('booking_status', 'completed')->count();
+        $cancelledBookings = Booking::whereHas('vehicle', function ($query) use ($vendorId) {
+            $query->where('vendor_id', $vendorId);
+        })->where('booking_status', 'cancelled')->count();
 
         $totalRevenue = BookingPayment::whereHas('booking', function ($query) use ($vendorId) {
             $query->whereHas('vehicle', function ($query) use ($vendorId) {
                 $query->where('vendor_id', $vendorId);
             });
         })->sum('amount');
+
+        $currency = auth()->user()->profile?->currency ?? '$';
 
         // New count for active vehicles
         $activeVehicles = Vehicle::where('vendor_id', $vendorId)
@@ -57,12 +65,15 @@ class VendorOverviewController extends Controller
             'totalVehicles' => $totalVehicles,
             'totalBookings' => $totalBookings,
             'activeBookings' => $activeBookings,
+            'completedBookings' => $completedBookings,
+            'cancelledBookings' => $cancelledBookings,
             'totalRevenue' => $totalRevenue,
             'bookingOverview' => $bookingOverview,
             'revenueData' => $revenueData,
             'activeVehicles' => $activeVehicles,
             'rentedVehicles' => $rentedVehicles,
             'maintenanceVehicles' => $maintenanceVehicles,
+            'currency' => $currency,
         ]);
     }
 
@@ -118,4 +129,7 @@ class VendorOverviewController extends Controller
 
         return $revenueData->reverse()->values()->all();
     }
+
+
+    
 }

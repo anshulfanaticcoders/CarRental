@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Admin;
 use App\Helpers\ActivityLogHelper;
 use App\Http\Controllers\Controller;
 use App\Models\User;
+use App\Models\UserProfile;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Str;
@@ -48,13 +49,27 @@ class UsersController extends Controller
             'phone' => 'required|unique:users,phone',
             'password' => 'required|min:8|confirmed',
             'role' => 'required|in:admin,vendor,customer',
-            'status' => 'required|in:active,inactive,suspended'
+            'status' => 'required|in:active,inactive,suspended',
+            'email_verified_at' => now(),
+            'phone_verified_at' => now(),
+            'last_login_at' => now(),
+            'created_at' => now(),
         ]);
 
         $data = $request->all();
         $data['password'] = Hash::make($request->password);
 
         $user = User::create($data);
+
+        // Create UserProfile with country
+        UserProfile::create([
+            'user_id' => $user->id,
+            'country' => $request->country,
+            'address_line1' => 'N/A',
+            'city' => 'N/A',
+            'postal_code' => '00000',
+            'date_of_birth' => now()->subYears(18)->toDateString(),
+        ]);
 
         // Log the activity
         ActivityLogHelper::logActivity('create', 'Created a new user', $user, $request);
@@ -74,7 +89,8 @@ class UsersController extends Controller
             'phone' => 'required|unique:users,phone,' . $user->id,
             // 'role' => 'required|in:admin,vendor,customer',
             'status' => 'required|in:active,inactive,suspended',
-            'password' => 'nullable|min:8|confirmed'
+            'password' => 'nullable|min:8|confirmed',
+            'updated_at' => now(),
         ]);
 
         $data = $request->all();

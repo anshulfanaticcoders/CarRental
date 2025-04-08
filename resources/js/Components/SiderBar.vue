@@ -109,7 +109,7 @@ const vendorMenus = [
     icon: dashboardIcon,
     items: [
       { name: "Profile", path: "/profile" },
-      { name: "Overview", path: "/overview" },
+      { name: "Overview", path: "/vendor/overview" },
       { name: "Documents", path: "/vendor/documents" },
       { name: "Verification Status", path: "/vendor-status" },
     ],

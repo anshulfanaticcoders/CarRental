@@ -1,6 +1,9 @@
 <template>
     <AdminDashboardLayout>
         <div class="flex flex-col gap-4 w-[95%] ml-[1.5rem]">
+            <div v-if="$page.props.flash.success" class="mb-4 p-4 bg-green-100 border border-green-400 text-green-700 rounded">
+                {{ $page.props.flash.success }}
+            </div>
             <div class="flex items-center justify-between mt-[2rem]">
                 <span class="text-[1.5rem] font-semibold">All Users</span>
                 <div class="flex items-center gap-4">
@@ -133,6 +136,7 @@ import {
 const props = defineProps({
     users: Object,
     filters: Object, 
+    flash: Object,
 });
 const search = ref(props.filters.search || ''); // Initialize search with the filter value
 const isCreateDialogOpen = ref(false);
@@ -194,6 +198,22 @@ const formatDate = (dateStr) => {
     const date = new Date(dateStr);
     return `${String(date.getMonth() + 1).padStart(2, '0')}/${String(date.getDate()).padStart(2, '0')}/${date.getFullYear()}`;
 };
+
+const clearFlash = () => {
+    setTimeout(() => {
+        router.visit(window.location.pathname, {
+            preserveState: true,
+            preserveScroll: true,
+            replace: true,
+            data: { flash: null }
+        });
+    }, 3000); // Clear after 3 seconds
+};
+
+// Call clearFlash when flash message exists
+if (props.flash?.success) {
+    clearFlash();
+}
 </script>
 <style scoped>
 .search-box {

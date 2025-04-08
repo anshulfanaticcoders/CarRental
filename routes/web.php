@@ -270,7 +270,7 @@ Route::middleware(['auth', 'role:vendor'])->group(function () {
         ->name('reviews.update-status');
 
     // Vendor Overview
-    Route::get('/overview', [VendorOverviewController::class, 'index'])->name('vendor.overview');
+    Route::get('/vendor/overview', [VendorOverviewController::class, 'index'])->middleware(['auth'])->name('vendor.overview');
 
     // these are for damage protection on vendor profile page
     Route::get('/damage-protection/{booking}', [DamageProtectionController::class, 'index'])

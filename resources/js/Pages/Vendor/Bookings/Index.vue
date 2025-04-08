@@ -16,15 +16,15 @@
                         <tr>
                             <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                                 ID</th>
-                            <th class="px-4 py-2 text-left text-sm font-bold">Booking ID</th>
-                            <th class="px-4 py-2 text-left text-sm font-bold">Customer Name</th>
-                            <th class="px-4 py-2 text-left text-sm font-bold">Vehicle</th>
-                            <th class="px-4 py-2 text-left text-sm font-bold">Booking Date</th>
-                            <th class="px-4 py-2 text-left text-sm font-bold">Return Date</th>
-                            <th class="px-4 py-2 text-left text-sm font-bold">Payment</th>
-                            <th class="px-4 py-2 text-left text-sm font-bold">Payment Status</th>
-                            <th class="px-4 py-2 text-left text-sm font-bold">Booking Status</th>
-                            <th class="px-4 py-2 text-left text-sm font-bold">Actions</th>
+                            <th class="px-4 py-2 text-left text-sm font-medium tracking-wider whitespace-nowrap">Booking ID</th>
+                            <th class="px-4 py-2 text-left text-sm font-medium tracking-wider whitespace-nowrap">Customer Name</th>
+                            <th class="px-4 py-2 text-left text-sm font-medium tracking-wider whitespace-nowrap">Vehicle</th>
+                            <th class="px-4 py-2 text-left text-sm font-medium tracking-wider whitespace-nowrap">Booking Date</th>
+                            <th class="px-4 py-2 text-left text-sm font-medium tracking-wider whitespace-nowrap">Return Date</th>
+                            <th class="px-4 py-2 text-left text-sm font-medium tracking-wider whitespace-nowrap">Payment</th>
+                            <th class="px-4 py-2 text-left text-sm font-medium tracking-wider whitespace-nowrap">Payment Status</th>
+                            <th class="px-4 py-2 text-left text-sm font-medium tracking-wider whitespace-nowrap">Booking Status</th>
+                            <th class="px-4 py-2 text-left text-sm font-medium tracking-wider whitespace-nowrap">Actions</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -32,18 +32,18 @@
                             class="border-b hover:bg-gray-50">
                             <td class="px-6 py-4 whitespace-nowrap">{{ (pagination.current_page - 1) *
                                 pagination.per_page + index + 1 }}</td>
-                            <td class="px-4 py-2 text-sm text-gray-700">{{ booking.booking_number }}</td>
-                            <td class="px-4 py-2 text-sm text-gray-700">
+                            <td class="px-4 py-2 text-sm text-gray-700 whitespace-nowrap">{{ booking.booking_number }}</td>
+                            <td class="px-4 py-2 text-sm text-gray-700 whitespace-nowrap">
                                 {{ booking.customer?.first_name }} {{ booking.customer?.last_name }}
                             </td>
-                            <td class="px-4 py-2 text-sm text-gray-700">
+                            <td class="px-4 py-2 text-sm text-gray-700 whitespace-nowrap">
                                 {{ booking.vehicle?.brand }} <span
                                     class="bg-customLightPrimaryColor ml-2 p-1 rounded-[12px]">{{ booking.vehicle?.model
                                     }}</span>
                             </td>
-                            <td class="px-4 py-2 text-sm text-gray-700">{{ formatDate(booking.pickup_date) }}</td>
-                            <td class="px-4 py-2 text-sm text-gray-700">{{ formatDate(booking.return_date) }}</td>
-                            <td class="px-4 py-2 text-sm text-gray-700">{{ booking.vendor_profile?.currency }} {{ booking.payments[0]?.amount || 'N/A' }}</td>
+                            <td class="px-4 py-2 text-sm text-gray-700 whitespace-nowrap">{{ formatDate(booking.pickup_date) }}</td>
+                            <td class="px-4 py-2 text-sm text-gray-700 whitespace-nowrap">{{ formatDate(booking.return_date) }}</td>
+                            <td class="px-4 py-2 text-sm text-gray-700 whitespace-nowrap">{{ booking.vendor_profile?.currency }} {{ booking.payments[0]?.amount || 'N/A' }}</td>
                             <td class="px-4 py-2 text-sm capitalize">
                                 <span :class="{
                                     'text-green-600 font-semibold': booking.payments[0]?.payment_status === 'succeeded',
@@ -54,9 +54,9 @@
                                     {{ booking.payments[0]?.payment_status || 'No Payment' }}
                                 </span>
                             </td>
-                            <td class="px-4 py-2 text-sm">
+                            <td class="px-4 py-2 text-sm whitespace-nowrap">
                                 <select v-model="booking.booking_status" @change="updateStatus(booking)"
-                                    class="w-full p-2 border rounded" :class="{
+                                    class="w-full py-2 border rounded" :class="{
                                         'text-green-600 font-medium': booking.booking_status === 'completed' || booking.booking_status === 'confirmed',
                                         'text-yellow-500 font-medium': booking.booking_status === 'pending',
                                         'text-red-500 font-medium': booking.booking_status === 'cancelled'
@@ -67,7 +67,7 @@
                                     <option value="cancelled" class="text-red-500 font-medium">Cancelled</option>
                                 </select>
                             </td>
-                            <td class="px-4 py-2 text-sm">
+                            <td class="px-4 py-2 text-sm whitespace-nowrap">
                                 <button v-if="booking.booking_status !== 'cancelled'"
                                     class="text-red-600 font-semibold hover:underline"
                                     @click="cancelBooking(booking.id)">
