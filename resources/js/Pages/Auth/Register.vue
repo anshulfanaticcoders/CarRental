@@ -29,6 +29,8 @@ import VueDatePicker from '@vuepic/vue-datepicker';
 import '@vuepic/vue-datepicker/dist/main.css';
 
 const stepIndex = ref(1);
+const showPassword = ref(false);
+const showconfirmPassword = ref(false);
 
 const steps = [
     {
@@ -338,7 +340,7 @@ watch(dateOfBirth, (newValue) => {
                                     <!-- Replace icons with numbers -->
                                     <span class="text-sm font-medium">{{
                                         index + 1
-                                        }}</span>
+                                    }}</span>
                                 </Button>
                             </StepperTrigger>
 
@@ -437,7 +439,7 @@ watch(dateOfBirth, (newValue) => {
                                                                 " alt="Country Flag" class="mr-2 w-6 h-4 rounded" />
                                                             <span>{{
                                                                 country.name
-                                                            }}
+                                                                }}
                                                                 ({{
                                                                     country.phone_code
                                                                 }})</span>
@@ -540,16 +542,20 @@ watch(dateOfBirth, (newValue) => {
                             Secure your account
                         </p>
                         <div class="grid grid-cols-1 gap-5 max-[768px]:gap-3">
-                            <div class="column w-full">
+                            <div class="column w-full relative">
                                 <InputLabel for="password" value="Password" />
-                                <TextInput id="password" type="password" v-model="form.password" required
-                                    autocomplete="new-password" class="w-full" :class="{
+                                <TextInput :type="showPassword ? 'text' : 'password'" id="password" type="password"
+                                    v-model="form.password" required autocomplete="new-password" class="w-full" :class="{
                                         'border-red-500':
                                             form.password.length > 0 &&
                                             form.password.length < 8,
                                         'border-green-500':
                                             form.password.length >= 8,
                                     }" />
+                                <button type="button" @click="showPassword = !showPassword"
+                                    class="absolute right-[1rem] translate-y-[1rem]  font-medium text-customDarkBlackColor text-sm max-[768px]:text-white">
+                                    {{ showPassword ? 'Hide' : 'Show' }}
+                                </button>
                                 <p class="flex justify-end font-medium text-[0.75rem]">Password must be atleast 8
                                     characters</p>
                                 <p v-if="
@@ -564,9 +570,9 @@ watch(dateOfBirth, (newValue) => {
                                 <!-- <InputError class="mt-2" :message="form.errors.password" /> -->
                             </div>
 
-                            <div class="column w-full">
+                            <div class="column w-full relative">
                                 <InputLabel for="password_confirmation" value="Confirm Password" />
-                                <TextInput id="password_confirmation" type="password"
+                                <TextInput :type="showconfirmPassword ? 'text' : 'password'" id="password_confirmation" type="password"
                                     v-model="form.password_confirmation" required autocomplete="new-password"
                                     class="w-full" :class="{
                                         'border-red-500':
@@ -580,6 +586,10 @@ watch(dateOfBirth, (newValue) => {
                                             form.password ===
                                             form.password_confirmation,
                                     }" />
+                                    <button type="button" @click="showconfirmPassword = !showconfirmPassword"
+                                    class="absolute right-[1rem] translate-y-[1rem] font-medium text-customDarkBlackColor text-sm max-[768px]:text-white">
+                                    {{ showconfirmPassword ? 'Hide' : 'Show' }}
+                                </button>
                                 <p v-if="
                                     form.password_confirmation.length > 0 &&
                                     form.password !==
