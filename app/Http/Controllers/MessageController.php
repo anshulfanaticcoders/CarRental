@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Events\NewMessage;
 use App\Models\Message;
 use App\Models\Notification;
 use App\Models\User;
@@ -41,60 +42,55 @@ class MessageController extends Controller
 }
 
 
-    public function show($bookingId)
-    {
-        $booking = Booking::with(['vehicle.vendor', 'customer'])->findOrFail($bookingId);
+public function show($bookingId)
+{
+    $booking = Booking::with(['vehicle.vendor', 'customer'])->findOrFail($bookingId);
 
-        // Ensure the authenticated user is either the customer or the vendor
-        $user = Auth::user();
-        $customerId = $booking->customer->user_id;
-        $vendorId = $booking->vehicle->vendor_id;
+    $user = Auth::user();
+    $customerId = $booking->customer->user_id;
+    $vendorId = $booking->vehicle->vendor_id;
 
-        if ($user->id !== $customerId && $user->id !== $vendorId) {
-            abort(403, 'Unauthorized access to this conversation');
-        }
+    if ($user->id !== $customerId && $user->id !== $vendorId) {
+        abort(403, 'Unauthorized access to this conversation');
+    }
 
-        // Get the other participant in the conversation
-        $otherUserId = ($user->id === $customerId) ? $vendorId : $customerId;
-        $otherUser = User::find($otherUserId);
+    $otherUserId = ($user->id === $customerId) ? $vendorId : $customerId;
+    $otherUser = User::select('id', 'first_name', 'last_login_at')->find($otherUserId); // Use last_login_at
 
-        // Get messages between these users for this booking
-        $messages = Message::where(function ($query) use ($user, $otherUserId) {
-            $query->where('sender_id', $user->id)
-                ->where('receiver_id', $otherUserId);
-        })
-            ->orWhere(function ($query) use ($user, $otherUserId) {
-                $query->where('sender_id', $otherUserId)
-                    ->where('receiver_id', $user->id);
-            })
-            ->where('booking_id', $bookingId)
-            ->with(['sender', 'receiver'])
-            ->orderBy('created_at', 'asc')
-            ->get();
+    $messages = Message::where(function ($query) use ($user, $otherUserId) {
+        $query->where('sender_id', $user->id)
+            ->where('receiver_id', $otherUserId);
+    })
+    ->orWhere(function ($query) use ($user, $otherUserId) {
+        $query->where('sender_id', $otherUserId)
+            ->where('receiver_id', $user->id);
+    })
+    ->where('booking_id', $bookingId)
+    ->with(['sender', 'receiver'])
+    ->orderBy('created_at', 'asc')
+    ->get();
 
-        // Mark unread messages as read
-        Message::where('receiver_id', $user->id)
-            ->where('booking_id', $bookingId)
-            ->whereNull('read_at')
-            ->update(['read_at' => now()]);
+    Message::where('receiver_id', $user->id)
+        ->where('booking_id', $bookingId)
+        ->whereNull('read_at')
+        ->update(['read_at' => now()]);
 
-        // Check if this is an AJAX request (for embedding in Index)
-        if (request()->ajax()) {
-            return response()->json([
-                'props' => [
-                    'booking' => $booking,
-                    'messages' => $messages,
-                    'otherUser' => $otherUser
-                ]
-            ]);
-        }
-
-        return Inertia::render('Messages/Show', [
-            'booking' => $booking,
-            'messages' => $messages,
-            'otherUser' => $otherUser
+    if (request()->ajax()) {
+        return response()->json([
+            'props' => [
+                'booking' => $booking,
+                'messages' => $messages,
+                'otherUser' => $otherUser
+            ]
         ]);
     }
+
+    return Inertia::render('Messages/Show', [
+        'booking' => $booking,
+        'messages' => $messages,
+        'otherUser' => $otherUser
+    ]);
+}
 
     public function getLastMessage($bookingId)
     {
@@ -123,51 +119,44 @@ class MessageController extends Controller
     }
 
     public function store(Request $request)
-    {
-        $validated = $request->validate([
-            'booking_id' => 'required|exists:bookings,id',
-            'receiver_id' => 'required|exists:users,id',
-            'message' => 'required|string',
-            'parent_id' => 'nullable|exists:messages,id'
-        ]);
+{
+    $validated = $request->validate([
+        'booking_id' => 'required|exists:bookings,id',
+        'receiver_id' => 'required|exists:users,id',
+        'message' => 'required|string',
+        'parent_id' => 'nullable|exists:messages,id'
+    ]);
 
-        $booking = Booking::with(['vehicle.vendor', 'customer'])->findOrFail($validated['booking_id']);
+    $booking = Booking::with(['vehicle.vendor', 'customer'])->findOrFail($validated['booking_id']);
+    $user = Auth::user();
 
-        // Ensure the authenticated user is either the customer or the vendor
-        $user = Auth::user();
-        $customerId = $booking->customer->user_id;
-        $vendorId = $booking->vehicle->vendor_id;
-
-        if ($user->id !== $customerId && $user->id !== $vendorId) {
-            abort(403, 'Unauthorized access to this conversation');
-        }
-
-        // Create the message
-        $message = Message::create([
-            'sender_id' => $user->id,
-            'receiver_id' => $validated['receiver_id'],
-            'booking_id' => $validated['booking_id'],
-            'message' => $validated['message'],
-            'parent_id' => $validated['parent_id'] ?? null
-        ]);
-
-        // Create a notification
-        Notification::create([
-            'user_id' => $validated['receiver_id'],
-            'type' => 'message',
-            'title' => 'New Message',
-            'message' => 'You have received a new message from ' . $user->first_name,
-            'booking_id' => $validated['booking_id'],
-        ]);
-
-
-        // Load relationships for the response
-        $message->load(['sender', 'receiver']);
-
-        return response()->json([
-            'message' => $message
-        ]);
+    if ($user->id !== $booking->customer->user_id && $user->id !== $booking->vehicle->vendor_id) {
+        abort(403, 'Unauthorized access to this conversation');
     }
+
+    $message = Message::create([
+        'sender_id' => $user->id,
+        'receiver_id' => $validated['receiver_id'],
+        'booking_id' => $validated['booking_id'],
+        'message' => $validated['message'],
+        'parent_id' => $validated['parent_id'] ?? null
+    ]);
+
+    // Broadcast the new message
+    broadcast(new NewMessage($message))->toOthers();
+
+    Notification::create([
+        'user_id' => $validated['receiver_id'],
+        'type' => 'message',
+        'title' => 'New Message',
+        'message' => 'You have received a new message from ' . $user->first_name,
+        'booking_id' => $validated['booking_id'],
+    ]);
+
+    $message->load(['sender', 'receiver']);
+
+    return response()->json(['message' => $message]);
+}
 
     public function getUnreadCount()
     {
