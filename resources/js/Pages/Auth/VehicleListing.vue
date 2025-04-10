@@ -730,52 +730,64 @@
                     </div>
 
                     <!-- Guidelines -->
-                    <div>
+                    <div class="max-[768px]:px-[1.5rem]">
                         <InputLabel for="brand">Guidelines:</InputLabel>
                         <textarea type="text" v-model="form.guidelines" id="guidelines" required
                             placeholder="Enter vehicle guidelines" class="w-full min-h-[150px]" />
                     </div>
 
-                    <div class="time-selector p-6 bg-gray-50 rounded-xl shadow-lg w-[50%]">
-        <p>Choose Your Pickup and Return Time for the vehicle</p>
-        <!-- Pickup Times Section -->
-        <label class="block text-lg font-semibold text-gray-800 mb-2">Pickup Times</label>
-        <div v-for="(time, index) in form.pickup_times" :key="'pickup-' + index"
-            class="time-input-group flex items-center mb-3">
-            <input type="time" v-model="form.pickup_times[index]" @input="normalizeTime('pickup_times', index)"
-                class="time-input w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition duration-200 bg-white shadow-sm" />
-            <button type="button" @click="removePickupTime(index)" title="Remove"
-                class="px-3 py-1 ml-1 bg-red-500 text-white rounded-[99px] hover:bg-red-600 transition duration-200 shadow-md">
-                X
-            </button>
-        </div>
-        <span v-if="errors.pickup_times" class="text-red-500 text-sm block mb-3 italic">
-            {{ errors.pickup_times }}
-        </span>
-        <button type="button" @click="addPickupTime"
-            class="w-full py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition duration-200 font-medium shadow-md">
-            + Add Pickup Time
-        </button>
+                    <div class="time-selector p-6 bg-gray-50 rounded-xl shadow-lg w-[50%] max-[768px]:w-full">
+                        <p>Choose Your Pickup and Return Time for the vehicle</p>
+                        <div class="max-[768px]:grid max-[768px]:grid-cols-2 max-[768px]:gap-5">
+                            <!-- Pickup Times Section -->
+                            <div>
+                                <label class="block text-lg font-semibold text-gray-800 mb-2">Pickup Times</label>
+                                <div v-for="(time, index) in form.pickup_times" :key="'pickup-' + index"
+                                    class="time-input-group flex items-center mb-3">
+                                    <input type="time" v-model="form.pickup_times[index]"
+                                        @input="normalizeTime('pickup_times', index)"
+                                        class="time-input w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition duration-200 bg-white shadow-sm" />
+                                    <button type="button" @click="removePickupTime(index)" title="Remove"
+                                        class="px-3 py-1 ml-1 bg-red-500 text-white rounded-[99px] hover:bg-red-600 transition duration-200 shadow-md
+                                        max-[768px]:px-2 max-[768px]:text-[0.75rem]">
+                                        X
+                                    </button>
+                                </div>
+                                <span v-if="errors.pickup_times" class="text-red-500 text-sm block mb-3 italic">
+                                    {{ errors.pickup_times }}
+                                </span>
+                                <button type="button" @click="addPickupTime"
+                                    class="w-full py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition duration-200 font-medium shadow-md">
+                                    + Add Pickup Time
+                                </button>
+                            </div>
 
-        <!-- Return Times Section -->
-        <label class="block text-lg font-semibold text-gray-800 mt-6 mb-2">Return Times</label>
-        <div v-for="(time, index) in form.return_times" :key="'return-' + index"
-            class="time-input-group flex items-center mb-3">
-            <input type="time" v-model="form.return_times[index]" @input="normalizeTime('return_times', index)"
-                class="time-input w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition duration-200 bg-white shadow-sm" />
-            <button type="button" @click="removeReturnTime(index)" title="Remove"
-                class="px-3 py-1 ml-1 bg-red-500 text-white rounded-[99px] hover:bg-red-600 transition duration-200 shadow-md">
-                X
-            </button>
-        </div>
-        <span v-if="errors.return_times" class="text-red-500 text-sm block mb-3 italic">
-            {{ errors.return_times }}
-        </span>
-        <button type="button" @click="addReturnTime"
-            class="w-full py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition duration-200 font-medium shadow-md">
-            + Add Return Time
-        </button>
-    </div>
+                            <div>
+                                <!-- Return Times Section -->
+                                <label class="block text-lg font-semibold text-gray-800 mt-6 mb-2 max-[768px]:mt-0">Return Times</label>
+                                <div v-for="(time, index) in form.return_times" :key="'return-' + index"
+                                    class="time-input-group flex items-center mb-3">
+                                    <input type="time" v-model="form.return_times[index]"
+                                        @input="normalizeTime('return_times', index)"
+                                        class="time-input w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition duration-200 bg-white shadow-sm" />
+                                    <button type="button" @click="removeReturnTime(index)" title="Remove"
+                                        class="px-3 py-1 ml-1 bg-red-500 text-white rounded-[99px] hover:bg-red-600 transition duration-200 shadow-md
+                                        max-[768px]:px-2 max-[768px]:text-[0.75rem]">
+                                        X
+                                    </button>
+                                </div>
+                                <span v-if="errors.return_times" class="text-red-500 text-sm block mb-3 italic">
+                                    {{ errors.return_times }}
+                                </span>
+                                <button type="button" @click="addReturnTime"
+                                    class="w-full py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition duration-200 font-medium shadow-md">
+                                    + Add Return Time
+                                </button>
+                            </div>
+                        </div>
+
+
+                    </div>
 
                     <!-- Payment Method -->
                     <div class="mt-[2rem] max-[768px]:px-[1.5rem] max-[768px]:mt-[1rem]">
@@ -1918,7 +1930,7 @@ const onDrop = (e) => {
 
 let map = null;
 let marker = null // Marker instance
-const currentStep = ref(0);
+const currentStep = ref(4);
 
 const errors = reactive({
     category_id: '',
