@@ -276,7 +276,6 @@ onMounted(() => {
                     <VueDatePicker v-model="dateOfBirth" :enable-time-picker="false" uid="date-of-birth"
                         placeholder="Select Date of Birth" class="w-full" :max-date="minimumDateOfBirth"
                         :start-date="minimumDateOfBirth" />
-                    <small class="text-gray-500 mt-1 block">You must be at least 18 years old</small>
                     <InputError class="mt-2" :message="form.errors.date_of_birth" />
                 </div>
 
@@ -290,7 +289,11 @@ onMounted(() => {
                             <SelectGroup>
                                 <SelectLabel>Country</SelectLabel>
                                 <SelectItem v-for="country in countries" :key="country.code" :value="country.code">
+                                    <div class="flex items-center gap-2">
+                                        <img :src="getFlagUrl(country.code)" :alt="`${country.name} flag`"
+                                                        class="w-[1.5rem] h-[1rem] rounded-sm" />
                                     {{ country.name }}
+                                    </div>
                                 </SelectItem>
                             </SelectGroup>
                         </SelectContent>
@@ -298,8 +301,8 @@ onMounted(() => {
                     <InputError class="mt-2" :message="form.errors.country" />
 
                     <!-- Dynamic Flag -->
-                    <img v-if="form.country" :src="getFlagUrl(form.country)" alt="Country Flag" class="absolute right-3 top-1/2 transform translate-x-[-10%] translate-y-[-50%] w-[2.1rem] h-[1.5rem] rounded
-                        max-[768px]:translate-y-[-70%]" />
+                    <!-- <img v-if="form.country" :src="getFlagUrl(form.country)" alt="Country Flag" class="absolute right-3 top-1/2 transform translate-x-[-10%] translate-y-[-10%] w-[2.1rem] h-[1.5rem] rounded
+                        max-[768px]:translate-y-[-70%]" /> -->
                 </div>
 
 
@@ -418,6 +421,18 @@ select {
     transition: width 0.5s ease-in-out;
 }
 
+:deep(.dp__input) {
+    padding: 1rem 1rem 1rem 2.5rem;
+    border-radius: 12px; 
+    border: 1px solid #2b2b2b99;
+    width: 100%; 
+}
+
+:deep(.dp__menu) {
+    border-radius: 0.5rem;
+    padding: 0.5rem;
+}
+
 @media screen and (max-width:768px) {
     input {
         font-size: 0.75rem;
@@ -433,6 +448,9 @@ select {
 
     label {
         font-size: 0.75rem !important;
+    }
+    :deep(.dp__input){
+        font-size: 0.75rem;
     }
 }
 </style>

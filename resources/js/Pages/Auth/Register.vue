@@ -668,4 +668,21 @@ watch(dateOfBirth, (newValue) => {
 .register .disabled\:opacity-50:disabled {
     opacity: 0.7;
 }
+:deep(.dp__input) {
+    padding: 1rem 1rem 1rem 2.5rem;
+    border-radius: 12px; 
+    border: 1px solid #2b2b2b99;
+    width: 100%; 
+}
+
+:deep(.dp__menu) {
+    border-radius: 0.5rem;
+    padding: 0.5rem;
+}
+
+@media screen and (max-width:768px) {
+    :deep(.dp__input){
+        font-size: 0.75rem;
+    }
+}
 </style>

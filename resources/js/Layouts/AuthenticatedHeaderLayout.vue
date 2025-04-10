@@ -55,8 +55,8 @@ const vendorStatus = computed(() => page.props.vendorStatus);
                             <!-- Desktop Navigation -->
                             <div class="hidden sm:flex sm:items-center sm:ms-6">
                                 <!-- Vendor/Customer Specific Buttons -->
-                                <div v-if="$page.props.auth.user.role === 'vendor'" class="mr-4">
-                                    <div v-if="$page.props.auth.user.role === 'vendor'" class="mr-4">
+                                <div v-if="$page.props.auth.user.role === 'vendor'" class="">
+                                    <div v-if="$page.props.auth.user.role === 'vendor'" class="">
                                         <Link
                                             :href="vendorStatus === 'approved' ? '/vehicles/create' : '/vendor-status'"
                                             class="button-secondary inline-block">

@@ -109,6 +109,7 @@ onBeforeUnmount(() => {
   background-color: #154D6A0D;
   border-radius: 12px;
   transition: all 0.3s ease;
+  overflow-x: hidden;
 }
 
 /* Mobile sidebar styling with improved animations */

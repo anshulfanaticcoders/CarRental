@@ -43,7 +43,7 @@
                 <tr v-for="(vehicle, index) in filteredVehicles" :key="vehicle.id" class="border-b">
                   <td class="px-6 py-4 whitespace-nowrap text-[0.875rem]">{{ (pagination.current_page - 1) * pagination.per_page + index + 1 }}</td>
                   <Link :href="`/vehicle/${vehicle.id}`" class="w-full">
-                  <td class="px-2 py-4 whitespace-nowrap hover:scale-105">
+                  <td class="px-2 py-4 whitespace-nowrap">
                     <img :src="getPrimaryImage(vehicle)" alt="no image"
                       class="h-12 w-24 object-cover rounded">
                   </td>

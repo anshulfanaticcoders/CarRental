@@ -67,7 +67,7 @@
     <div v-if="currentStep === 1" class="overflow-x-hidden vehicle-listing">
         <div class="flex justify-between h-[100vh] max-[768px]:flex-col max-[768px]:h-auto">
             <div
-                class="column overflow-y-auto w-[50%] flex justify-center pb-[5rem] max-[768px]:pb-0 max-[768px]:w-full">
+                class="column overflow-y-auto w-[50%] flex justify-center pb-[5rem] max-[768px]:pb-0 max-[768px]:w-full bg-white">
                 <div class="flex flex-col gap-10 w-[90%] max-[768px]:w-full">
                     <Link href="/" class="max-[768px]:hidden mt-[2rem]">
                     <ApplicationLogo />
@@ -373,7 +373,7 @@
     <!-- Step-2 -->
     <div v-if="currentStep === 2" class="overflow-x-hidden vehicle-listing">
         <div class="flex justify-between h-[100vh] max-[768px]:h-auto max-[768px]:flex-col">
-            <div class="column overflow-y-auto w-[50%] flex justify-center pb-[4rem] max-[768px]:w-full">
+            <div class="column overflow-y-auto w-[50%] flex justify-center pb-[4rem] max-[768px]:w-full bg-white">
                 <div class="flex flex-col gap-5 w-[90%] max-[768px]:w-full">
                     <Link href="/" class="max-[768px]:hidden mt-[2rem]">
                     <ApplicationLogo />
@@ -425,9 +425,9 @@
                                 </Select>
 
                                 <!-- Dynamic Flag in Trigger -->
-                                <img v-if="form.registration_country" :src="getFlagUrl(form.registration_country)"
+                                <!-- <img v-if="form.registration_country" :src="getFlagUrl(form.registration_country)"
                                     alt="Country Flag"
-                                    class="absolute right-3 top-1/2 transform -translate-y-1/2 w-[2.1rem] h-[1.5rem] rounded" />
+                                    class="absolute right-3 top-1/2 transform -translate-y-1/2 w-[2.1rem] h-[1.5rem] rounded" /> -->
                             </div>
 
                             <span v-if="errors.registration_country"
@@ -548,7 +548,7 @@
     <!-- Step-3 -->
     <div v-if="currentStep === 3" class="overflow-x-hidden vehicle-listing">
         <div class="flex justify-between h-[100vh] max-[768px]:flex-col max-[768px]:h-auto">
-            <div class="column overflow-y-auto w-[50%] flex justify-center pb-[4rem] max-[768px]:w-full">
+            <div class="column overflow-y-auto w-[50%] flex justify-center pb-[4rem] max-[768px]:w-full bg-white">
                 <div class="flex flex-col gap-5 w-[90%] max-[768px]:w-full">
                     <Link href="/" class="max-[768px]:hidden mt-[2rem]">
                     <ApplicationLogo />
@@ -614,7 +614,7 @@
     <!-- Step-4 -->
     <div v-if="currentStep === 4" class="overflow-x-hidden vehicle-listing">
         <div class="flex justify-between h-[100vh] max-[768px]:h-auto max-[768px]:flex-col">
-            <div class="column overflow-y-auto w-[50%] flex justify-center pb-[4rem] max-[768px]:w-full">
+            <div class="column overflow-y-auto w-[50%] flex justify-center pb-[4rem] max-[768px]:w-full bg-white">
                 <div class="flex flex-col gap-5 w-[90%] max-[768px]:w-full">
                     <Link href="/" class="max-[768px]:hidden mt-[2rem]">
                     <ApplicationLogo />
@@ -1094,7 +1094,7 @@
     <!-- Step-5 -->
     <div v-if="currentStep === 5" class="overflow-x-hidden vehicle-listing">
         <div class="flex justify-between h-[100vh] max-[768px]:h-auto max-[768px]:flex-col">
-            <div class="column overflow-y-auto w-[50%] flex justify-center pb-[4rem] max-[768px]:w-full">
+            <div class="column overflow-y-auto w-[50%] flex justify-center pb-[4rem] max-[768px]:w-full bg-white">
                 <div class="flex flex-col gap-5 w-[90%] max-[768px]:w-full">
                     <Link href="/" class="max-[768px]:hidden mt-[2rem]">
                     <ApplicationLogo />
@@ -1291,7 +1291,7 @@
     <!-- Step-6: Addon Selection -->
     <div v-if="currentStep === 6" class="overflow-x-hidden vehicle-listing">
         <div class="flex justify-between h-[100vh] max-[768px]:h-auto max-[768px]:flex-col">
-            <div class="column overflow-y-auto w-[50%] flex justify-center pb-[4rem] max-[768px]:w-full">
+            <div class="column overflow-y-auto w-[50%] flex justify-center pb-[4rem] max-[768px]:w-full bg-white">
                 <div class="flex flex-col gap-5 w-[90%] max-[768px]:w-full">
                     <Link href="/" class="max-[768px]:hidden mt-[2rem]">
                     <ApplicationLogo />
@@ -1386,7 +1386,7 @@
     <!-- Step-7 -->
     <div v-if="currentStep === 7" class="overflow-x-hidden .vehicle-listing ">
         <div class="flex justify-between h-[100vh] max-[768px]:h-auto max-[768px]:flex-col">
-            <div class="column overflow-y-auto w-[50%] flex justify-center pb-[4rem] max-[768px]:w-full">
+            <div class="column overflow-y-auto w-[50%] flex justify-center pb-[4rem] max-[768px]:w-full bg-white">
                 <div class="flex flex-col gap-5 w-[90%] max-[768px]:w-full">
                     <Link href="/" class="max-[768px]:hidden mt-[2rem]">
                     <ApplicationLogo />
@@ -1930,7 +1930,7 @@ const onDrop = (e) => {
 
 let map = null;
 let marker = null // Marker instance
-const currentStep = ref(4);
+const currentStep = ref(0);
 
 const errors = reactive({
     category_id: '',
@@ -2521,5 +2521,24 @@ select {
 .dp__error .dp__input {
     border-color: #ef4444;
     box-shadow: 0 0 0 2px rgba(239, 68, 68, 0.2);
+}
+
+
+:deep(.dp__input) {
+    padding: 1rem 1rem 1rem 2.5rem;
+    border-radius: 12px; 
+    border: 1px solid #2b2b2b99;
+    width: 100%; 
+}
+
+:deep(.dp__menu) {
+    border-radius: 0.5rem;
+}
+
+
+@media screen and (max-width:768px) {
+    :deep(.dp__input){
+        font-size: 0.75rem;
+    }
 }
 </style>
