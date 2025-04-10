@@ -16,7 +16,7 @@
       <div v-if="!notifications.length" class="py-2 px-4 text-gray-500">
         No notifications
       </div>
-      <div v-else>
+      <div v-else class="overflow-y-auto max-h-[25rem]">
         <div v-for="notification in notifications" :key="notification.id" 
              class="py-2 px-4 hover:bg-gray-100 cursor-pointer border-b">
           <!-- Add dynamic link to messages -->

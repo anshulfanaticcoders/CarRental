@@ -1570,7 +1570,7 @@ const openLightbox = (index) => {
                     </div>
                 </div>
                 <div v-else-if="reviews && reviews.length > 0">
-                    <Carousel class="relative w-full py-[4rem] px-[2rem] max-[768px]:px-0" :plugins="[plugin]"
+                    <Carousel class="relative w-full py-[4rem] px-[2rem] max-[768px]:px-0 max-[768px]:py-[2rem]" :plugins="[plugin]"
                         @mouseenter="plugin.stop" @mouseleave="[plugin.reset(), plugin.play(), console.log('Running')]">
                         <CarouselContent class="max-[768px]:px-5">
                             <CarouselItem v-for="review in reviews" :key="review.id"
@@ -1612,7 +1612,7 @@ const openLightbox = (index) => {
                         <CarouselPrevious />
                         <CarouselNext />
                     </Carousel>
-                    <div class="flex justify-center pb-[3rem]">
+                    <div class="flex justify-center pb-[3rem] max-[768px]:mt-[3rem]">
                         <a v-if="reviews && reviews.length > 0" :href="`/vendor/${vehicle.vendor_profile_data?.id}/reviews`" 
                             class="button-primary px-[2rem] py-[0.75rem]">View all</a>
                     </div>

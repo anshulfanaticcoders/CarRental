@@ -402,46 +402,56 @@
 
                         <!-- Registration Country -->
                         <div class="relative w-full">
-                            <InputLabel class="text-black" for="registration_country">Registration Country:</InputLabel>
+    <InputLabel class="text-black" for="registration_country">Registration Country:</InputLabel>
 
-                            <div class="relative">
-                                <Select v-model="form.registration_country">
-                                    <SelectTrigger class="w-full p-[1.7rem] border-customLightGrayColor rounded-[12px]">
-                                        <SelectValue placeholder="Select a country" />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                        <SelectGroup>
-                                            <SelectLabel>Countries</SelectLabel>
-                                            <SelectItem v-for="country in countries" :key="country.code"
-                                                :value="country.code">
-                                                {{ country.name }}
-                                            </SelectItem>
-                                        </SelectGroup>
-                                    </SelectContent>
-                                </Select>
+    <div class="relative">
+      <Select v-model="form.registration_country">
+        <SelectTrigger class="w-full p-[1.7rem] border-customLightGrayColor rounded-[12px]">
+          <SelectValue placeholder="Select a country" />
+        </SelectTrigger>
+        <SelectContent>
+          <SelectGroup>
+            <SelectLabel>Countries</SelectLabel>
+            <SelectItem v-for="country in countries" :key="country.code" :value="country.code">
+              <div class="flex items-center gap-2">
+                <img :src="getFlagUrl(country.code)" :alt="`${country.name} flag`"
+                     class="w-[1.5rem] h-[1rem] rounded-sm" />
+                <span>{{ country.name }}</span>
+              </div>
+            </SelectItem>
+          </SelectGroup>
+        </SelectContent>
+      </Select>
 
+      <!-- Dynamic Flag in Trigger -->
+      <img v-if="form.registration_country" :src="getFlagUrl(form.registration_country)" alt="Country Flag"
+           class="absolute right-3 top-1/2 transform -translate-y-1/2 w-[2.1rem] h-[1.5rem] rounded" />
+    </div>
 
-                                <!-- Dynamic Flag -->
-                                <img v-if="form.registration_country" :src="getFlagUrl(form.registration_country)"
-                                    alt="Country Flag"
-                                    class="absolute right-3 top-1/2 transform -translate-y-1/2 w-[2.1rem] h-[1.5rem] rounded" />
-                            </div>
-
-                            <span v-if="errors.registration_country"
-                                class="text-red-500 max-[768px]:text-[0.75rem] text-sm">{{
-                                    errors.registration_country }}</span>
-                        </div>
+    <span v-if="errors.registration_country" class="text-red-500 max-[768px]:text-[0.75rem] text-sm">
+      {{ errors.registration_country }}
+    </span>
+  </div>
 
 
                         <!-- Registration Date -->
                         <div>
-                            <InputLabel class="text-black" for="registration_date">Registration Date:</InputLabel>
-                            <input class="w-full" type="date" v-model="form.registration_date" id="registration_date"
-                                required />
-                            <span v-if="errors.registration_date"
-                                class="text-red-500 max-[768px]:text-[0.75rem] text-sm">{{
-                                    errors.registration_date }}</span>
-                        </div>
+    <InputLabel class="text-black" for="registration_date">Registration Date:</InputLabel>
+    <VueDatePicker
+      v-model="form.registration_date"
+      :format="'dd-MM-yyyy'"
+      placeholder="Select Registration Date"
+      class="w-full"
+      :class="{ 'dp__error': errors.registration_date }"
+      :clearable="false"
+      :max-date="new Date()"
+      :input-class-name="'w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition duration-200 bg-white shadow-sm text-gray-700'"
+      required
+    />
+    <span v-if="errors.registration_date" class="text-red-500 max-[768px]:text-[0.75rem] text-sm">
+      {{ errors.registration_date }}
+    </span>
+  </div>
 
                         <!-- Gross Vehicle Mass -->
                         <div>
@@ -729,46 +739,91 @@
                             placeholder="Enter vehicle guidelines" class="w-full min-h-[150px]" />
                     </div>
 
-                    <div class="time-selector p-6 bg-gray-50 rounded-xl shadow-lg w-[50%]">
-                        <p>Choose Your Pickup and Return Time for the vehicle</p>
-                        <!-- Pickup Times Section -->
-                        <label class="block text-lg font-semibold text-gray-800 mb-2">Pickup Times</label>
-                        <div v-for="(time, index) in form.pickup_times" :key="'pickup-' + index"
-                            class="time-input-group flex items-center mb-3">
-                            <input type="time" v-model="form.pickup_times[index]"
-                                class="time-input w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition duration-200 bg-white shadow-sm" />
-                            <button type="button" @click="removePickupTime(index)" title="Remove"
-                                class="px-3 py-1 ml-1 bg-red-500 text-white rounded-[99px] hover:bg-red-600 transition duration-200 shadow-md">
-                                X
-                            </button>
-                        </div>
-                        <span v-if="errors.pickup_times" class="text-red-500 text-sm block mb-3 italic">
-                            {{ errors.pickup_times }}
-                        </span>
-                        <button type="button" @click="addPickupTime"
-                            class="w-full py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition duration-200 font-medium shadow-md">
-                            + Add Pickup Time
-                        </button>
+                    <div class="time-selector p-8 bg-gradient-to-br from-gray-50 to-gray-100 rounded-2xl shadow-xl w-[50%] border border-gray-200">
+    <p class="text-gray-800 font-semibold text-xl mb-6 tracking-tight">Schedule Your Vehicle Times</p>
 
-                        <!-- Return Times Section -->
-                        <label class="block text-lg font-semibold text-gray-800 mt-6 mb-2">Return Times</label>
-                        <div v-for="(time, index) in form.return_times" :key="'return-' + index"
-                            class="time-input-group flex items-center mb-3">
-                            <input type="time" v-model="form.return_times[index]"
-                                class="time-input w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition duration-200 bg-white shadow-sm" />
-                            <button type="button" @click="removeReturnTime(index)" title="Remove"
-                                class="px-3 py-1 ml-1 bg-red-500 text-white rounded-[99px] hover:bg-red-600 transition duration-200 shadow-md">
-                                X
-                            </button>
-                        </div>
-                        <span v-if="errors.return_times" class="text-red-500 text-sm block mb-3 italic">
-                            {{ errors.return_times }}
-                        </span>
-                        <button type="button" @click="addReturnTime"
-                            class="w-full py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition duration-200 font-medium shadow-md">
-                            + Add Return Time
-                        </button>
-                    </div>
+    <!-- Pickup Times Section -->
+    <label class="block text-lg font-bold text-gray-900 mb-4">Pickup Schedule</label>
+    <div v-for="(time, index) in form.pickup_times" :key="'pickup-' + index" 
+         class="time-input-group flex items-center mb-5 animate-fade-in">
+      <VueDatePicker
+        v-model="form.pickup_times[index]"
+        time-picker
+        :is-24="true"
+        placeholder="Select Pickup Time"
+        class="w-full"
+        :class="{
+          'dp__error': errors.pickup_times
+        }"
+        :enable-seconds="false"
+        :format="'HH:mm'"
+        :clearable="false"
+        :input-class-name="'p-4 bg-white border border-gray-200 rounded-xl shadow-md hover:shadow-lg text-gray-700 font-medium transition-all duration-300'"
+      />
+      <button type="button" 
+              @click="removePickupTime(index)" 
+              title="Remove"
+              class="ml-3 p-2 bg-gradient-to-r from-red-500 to-red-600 text-white rounded-full 
+                     hover:from-red-600 hover:to-red-700 transition-all duration-300 
+                     transform hover:scale-110 shadow-md hover:shadow-lg">
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+        </svg>
+      </button>
+    </div>
+    <span v-if="errors.pickup_times" class="text-red-500 text-sm block mb-4 italic font-light">
+      {{ errors.pickup_times }}
+    </span>
+    <button type="button" 
+            @click="addPickupTime"
+            class="w-full py-3 bg-gradient-to-r from-indigo-600 to-indigo-700 text-white 
+                   rounded-xl hover:from-indigo-700 hover:to-indigo-800 
+                   transition-all duration-300 font-semibold shadow-md 
+                   hover:shadow-lg transform hover:-translate-y-1">
+      + Add Pickup Time
+    </button>
+
+    <!-- Return Times Section -->
+    <label class="block text-lg font-bold text-gray-900 mt-8 mb-4">Return Schedule</label>
+    <div v-for="(time, index) in form.return_times" :key="'return-' + index" 
+         class="time-input-group flex items-center mb-5 animate-fade-in">
+      <VueDatePicker
+        v-model="form.return_times[index]"
+        time-picker
+        :is-24="true"
+        placeholder="Select Return Time"
+        class="w-full"
+        :class="{
+          'dp__error': errors.return_times
+        }"
+        :enable-seconds="false"
+        :format="'HH:mm'"
+        :clearable="false"
+        :input-class-name="'p-4 bg-white border border-gray-200 rounded-xl shadow-md hover:shadow-lg text-gray-700 font-medium transition-all duration-300'"
+      />
+      <button type="button" 
+              @click="removeReturnTime(index)" 
+              title="Remove"
+              class="ml-3 p-2 bg-gradient-to-r from-red-500 to-red-600 text-white rounded-full 
+                     hover:from-red-600 hover:to-red-700 transition-all duration-300 
+                     transform hover:scale-110 shadow-md hover:shadow-lg">
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+        </svg>
+      </button>
+    </div>
+    <span v-if="errors.return_times" class="text-red-500 text-sm block mb-4 italic font-light">
+      {{ errors.return_times }}
+    </span>
+    <button type="button" 
+            @click="addReturnTime"
+            class="w-full py-3 bg-gradient-to-r from-indigo-600 to-indigo-700 text-white 
+                   rounded-xl hover:from-indigo-700 hover:to-indigo-800 
+                   transition-all duration-300 font-semibold shadow-md 
+                   hover:shadow-lg transform hover:-translate-y-1">
+      + Add Return Time
+    </button>
+  </div>
 
                     <!-- Payment Method -->
                     <div class="mt-[2rem] max-[768px]:px-[1.5rem] max-[768px]:mt-[1rem]">
@@ -1467,6 +1522,8 @@ import { SelectContent, SelectGroup, SelectLabel, SelectTrigger, SelectValue } f
 import loader from "../../../assets/loader.gif";
 import { usePage } from '@inertiajs/vue3';
 import AuthenticatedHeaderLayout from "@/Layouts/AuthenticatedHeaderLayout.vue";
+import VueDatePicker from '@vuepic/vue-datepicker'
+import '@vuepic/vue-datepicker/dist/main.css'
 import {
     Dialog,
     DialogContent,
@@ -1769,7 +1826,7 @@ const submit = () => {
     form.addon_quantities = addonQuantities.value;
     form.post(route("vehicles.store"), {
         onSuccess: () => {
-            toast.success('Vendor registration completed successfully! Wait for confimation', {
+            toast.success('Vehicle Added Successfully', {
                 position: 'top-right',
                 timeout: 3000,
                 closeOnClick: true,
@@ -1883,7 +1940,7 @@ const onDrop = (e) => {
 
 let map = null;
 let marker = null // Marker instance
-const currentStep = ref(0);
+const currentStep = ref(2);
 
 const errors = reactive({
     category_id: '',
@@ -2452,5 +2509,26 @@ select {
     display: flex;
     align-items: center;
     justify-content: center;
+}
+
+.animate-fade-in {
+  animation: fadeIn 0.3s ease-in;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Custom error styling for the datepicker */
+.dp__error .dp__input {
+  border-color: #ef4444;
+  box-shadow: 0 0 0 2px rgba(239, 68, 68, 0.2);
 }
 </style>
