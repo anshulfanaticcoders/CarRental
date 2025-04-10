@@ -736,9 +736,9 @@
                             placeholder="Enter vehicle guidelines" class="w-full min-h-[150px]" />
                     </div>
 
-                    <div class="time-selector p-6 bg-gray-50 rounded-xl shadow-lg w-[50%] max-[768px]:w-full">
+                    <div class="time-selector p-6 bg-gray-50 rounded-xl shadow-lg w-full">
                         <p>Choose Your Pickup and Return Time for the vehicle</p>
-                        <div class="max-[768px]:grid max-[768px]:grid-cols-2 max-[768px]:gap-5">
+                        <div class="grid grid-cols-2 gap-10 max-[768px]:gap-5">
                             <!-- Pickup Times Section -->
                             <div>
                                 <label class="block text-lg font-semibold text-gray-800 mb-2">Pickup Times</label>
@@ -764,7 +764,7 @@
 
                             <div>
                                 <!-- Return Times Section -->
-                                <label class="block text-lg font-semibold text-gray-800 mt-6 mb-2 max-[768px]:mt-0">Return Times</label>
+                                <label class="block text-lg font-semibold text-gray-800 mb-2">Return Times</label>
                                 <div v-for="(time, index) in form.return_times" :key="'return-' + index"
                                     class="time-input-group flex items-center mb-3">
                                     <input type="time" v-model="form.return_times[index]"
