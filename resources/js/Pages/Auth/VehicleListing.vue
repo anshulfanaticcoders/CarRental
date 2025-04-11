@@ -1750,8 +1750,8 @@ const fetchAddons = async () => {
 
         // Prefill addon prices and quantities
         addons.value.forEach(addon => {
-            addonPrices.value[addon.id] = addon.price || 0; // Assuming the price is part of the addon data
-            addonQuantities.value[addon.id] = 1; // Default quantity is 1
+            addonPrices.value[addon.id] = addon.price || 0;
+            addonQuantities.value[addon.id] = 1; 
         });
     } catch (error) {
         console.error('Error fetching addons:', error);
@@ -1781,7 +1781,7 @@ const categories = ref([]);
 const fetchCategories = async () => {
     try {
         const response = await axios.get("/api/vehicle-categories");
-        categories.value = response.data; // Store the fetched categories
+        categories.value = response.data;
     } catch (error) {
         console.error("Error fetching vehicle categories:", error);
     }
@@ -1858,7 +1858,7 @@ const monthlyTooltipPosition = computed(() => ({
 // Method to handle file uploads
 const handleFileUpload = (event) => {
     const files = Array.from(event.target.files);
-    form.images = [...form.images, ...files]; // Append new images instead of resetting
+    form.images = [...form.images, ...files]; 
 };
 
 // Generate image preview URL
@@ -2146,7 +2146,7 @@ const searchResults = ref([]);
 const handleSearchInput = async () => {
     // Ensure the location input is at least 3 characters long
     if (form.location.length < 3) {
-        searchResults.value = []; // Clear previous results if input is too short
+        searchResults.value = []; 
         return;
     }
 
