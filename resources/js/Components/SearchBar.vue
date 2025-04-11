@@ -76,7 +76,7 @@ const form = ref({
   date_to: "",
   latitude: null,
   longitude: null,
-  radius: 5,
+  radius: 5000,
 });
 
 const props = defineProps({

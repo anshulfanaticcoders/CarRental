@@ -39,6 +39,17 @@ class SearchController extends Controller
         // Base query
         $query = Vehicle::query()->whereIn('status', ['available', 'rented']);
 
+        $latitude = $validated['latitude'] ?? null;
+    $longitude = $validated['longitude'] ?? null;
+    $radius = $validated['radius'] ?? null;
+
+    if (!empty($validated['where']) && (!$latitude || !$longitude)) {
+        // Assume 'where' contains a location that can be geocoded (e.g., using a service like Google Maps API)
+        // For simplicity, this example uses a placeholder. Replace with actual geocoding logic.
+        [$latitude, $longitude] = $this->geocodeLocation($validated['where']);
+        $radius = $radius ?? 5000; // Default radius of 5km if not provided
+    }
+
         // Exclude vehicles that are booked in the selected date range
         if (!empty($validated['date_from']) && !empty($validated['date_to'])) {
             $query->whereDoesntHave('bookings', function ($q) use ($validated) {
@@ -152,8 +163,9 @@ class SearchController extends Controller
             $vehicle->average_rating = $reviews->avg('rating') ?? 0;
 
             // Transform distance_in_km to integer if it exists
-            if (isset($vehicle->distance_in_km)) {
-                $vehicle->distance_in_km = intval($vehicle->distance_in_km);
+            if (isset($vehicle->distance_in_km) && $vehicle->distance_in_km === 0) {
+                // Log or debug to check why distance is 0
+                \Log::debug('Distance is 0 for vehicle ID: ' . $vehicle->id . ', Latitude: ' . $vehicle->latitude . ', Longitude: ' . $vehicle->longitude);
             }
 
             return $vehicle;
@@ -171,6 +183,7 @@ class SearchController extends Controller
         ]);
     }
 
+    
     // New function to handle category-based search
     public function searchByCategory(Request $request, $category_id)
     {

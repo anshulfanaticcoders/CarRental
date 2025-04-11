@@ -17,6 +17,7 @@ import priceperdayicon from "../../assets/priceFilter.png";
 import fuelIcon from "../../assets/fuel.svg";
 import transmissionIcon from "../../assets/transmittionIcon.svg";
 import mileageIcon2 from "../../assets/unlimitedKm.svg";
+import walkIcon from "../../assets/walking.svg";
 import seatingIcon from "../../assets/travellerIcon.svg";
 import brandIcon from "../../assets/SedanCarIcon.svg";
 import colorIcon from "../../assets/color-palette.svg";
@@ -28,6 +29,9 @@ import CaretDown from "../../assets/CaretDown.svg";
 import fullStar from "../../assets/fullstar.svg"; // Add star imports
 import halfStar from "../../assets/halfstar.svg";
 import blankStar from "../../assets/blankstar.svg";
+import 'leaflet.markercluster/dist/leaflet.markercluster';
+import 'leaflet.markercluster/dist/MarkerCluster.css';
+import 'leaflet.markercluster/dist/MarkerCluster.Default.css';
 
 const props = defineProps({
     vehicles: Object,
@@ -164,6 +168,7 @@ const createCustomIcon = (price, currency) => {
 };
 
 const addMarkers = () => {
+    // Remove existing markers
     markers.forEach((marker) => marker.remove());
     markers = [];
 
@@ -171,38 +176,47 @@ const addMarkers = () => {
         console.warn("No vehicles data available to add markers.");
         return;
     }
-    // Create a feature group for markers
-    const markerGroup = L.featureGroup();
 
+    // Create a MarkerClusterGroup
+    const markerClusterGroup = L.markerClusterGroup({
+        spiderfyOnMaxZoom: true,
+        showCoverageOnHover: true,
+        maxClusterRadius: 40,
+    });
+
+    // Add markers to the cluster group
     props.vehicles.data.forEach((vehicle) => {
         const currency = vehicle.vendor_profile?.currency || "₹";
         const marker = L.marker([vehicle.latitude, vehicle.longitude], {
             icon: createCustomIcon(vehicle.price_per_day, currency),
             pane: "markers",
         }).bindPopup(`
-    <div class="text-center">
-      <p class="font-semibold">${vehicle.brand}</p>
-      <p class="">${vehicle.location}</p>
-      <a href="/vehicle/${vehicle.id}" 
-         class="text-blue-500 hover:text-blue-700"
-         onclick="window.location.href='/vehicle/${vehicle.id}'; return false;">
-        View Details
-      </a>
-    </div>
-  `);
+            <div class="text-center">
+                <p class="font-semibold">${vehicle.brand}</p>
+                <p class="">${vehicle.location}</p>
+                <a href="/vehicle/${vehicle.id}" 
+                   class="text-blue-500 hover:text-blue-700"
+                   onclick="window.location.href='/vehicle/${vehicle.id}'; return false;">
+                    View Details
+                </a>
+            </div>
+        `);
 
-        markerGroup.addLayer(marker);
+        markerClusterGroup.addLayer(marker);
         markers.push(marker);
     });
 
-    markerGroup.addTo(map);
+    // Add the cluster group to the map
+    map.addLayer(markerClusterGroup);
 
     // Fit bounds after adding markers
-    const groupBounds = markerGroup.getBounds();
-    map.fitBounds(groupBounds, {
-        padding: [50, 50],
-        maxZoom: 12,
-    });
+    const groupBounds = markerClusterGroup.getBounds();
+    if (groupBounds.isValid()) {
+        map.fitBounds(groupBounds, {
+            padding: [50, 50],
+            maxZoom: 12,
+        });
+    }
 };
 
 // Watch for changes in vehicles data
@@ -748,8 +762,8 @@ const getStarAltText = (rating, starNumber) => {
                                         'pop-animation': popEffect[vehicle.id], // Apply animation class dynamically
                                     }">
                                     <img :src="favoriteStatus[vehicle.id]
-                                            ? FilledHeart
-                                            : Heart
+                                        ? FilledHeart
+                                        : Heart
                                         " alt="Favorite" class="w-[1.5rem] transition-colors duration-300" />
                                 </button>
                             </div>
@@ -809,13 +823,19 @@ const getStarAltText = (rating, starNumber) => {
                                             Seats</span>
                                     </div>
                                 </div>
-                                <div class="extra_details flex gap-5 mt-[1rem]">
+                                <div class="extra_details flex gap-5 mt-[1rem] items-center">
                                     <div class="col flex gap-3">
                                         <img :src="mileageIcon" alt="" /><span
-                                            class="text-[1.15rem] max-[768px]:text-[0.95rem]">{{ vehicle.mileage
-                                            }}km/d</span>
+                                            class="text-[1.15rem] max-[768px]:text-[0.95rem]">
+                                            {{ vehicle.mileage}}km/d</span>
+                                    </div>
+                                    <div class="col flex gap-3" v-if="vehicle.distance_in_km !== undefined">
+                                        <img :src="walkIcon" alt="" /><span
+                                            class="text-[1.15rem] max-[768px]:text-[0.95rem]">
+                                            {{ vehicle.distance_in_km.toFixed(1) }}km away</span>
                                     </div>
                                 </div>
+
 
                                 <div class="benefits mt-[2rem] grid grid-cols-2 gap-3">
                                     <!-- Free Cancellation based on the selected package type -->
