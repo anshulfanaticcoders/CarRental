@@ -167,6 +167,7 @@ const createCustomIcon = (price, currency) => {
     });
 };
 
+
 const addMarkers = () => {
     // Remove existing markers
     markers.forEach((marker) => marker.remove());
@@ -182,17 +183,23 @@ const addMarkers = () => {
         spiderfyOnMaxZoom: true,
         showCoverageOnHover: true,
         maxClusterRadius: 40,
+        disableClusteringAtZoom: 15,
     });
 
     // Add markers to the cluster group
     props.vehicles.data.forEach((vehicle) => {
-        const currency = vehicle.vendor_profile?.currency || "₹";
+        const currency = vehicle.vendor_profile?.currency || "$";
+        // Find the primary image
+        const primaryImage = vehicle.images?.find((image) => image.image_type === 'primary')?.image_url || '/default-image.png';
+
         const marker = L.marker([vehicle.latitude, vehicle.longitude], {
             icon: createCustomIcon(vehicle.price_per_day, currency),
             pane: "markers",
         }).bindPopup(`
-            <div class="text-center">
-                <p class="font-semibold">${vehicle.brand}</p>
+            <div class="text-center popup-content">
+                <img src="${primaryImage}" alt="${vehicle.brand} ${vehicle.model}" class="popup-image" />
+                <p class="rating">${vehicle.average_rating} ★ (${vehicle.review_count} reviews)</p>
+                <p class="font-semibold">${vehicle.brand} ${vehicle.model}</p>
                 <p class="">${vehicle.location}</p>
                 <a href="/vehicle/${vehicle.id}" 
                    class="text-blue-500 hover:text-blue-700"
@@ -214,7 +221,18 @@ const addMarkers = () => {
     if (groupBounds.isValid()) {
         map.fitBounds(groupBounds, {
             padding: [50, 50],
-            maxZoom: 12,
+            maxZoom: 14,
+        });
+
+        // Listen for zoom changes to trigger spiderfy
+        map.on('zoomend', () => {
+            if (map.getZoom() >= markerClusterGroup.options.disableClusteringAtZoom) {
+                markerClusterGroup.eachLayer((layer) => {
+                    if (layer instanceof L.MarkerCluster && map.getBounds().contains(layer.getLatLng())) {
+                        layer.spiderfy();
+                    }
+                });
+            }
         });
     }
 };
@@ -1054,11 +1072,12 @@ const getStarAltText = (rating, starNumber) => {
 }
 
 /* Leaflet pane z-index overrides */
-.leaflet-pane.leaflet-marker-pane,
-.leaflet-pane.leaflet-popup-pane {
+.leaflet-pane.leaflet-marker-pane {
     z-index: 1000 !important;
 }
-
+.leaflet-pane.leaflet-popup-pane{
+    z-index: 1001 !important;
+}
 .leaflet-pane.leaflet-tile-pane {
     z-index: 200;
 }
@@ -1128,6 +1147,35 @@ select:focus+.caret-rotate {
     animation: pop 0.3s ease-in-out;
 }
 
+.marker-cluster-small div{
+    box-shadow: 1px 1px 2px rgba(0, 0, 0, 0.7);
+}
+.marker-cluster-small div::before {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 40px;
+    height: 40px;
+    background-image: url('../../assets/carmarkerIcon.svg');
+    background-size: cover; 
+    background-position: center;
+    background-repeat: no-repeat;
+    color: white; 
+    text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.7); 
+    display: flex;
+    align-items: center;
+    justify-content: center; 
+    z-index: 1000; 
+}
+.popup-image {
+    width: 100%;
+    height: 70px;
+    object-fit: cover;
+    border-top-left-radius: 0.5rem;
+    border-top-right-radius: 0.5rem;
+    margin-bottom: 5px;
+}
 @media screen and (max-width: 768px) {
     .filter-slot>div {
         width: 100%;
