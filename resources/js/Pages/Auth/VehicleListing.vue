@@ -1520,6 +1520,9 @@ const form = useForm({
     location: "",
     latitude: 'null',
     longitude: 'null',
+    city: "",
+    state: "", 
+    country: "",
     status: "available",
     features: [],
     featured: false,
@@ -2161,6 +2164,9 @@ const selectLocation = (location) => {
     form.location = location.address;
     form.latitude = location.latitude;
     form.longitude = location.longitude;
+    form.city = location.city;
+    form.state = location.state;
+    form.country = location.country;
 };
 
 const initializeMap = () => {

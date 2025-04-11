@@ -24,9 +24,6 @@ class SearchController extends Controller
             'date_from' => 'nullable|date',
             'date_to' => 'nullable|date|after:date_from',
             'where' => 'nullable|string',
-            'latitude' => 'nullable|numeric',
-            'longitude' => 'nullable|numeric',
-            'radius' => 'nullable|numeric',
             'package_type' => 'nullable|string|in:day,week,month',
             'category_id' => 'nullable|exists:vehicle_categories,id',
         ]);
@@ -39,16 +36,16 @@ class SearchController extends Controller
         // Base query
         $query = Vehicle::query()->whereIn('status', ['available', 'rented']);
 
-        $latitude = $validated['latitude'] ?? null;
-    $longitude = $validated['longitude'] ?? null;
-    $radius = $validated['radius'] ?? null;
+    //     $latitude = $validated['latitude'] ?? null;
+    // $longitude = $validated['longitude'] ?? null;
+    // $radius = $validated['radius'] ?? null;
 
-    if (!empty($validated['where']) && (!$latitude || !$longitude)) {
-        // Assume 'where' contains a location that can be geocoded (e.g., using a service like Google Maps API)
-        // For simplicity, this example uses a placeholder. Replace with actual geocoding logic.
-        [$latitude, $longitude] = $this->geocodeLocation($validated['where']);
-        $radius = $radius ?? 5000; // Default radius of 5km if not provided
-    }
+    // if (!empty($validated['where']) && (!$latitude || !$longitude)) {
+    //     // Assume 'where' contains a location that can be geocoded (e.g., using a service like Google Maps API)
+    //     // For simplicity, this example uses a placeholder. Replace with actual geocoding logic.
+    //     [$latitude, $longitude] = $this->geocodeLocation($validated['where']);
+    //     $radius = $radius ?? 5000; // Default radius of 5km if not provided
+    // }
 
         // Exclude vehicles that are booked in the selected date range
         if (!empty($validated['date_from']) && !empty($validated['date_to'])) {
@@ -110,11 +107,35 @@ class SearchController extends Controller
 
         // Location search
         if (!empty($validated['where'])) {
-            $locationParts = array_map('trim', explode(',', $validated['where']));
-            $query->where(function ($q) use ($locationParts) {
-                foreach ($locationParts as $part) {
-                    $searchTerm = '%' . trim($part) . '%';
-                    $q->orWhere('location', 'like', $searchTerm);
+            $trimmedWhere = trim($validated['where']);
+            $locationParts = array_map('trim', explode(',', $trimmedWhere));
+            $normalizedWhere = strtolower($trimmedWhere);
+            \Illuminate\Support\Facades\Log::info('Processed where value:', ['trimmedWhere' => $trimmedWhere, 'parts' => $locationParts]);
+        
+            $query->where(function ($q) use ($locationParts, $normalizedWhere, $query) {
+                $primaryTerm = strtolower(trim($locationParts[0]));
+        
+                // Check city first
+                \Illuminate\Support\Facades\Log::info('Checking city:', ['term' => $primaryTerm]);
+                $q->orWhereRaw('LOWER(city) = ?', [$primaryTerm]);
+        
+                // Then state
+                \Illuminate\Support\Facades\Log::info('Checking state:', ['term' => $primaryTerm]);
+                $q->orWhereRaw('LOWER(state) = ?', [$primaryTerm]);
+        
+                // Then country
+                \Illuminate\Support\Facades\Log::info('Checking country:', ['term' => $primaryTerm]);
+                $q->orWhereRaw('LOWER(country) = ?', [$primaryTerm]);
+        
+                // Then location (partial match)
+                \Illuminate\Support\Facades\Log::info('Checking location:', ['term' => $normalizedWhere]);
+                $q->orWhereRaw('LOWER(location) = ?', [$normalizedWhere]);
+        
+                // If multiple parts, check full location as a fallback
+                if (count($locationParts) > 1) {
+                    $fullLocation = strtolower(implode(', ', $locationParts));
+                    \Illuminate\Support\Facades\Log::info('Checking full location:', ['location' => $fullLocation]);
+                    $q->orWhereRaw('LOWER(location) = ?', [$fullLocation]);
                 }
             });
         }
