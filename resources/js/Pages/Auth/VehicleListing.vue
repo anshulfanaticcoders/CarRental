@@ -1935,7 +1935,7 @@ const onDrop = (e) => {
 
 let map = null;
 let marker = null // Marker instance
-const currentStep = ref(0);
+const currentStep = ref(3);
 
 const errors = reactive({
     category_id: '',

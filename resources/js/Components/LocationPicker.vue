@@ -1,6 +1,6 @@
 <script setup>
 import { ref, onMounted, onUnmounted } from 'vue';
-import { Search, LocateFixed } from 'lucide-vue-next';
+import { Search } from 'lucide-vue-next';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 
@@ -13,15 +13,17 @@ const mapInstance = ref(null);
 const markerRef = ref(null);
 const searchResults = ref([]);
 const searchQuery = ref('');
-const loadingLocation = ref(false);
 
-// New location detail fields
+// Location detail fields
 const address = ref('');
 const city = ref('');
 const state = ref('');
 const country = ref('');
 const latitude = ref('');
 const longitude = ref('');
+
+// Use your existing Stadia Maps API key
+const STADIA_API_KEY = import.meta.env.VITE_STADIA_API_KEY;
 
 onMounted(() => {
   if (!mapInstance.value && mapRef.value) {
@@ -33,12 +35,6 @@ onMounted(() => {
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
       attribution: '© OpenStreetMap contributors',
     }).addTo(mapInstance.value);
-
-    // Add click event to map for location selection
-    mapInstance.value.on('click', async (e) => {
-      const { lat, lng } = e.latlng;
-      await reverseGeocode(lat, lng);
-    });
   }
 });
 
@@ -49,9 +45,7 @@ onUnmounted(() => {
   }
 });
 
-// Function to handle blur event on search input
 const handleBlur = () => {
-  // Use window.setTimeout to avoid context issues
   window.setTimeout(() => {
     searchResults.value = [];
   }, 200);
@@ -78,22 +72,12 @@ const handleLocationSelect = async (result) => {
   const lat = coordinates[1];
   const lon = coordinates[0];
   
-  // Use Nominatim reverse geocoding
   await reverseGeocode(lat, lon, result.properties.label);
 };
 
 const reverseGeocode = async (lat, lng, fallbackAddress = null) => {
   try {
-    // Using Nominatim instead of Stadia Maps
-    const response = await fetch(
-      `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&addressdetails=1`,
-      {
-        headers: {
-          'Accept-Language': 'en',
-          'User-Agent': 'VueLocationPicker/1.0'
-        }
-      }
-    );
+    const response = await fetch(`/api/geocoding/reverse?lat=${lat}&lon=${lng}`);
     
     if (!response.ok) {
       throw new Error(`HTTP error! status: ${response.status}`);
@@ -101,24 +85,20 @@ const reverseGeocode = async (lat, lng, fallbackAddress = null) => {
     
     const data = await response.json();
     
-    // Extract address components from Nominatim response
     const addressComponents = {
-      fullAddress: data.display_name || fallbackAddress || 'Unknown Location',
-      city: data.address.city || data.address.town || data.address.village || '',
-      state: data.address.state || data.address.province || '',
-      country: data.address.country || '',
+      fullAddress: data.features[0]?.properties?.formatted || fallbackAddress || 'Unknown Location',
+      city: data.features[0]?.properties?.city || '',
+      state: data.features[0]?.properties?.state || '',
+      country: data.features[0]?.properties?.country || '',
     };
     
-    // Update the map and form fields
     updateMap(lat, lng, addressComponents);
   } catch (error) {
     console.error('Reverse geocoding error:', error);
     
-    // Fallback to simple parsing from the search result if available
     let cityPart = '', statePart = '', countryPart = '';
     
     if (fallbackAddress) {
-      // Try to parse the fallbackAddress (often in format "City, State, Country")
       const parts = fallbackAddress.split(',').map(part => part.trim());
       if (parts.length >= 3) {
         cityPart = parts[0];
@@ -136,28 +116,6 @@ const reverseGeocode = async (lat, lng, fallbackAddress = null) => {
   }
 };
 
-const locateUser = () => {
-  if (!navigator.geolocation) {
-    alert('Geolocation is not supported by your browser.');
-    return;
-  }
-
-  loadingLocation.value = true;
-
-  navigator.geolocation.getCurrentPosition(
-    async (position) => {
-      const { latitude: lat, longitude: lon } = position.coords;
-      await reverseGeocode(lat, lon);
-      loadingLocation.value = false;
-    },
-    (error) => {
-      console.error('Geolocation error:', error);
-      alert('Unable to retrieve location.');
-      loadingLocation.value = false;
-    }
-  );
-};
-
 const updateMap = (lat, lon, addressComponents) => {
   const latLng = [lat, lon];
   mapInstance.value.setView(latLng, 13);
@@ -168,7 +126,6 @@ const updateMap = (lat, lon, addressComponents) => {
     markerRef.value = L.marker(latLng).addTo(mapInstance.value);
   }
 
-  // Update all location fields
   address.value = addressComponents.fullAddress;
   city.value = addressComponents.city;
   state.value = addressComponents.state;
@@ -176,10 +133,8 @@ const updateMap = (lat, lon, addressComponents) => {
   latitude.value = lat;
   longitude.value = lon;
   
-  // Update the search box with full address
   searchQuery.value = addressComponents.fullAddress;
 
-  // Call the parent component's handler if provided
   if (props.onLocationSelect) {
     props.onLocationSelect({ 
       address: addressComponents.fullAddress,
@@ -203,20 +158,9 @@ const updateMap = (lat, lon, addressComponents) => {
           @input="handleSearch(searchQuery)"
           @blur="handleBlur"
           placeholder="Search location..."
-          class="w-full p-2 pl-10 pr-12 border rounded-lg"
+          class="w-full p-2 pl-10 pr-4 border rounded-lg"
         />
         <Search class="absolute left-3 top-2.5 h-5 w-5 text-gray-400" />
-
-        <!-- Locate Me Button -->
-        <button
-          @click="locateUser"
-          :disabled="loadingLocation"
-          class="absolute right-3 top-2.5 h-6 w-6 text-gray-500 hover:text-black"
-          title="Use my current location"
-        >
-          <LocateFixed v-if="!loadingLocation" />
-          <span v-else class="loader" />
-        </button>
       </div>
 
       <div v-if="searchResults.length" class="absolute z-50 w-full mt-1 bg-white border rounded-lg shadow-lg">
@@ -233,8 +177,7 @@ const updateMap = (lat, lon, addressComponents) => {
 
     <div ref="mapRef" class="w-full h-64 rounded-lg z-0 mb-4" />
 
-    <!-- Location Details Form -->
-    <div class="hidden grid-cols-1 md:grid-cols-2 gap-4 mt-4">
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
       <div class="form-group">
         <label class="block text-sm font-medium text-gray-700 mb-1">Address</label>
         <input
@@ -287,27 +230,8 @@ const updateMap = (lat, lon, addressComponents) => {
         />
       </div>
     </div>
-    
-    <div class="mt-4 text-sm text-gray-500">
-      Click directly on the map to select a location
-    </div>
   </div>
 </template>
 
 <style scoped>
-/* Simple loading animation */
-.loader {
-  display: inline-block;
-  width: 20px;
-  height: 20px;
-  border: 2px solid #ccc;
-  border-top-color: transparent;
-  border-radius: 50%;
-  animation: spin 0.6s linear infinite;
-}
-@keyframes spin {
-  to {
-    transform: rotate(360deg);
-  }
-}
 </style>
