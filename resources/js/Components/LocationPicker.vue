@@ -192,6 +192,7 @@ const updateMap = (lat, lon, addressComponents) => {
         <input
           type="text"
           v-model="city"
+          readonly
           class="w-full p-2 border rounded-lg"
         />
       </div>
@@ -200,6 +201,7 @@ const updateMap = (lat, lon, addressComponents) => {
         <input
           type="text"
           v-model="state"
+          readonly
           class="w-full p-2 border rounded-lg"
         />
       </div>
@@ -208,6 +210,7 @@ const updateMap = (lat, lon, addressComponents) => {
         <input
           type="text"
           v-model="country"
+          readonly
           class="w-full p-2 border rounded-lg"
         />
       </div>
