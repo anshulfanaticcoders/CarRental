@@ -330,6 +330,8 @@
                                     </span>
                                 </div>
                             </div>
+                            <span v-if="errors.features" class="text-red-500 max-[768px]:text-[0.75rem] text-sm">{{
+                                errors.features }}</span>
                         </div>
                     </div>
                     <div class="buttons flex justify-between gap-[1.5rem] pb-[4rem] max-[768px]:px-[1.5rem]">
@@ -1998,6 +2000,10 @@ const nextStep = () => {
             if (!form.co2) {
                 isValid = false;
                 errors.co2 = 'Please enter the vehicle CO2 emissions';
+            }
+            if (!form.features || form.features.length === 0) {
+                isValid = false;
+                errors.features = 'Please select at least one vehicle feature';
             }
             break;
 
