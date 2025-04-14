@@ -74,9 +74,9 @@ const form = ref({
   where: "",
   date_from: "",
   date_to: "",
-  // latitude: null,
-  // longitude: null,
-  // radius: 5000,
+  latitude: null,
+  longitude: null,
+  radius: 5,
 });
 
 const props = defineProps({
@@ -135,6 +135,14 @@ const handleSearchInput = async () => {
   }
 };
 
+const selectLocation = (result) => {
+  form.value.where = result.properties?.label || "Unknown Location";
+  form.value.latitude = result.geometry.coordinates[1];
+  form.value.longitude = result.geometry.coordinates[0];
+  searchResults.value = [];
+};
+
+// In your Vue component
 const submit = () => {
   if (!form.value.date_from || !form.value.date_to || !form.value.where) {
     dateError.value = true;
@@ -142,44 +150,34 @@ const submit = () => {
   }
   dateError.value = false;
 
+  // Calculate date difference and set package_type
   const pickupDate = new Date(form.value.date_from);
   const returnDate = new Date(form.value.date_to);
   const diffTime = Math.abs(returnDate - pickupDate);
   const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
 
-  let packageType = 'day';
+  // Determine package type based on date difference
+  let packageType = 'day'; // default
+
   if (diffDays === 7 || diffDays === 14 || diffDays === 21) {
     packageType = 'week';
   } else if (diffDays >= 28) {
     packageType = 'month';
   }
 
+
   form.value.package_type = packageType;
 
-  const submitData = {
-    where: form.value.where,
-    date_from: form.value.date_from,
-    date_to: form.value.date_to,
-    package_type: form.value.package_type,
-  };
 
-  console.log('Submitting form:', submitData);
+  if (form.value.where && !form.value.where.includes(',')) {
 
-  Object.keys(form.value).forEach(key => {
-    if (!['where', 'date_from', 'date_to', 'package_type'].includes(key)) {
-      delete form.value[key];
-    }
-  });
+    form.value.radius = 5000000;
+  } else if (form.value.radius < 10000) {
 
-  router.get("/s", submitData);
-};
+    form.value.radius = 10000;
+  }
 
-const selectLocation = (result) => {
-  form.value.where = result.properties?.label || "Unknown Location";
-  delete form.value.latitude;
-  delete form.value.longitude;
-  delete form.value.radius;
-  searchResults.value = [];
+  router.get("/s", form.value);
 };
 
 // Get current date for Calendar component

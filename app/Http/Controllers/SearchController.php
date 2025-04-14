@@ -24,6 +24,9 @@ class SearchController extends Controller
             'date_from' => 'nullable|date',
             'date_to' => 'nullable|date|after:date_from',
             'where' => 'nullable|string',
+            'latitude' => 'nullable|numeric',
+            'longitude' => 'nullable|numeric',
+            'radius' => 'nullable|numeric',
             'package_type' => 'nullable|string|in:day,week,month',
             'category_id' => 'nullable|exists:vehicle_categories,id',
         ]);
@@ -35,17 +38,6 @@ class SearchController extends Controller
 
         // Base query
         $query = Vehicle::query()->whereIn('status', ['available', 'rented']);
-
-    //     $latitude = $validated['latitude'] ?? null;
-    // $longitude = $validated['longitude'] ?? null;
-    // $radius = $validated['radius'] ?? null;
-
-    // if (!empty($validated['where']) && (!$latitude || !$longitude)) {
-    //     // Assume 'where' contains a location that can be geocoded (e.g., using a service like Google Maps API)
-    //     // For simplicity, this example uses a placeholder. Replace with actual geocoding logic.
-    //     [$latitude, $longitude] = $this->geocodeLocation($validated['where']);
-    //     $radius = $radius ?? 5000; // Default radius of 5km if not provided
-    // }
 
         // Exclude vehicles that are booked in the selected date range
         if (!empty($validated['date_from']) && !empty($validated['date_to'])) {
@@ -107,54 +99,61 @@ class SearchController extends Controller
 
         // Location search
         if (!empty($validated['where'])) {
-            $trimmedWhere = trim($validated['where']);
-            $locationParts = array_map('trim', explode(',', $trimmedWhere));
-            $normalizedWhere = strtolower($trimmedWhere);
-            \Illuminate\Support\Facades\Log::info('Processed where value:', ['trimmedWhere' => $trimmedWhere, 'parts' => $locationParts]);
-        
-            $query->where(function ($q) use ($locationParts, $normalizedWhere, $query) {
-                $primaryTerm = strtolower(trim($locationParts[0]));
-        
-                // Check city first
-                \Illuminate\Support\Facades\Log::info('Checking city:', ['term' => $primaryTerm]);
-                $q->orWhereRaw('LOWER(city) = ?', [$primaryTerm]);
-        
-                // Then state
-                \Illuminate\Support\Facades\Log::info('Checking state:', ['term' => $primaryTerm]);
-                $q->orWhereRaw('LOWER(state) = ?', [$primaryTerm]);
-        
-                // Then country
-                \Illuminate\Support\Facades\Log::info('Checking country:', ['term' => $primaryTerm]);
-                $q->orWhereRaw('LOWER(country) = ?', [$primaryTerm]);
-        
-                // Then location (partial match)
-                \Illuminate\Support\Facades\Log::info('Checking location:', ['term' => $normalizedWhere]);
-                $q->orWhereRaw('LOWER(location) = ?', [$normalizedWhere]);
-        
-                // If multiple parts, check full location as a fallback
-                if (count($locationParts) > 1) {
-                    $fullLocation = strtolower(implode(', ', $locationParts));
-                    \Illuminate\Support\Facades\Log::info('Checking full location:', ['location' => $fullLocation]);
-                    $q->orWhereRaw('LOWER(location) = ?', [$fullLocation]);
+            // Extract location parts
+            $locationParts = array_map('trim', explode(',', $validated['where']));
+            
+            // If coordinates are provided, do a radius search first
+            if (!empty($validated['latitude']) && !empty($validated['longitude']) && !empty($validated['radius'])) {
+                $radiusInKm = $validated['radius'] / 1000; // Convert meters to kilometers
+                
+                $query->selectRaw('*, ( 6371 * acos( 
+                    cos(radians(?)) * cos(radians(latitude)) * 
+                    cos(radians(longitude) - radians(?)) + 
+                    sin(radians(?)) * sin(radians(latitude)) 
+                ) ) AS distance_in_km', [
+                    $validated['latitude'],
+                    $validated['longitude'],
+                    $validated['latitude']
+                ])
+                ->havingRaw('distance_in_km <= ?', [$radiusInKm]);
+            }
+            
+            // Add hierarchical text matching
+            // This ensures if someone searches just "India" it will find all vehicles in India
+            $query->where(function ($q) use ($locationParts) {
+                foreach ($locationParts as $part) {
+                    $part = trim($part);
+                    if (!empty($part)) {
+                        $searchTerm = '%' . $part . '%';
+                        $q->orWhere('location', 'like', $searchTerm)
+                          ->orWhere('city', 'like', $searchTerm)
+                          ->orWhere('state', 'like', $searchTerm)
+                          ->orWhere('country', 'like', $searchTerm);
+                    }
                 }
             });
+            
+            // If we have coordinates, sort by distance
+            if (!empty($validated['latitude']) && !empty($validated['longitude'])) {
+                $query->orderBy('distance_in_km');
+            }
         }
         $query->with('images', 'bookings', 'vendorProfile', 'benefits');
         // Distance filter (Haversine formula)
-        if (!empty($validated['latitude']) && !empty($validated['longitude']) && !empty($validated['radius'])) {
-            $radiusInKm = $validated['radius'] / 1000; // Convert meters to kilometers
-            $query->selectRaw('*, ( 6371 * acos( 
-                cos(radians(?)) * cos(radians(latitude)) * 
-                cos(radians(longitude) - radians(?)) + 
-                sin(radians(?)) * sin(radians(latitude)) 
-            ) ) AS distance_in_km', [
-                $validated['latitude'],
-                $validated['longitude'],
-                $validated['latitude']
-            ])
-                ->havingRaw('distance_in_km <= ?', [$radiusInKm])
-                ->orderBy('distance_in_km');
-        }
+        // if (!empty($validated['latitude']) && !empty($validated['longitude']) && !empty($validated['radius'])) {
+        //     $radiusInKm = $validated['radius'] / 1000; // Convert meters to kilometers
+        //     $query->selectRaw('*, ( 6371 * acos( 
+        //         cos(radians(?)) * cos(radians(latitude)) * 
+        //         cos(radians(longitude) - radians(?)) + 
+        //         sin(radians(?)) * sin(radians(latitude)) 
+        //     ) ) AS distance_in_km', [
+        //         $validated['latitude'],
+        //         $validated['longitude'],
+        //         $validated['latitude']
+        //     ])
+        //         ->havingRaw('distance_in_km <= ?', [$radiusInKm])
+        //         ->orderBy('distance_in_km');
+        // }
 
         // Package type filter
         if (!empty($validated['package_type'])) {
@@ -172,7 +171,7 @@ class SearchController extends Controller
         }
 
         // Paginate results
-        $vehicles = $query->paginate(4)->withQueryString();
+        $vehicles = $query->paginate(10)->withQueryString();
 
         // Transform the collection to include review data and distance
         $vehicles->getCollection()->transform(function ($vehicle) {
@@ -184,9 +183,8 @@ class SearchController extends Controller
             $vehicle->average_rating = $reviews->avg('rating') ?? 0;
 
             // Transform distance_in_km to integer if it exists
-            if (isset($vehicle->distance_in_km) && $vehicle->distance_in_km === 0) {
-                // Log or debug to check why distance is 0
-                \Log::debug('Distance is 0 for vehicle ID: ' . $vehicle->id . ', Latitude: ' . $vehicle->latitude . ', Longitude: ' . $vehicle->longitude);
+            if (isset($vehicle->distance_in_km)) {
+                $vehicle->distance_in_km = intval($vehicle->distance_in_km);
             }
 
             return $vehicle;
@@ -204,7 +202,6 @@ class SearchController extends Controller
         ]);
     }
 
-    
     // New function to handle category-based search
     public function searchByCategory(Request $request, $category_id)
     {
