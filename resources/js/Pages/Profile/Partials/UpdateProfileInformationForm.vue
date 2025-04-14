@@ -193,9 +193,9 @@ onMounted(() => {
 <template>
     <header>
         <h2 class="text-[1.75rem] font-medium text-gray-900 max-[768px]:text-[1.2rem]">Personal Details</h2>
-        <div>
+        <div class="w-[25rem] max-[768px]:w-full">
             <div class="profile-completion">
-                <p>Profile Completion: {{ profileCompletion }}%</p>
+                <p class="mb-2">Profile Completion: {{ profileCompletion }}%</p>
                 <div class="progress-bar">
                     <div class="progress-fill" :style="{ width: profileCompletion + '%' }"></div>
                 </div>

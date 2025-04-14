@@ -12,6 +12,17 @@ import vehiclesIcon from "../../assets/vehicletypeIcon.svg";
 import clockIcon from "../../assets/clockIcon.svg";
 import dateblockingIcon from "../../assets/dateblockingIcon.svg";
 import logoutIcon from '../../assets/logoutIcon.svg';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from '@/Components/ui/alert-dialog'
 
 // Get the states from parent component
 const isCollapsed = inject('isSidebarCollapsed', ref(false));
@@ -213,6 +224,22 @@ const handleSubmenuClick = (name) => {
   }
   setActiveSubmenu(name);
 };
+
+
+const profileCompletion = ref(0);
+
+const fetchProfileCompletion = async () => {
+    try {
+        const response = await fetch('/profile/completion');
+        const data = await response.json();
+        profileCompletion.value = data.percentage;
+    } catch (error) {
+        console.error('Error fetching profile completion:', error);
+    }
+};
+
+onMounted(fetchProfileCompletion);
+const showProfileAlert = computed(() => profileCompletion.value < 90);
 </script>
 
 <template>
@@ -307,7 +334,7 @@ const handleSubmenuClick = (name) => {
 
       <!-- Logout Button -->
       <Link :href="route('logout')" method="post" as="button" 
-        class="text-[#EE1D52] flex items-center gap-1 mt-[4rem] w-full"
+        class="text-[#EE1D52] flex items-center gap-1 mt-[4rem] w-full pb-[2rem]"
         :class="{ 
           'justify-center': isCollapsed && !isMobile, 
           'ml-[1rem]': !isCollapsed || isMobile, 

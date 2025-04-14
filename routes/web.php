@@ -307,7 +307,7 @@ Route::middleware(['auth', 'role:vendor'])->group(function () {
 
 
     Route::get('/vendor-status', [VendorController::class, 'status'])->name('vendor.status');
-    Route::get('/vehicles/create', [VehicleController::class, 'create'])->name('vehicles.create');
+    // Route::get('/vehicles/create', [VehicleController::class, 'create'])->name('vehicles.create');
 
 });
 
