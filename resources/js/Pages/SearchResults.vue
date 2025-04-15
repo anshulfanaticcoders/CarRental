@@ -1026,7 +1026,7 @@ const getStarAltText = (rating, starNumber) => {
                     </div>
                 </div>
                 <!-- Pagination -->
-                <div class="mt-4">
+                <div class="mt-4 pagination">
                     <div v-html="pagination_links"></div>
                 </div>
             </div>
@@ -1180,6 +1180,16 @@ select:focus+.caret-rotate {
     .filter-slot>div {
         width: 100%;
         justify-content: space-between;
+    }
+
+    .pagination nav .hidden{
+    display: flex;
+    width: 100%;
+    justify-content: center;
+    }
+    
+    .pagination nav div:first-child{
+        display: none;
     }
 }
 </style>

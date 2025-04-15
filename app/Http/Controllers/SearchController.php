@@ -160,7 +160,7 @@ class SearchController extends Controller
         }
 
         // Paginate results
-        $vehicles = $query->paginate(4)->withQueryString();
+        $vehicles = $query->paginate(20)->withQueryString();
 
         // Transform the collection to include review data and distance
         $vehicles->getCollection()->transform(function ($vehicle) {
@@ -334,7 +334,7 @@ class SearchController extends Controller
         }
 
         // Paginate results
-        $vehicles = $query->paginate(4)->withQueryString();
+        $vehicles = $query->paginate(20)->withQueryString();
 
         $vehicles->getCollection()->transform(function ($vehicle) {
             $reviews = Review::where('vehicle_id', $vehicle->id)
