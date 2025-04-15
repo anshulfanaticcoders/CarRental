@@ -22,6 +22,7 @@ use App\Http\Controllers\Admin\VendorsReportController;
 use App\Http\Controllers\Auth\EmailValidationController;
 use App\Http\Controllers\Auth\VerifyEmailController;
 use App\Http\Controllers\BookingController;
+use App\Http\Controllers\BulkVehicleController;
 use App\Http\Controllers\ContactFormController;
 use App\Http\Controllers\FavoriteController;
 use App\Http\Controllers\FrontendPageController;
@@ -309,6 +310,10 @@ Route::middleware(['auth', 'role:vendor'])->group(function () {
     Route::get('/vendor-status', [VendorController::class, 'status'])->name('vendor.status');
     // Route::get('/vehicles/create', [VehicleController::class, 'create'])->name('vehicles.create');
 
+
+    Route::get('/bulk/car_listing', [BulkVehicleController::class, 'create'])->name('bulk.car_listing');
+    Route::post('/bulk/car_listing', [BulkVehicleController::class, 'store'])->name('bulk.car_listing.store');
+    Route::get('/bulk/template/download', [BulkVehicleController::class, 'downloadTemplate'])->name('bulk.template.download');
 });
 
 

@@ -8,6 +8,7 @@ use App\Models\VehicleCategory;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
+use Illuminate\Support\Facades\Http;
 
 class SearchController extends Controller
 {
@@ -35,11 +36,13 @@ class SearchController extends Controller
         $brands = Vehicle::distinct('brand')->pluck('brand');
         $colors = Vehicle::distinct('color')->pluck('color');
         $seatingCapacities = Vehicle::distinct('seating_capacity')->pluck('seating_capacity');
+        $categories = DB::table('vehicle_categories')->select('id', 'name')->get();
 
         // Base query
-        $query = Vehicle::query()->whereIn('status', ['available', 'rented']);
+        $query = Vehicle::query()->whereIn('status', ['available', 'rented'])
+            ->with('images', 'bookings', 'vendorProfile', 'benefits');
 
-        // Exclude vehicles that are booked in the selected date range
+        // Exclude vehicles booked in the selected date range
         if (!empty($validated['date_from']) && !empty($validated['date_to'])) {
             $query->whereDoesntHave('bookings', function ($q) use ($validated) {
                 $q->where(function ($query) use ($validated) {
@@ -52,7 +55,6 @@ class SearchController extends Controller
                 });
             });
 
-            // Add blocking dates exclusion
             $query->whereDoesntHave('blockings', function ($q) use ($validated) {
                 $q->where(function ($query) use ($validated) {
                     $query->whereBetween('blocking_start_date', [$validated['date_from'], $validated['date_to']])
@@ -65,8 +67,7 @@ class SearchController extends Controller
             });
         }
 
-
-        // Apply filters
+        // Apply non-location filters
         if (!empty($validated['seating_capacity'])) {
             $query->where('seating_capacity', $validated['seating_capacity']);
         }
@@ -90,22 +91,45 @@ class SearchController extends Controller
             $range = explode('-', $validated['mileage']);
             $query->whereBetween('mileage', [(int) $range[0], (int) $range[1]]);
         }
-        // Then in your query building section, add:
         if (!empty($validated['category_id'])) {
             $query->where('category_id', $validated['category_id']);
         }
 
-        $categories = DB::table('vehicle_categories')->select('id', 'name')->get();
-
-        // Location search
+        // Location-based filtering
         if (!empty($validated['where'])) {
-            // Extract location parts
-            $locationParts = array_map('trim', explode(',', $validated['where']));
-            
-            // If coordinates are provided, do a radius search first
-            if (!empty($validated['latitude']) && !empty($validated['longitude']) && !empty($validated['radius'])) {
+            // Initialize location variables
+            $city = null;
+            $state = null;
+            $country = null;
+
+            // Call Stadia Maps Geocoding API to parse the location
+            $geocodeResponse = Http::get('https://api.stadiamaps.com/geocoding/v1/search', [
+                'api_key' => env('STADIA_MAPS_API_KEY'),
+                'text' => $validated['where'],
+                'limit' => 1,
+            ]);
+
+            if ($geocodeResponse->successful()) {
+                $geocodeData = $geocodeResponse->json()['features'][0]['properties'] ?? [];
+
+                // Assign values if they exist
+                $city = $geocodeData['locality'] ?? null;
+                $state = $geocodeData['region'] ?? null;
+                $country = $geocodeData['country'] ?? null;
+
+                // Apply filters based on specificity
+                if ($city) {
+                    $query->where('city', $city);
+                } elseif ($state) {
+                    $query->where('state', $state);
+                } elseif ($country) {
+                    $query->where('country', $country);
+                }
+            }
+
+            // Apply radius-based filtering only if lat/long are provided and no specific city is matched
+            if (!empty($validated['latitude']) && !empty($validated['longitude']) && !empty($validated['radius']) && is_null($city)) {
                 $radiusInKm = $validated['radius'] / 1000; // Convert meters to kilometers
-                
                 $query->selectRaw('*, ( 6371 * acos( 
                     cos(radians(?)) * cos(radians(latitude)) * 
                     cos(radians(longitude) - radians(?)) + 
@@ -115,45 +139,10 @@ class SearchController extends Controller
                     $validated['longitude'],
                     $validated['latitude']
                 ])
-                ->havingRaw('distance_in_km <= ?', [$radiusInKm]);
-            }
-            
-            // Add hierarchical text matching
-            // This ensures if someone searches just "India" it will find all vehicles in India
-            $query->where(function ($q) use ($locationParts) {
-                foreach ($locationParts as $part) {
-                    $part = trim($part);
-                    if (!empty($part)) {
-                        $searchTerm = '%' . $part . '%';
-                        $q->orWhere('location', 'like', $searchTerm)
-                          ->orWhere('city', 'like', $searchTerm)
-                          ->orWhere('state', 'like', $searchTerm)
-                          ->orWhere('country', 'like', $searchTerm);
-                    }
-                }
-            });
-            
-            // If we have coordinates, sort by distance
-            if (!empty($validated['latitude']) && !empty($validated['longitude'])) {
-                $query->orderBy('distance_in_km');
+                    ->havingRaw('distance_in_km <= ?', [$radiusInKm])
+                    ->orderBy('distance_in_km');
             }
         }
-        $query->with('images', 'bookings', 'vendorProfile', 'benefits');
-        // Distance filter (Haversine formula)
-        // if (!empty($validated['latitude']) && !empty($validated['longitude']) && !empty($validated['radius'])) {
-        //     $radiusInKm = $validated['radius'] / 1000; // Convert meters to kilometers
-        //     $query->selectRaw('*, ( 6371 * acos( 
-        //         cos(radians(?)) * cos(radians(latitude)) * 
-        //         cos(radians(longitude) - radians(?)) + 
-        //         sin(radians(?)) * sin(radians(latitude)) 
-        //     ) ) AS distance_in_km', [
-        //         $validated['latitude'],
-        //         $validated['longitude'],
-        //         $validated['latitude']
-        //     ])
-        //         ->havingRaw('distance_in_km <= ?', [$radiusInKm])
-        //         ->orderBy('distance_in_km');
-        // }
 
         // Package type filter
         if (!empty($validated['package_type'])) {
@@ -171,18 +160,16 @@ class SearchController extends Controller
         }
 
         // Paginate results
-        $vehicles = $query->paginate(10)->withQueryString();
+        $vehicles = $query->paginate(4)->withQueryString();
 
         // Transform the collection to include review data and distance
         $vehicles->getCollection()->transform(function ($vehicle) {
-            // Add review statistics
             $reviews = Review::where('vehicle_id', $vehicle->id)
                 ->where('status', 'approved')
                 ->get();
             $vehicle->review_count = $reviews->count();
             $vehicle->average_rating = $reviews->avg('rating') ?? 0;
 
-            // Transform distance_in_km to integer if it exists
             if (isset($vehicle->distance_in_km)) {
                 $vehicle->distance_in_km = intval($vehicle->distance_in_km);
             }
@@ -202,7 +189,6 @@ class SearchController extends Controller
         ]);
     }
 
-    // New function to handle category-based search
     public function searchByCategory(Request $request, $category_id)
     {
         $validated = $request->validate([
@@ -216,6 +202,9 @@ class SearchController extends Controller
             'date_from' => 'nullable|date',
             'date_to' => 'nullable|date|after:date_from',
             'where' => 'nullable|string',
+            'latitude' => 'nullable|numeric',
+            'longitude' => 'nullable|numeric',
+            'radius' => 'nullable|numeric',
             'package_type' => 'nullable|string|in:day,week,month',
         ]);
 
@@ -223,11 +212,14 @@ class SearchController extends Controller
         $brands = Vehicle::distinct('brand')->pluck('brand');
         $colors = Vehicle::distinct('color')->pluck('color');
         $seatingCapacities = Vehicle::distinct('seating_capacity')->pluck('seating_capacity');
+        $categories = VehicleCategory::all();
 
         // Base query
-        $query = Vehicle::query()->where('category_id', $category_id)->whereIn('status', ['available', 'rented']);
+        $query = Vehicle::query()->where('category_id', $category_id)
+            ->whereIn('status', ['available', 'rented'])
+            ->with('images', 'bookings', 'vendorProfile', 'benefits');
 
-        // Exclude vehicles that are booked in the selected date range
+        // Exclude vehicles booked in the selected date range
         if (!empty($validated['date_from']) && !empty($validated['date_to'])) {
             $query->whereDoesntHave('bookings', function ($q) use ($validated) {
                 $q->where(function ($query) use ($validated) {
@@ -240,7 +232,6 @@ class SearchController extends Controller
                 });
             });
 
-            // Add blocking dates exclusion
             $query->whereDoesntHave('blockings', function ($q) use ($validated) {
                 $q->where(function ($query) use ($validated) {
                     $query->whereBetween('blocking_start_date', [$validated['date_from'], $validated['date_to']])
@@ -253,7 +244,7 @@ class SearchController extends Controller
             });
         }
 
-        // Apply filters
+        // Apply non-location filters
         if (!empty($validated['seating_capacity'])) {
             $query->where('seating_capacity', $validated['seating_capacity']);
         }
@@ -277,16 +268,55 @@ class SearchController extends Controller
             $range = explode('-', $validated['mileage']);
             $query->whereBetween('mileage', [(int) $range[0], (int) $range[1]]);
         }
+
+        // Location-based filtering
         if (!empty($validated['where'])) {
-            $locationParts = array_map('trim', explode(',', $validated['where']));
-            $query->where(function ($q) use ($locationParts) {
-                foreach ($locationParts as $part) {
-                    $searchTerm = '%' . trim($part) . '%';
-                    $q->orWhere('location', 'like', $searchTerm);
+            // Initialize location variables
+            $city = null;
+            $state = null;
+            $country = null;
+
+            // Call Stadia Maps Geocoding API to parse the location
+            $geocodeResponse = Http::get('https://api.stadiamaps.com/geocoding/v1/search', [
+                'api_key' => env('STADIA_MAPS_API_KEY'),
+                'text' => $validated['where'],
+                'limit' => 1,
+            ]);
+
+            if ($geocodeResponse->successful()) {
+                $geocodeData = $geocodeResponse->json()['features'][0]['properties'] ?? [];
+
+                // Assign values if they exist
+                $city = $geocodeData['locality'] ?? null;
+                $state = $geocodeData['region'] ?? null;
+                $country = $geocodeData['country'] ?? null;
+
+                // Apply filters based on specificity
+                if ($city) {
+                    $query->where('city', $city);
+                } elseif ($state) {
+                    $query->where('state', $state);
+                } elseif ($country) {
+                    $query->where('country', $country);
                 }
-            });
+            }
+
+            // Apply radius-based filtering only if lat/long are provided and no specific city is matched
+            if (!empty($validated['latitude']) && !empty($validated['longitude']) && !empty($validated['radius']) && is_null($city)) {
+                $radiusInKm = $validated['radius'] / 1000;
+                $query->selectRaw('*, ( 6371 * acos( 
+                    cos(radians(?)) * cos(radians(latitude)) * 
+                    cos(radians(longitude) - radians(?)) + 
+                    sin(radians(?)) * sin(radians(latitude)) 
+                ) ) AS distance_in_km', [
+                    $validated['latitude'],
+                    $validated['longitude'],
+                    $validated['latitude']
+                ])
+                    ->havingRaw('distance_in_km <= ?', [$radiusInKm])
+                    ->orderBy('distance_in_km');
+            }
         }
-        $query->with('images', 'bookings', 'vendorProfile', 'benefits');
 
         // Package type filter
         if (!empty($validated['package_type'])) {
@@ -307,23 +337,18 @@ class SearchController extends Controller
         $vehicles = $query->paginate(4)->withQueryString();
 
         $vehicles->getCollection()->transform(function ($vehicle) {
-            // Add review statistics
             $reviews = Review::where('vehicle_id', $vehicle->id)
                 ->where('status', 'approved')
                 ->get();
             $vehicle->review_count = $reviews->count();
             $vehicle->average_rating = $reviews->avg('rating') ?? 0;
 
-            // Transform distance_in_km to integer if it exists
             if (isset($vehicle->distance_in_km)) {
                 $vehicle->distance_in_km = intval($vehicle->distance_in_km);
             }
 
             return $vehicle;
         });
-
-        // Fetch categories
-        $categories = VehicleCategory::all();
 
         // Return Inertia response
         return Inertia::render('SearchResults', [
@@ -337,4 +362,3 @@ class SearchController extends Controller
         ]);
     }
 }
-

@@ -76,7 +76,11 @@ const form = ref({
   date_to: "",
   latitude: null,
   longitude: null,
-  radius: 5,
+  radius: 5000, // Default radius in meters (5km)
+  package_type: "",
+  city: null,
+  state: null,
+  country: null,
 });
 
 const props = defineProps({
@@ -139,6 +143,9 @@ const selectLocation = (result) => {
   form.value.where = result.properties?.label || "Unknown Location";
   form.value.latitude = result.geometry.coordinates[1];
   form.value.longitude = result.geometry.coordinates[0];
+  form.value.city = result.properties.locality || null;
+  form.value.state = result.properties.region || null;
+  form.value.country = result.properties.country || null;
   searchResults.value = [];
 };
 
@@ -150,31 +157,26 @@ const submit = () => {
   }
   dateError.value = false;
 
-  // Calculate date difference and set package_type
   const pickupDate = new Date(form.value.date_from);
   const returnDate = new Date(form.value.date_to);
   const diffTime = Math.abs(returnDate - pickupDate);
   const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
 
-  // Determine package type based on date difference
-  let packageType = 'day'; // default
-
+  let packageType = 'day';
   if (diffDays === 7 || diffDays === 14 || diffDays === 21) {
     packageType = 'week';
   } else if (diffDays >= 28) {
     packageType = 'month';
   }
-
-
   form.value.package_type = packageType;
 
-
-  if (form.value.where && !form.value.where.includes(',')) {
-
-    form.value.radius = 5000000;
-  } else if (form.value.radius < 10000) {
-
-    form.value.radius = 10000;
+  // Adjust radius based on search specificity
+  if (form.value.city) {
+    form.value.radius = 10000; // 10km for city-specific searches
+  } else if (form.value.state) {
+    form.value.radius = 50000; // 50km for state searches
+  } else if (form.value.country) {
+    form.value.radius = 1000000; // 1000km for country searches
   }
 
   router.get("/s", form.value);
@@ -206,23 +208,20 @@ const closeSearchResults = (event) => {
 
 onMounted(() => {
   document.addEventListener('click', closeSearchResults);
-
-  // Handle prefill if exists
   if (props.prefill) {
     form.value.where = props.prefill.where;
-
-    // Set pickup and return dates if prefill dates exist
     if (props.prefill.date_from) {
       pickupDate.value = new Date(props.prefill.date_from);
     }
-
     if (props.prefill.date_to) {
       returnDate.value = new Date(props.prefill.date_to);
     }
-
     form.value.latitude = props.prefill.latitude;
     form.value.longitude = props.prefill.longitude;
-    form.value.radius = props.prefill.radius;
+    form.value.radius = props.prefill.radius || 5000;
+    form.value.city = props.prefill.city || null;
+    form.value.state = props.prefill.state || null;
+    form.value.country = props.prefill.country || null;
   }
 });
 
