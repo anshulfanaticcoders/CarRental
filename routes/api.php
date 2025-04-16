@@ -72,5 +72,5 @@ Route::get('/recent-blogs', [BlogController::class, 'getRecentBlogs']);
 
 Route::get('/faqs', [FaqController::class, 'getFaqs']);
 
-Route::get('/notifications/unread', [ContactUsNotificationController::class, 'getUnreadNotifications']);
-Route::post('/notifications/mark-as-read', [ContactUsNotificationController::class, 'markAsRead']);
+// Route::get('/notifications/unread', [ContactUsNotificationController::class, 'getUnreadNotifications']);
+// Route::post('/notifications/mark-as-read', [ContactUsNotificationController::class, 'markAsRead']);

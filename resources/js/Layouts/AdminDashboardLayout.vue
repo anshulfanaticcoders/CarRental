@@ -2,12 +2,49 @@
 import AdminSiderBar from '@/Components/AdminSiderBar.vue';
 import { Head } from '@inertiajs/vue3';
 import { Bell } from 'lucide-vue-next';
-import { onMounted, ref } from 'vue';
+import { computed, onMounted, ref } from 'vue';
 import axios from 'axios';
 
 const unreadCount = ref(0);
 const notifications = ref([]);
 const showDropdown = ref(false);
+
+// Define route to title mapping
+const routeTitles = {
+  '/admin-dashboard': 'Dashboard',
+  '/users': 'All Users',
+  '/admin/user-documents': 'Users Documents',
+  '/vendors': 'All Vendors',
+  '/vendor-vehicles': 'All Cars',
+  '/vehicles-categories': 'Categories',
+  '/booking-addons': 'Addons',
+  '/admin/plans': 'Plans',
+  '/popular-places': 'All Locations',
+  '/customer-bookings': 'All Bookings',
+  '/customer-bookings/pending': 'Pending Bookings',
+  '/customer-bookings/confirmed': 'Active Bookings',
+  '/customer-bookings/completed': 'Completed Bookings',
+  '/customer-bookings/cancelled': 'Cancelled Bookings',
+  '/pages': 'All Pages',
+  '/admin/contact-us': 'Contact Us',
+  '/blogs': 'All Blogs',
+  '/admin/payments': 'All Payments',
+  '/users-report': 'Users Report',
+  '/vendors-report': 'Vendors Report',
+  '/business-report': 'Business Report',
+  '/contact-us-mails': 'Contact Mails',
+  '/activity-logs': 'All Activities',
+  '/admin/settings/footer': 'Footer Location',
+  '/admin/settings/footer-categories': 'Footer Category',
+  '/admin/settings/faq': 'FAQ',
+}
+
+
+// Get current title based on route
+const currentPageTitle = computed(() => {
+  const path = window.location.pathname;
+  return routeTitles[path] || 'Dashboard'; // Default to Dashboard if no match
+});
 
 const fetchNotifications = async () => {
     try {
@@ -44,8 +81,8 @@ onMounted(fetchNotifications);
         <AdminSiderBar/>
         <!-- Content  -->
           <div class="column w-full py-[1rem] flex flex-col" >
-            <div class="mt-[0.75rem] ml-[1.5rem] flex justify-between">
-                <p>Dashboard</p>
+            <div class="mt-[0.65rem] ml-[1.5rem] flex justify-between border-b">
+                <p>{{ currentPageTitle }}</p>
                  <!-- Notification Bell -->
                  <div class="relative pr-[2rem]">
                         <button @click="showDropdown = !showDropdown" class="relative">
