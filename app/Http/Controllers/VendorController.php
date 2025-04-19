@@ -97,10 +97,10 @@ class VendorController extends Controller
             $user->save();
 
             // Notify the admin
-            $admin = User::where('email', 'anshul@fanaticcoders.com')->first(); // Replace with your admin email
-            if ($admin) {
-                $admin->notify(new VendorRegisteredNotification($vendorProfile, $user));
-            }
+            // $admin = User::where('email', 'anshul@fanaticcoders.com')->first(); // Replace with your admin email
+            // if ($admin) {
+            //     $admin->notify(new VendorRegisteredNotification($vendorProfile, $user));
+            // }
 
             // Return a JSON response for Inertia
             return redirect(RouteServiceProvider::HOMEPAGE)->with([

@@ -243,10 +243,10 @@ class VehicleController extends Controller
 
 
         // Notify the admin
-        $admin = User::where('email', 'anshul@fanaticcoders.com')->first(); // Replace with your admin email
-        if ($admin) {
-            $admin->notify(new VehicleCreatedNotification($vehicle));
-        }
+        // $admin = User::where('email', 'anshul@fanaticcoders.com')->first(); // Replace with your admin email
+        // if ($admin) {
+        //     $admin->notify(new VehicleCreatedNotification($vehicle));
+        // }
 
 
         return redirect('/current-vendor-vehicles')->with([

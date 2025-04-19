@@ -83,10 +83,10 @@ class RegisteredUserController extends Controller
         ActivityLogHelper::logActivity('create', 'New User Created', $user, $request);
 
         // Notify the admin
-        $admin = User::where('email', 'anshul@fanaticcoders.com')->first(); // Replace with your admin email
-        if ($admin) {
-            $admin->notify(new AccountCreatedNotification($user));
-        }
+        // $admin = User::where('email', 'anshul@fanaticcoders.com')->first(); // Replace with your admin email
+        // if ($admin) {
+        //     $admin->notify(new AccountCreatedNotification($user));
+        // }
         return redirect(RouteServiceProvider::HOME);
     }
 
