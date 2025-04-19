@@ -3,6 +3,26 @@
   <div class="py-12">
     <div class="max-w-7xl mx-auto sm:px-6 lg:px-8">
       <div class="bg-white overflow-hidden shadow-xl sm:rounded-lg p-6">
+        <!-- Success message if any -->
+        <div v-if="successCount > 0" class="mb-6 bg-green-50 p-4 rounded-lg">
+          <div class="flex items-center">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-green-500 mr-2" viewBox="0 0 20 20" fill="currentColor">
+              <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd" />
+            </svg>
+            <span class="font-medium text-green-700">Success! {{ successCount }} vehicles were uploaded successfully.</span>
+          </div>
+        </div>
+        
+        <!-- Failed upload summary if any -->
+        <div v-if="failedCount > 0" class="mb-6 bg-yellow-50 p-4 rounded-lg">
+          <div class="flex items-center">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-yellow-500 mr-2" viewBox="0 0 20 20" fill="currentColor">
+              <path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd" />
+            </svg>
+            <span class="font-medium text-yellow-700">Note: {{ failedCount }} vehicles failed to upload. Check the errors below.</span>
+          </div>
+        </div>
+
         <div class="mb-8">
           <h2 class="font-semibold text-xl text-gray-800 leading-tight">
             Bulk Vehicle Upload
@@ -109,10 +129,10 @@
               <ul class="list-disc pl-5 text-sm text-red-600">
                 <template v-if="error.errors">
                   <li v-for="(fieldErrors, field) in error.errors" :key="field">
-                    {{ field }}: {{ fieldErrors.join(', ') }}
+                    {{ field }}: {{ Array.isArray(fieldErrors) ? fieldErrors.join(', ') : fieldErrors }}
                   </li>
                 </template>
-                <li v-else>{{ error.message }}</li>
+                <li v-else-if="error.message">{{ error.message }}</li>
               </ul>
             </div>
           </div>
@@ -123,8 +143,8 @@
 </template>
 
 <script setup>
-import { ref } from 'vue'
-import { Link, useForm } from '@inertiajs/vue3'
+import { ref, onMounted } from 'vue'
+import { Link, useForm, usePage } from '@inertiajs/vue3'
 import AuthenticatedHeaderLayout from '@/Layouts/AuthenticatedHeaderLayout.vue'
 
 // Form setup
@@ -137,6 +157,25 @@ const fileInput = ref(null)
 const selectedFile = ref(null)
 const loading = ref(false)
 const uploadErrors = ref([])
+const successCount = ref(0)
+const failedCount = ref(0)
+
+// Check for flash messages on mount
+onMounted(() => {
+  const flash = usePage().props.flash
+  
+  if (flash.success_count) {
+    successCount.value = flash.success_count
+  }
+  
+  if (flash.failed_count) {
+    failedCount.value = flash.failed_count
+  }
+  
+  if (flash.upload_errors && Array.isArray(flash.upload_errors)) {
+    uploadErrors.value = flash.upload_errors
+  }
+})
 
 // Handle file selection
 const handleFileChange = (e) => {
@@ -163,28 +202,35 @@ const submitForm = () => {
   }
 
   loading.value = true
+  uploadErrors.value = []
+  
   form.post(route('bulk.car_listing.store'), {
     preserveScroll: true,
-    onSuccess: (page) => {
+    onSuccess: () => {
       loading.value = false
       selectedFile.value = null
-      uploadErrors.value = []
-
+      
+      const flash = usePage().props.flash
+      
+      if (flash.success_count) {
+        successCount.value = flash.success_count
+      }
+      
+      if (flash.failed_count) {
+        failedCount.value = flash.failed_count
+      }
+      
+      if (flash.upload_errors && Array.isArray(flash.upload_errors)) {
+        uploadErrors.value = flash.upload_errors
+      }
+      
       if (fileInput.value) {
         fileInput.value.value = ''
-      }
-
-      // ✅ Correctly handle validation errors
-      if (page.props.errors && Object.keys(page.props.errors).length) {
-        uploadErrors.value = Object.keys(page.props.errors).map((key) => ({
-          row: key,
-          message: page.props.errors[key],
-        }))
       }
     },
     onError: (errors) => {
       loading.value = false
-      if (errors && errors.csv_file) {
+      if (errors.csv_file) {
         form.errors.csv_file = errors.csv_file
       }
     }

@@ -57,7 +57,7 @@ import {
     CarouselNext,
     CarouselPrevious,
 } from "@/Components/ui/carousel";
-import { onMounted, ref } from "vue";
+import { onBeforeUnmount, onMounted, ref } from "vue";
 import Card from "@/Components/ui/card/Card.vue";
 import CardContent from "@/Components/ui/card/CardContent.vue";
 import Testimonials from "@/Components/Testimonials.vue";
@@ -97,6 +97,67 @@ const fetchPopularPlaces = async () => {
 onMounted(() => {
     fetchPopularPlaces();
 });
+
+const phrases = [
+    "Booked in a flash. Gone in a Vrooem.",
+    "Step 1: Book online. Step 2: Pick it up. Step 3: Drop it off.",
+    "No hidden fees. No stress. Vrooem's got you covered."
+];
+
+const displayedText = ref('');
+let currentPhraseIndex = 0;
+let currentCharIndex = 0;
+let isDeleting = false;
+let timer = null;
+
+const TYPE_SPEED = 70;       // Speed for typing
+const DELETE_SPEED = 40;     // Speed for deleting
+const DELAY_AFTER_TYPE = 2000;  // Delay after typing complete
+const DELAY_AFTER_DELETE = 500; // Delay after deleting
+
+// Function to handle the typing animation
+const typeWriter = () => {
+    const currentPhrase = phrases[currentPhraseIndex];
+
+    if (isDeleting) {
+        // Deleting characters
+        displayedText.value = currentPhrase.substring(0, currentCharIndex - 1);
+        currentCharIndex--;
+
+        // If deletion is complete
+        if (currentCharIndex === 0) {
+            isDeleting = false;
+            currentPhraseIndex = (currentPhraseIndex + 1) % phrases.length;
+            timer = setTimeout(typeWriter, DELAY_AFTER_DELETE);
+            return;
+        }
+
+        timer = setTimeout(typeWriter, DELETE_SPEED);
+    } else {
+        // Typing characters
+        displayedText.value = currentPhrase.substring(0, currentCharIndex + 1);
+        currentCharIndex++;
+
+        // If typing is complete
+        if (currentCharIndex === currentPhrase.length) {
+            isDeleting = true;
+            timer = setTimeout(typeWriter, DELAY_AFTER_TYPE);
+            return;
+        }
+
+        timer = setTimeout(typeWriter, TYPE_SPEED);
+    }
+};
+
+onMounted(() => {
+    // Start the typing animation
+    timer = setTimeout(typeWriter, 500);
+});
+
+onBeforeUnmount(() => {
+    // Clean up the timer when component is destroyed
+    if (timer) clearTimeout(timer);
+});
 </script>
 
 <template>
@@ -111,12 +172,16 @@ onMounted(() => {
             max-[768px]:flex-col">
                 <div class="column bg-customPrimaryColor h-[65vh] w-full text-white flex flex-col items-end justify-center
                      max-[768px]:h-auto max-[768px]:px-[1.5rem] max-[768px]:py-[1.5rem]">
-                    <div class="pl-[10%] max-[768px]:pl-[0]">
+                    <div class="pl-[10%] max-[768px]:pl-0">
                         <h1>Hit the Road with the Perfect Ride</h1>
-                        <p class="text-[1.25rem] mt-3 max-w-[450px] max-[768px]:text-[1rem]">
-                            Get a car wherever and whenever you need it
-                            with your iOS or Android device.
-                        </p>
+
+                        <div class="h-16 mt-3 max-[768px]:h-20">
+                            <!-- Typewriter text container -->
+                            <p class="text-[1.25rem]  max-[768px]:text-[1rem] flex items-center">
+                                <span class="typewriter-text">{{ displayedText }}</span>
+                                <span class="cursor-blink ml-1">|</span>
+                            </p>
+                        </div>
                     </div>
                 </div>
                 <div
@@ -213,7 +278,8 @@ onMounted(() => {
                                 <div class="p-1">
                                     <Link
                                         :href="`/s?where=${encodeURIComponent(`${place.place_name}, ${place.city}, ${place.country}`)}&latitude=${place.latitude}&longitude=${place.longitude}&radius=10000`">
-                                    <Card class="h-[18rem] border-0 rounded-[0.75rem] transition-all duration-300 hover:mt-[-1rem] max-[768px]:hover:mt-0">
+                                    <Card
+                                        class="h-[18rem] border-0 rounded-[0.75rem] transition-all duration-300 hover:mt-[-1rem] max-[768px]:hover:mt-0">
                                         <CardContent class="flex flex-col gap-2 justify-center px-1 h-full">
                                             <img :src="`${place.image}`" alt=""
                                                 class="rounded-[0.75rem] h-[12rem] w-full object-cover mb-2" />
@@ -369,18 +435,17 @@ onMounted(() => {
                 <!-- First Blog (Large Left) -->
                 <Link :href="route('blog.show', blogs[0].id)" v-if="!isLoading && blogs.length > 0"
                     class="w-1/2 h-[574px] relative rounded-lg overflow-hidden shadow-md blog-container max-[768px]:w-full max-[768px]:h-[380px]">
-                    <img :src="blogs[0].image" :alt="blogs[0].title" class="w-full h-full object-cover rounded-lg">
+                <img :src="blogs[0].image" :alt="blogs[0].title" class="w-full h-full object-cover rounded-lg">
 
-                    <div class="absolute bottom-0 bg-gradient-to-t from-black/70 to-transparent p-4 text-white">
-                        <p class="text-[1.25rem] flex items-center gap-1">
-                            <img :src=calendarWhiteIcon alt=""> {{ formatDate(blogs[0].created_at) }}
-                        </p>
-                        <h4 class="font-semibold text-[2rem] max-[768px]:text-[1.25rem]">{{ blogs[0].title }}</h4>
-                        <Link :href="route('blog.show', blogs[0].id)"
-                            class="inline-flex items-center mt-2 text-blue-400">
-                        <img :src=whiteGoIcon alt="">
-                        </Link>
-                    </div>
+                <div class="absolute bottom-0 bg-gradient-to-t from-black/70 to-transparent p-4 text-white">
+                    <p class="text-[1.25rem] flex items-center gap-1">
+                        <img :src=calendarWhiteIcon alt=""> {{ formatDate(blogs[0].created_at) }}
+                    </p>
+                    <h4 class="font-semibold text-[2rem] max-[768px]:text-[1.25rem]">{{ blogs[0].title }}</h4>
+                    <Link :href="route('blog.show', blogs[0].id)" class="inline-flex items-center mt-2 text-blue-400">
+                    <img :src=whiteGoIcon alt="">
+                    </Link>
+                </div>
                 </Link>
 
                 <div v-else
@@ -396,7 +461,7 @@ onMounted(() => {
                             class="w-[30%] h-full blog-container max-[768px]:w-[40%] max-[768px]:h-[120px]">
                             <Link :href="route('blog.show', blogs[index].id)">
                             <img :src="blogs[index].image" :alt="blogs[index].title"
-                            class="w-full h-full object-cover rounded-lg transform transition-transform duration-300 ease-in-out hover:scale-105">
+                                class="w-full h-full object-cover rounded-lg transform transition-transform duration-300 ease-in-out hover:scale-105">
                             </Link>
                         </div>
                         <div v-else class="w-[30%] h-full blog-container max-[768px]:w-[40%] max-[768px]:h-[120px]">
@@ -481,10 +546,26 @@ onMounted(() => {
     pointer-events: unset;
 }
 
-.read-story img{
+.read-story img {
     margin-left: 0.75rem;
 }
 
+.cursor-blink {
+    animation: blink 0.7s infinite;
+    font-weight: bold;
+}
+
+@keyframes blink {
+
+    0%,
+    100% {
+        opacity: 1;
+    }
+
+    50% {
+        opacity: 0;
+    }
+}
 
 @media screen and (max-width:768px) {
     .category-carousel .next-btn {

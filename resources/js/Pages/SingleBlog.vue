@@ -22,7 +22,7 @@
             <p class="text-gray-500 mt-2 max-[768px]:text-[0.95rem]">Published on {{ formatDate(blog.created_at) }}</p>
 
             <div class="mt-6 text-lg leading-relaxed text-gray-700">
-                <p v-html="blog.content" class="max-[768px]:text-[0.875rem]"></p>
+                <p v-html="blog.content" class="max-[768px]:text-[0.875rem] whitespace-break-spaces"></p>
             </div>
             </div>
         </div>

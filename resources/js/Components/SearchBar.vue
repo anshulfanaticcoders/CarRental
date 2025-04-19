@@ -163,11 +163,11 @@ const submit = () => {
   const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
 
   let packageType = 'day';
-  if (diffDays === 7 || diffDays === 14 || diffDays === 21) {
-    packageType = 'week';
-  } else if (diffDays >= 28) {
-    packageType = 'month';
-  }
+  // if (diffDays === 7 || diffDays === 14 || diffDays === 21) {
+  //   packageType = 'week';
+  // } else if (diffDays >= 28) {
+  //   packageType = 'month';
+  // }
   form.value.package_type = packageType;
 
   // Adjust radius based on search specificity
