@@ -1,9 +1,8 @@
 <template>
     <MyProfileLayout>
-        <div class="flex flex-col gap-4 w-[95%] ml-[1.5rem] max-[768px]:w-full max-[768px]:ml-0">
-            <div class="flex items-center justify-between mt-[2rem]">
-                <span class="text-[1.5rem] font-semibold max-[768px]:text-[1.2rem]">My Vendor Documents</span>
-            </div>
+        <div class="flex flex-col gap-4 w-[95%] max-[768px]:w-full max-[768px]:ml-0">
+            
+                <p class="text-[1.75rem] font-bold text-gray-800 bg-customLightPrimaryColor p-4 rounded-[12px] mb-[1rem] max-[768px]:text-[1.2rem]">My Vendor Documents</p>
 
             <Dialog v-model:open="isEditDialogOpen">
                 <EditDocument :document="document" @close="isEditDialogOpen = false" />

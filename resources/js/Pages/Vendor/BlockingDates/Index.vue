@@ -1,9 +1,9 @@
 <template>
     <MyProfileLayout>
         <div class="flex justify-between items-center mb-4">
-            <h2 class="font-semibold text-xl text-gray-800">Manage Blocking Dates</h2>
+            <h2 class="font-semibold text-xl text-gray-800 max-[768px]:text-[0.875rem]">Manage Blocking Dates</h2>
             <Dialog>
-                <DialogTrigger class="px-4 py-2 bg-customPrimaryColor text-white rounded hover:bg-[#153b4fdc]">
+                <DialogTrigger class="px-4 py-2 bg-customPrimaryColor text-white rounded hover:bg-[#153b4fdc] max-[768px]:text-[0.75rem]">
                     Add Blocking Date
                 </DialogTrigger>
                 <DialogContent>

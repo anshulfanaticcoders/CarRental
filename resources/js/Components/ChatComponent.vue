@@ -236,12 +236,12 @@ onUnmounted(() => {
         <div v-if="error" class="px-4 py-2 text-red-500 text-xs bg-red-50">{{ error }}</div>
 
         <!-- Input - Fixed -->
-        <div class="p-3 bg-white border-t flex items-center gap-2 shadow-inner">
+        <div class="bg-white border-t flex items-center gap-2 p-2">
             <textarea v-model="newMessage" placeholder="Type your message..."
                 class="flex-1 p-2 rounded-full border focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none h-10 text-sm"
                 @keyup.enter="sendMessage" />
             <button @click="sendMessage" :disabled="isLoading || !newMessage.trim()"
-                class="p-2 rounded-full bg-blue-500 hover:bg-blue-600 transition-colors disabled:opacity-50 disabled:bg-blue-300">
+                class="p-2 rounded-full bg-blue-300 hover:bg-blue-600 transition-colors disabled:opacity-50 disabled:bg-blue-300">
                 <img :src="sendIcon" alt="Send" class="w-5 h-5" v-if="!isLoading" />
                 <span v-else class="text-white text-xs">...</span>
             </button>

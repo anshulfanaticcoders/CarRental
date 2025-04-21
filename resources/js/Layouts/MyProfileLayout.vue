@@ -70,9 +70,9 @@ onBeforeUnmount(() => {
       </button>
     </div>
 
-    <div class="py-customVerticalSpacing flex gap-10 max-[768px]:pt-2">
+    <div class="flex gap-10 max-[768px]:pt-2">
       <!-- Sidebar container with improved transition classes -->
-      <div class="column sidebar sticky top-[3rem] sidebar-container px-2 max-[768px]:!pt-1" 
+      <div class="mt-[3rem] max-[768px]:mt-0 column sidebar sticky top-[3rem] sidebar-container px-2 max-[768px]:!pt-1" 
         :class="{
           'w-[20%]': !isSidebarCollapsed && !isMobile,
           'w-[80px]': isSidebarCollapsed && !isMobile,
@@ -88,7 +88,7 @@ onBeforeUnmount(() => {
            @click="toggleMobileMenu"></div>
 
       <!-- Content -->
-      <div class="column transition-all duration-300 ease-in-out" 
+      <div class="column transition-all duration-300 ease-in-out py-customVerticalSpacing " 
         :class="{
           'w-[75%]': !isSidebarCollapsed && !isMobile,
           'w-[calc(100%-120px)]': isSidebarCollapsed && !isMobile,

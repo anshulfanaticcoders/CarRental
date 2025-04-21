@@ -104,9 +104,8 @@ onUnmounted(() => {
 </script>
 
 <template>
-    <MyProfileLayout>
         <!-- Main content container -->
-        <div class="flex flex-col h-[calc(100vh-80px)]">
+        <div class="flex flex-col  h-[calc(100vh-80px)] max-[768px]:mt-[-3rem]">
             <!-- Mobile-friendly inbox header -->
             <div v-if="!showChat || !isMobile" 
                 class="flex flex-row justify-between items-center bg-[#154D6A0D] rounded-t-[12px] px-4 py-3">
@@ -187,5 +186,4 @@ onUnmounted(() => {
                 </div>
             </div>
         </div>
-    </MyProfileLayout>
 </template>

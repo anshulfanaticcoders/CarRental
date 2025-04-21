@@ -12,6 +12,7 @@ import fullStar from "../../assets/fullstar.svg";
 import halfStar from "../../assets/halfstar.svg";
 import blankStar from "../../assets/blankstar.svg";
 import carguaranteeIcon from "../../assets/carguarantee.png";
+import locationPinIcon from "../../assets/locationPin.svg";
 
 import ShareIcon from "../../assets/ShareNetwork.svg";
 import Heart from "../../assets/Heart.svg";
@@ -133,7 +134,7 @@ const featureIconMap = {
     "Key Lock": "/storage/icons/lock.svg",
     "Back Camera": "/storage/icons/camera.svg",
     "Voice Control": "/storage/icons/voiceControl.svg",
-    "Navigation": "/storage/icons/gps-navigation.png",
+    "Navigation": "/storage/icons/gps-navigation.svg",
 };
 
 
@@ -1148,8 +1149,8 @@ const openLightbox = (index) => {
                         <div class="features mt-[3rem]">
                             <span class="text-[2rem] font-medium max-[768px]:text-[1rem]">Features</span>
                             <div
-                                class="grid grid-cols-4 mt-[2rem] gap-y-[2rem] max-[768px]:mt-[1rem] max-[768px]:grid-cols-2">
-                                <div class="flex items-center gap-3 max-[768px]:text-[0.95rem]" v-if="vehicle?.features"
+                                class="grid grid-cols-4 mt-[2rem] gap-y-[2rem] max-[768px]:mt-[1rem] max-[768px]:grid-cols-3">
+                                <div class="flex items-center gap-3 max-[768px]:text-[0.65rem] whitespace-nowrap" v-if="vehicle?.features"
                                     v-for="(feature, index) in JSON.parse(
                                         vehicle.features
                                     )" :key="index">
@@ -1165,8 +1166,8 @@ const openLightbox = (index) => {
 
                         <div class="mt-[3rem] max-[768px]:mt-[2rem]">
                             <span class="text-[2rem] font-medium max-[768px]:text-[1rem]">Car Location</span>
-                            <div class="gap-y-[2rem] max-[768px]:mt-[0.5rem]">
-                                {{ vehicle?.location }}
+                            <div class="gap-y-[2rem] max-[768px]:mt-[0.5rem] flex items-end mt-[1rem] gap-2 max-[768px]:gap-1 max-[768px]:items-center">
+                               <img :src=locationPinIcon alt="" class="w-8 h-8 max-[768px]:w-6"> <span class="text-[1.2rem] max-[768px]:text-[0.95rem]">{{ vehicle?.location }}</span>
                             </div>
                             <div id="map" class="h-full rounded-lg mt-4"></div>
                         </div>
@@ -1377,6 +1378,7 @@ const openLightbox = (index) => {
                                 <div class="col flex items-start gap-4">
                                     <img :src="pickupLocationIcon" alt="" class="max-[768px]:w-[24px]" />
                                     <div class="flex flex-col gap-1">
+                                        <span>Pickup Location</span>
                                         <span class="text-[1.25rem] text-medium max-[768px]:text-[1rem]">{{
                                             vehicle?.location }}</span>
                                         <span class="max-[768px]:text-[0.95rem]">{{ route().params.pickup_date }}</span>
@@ -1385,6 +1387,7 @@ const openLightbox = (index) => {
                                 <div class="col flex items-start gap-4 mt-10">
                                     <img :src="returnLocationIcon" alt="" class="max-[768px]:w-[24px]" />
                                     <div class="flex flex-col gap-1">
+                                        <span>Return Location</span>
                                         <span class="text-[1.25rem] text-medium max-[768px]:text-[1rem]">{{
                                             vehicle?.location }}</span>
                                         <span class="max-[768px]:text-[0.95rem]">{{ route().params.return_date }}</span>
