@@ -11,6 +11,7 @@ import MapPin from "../../assets/MapPin.svg";
 import fullStar from "../../assets/fullstar.svg";
 import halfStar from "../../assets/halfstar.svg";
 import blankStar from "../../assets/blankstar.svg";
+import carguaranteeIcon from "../../assets/carguarantee.png";
 
 import ShareIcon from "../../assets/ShareNetwork.svg";
 import Heart from "../../assets/Heart.svg";
@@ -52,9 +53,9 @@ const isLoading = ref(true);
 const reviewsSection = ref(null);
 
 const scrollToReviews = () => {
-  if (reviewsSection.value) {
-    reviewsSection.value.scrollIntoView({ behavior: "smooth" });
-  }
+    if (reviewsSection.value) {
+        reviewsSection.value.scrollIntoView({ behavior: "smooth" });
+    }
 };
 
 
@@ -951,7 +952,8 @@ const openLightbox = (index) => {
                     </span>
                 </div>
                 <div class="flex gap-2 items-center text-[1.25rem] max-[768px]:hidden">
-                    <div class="car_ratings flex gap-2 items-center cursor-pointer" v-if="reviews.length > 0" @click="scrollToReviews">
+                    <div class="car_ratings flex gap-2 items-center cursor-pointer" v-if="reviews.length > 0"
+                        @click="scrollToReviews">
                         <div class="flex items-center gap-1">
                             <img v-for="n in 5" :key="n" :src="getStarIcon(averageRating, n)"
                                 :alt="getStarAltText(averageRating, n)" class="w-[20px] h-[20px]" />
@@ -1059,7 +1061,7 @@ const openLightbox = (index) => {
                                             class="text-customLightGrayColor text-[1rem] max-[768px]:text-[0.75rem]">People</span>
                                         <span class="font-medium text-[1rem] max-[768px]:text-[0.85rem]">{{
                                             vehicle?.seating_capacity
-                                            }}</span>
+                                        }}</span>
                                     </div>
                                 </div>
                                 <div class="feature-item items-center flex gap-3">
@@ -1070,7 +1072,7 @@ const openLightbox = (index) => {
                                             class="text-customLightGrayColor text-[1rem] max-[768px]:text-[0.75rem]">Doors</span>
                                         <span class="font-medium text-[1rem] max-[768px]:text-[0.85rem]">{{
                                             vehicle?.number_of_doors
-                                            }}</span>
+                                        }}</span>
                                     </div>
                                 </div>
                                 <div class="feature-item items-center flex gap-3">
@@ -1081,7 +1083,7 @@ const openLightbox = (index) => {
                                             class="text-customLightGrayColor text-[1rem] max-[768px]:text-[0.75rem]">Luggage</span>
                                         <span class="font-medium text-[1rem] max-[768px]:text-[0.85rem]">{{
                                             vehicle?.luggage_capacity
-                                            }}</span>
+                                        }}</span>
                                     </div>
                                 </div>
                                 <div class="feature-item items-center flex gap-3">
@@ -1092,7 +1094,7 @@ const openLightbox = (index) => {
                                             class="text-customLightGrayColor text-[1rem] max-[768px]:text-[0.75rem]">Transmission</span>
                                         <span class="font-medium capitalize max-[768px]:text-[0.85rem]">{{
                                             vehicle?.transmission
-                                            }}</span>
+                                        }}</span>
                                     </div>
                                 </div>
                                 <div class="feature-item items-center flex gap-3">
@@ -1104,7 +1106,7 @@ const openLightbox = (index) => {
                                             Type</span>
                                         <span class="font-medium capitalize max-[768px]:text-[0.85rem]">{{
                                             vehicle?.fuel
-                                            }}</span>
+                                        }}</span>
                                     </div>
                                 </div>
                                 <div class="feature-item items-center flex gap-3">
@@ -1125,7 +1127,7 @@ const openLightbox = (index) => {
                                             class="text-customLightGrayColor text-[1rem] max-[768px]:text-[0.75rem]">Co2
                                             Emission</span>
                                         <span class="font-medium text-[1rem] max-[768px]:text-[0.85rem]">{{ vehicle?.co2
-                                            }} (g/km)</span>
+                                        }} (g/km)</span>
                                     </div>
                                 </div>
                                 <div class="feature-item items-center flex gap-3">
@@ -1188,7 +1190,7 @@ const openLightbox = (index) => {
                                                 class="flex flex-col md:flex-row md:items-center gap-1 md:gap-2">
                                                 <span class="font-medium text-blue-700">Daily Limit:</span>
                                                 <span class="text-base">{{ vehicle?.benefits?.limited_km_per_day_range
-                                                    }} km</span>
+                                                }} km</span>
                                                 <span class="text-gray-700">
                                                     (Extra: {{ formatPrice(vehicle?.benefits?.price_per_km_per_day)
                                                     }}/km)
@@ -1199,7 +1201,7 @@ const openLightbox = (index) => {
                                                 class="flex flex-col md:flex-row md:items-center gap-1 md:gap-2">
                                                 <span class="font-medium text-blue-700">Weekly Limit:</span>
                                                 <span class="text-base">{{ vehicle?.benefits?.limited_km_per_week_range
-                                                    }} km</span>
+                                                }} km</span>
                                                 <span class="text-gray-700">
                                                     (Extra: {{ formatPrice(vehicle?.benefits?.price_per_km_per_week)
                                                     }}/km)
@@ -1210,7 +1212,7 @@ const openLightbox = (index) => {
                                                 class="flex flex-col md:flex-row md:items-center gap-1 md:gap-2">
                                                 <span class="font-medium text-blue-700">Monthly Limit:</span>
                                                 <span class="text-base">{{ vehicle?.benefits?.limited_km_per_month_range
-                                                    }} km</span>
+                                                }} km</span>
                                                 <span class="text-gray-700">
                                                     (Extra: {{ formatPrice(vehicle?.benefits?.price_per_km_per_month)
                                                     }}/km)
@@ -1398,6 +1400,35 @@ const openLightbox = (index) => {
                                                 <CardHeader>
                                                     <CardTitle class="inline-block text-[1rem]">Choose Your Rental
                                                         Package</CardTitle>
+                                                    <div
+                                                        class="relative overflow-hidden h-10 mb-4 rounded-lg bg-white shadow-sm max-[768px]:mt-[2rem]">
+                                                        <!-- Left gradient fade -->
+                                                        <div
+                                                            class="absolute left-0 top-0 h-full w-12 bg-gradient-to-r from-white to-transparent z-10">
+                                                        </div>
+
+                                                        <!-- Right gradient fade -->
+                                                        <div
+                                                            class="absolute right-0 top-0 h-full w-12 bg-gradient-to-l from-white to-transparent z-10">
+                                                        </div>
+
+                                                        <!-- Marquee content -->
+                                                        <div
+                                                            class="absolute flex items-center gap-3 animate-marquee px-4">
+                                                            <img :src="carguaranteeIcon" alt="Guarantee Icon"
+                                                                class="w-5 h-5 object-contain" />
+                                                            <p
+                                                                class="whitespace-nowrap text-sm text-gray-800 font-medium tracking-wide">
+                                                                No car on arrival? <span
+                                                                    class="text-blue-600 font-semibold">Vrooem.com</span>
+                                                                guarantees
+                                                                you’ll get one.
+                                                                All vehicles come from trusted rental companies
+                                                                handpicked by us.
+                                                            </p>
+                                                        </div>
+                                                    </div>
+
                                                 </CardHeader>
                                                 <CardContent>
                                                     <!-- Package Selection -->
@@ -1412,7 +1443,7 @@ const openLightbox = (index) => {
                                                             <div class="flex items-center gap-3 mb-2">
                                                                 <component :is="pkg.icon" class="w-6 h-6" />
                                                                 <span class="font-semibold text-[1rem]">{{ pkg.label
-                                                                }}</span>
+                                                                    }}</span>
                                                             </div>
                                                             <p class="text-sm text-gray-600 mb-2">{{ pkg.description }}
                                                             </p>
@@ -1435,8 +1466,7 @@ const openLightbox = (index) => {
                                                                 class="block text-sm font-medium text-gray-700 mb-2">Pickup
                                                                 Date</label>
                                                             <VueDatepicker v-model="form.date_from" :min-date="minDate"
-                                                                :max-date="maxPickupDate"
-                                                                :day-class="getDayClass"
+                                                                :max-date="maxPickupDate" :day-class="getDayClass"
                                                                 :disabled-dates="disabledDates"
                                                                 @update:model-value="handleDateFrom"
                                                                 placeholder="Select pickup date" class="w-full"
@@ -1451,8 +1481,7 @@ const openLightbox = (index) => {
                                                                 Date</label>
                                                             <VueDatepicker v-model="form.date_to"
                                                                 :min-date="minReturnDate" :max-date="maxReturnDate"
-                                                                :day-class="getDayClass"
-                                                                :disabled-dates="disabledDates"
+                                                                :day-class="getDayClass" :disabled-dates="disabledDates"
                                                                 @update:model-value="handleDateTo"
                                                                 placeholder="Select return date" class="w-full"
                                                                 :enable-time-picker="false" :clearable="true"
@@ -1570,8 +1599,9 @@ const openLightbox = (index) => {
                     </div>
                 </div>
                 <div v-else-if="reviews && reviews.length > 0">
-                    <Carousel class="relative w-full py-[4rem] px-[2rem] max-[768px]:px-0 max-[768px]:py-[2rem]" :plugins="[plugin]"
-                        @mouseenter="plugin.stop" @mouseleave="[plugin.reset(), plugin.play(), console.log('Running')]">
+                    <Carousel class="relative w-full py-[4rem] px-[2rem] max-[768px]:px-0 max-[768px]:py-[2rem]"
+                        :plugins="[plugin]" @mouseenter="plugin.stop"
+                        @mouseleave="[plugin.reset(), plugin.play(), console.log('Running')]">
                         <CarouselContent class="max-[768px]:px-5">
                             <CarouselItem v-for="review in reviews" :key="review.id"
                                 class="pl-1 md:basis-1/2 lg:basis-1/3 ml-[1rem]">
@@ -1613,7 +1643,8 @@ const openLightbox = (index) => {
                         <CarouselNext />
                     </Carousel>
                     <div class="flex justify-center pb-[3rem] max-[768px]:mt-[3rem]">
-                        <a v-if="reviews && reviews.length > 0" :href="`/vendor/${vehicle.vendor_profile_data?.id}/reviews`" 
+                        <a v-if="reviews && reviews.length > 0"
+                            :href="`/vendor/${vehicle.vendor_profile_data?.id}/reviews`"
                             class="button-primary px-[2rem] py-[0.75rem]">View all</a>
                     </div>
                 </div>
@@ -1774,10 +1805,12 @@ const openLightbox = (index) => {
     color: red !important;
     background-color: rgba(255, 0, 0, 0.1);
 }
+
 :deep(.dp__cell_inner.blocked-date) {
     color: red !important;
     background-color: rgba(255, 0, 0, 0.1);
 }
+
 :deep(.dp__cell_inner.dp__cell_disabled) {
     opacity: 0.6;
 }

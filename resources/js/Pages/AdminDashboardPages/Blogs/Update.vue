@@ -4,7 +4,7 @@
         <div v-if="isLoading" class="fixed z-50 h-full w-full top-0 left-0 bg-[#0000009e] flex items-center justify-center">
             <div class="flex flex-col items-center">
                 <img :src="loader" alt="Loading..." class="w-[200px]" />
-                <p class="text-white text-2xl">Please do not refresh the page... waiting for payment</p>
+                <p class="text-white text-2xl">Updating...</p>
             </div>
         </div>
         <div class="p-6">
