@@ -839,26 +839,6 @@
                         </div>
                     </div>
 
-
-                    <!-- Unlimited Kilometers and Featured
-                    <div class="flex items items-center gap-5">
-                        <div class="flex gap-[0.5rem] items-center">
-                            <input type="checkbox" v-model="form.limited_km" id="limited_km" />
-                            <InputLabel for="limited_km" class="mb-0">Limited Kilometer</InputLabel>
-                        </div>
-
-                        <div class="flex gap-[0.5rem] items-center">
-                            <input type="checkbox" v-model="form.cancellation_available" id="cancellation_available" />
-                            <InputLabel for="cancellation_available" class="mb-0">Cancellation Available</InputLabel>
-                        </div>
-
-                    </div>
-                    <div v-if="form.limited_km">
-                        <InputLabel for="price_per_km">Price per Kilometer</InputLabel>
-                        <input type="number" v-model="form.price_per_km" id="price_per_km" />
-                    </div> -->
-
-
                     <div class="max-[768px]:px-[1.5rem]">
                         <!-- Limited Kilometer Section -->
                         <div class="mb-6">
@@ -878,7 +858,7 @@
                                         <div class="mb-0">
                                             <InputLabel for="limited_km_per_day_range">KM Limit</InputLabel>
                                             <input type="number" v-model="form.limited_km_per_day_range"
-                                                id="limited_km_per_day_range" class="w-full" />
+                                                id="limited_km_per_day_range" step="0.01" class="w-full" />
                                             <span v-if="errors.limited_km_per_day_range" class="text-red-500 text-sm">
                                                 {{ errors.limited_km_per_day_range }}
                                             </span>
@@ -908,7 +888,7 @@
                                         <div class="mb-0">
                                             <InputLabel for="limited_km_per_week_range">KM Limit</InputLabel>
                                             <input type="number" v-model="form.limited_km_per_week_range"
-                                                id="limited_km_per_week_range" class="w-full" />
+                                                id="limited_km_per_week_range" step="0.01" class="w-full" />
                                             <span v-if="errors.limited_km_per_week_range" class="text-red-500 text-sm">
                                                 {{ errors.limited_km_per_week_range }}
                                             </span>
@@ -938,7 +918,7 @@
                                         <div class="mb-0">
                                             <InputLabel for="limited_km_per_month_range">KM Limit</InputLabel>
                                             <input type="number" v-model="form.limited_km_per_month_range"
-                                                id="limited_km_per_month_range" class="w-full" />
+                                                id="limited_km_per_month_range" step="0.01" class="w-full" />
                                             <span v-if="errors.limited_km_per_month_range" class="text-red-500 text-sm">
                                                 {{ errors.limited_km_per_month_range }}
                                             </span>

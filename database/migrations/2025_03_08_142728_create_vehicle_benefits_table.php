@@ -16,9 +16,9 @@ return new class extends Migration
             $table->boolean('limited_km_per_day')->default(false);
             $table->boolean('limited_km_per_week')->default(false);
             $table->boolean('limited_km_per_month')->default(false);
-            $table->integer('limited_km_per_day_range')->nullable();
-            $table->integer('limited_km_per_week_range')->nullable();
-            $table->integer('limited_km_per_month_range')->nullable();
+            $table->decimal('limited_km_per_day_range', 10, 2)->nullable();
+            $table->decimal('limited_km_per_week_range', 10, 2)->nullable();
+            $table->decimal('limited_km_per_month_range', 10, 2)->nullable();
 
             // Cancellation availability per price type
             $table->boolean('cancellation_available_per_day')->default(false);

@@ -2,7 +2,7 @@ import './bootstrap';
 import '../css/app.css';
 import Toast from "vue-toastification";
 import "vue-toastification/dist/index.css";
-import applyGlobalValidation from './globalValidation'; // Import validation function
+// import applyGlobalValidation from './globalValidation'; // Import validation function
 
 import { createApp, h } from 'vue';
 import { createInertiaApp } from '@inertiajs/vue3';
@@ -29,7 +29,7 @@ createInertiaApp({
             .use(ZiggyVue)
             .mount(el);
 
-        applyGlobalValidation(); // Call validation function globally
+        // applyGlobalValidation(); // Call validation function globally
 
         return vueApp;
     },

@@ -250,15 +250,15 @@
 
                                     <!-- Limited KM Per Day -->
                                     <div class="flex items-center gap-2">
-                                        <input type="checkbox" v-model="form.benefits.limited_km_per_day" id="limited_km_per_day"
-                                            class="w-auto" />
+                                        <input type="checkbox" v-model="form.benefits.limited_km_per_day"
+                                            id="limited_km_per_day" class="w-auto" />
                                         <InputLabel for="limited_km_per_day" class="mb-0">Limited Kilometers Per Day:
                                         </InputLabel>
                                     </div>
                                     <div v-if="form.benefits.limited_km_per_day" class="w-[50%]">
                                         <InputLabel for="limited_km_per_day_range">KM Limit Per Day:</InputLabel>
                                         <Input type="number" v-model.number="form.benefits.limited_km_per_day_range"
-                                            id="limited_km_per_day_range" min="0" required />
+                                            id="limited_km_per_day_range" required />
                                     </div>
 
                                     <!-- Limited KM Per Week -->
@@ -271,7 +271,7 @@
                                     <div v-if="form.benefits.limited_km_per_week" class="w-[50%]">
                                         <InputLabel for="limited_km_per_week_range">KM Limit Per Week:</InputLabel>
                                         <Input type="number" v-model.number="form.benefits.limited_km_per_week_range"
-                                            id="limited_km_per_week_range" min="0" required />
+                                            id="limited_km_per_week_range" required />
                                     </div>
 
                                     <!-- Limited KM Per Month -->
@@ -284,7 +284,7 @@
                                     <div v-if="form.benefits.limited_km_per_month" class="w-[50%]">
                                         <InputLabel for="limited_km_per_month_range">KM Limit Per Month:</InputLabel>
                                         <Input type="number" v-model.number="form.benefits.limited_km_per_month_range"
-                                            id="limited_km_per_month_range" min="0" required />
+                                            id="limited_km_per_month_range" required />
                                     </div>
 
                                     <!-- Cancellation Available Per Day -->
@@ -297,7 +297,8 @@
                                     <div v-if="form.benefits.cancellation_available_per_day" class="w-[50%]">
                                         <InputLabel for="cancellation_available_per_day_date">Cancellation Allowed Until
                                             (Days):</InputLabel>
-                                        <Input type="number" v-model.number="form.benefits.cancellation_available_per_day_date"
+                                        <Input type="number"
+                                            v-model.number="form.benefits.cancellation_available_per_day_date"
                                             id="cancellation_available_per_day_date" min="0" required />
                                     </div>
 
@@ -311,7 +312,8 @@
                                     <div v-if="form.benefits.cancellation_available_per_week" class="w-[50%]">
                                         <InputLabel for="cancellation_available_per_week_date">Cancellation Allowed
                                             Until (Weeks):</InputLabel>
-                                        <Input type="number" v-model.number="form.benefits.cancellation_available_per_week_date"
+                                        <Input type="number"
+                                            v-model.number="form.benefits.cancellation_available_per_week_date"
                                             id="cancellation_available_per_week_date" min="0" required />
                                     </div>
 
@@ -325,7 +327,8 @@
                                     <div v-if="form.benefits.cancellation_available_per_month" class="w-[50%]">
                                         <InputLabel for="cancellation_available_per_month_date">Cancellation Allowed
                                             Until (Months):</InputLabel>
-                                        <Input type="number" v-model.number="form.benefits.cancellation_available_per_month_date"
+                                        <Input type="number"
+                                            v-model.number="form.benefits.cancellation_available_per_month_date"
                                             id="cancellation_available_per_month_date" min="0" required />
                                     </div>
 
@@ -348,12 +351,12 @@
                                             id="price_per_km_per_month" min="0" step="0.01" required />
                                     </div>
 
-<!-- Minimum Driver Age -->
-<div class="w-[50%]">
-    <InputLabel for="minimum_driver_age">Minimum Driver Age:</InputLabel>
-    <Input type="number" v-model.number="form.benefits.minimum_driver_age"
-        id="minimum_driver_age" min="18" required />
-</div>
+                                    <!-- Minimum Driver Age -->
+                                    <div class="w-[50%]">
+                                        <InputLabel for="minimum_driver_age">Minimum Driver Age:</InputLabel>
+                                        <Input type="number" v-model.number="form.benefits.minimum_driver_age"
+                                            id="minimum_driver_age" min="18" required />
+                                    </div>
 
                                 </div>
 
@@ -405,46 +408,56 @@
 
                         <TabsContent value="guidelines">
                             <div>
-                                    <InputLabel for="guidelines">Guidelines:</InputLabel>
-                                    <textarea type="text" v-model="form.guidelines" id="guidelines" required 
-                                    class="border p-2 rounded-lg w-full"/>
-                                </div>
-                                <div class="time-selector p-6 bg-gray-50 rounded-xl shadow-lg w-full">
-                        <p>Choose Your Pickup and Return Time for the vehicle</p>
-                        <!-- Pickup Times Section -->
-                        <label class="block text-lg font-semibold text-gray-800 mb-2">Pickup Times</label>
-                        <div v-for="(time, index) in form.pickup_times" :key="'pickup-' + index"
-                            class="time-input-group flex items-center mb-3">
-                            <input type="time" v-model="form.pickup_times[index]"
-                                class="time-input w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition duration-200 bg-white shadow-sm" />
-                            <button type="button" @click="removePickupTime(index)" title="Remove"
-                                class="px-3 py-1 ml-1 bg-red-500 text-white rounded-[99px] hover:bg-red-600 transition duration-200 shadow-md">
-                                X
-                            </button>
-                        </div>
-                        
-                        <button type="button" @click="addPickupTime"
-                            class="w-full py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition duration-200 font-medium shadow-md">
-                            + Add Pickup Time
-                        </button>
+                                <InputLabel for="guidelines">Guidelines:</InputLabel>
+                                <textarea type="text" v-model="form.guidelines" id="guidelines" required
+                                    class="border p-2 rounded-lg w-full" />
+                            </div>
+                            <div class="time-selector p-6 bg-gray-50 rounded-xl shadow-lg w-full">
+                                <p>Choose Your Pickup and Return Time for the vehicle</p>
+                                <div class="grid grid-cols-2 gap-10">
+                                    <div>
+                                        <!-- Pickup Times Section -->
+                                        <label class="block text-lg font-semibold text-gray-800 mb-2">Pickup
+                                            Times</label>
+                                        <div v-for="(time, index) in form.pickup_times" :key="'pickup-' + index"
+                                            class="time-input-group flex items-center mb-3">
+                                            <input type="time" v-model="form.pickup_times[index]"
+                                                class="time-input max-[768px]:text-[0.75rem] w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition duration-200 bg-white shadow-sm" />
+                                            <button type="button" @click="removePickupTime(index)" title="Remove"
+                                                class="px-3 max-[768px]:text-[0.75rem] py-1 ml-1 bg-red-500 text-white rounded-[99px] hover:bg-red-600 transition duration-200 shadow-md">
+                                                X
+                                            </button>
+                                        </div>
 
-                        <!-- Return Times Section -->
-                        <label class="block text-lg font-semibold text-gray-800 mt-6 mb-2">Return Times</label>
-                        <div v-for="(time, index) in form.return_times" :key="'return-' + index"
-                            class="time-input-group flex items-center mb-3">
-                            <input type="time" v-model="form.return_times[index]"
-                                class="time-input w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition duration-200 bg-white shadow-sm" />
-                            <button type="button" @click="removeReturnTime(index)" title="Remove"
-                                class="px-3 py-1 ml-1 bg-red-500 text-white rounded-[99px] hover:bg-red-600 transition duration-200 shadow-md">
-                                X
-                            </button>
-                        </div>
-                   
-                        <button type="button" @click="addReturnTime"
-                            class="w-full py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition duration-200 font-medium shadow-md">
-                            + Add Return Time
-                        </button>
-                    </div>
+                                        <button type="button" @click="addPickupTime"
+                                            class="w-full py-2 max-[768px]:text-[0.75rem] bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition duration-200 font-medium shadow-md">
+                                            + Add Pickup Time
+                                        </button>
+                                    </div>
+                                    <div>
+                                        <!-- Return Times Section -->
+                                        <label class="block text-lg font-semibold text-gray-800 mb-2">Return
+                                            Times</label>
+                                        <div v-for="(time, index) in form.return_times" :key="'return-' + index"
+                                            class="time-input-group flex items-center mb-3">
+                                            <input type="time" v-model="form.return_times[index]"
+                                                class="time-input max-[768px]:text-[0.75rem] w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition duration-200 bg-white shadow-sm" />
+                                            <button type="button" @click="removeReturnTime(index)" title="Remove"
+                                                class="px-3 max-[768px]:text-[0.75rem] py-1 ml-1 bg-red-500 text-white rounded-[99px] hover:bg-red-600 transition duration-200 shadow-md">
+                                                X
+                                            </button>
+                                        </div>
+
+                                        <button type="button" @click="addReturnTime"
+                                            class="w-full py-2 max-[768px]:text-[0.75rem] bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition duration-200 font-medium shadow-md">
+                                            + Add Return Time
+                                        </button>
+                                    </div>
+                                </div>
+
+
+
+                            </div>
                         </TabsContent>
 
                         <TabsContent value="images">
@@ -617,18 +630,18 @@ const form = useForm({
     pickup_times: [],
     return_times: [],
     benefits: {
-        limited_km_per_day: 0,
-        limited_km_per_week: 0,
-        limited_km_per_month: 0,
-        limited_km_per_day_range: 0,
-        limited_km_per_week_range: 0,
-        limited_km_per_month_range: 0,
-        cancellation_available_per_day: 0,
-        cancellation_available_per_week: 0,
-        cancellation_available_per_month: 0,
-        cancellation_available_per_day_date: 0,
-        cancellation_available_per_week_date: 0,
-        cancellation_available_per_month_date: 0,
+        limited_km_per_day: false,
+        limited_km_per_week: false,
+        limited_km_per_month: false,
+        limited_km_per_day_range: null,
+        limited_km_per_week_range: null,
+        limited_km_per_month_range: null,
+        cancellation_available_per_day: false,
+        cancellation_available_per_week: false,
+        cancellation_available_per_month: false,
+        cancellation_available_per_day_date: null,
+        cancellation_available_per_week_date: null,
+        cancellation_available_per_month_date: null,
         price_per_km_per_day: 0.00,
         price_per_km_per_week: 0.00,
         price_per_km_per_month: 0.00,
@@ -646,9 +659,15 @@ const features = ref([]);
 const addPickupTime = () => {
     form.pickup_times.push(""); // Push empty value for a new time input
 };
+const addReturnTime = () => {
+    form.return_times.push(""); // Push empty value for a new time input
+};
 
 const removePickupTime = (index) => {
     form.pickup_times.splice(index, 1);
+};
+const removeReturnTime = (index) => {
+    form.return_times.splice(index, 1);
 };
 
 
@@ -714,6 +733,27 @@ const deleteImage = async (vehicleId, imageId) => {
 };
 
 
+// Watch checkbox changes to nullify associated values when unchecked
+watch(() => form.benefits.limited_km_per_day, (newValue) => {
+    if (!newValue) form.benefits.limited_km_per_day_range = null;
+});
+watch(() => form.benefits.limited_km_per_week, (newValue) => {
+    if (!newValue) form.benefits.limited_km_per_week_range = null;
+});
+watch(() => form.benefits.limited_km_per_month, (newValue) => {
+    if (!newValue) form.benefits.limited_km_per_month_range = null;
+});
+watch(() => form.benefits.cancellation_available_per_day, (newValue) => {
+    if (!newValue) form.benefits.cancellation_available_per_day_date = null;
+});
+watch(() => form.benefits.cancellation_available_per_week, (newValue) => {
+    if (!newValue) form.benefits.cancellation_available_per_week_date = null;
+});
+watch(() => form.benefits.cancellation_available_per_month, (newValue) => {
+    if (!newValue) form.benefits.cancellation_available_per_month_date = null;
+});
+
+
 onMounted(() => {
     fetchCategoriesAndFeatures()
     if (props.vehicle) {
@@ -753,27 +793,27 @@ onMounted(() => {
         form.preferred_price_type = props.vehicle.preferred_price_type
         form.guidelines = props.vehicle.guidelines
         form
-         
-        
-         // Handle benefits
-         if (props.vehicle.benefits) {
+
+
+        // Handle benefits
+        if (props.vehicle.benefits) {
             form.benefits = {
-                limited_km_per_day: props.vehicle.benefits.limited_km_per_day,
-                limited_km_per_week: props.vehicle.benefits.limited_km_per_week,
-                limited_km_per_month: props.vehicle.benefits.limited_km_per_month,
-                limited_km_per_day_range: props.vehicle.benefits.limited_km_per_day_range,
-                limited_km_per_week_range: props.vehicle.benefits.limited_km_per_week_range,
-                limited_km_per_month_range: props.vehicle.benefits.limited_km_per_month_range,
-                cancellation_available_per_day: props.vehicle.benefits.cancellation_available_per_day,
-                cancellation_available_per_week: props.vehicle.benefits.cancellation_available_per_week,
-                cancellation_available_per_month: props.vehicle.benefits.cancellation_available_per_month,
-                cancellation_available_per_day_date: props.vehicle.benefits.cancellation_available_per_day_date,
-                cancellation_available_per_week_date: props.vehicle.benefits.cancellation_available_per_week_date,
-                cancellation_available_per_month_date: props.vehicle.benefits.cancellation_available_per_month_date,
-                price_per_km_per_day: parseFloat(props.vehicle.benefits.price_per_km_per_day) || 0.00,
-                price_per_km_per_week: parseFloat(props.vehicle.benefits.price_per_km_per_week) || 0.00,
-                price_per_km_per_month: parseFloat(props.vehicle.benefits.price_per_km_per_month) || 0.00,
-                minimum_driver_age: props.vehicle.benefits.minimum_driver_age
+                limited_km_per_day: !!props.vehicle.benefits.limited_km_per_day,
+            limited_km_per_week: !!props.vehicle.benefits.limited_km_per_week,
+            limited_km_per_month: !!props.vehicle.benefits.limited_km_per_month,
+            limited_km_per_day_range: props.vehicle.benefits.limited_km_per_day_range || null,
+            limited_km_per_week_range: props.vehicle.benefits.limited_km_per_week_range || null,
+            limited_km_per_month_range: props.vehicle.benefits.limited_km_per_month_range || null,
+            cancellation_available_per_day: !!props.vehicle.benefits.cancellation_available_per_day,
+            cancellation_available_per_week: !!props.vehicle.benefits.cancellation_available_per_week,
+            cancellation_available_per_month: !!props.vehicle.benefits.cancellation_available_per_month,
+            cancellation_available_per_day_date: props.vehicle.benefits.cancellation_available_per_day_date || null,
+            cancellation_available_per_week_date: props.vehicle.benefits.cancellation_available_per_week_date || null,
+            cancellation_available_per_month_date: props.vehicle.benefits.cancellation_available_per_month_date || null,
+            price_per_km_per_day: parseFloat(props.vehicle.benefits.price_per_km_per_day) || 0.00,
+            price_per_km_per_week: parseFloat(props.vehicle.benefits.price_per_km_per_week) || 0.00,
+            price_per_km_per_month: parseFloat(props.vehicle.benefits.price_per_km_per_month) || 0.00,
+            minimum_driver_age: props.vehicle.benefits.minimum_driver_age || 18
             };
         }
 
@@ -804,8 +844,8 @@ onMounted(() => {
         }
     }
 
-      // Log the form data to the console
-      console.log('Form Data:', form);
+    // Log the form data to the console
+    console.log('Form Data:', form);
 })
 
 const updateVehicle = () => {
@@ -826,7 +866,7 @@ const updateVehicle = () => {
     };
 
     let formData = new FormData();
-    
+
     // Append benefits data with proper number types
     Object.keys(benefitsData).forEach(key => {
         const value = benefitsData[key];
@@ -856,16 +896,19 @@ const updateVehicle = () => {
     })
         .then(() => {
             isLoading.value = false;
-            toast.success('Vehicle updated successfully!', { position: 'top-right', timeout: 3000 });
-
             // Reset selected files after upload
             selectedFiles.value = [];
-            window.location.href = route('current-vendor-vehicles.index');
+
+            toast.success('Vehicle updated successfully!', { position: 'top-right', timeout: 1000 });
+
+            setTimeout(() => {
+                window.location.href = route('current-vendor-vehicles.index');
+            }, 1500);
         })
         .catch(error => {
-            isLoading.value = false; // Important to set back to false on error
-            toast.error('Something went wrong. Please check your inputs.', { position: 'top-right', timeout: 3000 });
-            console.error(error);
+            isLoading.value = false;
+            toast.error('Something went wrong.', { position: 'top-right', timeout: 3000 });
+            // console.error(error);
         });
 };
 
