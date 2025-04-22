@@ -73,7 +73,7 @@ const form = useForm({
 
 // Debounced filter submission
 const submitFilters = debounce(() => {
-    form.get('/s', {
+    form.get(`/search/category/${form.category_id}`, {
         preserveState: true,
         preserveScroll: true,
         onSuccess: (response) => {
@@ -183,7 +183,7 @@ const addMarkers = () => {
         spiderfyOnMaxZoom: true,
         showCoverageOnHover: true,
         maxClusterRadius: 40,
-        disableClusteringAtZoom: 15,
+        disableClusteringAtZoom: 20,
     });
 
     // Add markers to the cluster group
@@ -451,25 +451,25 @@ const resetPriceRange = () => {
     form.price_range = '0-20000';
     showPriceSlider.value = false;
 };
-// In your onMounted function
+
 onMounted(() => {
 
-  const urlPath = window.location.pathname;
-  const categoryMatch = urlPath.match(/\/search\/category\/(\d+)/);
+const urlPath = window.location.pathname;
+const categoryMatch = urlPath.match(/\/search\/category\/(\d+)/);
+
+if (categoryMatch && categoryMatch[1]) {
+  const categoryIdFromUrl = categoryMatch[1];
   
-  if (categoryMatch && categoryMatch[1]) {
-    const categoryIdFromUrl = categoryMatch[1];
-    
-    // Check if this category ID exists in our options
-    const categoryExists = props.categories && props.categories.some(
-      category => category.id.toString() === categoryIdFromUrl
-    );
-    
-    if (categoryExists) {
-      form.category_id = categoryIdFromUrl;
-      submitFilters();
-    }
+  // Check if this category ID exists in our options
+  const categoryExists = props.categories && props.categories.some(
+    category => category.id.toString() === categoryIdFromUrl
+  );
+  
+  if (categoryExists) {
+    form.category_id = categoryIdFromUrl;
+    submitFilters();
   }
+}
 });
 </script>
 
@@ -534,7 +534,7 @@ onMounted(() => {
                     </div>
 
                     <!-- Category Filter -->
-                    <div class="relative w-full md:w-auto">
+                    <div class="relative w-full md:w-auto hidden">
                         <img :src="categoryIcon" alt="Category Icon"
                             class="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 pointer-events-none" />
                         <select v-model="form.category_id" id="category_id"
@@ -717,7 +717,7 @@ onMounted(() => {
                         </div>
 
                         <!-- Category Filter -->
-                        <div class="relative w-full md:w-auto">
+                        <div class="relative w-full md:w-auto hidden">
                             <img :src="categoryIcon" alt="Category Icon"
                                 class="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 pointer-events-none" />
                             <select v-model="form.category_id" id="category_id"
@@ -1154,7 +1154,7 @@ onMounted(() => {
     <Footer />
 </template>
 
-<style>
+<style scoped>
 @import "leaflet/dist/leaflet.css";
 
 .marker-pin {
@@ -1295,6 +1295,10 @@ select:focus+.caret-rotate {
 
 .animate-fade-in {
     animation: fadeIn 0.2s ease-in-out;
+}
+
+select{
+    background-color: white;
 }
 
 @keyframes fadeIn {

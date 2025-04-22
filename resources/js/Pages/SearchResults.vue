@@ -183,7 +183,7 @@ const addMarkers = () => {
         spiderfyOnMaxZoom: true,
         showCoverageOnHover: true,
         maxClusterRadius: 40,
-        disableClusteringAtZoom: 15,
+        disableClusteringAtZoom: 20,
     });
 
     // Add markers to the cluster group
