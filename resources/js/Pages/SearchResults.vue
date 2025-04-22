@@ -32,6 +32,9 @@ import blankStar from "../../assets/blankstar.svg";
 import 'leaflet.markercluster/dist/leaflet.markercluster';
 import 'leaflet.markercluster/dist/MarkerCluster.css';
 import 'leaflet.markercluster/dist/MarkerCluster.Default.css';
+import VueSlider from 'vue-slider-component';
+import 'vue-slider-component/theme/default.css';
+
 
 const props = defineProps({
     vehicles: Object,
@@ -420,6 +423,37 @@ const getStarAltText = (rating, starNumber) => {
     }
 };
 
+
+// Price slider logic
+const showPriceSlider = ref(false);
+const priceRangeMin = ref(0);
+const priceRangeMax = ref(20000);
+const priceRangeValues = ref([0, 20000]);
+const tempPriceRangeValues = ref([0, 20000]);
+
+// Initialize price range from form if it exists
+onMounted(() => {
+    if (form.price_range) {
+        const [min, max] = form.price_range.split('-').map(Number);
+        priceRangeValues.value = [min || 0, max || 20000];
+        tempPriceRangeValues.value = [min || 0, max || 20000];
+    }
+});
+
+// Apply price range and update form
+const applyPriceRange = () => {
+    priceRangeValues.value = [...tempPriceRangeValues.value];
+    form.price_range = `${priceRangeValues.value[0]}-${priceRangeValues.value[1]}`;
+    showPriceSlider.value = false;
+};
+
+// Reset price range to default
+const resetPriceRange = () => {
+    tempPriceRangeValues.value = [0, 20000];
+    priceRangeValues.value = [0, 20000];
+    form.price_range = '0-20000';
+    showPriceSlider.value = false;
+};
 </script>
 
 <template>
@@ -527,20 +561,48 @@ const getStarAltText = (rating, starNumber) => {
                     </div>
 
                     <!-- Price Range Filter -->
-                    <div class="relative w-full md:w-auto">
+                    <div class="relative w-full md:w-64">
                         <img :src="priceIcon" alt="Price Icon"
-                            class="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 pointer-events-none">
-                        <select v-model="form.price_range" id="price_range"
-                            class="pl-10 pr-10 py-2 cursor-pointer border border-[#e7e7e7] rounded-sm w-full">
-                            <option value="">Price Range</option>
-                            <option value="0-1000">₹0 - ₹1000</option>
-                            <option value="1000-5000">₹1000 - ₹5000</option>
-                            <option value="5000-10000">₹5000 - ₹10000</option>
-                            <option value="10000-20000">₹10000 - ₹20000</option>
-                        </select>
-                        <img :src=CaretDown alt="" 
-                        class="absolute right-3 top-1/2 transform -translate-y-1/2 w-5 h-5 transition-transform duration-300 
-                        ease-in-out pointer-events-none caret-rotate">
+                            class="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 pointer-events-none text-gray-500" />
+                        <button type="button" @click="showPriceSlider = !showPriceSlider"
+                            class="pl-10 pr-4 py-2 w-full text-left flex items-center justify-between bg-white border border-gray-200 rounded-lg shadow-sm hover:bg-gray-50 transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-blue-300">
+                            <span class="text-gray-700 font-medium">
+                                {{ priceRangeValues[0] === 0 && priceRangeValues[1] === 20000 ? 'Price Range' :
+                                    `${priceRangeValues[0]} - ${priceRangeValues[1]}` }}
+                            </span>
+                            <img :src="CaretDown" alt="Caret Down"
+                                class="w-5 h-5 text-gray-500 transition-transform duration-300 ease-in-out pointer-events-none"
+                                :class="{ 'rotate-180': showPriceSlider }" />
+                        </button>
+
+                        <!-- Price Range Slider Dropdown -->
+                        <div v-if="showPriceSlider"
+                            class="absolute z-20 mt-2 w-full bg-white shadow-xl rounded-lg p-5 border border-gray-100 animate-fade-in">
+                            <div class="mb-4">
+                                <div class="flex justify-between mb-3">
+                                    <span class="text-sm font-semibold text-gray-800">{{ tempPriceRangeValues[0]
+                                        }}</span>
+                                    <span class="text-sm font-semibold text-gray-800">{{ tempPriceRangeValues[1]
+                                        }}</span>
+                                </div>
+                                <VueSlider v-model="tempPriceRangeValues" :min="priceRangeMin" :max="priceRangeMax"
+                                    :interval="500" :tooltip="'none'" :height="8" :dot-size="20"
+                                    :process-style="{ backgroundColor: '#3b82f6', borderRadius: '4px' }"
+                                    :rail-style="{ backgroundColor: '#e5e7eb', borderRadius: '4px' }"
+                                    :dot-style="{ backgroundColor: '#ffffff', border: '2px solid #3b82f6', boxShadow: '0 2px 4px rgba(0,0,0,0.1)' }"
+                                    class="mb-4" />
+                            </div>
+                            <div class="flex justify-between items-center">
+                                <button @click="resetPriceRange"
+                                    class="px-3 py-1.5 bg-gray-100 text-gray-700 rounded-md text-sm font-medium hover:bg-gray-200 transition-colors duration-200">
+                                    Reset
+                                </button>
+                                <button @click="applyPriceRange"
+                                    class="px-3 py-1.5 bg-blue-600 text-white rounded-md text-sm font-medium hover:bg-blue-700 transition-colors duration-200">
+                                    Apply
+                                </button>
+                            </div>
+                        </div>
                     </div>
 
                     <!-- Color Filter -->
@@ -594,7 +656,7 @@ const getStarAltText = (rating, starNumber) => {
             <!-- Mobile Filters Canvas/Sidebar -->
             <div v-if="showMobileFilters" class="fixed inset-0 bg-black bg-opacity-50 z-50 md:hidden"
                 @click="showMobileFilters = false">
-                <div class="fixed right-0 top-0 h-full w-3/5 bg-white overflow-y-auto p-4" @click.stop>
+                <div class="fixed right-0 top-0 h-full w-4/5 bg-white overflow-y-auto p-4" @click.stop>
                     <div class="flex justify-between items-center mb-6">
                         <div class="flex items-center gap-2">
                             <img :src="filterIcon" alt="" />
@@ -683,24 +745,49 @@ const getStarAltText = (rating, starNumber) => {
                         </div>
 
                         <!-- Price Range Filter -->
-                        <div class="relative w-full md:w-auto">
-                            <img :src="priceIcon" alt="Price Icon"
-                                class="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 pointer-events-none" />
-                            <select v-model="form.price_range" id="price_range"
-                                class="pl-10 pr-10 py-2 cursor-pointer border border-[#e7e7e7] rounded-sm w-full">
-                                <option value="">Price Range</option>
-                                <option value="0-1000">₹0 - ₹1000</option>
-                                <option value="1000-5000">₹1000 - ₹5000</option>
-                                <option value="5000-10000">
-                                    ₹5000 - ₹10000
-                                </option>
-                                <option value="10000-20000">
-                                    ₹10000 - ₹20000
-                                </option>
-                            </select>
-                            <img :src="CaretDown" alt=""
-                                class="absolute right-3 top-1/2 transform -translate-y-1/2 w-5 h-5 transition-transform duration-300 ease-in-out pointer-events-none caret-rotate" />
+                    <div class="relative w-full md:w-64">
+                        <img :src="priceIcon" alt="Price Icon"
+                            class="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 pointer-events-none text-gray-500" />
+                        <button type="button" @click="showPriceSlider = !showPriceSlider"
+                            class="pl-10 pr-4 py-2 w-full text-left flex items-center justify-between bg-white border border-gray-200 rounded-lg shadow-sm hover:bg-gray-50 transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-blue-300">
+                            <span class="text-gray-700 font-medium">
+                                {{ priceRangeValues[0] === 0 && priceRangeValues[1] === 20000 ? 'Price Range' :
+                                    `${priceRangeValues[0]} - ${priceRangeValues[1]}` }}
+                            </span>
+                            <img :src="CaretDown" alt="Caret Down"
+                                class="w-5 h-5 text-gray-500 transition-transform duration-300 ease-in-out pointer-events-none"
+                                :class="{ 'rotate-180': showPriceSlider }" />
+                        </button>
+
+                        <!-- Price Range Slider Dropdown -->
+                        <div v-if="showPriceSlider"
+                            class="absolute z-20 mt-2 w-full bg-white shadow-xl rounded-lg p-5 border border-gray-100 animate-fade-in">
+                            <div class="mb-4">
+                                <div class="flex justify-between mb-3">
+                                    <span class="text-sm font-semibold text-gray-800">{{ tempPriceRangeValues[0]
+                                        }}</span>
+                                    <span class="text-sm font-semibold text-gray-800">{{ tempPriceRangeValues[1]
+                                        }}</span>
+                                </div>
+                                <VueSlider v-model="tempPriceRangeValues" :min="priceRangeMin" :max="priceRangeMax"
+                                    :interval="500" :tooltip="'none'" :height="8" :dot-size="20"
+                                    :process-style="{ backgroundColor: '#3b82f6', borderRadius: '4px' }"
+                                    :rail-style="{ backgroundColor: '#e5e7eb', borderRadius: '4px' }"
+                                    :dot-style="{ backgroundColor: '#ffffff', border: '2px solid #3b82f6', boxShadow: '0 2px 4px rgba(0,0,0,0.1)' }"
+                                    class="mb-4" />
+                            </div>
+                            <div class="flex justify-between items-center">
+                                <button @click="resetPriceRange"
+                                    class="px-3 py-1.5 bg-gray-100 text-gray-700 rounded-md text-sm font-medium hover:bg-gray-200 transition-colors duration-200">
+                                    Reset
+                                </button>
+                                <button @click="applyPriceRange"
+                                    class="px-3 py-1.5 bg-blue-600 text-white rounded-md text-sm font-medium hover:bg-blue-700 transition-colors duration-200">
+                                    Apply
+                                </button>
+                            </div>
                         </div>
+                    </div>
 
                         <!-- Color Filter -->
                         <div class="relative w-full md:w-auto">
@@ -1189,50 +1276,20 @@ select:focus+.caret-rotate {
     margin-bottom: 5px;
 }
 
-/* Price range slider CSS */
-.price-slider {
-    pointer-events: none;
-    -webkit-appearance: none;
-    position: absolute;
-    height: 0;
-    outline: none;
-    z-index: 10;
-    top: 3px;
+.animate-fade-in {
+    animation: fadeIn 0.2s ease-in-out;
 }
 
-.price-slider::-webkit-slider-thumb {
-    -webkit-appearance: none;
-    pointer-events: all;
-    width: 18px;
-    height: 18px;
-    border-radius: 50%;
-    background-color: white;
-    border: 2px solid #153b4f;
-    cursor: pointer;
-    margin-top: 0;
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
-}
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(-10px);
+    }
 
-.price-slider::-moz-range-thumb {
-    pointer-events: all;
-    width: 18px;
-    height: 18px;
-    border-radius: 50%;
-    background-color: white;
-    border: 2px solid #3b82f6;
-    cursor: pointer;
-    margin-top: 0;
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
-}
-
-/* Adjust z-index to make the min thumb appear above the max thumb */
-.min-thumb {
-    z-index: 11;
-}
-
-/* Track container needs to be tall enough to contain the thumbs */
-.track-container {
-    margin-top: 8px;
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
 }
 
 @media screen and (max-width: 768px) {

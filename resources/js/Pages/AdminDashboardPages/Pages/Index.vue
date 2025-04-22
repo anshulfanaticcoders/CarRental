@@ -37,7 +37,7 @@
                                 <div class="flex justify-end gap-2">
                                     <Link 
                                         :href="route('admin.pages.edit', page.id)"
-                                        class="px-3 py-1 bg-[#0f172a] text-white rounded hover:bg-[#0f172ae6]"
+                                        class="px-3 py-2 bg-[#0f172a] text-white rounded hover:bg-[#0f172ae6]"
                                     >
                                         Edit
                                     </Link>
