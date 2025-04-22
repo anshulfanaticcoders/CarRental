@@ -24,6 +24,9 @@ class CreateVehiclesTable extends Migration
             $table->string('color');
             $table->integer('mileage');
             $table->string('location');
+            $table->string('city')->nullable();
+            $table->string('state')->nullable();
+            $table->string('country')->nullable();
             $table->decimal('latitude', 10, 8);
             $table->decimal('longitude', 11, 8);
             $table->enum('status', ['available', 'rented', 'maintenance'])->default('available');
@@ -31,7 +34,10 @@ class CreateVehiclesTable extends Migration
             $table->boolean('featured')->default(false);
             $table->decimal('security_deposit', 10, 2);
             $table->string('payment_method');
+            $table->text('guidelines')->nullable();
             $table->decimal('price_per_day', 10, 2);
+            $table->json('pickup_times')->nullable();
+            $table->json('return_times')->nullable(); 
             $table->timestamps();
         });
     }

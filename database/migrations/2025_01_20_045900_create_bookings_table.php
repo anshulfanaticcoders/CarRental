@@ -19,11 +19,14 @@ return new class extends Migration {
             $table->string('pickup_time');
             $table->string('return_time');
             $table->string('plan')->nullable();
+            $table->integer('plan_price')->nullable();
             $table->integer('total_days');
             $table->decimal('base_price', 10, 2);
             $table->decimal('extra_charges', 10, 2)->default(0);
             $table->decimal('tax_amount', 10, 2);
             $table->decimal('total_amount', 10, 2);
+            $table->decimal('pending_amount', 10, 2)->default(0);
+            $table->decimal('amount_paid', 10, 2)->default(0);
             $table->string('payment_status')->default('pending');
             $table->string('booking_status')->default('pending');
             $table->text('cancellation_reason')->nullable();

@@ -13,6 +13,7 @@ class CreateUsersTable extends Migration
             $table->string('last_name');
             $table->string('email')->unique();
             $table->string('phone')->unique();
+            $table->string('phone_code')->nullable();
             $table->string('password');
             $table->enum('role', ['admin', 'vendor', 'customer'])->default('customer');
             $table->enum('status', ['active', 'inactive', 'suspended'])->default('active');
