@@ -2,7 +2,7 @@
     <Head :title="page.title" />
      <AuthenticatedHeaderLayout />
         <div class="max-w-[1200px] max-[768px]:max-w-full mx-auto py-customVerticalSpacing my-[2rem]
-         px-[1.5rem] shadow-[0_3px_8px_rgba(0,0,0,0.24)] max-[768px]:shadow-none max-[768px]:my-0">
+         px-[1.5rem] shadow-[0_3px_8px_rgba(0,0,0,0.24)] max-[768px]:my-0 max-[1230px]:shadow-none">
             <h1 class="text-3xl font-bold mb-6 max-[768px]:text-[1.2rem]">{{ page.title }}</h1>
             <div class="prose max-w-none" v-html="page.content"></div>
         </div>
@@ -35,5 +35,7 @@ defineProps({
     .prose ::v-deep h4 {
     font-size: 1.25rem !important;
 }
+
+
 }
 </style>

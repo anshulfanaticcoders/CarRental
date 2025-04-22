@@ -1134,7 +1134,7 @@ const resetPriceRange = () => {
     <Footer />
 </template>
 
-<style>
+<style scoped>
 @import "leaflet/dist/leaflet.css";
 
 .marker-pin {
@@ -1276,7 +1276,9 @@ select:focus+.caret-rotate {
 .animate-fade-in {
     animation: fadeIn 0.2s ease-in-out;
 }
-
+select{
+    background-color: white;
+}
 @keyframes fadeIn {
     from {
         opacity: 0;

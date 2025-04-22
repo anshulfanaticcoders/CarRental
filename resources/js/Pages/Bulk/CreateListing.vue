@@ -47,10 +47,26 @@
             <li>All required fields must be completed</li>
             <li>For arrays like features, use JSON format: ["Feature 1", "Feature 2"]</li>
             <li>For payment methods, use JSON format: ["credit_card", "cash"]</li>
+            <li>For plans and addons, use JSON format as shown in the template</li>
             <li>Times should be in 24-hour format (HH:MM)</li>
             <li>Dates should be in YYYY-MM-DD format</li>
             <li>Boolean values should be 0 (false) or 1 (true)</li>
             <li>Download the template for an example</li>
+          </ul>
+        </div>
+
+        <div class="bg-gray-50 p-6 rounded-lg mb-6">
+          <h3 class="font-semibold mb-2">Available Plans</h3>
+          <ul class="list-disc pl-5 space-y-1 text-sm">
+            <li v-for="plan in plans" :key="plan.id">
+              ID: {{ plan.id }} - Type: {{ plan.plan_type }}
+            </li>
+          </ul>
+          <h3 class="font-semibold mt-4 mb-2">Available Addons</h3>
+          <ul class="list-disc pl-5 space-y-1 text-sm">
+            <li v-for="addon in addons" :key="addon.id">
+              ID: {{ addon.id }} - Name: {{ addon.extra_name }} (Type: {{ addon.extra_type }})
+            </li>
           </ul>
         </div>
 
@@ -112,7 +128,7 @@
                 <path
                   class="opacity-75"
                   fill="currentColor"
-                  d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0=014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                  d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
                 ></path>
               </svg>
               {{ loading ? 'Uploading...' : 'Upload Vehicles' }}
@@ -159,6 +175,8 @@ const loading = ref(false)
 const uploadErrors = ref([])
 const successCount = ref(0)
 const failedCount = ref(0)
+const plans = ref(usePage().props.plans || [])
+const addons = ref(usePage().props.addons || [])
 
 // Check for flash messages on mount
 onMounted(() => {
