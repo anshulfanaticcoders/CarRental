@@ -29,6 +29,8 @@ class Booking extends Model
         'tax_amount',
         'discount_amount',
         'total_amount',
+        'pending_amount',
+        'amount_paid',
         'payment_status',
         'booking_status',
         'cancellation_reason',
@@ -42,6 +44,7 @@ class Booking extends Model
         'extra_charges' => 'decimal:2',
         'tax_amount' => 'decimal:2',
         'total_amount' => 'decimal:2',
+        'pending_amount' => 'decimal:2',
     ];
 
     // Relationships

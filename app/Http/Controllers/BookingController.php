@@ -47,6 +47,8 @@ class BookingController extends Controller
             'base_price' => 'required|numeric|min:0',
             'extra_charges' => 'nullable|numeric|min:0',
             'total_amount' => 'required|numeric|min:0',
+            'pending_amount' => 'required|numeric|min:0',
+            'amount_paid' => 'required|numeric|min:0',
             'payment_method_id' => 'required|string',
             'plan' => 'nullable|string|max:255',
             'plan_price' => 'nullable|integer',
@@ -106,6 +108,8 @@ class BookingController extends Controller
             'tax_amount' => $request->input('tax_amount', 0),
             'discount_amount' => $request->input('discount_amount', 0),
             'total_amount' => $request->input('total_amount'),
+            'pending_amount' => $request->input('pending_amount'),
+            'amount_paid' => $request->input('amount_paid'),
             'payment_status' => 'pending',
             'booking_status' => 'pending',
             'plan' => $request->input('plan'),
@@ -159,7 +163,7 @@ class BookingController extends Controller
         // Create a payment intent with Stripe
         try {
             $paymentIntent = PaymentIntent::create([
-                'amount' => $request->input('total_amount') * 100, // Amount in cents
+                'amount' => $request->input('amount_paid') * 100, // Amount in cents
                 'currency' => 'USD',
                 'customer' => $stripeCustomerId,
                 'payment_method' => $request->input('payment_method_id'),
@@ -176,7 +180,7 @@ class BookingController extends Controller
                 'booking_id' => $booking->id,
                 'payment_method' => 'Stripe',
                 'transaction_id' => $paymentIntent->id,
-                'amount' => $request->input('total_amount'),
+                'amount' => $request->input('amount_paid'),
                 'payment_status' => $paymentIntent->status,
             ]);
 

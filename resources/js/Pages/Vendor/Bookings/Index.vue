@@ -21,7 +21,9 @@
                             <th class="px-4 py-2 text-left text-sm font-medium tracking-wider whitespace-nowrap">Vehicle</th>
                             <th class="px-4 py-2 text-left text-sm font-medium tracking-wider whitespace-nowrap">Booking Date</th>
                             <th class="px-4 py-2 text-left text-sm font-medium tracking-wider whitespace-nowrap">Return Date</th>
-                            <th class="px-4 py-2 text-left text-sm font-medium tracking-wider whitespace-nowrap">Payment</th>
+                            <th class="px-4 py-2 text-left text-sm font-medium tracking-wider whitespace-nowrap">Total Payment</th>
+                            <th class="px-4 py-2 text-left text-sm font-medium tracking-wider whitespace-nowrap">Amount Paid</th>
+                            <th class="px-4 py-2 text-left text-sm font-medium tracking-wider whitespace-nowrap">Amount Pending</th>
                             <th class="px-4 py-2 text-left text-sm font-medium tracking-wider whitespace-nowrap">Payment Status</th>
                             <th class="px-4 py-2 text-left text-sm font-medium tracking-wider whitespace-nowrap">Booking Status</th>
                             <th class="px-4 py-2 text-left text-sm font-medium tracking-wider whitespace-nowrap">Actions</th>
@@ -43,7 +45,9 @@
                             </td>
                             <td class="px-4 py-2 text-sm text-gray-700 whitespace-nowrap">{{ formatDate(booking.pickup_date) }}</td>
                             <td class="px-4 py-2 text-sm text-gray-700 whitespace-nowrap">{{ formatDate(booking.return_date) }}</td>
-                            <td class="px-4 py-2 text-sm text-gray-700 whitespace-nowrap">{{ booking.vendor_profile?.currency }} {{ booking.payments[0]?.amount || 'N/A' }}</td>
+                            <td class="px-4 py-2 text-sm text-gray-700 whitespace-nowrap">{{ booking.vendor_profile?.currency }} {{ booking.total_amount || 'N/A' }}</td>
+                            <td class="px-4 py-2 text-sm text-green-600 whitespace-nowrap font-medium">{{ booking.vendor_profile?.currency }} {{ booking.amount_paid || 'N/A' }}</td>
+                            <td class="px-4 py-2 text-sm text-yellow-600 whitespace-nowrap font-medium">{{ booking.vendor_profile?.currency }} {{ booking.pending_amount || 'N/A' }}</td>
                             <td class="px-4 py-2 text-sm capitalize">
                                 <span :class="{
                                     'text-green-600 font-semibold': booking.payments[0]?.payment_status === 'succeeded',

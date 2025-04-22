@@ -338,6 +338,17 @@ const calculateTotal = computed(() => {
     return total;
 });
 
+const calculateAmountPaid = computed(() => {
+    const total = calculateTotal.value;
+    return Number((total * 0.3).toFixed(2));
+});
+
+const calculatePendingAmount = computed(() => {
+    const total = calculateTotal.value;
+    return Number((total * 0.7).toFixed(2));
+});
+
+
 onMounted(async () => {
     stripe = await stripePromise;
 
@@ -445,6 +456,8 @@ const submitBooking = async () => {
             preferred_day: packageType.value,
             extra_charges: extraCharges > 0 ? extraCharges : null,
             total_amount: calculateTotal.value,
+            pending_amount: calculatePendingAmount.value,
+            amount_paid: calculateAmountPaid.value,
             discount_amount: Number(discountAmount.value),
             plan: selectedPlan.value ? selectedPlan.value.plan_type : "Free",
             plan_price: selectedPlan.value ? Number(selectedPlan.value.price) : 0,
@@ -1052,13 +1065,20 @@ const submitBooking = async () => {
                                     </DialogContent>
                                 </Dialog>
 
-                                <div
-                                    class="column flex justify-between bg-white text-customPrimaryColor p-4 mt-[2rem] rounded-[12px]">
-                                    <p class="flex items-center text-[1.15rem] max-[768px]:text-[0.875rem]">
+                                <div class="column bg-white text-customPrimaryColor p-4 mt-[2rem] rounded-[12px]">
+                                    <div class="flex items-center justify-between">
+                                        <p class="flex gap-1 text-[1.15rem] max-[768px]:text-[0.875rem]">
                                         Total Payment (incl. VAT)
                                         <img :src="infoIcon" alt="" />
-                                    </p>
-                                    <span class="text-[1.25rem] font-bold">{{ formatPrice(calculateTotal) }}</span>
+                                        </p>
+                                    <span class="relative text-[1.25rem] font-bold">{{ formatPrice(calculateTotal) }} 
+                                        <span class="absolute left-0 top-[50%] w-full bg-red-600 h-[2px] -rotate-6"></span>
+                                    </span>
+                                    </div>
+                                    <div class="flex justify-between items-center">
+                                        <span class="text-[1.15rem] max-[768px]:text-[0.875rem]">Pay 30% now value</span>
+                                        <span class="text-[1.25rem] font-bold text-green-600">{{ formatPrice(calculateAmountPaid) }}</span>
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -1190,5 +1210,9 @@ label {
 
 input {
     font-size: 0.85rem;
+}
+.strikethrough-red {
+  text-decoration: line-through;
+  color: red;
 }
 </style>

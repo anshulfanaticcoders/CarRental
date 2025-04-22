@@ -180,6 +180,16 @@ const formatDate = (dateStr) => {
                 <td class="text-customPrimaryColor font-medium text-right py-2">{{ vendorProfile.currency }}{{ booking.total_amount
                   }}</td>
               </tr>
+              <tr class="border-b">
+                <td class="text-customDarkBlackColor py-2">Amount Paid</td>
+                <td class="text-customPrimaryColor font-medium text-right py-2 text-green-600">{{ vendorProfile.currency }}{{ booking.amount_paid
+                  }}</td>
+              </tr>
+              <tr class="border-b">
+                <td class="text-customDarkBlackColor py-2">Pending Amount</td>
+                <td class="text-customPrimaryColor font-medium text-right py-2 text-yellow-600">{{ vendorProfile.currency }}{{ booking.pending_amount
+                  }}</td>
+              </tr>
             </table>
           </div>
 
@@ -286,14 +296,23 @@ const formatDate = (dateStr) => {
             </div>
           </div>
           <div v-if="booking"
-            class="bg-white flex justify-between text-customPrimaryColor p-5 rounded-[12px] border-[1px] border-[#153B4F]">
-            <div class="flex items-center gap-2">
+            class="bg-white text-customPrimaryColor p-5 rounded-[12px] border-[1px] border-[#153B4F]">
+            <div class="flex justify-between items-center">
+              <p class="flex items-center gap-2">
               <span class="text-[1.25rem] font-medium max-[768px]:text-[0.875rem]">Paid Payment (incl. VAT)</span>
               <img :src="infoIcon" alt="" class="w-[25px] h[25px] max-[768px]:w-[20px] max-[768px]:h-[20px]"/>
+            </p>
+            <span class="relative text-customPrimaryColor text-[1.5rem] font-medium max-[768px]:text-[1.2rem]">{{ vendorProfile.currency }}{{ booking.total_amount
+              }}
+               <span class="absolute left-0 top-[50%] w-full bg-red-600 h-[3px] -rotate-6"></span>
+              </span>
             </div>
-            <span class="text-customPrimaryColor text-[1.875rem] font-medium max-[768px]:text-[1.2rem]">{{ vendorProfile.currency }}{{ booking.total_amount
-              }}</span>
-
+            <div class="flex justify-between items-center">
+              <span class="text-[1.25rem] font-medium max-[768px]:text-[0.875rem]">
+                After paying 30% amount
+              </span>
+              <span class="text-customPrimaryColor text-[1.5rem] font-medium text-green-600">{{ vendorProfile.currency }}{{ booking.amount_paid }}</span>
+            </div>
           </div>
         </div>
         <div>

@@ -48,7 +48,7 @@ const debounce = (fn, delay) => {
         timeoutId = setTimeout(() => fn(...args), delay);
     };
 };
-
+const page = usePage();
 // Use Inertia's form handling
 const form = useForm({
     seating_capacity: usePage().props.filters.seating_capacity || "",
@@ -340,7 +340,13 @@ const toggleFavourite = async (vehicle) => {
 };
 
 // ✅ Fetch Data on Component Mount
-onMounted(fetchFavoriteStatus);
+// onMounted(fetchFavoriteStatus);
+
+onMounted(() => {
+    if (page.props.auth?.user) {
+        fetchFavoriteStatus();
+    }
+});
 
 const priceField = computed(() => {
     switch (form.package_type) {
@@ -414,31 +420,6 @@ const getStarAltText = (rating, starNumber) => {
     }
 };
 
-// Add to your existing data/refs
-const minPrice = ref(0);
-const maxPrice = ref(20000);
-const priceStep = ref(100);
-const priceRange = ref([0, 5000]); // Default range
-
-// Add this function to update the form value for filtering
-const updatePriceRange = () => {
-    // Ensure min doesn't exceed max
-    if (priceRange.value[0] > priceRange.value[1]) {
-        priceRange.value[0] = priceRange.value[1];
-    }
-
-    // Update the form.price_range value to maintain compatibility with your backend
-    form.price_range = `${priceRange.value[0]}-${priceRange.value[1]}`;
-};
-
-// Add a watcher to initialize priceRange from form.price_range when component mounts
-onMounted(() => {
-    // Initialize priceRange from form.price_range if it exists
-    if (form.price_range) {
-        const [min, max] = form.price_range.split('-').map(Number);
-        priceRange.value = [min, max];
-    }
-});
 </script>
 
 <template>
@@ -548,30 +529,18 @@ onMounted(() => {
                     <!-- Price Range Filter -->
                     <div class="relative w-full md:w-auto">
                         <img :src="priceIcon" alt="Price Icon"
-                            class="absolute left-3 top-5 transform w-5 h-5 pointer-events-none" />
-
-                        <div class="pl-10 pr-3 pt-2 pb-4 border border-[#e7e7e7] rounded-sm w-full">
-                            <div class="mb-1 flex justify-between">
-                                <span class="text-sm">Price Range</span>
-                                <span class="text-sm font-medium">{{ priceRange[0] }} - {{ priceRange[1] }}</span>
-                            </div>
-
-                            <div class="relative mt-2">
-                                <input type="range" v-model.number="priceRange[0]" :min="minPrice" :max="maxPrice"
-                                    :step="priceStep" @input="updatePriceRange"
-                                    class="price-slider min-thumb absolute w-full cursor-pointer appearance-none bg-transparent" />
-                                <input type="range" v-model.number="priceRange[1]" :min="minPrice" :max="maxPrice"
-                                    :step="priceStep" @input="updatePriceRange"
-                                    class="price-slider max-thumb absolute w-full cursor-pointer appearance-none bg-transparent" />
-
-                                <div class="track-container relative w-full h-2 bg-gray-200 rounded-full">
-                                    <div class="selected-range absolute h-full bg-[#153b4f] rounded-full" :style="{
-                                        left: `${((priceRange[0] - minPrice) / (maxPrice - minPrice)) * 100}%`,
-                                        width: `${((priceRange[1] - priceRange[0]) / (maxPrice - minPrice)) * 100}%`
-                                    }"></div>
-                                </div>
-                            </div>
-                        </div>
+                            class="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 pointer-events-none">
+                        <select v-model="form.price_range" id="price_range"
+                            class="pl-10 pr-10 py-2 cursor-pointer border border-[#e7e7e7] rounded-sm w-full">
+                            <option value="">Price Range</option>
+                            <option value="0-1000">₹0 - ₹1000</option>
+                            <option value="1000-5000">₹1000 - ₹5000</option>
+                            <option value="5000-10000">₹5000 - ₹10000</option>
+                            <option value="10000-20000">₹10000 - ₹20000</option>
+                        </select>
+                        <img :src=CaretDown alt="" 
+                        class="absolute right-3 top-1/2 transform -translate-y-1/2 w-5 h-5 transition-transform duration-300 
+                        ease-in-out pointer-events-none caret-rotate">
                     </div>
 
                     <!-- Color Filter -->
@@ -886,11 +855,11 @@ onMounted(() => {
                                             class="text-[1.15rem] max-[768px]:text-[0.95rem]">
                                             {{ vehicle.mileage }}km/d</span>
                                     </div>
-                                    <div class="col flex gap-3" v-if="vehicle.distance_in_km !== undefined">
+                                    <!-- <div class="col flex gap-3" v-if="vehicle.distance_in_km !== undefined">
                                         <img :src="walkIcon" alt="" /><span
                                             class="text-[1.15rem] max-[768px]:text-[0.95rem]">
                                             {{ vehicle.distance_in_km.toFixed(1) }}km away</span>
-                                    </div>
+                                    </div> -->
                                 </div>
 
 

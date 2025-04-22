@@ -28,7 +28,12 @@ const fetchUserProfile = async () => {
     }
 };
 
-onMounted(fetchUserProfile);
+onMounted(() => {
+    if (page.props.auth?.user) {
+        fetchUserProfile();
+    }
+});
+
 
 const page = usePage();
 const vendorStatus = computed(() => page.props.vendorStatus);
