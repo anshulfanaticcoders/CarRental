@@ -451,6 +451,26 @@ const resetPriceRange = () => {
     form.price_range = '0-20000';
     showPriceSlider.value = false;
 };
+// In your onMounted function
+onMounted(() => {
+
+  const urlPath = window.location.pathname;
+  const categoryMatch = urlPath.match(/\/search\/category\/(\d+)/);
+  
+  if (categoryMatch && categoryMatch[1]) {
+    const categoryIdFromUrl = categoryMatch[1];
+    
+    // Check if this category ID exists in our options
+    const categoryExists = props.categories && props.categories.some(
+      category => category.id.toString() === categoryIdFromUrl
+    );
+    
+    if (categoryExists) {
+      form.category_id = categoryIdFromUrl;
+      submitFilters();
+    }
+  }
+});
 </script>
 
 <template>
