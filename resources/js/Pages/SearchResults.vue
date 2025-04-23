@@ -156,8 +156,8 @@ const createCustomIcon = (price, currency) => {
     return L.divIcon({
         className: "custom-div-icon",
         html: `
-    <div class="marker-pin">
-      <span>${currency || "₹"}${price}</span>
+    <div class="marker-pin bg-white rounded-[99px] flex justify-center p-2 shadow-md w-fit">
+      <span class="font-bold">${currency || "₹"}${price}</span>
     </div>
   `,
         iconSize: [50, 30],
@@ -1134,7 +1134,7 @@ const resetPriceRange = () => {
     <Footer />
 </template>
 
-<style scoped>
+<style>
 @import "leaflet/dist/leaflet.css";
 
 .marker-pin {
@@ -1276,7 +1276,7 @@ select:focus+.caret-rotate {
 .animate-fade-in {
     animation: fadeIn 0.2s ease-in-out;
 }
-select{
+.filter-slot select{
     background-color: white;
 }
 @keyframes fadeIn {

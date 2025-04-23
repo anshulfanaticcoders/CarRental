@@ -11,7 +11,8 @@
     <div class="py-12">
       <div class="mx-auto">
         <div class="rounded-[12px] mb-4">
-          <input type="text" v-model="searchQuery" placeholder="Search vehicles..." class="px-4 py-2 border border-gray-300 rounded-md w-full" />
+          <input type="text" v-model="searchQuery" placeholder="Search vehicles..."
+            class="px-4 py-2 border border-gray-300 rounded-md w-full" />
         </div>
         <div class="rounded-[12px]">
           <div v-if="filteredVehicles.length" class="overflow-x-auto">
@@ -41,11 +42,11 @@
               </thead>
               <tbody>
                 <tr v-for="(vehicle, index) in filteredVehicles" :key="vehicle.id" class="border-b">
-                  <td class="px-6 py-4 whitespace-nowrap text-[0.875rem]">{{ (pagination.current_page - 1) * pagination.per_page + index + 1 }}</td>
+                  <td class="px-6 py-4 whitespace-nowrap text-[0.875rem]">{{ (pagination.current_page - 1) *
+                    pagination.per_page + index + 1 }}</td>
                   <Link :href="`/vehicle/${vehicle.id}`" class="w-full">
                   <td class="px-2 py-4 whitespace-nowrap">
-                    <img :src="getPrimaryImage(vehicle)" alt="no image"
-                      class="h-12 w-24 object-cover rounded">
+                    <img :src="getPrimaryImage(vehicle)" alt="no image" class="h-12 w-24 object-cover rounded">
                   </td>
                   </Link>
                   <td class="px-2 py-4 whitespace-nowrap text-[0.875rem]">{{ vehicle.brand }} {{ vehicle.model }}</td>
@@ -53,12 +54,54 @@
                   <td class="px-2 py-4 whitespace-nowrap text-[0.875rem] capitalize">{{ vehicle.fuel }}</td>
                   <td class="px-2 py-4 whitespace-wrap text-[0.875rem]">{{ vehicle.location }}</td>
                   <td class="px-2 py-4 whitespace-wrap text-[0.875rem]">
-                    {{ vehicle.limited_km ? `€${vehicle.price_per_km}` : 'Unlimited' }}
+                    <template
+                      v-if="vehicle.benefits.limited_km_per_day_range || vehicle.benefits.limited_km_per_week_range || vehicle.benefits.limited_km_per_month_range">
+
+                      <span v-if="vehicle.benefits.limited_km_per_day_range > 0">
+                        {{ vehicle.benefits.limited_km_per_day_range }} km/day
+                      </span>
+                      <span
+                        v-if="vehicle.benefits.limited_km_per_day_range && (vehicle.benefits.limited_km_per_week_range || vehicle.benefits.limited_km_per_month_range)">
+                        |
+                      </span>
+
+                      <span v-if="vehicle.benefits.limited_km_per_week_range > 0">
+                        {{ vehicle.benefits.limited_km_per_week_range }} km/week
+                      </span>
+                      <span
+                        v-if="vehicle.benefits.limited_km_per_week_range && vehicle.benefits.limited_km_per_month_range">
+                        
+                      </span>
+
+                      <span v-if="vehicle.benefits.limited_km_per_month_range > 0">
+                        |
+                        {{ vehicle.benefits.limited_km_per_month_range }} km/month
+                      </span>
+                    </template>
+
+                    <span v-else>Unlimited</span>
                   </td>
 
+
+
                   <td class="px-2 py-4 whitespace-wrap text-[0.875rem]">
-                    {{ vehicle.cancellation_available ? 'Available' : 'Unavailable' }}
+                    <template
+                      v-if="vehicle.benefits.cancellation_available_per_day || vehicle.benefits.cancellation_available_per_week || vehicle.benefits.cancellation_available_per_month">
+                      <span v-if="vehicle.benefits.cancellation_available_per_day">Day</span>
+                      <span
+                        v-if="vehicle.benefits.cancellation_available_per_day && (vehicle.benefits.cancellation_available_per_week || vehicle.benefits.cancellation_available_per_month)">
+                        | </span>
+
+                      <span v-if="vehicle.benefits.cancellation_available_per_week">Week</span>
+                      <span
+                        v-if="vehicle.benefits.cancellation_available_per_week && vehicle.benefits.cancellation_available_per_month">
+                        | </span>
+
+                      <span v-if="vehicle.benefits.cancellation_available_per_month">Month</span>
+                    </template>
+                    <span v-else>Not Available</span>
                   </td>
+
 
                   <td class="px-2 py-4 whitespace-nowrap text-[0.875rem] text-customPrimaryColor font-bold">
                     {{ formatPricing(vehicle) }}
@@ -208,13 +251,14 @@ const filteredVehicles = computed(() => {
 
 <style scoped>
 @media screen and (max-width:768px) {
-    
-    th{
-        font-size: 0.75rem;
-    }
-    td{
-        font-size: 0.75rem;
-        text-wrap-mode: nowrap;
-    }
+
+  th {
+    font-size: 0.75rem;
+  }
+
+  td {
+    font-size: 0.75rem;
+    text-wrap-mode: nowrap;
+  }
 }
 </style>

@@ -750,9 +750,17 @@
                                         @input="normalizeTime('pickup_times', index)"
                                         class="time-input w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition duration-200 bg-white shadow-sm" />
                                     <button type="button" @click="removePickupTime(index)" title="Remove"
-                                        class="px-3 py-1 ml-1 bg-red-500 text-white rounded-[99px] hover:bg-red-600 transition duration-200 shadow-md
-                                        max-[768px]:px-2 max-[768px]:text-[0.75rem]">
-                                        X
+                                        class=" ml-1 text-red-600 hover:bg-red-50">
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20"
+                                                viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                                                stroke-linecap="round" stroke-linejoin="round"
+                                                class="lucide lucide-trash-2">
+                                                <path d="M3 6h18"></path>
+                                                <path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"></path>
+                                                <path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"></path>
+                                                <line x1="10" x2="10" y1="11" y2="17"></line>
+                                                <line x1="14" x2="14" y1="11" y2="17"></line>
+                                            </svg>
                                     </button>
                                 </div>
                                 <span v-if="errors.pickup_times" class="text-red-500 text-sm block mb-3 italic">
@@ -773,9 +781,17 @@
                                         @input="normalizeTime('return_times', index)"
                                         class="time-input w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition duration-200 bg-white shadow-sm" />
                                     <button type="button" @click="removeReturnTime(index)" title="Remove"
-                                        class="px-3 py-1 ml-1 bg-red-500 text-white rounded-[99px] hover:bg-red-600 transition duration-200 shadow-md
-                                        max-[768px]:px-2 max-[768px]:text-[0.75rem]">
-                                        X
+                                    class=" ml-1 text-red-600 hover:bg-red-50">
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20"
+                                                viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                                                stroke-linecap="round" stroke-linejoin="round"
+                                                class="lucide lucide-trash-2">
+                                                <path d="M3 6h18"></path>
+                                                <path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"></path>
+                                                <path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"></path>
+                                                <line x1="10" x2="10" y1="11" y2="17"></line>
+                                                <line x1="14" x2="14" y1="11" y2="17"></line>
+                                            </svg>
                                     </button>
                                 </div>
                                 <span v-if="errors.return_times" class="text-red-500 text-sm block mb-3 italic">
@@ -1152,7 +1168,7 @@
 
                     <!-- Edit Plan Dialog -->
                     <Dialog :open="isEditDialogOpen" @update:open="isEditDialogOpen = $event">
-                        <DialogContent class="sm:max-w-[500px]">
+                        <DialogContent class="max-h-[90vh] overflow-y-auto p-4">
                             <DialogHeader>
                                 <DialogTitle>Edit Protection Plan</DialogTitle>
                                 <DialogDescription>

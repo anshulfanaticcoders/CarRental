@@ -964,7 +964,7 @@ const submitBooking = async () => {
                                 <div class="column flex flex-col justify-between gap-4">
                                     <span class="text-[1.5rem] max-[768px]:text-[1.2rem]">Payment Details</span>
 
-                                    <div class="flex justify-between items-center text-[1.15rem]">
+                                    <div class="flex justify-between items-center text-[1.15rem] max-[768px]:text-[0.875rem]">
 
                                         <span>Price ( package type ({{ packageType }}) )</span>
                                         <strong class="text-[1.5rem] font-medium max-[768px]:text-[1.1rem]">
@@ -972,7 +972,7 @@ const submitBooking = async () => {
 
                                     </div>
                                     <!-- Selected Plan -->
-                                    <div v-if="selectedPlan" class="flex justify-between items-center text-[1.15rem]">
+                                    <div v-if="selectedPlan" class="flex justify-between items-center text-[1.15rem] max-[768px]:text-[0.875rem]">
                                         <span>{{
                                             selectedPlan.plan_type
                                         }}</span>
@@ -992,7 +992,7 @@ const submitBooking = async () => {
                                     <!-- Selected Extras -->
                                     <!-- In the pricing section -->
                                     <div v-for="extra in bookingExtras" :key="extra.id" v-show="extra.quantity > 0"
-                                        class="flex justify-between items-center text-[1.15rem]">
+                                        class="flex justify-between items-center text-[1.15rem] max-[768px]:text-[0.875rem]">
                                         <span>{{ extra.extra_name }}
                                             {{
                                                 extra.quantity > 1
@@ -1026,18 +1026,18 @@ const submitBooking = async () => {
                                         <!-- Pricing Breakdown inside Dialog -->
                                         <div class="flex flex-col gap-4">
 
-                                            <div class="flex justify-between text-[1.15rem]">
+                                            <div class="flex justify-between text-[1.15rem] max-[768px]:text-[0.875rem]">
                                                 <span>Base Price</span>
                                                 <p class="font-medium">{{ formatPrice(totalPrice + discountAmount) }}</p>
                                             </div>
 
-                                            <div v-if="selectedPlan" class="flex justify-between text-[1.15rem]">
+                                            <div v-if="selectedPlan" class="flex justify-between text-[1.15rem] max-[768px]:text-[0.875rem]">
                                                 <span>Plan: {{ selectedPlan.plan_type }}</span>
                                                 <p class="font-medium">{{ formatPrice(selectedPlan.price * totalDays) }}</p>
                                             </div>
 
                                             <div v-for="extra in bookingExtras" :key="extra.id"
-                                                v-show="extra.quantity > 0" class="flex justify-between text-[1.15rem]">
+                                                v-show="extra.quantity > 0" class="flex justify-between text-[1.15rem] max-[768px]:text-[0.875rem]">
                                                 <span>{{ extra.extra_name }} {{ extra.quantity > 1 ?
                                                     `(x${extra.quantity})` : "" }}</span>
                                                 <p class="font-medium">{{ formatPrice(extra.price * extra.quantity * totalDays) }}
@@ -1045,7 +1045,7 @@ const submitBooking = async () => {
                                             </div>
 
                                             <div
-                                                class="flex justify-between text-[1.25rem] font-bold border-t pt-3 mt-3">
+                                                class="flex justify-between text-[1.25rem] font-bold border-t pt-3 mt-3 max-[768px]:text-[0.875rem]">
                                                 <span>Total (incl. VAT)</span>
                                                 <p class="font-medium">{{ formatPrice(calculateTotal + discountAmount)
                                                 }}

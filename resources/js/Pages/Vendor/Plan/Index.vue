@@ -11,7 +11,7 @@
                         <DialogTrigger as-child>
                             <Button>Create Plan</Button>
                         </DialogTrigger>
-                        <DialogContent>
+                        <DialogContent class="max-h-[90vh] overflow-y-auto p-4">
                             <DialogHeader>
                                 <DialogTitle>Create Plan</DialogTitle>
                                 <DialogDescription>Enter your plan details below.</DialogDescription>
@@ -141,7 +141,7 @@
                                     <DialogTrigger as-child>
                                         <Button @click="openEditDialog(plan)">Edit</Button>
                                     </DialogTrigger>
-                                    <DialogContent>
+                                    <DialogContent class="max-h-[90vh] overflow-y-auto p-4">
                                         <DialogHeader>
                                             <DialogTitle>Edit Plan</DialogTitle>
                                             <DialogDescription>Update your plan details below.</DialogDescription>

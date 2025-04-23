@@ -998,7 +998,7 @@ const openLightbox = (index) => {
                                     @click="openLightbox(4)">
                                     <div
                                         class="absolute inset-0 bg-black/50 flex items-center justify-center rounded-lg z-10">
-                                        <span class="text-white text-lg font-semibold">
+                                        <span class="text-white text-lg font-semibold max-[768px]:text-[0.75rem]">
                                             +{{ vehicle.images.length - 5 }} View All
                                         </span>
                                     </div>
@@ -1191,7 +1191,7 @@ const openLightbox = (index) => {
                                                 class="flex flex-col md:flex-row md:items-center gap-1 md:gap-2">
                                                 <span class="font-medium text-blue-700">Daily Limit:</span>
                                                 <span class="text-base">{{ vehicle?.benefits?.limited_km_per_day_range
-                                                }} km</span>
+                                                }} km/day</span>
                                                 <span class="text-gray-700">
                                                     (Extra: {{ formatPrice(vehicle?.benefits?.price_per_km_per_day)
                                                     }}/km)
@@ -1202,7 +1202,7 @@ const openLightbox = (index) => {
                                                 class="flex flex-col md:flex-row md:items-center gap-1 md:gap-2">
                                                 <span class="font-medium text-blue-700">Weekly Limit:</span>
                                                 <span class="text-base">{{ vehicle?.benefits?.limited_km_per_week_range
-                                                }} km</span>
+                                                }} km/week</span>
                                                 <span class="text-gray-700">
                                                     (Extra: {{ formatPrice(vehicle?.benefits?.price_per_km_per_week)
                                                     }}/km)
@@ -1213,7 +1213,7 @@ const openLightbox = (index) => {
                                                 class="flex flex-col md:flex-row md:items-center gap-1 md:gap-2">
                                                 <span class="font-medium text-blue-700">Monthly Limit:</span>
                                                 <span class="text-base">{{ vehicle?.benefits?.limited_km_per_month_range
-                                                }} km</span>
+                                                }} km/month</span>
                                                 <span class="text-gray-700">
                                                     (Extra: {{ formatPrice(vehicle?.benefits?.price_per_km_per_month)
                                                     }}/km)
@@ -1281,12 +1281,12 @@ const openLightbox = (index) => {
 
                             <!-- Payment Methods Section -->
                             <div class="flex flex-col gap-3">
-                                <span>You can make payment to vendor for security deposite using these <strong>payment
+                                <span class="max-[768px]:text-[0.875rem]">You can make payment to vendor for security deposite using these <strong>payment
                                         methods...</strong></span>
-                                <div v-if="isValidJSON(vehicle.payment_method)" class="flex gap-3">
+                                <div v-if="isValidJSON(vehicle.payment_method)" class="flex gap-3 max-[768px]:flex-wrap">
                                     <span v-for="(payment_method, index) in JSON.parse(vehicle.payment_method)"
                                         :key="index"
-                                        class="bg-customLightPrimaryColor py-2 px-3 rounded-sm capitalize border-[1px] border-customLightGrayColor">{{
+                                        class="max-[768px]:text-[0.875rem] bg-customLightPrimaryColor py-2 px-3 rounded-sm capitalize border-[1px] border-customLightGrayColor">{{
                                             payment_method }}
                                     </span>
                                 </div>
@@ -1328,11 +1328,14 @@ const openLightbox = (index) => {
                     <div class="column w-[40%] max-[768px]:w-full max-[768px]:mt-[2rem]">
                         <div class="paymentInfoDiv p-5 sticky top-[3rem]">
                             <div class="flex items-center justify-between gap-3 max-[768px]:mb-4">
-                                <h4 class="max-[768px]:text-[1.2rem]">{{ vehicle?.brand }} {{ vehicle?.model }}</h4>
+                                <div class="flex items-center gap-4">
+                                    <h4 class="max-[768px]:text-[1rem] max-[768px]:max-w-[170px] max-[768px]:overflow-hidden max-[768px]:text-ellipsis max-[768px]:whitespace-nowrap">
+                                        {{ vehicle?.brand }} {{ vehicle?.model }}</h4>
                                 <span
                                     class="bg-[#f5f5f5] inline-block px-8 py-2 max-[768px]:text-nowrap max-[768px]:px-4 text-center rounded-[40px] max-[768px]:text-[0.75rem]">
                                     {{ vehicle?.category.name }}
                                 </span>
+                                </div>
                                 <div class="icons flex items-center gap-3">
                                     <Link href="" class="max-[768px]:w-[1.5rem]"><img :src="ShareIcon" alt="" /></Link>
                                     <button @click.stop="toggleFavourite(vehicle)" class="heart-icon"
@@ -1346,8 +1349,8 @@ const openLightbox = (index) => {
                             </div>
                             <div class="max-[768px]:text-[0.85rem]">
                                 <span>Hosted by
-                                    <span class="vendorName uppercase">
-                                        {{ vehicle.vendor_profile_data.company_name }}
+                                    <span class="vendorName uppercase font-medium">
+                                        . {{ vehicle.vendor_profile_data.company_name }}
                                     </span>
                                 </span>
                             </div>

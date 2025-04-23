@@ -156,8 +156,8 @@ const createCustomIcon = (price, currency) => {
     return L.divIcon({
         className: "custom-div-icon",
         html: `
-    <div class="marker-pin">
-      <span>${currency || "₹"}${price}</span>
+     <div class="marker-pin bg-white rounded-[99px] flex justify-center p-2 shadow-md">
+      <span class="font-bold">${currency || "₹"}${price}</span>
     </div>
   `,
         iconSize: [50, 30],
@@ -1154,7 +1154,7 @@ if (categoryMatch && categoryMatch[1]) {
     <Footer />
 </template>
 
-<style scoped>
+<style>
 @import "leaflet/dist/leaflet.css";
 
 .marker-pin {
@@ -1284,6 +1284,7 @@ select:focus+.caret-rotate {
     z-index: 1000;
 }
 
+
 .popup-image {
     width: 100%;
     height: 70px;
@@ -1297,7 +1298,7 @@ select:focus+.caret-rotate {
     animation: fadeIn 0.2s ease-in-out;
 }
 
-select{
+.filter-slot select{
     background-color: white;
 }
 

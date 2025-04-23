@@ -258,7 +258,7 @@
                                     <div v-if="form.benefits.limited_km_per_day" class="w-[50%]">
                                         <InputLabel for="limited_km_per_day_range">KM Limit Per Day:</InputLabel>
                                         <Input type="number" v-model.number="form.benefits.limited_km_per_day_range"
-                                            id="limited_km_per_day_range" required />
+                                            id="limited_km_per_day_range" />
                                     </div>
 
                                     <!-- Limited KM Per Week -->
@@ -271,20 +271,19 @@
                                     <div v-if="form.benefits.limited_km_per_week" class="w-[50%]">
                                         <InputLabel for="limited_km_per_week_range">KM Limit Per Week:</InputLabel>
                                         <Input type="number" v-model.number="form.benefits.limited_km_per_week_range"
-                                            id="limited_km_per_week_range" required />
+                                            id="limited_km_per_week_range" />
                                     </div>
 
                                     <!-- Limited KM Per Month -->
                                     <div class="flex items-center gap-2">
                                         <input type="checkbox" v-model="form.benefits.limited_km_per_month"
                                             id="limited_km_per_month" class="w-auto" />
-                                        <InputLabel for="limited_km_per_month" class="mb-0">Limited Kilometers Per
-                                            Month:</InputLabel>
+                                        <InputLabel for="limited_km_per_month" class="mb-0">Limited Kilometers Per Month:</InputLabel>
                                     </div>
                                     <div v-if="form.benefits.limited_km_per_month" class="w-[50%]">
                                         <InputLabel for="limited_km_per_month_range">KM Limit Per Month:</InputLabel>
                                         <Input type="number" v-model.number="form.benefits.limited_km_per_month_range"
-                                            id="limited_km_per_month_range" required />
+                                            id="limited_km_per_month_range" />
                                     </div>
 
                                     <!-- Cancellation Available Per Day -->
@@ -299,7 +298,7 @@
                                             (Days):</InputLabel>
                                         <Input type="number"
                                             v-model.number="form.benefits.cancellation_available_per_day_date"
-                                            id="cancellation_available_per_day_date" min="0" required />
+                                            id="cancellation_available_per_day_date" min="0" />
                                     </div>
 
                                     <!-- Cancellation Available Per Week -->
@@ -314,7 +313,7 @@
                                             Until (Weeks):</InputLabel>
                                         <Input type="number"
                                             v-model.number="form.benefits.cancellation_available_per_week_date"
-                                            id="cancellation_available_per_week_date" min="0" required />
+                                            id="cancellation_available_per_week_date" min="0" />
                                     </div>
 
                                     <!-- Cancellation Available Per Month -->
@@ -329,26 +328,26 @@
                                             Until (Months):</InputLabel>
                                         <Input type="number"
                                             v-model.number="form.benefits.cancellation_available_per_month_date"
-                                            id="cancellation_available_per_month_date" min="0" required />
+                                            id="cancellation_available_per_month_date" min="0" />
                                     </div>
 
                                     <!-- Price Per KM -->
                                     <div class="w-[50%]">
                                         <InputLabel for="price_per_km_per_day">Price Per KM Per Day:</InputLabel>
                                         <Input type="number" v-model.number="form.benefits.price_per_km_per_day"
-                                            id="price_per_km_per_day" min="0" step="0.01" required />
+                                            id="price_per_km_per_day" min="0" step="0.01" />
                                     </div>
 
                                     <div class="w-[50%]">
                                         <InputLabel for="price_per_km_per_week">Price Per KM Per Week:</InputLabel>
                                         <Input type="number" v-model.number="form.benefits.price_per_km_per_week"
-                                            id="price_per_km_per_week" min="0" step="0.01" required />
+                                            id="price_per_km_per_week" min="0" step="0.01" />
                                     </div>
 
                                     <div class="w-[50%]">
                                         <InputLabel for="price_per_km_per_month">Price Per KM Per Month:</InputLabel>
                                         <Input type="number" v-model.number="form.benefits.price_per_km_per_month"
-                                            id="price_per_km_per_month" min="0" step="0.01" required />
+                                            id="price_per_km_per_month" min="0" step="0.01" />
                                     </div>
 
                                     <!-- Minimum Driver Age -->
@@ -424,8 +423,17 @@
                                             <input type="time" v-model="form.pickup_times[index]"
                                                 class="time-input max-[768px]:text-[0.75rem] w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition duration-200 bg-white shadow-sm" />
                                             <button type="button" @click="removePickupTime(index)" title="Remove"
-                                                class="px-3 max-[768px]:text-[0.75rem] py-1 ml-1 bg-red-500 text-white rounded-[99px] hover:bg-red-600 transition duration-200 shadow-md">
-                                                X
+                                                class="ml-1 text-red-600 hover:bg-red-50">
+                                                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20"
+                                                viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                                                stroke-linecap="round" stroke-linejoin="round"
+                                                class="lucide lucide-trash-2">
+                                                <path d="M3 6h18"></path>
+                                                <path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"></path>
+                                                <path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"></path>
+                                                <line x1="10" x2="10" y1="11" y2="17"></line>
+                                                <line x1="14" x2="14" y1="11" y2="17"></line>
+                                            </svg>
                                             </button>
                                         </div>
 
@@ -443,8 +451,17 @@
                                             <input type="time" v-model="form.return_times[index]"
                                                 class="time-input max-[768px]:text-[0.75rem] w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition duration-200 bg-white shadow-sm" />
                                             <button type="button" @click="removeReturnTime(index)" title="Remove"
-                                                class="px-3 max-[768px]:text-[0.75rem] py-1 ml-1 bg-red-500 text-white rounded-[99px] hover:bg-red-600 transition duration-200 shadow-md">
-                                                X
+                                            class="ml-1 text-red-600 hover:bg-red-50">
+                                                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20"
+                                                viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                                                stroke-linecap="round" stroke-linejoin="round"
+                                                class="lucide lucide-trash-2">
+                                                <path d="M3 6h18"></path>
+                                                <path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"></path>
+                                                <path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"></path>
+                                                <line x1="10" x2="10" y1="11" y2="17"></line>
+                                                <line x1="14" x2="14" y1="11" y2="17"></line>
+                                            </svg>
                                             </button>
                                         </div>
 
@@ -472,13 +489,17 @@
                                                 class="w-full h-full object-cover" />
                                             <div class="absolute top-0 right-0 p-1">
                                                 <button type="button" @click="deleteImage(props.vehicle.id, image.id)"
-                                                    class="bg-red-500 text-white rounded-full p-1 hover:bg-red-600 transition-colors">
-                                                    <svg xmlns="http://www.w3.org/2000/svg" fill="none"
-                                                        viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"
-                                                        class="w-5 h-5">
-                                                        <path stroke-linecap="round" stroke-linejoin="round"
-                                                            d="M6 18L18 6M6 6l12 12" />
-                                                    </svg>
+                                                    class="bg-white text-red-600 rounded-full p-1 hover:bg-red-50 transition-colors">
+                                                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20"
+                                                viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                                                stroke-linecap="round" stroke-linejoin="round"
+                                                class="lucide lucide-trash-2">
+                                                <path d="M3 6h18"></path>
+                                                <path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"></path>
+                                                <path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"></path>
+                                                <line x1="10" x2="10" y1="11" y2="17"></line>
+                                                <line x1="14" x2="14" y1="11" y2="17"></line>
+                                            </svg>
                                                 </button>
                                             </div>
                                             <div

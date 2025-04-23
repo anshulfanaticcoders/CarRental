@@ -1,5 +1,5 @@
 <template>
-    <DialogContent class="sm:max-w-[600px]">
+    <DialogContent class="sm:max-w-[600px] max-h-[90vh] overflow-y-auto">
         <DialogHeader>
             <DialogTitle>Edit Vendor Documents</DialogTitle>
             <DialogDescription>
@@ -27,19 +27,20 @@
 
                 <div class="grid grid-cols-2 gap-4">
                     <div class="space-y-2">
-                        <Label for="company_email">Company Email</Label>
-                        <Input id="company_email" v-model="form.company_email" />
-                        <div v-if="form.errors.company_email" class="text-sm text-red-500">
-                            {{ form.errors.company_email }}
-                        </div>
-                    </div>
-                    <div class="space-y-2">
                         <Label for="company_gst_number">GST Number</Label>
                         <Input id="company_gst_number" v-model="form.company_gst_number" />
                         <div v-if="form.errors.company_gst_number" class="text-sm text-red-500">
                             {{ form.errors.company_gst_number }}
                         </div>
                     </div>
+                    <div class="space-y-2 max-[768px]:col-span-2">
+                        <Label for="company_email">Company Email</Label>
+                        <Input id="company_email" v-model="form.company_email" />
+                        <div v-if="form.errors.company_email" class="text-sm text-red-500">
+                            {{ form.errors.company_email }}
+                        </div>
+                    </div>
+                    
                 </div>
 
                 <div class="space-y-2">
@@ -54,7 +55,7 @@
 
                 <div class="space-y-2">
                     <Label for="driving_license_front">Driving License Front</Label>
-                    <div class="flex items-center gap-2">
+                    <div class="flex items-center gap-2 max-[768px]:flex-col">
                         <Input id="driving_license_front" type="file"
                             @change="handleFileChange('driving_license_front', $event)" />
                         <Button v-if="document.driving_license_front" variant="outline" size="sm"
@@ -68,7 +69,7 @@
                 </div>
                 <div class="space-y-2">
                     <Label for="driving_license_back">Driving License Back</Label>
-                    <div class="flex items-center gap-2">
+                    <div class="flex items-center gap-2 max-[768px]:flex-col">
                         <Input id="driving_license_back" type="file"
                             @change="handleFileChange('driving_license_back', $event)" />
                         <Button v-if="document.driving_license_back" variant="outline" size="sm"
@@ -84,7 +85,7 @@
                 <!-- Passport Front -->
                 <div class="space-y-2">
                     <Label for="passport_front">Passport Front</Label>
-                    <div class="flex items-center gap-2">
+                    <div class="flex items-center gap-2 max-[768px]:flex-col">
                         <Input id="passport_front" type="file" @change="handleFileChange('passport_front', $event)" />
                         <Button v-if="document.passport_front" variant="outline" size="sm"
                             @click.prevent="viewDocument(document.passport_front)">
@@ -99,7 +100,7 @@
                 <!-- Passport Back -->
                 <div class="space-y-2">
                     <Label for="passport_back">Passport Back</Label>
-                    <div class="flex items-center gap-2">
+                    <div class="flex items-center gap-2 max-[768px]:flex-col">
                         <Input id="passport_back" type="file" @change="handleFileChange('passport_back', $event)" />
                         <Button v-if="document.passport_back" variant="outline" size="sm"
                             @click.prevent="viewDocument(document.passport_back)">
@@ -112,7 +113,7 @@
                 </div>
             </div>
             </div>
-            <DialogFooter>
+            <DialogFooter class="max-[768px]:flex max-[768px]:flex-col max-[768px]:gap-3">
                 <Button type="button" variant="secondary" @click="$emit('close')">Cancel</Button>
                 <Button type="submit" :disabled="form.processing">Save Changes</Button>
             </DialogFooter>
