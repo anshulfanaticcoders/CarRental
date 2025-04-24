@@ -37,12 +37,17 @@ class ContactFormController extends Controller
             'message' => $request->input('message')
         ]);
 
-        // Optional: Add a notification or email logic here
-        // For example, you might want to send an admin notification
-        // $admin = User::where('email', 'anshul@fanaticcoders.com')->first();
-        // if ($admin) {
-        //     $admin->notify(new ContactUsNotification($submission));
-        // }
+        $admin = User::where('email', $request->input('admin_email'))->first();
+
+        if ($admin) {
+            try {
+                $admin->notify(new ContactUsNotification($submission));
+            } catch (\Exception $e) {
+                // Log the error for debugging, but don’t interrupt the user experience
+                \Log::error('Failed to send ContactUsNotification: ' . $e->getMessage());
+            }
+        }
+
         // Redirect back with a success message
         return back()->with('success', 'Your message has been sent successfully!');
     }

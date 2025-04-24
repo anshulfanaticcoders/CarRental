@@ -556,7 +556,7 @@
                     <ApplicationLogo />
                     </Link>
                     <AuthenticatedHeaderLayout class="hidden max-[768px]:block max-[768px]:border-b-0" />
-                    <div class="mt-[5rem] mb-[2rem] max-[768px]:mt-0 max-[768px]:px-[1.5rem] max-[768px]:mb-1">
+                    <div class="mt-[5rem] max-[768px]:mt-0 max-[768px]:px-[1.5rem] max-[768px]:mb-1">
                         <span class="text-[1.75rem] font-medium max-[768px]:text-[1.2rem]">Parking Address of the
                             Vehicle</span>
                         <p class="max-[768px]:text-[0.875rem] max-[768px]:mt-2">This allows renters to search by

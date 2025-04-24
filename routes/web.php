@@ -33,6 +33,8 @@ use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\ReviewController;
 use App\Http\Controllers\SearchController;
 use App\Http\Controllers\Admin\VehicleCategoriesController;
+use App\Http\Controllers\VehicleCsvImportController;
+use App\Http\Controllers\VehicleImportController;
 use App\Http\Controllers\Vendor\BlockingDateController;
 use App\Http\Controllers\Vendor\DamageProtectionController;
 use App\Http\Controllers\Vendor\PlanController;
@@ -115,6 +117,7 @@ Route::get('/s', [SearchController::class, 'search']);
 Route::post('/store-search', [SearchController::class, 'storeSearchData'])->name('search.store');
 Route::get('/search/category/{category_id}', [SearchController::class, 'searchByCategory'])->name('search.category');
 Route::get('/api/geocoding/autocomplete', [GeocodingController::class, 'autocomplete']);
+Route::get('/api/geocoding/reverse', [GeocodingController::class, 'reverse']);
 Route::get('/blogs-page', [BlogController::class, 'showBlogPage'])->name('blogs-page');
 Route::get('/page/{slug}', [FrontendPageController::class, 'show'])->name('pages.show');
 Route::inertia('/faq', 'Faq');
@@ -125,6 +128,7 @@ Route::get('/api/footer-categories', [VehicleCategoriesController::class, 'getFo
 Route::get('/contact-us', [ContactUsPageController::class, 'show'])->name('contact-us');
 Route::post('/contact', [ContactFormController::class, 'store'])->name('contact.submit');
 Route::get('/vendor/{vendorProfileId}/reviews', [ReviewController::class, 'vendorAllReviews'])->name('vendor.reviews.all');
+
 
 // Show Blogs on Home page
 // Route::get('/', [BlogController::class, 'show'])->name('welcome');
@@ -311,9 +315,9 @@ Route::middleware(['auth', 'role:vendor'])->group(function () {
     // Route::get('/vehicles/create', [VehicleController::class, 'create'])->name('vehicles.create');
 
 
-    Route::get('/bulk/car_listing', [BulkVehicleController::class, 'create'])->name('bulk.car_listing');
-    Route::post('/bulk/car_listing', [BulkVehicleController::class, 'store'])->name('bulk.car_listing.store');
-    Route::get('/bulk/template/download', [BulkVehicleController::class, 'downloadTemplate'])->name('bulk.template.download');
+    Route::get('/vehicles/csv-import', [VehicleCsvImportController::class, 'index'])->name('vehicles.csv.import');
+    Route::post('/vehicles/csv-import', [VehicleCsvImportController::class, 'import']);
+    Route::get('/vehicles/csv-sample', [VehicleCsvImportController::class, 'downloadSample'])->name('vehicles.csv.sample');
 });
 
 

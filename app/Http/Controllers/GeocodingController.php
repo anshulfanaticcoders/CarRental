@@ -17,4 +17,26 @@ class GeocodingController extends Controller
         
         return $response->json();
     }
+
+
+    public function reverse(Request $request)
+    {
+        $apiKey = env('VITE_STADIA_MAPS_API_KEY');
+        
+        // Validate input parameters
+        $request->validate([
+            'lat' => 'required|numeric',
+            'lon' => 'required|numeric'
+        ]);
+        
+        // Call Stadia Maps reverse geocoding API
+        $response = Http::get('https://api.stadiamaps.com/geocoding/v1/reverse', [
+            'api_key' => $apiKey,
+            'point.lat' => $request->query('lat'),
+            'point.lon' => $request->query('lon'),
+            'size' => 1 // Return only one result
+        ]);
+        
+        return $response->json();
+    }
 }

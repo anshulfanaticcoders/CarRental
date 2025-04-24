@@ -15,6 +15,7 @@ use App\Models\VendorVehiclePlan;
 use App\Notifications\VehicleCreatedNotification;
 use App\Providers\RouteServiceProvider;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Inertia\Inertia;
@@ -221,18 +222,23 @@ class VehicleController extends Controller
         // Handle vehicle images
         $primaryImageUploaded = false;
         foreach ($request->file('images') as $index => $image) {
-            // Store image on UpCloud storage
+            // Get the original file name
+            $originalName = $image->getClientOriginalName();
+            
+            // Define the folder and file path
             $folderName = 'vehicle_images';
-            $path = $image->store($folderName, 'upcloud');
+            $path = $image->storeAs($folderName, $originalName, 'upcloud');
+            
+            // Get the full URL from UpCloud storage
             $url = Storage::disk('upcloud')->url($path);
-
+        
             // Determine image type
             $imageType = ($index === 0) ? 'primary' : 'gallery';
-
-            // Create vehicle image record - store the full URL
+        
+            // Create vehicle image record - store the path and full URL
             VehicleImage::create([
                 'vehicle_id' => $vehicle->id,
-                'image_path' => $path, // Store the path
+                'image_path' => $path, // Store the path (e.g., vehicle_images/background.jpg)
                 'image_url' => $url,   // Store the full URL
                 'image_type' => $imageType,
             ]);
@@ -318,6 +324,64 @@ class VehicleController extends Controller
             'addons' => $vehicle->addons,
             'query' => $request->all(),
         ]);
+    }
+
+
+    public function searchLocations(Request $request)
+    {
+        $query = trim($request->input('text'));
+    
+        if (strlen($query) < 3) {
+            return response()->json(['results' => []]);
+        }
+    
+        $locations = Vehicle::select('location', 'city', 'state', 'country', 'latitude', 'longitude')
+            ->where(function($q) use ($query) {
+                // First check if location matches exactly
+                $q->where('location', 'LIKE', "%{$query}%")
+                  // Then check city/state/country
+                  ->orWhere('city', 'LIKE', "%{$query}%")
+                  ->orWhere('state', 'LIKE', "%{$query}%")
+                  ->orWhere('country', 'LIKE', "%{$query}%");
+            })
+            ->whereNotNull('city')
+            ->whereNotNull('state')
+            ->whereNotNull('country')
+            ->groupBy('location', 'city', 'state', 'country', 'latitude', 'longitude')
+            ->orderByRaw('CASE WHEN location LIKE ? THEN 0 ELSE 1 END', ["%{$query}%"]) // Prioritize location matches
+            ->limit(50)
+            ->get();
+    
+        $results = $locations->map(function ($vehicle) use ($query) {
+            // Only include location in label if search matches the location field
+            if (!empty($vehicle->location) && stripos($vehicle->location, $query) !== false) {
+                $label = implode(', ', array_filter([
+                    $vehicle->location,
+                    $vehicle->city,
+                    $vehicle->state,
+                    $vehicle->country
+                ]));
+            } else {
+                $label = implode(', ', array_filter([
+                    $vehicle->city,
+                    $vehicle->state,
+                    $vehicle->country
+                ]));
+            }
+    
+            return [
+                'id' => md5($vehicle->location . $vehicle->city . $vehicle->state . $vehicle->country),
+                'label' => $label,
+                'location' => $vehicle->location,
+                'city' => $vehicle->city,
+                'state' => $vehicle->state,
+                'country' => $vehicle->country,
+                'latitude' => $vehicle->latitude,
+                'longitude' => $vehicle->longitude,
+            ];
+        });
+    
+        return response()->json(['results' => $results->unique('label')->values()]);
     }
 
 }
