@@ -2,19 +2,28 @@
   <section class="full-w-container max-[768px]:pb-[2rem]" @click="closeSearchResults">
     <div class="search_bar rounded-[20px] max-[768px]:border-[1px]">
       <div class="flex relative max-[768px]:flex-col max-[768px]:items-center">
-        <div class="column w-[20%] max-[768px]:w-[100%] max-[768px]:p-[1.5rem] bg-customPrimaryColor text-customPrimaryColor-foreground p-[2rem] rounded-tl-[20px] rounded-bl-[20px] max-[768px]:rounded-tr-[16px] max-[768px]:rounded-tl-[16px] max-[768px]:rounded-bl-[0] max-[768px]:border-[1px]">
+        <div
+          class="column w-[20%] max-[768px]:w-[100%] max-[768px]:p-[1.5rem] bg-customPrimaryColor text-customPrimaryColor-foreground p-[2rem] rounded-tl-[20px] rounded-bl-[20px] max-[768px]:rounded-tr-[16px] max-[768px]:rounded-tl-[16px] max-[768px]:rounded-bl-[0] max-[768px]:border-[1px]">
           <span class="text-[1.75rem] font-medium max-[768px]:text-[1.5rem]">Do you need a rental car?</span>
         </div>
-        <form @submit.prevent="submit" class="column w-[80%] max-[768px]:w-[100%] px-[2rem] py-[1rem] rounded-tr-[16px] rounded-br-[16px] bg-white grid grid-cols-5 max-[768px]:flex max-[768px]:flex-col max-[768px]:gap-10 max-[768px]:rounded-tr-[0] max-[768px]:rounded-bl-[16px] max-[768px]:px-[1rem]">
+        <form @submit.prevent="submit"
+          class="column w-[80%] max-[768px]:w-[100%] px-[2rem] py-[1rem] rounded-tr-[16px] rounded-br-[16px] bg-white grid grid-cols-5 max-[768px]:flex max-[768px]:flex-col max-[768px]:gap-10 max-[768px]:rounded-tr-[0] max-[768px]:rounded-bl-[16px] max-[768px]:px-[1rem]">
           <div class="col col-span-2 flex flex-col justify-center">
             <div class="flex flex-col">
               <div class="col">
-                <label for="" class="mb-4 inline-block text-customLightGrayColor font-medium">Pickup & Return Location</label>
+                <label for="" class="mb-4 inline-block text-customLightGrayColor font-medium">Pickup & Return
+                  Location</label>
                 <div class="flex items-end relative">
-                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" class="absolute left-[-0.35rem] top-[-0.15rem]">
-                    <path d="M5.25 21.75H18.75M15 9.75C15 11.4069 13.6569 12.75 12 12.75C10.3431 12.75 9 11.4069 9 9.75C9 8.09315 10.3431 6.75 12 6.75C13.6569 6.75 15 8.09315 15 9.75ZM19.5 9.75C19.5 16.5 12 21.75 12 21.75C12 21.75 4.5 16.5 4.5 9.75C4.5 7.76088 5.29018 5.85322 6.6967 4.4467C8.10322 3.04018 10.0109 2.25 12 2.25C13.9891 2.25 15.8968 3.04018 17.3033 4.4467C18.7098 5.85322 19.5 7.76088 19.5 9.75Z" stroke="#153B4F" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" />
+                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"
+                    class="absolute left-[-0.35rem] top-[-0.15rem]">
+                    <path
+                      d="M5.25 21.75H18.75M15 9.75C15 11.4069 13.6569 12.75 12 12.75C10.3431 12.75 9 11.4069 9 9.75C9 8.09315 10.3431 6.75 12 6.75C13.6569 6.75 15 8.09315 15 9.75ZM19.5 9.75C19.5 16.5 12 21.75 12 21.75C12 21.75 4.5 16.5 4.5 9.75C4.5 7.76088 5.29018 5.85322 6.6967 4.4467C8.10322 3.04018 10.0109 2.25 12 2.25C13.9891 2.25 15.8968 3.04018 17.3033 4.4467C18.7098 5.85322 19.5 7.76088 19.5 9.75Z"
+                      stroke="#153B4F" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" />
                   </svg>
-                  <input type="text" v-model="form.where" @input="handleSearchInput" @focus="handleInputFocus" placeholder="Choose Pickup Location" class="pl-7 border-b border-customLightGrayColor focus:outline-none w-[80%] max-[768px]:w-full" required />
+                  <input type="text" v-model="form.where" @input="handleSearchInput" @focus="handleInputFocus"
+                    placeholder="Choose Pickup Location"
+                    class="pl-7 border-b border-customLightGrayColor focus:outline-none w-[80%] max-[768px]:w-full"
+                    required />
                   <span v-if="isSearching" class="absolute right-0 top-0 text-customLightGrayColor">Searching...</span>
                 </div>
               </div>
@@ -24,41 +33,62 @@
           <div class="col-span-2 flex items-center gap-4">
             <div class="flex flex-col">
               <label class="mb-2 inline-block text-customLightGrayColor font-medium">Pickup Date</label>
-              <VueDatePicker v-model="pickupDate" :enable-time-picker="false" uid="pickup-date" auto-apply placeholder="Pickup Date" class="w-full" :min-date="new Date()" />
+              <VueDatePicker v-model="pickupDate" :enable-time-picker="false" uid="pickup-date" auto-apply
+                placeholder="Pickup Date" class="w-full" :min-date="new Date()" />
             </div>
             <div class="flex flex-col">
               <label class="mb-2 inline-block text-customLightGrayColor font-medium">Return Date</label>
-              <VueDatePicker v-model="returnDate" :enable-time-picker="false" uid="return-date" auto-apply placeholder="Return Date" class="w-full" :min-date="getMinReturnDate()" />
+              <VueDatePicker v-model="returnDate" :enable-time-picker="false" uid="return-date" auto-apply
+                placeholder="Return Date" class="w-full" :min-date="getMinReturnDate()" />
             </div>
           </div>
 
           <div class="inner-col flex justify-center items-center">
-            <button type="submit" class="bg-customPrimaryColor text-customPrimaryColor-foreground rounded-[40px] w-[138px] max-[768px]:w-full py-4 text-center">
+            <button type="submit"
+              class="bg-customPrimaryColor text-customPrimaryColor-foreground rounded-[40px] w-[138px] max-[768px]:w-full py-4 text-center">
               Search
             </button>
           </div>
         </form>
-        
+
         <!-- Search results dropdown -->
-        <div v-if="showSearchBox && (searchResults.length > 0 || searchPerformed)" 
-       class="search-results absolute z-20 top-[105%] w-[50%] rounded-[12px] border-[1px] border-white left-[20%] p-5 bg-white text-customDarkBlackColor max-h-[400px] overflow-y-auto max-[768px]:w-full max-[768px]:top-[45%] max-[768px]:left-0">
-    <div v-if="searchResults.length > 0">
-      <div v-for="result in searchResults" 
-           :key="result.id" 
-           @click="selectLocation(result)" 
-           class="p-2 hover:bg-[#efefefcc] hover:text-customPrimaryColor cursor-pointer">
-        <div class="font-medium">{{ result.label }}</div>
-        <div v-if="result.location" class="text-sm text-gray-500">
-          {{ [result.city, result.state, result.country].filter(Boolean).join(', ') }}
+        <div v-if="showSearchBox && (searchResults.length > 0 || popularPlaces.length > 0 || searchPerformed)"
+          class="search-results absolute z-20 top-[105%] w-[50%] rounded-[12px] border-[1px] border-white left-[20%] p-5 bg-white text-customDarkBlackColor max-h-[400px] overflow-y-auto max-[768px]:w-full max-[768px]:top-[45%] max-[768px]:left-0">
+          <div v-if="form.where.length === 0 && popularPlaces.length > 0">
+            <div class="text-sm font-medium mb-2 text-customPrimaryColor">Popular Searches</div>
+            <div v-for="place in popularPlaces" :key="place.id" @click="selectLocation(place)"
+              class="p-2 hover:bg-[#efefef4d] hover:text-customPrimaryColor cursor-pointer flex gap-3">
+              <div class="h-10 w-10 md:h-12 md:w-12 bg-gray-100 text-gray-300 rounded flex justify-center items-center"><svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" class="w-1/2 h-1/2"><path clip-rule="evenodd" d="M7.838 9.79c0 2.497 1.946 4.521 4.346 4.521 2.401 0 4.347-2.024 4.347-4.52 0-2.497-1.946-4.52-4.346-4.52-2.401 0-4.347 2.023-4.347 4.52Z" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path><path clip-rule="evenodd" d="M20.879 9.79c0 7.937-6.696 12.387-8.335 13.36a.7.7 0 0 1-.718 0c-1.64-.973-8.334-5.425-8.334-13.36 0-4.992 3.892-9.04 8.693-9.04s8.694 4.048 8.694 9.04Z" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path></svg></div>
+              <div class="flex flex-col">
+                <div class="font-medium">{{ place.label }}</div>
+              <div class="text-sm text-gray-500">
+                {{ [place.city, place.state, place.country].filter(Boolean).join(', ') }}
+              </div>
+              </div>
+            </div>
+          </div>
+
+          <div v-else-if="searchResults.length > 0">
+            <!-- Your existing search results display -->
+            <div v-for="result in searchResults" :key="result.id" @click="selectLocation(result)"
+            class="p-2 hover:bg-[#efefef4d] hover:text-customPrimaryColor cursor-pointer flex gap-3">
+              <div class="h-10 w-10 md:h-12 md:w-12 bg-gray-100 text-gray-300 rounded flex justify-center items-center"><svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" class="w-1/2 h-1/2"><path clip-rule="evenodd" d="M7.838 9.79c0 2.497 1.946 4.521 4.346 4.521 2.401 0 4.347-2.024 4.347-4.52 0-2.497-1.946-4.52-4.346-4.52-2.401 0-4.347 2.023-4.347 4.52Z" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path><path clip-rule="evenodd" d="M20.879 9.79c0 7.937-6.696 12.387-8.335 13.36a.7.7 0 0 1-.718 0c-1.64-.973-8.334-5.425-8.334-13.36 0-4.992 3.892-9.04 8.693-9.04s8.694 4.048 8.694 9.04Z" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path></svg></div>
+              <div class="flex flex-col">
+                <div class="font-medium">{{ result.label }}</div>
+              <div v-if="result.location" class="text-sm text-gray-500">
+                {{ [result.city, result.state, result.country].filter(Boolean).join(', ') }}
+              </div>
+              </div>
+            </div>
+          </div>
+
+          <div v-else-if="searchPerformed && !isSearching" class="p-3 text-center">
+            No location found. Please try another search.
+          </div>
         </div>
-      </div>
-    </div>
-    <div v-else-if="searchPerformed && !isSearching" class="p-3 text-center">
-      No location found. Please try another search.
-    </div>
-  </div>
-        
-        <div v-if="dateError" class="absolute top-[105%] w-[50%] text-red-500 text-center max-[768px]:w-full max-[768px]:top-[55%]">
+
+        <div v-if="dateError"
+          class="absolute top-[105%] w-[50%] text-red-500 text-center max-[768px]:w-full max-[768px]:top-[55%]">
           Please fill in all fields: location, pickup date, and return date.
         </div>
       </div>
@@ -103,10 +133,36 @@ const searchTimeout = ref(null); // Debounce search
 const searchPerformed = ref(false); // Track if a search has been performed
 const showSearchBox = ref(false); // Control visibility of search results box
 
+const popularPlaces = ref([]);
+
+// Modify handleInputFocus to show popular places when empty
 const handleInputFocus = () => {
-  // Show the search box when input is focused if there's a value of at least 3 chars
-  if (form.value.where.length >= 3) {
-    showSearchBox.value = true;
+  showSearchBox.value = true;
+
+  // If input is empty, show popular places
+  if (form.value.where.length === 0) {
+    fetchPopularPlaces();
+  }
+};
+
+// Add this function to fetch popular places
+const fetchPopularPlaces = async () => {
+  try {
+    const response = await axios.get('/api/footer-places'); // Or your popular places endpoint
+    popularPlaces.value = response.data.map(place => ({
+      id: place.id,
+      label: place.place_name,
+      location: place.place_name,
+      city: place.city,
+      state: place.state,
+      country: place.country,
+      latitude: place.latitude,
+      longitude: place.longitude
+    }));
+    searchPerformed.value = true;
+  } catch (error) {
+    console.error("Error fetching popular places:", error);
+    popularPlaces.value = [];
   }
 };
 
@@ -137,6 +193,11 @@ watch(returnDate, (newValue) => {
 
 // Debounced search handler
 const handleSearchInput = () => {
+
+  if (form.value.where.length === 0) {
+    fetchPopularPlaces();
+    return;
+  }
   if (form.value.where.length < 3) {
     searchResults.value = [];
     searchPerformed.value = false;
@@ -173,8 +234,8 @@ const handleSearchInput = () => {
 
 // Select a location from search results
 const selectLocation = (result) => {
-  form.value.where = result.label;
-  form.value.location = result.location || null; // Set location field
+  form.value.where = [result.location, result.city, result.state, result.country].filter(Boolean).join(', ');
+  form.value.location = result.location || null;
   form.value.latitude = result.latitude;
   form.value.longitude = result.longitude;
   form.value.city = result.city;
@@ -225,9 +286,9 @@ const getMinReturnDate = () => {
 // Close search results on outside click
 const closeSearchResults = (event) => {
   // Only close if clicking outside the search results area and not on the search input
-  if (showSearchBox.value && 
-      !event.target.closest(".search-results") && 
-      !event.target.closest("input[type='text']")) {
+  if (showSearchBox.value &&
+    !event.target.closest(".search-results") &&
+    !event.target.closest("input[type='text']")) {
     showSearchBox.value = false;
   }
 };
@@ -271,9 +332,11 @@ watch(pickupDate, (newPickupDate) => {
 .search_bar {
   box-shadow: 5px 5px 10px rgba(0, 0, 0, 0.2);
 }
+
 .search-results div div {
   transition: all 0.2s ease;
 }
+
 .search-results {
   box-shadow: 5px 5px 10px rgba(0, 0, 0, 0.349);
 }
