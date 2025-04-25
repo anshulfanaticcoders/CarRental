@@ -442,7 +442,7 @@
                         <!-- Registration Date -->
                         <div>
                             <InputLabel class="text-black" for="registration_date">Registration Date:</InputLabel>
-                            <VueDatePicker v-model="form.registration_date" :format="'yyyy-MM-dd'"
+                            <VueDatePicker v-model="form.registration_date" :format="'yyyy-MM-dd'" auto-apply
                                 placeholder="Select Registration Date" class="w-full"
                                 :class="{ 'dp__error': errors.registration_date }" :clearable="false"
                                 :max-date="new Date()"

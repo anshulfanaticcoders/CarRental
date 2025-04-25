@@ -273,7 +273,7 @@ onMounted(() => {
 
                 <div>
                     <InputLabel for="date_of_birth" value="Date of Birth" class="mb-1" />
-                    <VueDatePicker v-model="dateOfBirth" :enable-time-picker="false" uid="date-of-birth"
+                    <VueDatePicker v-model="dateOfBirth" :enable-time-picker="false" uid="date-of-birth" auto-apply
                         placeholder="Select Date of Birth" class="w-full" :max-date="minimumDateOfBirth"
                         :start-date="minimumDateOfBirth" />
                     <InputError class="mt-2" :message="form.errors.date_of_birth" />

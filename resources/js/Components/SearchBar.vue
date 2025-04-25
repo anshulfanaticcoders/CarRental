@@ -24,11 +24,11 @@
           <div class="col-span-2 flex items-center gap-4">
             <div class="flex flex-col">
               <label class="mb-2 inline-block text-customLightGrayColor font-medium">Pickup Date</label>
-              <VueDatePicker v-model="pickupDate" :enable-time-picker="false" uid="pickup-date" placeholder="Pickup Date" class="w-full" :min-date="new Date()" />
+              <VueDatePicker v-model="pickupDate" :enable-time-picker="false" uid="pickup-date" auto-apply placeholder="Pickup Date" class="w-full" :min-date="new Date()" />
             </div>
             <div class="flex flex-col">
               <label class="mb-2 inline-block text-customLightGrayColor font-medium">Return Date</label>
-              <VueDatePicker v-model="returnDate" :enable-time-picker="false" uid="return-date" placeholder="Return Date" class="w-full" :min-date="getMinReturnDate()" />
+              <VueDatePicker v-model="returnDate" :enable-time-picker="false" uid="return-date" auto-apply placeholder="Return Date" class="w-full" :min-date="getMinReturnDate()" />
             </div>
           </div>
 

@@ -17,6 +17,7 @@ const isLocating = ref(false);
 const isUnknownLocation = ref(false);
 const showManualAddressDialog = ref(false);
 const addressError = ref('');
+const fullAddress = ref('');
 
 
 // Location detail fields
@@ -61,6 +62,7 @@ onUnmounted(() => {
   }
 });
 
+
 const handleBlur = () => {
   window.setTimeout(() => {
     searchResults.value = [];
@@ -87,75 +89,81 @@ const handleLocationSelect = async (result) => {
   const { coordinates } = result.geometry;
   const lat = coordinates[1];
   const lon = coordinates[0];
-  
-  await reverseGeocode(lat, lon, result.properties.label);
+  const props = result.properties;
+
+  // Set latitude and longitude
+  latitude.value = lat;
+  longitude.value = lon;
+
+  // Clear main address fields
+  address.value = '';
+  city.value = '';
+  state.value = '';
+  country.value = '';
+
+  // Clear search query
+  searchQuery.value = '';
+
+  // Set temporary fields for manual dialog
+  tempAddress.value = ''; // Keep address empty
+  tempCity.value = props.locality || props.county || ''; // Prefill city
+  tempState.value = props.region || ''; // Prefill state
+  tempCountry.value = props.country || ''; // Prefill country
+
+  // Show manual address dialog
+  isUnknownLocation.value = true;
+  showManualAddressDialog.value = true;
+
+  // Update map marker
+  updateMapMarker(lat, lon);
+
+  // Clear search results
   searchResults.value = [];
 };
 
 const reverseGeocode = async (lat, lng, fallbackAddress = null) => {
   try {
     const response = await fetch(`/api/geocoding/reverse?lat=${lat}&lon=${lng}`);
-    
     if (!response.ok) {
       throw new Error(`HTTP error! status: ${response.status}`);
     }
-    
     const data = await response.json();
-    
     const feature = data.features && data.features[0];
-    
-    if (!feature) {
-      throw new Error('No results found');
-    }
-    
-    const props = feature.properties;
-    
-    const addressComponents = {
-      fullAddress: props.formatted || fallbackAddress || '',
-      city: props.locality || props.county || '',
-      state: props.region || '',
-      country: props.country || '',
-    };
-    
-    // If we don't have a formatted address, show the manual entry dialog
-    if (!props.formatted && !fallbackAddress) {
-      isUnknownLocation.value = true;
-      latitude.value = lat;
-      longitude.value = lng;
-      showManualAddressDialog.value = true;
-      
-      // Set temp fields with whatever partial data we have
-      tempAddress.value = '';
-      tempCity.value = props.locality || props.county || '';
-      tempState.value = props.region || '';
-      tempCountry.value = props.country || '';
-      
-      // Update map marker but don't update the main address fields
-      updateMapMarker(lat, lng);
-      return;
-    }
-    
-    isUnknownLocation.value = false;
-    updateMap(lat, lng, addressComponents);
-  } catch (error) {
-    console.error('Reverse geocoding error:', error);
-    
-    // Show manual entry dialog when we can't get address details
+    const props = feature ? feature.properties : {};
+
+    // Always show manual dialog for consistency
     isUnknownLocation.value = true;
     latitude.value = lat;
     longitude.value = lng;
     showManualAddressDialog.value = true;
-    
-    // Try to parse fallback address if available
-    if (fallbackAddress) {
-      const parts = fallbackAddress.split(',').map(part => part.trim());
-      if (parts.length >= 3) {
-        tempCity.value = parts[0];
-        tempState.value = parts[1];
-        tempCountry.value = parts[parts.length - 1];
-      }
-    }
-    
+
+    // Clear search query
+    searchQuery.value = '';
+
+    // Prefill temp fields, but keep address empty
+    tempAddress.value = '';
+    tempCity.value = props.locality || props.county || '';
+    tempState.value = props.region || '';
+    tempCountry.value = props.country || '';
+
+    // Clear main address fields
+    address.value = '';
+    city.value = '';
+    state.value = '';
+    country.value = '';
+
+    updateMapMarker(lat, lng);
+  } catch (error) {
+    console.error('Reverse geocoding error:', error);
+    isUnknownLocation.value = true;
+    latitude.value = lat;
+    longitude.value = lng;
+    showManualAddressDialog.value = true;
+    searchQuery.value = '';
+    tempAddress.value = '';
+    tempCity.value = '';
+    tempState.value = '';
+    tempCountry.value = '';
     updateMapMarker(lat, lng);
   }
 };
@@ -167,7 +175,15 @@ const updateMapMarker = (lat, lon) => {
   if (markerRef.value) {
     markerRef.value.setLatLng(latLng);
   } else {
-    markerRef.value = L.marker(latLng).addTo(mapInstance.value);
+    markerRef.value = L.marker(latLng, {
+      draggable: true, // Enable dragging
+    }).addTo(mapInstance.value);
+
+    // Handle dragend event
+    markerRef.value.on('dragend', async (e) => {
+      const { lat, lng } = e.target.getLatLng();
+      await reverseGeocode(lat, lng);
+    });
   }
 };
 
@@ -208,6 +224,7 @@ const saveManualAddress = () => {
   city.value = tempCity.value;
   state.value = tempState.value;
   country.value = tempCountry.value;
+  fullAddress.value = `${tempAddress.value}, ${tempCity.value}, ${tempState.value}, ${tempCountry.value}`;
   
   isUnknownLocation.value = false;
   showManualAddressDialog.value = false;
@@ -275,6 +292,7 @@ const locateMe = () => {
 const handleManualAddressUpdate = () => {
   isUnknownLocation.value = false;
   searchQuery.value = address.value;
+  fullAddress.value = `${address.value}, ${city.value}, ${state.value}, ${country.value}`;
   
   if (props.onLocationSelect) {
     props.onLocationSelect({ 
@@ -320,7 +338,7 @@ const handleManualAddressUpdate = () => {
       <div ref="mapRef" class="w-full h-64 rounded-lg z-0 mb-4" />
       
       <div class="absolute top-2 right-2 bg-white p-2 rounded shadow-md z-10 text-sm text-gray-600">
-        Click on map to select location
+        Drag the map icon to set the location
       </div>
 
       <button 
@@ -429,8 +447,9 @@ const handleManualAddressUpdate = () => {
           type="text"
           v-model="address"
           @input="handleManualAddressUpdate"
-          class="w-full p-2 border rounded-lg"
+          class="w-full p-2 border rounded-lg bg-gray-100"
           :class="{ 'border-yellow-400 bg-yellow-50': isUnknownLocation }"
+          readonly
         />
       </div>
       <div class="form-group">
@@ -439,8 +458,9 @@ const handleManualAddressUpdate = () => {
           type="text"
           v-model="city"
           @input="handleManualAddressUpdate"
-          class="w-full p-2 border rounded-lg"
+          class="w-full p-2 border rounded-lg bg-gray-100"
           :class="{ 'border-yellow-400 bg-yellow-50': isUnknownLocation }"
+          readonly
         />
       </div>
       <div class="form-group">
@@ -449,8 +469,9 @@ const handleManualAddressUpdate = () => {
           type="text"
           v-model="state"
           @input="handleManualAddressUpdate"
-          class="w-full p-2 border rounded-lg"
+          class="w-full p-2 border rounded-lg bg-gray-100"
           :class="{ 'border-yellow-400 bg-yellow-50': isUnknownLocation }"
+          readonly
         />
       </div>
       <div class="form-group">
@@ -459,8 +480,9 @@ const handleManualAddressUpdate = () => {
           type="text"
           v-model="country"
           @input="handleManualAddressUpdate"
-          class="w-full p-2 border rounded-lg"
+          class="w-full p-2 border rounded-lg bg-gray-100"
           :class="{ 'border-yellow-400 bg-yellow-50': isUnknownLocation }"
+          readonly
         />
       </div>
       <div class="form-group">
@@ -468,7 +490,7 @@ const handleManualAddressUpdate = () => {
         <input
           type="text"
           v-model="latitude"
-          class="w-full p-2 border rounded-lg"
+          class="w-full p-2 border rounded-lg bg-gray-100"
           readonly
         />
       </div>
@@ -477,10 +499,19 @@ const handleManualAddressUpdate = () => {
         <input
           type="text"
           v-model="longitude"
-          class="w-full p-2 border rounded-lg"
+          class="w-full p-2 border rounded-lg bg-gray-100"
           readonly
         />
       </div>
+      <div class="form-group">
+    <label class="block text-sm font-medium text-gray-700 mb-1">Full Address</label>
+    <input
+      type="text"
+      v-model="fullAddress"
+      class="w-full p-2 border rounded-lg bg-gray-100"
+      readonly
+    />
+  </div>
     </div>
   </div>
 </template>

@@ -1,6 +1,6 @@
 <script setup>
 import { Link, useForm, usePage } from "@inertiajs/vue3";
-import { computed, onMounted, ref, watch } from "vue";
+import { computed, onMounted, provide, ref, watch } from "vue";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import AuthenticatedHeaderLayout from "@/Layouts/AuthenticatedHeaderLayout.vue";
@@ -271,6 +271,7 @@ const handleMapToggle = (value) => {
 // Function to toggle favourite status
 import { useToast } from "vue-toastification"; // Reuse your existing import
 import { Inertia } from "@inertiajs/inertia";
+import CustomDropdown from "@/Components/CustomDropdown.vue";
 const toast = useToast(); // Initialize toast
 const favoriteStatus = ref({}); // Store favorite status for each vehicle
 
@@ -451,6 +452,22 @@ const resetPriceRange = () => {
     form.price_range = '0-20000';
     showPriceSlider.value = false;
 };
+
+// Global dropdown state management
+const activeDropdown = ref(null);
+
+const setActiveDropdown = (name) => {
+    if (activeDropdown.value === name) {
+        activeDropdown.value = null;
+    } else {
+        activeDropdown.value = name;
+    }
+};
+
+// Provide these to child components
+provide('activeDropdown', activeDropdown);
+provide('setActiveDropdown', setActiveDropdown);
+
 </script>
 
 <template>
@@ -483,86 +500,41 @@ const resetPriceRange = () => {
             <form class="hidden md:block">
                 <div class="flex gap-6 flex-wrap filter-slot items-center">
                     <!-- Seating Capacity Filter -->
-                    <div class="relative w-full md:w-auto">
-                        <img :src="seatingIcon" alt="Seating Icon"
-                            class="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 pointer-events-none" />
-                        <select v-model="form.seating_capacity" id="seating_capacity"
-                            class="pl-10 py-2 pr-10 cursor-pointer border border-[#e7e7e7] rounded-sm w-full">
-                            <option value="">Seating Capacity</option>
-                            <option v-for="capacity in $page.props
-                                .seatingCapacities" :key="capacity" :value="capacity">
-                                {{ capacity }}
-                            </option>
-                        </select>
-                        <img :src="CaretDown" alt=""
-                            class="absolute right-3 top-1/2 transform -translate-y-1/2 w-5 h-5 transition-transform duration-300 ease-in-out pointer-events-none caret-rotate" />
-                    </div>
+                    <CustomDropdown v-model="form.seating_capacity" unique-id="seating-capacity"
+                        :options="$page.props.seatingCapacities.map(capacity => ({ value: capacity, label: capacity }))"
+                        placeholder="Seating Capacity" :left-icon="seatingIcon" :right-icon="CaretDown" />
 
                     <!-- Brand Filter -->
-                    <div class="relative w-full md:w-auto">
-                        <img :src="brandIcon" alt="Brand Icon"
-                            class="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 pointer-events-none" />
-                        <select v-model="form.brand" id="brand"
-                            class="pl-10 pr-10 py-2 cursor-pointer border border-[#e7e7e7] rounded-sm w-full">
-                            <option value="">All Brands</option>
-                            <option v-for="brand in $page.props.brands" :key="brand" :value="brand">
-                                {{ brand }}
-                            </option>
-                        </select>
-                        <img :src="CaretDown" alt=""
-                            class="absolute right-3 top-1/2 transform -translate-y-1/2 w-5 h-5 transition-transform duration-300 ease-in-out pointer-events-none caret-rotate" />
-                    </div>
+                    <CustomDropdown v-model="form.brand" unique-id="brand"
+                        :options="[...$page.props.brands.map(brand => ({ value: brand, label: brand })), { value: '', label: 'All Brands' }]"
+                        placeholder="All Brands" :left-icon="brandIcon" :right-icon="CaretDown" />
 
                     <!-- Category Filter -->
-                    <div class="relative w-full md:w-auto">
-                        <img :src="categoryIcon" alt="Category Icon"
-                            class="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 pointer-events-none" />
-                        <select v-model="form.category_id" id="category_id"
-                            class="pl-10 pr-10 py-2 cursor-pointer border border-[#e7e7e7] rounded-sm w-full">
-                            <option value="">All Categories</option>
-                            <option v-for="category in $page.props.categories" :key="category.id" :value="category.id">
-                                {{ category.name }}
-                            </option>
-                        </select>
-                        <img :src="CaretDown" alt=""
-                            class="absolute right-3 top-1/2 transform -translate-y-1/2 w-5 h-5 transition-transform duration-300 ease-in-out pointer-events-none caret-rotate" />
-                    </div>
+                    <CustomDropdown v-model="form.category_id" unique-id="category"
+                        :options="[...$page.props.categories.map(category => ({ value: category.id, label: category.name })), { value: '', label: 'All Categories' }]"
+                        placeholder="All Categories" :left-icon="categoryIcon" :right-icon="CaretDown" />
 
                     <!-- Transmission Filter -->
-                    <div class="relative w-full md:w-auto">
-                        <img :src="transmissionIcon" alt="Transmission Icon"
-                            class="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 pointer-events-none" />
-                        <select v-model="form.transmission" id="transmission"
-                            class="pl-10 pr-10 py-2 cursor-pointer border border-[#e7e7e7] rounded-sm w-full">
-                            <option value="">Transmission</option>
-                            <option value="automatic">Automatic</option>
-                            <option value="manual">Manual</option>
-                        </select>
-                        <img :src="CaretDown" alt=""
-                            class="absolute right-3 top-1/2 transform -translate-y-1/2 w-5 h-5 transition-transform duration-300 ease-in-out pointer-events-none caret-rotate" />
-                    </div>
+                    <CustomDropdown v-model="form.transmission" unique-id="transmission" :options="[
+                        { value: '', label: 'Transmission' },
+                        { value: 'automatic', label: 'Automatic' },
+                        { value: 'manual', label: 'Manual' }
+                    ]" placeholder="Transmission" :left-icon="transmissionIcon" :right-icon="CaretDown" />
 
                     <!-- Fuel Filter -->
-                    <div class="relative w-full md:w-auto">
-                        <img :src="fuelIcon" alt="Fuel Icon"
-                            class="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 pointer-events-none" />
-                        <select v-model="form.fuel" id="fuel"
-                            class="pl-10 pr-10 py-2 cursor-pointer border border-[#e7e7e7] rounded-sm w-full">
-                            <option value="">Fuel Type</option>
-                            <option value="petrol">Petrol</option>
-                            <option value="diesel">Diesel</option>
-                            <option value="electric">Electric</option>
-                        </select>
-                        <img :src="CaretDown" alt=""
-                            class="absolute right-3 top-1/2 transform -translate-y-1/2 w-5 h-5 transition-transform duration-300 ease-in-out pointer-events-none caret-rotate" />
-                    </div>
+                    <CustomDropdown v-model="form.fuel" unique-id="fuel" :options="[
+                        { value: '', label: 'Fuel Type' },
+                        { value: 'petrol', label: 'Petrol' },
+                        { value: 'diesel', label: 'Diesel' },
+                        { value: 'electric', label: 'Electric' }
+                    ]" placeholder="Fuel Type" :left-icon="fuelIcon" :right-icon="CaretDown" />
 
-                    <!-- Price Range Filter -->
-                    <div class="relative w-full md:w-64">
+                    <!-- Price Range Filter (unchanged) -->
+                    <div class="relative w-full md:w-auto">
                         <img :src="priceIcon" alt="Price Icon"
                             class="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 pointer-events-none text-gray-500" />
                         <button type="button" @click="showPriceSlider = !showPriceSlider"
-                            class="pl-10 pr-4 py-2 w-full text-left flex items-center justify-between bg-white border border-gray-200 rounded-lg shadow-sm hover:bg-gray-50 transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-blue-300">
+                            class="pl-10 pr-4 py-2 w-full text-left flex gap-4 items-center justify-between bg-white border border-gray-200 rounded-sm shadow-sm hover:bg-gray-50 transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-black">
                             <span class="text-gray-700 font-medium">
                                 {{ priceRangeValues[0] === 0 && priceRangeValues[1] === 20000 ? 'Price Range' :
                                     `${priceRangeValues[0]} - ${priceRangeValues[1]}` }}
@@ -571,22 +543,29 @@ const resetPriceRange = () => {
                                 class="w-5 h-5 text-gray-500 transition-transform duration-300 ease-in-out pointer-events-none"
                                 :class="{ 'rotate-180': showPriceSlider }" />
                         </button>
-
-                        <!-- Price Range Slider Dropdown -->
+                        <!-- Price Range Slider Dropdown (unchanged) -->
                         <div v-if="showPriceSlider"
-                            class="absolute z-20 mt-2 w-full bg-white shadow-xl rounded-lg p-5 border border-gray-100 animate-fade-in">
+                            class="absolute z-20 mt-2 w-[20rem] h-[12rem] bg-white shadow-xl rounded-lg p-5 border border-gray-100 animate-fade-in">
                             <div class="mb-4">
                                 <div class="flex justify-between mb-3">
-                                    <span class="text-sm font-semibold text-gray-800">{{ tempPriceRangeValues[0]
-                                        }}</span>
-                                    <span class="text-sm font-semibold text-gray-800">{{ tempPriceRangeValues[1]
-                                        }}</span>
+                                    <div class="flex flex-col">
+                                        Min Price
+                                        <span class="text-lg font-semibold text-gray-800">
+                                            {{ tempPriceRangeValues[0] }}
+                                        </span>
+                                    </div>
+                                    <div class="flex flex-col items-end">
+                                        Max Price
+                                        <span class="text-lg font-semibold text-gray-800">
+                                            {{ tempPriceRangeValues[1] }}
+                                        </span>
+                                    </div>
                                 </div>
                                 <VueSlider v-model="tempPriceRangeValues" :min="priceRangeMin" :max="priceRangeMax"
                                     :interval="500" :tooltip="'none'" :height="8" :dot-size="20"
-                                    :process-style="{ backgroundColor: '#3b82f6', borderRadius: '4px' }"
+                                    :process-style="{ backgroundColor: '#153b4f', borderRadius: '4px' }"
                                     :rail-style="{ backgroundColor: '#e5e7eb', borderRadius: '4px' }"
-                                    :dot-style="{ backgroundColor: '#ffffff', border: '2px solid #3b82f6', boxShadow: '0 2px 4px rgba(0,0,0,0.1)' }"
+                                    :dot-style="{ backgroundColor: '#ffffff', border: '2px solid #153b4f', boxShadow: '0 2px 4px rgba(0,0,0,0.1)' }"
                                     class="mb-4" />
                             </div>
                             <div class="flex justify-between items-center">
@@ -595,7 +574,7 @@ const resetPriceRange = () => {
                                     Reset
                                 </button>
                                 <button @click="applyPriceRange"
-                                    class="px-3 py-1.5 bg-blue-600 text-white rounded-md text-sm font-medium hover:bg-blue-700 transition-colors duration-200">
+                                    class="px-3 py-1.5 bg-customPrimaryColor text-white rounded-md text-sm font-medium hover:bg-[#153b4fdc] transition-colors duration-200">
                                     Apply
                                 </button>
                             </div>
@@ -603,50 +582,25 @@ const resetPriceRange = () => {
                     </div>
 
                     <!-- Color Filter -->
-                    <div class="relative w-full md:w-auto">
-                        <img :src="colorIcon" alt="Color Icon"
-                            class="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 pointer-events-none" />
-                        <select v-model="form.color" id="color"
-                            class="pl-10 pr-10 py-2 cursor-pointer border border-[#e7e7e7] rounded-sm w-full">
-                            <option value="">Color</option>
-                            <option v-for="color in $page.props.colors" :key="color" :value="color">
-                                {{ color }}
-                            </option>
-                        </select>
-                        <img :src="CaretDown" alt=""
-                            class="absolute right-3 top-1/2 transform -translate-y-1/2 w-5 h-5 transition-transform duration-300 ease-in-out pointer-events-none caret-rotate" />
-                    </div>
+                    <CustomDropdown v-model="form.color" unique-id="color"
+                        :options="[...$page.props.colors.map(color => ({ value: color, label: color })), { value: '', label: 'Color' }]"
+                        placeholder="Color" :left-icon="colorIcon" :right-icon="CaretDown" />
 
                     <!-- Mileage Filter -->
-                    <div class="relative w-full md:w-auto">
-                        <img :src="mileageIcon2" alt="Mileage Icon"
-                            class="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 pointer-events-none" />
-                        <select v-model="form.mileage" id="mileage"
-                            class="pl-10 pr-10 py-2 cursor-pointer border border-[#e7e7e7] rounded-sm w-full">
-                            <option value="">Mileage</option>
-                            <option value="0-10">0 - 10 km/d</option>
-                            <option value="10-20">10 - 20 km/d</option>
-                            <option value="20-30">20 - 30 km/d</option>
-                            <option value="30-40">30 - 40 km/d</option>
-                        </select>
-                        <img :src="CaretDown" alt=""
-                            class="absolute right-3 top-1/2 transform -translate-y-1/2 w-5 h-5 transition-transform duration-300 ease-in-out pointer-events-none caret-rotate" />
-                    </div>
+                    <CustomDropdown v-model="form.mileage" unique-id="mileage" :options="[
+                        { value: '', label: 'Mileage' },
+                        { value: '0-10', label: '0 - 10 km/d' },
+                        { value: '10-20', label: '10 - 20 km/d' },
+                        { value: '20-30', label: '20 - 30 km/d' },
+                        { value: '30-40', label: '30 - 40 km/d' }
+                    ]" placeholder="Mileage" :left-icon="mileageIcon2" :right-icon="CaretDown" />
 
                     <!-- Package Type Filter -->
-                    <div class="relative w-full md:w-auto">
-                        <!-- Assuming you need an icon for package type -->
-                        <img :src="priceperdayicon" alt="Package Type Icon"
-                            class="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 pointer-events-none" />
-                        <select v-model="form.package_type" id="package_type"
-                            class="pl-10 pr-10 py-2 cursor-pointer border border-[#e7e7e7] rounded-sm w-full">
-                            <option value="day">Price Per Day</option>
-                            <option value="week">Price Per Week</option>
-                            <option value="month">Price Per Month</option>
-                        </select>
-                        <img :src="CaretDown" alt=""
-                            class="absolute right-3 top-1/2 transform -translate-y-1/2 w-5 h-5 transition-transform duration-300 ease-in-out pointer-events-none caret-rotate" />
-                    </div>
+                    <CustomDropdown v-model="form.package_type" unique-id="package-type" :options="[
+                        { value: 'day', label: 'Price Per Day' },
+                        { value: 'week', label: 'Price Per Week' },
+                        { value: 'month', label: 'Price Per Month' }
+                    ]" placeholder="Price Per Day" :left-icon="priceperdayicon" :right-icon="CaretDown" />
                 </div>
             </form>
 
@@ -666,171 +620,107 @@ const resetPriceRange = () => {
 
                     <form class="space-y-6 filter-slot">
                         <!-- Seating Capacity Filter -->
-                        <div class="relative w-full md:w-auto">
-                            <img :src="seatingIcon" alt="Seating Icon"
-                                class="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 pointer-events-none" />
-                            <select v-model="form.seating_capacity" id="seating_capacity"
-                                class="pl-10 py-2 pr-10 cursor-pointer border border-[#e7e7e7] rounded-sm w-full">
-                                <option value="">Seating Capacity</option>
-                                <option v-for="capacity in $page.props
-                                    .seatingCapacities" :key="capacity" :value="capacity">
-                                    {{ capacity }}
-                                </option>
-                            </select>
-                            <img :src="CaretDown" alt=""
-                                class="absolute right-3 top-1/2 transform -translate-y-1/2 w-5 h-5 transition-transform duration-300 ease-in-out pointer-events-none caret-rotate" />
-                        </div>
+                        <CustomDropdown v-model="form.seating_capacity" unique-id="seating-capacity"
+                            :options="$page.props.seatingCapacities.map(capacity => ({ value: capacity, label: capacity }))"
+                            placeholder="Seating Capacity" :left-icon="seatingIcon" :right-icon="CaretDown" />
 
                         <!-- Brand Filter -->
-                        <div class="relative w-full md:w-auto">
-                            <img :src="brandIcon" alt="Brand Icon"
-                                class="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 pointer-events-none" />
-                            <select v-model="form.brand" id="brand"
-                                class="pl-10 pr-10 py-2 cursor-pointer border border-[#e7e7e7] rounded-sm w-full">
-                                <option value="">All Brands</option>
-                                <option v-for="brand in $page.props.brands" :key="brand" :value="brand">
-                                    {{ brand }}
-                                </option>
-                            </select>
-                            <img :src="CaretDown" alt=""
-                                class="absolute right-3 top-1/2 transform -translate-y-1/2 w-5 h-5 transition-transform duration-300 ease-in-out pointer-events-none caret-rotate" />
-                        </div>
+                        <CustomDropdown v-model="form.brand" unique-id="brand"
+                            :options="[...$page.props.brands.map(brand => ({ value: brand, label: brand })), { value: '', label: 'All Brands' }]"
+                            placeholder="All Brands" :left-icon="brandIcon" :right-icon="CaretDown" />
 
                         <!-- Category Filter -->
-                        <div class="relative w-full md:w-auto">
-                            <img :src="categoryIcon" alt="Category Icon"
-                                class="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 pointer-events-none" />
-                            <select v-model="form.category_id" id="category_id"
-                                class="pl-10 pr-10 py-2 cursor-pointer border border-[#e7e7e7] rounded-sm w-full">
-                                <option value="">All Categories</option>
-                                <option v-for="category in $page.props.categories" :key="category.id"
-                                    :value="category.id">
-                                    {{ category.name }}
-                                </option>
-                            </select>
-                            <img :src="CaretDown" alt=""
-                                class="absolute right-3 top-1/2 transform -translate-y-1/2 w-5 h-5 transition-transform duration-300 ease-in-out pointer-events-none caret-rotate" />
-                        </div>
+                        <CustomDropdown v-model="form.category_id" unique-id="category"
+                            :options="[...$page.props.categories.map(category => ({ value: category.id, label: category.name })), { value: '', label: 'All Categories' }]"
+                            placeholder="All Categories" :left-icon="categoryIcon" :right-icon="CaretDown" />
 
                         <!-- Transmission Filter -->
-                        <div class="relative w-full md:w-auto">
-                            <img :src="transmissionIcon" alt="Transmission Icon"
-                                class="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 pointer-events-none" />
-                            <select v-model="form.transmission" id="transmission"
-                                class="pl-10 pr-10 py-2 cursor-pointer border border-[#e7e7e7] rounded-sm w-full">
-                                <option value="">Transmission</option>
-                                <option value="automatic">Automatic</option>
-                                <option value="manual">Manual</option>
-                            </select>
-                            <img :src="CaretDown" alt=""
-                                class="absolute right-3 top-1/2 transform -translate-y-1/2 w-5 h-5 transition-transform duration-300 ease-in-out pointer-events-none caret-rotate" />
-                        </div>
+                        <CustomDropdown v-model="form.transmission" unique-id="transmission" :options="[
+                            { value: '', label: 'Transmission' },
+                            { value: 'automatic', label: 'Automatic' },
+                            { value: 'manual', label: 'Manual' }
+                        ]" placeholder="Transmission" :left-icon="transmissionIcon" :right-icon="CaretDown" />
 
                         <!-- Fuel Filter -->
+                        <CustomDropdown v-model="form.fuel" unique-id="fuel" :options="[
+                            { value: '', label: 'Fuel Type' },
+                            { value: 'petrol', label: 'Petrol' },
+                            { value: 'diesel', label: 'Diesel' },
+                            { value: 'electric', label: 'Electric' }
+                        ]" placeholder="Fuel Type" :left-icon="fuelIcon" :right-icon="CaretDown" />
+
+                        <!-- Price Range Filter (unchanged) -->
                         <div class="relative w-full md:w-auto">
-                            <img :src="fuelIcon" alt="Fuel Icon"
-                                class="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 pointer-events-none" />
-                            <select v-model="form.fuel" id="fuel"
-                                class="pl-10 pr-10 py-2 cursor-pointer border border-[#e7e7e7] rounded-sm w-full">
-                                <option value="">Fuel Type</option>
-                                <option value="petrol">Petrol</option>
-                                <option value="diesel">Diesel</option>
-                                <option value="electric">Electric</option>
-                            </select>
-                            <img :src="CaretDown" alt=""
-                                class="absolute right-3 top-1/2 transform -translate-y-1/2 w-5 h-5 transition-transform duration-300 ease-in-out pointer-events-none caret-rotate" />
-                        </div>
-
-                        <!-- Price Range Filter -->
-                    <div class="relative w-full md:w-64">
-                        <img :src="priceIcon" alt="Price Icon"
-                            class="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 pointer-events-none text-gray-500" />
-                        <button type="button" @click="showPriceSlider = !showPriceSlider"
-                            class="pl-10 pr-4 py-2 w-full text-left flex items-center justify-between bg-white border border-gray-200 rounded-lg shadow-sm hover:bg-gray-50 transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-blue-300">
-                            <span class="text-gray-700 font-medium">
-                                {{ priceRangeValues[0] === 0 && priceRangeValues[1] === 20000 ? 'Price Range' :
-                                    `${priceRangeValues[0]} - ${priceRangeValues[1]}` }}
-                            </span>
-                            <img :src="CaretDown" alt="Caret Down"
-                                class="w-5 h-5 text-gray-500 transition-transform duration-300 ease-in-out pointer-events-none"
-                                :class="{ 'rotate-180': showPriceSlider }" />
-                        </button>
-
-                        <!-- Price Range Slider Dropdown -->
-                        <div v-if="showPriceSlider"
-                            class="absolute z-20 mt-2 w-full bg-white shadow-xl rounded-lg p-5 border border-gray-100 animate-fade-in">
-                            <div class="mb-4">
-                                <div class="flex justify-between mb-3">
-                                    <span class="text-sm font-semibold text-gray-800">{{ tempPriceRangeValues[0]
-                                        }}</span>
-                                    <span class="text-sm font-semibold text-gray-800">{{ tempPriceRangeValues[1]
-                                        }}</span>
+                            <img :src="priceIcon" alt="Price Icon"
+                                class="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 pointer-events-none text-gray-500" />
+                            <button type="button" @click="showPriceSlider = !showPriceSlider"
+                                class="pl-10 pr-4 py-2 w-full text-left flex gap-4 items-center justify-between bg-white border border-gray-200 rounded-sm shadow-sm hover:bg-gray-50 transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-black">
+                                <span class="text-gray-700 font-medium">
+                                    {{ priceRangeValues[0] === 0 && priceRangeValues[1] === 20000 ? 'Price Range' :
+                                        `${priceRangeValues[0]} - ${priceRangeValues[1]}` }}
+                                </span>
+                                <img :src="CaretDown" alt="Caret Down"
+                                    class="w-5 h-5 text-gray-500 transition-transform duration-300 ease-in-out pointer-events-none"
+                                    :class="{ 'rotate-180': showPriceSlider }" />
+                            </button>
+                            <!-- Price Range Slider Dropdown (unchanged) -->
+                            <div v-if="showPriceSlider"
+                                class="absolute z-20 mt-2 w-[20rem] max-[768px]:w-full h-[12rem] bg-white shadow-xl rounded-lg p-5 border border-gray-100 animate-fade-in">
+                                <div class="mb-4">
+                                    <div class="flex justify-between mb-3">
+                                        <div class="flex flex-col">
+                                            Min Price
+                                            <span class="text-lg font-semibold text-gray-800">
+                                                {{ tempPriceRangeValues[0] }}
+                                            </span>
+                                        </div>
+                                        <div class="flex flex-col items-end">
+                                            Max Price
+                                            <span class="text-lg font-semibold text-gray-800">
+                                                {{ tempPriceRangeValues[1] }}
+                                            </span>
+                                        </div>
+                                    </div>
+                                    <VueSlider v-model="tempPriceRangeValues" :min="priceRangeMin" :max="priceRangeMax"
+                                        :interval="500" :tooltip="'none'" :height="8" :dot-size="20"
+                                        :process-style="{ backgroundColor: '#153b4f', borderRadius: '4px' }"
+                                        :rail-style="{ backgroundColor: '#e5e7eb', borderRadius: '4px' }"
+                                        :dot-style="{ backgroundColor: '#ffffff', border: '2px solid #153b4f', boxShadow: '0 2px 4px rgba(0,0,0,0.1)' }"
+                                        class="mb-4" />
                                 </div>
-                                <VueSlider v-model="tempPriceRangeValues" :min="priceRangeMin" :max="priceRangeMax"
-                                    :interval="500" :tooltip="'none'" :height="8" :dot-size="20"
-                                    :process-style="{ backgroundColor: '#3b82f6', borderRadius: '4px' }"
-                                    :rail-style="{ backgroundColor: '#e5e7eb', borderRadius: '4px' }"
-                                    :dot-style="{ backgroundColor: '#ffffff', border: '2px solid #3b82f6', boxShadow: '0 2px 4px rgba(0,0,0,0.1)' }"
-                                    class="mb-4" />
-                            </div>
-                            <div class="flex justify-between items-center">
-                                <button @click="resetPriceRange"
-                                    class="px-3 py-1.5 bg-gray-100 text-gray-700 rounded-md text-sm font-medium hover:bg-gray-200 transition-colors duration-200">
-                                    Reset
-                                </button>
-                                <button @click="applyPriceRange"
-                                    class="px-3 py-1.5 bg-blue-600 text-white rounded-md text-sm font-medium hover:bg-blue-700 transition-colors duration-200">
-                                    Apply
-                                </button>
+                                <div class="flex justify-between items-center">
+                                    <button @click="resetPriceRange"
+                                        class="px-3 py-1.5 bg-gray-100 text-gray-700 rounded-md text-sm font-medium hover:bg-gray-200 transition-colors duration-200">
+                                        Reset
+                                    </button>
+                                    <button @click="applyPriceRange"
+                                        class="px-3 py-1.5 bg-customPrimaryColor text-white rounded-md text-sm font-medium hover:bg-[#153b4fdc] transition-colors duration-200">
+                                        Apply
+                                    </button>
+                                </div>
                             </div>
                         </div>
-                    </div>
 
                         <!-- Color Filter -->
-                        <div class="relative w-full md:w-auto">
-                            <img :src="colorIcon" alt="Color Icon"
-                                class="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 pointer-events-none" />
-                            <select v-model="form.color" id="color"
-                                class="pl-10 pr-10 py-2 cursor-pointer border border-[#e7e7e7] rounded-sm w-full">
-                                <option value="">Color</option>
-                                <option v-for="color in $page.props.colors" :key="color" :value="color">
-                                    {{ color }}
-                                </option>
-                            </select>
-                            <img :src="CaretDown" alt=""
-                                class="absolute right-3 top-1/2 transform -translate-y-1/2 w-5 h-5 transition-transform duration-300 ease-in-out pointer-events-none caret-rotate" />
-                        </div>
+                        <CustomDropdown v-model="form.color" unique-id="color"
+                            :options="[...$page.props.colors.map(color => ({ value: color, label: color })), { value: '', label: 'Color' }]"
+                            placeholder="Color" :left-icon="colorIcon" :right-icon="CaretDown" />
 
                         <!-- Mileage Filter -->
-                        <div class="relative w-full md:w-auto">
-                            <img :src="mileageIcon2" alt="Mileage Icon"
-                                class="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 pointer-events-none" />
-                            <select v-model="form.mileage" id="mileage"
-                                class="pl-10 pr-10 py-2 cursor-pointer border border-[#e7e7e7] rounded-sm w-full">
-                                <option value="">Mileage</option>
-                                <option value="0-10">0 - 10 km/l</option>
-                                <option value="10-20">10 - 20 km/l</option>
-                                <option value="20-30">20 - 30 km/l</option>
-                                <option value="30-40">30 - 40 km/l</option>
-                            </select>
-                            <img :src="CaretDown" alt=""
-                                class="absolute right-3 top-1/2 transform -translate-y-1/2 w-5 h-5 transition-transform duration-300 ease-in-out pointer-events-none caret-rotate" />
-                        </div>
+                        <CustomDropdown v-model="form.mileage" unique-id="mileage" :options="[
+                            { value: '', label: 'Mileage' },
+                            { value: '0-10', label: '0 - 10 km/d' },
+                            { value: '10-20', label: '10 - 20 km/d' },
+                            { value: '20-30', label: '20 - 30 km/d' },
+                            { value: '30-40', label: '30 - 40 km/d' }
+                        ]" placeholder="Mileage" :left-icon="mileageIcon2" :right-icon="CaretDown" />
 
                         <!-- Package Type Filter -->
-                        <div class="relative w-full md:w-auto">
-                            <!-- Assuming you need an icon for package type -->
-                            <img :src="priceperdayicon" alt="Package Type Icon"
-                                class="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 pointer-events-none" />
-                            <select v-model="form.package_type" id="package_type"
-                                class="pl-10 pr-10 py-2 cursor-pointer border border-[#e7e7e7] rounded-sm w-full">
-                                <option value="day">Price Per Day</option>
-                                <option value="week">Price Per Week</option>
-                                <option value="month">Price Per Month</option>
-                            </select>
-                            <img :src="CaretDown" alt=""
-                                class="absolute right-3 top-1/2 transform -translate-y-1/2 w-5 h-5 transition-transform duration-300 ease-in-out pointer-events-none caret-rotate" />
-                        </div>
+                        <CustomDropdown v-model="form.package_type" unique-id="package-type" :options="[
+                            { value: 'day', label: 'Price Per Day' },
+                            { value: 'week', label: 'Price Per Week' },
+                            { value: 'month', label: 'Price Per Month' }
+                        ]" placeholder="Price Per Day" :left-icon="priceperdayicon" :right-icon="CaretDown" />
 
                         <!-- Apply Filters Button -->
                         <button @click="applyFilters"
@@ -851,7 +741,7 @@ const resetPriceRange = () => {
     </div>
 
     <div class="full-w-container mx-auto mb-[4rem]">
-        <div class="flex gap-4 max-[768px]:flex-col">
+        <div class="flex gap-[2.5rem] max-[768px]:flex-col">
             <!-- Left Column - Vehicle List -->
             <div class="w-full">
                 <div :class="[
@@ -1123,7 +1013,7 @@ const resetPriceRange = () => {
                 </div>
             </div>
             <!-- Right Column - Map -->
-            <div class="w-full sticky top-4 h-[calc(100vh-2rem)] max-[768px]:hidden" v-show="showMap">
+            <div class="w-full sticky top-0 h-[100vh] max-[768px]:hidden mr-[-2.1%]" v-show="showMap">
                 <div class="bg-white h-full">
                     <div id="map" class="h-full rounded-lg"></div>
                 </div>
@@ -1276,9 +1166,11 @@ select:focus+.caret-rotate {
 .animate-fade-in {
     animation: fadeIn 0.2s ease-in-out;
 }
-.filter-slot select{
+
+.filter-slot select {
     background-color: white;
 }
+
 @keyframes fadeIn {
     from {
         opacity: 0;

@@ -203,16 +203,17 @@ input[type='date'], input[type='time'] {
 } */
 
 .dp__active_date{
-    background: #dd0e5d!important;
+    background: #153b4f!important;
 }
 .dp__action_select{
     background: #153b4f!important;
+    border: 1px solid white!important;
 }
 .dp__today{
-    border: #dd0e5d!important;
+    border: #153b4f!important;
 }
 .dp__action_row{
-    background: #dd0e5d!important;
+    background: #153b4f!important;
 }
 .dp__selection_preview{
     color: white!important;

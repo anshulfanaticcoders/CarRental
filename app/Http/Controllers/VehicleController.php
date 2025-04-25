@@ -328,60 +328,47 @@ class VehicleController extends Controller
 
 
     public function searchLocations(Request $request)
-    {
-        $query = trim($request->input('text'));
-    
-        if (strlen($query) < 3) {
-            return response()->json(['results' => []]);
-        }
-    
-        $locations = Vehicle::select('location', 'city', 'state', 'country', 'latitude', 'longitude')
-            ->where(function($q) use ($query) {
-                // First check if location matches exactly
-                $q->where('location', 'LIKE', "%{$query}%")
-                  // Then check city/state/country
-                  ->orWhere('city', 'LIKE', "%{$query}%")
-                  ->orWhere('state', 'LIKE', "%{$query}%")
-                  ->orWhere('country', 'LIKE', "%{$query}%");
-            })
-            ->whereNotNull('city')
-            ->whereNotNull('state')
-            ->whereNotNull('country')
-            ->groupBy('location', 'city', 'state', 'country', 'latitude', 'longitude')
-            ->orderByRaw('CASE WHEN location LIKE ? THEN 0 ELSE 1 END', ["%{$query}%"]) // Prioritize location matches
-            ->limit(50)
-            ->get();
-    
-        $results = $locations->map(function ($vehicle) use ($query) {
-            // Only include location in label if search matches the location field
-            if (!empty($vehicle->location) && stripos($vehicle->location, $query) !== false) {
-                $label = implode(', ', array_filter([
-                    $vehicle->location,
-                    $vehicle->city,
-                    $vehicle->state,
-                    $vehicle->country
-                ]));
-            } else {
-                $label = implode(', ', array_filter([
-                    $vehicle->city,
-                    $vehicle->state,
-                    $vehicle->country
-                ]));
-            }
-    
-            return [
-                'id' => md5($vehicle->location . $vehicle->city . $vehicle->state . $vehicle->country),
-                'label' => $label,
-                'location' => $vehicle->location,
-                'city' => $vehicle->city,
-                'state' => $vehicle->state,
-                'country' => $vehicle->country,
-                'latitude' => $vehicle->latitude,
-                'longitude' => $vehicle->longitude,
-            ];
-        });
-    
-        return response()->json(['results' => $results->unique('label')->values()]);
+{
+    $query = trim($request->input('text'));
+
+    if (strlen($query) < 3) {
+        return response()->json(['results' => []]);
     }
+
+    $locations = Vehicle::select('location', 'city', 'state', 'country', 'latitude', 'longitude')
+        ->where(function($q) use ($query) {
+            // First check if location matches exactly
+            $q->where('location', 'LIKE', "%{$query}%")
+              // Then check city/state/country
+              ->orWhere('city', 'LIKE', "%{$query}%")
+              ->orWhere('state', 'LIKE', "%{$query}%")
+              ->orWhere('country', 'LIKE', "%{$query}%");
+        })
+        ->whereNotNull('city')
+        ->whereNotNull('state')
+        ->whereNotNull('country')
+        ->groupBy('location', 'city', 'state', 'country', 'latitude', 'longitude')
+        ->orderByRaw('CASE WHEN location LIKE ? THEN 0 ELSE 1 END', ["%{$query}%"]) // Prioritize location matches
+        ->limit(50)
+        ->get();
+
+    $results = $locations->map(function ($vehicle) {
+        // Use only the location as the label
+        $label = $vehicle->location;
+
+        return [
+            'id' => md5($vehicle->location . $vehicle->city . $vehicle->state . $vehicle->country),
+            'label' => $label,
+            'location' => $vehicle->location,
+            'city' => $vehicle->city,
+            'state' => $vehicle->state,
+            'country' => $vehicle->country,
+            'latitude' => $vehicle->latitude,
+            'longitude' => $vehicle->longitude,
+        ];
+    });
+
+    return response()->json(['results' => $results->unique('label')->values()]);
+}
 
 }

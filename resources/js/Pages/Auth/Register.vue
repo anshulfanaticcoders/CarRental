@@ -387,7 +387,7 @@ watch(dateOfBirth, (newValue) => {
 
                             <div class="column w-full col-span-2 max-[768px]:col-span-1">
                                 <InputLabel for="date_of_birth" value="Date of Birth" />
-                                <VueDatePicker v-model="dateOfBirth" :enable-time-picker="false" uid="date-of-birth"
+                                <VueDatePicker v-model="dateOfBirth" :enable-time-picker="false" uid="date-of-birth" auto-apply
                                     placeholder="Select Date of Birth" class="w-full" :max-date="minimumDateOfBirth"
                                     :start-date="minimumDateOfBirth" />
                                 <small class="text-gray-500 mt-1 block">You must be at least 18 years old</small>
