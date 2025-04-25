@@ -53,39 +53,51 @@
 
         <!-- Search results dropdown -->
         <div v-if="showSearchBox && (searchResults.length > 0 || popularPlaces.length > 0 || searchPerformed)"
-          class="search-results absolute z-20 top-[105%] w-[50%] rounded-[12px] border-[1px] border-white left-[20%] p-5 bg-white text-customDarkBlackColor max-h-[400px] overflow-y-auto max-[768px]:w-full max-[768px]:top-[45%] max-[768px]:left-0">
-          <div v-if="form.where.length === 0 && popularPlaces.length > 0">
-            <div class="text-sm font-medium mb-2 text-customPrimaryColor">Popular Searches</div>
-            <div v-for="place in popularPlaces" :key="place.id" @click="selectLocation(place)"
-              class="p-2 hover:bg-[#efefef4d] hover:text-customPrimaryColor cursor-pointer flex gap-3">
-              <div class="h-10 w-10 md:h-12 md:w-12 bg-gray-100 text-gray-300 rounded flex justify-center items-center"><svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" class="w-1/2 h-1/2"><path clip-rule="evenodd" d="M7.838 9.79c0 2.497 1.946 4.521 4.346 4.521 2.401 0 4.347-2.024 4.347-4.52 0-2.497-1.946-4.52-4.346-4.52-2.401 0-4.347 2.023-4.347 4.52Z" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path><path clip-rule="evenodd" d="M20.879 9.79c0 7.937-6.696 12.387-8.335 13.36a.7.7 0 0 1-.718 0c-1.64-.973-8.334-5.425-8.334-13.36 0-4.992 3.892-9.04 8.693-9.04s8.694 4.048 8.694 9.04Z" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path></svg></div>
-              <div class="flex flex-col">
-                <div class="font-medium">{{ place.label }}</div>
-              <div class="text-sm text-gray-500">
-                {{ [place.city, place.state, place.country].filter(Boolean).join(', ') }}
-              </div>
-              </div>
-            </div>
-          </div>
-
-          <div v-else-if="searchResults.length > 0">
-            <!-- Your existing search results display -->
-            <div v-for="result in searchResults" :key="result.id" @click="selectLocation(result)"
-            class="p-2 hover:bg-[#efefef4d] hover:text-customPrimaryColor cursor-pointer flex gap-3">
-              <div class="h-10 w-10 md:h-12 md:w-12 bg-gray-100 text-gray-300 rounded flex justify-center items-center"><svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" class="w-1/2 h-1/2"><path clip-rule="evenodd" d="M7.838 9.79c0 2.497 1.946 4.521 4.346 4.521 2.401 0 4.347-2.024 4.347-4.52 0-2.497-1.946-4.52-4.346-4.52-2.401 0-4.347 2.023-4.347 4.52Z" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path><path clip-rule="evenodd" d="M20.879 9.79c0 7.937-6.696 12.387-8.335 13.36a.7.7 0 0 1-.718 0c-1.64-.973-8.334-5.425-8.334-13.36 0-4.992 3.892-9.04 8.693-9.04s8.694 4.048 8.694 9.04Z" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path></svg></div>
-              <div class="flex flex-col">
-                <div class="font-medium">{{ result.label }}</div>
-              <div v-if="result.location" class="text-sm text-gray-500">
-                {{ [result.city, result.state, result.country].filter(Boolean).join(', ') }}
-              </div>
-              </div>
-            </div>
-          </div>
-
-          <div v-else-if="searchPerformed && !isSearching" class="p-3 text-center">
-            No location found. Please try another search.
-          </div>
+  class="search-results absolute z-20 top-[105%] w-[50%] rounded-[12px] border-[1px] border-white left-[20%] p-5 bg-white text-customDarkBlackColor max-h-[400px] overflow-y-auto max-[768px]:w-full max-[768px]:top-[45%] max-[768px]:left-0">
+  <!-- Show search results if available -->
+  <div v-if="searchResults.length > 0">
+    <div v-for="result in searchResults" :key="result.id" @click="selectLocation(result)"
+      class="p-2 hover:bg-[#efefef4d] hover:text-customPrimaryColor cursor-pointer flex gap-3">
+      <div class="h-10 w-10 md:h-12 md:w-12 bg-gray-100 text-gray-300 rounded flex justify-center items-center">
+        <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" class="w-1/2 h-1/2">
+          <path clip-rule="evenodd" d="M7.838 9.79c0 2.497 1.946 4.521 4.346 4.521 2.401 0 4.347-2.024 4.347-4.52 0-2.497-1.946-4.52-4.346-4.52-2.401 0-4.347 2.023-4.347 4.52Z" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path>
+          <path clip-rule="evenodd" d="M20.879 9.79c0 7.937-6.696 12.387-8.335 13.36a.7.7 0 0 1-.718 0c-1.64-.973-8.334-5.425-8.334-13.36 0-4.992 3.892-9.04 8.693-9.04s8.694 4.048 8.694 9.04Z" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path>
+        </svg>
+      </div>
+      <div class="flex flex-col">
+        <div class="font-medium">{{ result.label }}</div>
+        <div v-if="result.location" class="text-sm text-gray-500">
+          {{ [result.city, result.state, result.country].filter(Boolean).join(', ') }}
         </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Show "No location found" if a search was performed with no results -->
+  <div v-else-if="searchPerformed && !isSearching" class="p-3 text-center">
+    No location found. Please try another search.
+  </div>
+
+  <!-- Show popular places only if no search has been performed or input is empty -->
+  <div v-else-if="popularPlaces.length > 0 && !isSearching">
+    <div class="text-sm font-medium mb-2 text-customPrimaryColor">Popular Searches</div>
+    <div v-for="place in popularPlaces" :key="place.id" @click="selectLocation(place)"
+      class="p-2 hover:bg-[#efefef4d] hover:text-customPrimaryColor cursor-pointer flex gap-3">
+      <div class="h-10 w-10 md:h-12 md:w-12 bg-gray-100 text-gray-300 rounded flex justify-center items-center">
+        <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" class="w-1/2 h-1/2">
+          <path clip-rule="evenodd" d="M7.838 9.79c0 2.497 1.946 4.521 4.346 4.521 2.401 0 4.347-2.024 4.347-4.52 0-2.497-1.946-4.52-4.346-4.52-2.401 0-4.347 2.023-4.347 4.52Z" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path>
+          <path clip-rule="evenodd" d="M20.879 9.79c0 7.937-6.696 12.387-8.335 13.36a.7.7 0 0 1-.718 0c-1.64-.973-8.334-5.425-8.334-13.36 0-4.992 3.892-9.04 8.693-9.04s8.694 4.048 8.694 9.04Z" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path>
+        </svg>
+      </div>
+      <div class="flex flex-col">
+        <div class="font-medium">{{ place.label }}</div>
+        <div class="text-sm text-gray-500">
+          {{ [place.city, place.state, place.country].filter(Boolean).join(', ') }}
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
 
         <div v-if="dateError"
           class="absolute top-[105%] w-[50%] text-red-500 text-center max-[768px]:w-full max-[768px]:top-[55%]">
@@ -105,7 +117,7 @@ import '@vuepic/vue-datepicker/dist/main.css';
 
 const form = ref({
   where: "",
-  location: "", // Add location field
+  location: "",
   date_from: "",
   date_to: "",
   latitude: null,
@@ -121,34 +133,27 @@ const props = defineProps({
   prefill: Object,
 });
 
-// Calendar value refs
 const pickupDate = ref(null);
 const returnDate = ref(null);
-
-// Search results
 const searchResults = ref([]);
 const dateError = ref(false);
-const isSearching = ref(false); // Track search state for UX
-const searchTimeout = ref(null); // Debounce search
-const searchPerformed = ref(false); // Track if a search has been performed
-const showSearchBox = ref(false); // Control visibility of search results box
-
+const isSearching = ref(false);
+const searchTimeout = ref(null);
+const searchPerformed = ref(false);
+const showSearchBox = ref(false);
 const popularPlaces = ref([]);
 
-// Modify handleInputFocus to show popular places when empty
 const handleInputFocus = () => {
   showSearchBox.value = true;
-
-  // If input is empty, show popular places
-  if (form.value.where.length === 0) {
+  // Fetch popular places only if no search is in progress and no search has been performed
+  if (!isSearching.value && !searchPerformed.value) {
     fetchPopularPlaces();
   }
 };
 
-// Add this function to fetch popular places
 const fetchPopularPlaces = async () => {
   try {
-    const response = await axios.get('/api/footer-places'); // Or your popular places endpoint
+    const response = await axios.get('/api/footer-places');
     popularPlaces.value = response.data.map(place => ({
       id: place.id,
       label: place.place_name,
@@ -159,21 +164,18 @@ const fetchPopularPlaces = async () => {
       latitude: place.latitude,
       longitude: place.longitude
     }));
-    searchPerformed.value = true;
   } catch (error) {
     console.error("Error fetching popular places:", error);
     popularPlaces.value = [];
   }
 };
 
-// Format date for display
 const formatDate = (dateString) => {
   if (!dateString) return "Select date";
   const date = new Date(dateString);
   return date.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
 };
 
-// Watch for pickupDate changes and update form.date_from
 watch(pickupDate, (newValue) => {
   if (newValue) {
     form.value.date_from = newValue.toISOString().split('T')[0];
@@ -184,17 +186,17 @@ watch(pickupDate, (newValue) => {
   }
 }, { deep: true });
 
-// Watch for returnDate changes and update form.date_to
 watch(returnDate, (newValue) => {
   if (newValue) {
     form.value.date_to = newValue.toISOString().split('T')[0];
   }
 }, { deep: true });
 
-// Debounced search handler
 const handleSearchInput = () => {
-
   if (form.value.where.length === 0) {
+    searchResults.value = [];
+    searchPerformed.value = false;
+    showSearchBox.value = true;
     fetchPopularPlaces();
     return;
   }
@@ -205,15 +207,12 @@ const handleSearchInput = () => {
     return;
   }
 
-  // Show search box immediately when typing
   showSearchBox.value = true;
 
-  // Clear previous timeout
   if (searchTimeout.value) {
     clearTimeout(searchTimeout.value);
   }
 
-  // Debounce to prevent excessive API calls
   searchTimeout.value = setTimeout(async () => {
     isSearching.value = true;
     try {
@@ -229,10 +228,9 @@ const handleSearchInput = () => {
     } finally {
       isSearching.value = false;
     }
-  }, 300); // 300ms debounce
+  }, 300);
 };
 
-// Select a location from search results
 const selectLocation = (result) => {
   form.value.where = [result.location, result.city, result.state, result.country].filter(Boolean).join(', ');
   form.value.location = result.location || null;
@@ -243,9 +241,9 @@ const selectLocation = (result) => {
   form.value.country = result.country;
   showSearchBox.value = false;
   searchPerformed.value = false;
+  searchResults.value = [];
 };
 
-// Form submission
 const submit = () => {
   if (!form.value.date_from || !form.value.date_to || !form.value.where) {
     dateError.value = true;
@@ -261,19 +259,17 @@ const submit = () => {
   let packageType = 'day';
   form.value.package_type = packageType;
 
-  // Adjust radius based on search specificity
   if (form.value.city) {
-    form.value.radius = 10000; // 10km for city-specific searches
+    form.value.radius = 10000;
   } else if (form.value.state) {
-    form.value.radius = 50000; // 50km for state searches
+    form.value.radius = 50000;
   } else if (form.value.country) {
-    form.value.radius = 1000000; // 1000km for country searches
+    form.value.radius = 1000000;
   }
 
   router.get("/s", form.value);
 };
 
-// Get minimum return date
 const getMinReturnDate = () => {
   if (pickupDate.value) {
     const minReturnDate = new Date(pickupDate.value);
@@ -283,9 +279,7 @@ const getMinReturnDate = () => {
   return new Date();
 };
 
-// Close search results on outside click
 const closeSearchResults = (event) => {
-  // Only close if clicking outside the search results area and not on the search input
   if (showSearchBox.value &&
     !event.target.closest(".search-results") &&
     !event.target.closest("input[type='text']")) {
@@ -293,9 +287,9 @@ const closeSearchResults = (event) => {
   }
 };
 
-// Initialize with prefill data
 onMounted(() => {
   document.addEventListener('click', closeSearchResults);
+  fetchPopularPlaces(); // Fetch popular places on mount for better performance
   if (props.prefill) {
     form.value.where = props.prefill.where || '';
     if (props.prefill.date_from) {
@@ -320,7 +314,6 @@ onUnmounted(() => {
   }
 });
 
-// Reset return date if pickup date changes to a later date
 watch(pickupDate, (newPickupDate) => {
   if (returnDate.value && newPickupDate && returnDate.value <= newPickupDate) {
     returnDate.value = null;

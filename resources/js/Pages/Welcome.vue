@@ -285,7 +285,7 @@ onBeforeUnmount(() => {
                                                 class="rounded-[0.75rem] h-[12rem] w-full object-cover mb-2" />
                                             <div class="px-3">
                                                 <h3 class="text-lg font-medium">{{ place.place_name }}</h3>
-                                                <p class="text-sm text-customDarkBlackColor">{{ place.city }}</p>
+                                                <p class="text-sm text-customDarkBlackColor">{{ place.city }}, {{ place.country }}</p>
                                             </div>
                                         </CardContent>
                                     </Card>
