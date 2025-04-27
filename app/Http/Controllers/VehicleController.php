@@ -335,30 +335,71 @@ class VehicleController extends Controller
         return response()->json(['results' => []]);
     }
 
+    // Normalize the query for case-insensitive comparison
+    $normalizedQuery = strtolower($query);
+
+    // Fetch locations from the database with more precise matching
     $locations = Vehicle::select('location', 'city', 'state', 'country', 'latitude', 'longitude')
-        ->where(function($q) use ($query) {
-            // First check if location matches exactly
-            $q->where('location', 'LIKE', "%{$query}%")
-              // Then check city/state/country
-              ->orWhere('city', 'LIKE', "%{$query}%")
-              ->orWhere('state', 'LIKE', "%{$query}%")
-              ->orWhere('country', 'LIKE', "%{$query}%");
+        ->where(function($q) use ($normalizedQuery) {
+            $q->whereRaw('LOWER(location) LIKE ?', ["%{$normalizedQuery}%"])
+              ->orWhereRaw('LOWER(city) LIKE ?', ["%{$normalizedQuery}%"])
+              ->orWhereRaw('LOWER(state) LIKE ?', ["%{$normalizedQuery}%"])
+              ->orWhereRaw('LOWER(country) LIKE ?', ["%{$normalizedQuery}%"]);
         })
         ->whereNotNull('city')
         ->whereNotNull('state')
         ->whereNotNull('country')
-        ->groupBy('location', 'city', 'state', 'country', 'latitude', 'longitude')
-        ->orderByRaw('CASE WHEN location LIKE ? THEN 0 ELSE 1 END', ["%{$query}%"]) // Prioritize location matches
+        ->groupBy('city', 'state', 'country', 'location', 'latitude', 'longitude')
+        ->orderByRaw('
+            CASE 
+                WHEN LOWER(city) LIKE ? THEN 0 
+                WHEN LOWER(state) LIKE ? THEN 1 
+                WHEN LOWER(country) LIKE ? THEN 2 
+                ELSE 3 
+            END', [
+                "{$normalizedQuery}%", 
+                "{$normalizedQuery}%", 
+                "{$normalizedQuery}%"
+            ])
+        ->orderByRaw('
+            CASE 
+                WHEN LOWER(city) = ? THEN 0 
+                WHEN LOWER(state) = ? THEN 1 
+                WHEN LOWER(country) = ? THEN 2 
+                ELSE 3 
+            END', [
+                $normalizedQuery, 
+                $normalizedQuery, 
+                $normalizedQuery
+            ])
         ->limit(50)
         ->get();
 
-    $results = $locations->map(function ($vehicle) {
-        // Use only the location as the label
-        $label = $vehicle->location;
+    // Process results to format label and below_label
+    $results = $locations->map(function ($vehicle) use ($normalizedQuery) {
+        $cityLower = strtolower($vehicle->city ?? '');
+        $stateLower = strtolower($vehicle->state ?? '');
+        $countryLower = strtolower($vehicle->country ?? '');
+
+        // Determine the best match
+        if (str_contains($cityLower, $normalizedQuery)) {
+            $label = $vehicle->city;
+            $belowLabel = collect([$vehicle->state, $vehicle->country])->filter()->join(', ');
+        } elseif (str_contains($stateLower, $normalizedQuery)) {
+            $label = $vehicle->state;
+            $belowLabel = $vehicle->country;
+        } elseif (str_contains($countryLower, $normalizedQuery)) {
+            $label = $vehicle->country;
+            $belowLabel = null;
+        } else {
+            $label = $vehicle->location;
+            $belowLabel = collect([$vehicle->city, $vehicle->state, $vehicle->country])->filter()->join(', ');
+        }
 
         return [
-            'id' => md5($vehicle->location . $vehicle->city . $vehicle->state . $vehicle->country),
+            'id' => md5($label . ($belowLabel ?? '')),
             'label' => $label,
+            'below_label' => $belowLabel,
             'location' => $vehicle->location,
             'city' => $vehicle->city,
             'state' => $vehicle->state,
@@ -368,7 +409,12 @@ class VehicleController extends Controller
         ];
     });
 
-    return response()->json(['results' => $results->unique('label')->values()]);
+    // Remove duplicates by label and below_label combination
+    $uniqueResults = $results->unique(function ($item) {
+        return $item['label'] . ($item['below_label'] ?? '');
+    })->values();
+
+    return response()->json(['results' => $uniqueResults]);
 }
 
 }

@@ -10,6 +10,7 @@ const showingNavigationDropdown = ref(false);
 
 import axios from "axios";
 import NotificationBell from "@/Components/NotificationBell.vue";
+// import LanguageSwitcher from "@/Components/LanguageSwitcher.vue";
 
 const user = ref(null);
 
@@ -75,6 +76,8 @@ const vendorStatus = computed(() => page.props.vendorStatus);
                                     Register as Vendor
                                     </Link>
                                 </div>
+
+                                <!-- <LanguageSwitcher /> -->
 
                                 <!-- User Dropdown -->
                                 <div class="ms-3 relative">
@@ -192,7 +195,9 @@ const vendorStatus = computed(() => page.props.vendorStatus);
                     <!-- Navigation -->
                     <div class="flex gap-[2rem] items-center">
                         <!-- Auth Links -->
+                        <!-- <LanguageSwitcher /> -->
                         <div class="column">
+                            
                             <Link :href="route('login')" class="button-primary py-3 px-5 font-semibold text-gray-600 dark:text-gray-400 dark:hover:text-white focus:outline focus:outline-2 focus:rounded-sm
                                 max-[768px]:text-[0.5rem]
                                 ">

@@ -200,7 +200,7 @@ const addMarkers = () => {
                 <img src="${primaryImage}" alt="${vehicle.brand} ${vehicle.model}" class="popup-image" />
                 <p class="rating">${vehicle.average_rating} ★ (${vehicle.review_count} reviews)</p>
                 <p class="font-semibold">${vehicle.brand} ${vehicle.model}</p>
-                <p class="">${vehicle.location}</p>
+                <p class="">${vehicle.location}, ${vehicle.city}, ${vehicle.state}, ${vehicle.country}</p>
                 <a href="/vehicle/${vehicle.id}" 
                    class="text-blue-500 hover:text-blue-700"
                    onclick="window.location.href='/vehicle/${vehicle.id}'; return false;">

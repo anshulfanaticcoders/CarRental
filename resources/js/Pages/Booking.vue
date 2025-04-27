@@ -946,7 +946,7 @@ const submitBooking = async () => {
                                 <div class="flex flex-col gap-1">
                                     <span class="text-[1.25rem] text-medium max-[768px]:text-[1rem]">{{
                                         vehicle?.location
-                                    }}</span><span class="max-[768px]:text-[0.85rem]">From: {{ dateFrom }} {{
+                                    }}, {{ vehicle.city }}, {{ vehicle.state }}, {{ vehicle.country }}</span><span class="max-[768px]:text-[0.85rem]">From: {{ dateFrom }} {{
                                             timeFrom }}</span>
                                 </div>
                             </div>
@@ -955,7 +955,7 @@ const submitBooking = async () => {
                                 <div class="flex flex-col gap-1">
                                     <span class="text-[1.25rem] text-medium max-[768px]:text-[1rem]">{{
                                         vehicle?.location
-                                    }}</span><span class="max-[768px]:text-[0.85rem]">To: {{ dateTo }} {{ timeTo
+                                    }}, {{ vehicle.city }}, {{ vehicle.state }}, {{ vehicle.country }}</span><span class="max-[768px]:text-[0.85rem]">To: {{ dateTo }} {{ timeTo
                                         }}</span>
                                 </div>
                             </div>

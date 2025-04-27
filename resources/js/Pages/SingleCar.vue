@@ -1383,7 +1383,7 @@ const openLightbox = (index) => {
                                     <div class="flex flex-col gap-1">
                                         <span>Pickup Location</span>
                                         <span class="text-[1.25rem] text-medium max-[768px]:text-[1rem]">{{
-                                            vehicle?.location }}</span>
+                                            vehicle?.location }}, {{ vehicle.city }}, {{ vehicle.state }}, {{ vehicle.country }}</span>
                                         <span class="max-[768px]:text-[0.95rem]">{{ route().params.pickup_date }}</span>
                                     </div>
                                 </div>
@@ -1392,7 +1392,7 @@ const openLightbox = (index) => {
                                     <div class="flex flex-col gap-1">
                                         <span>Return Location</span>
                                         <span class="text-[1.25rem] text-medium max-[768px]:text-[1rem]">{{
-                                            vehicle?.location }}</span>
+                                            vehicle?.location }}, {{ vehicle.city }}, {{ vehicle.state }}, {{ vehicle.country }}</span>
                                         <span class="max-[768px]:text-[0.95rem]">{{ route().params.return_date }}</span>
                                     </div>
                                 </div>
