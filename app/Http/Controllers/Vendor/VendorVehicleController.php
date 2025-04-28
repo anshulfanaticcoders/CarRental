@@ -102,13 +102,13 @@ class VendorVehicleController extends Controller
             'brand' => 'required|string|max:50',
             'model' => 'required|string|max:50',
             'color' => 'required|string|max:30',
-            'mileage' => 'required|integer|min:0',
+            'mileage' => 'required|decimal:0,2',
             'transmission' => 'required|string',
             'fuel' => 'required|string',
             'seating_capacity' => 'required|integer|min:1',
             'number_of_doors' => 'required|integer|min:2',
             'luggage_capacity' => 'required|integer|min:0',
-            'horsepower' => 'required|integer|min:0',
+            'horsepower' => 'required|decimal:0,2',
             'co2' => 'required|string',
             'location' => 'nullable|string',
             'status' => 'required|in:available,rented,maintenance',
@@ -131,6 +131,12 @@ class VendorVehicleController extends Controller
             'dealer_cost' => 'required|numeric|min:0',
             'phone_number' => 'required|string|max:15',
             'images.*' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048',
+
+            'city' => 'nullable|string|max:100',
+            'state' => 'nullable|string|max:100',
+            'country' => 'nullable|string|max:100',
+            'latitude' => 'nullable|numeric|between:-90,90',
+            'longitude' => 'nullable|numeric|between:-180,180',
 
             // Vehicle benefits fields
             'benefits.limited_km_per_day' => 'boolean',

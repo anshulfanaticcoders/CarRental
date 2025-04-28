@@ -54,7 +54,8 @@
                                 </div>
                                 <div>
                                     <InputLabel for="mileage">Mileage:</InputLabel>
-                                    <Input type="number" v-model.number="form.mileage" id="mileage" required />
+                                    <Input type="number" step="0.01" v-model.number="form.mileage" id="mileage"
+                                        required />
                                 </div>
                                 <div>
                                     <InputLabel for="transmission">Transmission:</InputLabel>
@@ -104,6 +105,46 @@
                                         </SelectContent>
                                     </Select>
                                 </div>
+
+                                <div class="col-span-2 space-y-3">
+                                    <InputLabel for="location" class="text-gray-700 font-medium">Location:</InputLabel>
+
+                                    <div v-if="form.location"
+                                        class="p-4 bg-gray-50 rounded-lg border border-gray-200 shadow-sm">
+                                        <div class="grid grid-cols-2 gap-2 text-[1rem]">
+                                            <div class="col-span-2 font-medium text-gray-700">Current Location: {{
+                                                form.location }}, {{ form.city }}, {{ form.state }}, {{ form.country }}</div>
+                                            <div><span class="text-gray-500">City:</span> {{ form.city }}</div>
+                                            <div><span class="text-gray-500">State:</span> {{ form.state }}</div>
+                                            <div><span class="text-gray-500">Country:</span> {{ form.country }}</div>
+                                            <div class=""><span class="text-gray-500">Coordinates:</span> {{
+                                                form.latitude }}, {{ form.longitude }}</div>
+                                        </div>
+                                    </div>
+
+                                    <button type="button" @click="toggleLocationPicker"
+                                        class="flex items-center justify-center w-full sm:w-auto px-4 py-2.5 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition duration-200 shadow-sm">
+                                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" viewBox="0 0 20 20"
+                                            fill="currentColor">
+                                            <path fill-rule="evenodd"
+                                                d="M5.05 4.05a7 7 0 119.9 9.9L10 18.9l-4.95-4.95a7 7 0 010-9.9zM10 11a2 2 0 100-4 2 2 0 000 4z"
+                                                clip-rule="evenodd" />
+                                        </svg>
+                                        {{ showLocationPicker ? 'Hide Location Picker' : 'Change Location' }}
+                                    </button>
+
+                                    <transition name="slide-fade" enter-active-class="transition ease-out duration-200"
+                                        enter-from-class="transform opacity-0 -translate-y-4"
+                                        enter-to-class="transform opacity-100 translate-y-0"
+                                        leave-active-class="transition ease-in duration-150"
+                                        leave-from-class="transform opacity-100 translate-y-0"
+                                        leave-to-class="transform opacity-0 -translate-y-4">
+                                        <div v-show="showLocationPicker"
+                                            class="mt-4 border border-gray-200 rounded-lg shadow-sm overflow-hidden">
+                                            <LocationPicker :onLocationSelect="handleLocationSelect" />
+                                        </div>
+                                    </transition>
+                                </div>
                             </div>
                         </TabsContent>
 
@@ -146,7 +187,8 @@
                                 </div>
                                 <div>
                                     <InputLabel for="horsepower">Horsepower:</InputLabel>
-                                    <Input type="number" v-model.number="form.horsepower" id="horsepower" required />
+                                    <Input type="number" step="0.01" v-model.number="form.horsepower" id="horsepower"
+                                        required />
                                 </div>
                                 <div>
                                     <InputLabel for="co2">CO2 Emissions:</InputLabel>
@@ -278,7 +320,8 @@
                                     <div class="flex items-center gap-2">
                                         <input type="checkbox" v-model="form.benefits.limited_km_per_month"
                                             id="limited_km_per_month" class="w-auto" />
-                                        <InputLabel for="limited_km_per_month" class="mb-0">Limited Kilometers Per Month:</InputLabel>
+                                        <InputLabel for="limited_km_per_month" class="mb-0">Limited Kilometers Per
+                                            Month:</InputLabel>
                                     </div>
                                     <div v-if="form.benefits.limited_km_per_month" class="w-[50%]">
                                         <InputLabel for="limited_km_per_month_range">KM Limit Per Month:</InputLabel>
@@ -425,15 +468,15 @@
                                             <button type="button" @click="removePickupTime(index)" title="Remove"
                                                 class="ml-1 text-red-600 hover:bg-red-50">
                                                 <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20"
-                                                viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-                                                stroke-linecap="round" stroke-linejoin="round"
-                                                class="lucide lucide-trash-2">
-                                                <path d="M3 6h18"></path>
-                                                <path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"></path>
-                                                <path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"></path>
-                                                <line x1="10" x2="10" y1="11" y2="17"></line>
-                                                <line x1="14" x2="14" y1="11" y2="17"></line>
-                                            </svg>
+                                                    viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                                    stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+                                                    class="lucide lucide-trash-2">
+                                                    <path d="M3 6h18"></path>
+                                                    <path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"></path>
+                                                    <path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"></path>
+                                                    <line x1="10" x2="10" y1="11" y2="17"></line>
+                                                    <line x1="14" x2="14" y1="11" y2="17"></line>
+                                                </svg>
                                             </button>
                                         </div>
 
@@ -451,17 +494,17 @@
                                             <input type="time" v-model="form.return_times[index]"
                                                 class="time-input max-[768px]:text-[0.75rem] w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition duration-200 bg-white shadow-sm" />
                                             <button type="button" @click="removeReturnTime(index)" title="Remove"
-                                            class="ml-1 text-red-600 hover:bg-red-50">
+                                                class="ml-1 text-red-600 hover:bg-red-50">
                                                 <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20"
-                                                viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-                                                stroke-linecap="round" stroke-linejoin="round"
-                                                class="lucide lucide-trash-2">
-                                                <path d="M3 6h18"></path>
-                                                <path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"></path>
-                                                <path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"></path>
-                                                <line x1="10" x2="10" y1="11" y2="17"></line>
-                                                <line x1="14" x2="14" y1="11" y2="17"></line>
-                                            </svg>
+                                                    viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                                    stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+                                                    class="lucide lucide-trash-2">
+                                                    <path d="M3 6h18"></path>
+                                                    <path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"></path>
+                                                    <path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"></path>
+                                                    <line x1="10" x2="10" y1="11" y2="17"></line>
+                                                    <line x1="14" x2="14" y1="11" y2="17"></line>
+                                                </svg>
                                             </button>
                                         </div>
 
@@ -491,15 +534,15 @@
                                                 <button type="button" @click="deleteImage(props.vehicle.id, image.id)"
                                                     class="bg-white text-red-600 rounded-full p-1 hover:bg-red-50 transition-colors">
                                                     <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20"
-                                                viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-                                                stroke-linecap="round" stroke-linejoin="round"
-                                                class="lucide lucide-trash-2">
-                                                <path d="M3 6h18"></path>
-                                                <path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"></path>
-                                                <path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"></path>
-                                                <line x1="10" x2="10" y1="11" y2="17"></line>
-                                                <line x1="14" x2="14" y1="11" y2="17"></line>
-                                            </svg>
+                                                        viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                                        stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+                                                        class="lucide lucide-trash-2">
+                                                        <path d="M3 6h18"></path>
+                                                        <path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"></path>
+                                                        <path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"></path>
+                                                        <line x1="10" x2="10" y1="11" y2="17"></line>
+                                                        <line x1="14" x2="14" y1="11" y2="17"></line>
+                                                    </svg>
                                                 </button>
                                             </div>
                                             <div
@@ -595,6 +638,7 @@ import {
 import loader from "../../../../assets/loader.gif";
 
 import { Input } from '@/Components/ui/input';
+import LocationPicker from '@/Components/LocationPicker.vue';
 
 const toast = useToast();
 const { props } = usePage();
@@ -626,6 +670,9 @@ const form = useForm({
     horsepower: 0,
     co2: '',
     location: '',
+    city: '',
+    state: '',
+    country: '',
     latitude: 0,
     longitude: 0,
     status: 'available',
@@ -753,6 +800,16 @@ const deleteImage = async (vehicleId, imageId) => {
     }
 };
 
+// Handle location selection from LocationPicker
+const handleLocationSelect = (locationData) => {
+    form.location = locationData.address || '';
+    form.city = locationData.city || '';
+    form.state = locationData.state || '';
+    form.country = locationData.country || '';
+    form.latitude = parseFloat(locationData.latitude) || 0;
+    form.longitude = parseFloat(locationData.longitude) || 0;
+};
+
 
 // Watch checkbox changes to nullify associated values when unchecked
 watch(() => form.benefits.limited_km_per_day, (newValue) => {
@@ -790,9 +847,12 @@ onMounted(() => {
         form.luggage_capacity = props.vehicle.luggage_capacity
         form.horsepower = props.vehicle.horsepower
         form.co2 = props.vehicle.co2
-        form.location = props.vehicle.location
-        form.latitude = parseFloat(props.vehicle.latitude)
-        form.longitude = parseFloat(props.vehicle.longitude)
+        form.location = props.vehicle.location || '';
+        form.city = props.vehicle.city || '';
+        form.state = props.vehicle.state || '';
+        form.country = props.vehicle.country || '';
+        form.latitude = props.vehicle.latitude ? parseFloat(props.vehicle.latitude) : 0;
+        form.longitude = props.vehicle.longitude ? parseFloat(props.vehicle.longitude) : 0;
         form.status = props.vehicle.status
         try {
             form.features = JSON.parse(props.vehicle.features)
@@ -813,29 +873,39 @@ onMounted(() => {
         form.monthly_discount = parseFloat(props.vehicle.monthly_discount) || 0.00
         form.preferred_price_type = props.vehicle.preferred_price_type
         form.guidelines = props.vehicle.guidelines
-        form
 
 
         // Handle benefits
         if (props.vehicle.benefits) {
             form.benefits = {
                 limited_km_per_day: !!props.vehicle.benefits.limited_km_per_day,
-            limited_km_per_week: !!props.vehicle.benefits.limited_km_per_week,
-            limited_km_per_month: !!props.vehicle.benefits.limited_km_per_month,
-            limited_km_per_day_range: props.vehicle.benefits.limited_km_per_day_range || null,
-            limited_km_per_week_range: props.vehicle.benefits.limited_km_per_week_range || null,
-            limited_km_per_month_range: props.vehicle.benefits.limited_km_per_month_range || null,
-            cancellation_available_per_day: !!props.vehicle.benefits.cancellation_available_per_day,
-            cancellation_available_per_week: !!props.vehicle.benefits.cancellation_available_per_week,
-            cancellation_available_per_month: !!props.vehicle.benefits.cancellation_available_per_month,
-            cancellation_available_per_day_date: props.vehicle.benefits.cancellation_available_per_day_date || null,
-            cancellation_available_per_week_date: props.vehicle.benefits.cancellation_available_per_week_date || null,
-            cancellation_available_per_month_date: props.vehicle.benefits.cancellation_available_per_month_date || null,
-            price_per_km_per_day: parseFloat(props.vehicle.benefits.price_per_km_per_day) || 0.00,
-            price_per_km_per_week: parseFloat(props.vehicle.benefits.price_per_km_per_week) || 0.00,
-            price_per_km_per_month: parseFloat(props.vehicle.benefits.price_per_km_per_month) || 0.00,
-            minimum_driver_age: props.vehicle.benefits.minimum_driver_age || 18
+                limited_km_per_week: !!props.vehicle.benefits.limited_km_per_week,
+                limited_km_per_month: !!props.vehicle.benefits.limited_km_per_month,
+                limited_km_per_day_range: props.vehicle.benefits.limited_km_per_day_range || null,
+                limited_km_per_week_range: props.vehicle.benefits.limited_km_per_week_range || null,
+                limited_km_per_month_range: props.vehicle.benefits.limited_km_per_month_range || null,
+                cancellation_available_per_day: !!props.vehicle.benefits.cancellation_available_per_day,
+                cancellation_available_per_week: !!props.vehicle.benefits.cancellation_available_per_week,
+                cancellation_available_per_month: !!props.vehicle.benefits.cancellation_available_per_month,
+                cancellation_available_per_day_date: props.vehicle.benefits.cancellation_available_per_day_date || null,
+                cancellation_available_per_week_date: props.vehicle.benefits.cancellation_available_per_week_date || null,
+                cancellation_available_per_month_date: props.vehicle.benefits.cancellation_available_per_month_date || null,
+                price_per_km_per_day: parseFloat(props.vehicle.benefits.price_per_km_per_day) || 0.00,
+                price_per_km_per_week: parseFloat(props.vehicle.benefits.price_per_km_per_week) || 0.00,
+                price_per_km_per_month: parseFloat(props.vehicle.benefits.price_per_km_per_month) || 0.00,
+                minimum_driver_age: props.vehicle.benefits.minimum_driver_age || 18
             };
+        }
+
+        if (props.vehicle.latitude && props.vehicle.longitude) {
+            handleLocationSelect({
+                address: props.vehicle.location,
+                city: props.vehicle.city,
+                state: props.vehicle.state,
+                country: props.vehicle.country,
+                latitude: props.vehicle.latitude,
+                longitude: props.vehicle.longitude,
+            });
         }
 
         if (props.vehicle.specifications) {
@@ -953,6 +1023,12 @@ const getFlagUrl = (countryCode) => {
 };
 
 
+const showLocationPicker = ref(false);
+
+const toggleLocationPicker = () => {
+    showLocationPicker.value = !showLocationPicker.value;
+};
+
 </script>
 
 <style scoped>
@@ -983,5 +1059,22 @@ select {
     border: 1px solid #2b2b2b4a;
     outline: none;
     border-radius: 8px;
+}
+
+.slide-fade-enter-active,
+.slide-fade-leave-active {
+    transition: all 0.3s ease;
+}
+
+.slide-fade-enter-from,
+.slide-fade-leave-to {
+    transform: translateY(-10px);
+    opacity: 0;
+}
+
+.slide-fade-enter-to,
+.slide-fade-leave-from {
+    transform: translateY(0);
+    opacity: 1;
 }
 </style>
