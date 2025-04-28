@@ -113,7 +113,8 @@
                                         class="p-4 bg-gray-50 rounded-lg border border-gray-200 shadow-sm">
                                         <div class="grid grid-cols-2 gap-2 text-[1rem]">
                                             <div class="col-span-2 font-medium text-gray-700">Current Location: {{
-                                                form.location }}, {{ form.city }}, {{ form.state }}, {{ form.country }}</div>
+                                                form.location }}, {{ form.city }}, {{ form.state }}, {{ form.country }}
+                                            </div>
                                             <div><span class="text-gray-500">City:</span> {{ form.city }}</div>
                                             <div><span class="text-gray-500">State:</span> {{ form.state }}</div>
                                             <div><span class="text-gray-500">Country:</span> {{ form.country }}</div>
@@ -140,7 +141,7 @@
                                         leave-from-class="transform opacity-100 translate-y-0"
                                         leave-to-class="transform opacity-0 -translate-y-4">
                                         <div v-show="showLocationPicker"
-                                            class="mt-4 border border-gray-200 rounded-lg shadow-sm overflow-hidden">
+                                            class="location-picker-container border border-gray-200 rounded-lg shadow-sm overflow-hidden">
                                             <LocationPicker :onLocationSelect="handleLocationSelect" />
                                         </div>
                                     </transition>
@@ -616,7 +617,7 @@
 
 
 <script setup>
-import { ref, onMounted, computed, watch } from 'vue';
+import { ref, onMounted, computed, watch, nextTick } from 'vue';
 import { useForm } from '@inertiajs/vue3';
 import { useToast } from 'vue-toastification';
 import { usePage } from '@inertiajs/vue3';
@@ -1025,9 +1026,38 @@ const getFlagUrl = (countryCode) => {
 
 const showLocationPicker = ref(false);
 
+// Add this method to force map resize
+const forceMapResize = () => {
+    nextTick(() => {
+        setTimeout(() => {
+            const mapElement = document.querySelector('.leaflet-container')
+            if (mapElement && window.L) {
+                // Trigger map resize
+                window.dispatchEvent(new Event('resize'))
+                // Get the map instance and invalidate its size
+                const map = window.L.map(mapElement)
+                map.invalidateSize()
+                // Reset the view to ensure it's properly centered
+                const currentCenter = map.getCenter()
+                map.setView(currentCenter, map.getZoom())
+            }
+        }, 300)
+    })
+}
+
+// Watch for location picker visibility changes
+watch(showLocationPicker, (newVal) => {
+    if (newVal) {
+        forceMapResize()
+    }
+})
+
 const toggleLocationPicker = () => {
-    showLocationPicker.value = !showLocationPicker.value;
-};
+    showLocationPicker.value = !showLocationPicker.value
+    if (showLocationPicker.value) {
+        forceMapResize()
+    }
+}
 
 </script>
 
