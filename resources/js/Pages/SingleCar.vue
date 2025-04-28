@@ -965,7 +965,7 @@ const openLightbox = (index) => {
 
                     <div class="dot_seperator"><strong>.</strong></div>
                     <div class="car_location">
-                        <span>{{ vehicle?.location }}</span>
+                        <span>{{ vehicle?.location }}, {{ vehicle?.city }}, {{ vehicle?.state }}, {{ vehicle?.country }}</span>
                     </div>
                 </div>
                 <div>

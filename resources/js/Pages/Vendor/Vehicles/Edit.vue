@@ -228,10 +228,15 @@
                                     </div>
                                 </div>
                                 <div>
-                                    <InputLabel for="registration_date">Registration Date:</InputLabel>
-                                    <Input type="date" v-model="form.registration_date" id="registration_date"
-                                        required />
-                                </div>
+                            <InputLabel class="text-black" for="registration_date">Registration Date:</InputLabel>
+                            <VueDatePicker v-model="form.registration_date" :format="'yyyy-MM-dd'" auto-apply
+                                placeholder="Select Registration Date" class="w-full"
+                                 :clearable="false"
+                                :max-date="new Date()"
+                                :input-class-name="'w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition duration-200 bg-white shadow-sm text-gray-700'"
+                                @update:modelValue="formatDate" required />
+                            
+                        </div>
                                 <div>
                                     <InputLabel for="gross_vehicle_mass">Gross Vehicle Mass:</InputLabel>
                                     <Input type="number" v-model.number="form.gross_vehicle_mass"
@@ -640,6 +645,8 @@ import loader from "../../../../assets/loader.gif";
 
 import { Input } from '@/Components/ui/input';
 import LocationPicker from '@/Components/LocationPicker.vue';
+import VueDatePicker from '@vuepic/vue-datepicker'
+import '@vuepic/vue-datepicker/dist/main.css'
 
 const toast = useToast();
 const { props } = usePage();
@@ -648,6 +655,14 @@ const selectedFiles = ref([]);
 const maxImages = 20;
 const isLoading = ref(false);
 
+const formatDate = (value) => {
+    if (!value) {
+        form.registration_date = null
+        return
+    }
+    const date = new Date(value)
+    form.registration_date = date.toISOString().split('T')[0] // Sets to 'YYYY-MM-DD'
+}
 
 watch(isLoading, (newValue) => {
     if (newValue) {

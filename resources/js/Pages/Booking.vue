@@ -447,8 +447,12 @@ const submitBooking = async () => {
             customer: customer.value,
             pickup_date: pickupDate.value,
             return_date: returnDate.value,
-            pickup_location: vehicle.value?.location,
-            return_location: vehicle.value?.location,
+            pickup_location: vehicle.value?.location 
+  ? `${vehicle.value.location.city}, ${vehicle.value.location.state}, ${vehicle.value.location.country}` 
+  : null,
+return_location: vehicle.value?.location 
+  ? `${vehicle.value.location.city}, ${vehicle.value.location.state}, ${vehicle.value.location.country}` 
+  : null,
             pickup_time: pickupTime.value,
             return_time: returnTime.value,
             total_days: totalDays,

@@ -17,7 +17,7 @@ import priceperdayicon from "../../assets/priceFilter.png";
 import fuelIcon from "../../assets/fuel.svg";
 import transmissionIcon from "../../assets/transmittionIcon.svg";
 import mileageIcon2 from "../../assets/unlimitedKm.svg";
-import walkIcon from "../../assets/walking.svg";
+import noVehicleIcon from "../../assets/traveling-car-illustration.png";
 import seatingIcon from "../../assets/travellerIcon.svg";
 import brandIcon from "../../assets/SedanCarIcon.svg";
 import colorIcon from "../../assets/color-palette.svg";
@@ -41,6 +41,12 @@ const props = defineProps({
     filters: Object,
     pagination_links: String,
     categories: Array,
+    brands: Array,
+    colors: Array,
+    seatingCapacities: Array,
+    transmissions: Array, // Add this
+    fuels: Array,         // Add this
+    mileages: Array,      // Add this
 });
 
 // Debounce function
@@ -165,6 +171,28 @@ const createCustomIcon = (price, currency) => {
         popupAnchor: [0, -15],
         pane: "markers",
     });
+};
+
+const resetFilters = () => {
+    // Completely reset the form to initial empty state
+    form.reset();
+
+    // Reset all individual form fields explicitly
+    form.seating_capacity = "";
+    form.brand = "";
+    form.transmission = "";
+    form.fuel = "";
+    form.price_range = "";
+    form.color = "";
+    form.mileage = "";
+    form.package_type = "day";
+
+    // Reset price range slider
+    priceRangeValues.value = [0, 20000];
+    tempPriceRangeValues.value = [0, 20000];
+
+    // Force submit to reload with empty filters
+    submitFilters();
 };
 
 
@@ -500,82 +528,99 @@ if (categoryMatch && categoryMatch[1]) {
     </section>
 
     <section>
-        <div class="full-w-container py-8">
-            <!-- Mobile filter button (visible only on mobile) -->
-            <div class="md:hidden mb-4">
-                <button @click="showMobileFilters = true"
-                    class="flex items-center gap-2 p-2 bg-white rounded-lg shadow">
-                    <img :src="filterIcon" alt="Filter" />
-                    <span class="text-lg">Filters</span>
-                </button>
-            </div>
+    <div class="full-w-container py-8">
+        <!-- Mobile filter button (visible only on mobile) -->
+        <div class="md:hidden mb-4">
+            <button @click="showMobileFilters = true"
+                class="flex items-center justify-center gap-3 p-3 w-full bg-white rounded-lg shadow-md hover:shadow-lg transition-all duration-300">
+                <img :src="filterIcon" alt="Filter" class="w-5 h-5" />
+                <span class="text-lg font-medium">Find Your Perfect Car</span>
+            </button>
+        </div>
 
-            <!-- Desktop filter header (hidden on mobile) -->
-            <div class="hidden md:flex items-center gap-3 mb-8">
-                <img :src="filterIcon" alt="" />
-                <span class="text-[1.5rem]">Filters</span>
+        <!-- Desktop filter header (hidden on mobile) -->
+        <div class="hidden md:flex items-center justify-between gap-3 mb-6">
+            <div class="flex items-center gap-3">
+                <img :src="filterIcon" alt="" class="w-6 h-6" />
+                <span class="text-xl font-semibold">Customize Your Search</span>
             </div>
+            <button @click="resetFilters"
+                class="px-5 py-2 bg-customPrimaryColor text-white rounded-lg hover:bg-opacity-90 transition flex items-center gap-2">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                </svg>
+                Clear All Filters
+            </button>
+        </div>
 
-             <!-- Desktop filters (hidden on mobile) -->
-             <form class="hidden md:block">
-                <div class="flex gap-6 flex-wrap filter-slot items-center">
-                    <!-- Seating Capacity Filter -->
+        <!-- Desktop filters (hidden on mobile) -->
+        <form class="hidden md:block">
+            <div class="flex gap-5 flex-wrap filter-slot items-center">
+                <!-- Seating Capacity Filter -->
+                <div class="relative w-48 filter-group">
+                    <div class="text-xs font-medium text-gray-500 mb-1 ml-1">Passenger Seats</div>
                     <CustomDropdown v-model="form.seating_capacity" unique-id="seating-capacity"
-                        :options="$page.props.seatingCapacities.map(capacity => ({ value: capacity, label: capacity }))"
-                        placeholder="Seating Capacity" :left-icon="seatingIcon" :right-icon="CaretDown" />
+                        :options="$page.props.seatingCapacities.map(capacity => ({ value: capacity, label: capacity + ' Seats' }))"
+                        placeholder="Any Capacity" :left-icon="seatingIcon" :right-icon="CaretDown" 
+                        class="hover:border-customPrimaryColor transition-all duration-300" />
+                </div>
 
-                    <!-- Brand Filter -->
+                <!-- Brand Filter -->
+                <div class="relative w-48 filter-group">
+                    <div class="text-xs font-medium text-gray-500 mb-1 ml-1">Car Brand</div>
                     <CustomDropdown v-model="form.brand" unique-id="brand"
-                        :options="[...$page.props.brands.map(brand => ({ value: brand, label: brand })), { value: '', label: 'All Brands' }]"
-                        placeholder="All Brands" :left-icon="brandIcon" :right-icon="CaretDown" />
+                        :options="[...$page.props.brands.map(brand => ({ value: brand, label: brand })), { value: '', label: 'Any Brand' }]"
+                        placeholder="Any Brand" :left-icon="brandIcon" :right-icon="CaretDown"
+                        class="hover:border-customPrimaryColor transition-all duration-300" />
+                </div>
 
-                    <!-- Category Filter -->
-                    <CustomDropdown v-model="form.category_id" unique-id="category"
-                        :options="[...$page.props.categories.map(category => ({ value: category.id, label: category.name })), { value: '', label: 'All Categories' }]"
-                        placeholder="All Categories" :left-icon="categoryIcon" :right-icon="CaretDown" />
+                <!-- Transmission Filter -->
+                <div class="relative w-48 filter-group">
+                    <div class="text-xs font-medium text-gray-500 mb-1 ml-1">Transmission Type</div>
+                    <CustomDropdown v-model="form.transmission" unique-id="transmission"
+                        :options="[{ value: '', label: 'Any Type' }, ...$page.props.transmissions.map(transmission => ({ value: transmission, label: transmission.charAt(0).toUpperCase() + transmission.slice(1) }))]"
+                        placeholder="Any Type" :left-icon="transmissionIcon" :right-icon="CaretDown" 
+                        class="hover:border-customPrimaryColor transition-all duration-300" />
+                </div>
 
-                    <!-- Transmission Filter -->
-                    <CustomDropdown v-model="form.transmission" unique-id="transmission" :options="[
-                        { value: '', label: 'Transmission' },
-                        { value: 'automatic', label: 'Automatic' },
-                        { value: 'manual', label: 'Manual' }
-                    ]" placeholder="Transmission" :left-icon="transmissionIcon" :right-icon="CaretDown" />
+                <!-- Fuel Filter -->
+                <div class="relative w-48 filter-group">
+                    <div class="text-xs font-medium text-gray-500 mb-1 ml-1">Fuel Type</div>
+                    <CustomDropdown v-model="form.fuel" unique-id="fuel"
+                        :options="[{ value: '', label: 'Any Fuel' }, ...$page.props.fuels.map(fuel => ({ value: fuel, label: fuel.charAt(0).toUpperCase() + fuel.slice(1) }))]"
+                        placeholder="Any Fuel" :left-icon="fuelIcon" :right-icon="CaretDown"
+                        class="hover:border-customPrimaryColor transition-all duration-300" />
+                </div>
 
-                    <!-- Fuel Filter -->
-                    <CustomDropdown v-model="form.fuel" unique-id="fuel" :options="[
-                        { value: '', label: 'Fuel Type' },
-                        { value: 'petrol', label: 'Petrol' },
-                        { value: 'diesel', label: 'Diesel' },
-                        { value: 'electric', label: 'Electric' }
-                    ]" placeholder="Fuel Type" :left-icon="fuelIcon" :right-icon="CaretDown" />
-
-                    <!-- Price Range Filter (unchanged) -->
-                    <div class="relative w-full md:w-auto">
+                <!-- Price Range Filter -->
+                <div class="relative  filter-group">
+                    <div class="text-xs font-medium text-gray-500 mb-1 ml-1">Budget</div>
+                    <div class="relative w-full">
                         <img :src="priceIcon" alt="Price Icon"
                             class="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 pointer-events-none text-gray-500" />
                         <button type="button" @click="showPriceSlider = !showPriceSlider"
-                            class="pl-10 pr-4 py-2 w-full text-left flex gap-4 items-center justify-between bg-white border border-gray-200 rounded-sm shadow-sm hover:bg-gray-50 transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-black">
+                            class="pl-10 pr-4 py-2 w-full text-left flex gap-4 items-center justify-between bg-white border border-gray-200 rounded-lg shadow-sm hover:border-customPrimaryColor transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-customPrimaryColor/20">
                             <span class="text-gray-700 font-medium">
-                                {{ priceRangeValues[0] === 0 && priceRangeValues[1] === 20000 ? 'Price Range' :
-                                    `${priceRangeValues[0]} - ${priceRangeValues[1]}` }}
+                                {{ priceRangeValues[0] === 0 && priceRangeValues[1] === 20000 ? 'Set Price Range' :
+                                    `$${priceRangeValues[0]} - $${priceRangeValues[1]}` }}
                             </span>
                             <img :src="CaretDown" alt="Caret Down"
                                 class="w-5 h-5 text-gray-500 transition-transform duration-300 ease-in-out pointer-events-none"
                                 :class="{ 'rotate-180': showPriceSlider }" />
                         </button>
-                        <!-- Price Range Slider Dropdown (unchanged) -->
+                        <!-- Price Range Slider Dropdown -->
                         <div v-if="showPriceSlider"
                             class="absolute z-20 mt-2 w-[20rem] h-[12rem] bg-white shadow-xl rounded-lg p-5 border border-gray-100 animate-fade-in">
                             <div class="mb-4">
                                 <div class="flex justify-between mb-3">
                                     <div class="flex flex-col">
-                                        Min Price
+                                        <span class="text-sm text-gray-500">Minimum</span>
                                         <span class="text-lg font-semibold text-gray-800">
                                             {{ tempPriceRangeValues[0] }}
                                         </span>
                                     </div>
                                     <div class="flex flex-col items-end">
-                                        Max Price
+                                        <span class="text-sm text-gray-500">Maximum</span>
                                         <span class="text-lg font-semibold text-gray-800">
                                             {{ tempPriceRangeValues[1] }}
                                         </span>
@@ -590,168 +635,215 @@ if (categoryMatch && categoryMatch[1]) {
                             </div>
                             <div class="flex justify-between items-center">
                                 <button @click="resetPriceRange"
-                                    class="px-3 py-1.5 bg-gray-100 text-gray-700 rounded-md text-sm font-medium hover:bg-gray-200 transition-colors duration-200">
+                                    class="px-3 py-1.5 bg-gray-100 text-gray-700 rounded-md text-sm font-medium hover:bg-gray-200 transition-all duration-300">
                                     Reset
                                 </button>
                                 <button @click="applyPriceRange"
-                                    class="px-3 py-1.5 bg-customPrimaryColor text-white rounded-md text-sm font-medium hover:bg-[#153b4fdc] transition-colors duration-200">
+                                    class="px-3 py-1.5 bg-customPrimaryColor text-white rounded-md text-sm font-medium hover:bg-opacity-90 transition-all duration-300">
                                     Apply
                                 </button>
                             </div>
                         </div>
                     </div>
-
-                    <!-- Color Filter -->
-                    <CustomDropdown v-model="form.color" unique-id="color"
-                        :options="[...$page.props.colors.map(color => ({ value: color, label: color })), { value: '', label: 'Color' }]"
-                        placeholder="Color" :left-icon="colorIcon" :right-icon="CaretDown" />
-
-                    <!-- Mileage Filter -->
-                    <CustomDropdown v-model="form.mileage" unique-id="mileage" :options="[
-                        { value: '', label: 'Mileage' },
-                        { value: '0-10', label: '0 - 10 km/d' },
-                        { value: '10-20', label: '10 - 20 km/d' },
-                        { value: '20-30', label: '20 - 30 km/d' },
-                        { value: '30-40', label: '30 - 40 km/d' }
-                    ]" placeholder="Mileage" :left-icon="mileageIcon2" :right-icon="CaretDown" />
-
-                    <!-- Package Type Filter -->
-                    <CustomDropdown v-model="form.package_type" unique-id="package-type" :options="[
-                        { value: 'day', label: 'Price Per Day' },
-                        { value: 'week', label: 'Price Per Week' },
-                        { value: 'month', label: 'Price Per Month' }
-                    ]" placeholder="Price Per Day" :left-icon="priceperdayicon" :right-icon="CaretDown" />
                 </div>
-            </form>
 
-            <!-- Mobile Filters Canvas/Sidebar -->
-            <div v-if="showMobileFilters" class="fixed inset-0 bg-black bg-opacity-50 z-50 md:hidden"
-                @click="showMobileFilters = false">
-                <div class="fixed right-0 top-0 h-full w-4/5 bg-white overflow-y-auto p-4" @click.stop>
-                    <div class="flex justify-between items-center mb-6">
-                        <div class="flex items-center gap-2">
-                            <img :src="filterIcon" alt="" />
-                            <h2 class="text-xl font-medium">Filters</h2>
-                        </div>
-                        <button @click="showMobileFilters = false" class="text-2xl">
-                            &times;
-                        </button>
+                <!-- Color Filter -->
+                <div class="relative w-48 filter-group">
+                    <div class="text-xs font-medium text-gray-500 mb-1 ml-1">Car Color</div>
+                    <CustomDropdown v-model="form.color" unique-id="color"
+                        :options="[...$page.props.colors.map(color => ({ value: color, label: color })), { value: '', label: 'Any Color' }]"
+                        placeholder="Any Color" :left-icon="colorIcon" :right-icon="CaretDown"
+                        class="hover:border-customPrimaryColor transition-all duration-300" />
+                </div>
+
+                <!-- Mileage Filter -->
+                <div class="relative w-48 filter-group">
+                    <div class="text-xs font-medium text-gray-500 mb-1 ml-1">Fuel Efficiency</div>
+                    <CustomDropdown v-model="form.mileage" unique-id="mileage"
+                        :options="[{ value: '', label: 'Any Mileage' }, ...$page.props.mileages.map(mileage => ({ value: mileage, label: `${mileage} km/liter` }))]"
+                        placeholder="Any Mileage" :left-icon="mileageIcon2" :right-icon="CaretDown"
+                        class="hover:border-customPrimaryColor transition-all duration-300" />
+                </div>
+
+                <!-- Package Type Filter -->
+                <div class="relative w-48 filter-group">
+                    <div class="text-xs font-medium text-gray-500 mb-1 ml-1">Rental Period</div>
+                    <CustomDropdown v-model="form.package_type" unique-id="package-type" :options="[
+                        { value: 'day', label: 'Daily Rate' },
+                        { value: 'week', label: 'Weekly Rate' },
+                        { value: 'month', label: 'Monthly Rate' }
+                    ]" placeholder="Daily Rate" :left-icon="priceperdayicon" :right-icon="CaretDown"
+                    class="hover:border-customPrimaryColor bg-customPrimaryColor/5 transition-all duration-300" />
+                </div>
+                
+                <!-- Search Button -->
+                <!-- <div class="filter-group">
+                    <div class="text-xs font-medium text-gray-500 mb-1 ml-1">&nbsp;</div>
+                    <button @click="applyFilters" type="button"
+                        class="h-10 bg-customPrimaryColor text-white py-2 px-5 rounded-lg font-medium hover:bg-opacity-90 transition-all duration-300 flex items-center justify-center gap-2">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                            <path fill-rule="evenodd" d="M8 4a4 4 0 100 8 4 4 0 000-8zM2 8a6 6 0 1110.89 3.476l4.817 4.817a1 1 0 01-1.414 1.414l-4.816-4.816A6 6 0 012 8z" clip-rule="evenodd" />
+                        </svg>
+                        Search Cars
+                    </button>
+                </div> -->
+            </div>
+        </form>
+
+        <!-- Mobile Filters Canvas/Sidebar -->
+        <div v-if="showMobileFilters" class="fixed inset-0 bg-black bg-opacity-50 z-50 md:hidden"
+            @click="showMobileFilters = false">
+            <div class="fixed inset-x-0 bottom-0 max-h-[85%] bg-white rounded-t-xl overflow-y-auto p-5 pt-0" @click.stop>
+                <div class="flex justify-between items-center mb-4 sticky z-50 top-0 bg-white pb-3 border-b border-gray-100 py-4">
+                    <div class="flex items-center gap-2">
+                        <img :src="filterIcon" alt="" class="w-5 h-5" />
+                        <h2 class="text-xl font-medium">Search Options</h2>
+                    </div>
+                    <button @click="showMobileFilters = false" class="p-2 bg-gray-100 rounded-full">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                            <path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd" />
+                        </svg>
+                    </button>
+                </div>
+
+                <form class="space-y-5 filter-slot py-[1rem]">
+                    <!-- Seating Capacity Filter -->
+                    <div class="filter-item">
+                        <label class="text-sm font-medium text-gray-700 mb-1 block">Passenger Seats</label>
+                        <CustomDropdown v-model="form.seating_capacity" unique-id="seating-capacity-mobile"
+                            :options="$page.props.seatingCapacities.map(capacity => ({ value: capacity, label: capacity + ' Seats' }))"
+                            placeholder="Any Capacity" :left-icon="seatingIcon" :right-icon="CaretDown" />
                     </div>
 
-                    <form class="space-y-6 filter-slot">
-                        <!-- Seating Capacity Filter -->
-                        <CustomDropdown v-model="form.seating_capacity" unique-id="seating-capacity"
-                            :options="$page.props.seatingCapacities.map(capacity => ({ value: capacity, label: capacity }))"
-                            placeholder="Seating Capacity" :left-icon="seatingIcon" :right-icon="CaretDown" />
+                    <!-- Brand Filter -->
+                    <div class="filter-item">
+                        <label class="text-sm font-medium text-gray-700 mb-1 block">Car Brand</label>
+                        <CustomDropdown v-model="form.brand" unique-id="brand-mobile"
+                            :options="[...$page.props.brands.map(brand => ({ value: brand, label: brand })), { value: '', label: 'Any Brand' }]"
+                            placeholder="Any Brand" :left-icon="brandIcon" :right-icon="CaretDown" />
+                    </div>
 
-                        <!-- Brand Filter -->
-                        <CustomDropdown v-model="form.brand" unique-id="brand"
-                            :options="[...$page.props.brands.map(brand => ({ value: brand, label: brand })), { value: '', label: 'All Brands' }]"
-                            placeholder="All Brands" :left-icon="brandIcon" :right-icon="CaretDown" />
+                    <!-- Transmission Filter -->
+                    <div class="filter-item">
+                        <label class="text-sm font-medium text-gray-700 mb-1 block">Transmission Type</label>
+                        <CustomDropdown v-model="form.transmission" unique-id="transmission-mobile"
+                            :options="[{ value: '', label: 'Any Type' }, ...$page.props.transmissions.map(transmission => ({ value: transmission, label: transmission.charAt(0).toUpperCase() + transmission.slice(1) }))]"
+                            placeholder="Any Type" :left-icon="transmissionIcon" :right-icon="CaretDown" />
+                    </div>
 
-                        <!-- Category Filter -->
-                        <CustomDropdown v-model="form.category_id" unique-id="category"
-                            :options="[...$page.props.categories.map(category => ({ value: category.id, label: category.name })), { value: '', label: 'All Categories' }]"
-                            placeholder="All Categories" :left-icon="categoryIcon" :right-icon="CaretDown" />
+                    <!-- Fuel Filter -->
+                    <div class="filter-item">
+                        <label class="text-sm font-medium text-gray-700 mb-1 block">Fuel Type</label>
+                        <CustomDropdown v-model="form.fuel" unique-id="fuel-mobile"
+                            :options="[{ value: '', label: 'Any Fuel' }, ...$page.props.fuels.map(fuel => ({ value: fuel, label: fuel.charAt(0).toUpperCase() + fuel.slice(1) }))]"
+                            placeholder="Any Fuel" :left-icon="fuelIcon" :right-icon="CaretDown" />
+                    </div>
 
-                        <!-- Transmission Filter -->
-                        <CustomDropdown v-model="form.transmission" unique-id="transmission" :options="[
-                            { value: '', label: 'Transmission' },
-                            { value: 'automatic', label: 'Automatic' },
-                            { value: 'manual', label: 'Manual' }
-                        ]" placeholder="Transmission" :left-icon="transmissionIcon" :right-icon="CaretDown" />
-
-                        <!-- Fuel Filter -->
-                        <CustomDropdown v-model="form.fuel" unique-id="fuel" :options="[
-                            { value: '', label: 'Fuel Type' },
-                            { value: 'petrol', label: 'Petrol' },
-                            { value: 'diesel', label: 'Diesel' },
-                            { value: 'electric', label: 'Electric' }
-                        ]" placeholder="Fuel Type" :left-icon="fuelIcon" :right-icon="CaretDown" />
-
-                        <!-- Price Range Filter (unchanged) -->
-                        <div class="relative w-full md:w-auto">
-                            <img :src="priceIcon" alt="Price Icon"
-                                class="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 pointer-events-none text-gray-500" />
-                            <button type="button" @click="showPriceSlider = !showPriceSlider"
-                                class="pl-10 pr-4 py-2 w-full text-left flex gap-4 items-center justify-between bg-white border border-gray-200 rounded-sm shadow-sm hover:bg-gray-50 transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-black">
-                                <span class="text-gray-700 font-medium">
-                                    {{ priceRangeValues[0] === 0 && priceRangeValues[1] === 20000 ? 'Price Range' :
-                                        `${priceRangeValues[0]} - ${priceRangeValues[1]}` }}
-                                </span>
-                                <img :src="CaretDown" alt="Caret Down"
-                                    class="w-5 h-5 text-gray-500 transition-transform duration-300 ease-in-out pointer-events-none"
-                                    :class="{ 'rotate-180': showPriceSlider }" />
-                            </button>
-                            <!-- Price Range Slider Dropdown (unchanged) -->
-                            <div v-if="showPriceSlider"
-                                class="absolute z-20 mt-2 w-[20rem] max-[768px]:w-full h-[12rem] bg-white shadow-xl rounded-lg p-5 border border-gray-100 animate-fade-in">
-                                <div class="mb-4">
-                                    <div class="flex justify-between mb-3">
-                                        <div class="flex flex-col">
-                                            Min Price
-                                            <span class="text-lg font-semibold text-gray-800">
-                                                {{ tempPriceRangeValues[0] }}
-                                            </span>
-                                        </div>
-                                        <div class="flex flex-col items-end">
-                                            Max Price
-                                            <span class="text-lg font-semibold text-gray-800">
-                                                {{ tempPriceRangeValues[1] }}
-                                            </span>
-                                        </div>
+                    <!-- Price Range Filter -->
+                    <div class="filter-item">
+                        <label class="text-sm font-medium text-gray-700 mb-1 block">Budget</label>
+                        <div class="relative w-full">
+                        <img :src="priceIcon" alt="Price Icon"
+                            class="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 pointer-events-none text-gray-500" />
+                        <button type="button" @click="showPriceSlider = !showPriceSlider"
+                            class="pl-10 pr-4 py-2 w-full text-left flex gap-4 items-center justify-between bg-white border border-gray-200 rounded-lg shadow-sm hover:border-customPrimaryColor transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-customPrimaryColor/20">
+                            <span class="text-gray-700 font-medium">
+                                {{ priceRangeValues[0] === 0 && priceRangeValues[1] === 20000 ? 'Set Price Range' :
+                                    `$${priceRangeValues[0]} - $${priceRangeValues[1]}` }}
+                            </span>
+                            <img :src="CaretDown" alt="Caret Down"
+                                class="w-5 h-5 text-gray-500 transition-transform duration-300 ease-in-out pointer-events-none"
+                                :class="{ 'rotate-180': showPriceSlider }" />
+                        </button>
+                        <!-- Price Range Slider Dropdown -->
+                        <div v-if="showPriceSlider"
+                            class="absolute z-20 mt-2 w-full h-[12rem] bg-white shadow-xl rounded-lg p-5 border border-gray-100 animate-fade-in">
+                            <div class="mb-4">
+                                <div class="flex justify-between mb-3">
+                                    <div class="flex flex-col">
+                                        <span class="text-sm text-gray-500">Minimum</span>
+                                        <span class="text-lg font-semibold text-gray-800">
+                                            {{ tempPriceRangeValues[0] }}
+                                        </span>
                                     </div>
-                                    <VueSlider v-model="tempPriceRangeValues" :min="priceRangeMin" :max="priceRangeMax"
-                                        :interval="500" :tooltip="'none'" :height="8" :dot-size="20"
-                                        :process-style="{ backgroundColor: '#153b4f', borderRadius: '4px' }"
-                                        :rail-style="{ backgroundColor: '#e5e7eb', borderRadius: '4px' }"
-                                        :dot-style="{ backgroundColor: '#ffffff', border: '2px solid #153b4f', boxShadow: '0 2px 4px rgba(0,0,0,0.1)' }"
-                                        class="mb-4" />
+                                    <div class="flex flex-col items-end">
+                                        <span class="text-sm text-gray-500">Maximum</span>
+                                        <span class="text-lg font-semibold text-gray-800">
+                                            {{ tempPriceRangeValues[1] }}
+                                        </span>
+                                    </div>
                                 </div>
-                                <div class="flex justify-between items-center">
-                                    <button @click="resetPriceRange"
-                                        class="px-3 py-1.5 bg-gray-100 text-gray-700 rounded-md text-sm font-medium hover:bg-gray-200 transition-colors duration-200">
-                                        Reset
-                                    </button>
-                                    <button @click="applyPriceRange"
-                                        class="px-3 py-1.5 bg-customPrimaryColor text-white rounded-md text-sm font-medium hover:bg-[#153b4fdc] transition-colors duration-200">
-                                        Apply
-                                    </button>
-                                </div>
+                                <VueSlider v-model="tempPriceRangeValues" :min="priceRangeMin" :max="priceRangeMax"
+                                    :interval="500" :tooltip="'none'" :height="8" :dot-size="20"
+                                    :process-style="{ backgroundColor: '#153b4f', borderRadius: '4px' }"
+                                    :rail-style="{ backgroundColor: '#e5e7eb', borderRadius: '4px' }"
+                                    :dot-style="{ backgroundColor: '#ffffff', border: '2px solid #153b4f', boxShadow: '0 2px 4px rgba(0,0,0,0.1)' }"
+                                    class="mb-4" />
+                            </div>
+                            <div class="flex justify-between items-center">
+                                <button @click="resetPriceRange"
+                                    class="px-3 py-1.5 bg-gray-100 text-gray-700 rounded-md text-sm font-medium hover:bg-gray-200 transition-all duration-300">
+                                    Reset
+                                </button>
+                                <button @click="applyPriceRange"
+                                    class="px-3 py-1.5 bg-customPrimaryColor text-white rounded-md text-sm font-medium hover:bg-opacity-90 transition-all duration-300">
+                                    Apply
+                                </button>
                             </div>
                         </div>
+                    </div>
+                    </div>
 
-                        <!-- Color Filter -->
-                        <CustomDropdown v-model="form.color" unique-id="color"
-                            :options="[...$page.props.colors.map(color => ({ value: color, label: color })), { value: '', label: 'Color' }]"
-                            placeholder="Color" :left-icon="colorIcon" :right-icon="CaretDown" />
+                    <!-- Color Filter -->
+                    <div class="filter-item">
+                        <label class="text-sm font-medium text-gray-700 mb-1 block">Car Color</label>
+                        <CustomDropdown v-model="form.color" unique-id="color-mobile"
+                            :options="[...$page.props.colors.map(color => ({ value: color, label: color })), { value: '', label: 'Any Color' }]"
+                            placeholder="Any Color" :left-icon="colorIcon" :right-icon="CaretDown" />
+                    </div>
 
-                        <!-- Mileage Filter -->
-                        <CustomDropdown v-model="form.mileage" unique-id="mileage" :options="[
-                            { value: '', label: 'Mileage' },
-                            { value: '0-10', label: '0 - 10 km/d' },
-                            { value: '10-20', label: '10 - 20 km/d' },
-                            { value: '20-30', label: '20 - 30 km/d' },
-                            { value: '30-40', label: '30 - 40 km/d' }
-                        ]" placeholder="Mileage" :left-icon="mileageIcon2" :right-icon="CaretDown" />
+                    <!-- Mileage Filter -->
+                    <div class="filter-item">
+                        <label class="text-sm font-medium text-gray-700 mb-1 block">Fuel Efficiency</label>
+                        <CustomDropdown v-model="form.mileage" unique-id="mileage-mobile"
+                            :options="[{ value: '', label: 'Any Mileage' }, ...$page.props.mileages.map(mileage => ({ value: mileage, label: `${mileage} km/liter` }))]"
+                            placeholder="Any Mileage" :left-icon="mileageIcon2" :right-icon="CaretDown" />
+                    </div>
 
-                        <!-- Package Type Filter -->
-                        <CustomDropdown v-model="form.package_type" unique-id="package-type" :options="[
-                            { value: 'day', label: 'Price Per Day' },
-                            { value: 'week', label: 'Price Per Week' },
-                            { value: 'month', label: 'Price Per Month' }
-                        ]" placeholder="Price Per Day" :left-icon="priceperdayicon" :right-icon="CaretDown" />
+                    <!-- Package Type Filter -->
+                    <div class="filter-item">
+                        <label class="text-sm font-medium text-gray-700 mb-1 block">Rental Period</label>
+                        <CustomDropdown v-model="form.package_type" unique-id="package-type-mobile" :options="[
+                            { value: 'day', label: 'Daily Rate' },
+                            { value: 'week', label: 'Weekly Rate' },
+                            { value: 'month', label: 'Monthly Rate' }
+                        ]" placeholder="Daily Rate" :left-icon="priceperdayicon" :right-icon="CaretDown" />
+                    </div>
 
-                        <!-- Apply Filters Button -->
-                        <button @click="applyFilters"
-                            class="w-full bg-customPrimaryColor text-white py-3 px-4 rounded-lg font-medium hover:bg-opacity-90 transition">
-                            Apply Filters
+                    <!-- Action Buttons -->
+                    <div class="grid grid-cols-2 gap-3 pt-3 mt-4 border-t border-gray-100">
+                        <button @click="resetFilters" type="button"
+                            class="py-3 px-4 bg-gray-100 text-gray-700 rounded-lg font-medium hover:bg-gray-200 transition-all duration-300 flex items-center justify-center gap-2">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                            </svg>
+                            Clear All
                         </button>
-                    </form>
-                </div>
+                        <button @click="applyFilters" type="button"
+                            class="py-3 px-4 bg-customPrimaryColor text-white rounded-lg font-medium hover:bg-opacity-90 transition-all duration-300 flex items-center justify-center gap-2">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                                <path fill-rule="evenodd" d="M8 4a4 4 0 100 8 4 4 0 000-8zM2 8a6 6 0 1110.89 3.476l4.817 4.817a1 1 0 01-1.414 1.414l-4.816-4.816A6 6 0 012 8z" clip-rule="evenodd" />
+                            </svg>
+                            Search Cars
+                        </button>
+                    </div>
+                </form>
             </div>
         </div>
-    </section>
+        
+       
+    </div>
+</section>
 
     <div class="full-w-container flex justify-end max-[768px]:hidden">
         <div class="flex items-center space-x-2 mb-[2rem]">
@@ -768,8 +860,17 @@ if (categoryMatch && categoryMatch[1]) {
                     'grid gap-5',
                     showMap ? 'w-full grid-cols-2' : 'w-full grid-cols-4',
                 ]" class="max-[768px]:grid-cols-1">
-                    <div v-if="!vehicles.data || vehicles.data.length === 0" class="text-center text-gray-500">
-                        No vehicles available at the moment.
+                    <div v-if="!vehicles.data || vehicles.data.length === 0"
+                        class="text-center text-gray-500 col-span-2 flex flex-col justify-center items-center gap-4">
+                        <img :src=noVehicleIcon alt="" class="w-[25rem] max-[768px]:w-full">
+                        <p class="text-lg font-medium text-customPrimaryColor">No vehicles available at the moment</p>
+                        <span>Search for another location</span>
+                        <strong>Or</strong>
+                        <span>Try to reduce the number of search filters.</span>
+                        <button @click="resetFilters"
+                            class="mt-4 px-6 py-2 bg-customPrimaryColor text-white rounded-lg hover:bg-opacity-90 transition">
+                            Reset All Filters
+                        </button>
                     </div>
                     <div v-for="vehicle in vehicles.data" :key="vehicle.id"
                         class="rounded-[12px] border-[1px] border-[#E7E7E7] relative overflow-hidden">

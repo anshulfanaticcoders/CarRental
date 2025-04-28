@@ -119,23 +119,15 @@
           </div>
         </div>
 
-        <!-- Add location error display below search-results -->
-        <div v-if="locationError"
-          class="absolute top-[105%] w-[50%] text-red-500 text-center max-[768px]:w-full max-[768px]:top-[55%]">
-          {{ locationError }}
-        </div>
-
-        <div v-if="dateError"
-          class="absolute top-[105%] w-[50%] text-red-500 text-center max-[768px]:w-full max-[768px]:top-[55%]">
-          Please fill in all fields: location, pickup date, and return date.
-        </div>
+         <!-- Error Dialog -->
+         <ErrorDialog :show="errorMessage !== ''" :message="errorMessage" @close="clearError" />
       </div>
     </div>
   </section>
 </template>
 
 <script setup>
-import { onMounted, onUnmounted, ref, watch } from "vue";
+import { computed, onMounted, onUnmounted, ref, watch } from "vue";
 import axios from "axios";
 import { router } from "@inertiajs/vue3";
 import VueDatePicker from '@vuepic/vue-datepicker';
@@ -169,6 +161,23 @@ const searchPerformed = ref(false);
 const showSearchBox = ref(false);
 const popularPlaces = ref([]);
 const locationError = ref(null);
+
+// Compute error message to display in dialog
+const errorMessage = computed(() => {
+  if (dateError.value) {
+    return "Please fill in all fields: location, pickup date, and return date.";
+  }
+  if (locationError.value) {
+    return locationError.value;
+  }
+  return "";
+});
+
+// Clear error messages
+const clearError = () => {
+  dateError.value = false;
+  locationError.value = null;
+};
 
 const handleInputFocus = () => {
   showSearchBox.value = true;
@@ -281,7 +290,6 @@ const searchAroundMe = async () => {
     isSearching.value = false;
 
   } catch (error) {
-    console.error("Error getting location:", error);
     locationError.value = "Unable to get your location. Please allow location access or try another search.";
     isSearching.value = false;
   }
@@ -436,6 +444,37 @@ watch(pickupDate, (newPickupDate) => {
     returnDate.value = null;
   }
 });
+
+
+// Error Dialog Component
+const ErrorDialog = {
+  props: {
+    show: Boolean,
+    message: String,
+  },
+  emits: ['close'],
+  template: `
+    <div v-if="show" class="fixed inset-0 flex items-center justify-center z-50 bg-black bg-opacity-50">
+      <div class="bg-white rounded-lg p-6 w-[90%] max-w-[400px] shadow-lg">
+        <div class="flex justify-between items-center mb-4">
+          <h3 class="text-lg font-semibold text-red-600">Error</h3>
+          <button @click="$emit('close')" class="text-gray-500 hover:text-gray-700">
+            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+            </svg>
+          </button>
+        </div>
+        <p class="text-gray-700">{{ message }}</p>
+        <div class="mt-6 flex justify-end">
+          <button @click="$emit('close')"
+            class="bg-customPrimaryColor text-customPrimaryColor-foreground px-4 py-2 rounded-lg hover:bg-opacity-90">
+            OK
+          </button>
+        </div>
+      </div>
+    </div>
+  `,
+};
 </script>
 
 <style>

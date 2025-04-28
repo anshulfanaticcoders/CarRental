@@ -265,8 +265,9 @@ class VendorVehicleController extends Controller
 
             foreach ($request->file('images') as $index => $image) {
                 // Store image on UpCloud storage
+                $originalName = $image->getClientOriginalName();
                 $folderName = 'vehicle_images';
-                $path = $image->store($folderName, 'upcloud');
+                $path = $image->storeAs($folderName, $originalName, 'upcloud');
                 $url = Storage::disk('upcloud')->url($path);
 
                 // Determine image type
