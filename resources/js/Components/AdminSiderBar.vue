@@ -277,6 +277,10 @@ const data = {
           title: 'FAQ',
           url: '/admin/settings/faq',
         },
+        {
+          title: 'Radius',
+          url: '/radiuses',
+        },
       ],
     },
   ],

@@ -12,6 +12,7 @@ use App\Http\Controllers\Admin\PageController;
 use App\Http\Controllers\Admin\PaymentDashboardController;
 use App\Http\Controllers\Admin\PlansController;
 use App\Http\Controllers\Admin\PopularPlacesController;
+use App\Http\Controllers\Admin\RadiusController;
 use App\Http\Controllers\Admin\TestimonialController;
 use App\Http\Controllers\Admin\UserReportDownloadController;
 use App\Http\Controllers\Admin\UsersController;
@@ -244,6 +245,11 @@ Route::middleware(['auth', 'role:admin'])->group(function () {
         Route::post('/{id}', [TestimonialController::class, 'update'])->name('testimonials.update');
         Route::delete('/{id}', [TestimonialController::class, 'destroy'])->name('testimonials.destroy');
     });
+
+    Route::get('/radiuses', [RadiusController::class, 'index'])->name('radiuses.index');
+    Route::post('/radiuses', [RadiusController::class, 'store'])->name('radiuses.store');
+    Route::put('/radiuses/{radius}', [RadiusController::class, 'update'])->name('radiuses.update');
+    Route::delete('/radiuses/{radius}', [RadiusController::class, 'destroy'])->name('radiuses.destroy');
 
 });
 

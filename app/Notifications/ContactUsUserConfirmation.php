@@ -50,7 +50,9 @@ class ContactUsUserConfirmation extends Notification
     public function toArray(object $notifiable): array
     {
         return [
-            //
+            'name'    => $this->contactData['name'],
+            'email'   => $this->contactData['email'],
+            'message' => $this->contactData['message'],
         ];
     }
 }

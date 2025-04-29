@@ -21,10 +21,10 @@
                       stroke="#153B4F" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" />
                   </svg>
                   <input type="text" v-model="form.where" @input="handleSearchInput" @focus="handleInputFocus"
-                    placeholder="Choose Pickup Location"
+                    :placeholder="isSearching ? 'Searching...' : 'Pickup Location'"
                     class="pl-7 border-b border-customLightGrayColor focus:outline-none w-[80%] max-[768px]:w-full"
                     required />
-                  <span v-if="isSearching" class="absolute right-[1rem] top-0 text-customLightGrayColor">Searching...</span>
+                  <!-- <span v-if="isSearching" class="absolute right-[1rem] top-0 text-customLightGrayColor">Searching...</span> -->
                 </div>
               </div>
             </div>
