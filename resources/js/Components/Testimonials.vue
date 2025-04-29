@@ -9,50 +9,29 @@ import {
     CarouselPrevious,
 } from "@/Components/ui/carousel";
 import Autoplay from "embla-carousel-autoplay";
-import avatarImage from "../../assets/avatar.jpg";
-import starIcon from "../../assets/stars.svg";
+import axios from "axios";
 
 // Data ref to hold testimonials
-const testimonials = ref([
-    {
-        comment: "This is the best service I've ever used!",
-        author: "John Carter",
-        title: "CEO at Rento",
-        rating: 4.5,
-        avatar: avatarImage,
-    },
-    {
-        comment: "Absolutely fantastic experience, highly recommend!",
-        author: "Jane Doe",
-        title: "Manager at Company",
-        rating: 5,
-        avatar: avatarImage,
-    },
-    {
-        comment:
-            "A game changer for my business! The support team is exceptional.",
-        author: "Alice Smith",
-        title: "Entrepreneur",
-        rating: 4.8,
-        avatar: avatarImage,
-    },
-    {
-        comment:
-            "I can't believe how easy this was! Will definitely use it again.",
-        author: "Michael Brown",
-        title: "Freelancer",
-        rating: 4.7,
-        avatar: avatarImage,
-    },
-    {
-        comment:
-            "Exceptional quality and support! Highly satisfied with my experience.",
-        author: "Emily Johnson",
-        title: "Product Manager",
-        rating: 5,
-        avatar: avatarImage,
-    },
-]);
+const testimonials = ref([]);
+const loading = ref(true);
+const error = ref(null);
+
+const fetchTestimonials = async () => {
+    try {
+        loading.value = true;
+        const response = await axios.get('/api/testimonials/frontend');
+        testimonials.value = response.data.testimonials;
+    } catch (err) {
+        error.value = "Failed to load testimonials. Please try again later.";
+        console.error("Error fetching testimonials:", err);
+    } finally {
+        loading.value = false;
+    }
+};
+
+onMounted(() => {
+    fetchTestimonials();
+});
 
 const plugin = Autoplay({
     delay: 2000,
@@ -62,25 +41,42 @@ const plugin = Autoplay({
 </script>
 
 <template>
-    <div class="testimonials bg-customPrimaryColor min-h-[90vh]  max-[768px]:min-h-auto flex flex-col gap-10 items-center py-customVerticalSpacing mt-[4rem]
+    <div class="testimonials bg-customPrimaryColor min-h-[90vh] max-[768px]:min-h-auto flex flex-col gap-10 items-center py-customVerticalSpacing mt-[4rem]
          max-[768px]:mt-0 max-[768px]:py-0 max-[768px]:px-[0.5rem]">
         <div class="column text-center flex flex-col items-center text-customPrimaryColor-foreground w-[573px] py-[2rem]
          max-[768px]:w-full">
-            <span class="text-[1.25rem]  max-[768px]:mb-5">-Testimonials-</span>
+            <span class="text-[1.25rem] max-[768px]:mb-5">-Testimonials-</span>
             <h3 class="max-w-[883px] max-[768px]:max-w-full">
                 What our customers are saying about us
             </h3>
         </div>
-        <Carousel class="relative w-full full-w-container" :plugins="[plugin]" @mouseenter="plugin.stop" @mouseleave="
-            [plugin.reset(), plugin.play(), console.log('Running')]
-            " :slides-to-show="3">
+
+        <!-- Loading state -->
+        <div v-if="loading" class="flex justify-center items-center p-8">
+            <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-white"></div>
+        </div>
+
+        <!-- Error state -->
+        <div v-else-if="error" class="text-red-500 p-8 text-center">
+            {{ error }}
+        </div>
+
+        <!-- No testimonials -->
+        <div v-else-if="testimonials.length === 0" class="text-white p-8 text-center">
+            No testimonials available yet.
+        </div>
+
+        <!-- Testimonials carousel -->
+        <Carousel v-else class="relative w-full full-w-container" :plugins="[plugin]" 
+            @mouseenter="plugin.stop" 
+            @mouseleave="[plugin.reset(), plugin.play()]" 
+            :slides-to-show="3">
             <CarouselContent class="max-[768px]:mx-0">
                 <CarouselItem v-for="(testimonial, index) in testimonials" :key="index"
                     class="pl-1 md:basis-1/2 lg:basis-1/4">
                     <div class="p-1">
                         <Card class='h-[19rem]'>
                             <CardContent class="flex h-full flex-col aspect-square justify-center p-6 gap-10">
-                                <!-- get testimonials values here -->
                                 <div class="column p-4 border-b border-customMediumBlackColor">
                                     <span v-for="star in Math.floor(testimonial.rating)" :key="star"
                                         class="text-yellow-500 text-[1.5rem]">★</span>
@@ -92,12 +88,10 @@ const plugin = Autoplay({
                                 </div>
                                 <div class="column flex gap-4 items-center">
                                     <div class="col">
-                                        <img :src="testimonial.avatar" alt="" class="h-16 w-16" />
+                                        <img :src="testimonial.avatar || '/assets/default-avatar.jpg'" alt="" class="h-16 w-16 rounded-full object-cover" />
                                     </div>
                                     <div class="col flex flex-col gap-1">
-                                        <strong>{{
-                                            testimonial.author
-                                            }}</strong>
+                                        <strong>{{ testimonial.author }}</strong>
                                         <span>{{ testimonial.title }}</span>
                                     </div>
                                 </div>
@@ -120,7 +114,6 @@ const plugin = Autoplay({
 .testimonials .prev-btn {
     left: 45% !important;
     background-color: white;
-
 }
 
 .testimonials .next-btn {
@@ -136,14 +129,12 @@ const plugin = Autoplay({
 .testimonials {
     background-image: url('../../assets/gridlinetestimonials.png');
     background-size: cover;
-    /* background-position: center center; */
 }
 
 @media screen and (max-width:768px) {
     .testimonials .prev-btn {
         left: 60% !important;
         background-color: white;
-
     }
 
     .testimonials .next-btn {

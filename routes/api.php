@@ -73,3 +73,5 @@ Route::get('/recent-blogs', [BlogController::class, 'getRecentBlogs']);
 Route::get('/faqs', [FaqController::class, 'getFaqs']);
 
 Route::get('/vehicles/search-locations', [VehicleController::class, 'searchLocations'])->name('vehicles.search-locations');
+
+Route::get('/testimonials/frontend', [App\Http\Controllers\Admin\TestimonialController::class, 'getFrontendTestimonials']);

@@ -2,12 +2,14 @@
 
 namespace App\Http\Controllers;
 
+use Illuminate\Support\Facades\Notification;
 use App\Models\ContactSubmission;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Validator;
 use App\Notifications\ContactUsNotification;
+use App\Notifications\ContactUsUserConfirmation;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -38,15 +40,14 @@ class ContactFormController extends Controller
         ]);
 
         $admin = User::where('email', $request->input('admin_email'))->first();
-
         if ($admin) {
-            try {
-                $admin->notify(new ContactUsNotification($submission));
-            } catch (\Exception $e) {
-                // Log the error for debugging, but don’t interrupt the user experience
-                \Log::error('Failed to send ContactUsNotification: ' . $e->getMessage());
-            }
+            $admin->notify(new ContactUsNotification($submission));
         }
+    
+        // Notify the user (email string)
+        Notification::route('mail', $request->input('email'))
+            ->notify(new ContactUsUserConfirmation($submission));
+     
 
         // Redirect back with a success message
         return back()->with('success', 'Your message has been sent successfully!');

@@ -12,7 +12,6 @@ import Heart from "../../assets/Heart.svg";
 import FilledHeart from "../../assets/FilledHeart.svg";
 import check from "../../assets/Check.svg";
 import priceIcon from "../../assets/percent.svg";
-import categoryIcon from "../../assets/categoryIcon.png";
 import priceperdayicon from "../../assets/priceFilter.png";
 import fuelIcon from "../../assets/fuel.svg";
 import transmissionIcon from "../../assets/transmittionIcon.svg";

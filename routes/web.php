@@ -12,6 +12,7 @@ use App\Http\Controllers\Admin\PageController;
 use App\Http\Controllers\Admin\PaymentDashboardController;
 use App\Http\Controllers\Admin\PlansController;
 use App\Http\Controllers\Admin\PopularPlacesController;
+use App\Http\Controllers\Admin\TestimonialController;
 use App\Http\Controllers\Admin\UserReportDownloadController;
 use App\Http\Controllers\Admin\UsersController;
 use App\Http\Controllers\Admin\UsersReportController;
@@ -235,6 +236,14 @@ Route::middleware(['auth', 'role:admin'])->group(function () {
     Route::get('/contact-us-mails', [ContactFormController::class, 'fetchSubmissions'])->name('contact.mails');
     Route::get('/notifications/unread', [ContactFormController::class, 'unreadNotifications'])->name('notifications.unread');
     Route::post('/notifications/mark-as-read/{id}', [ContactFormController::class, 'markAsRead'])->name('notifications.markAsRead');
+
+    Route::prefix('testimonials')->group(function () {
+        Route::get('/', [TestimonialController::class, 'index'])->name('testimonials.index');
+        Route::post('/', [TestimonialController::class, 'store'])->name('testimonials.store');
+        Route::get('/{id}', [TestimonialController::class, 'show'])->name('testimonials.show');
+        Route::post('/{id}', [TestimonialController::class, 'update'])->name('testimonials.update');
+        Route::delete('/{id}', [TestimonialController::class, 'destroy'])->name('testimonials.destroy');
+    });
 
 });
 
