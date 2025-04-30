@@ -14,32 +14,17 @@
                         <form @submit.prevent="submit" class="space-y-4">
                             <div>
                                 <InputLabel for="city" value="City" />
-                                <select v-model="form.city" class="w-full px-3 py-2 border rounded-lg">
-                                    <option value="">Select City</option>
-                                    <option v-for="city in cities" :value="city" :key="city">
-                                        {{ city || 'N/A' }}
-                                    </option>
-                                </select>
+                                <Input v-model="form.city" type="text" placeholder="Enter city" />
                             </div>
 
                             <div>
                                 <InputLabel for="state" value="State" />
-                                <select v-model="form.state" class="w-full px-3 py-2 border rounded-lg">
-                                    <option value="">Select State</option>
-                                    <option v-for="state in states" :value="state" :key="state">
-                                        {{ state || 'N/A' }}
-                                    </option>
-                                </select>
+                                <Input v-model="form.state" type="text" placeholder="Enter state" />
                             </div>
 
                             <div>
                                 <InputLabel for="country" value="Country" />
-                                <select v-model="form.country" class="w-full px-3 py-2 border rounded-lg">
-                                    <option value="">Select Country</option>
-                                    <option v-for="country in countries" :value="country" :key="country">
-                                        {{ country || 'N/A' }}
-                                    </option>
-                                </select>
+                                <Input v-model="form.country" type="text" placeholder="Enter country" />
                             </div>
 
                             <div>
@@ -66,7 +51,23 @@
                 {{ $page.props.flash.error }}
             </div>
 
-            <!-- Radiuses Table -->
+            <!-- Search Box -->
+            <!-- Search Box -->
+<div class="mt-2 mb-2">
+    <div class="flex gap-2">
+        <div class="flex-1">
+            <Input 
+                v-model="search" 
+                type="text" 
+                placeholder="Search by city, state, or country..." 
+                class="w-full"
+            />
+        </div>
+        <Button variant="outline" @click="resetSearch" v-if="search">Clear</Button>
+    </div>
+</div>
+
+            <!-- Combinations Table -->
             <div class="rounded-md border p-5 mt-[1rem] bg-[#153B4F0D]">
                 <Table>
                     <TableHeader>
@@ -80,26 +81,51 @@
                         </TableRow>
                     </TableHeader>
                     <TableBody>
-                        <TableRow v-for="(radius, index) in radiuses" :key="radius.id">
-                            <TableCell>{{ index + 1 }}</TableCell>
-                            <TableCell>{{ radius.city || 'N/A' }}</TableCell>
-                            <TableCell>{{ radius.state || 'N/A' }}</TableCell>
-                            <TableCell>{{ radius.country || 'N/A' }}</TableCell>
-                            <TableCell>{{ radius.radius_km }}</TableCell>
+                        <TableRow v-for="(combination, index) in combinations.data" :key="index">
+                            <TableCell>{{ (combinations.current_page - 1) * combinations.per_page + index + 1 }}</TableCell>
+                            <TableCell>{{ combination.city || 'N/A' }}</TableCell>
+                            <TableCell>{{ combination.state || 'N/A' }}</TableCell>
+                            <TableCell>{{ combination.country || 'N/A' }}</TableCell>
+                            <TableCell>
+                                {{ getRadiusForCombination(combination.city, combination.state, combination.country) || 'N/A' }}
+                            </TableCell>
                             <TableCell class="text-right">
                                 <div class="flex justify-end gap-2">
-                                    <Button size="sm" variant="outline" @click="openEditDialog(radius)">Edit</Button>
-                                    <Button size="sm" variant="destructive" @click="confirmDeleteRadius(radius)">
+                                    <Button size="sm" variant="outline" @click="openEditDialog(combination)">Edit</Button>
+                                    <Button size="sm" variant="destructive" @click="confirmDeleteRadius(combination)">
                                         Delete
                                     </Button>
                                 </div>
                             </TableCell>
                         </TableRow>
+                        <TableRow v-if="combinations.data.length === 0">
+                            <TableCell colspan="6" class="text-center py-4">No data found</TableCell>
+                        </TableRow>
                     </TableBody>
                 </Table>
+                <!-- Pagination Controls -->
+                <div class="flex justify-between items-center mt-4">
+                    <div>
+                        Showing {{ combinations.from || 0 }} to {{ combinations.to || 0 }} of {{ combinations.total }} entries
+                    </div>
+                    <div class="flex gap-2">
+                        <Button
+                            :disabled="!combinations.prev_page_url"
+                            @click="navigateToPage(combinations.current_page - 1)"
+                        >
+                            Previous
+                        </Button>
+                        <Button
+                            :disabled="!combinations.next_page_url"
+                            @click="navigateToPage(combinations.current_page + 1)"
+                        >
+                            Next
+                        </Button>
+                    </div>
+                </div>
             </div>
         </div>
-        
+
         <!-- Edit Dialog -->
         <Dialog v-model:open="isEditDialogOpen">
             <DialogContent class="max-w-4xl">
@@ -109,32 +135,17 @@
                 <form @submit.prevent="update" class="space-y-4">
                     <div>
                         <InputLabel for="city" value="City" />
-                        <select v-model="editForm.city" class="w-full px-3 py-2 border rounded-lg">
-                            <option value="">Select City</option>
-                            <option v-for="city in cities" :value="city" :key="city">
-                                {{ city || 'N/A' }}
-                            </option>
-                        </select>
+                        <Input v-model="editForm.city" type="text" placeholder="Enter city" />
                     </div>
 
                     <div>
                         <InputLabel for="state" value="State" />
-                        <select v-model="editForm.state" class="w-full px-3 py-2 border rounded-lg">
-                            <option value="">Select State</option>
-                            <option v-for="state in states" :value="state" :key="state">
-                                {{ state || 'N/A' }}
-                            </option>
-                        </select>
+                        <Input v-model="editForm.state" type="text" placeholder="Enter state" />
                     </div>
 
                     <div>
                         <InputLabel for="country" value="Country" />
-                        <select v-model="editForm.country" class="w-full px-3 py-2 border rounded-lg">
-                            <option value="">Select Country</option>
-                            <option v-for="country in countries" :value="country" :key="country">
-                                {{ country || 'N/A' }}
-                            </option>
-                        </select>
+                        <Input v-model="editForm.country" type="text" placeholder="Enter country" />
                     </div>
 
                     <div>
@@ -155,7 +166,7 @@
 </template>
 
 <script setup>
-import { ref, watch } from 'vue';
+import { ref, watch, onMounted } from 'vue';
 import { router, useForm } from '@inertiajs/vue3';
 import Table from "@/Components/ui/table/Table.vue";
 import TableHeader from "@/Components/ui/table/TableHeader.vue";
@@ -176,13 +187,13 @@ import Input from "@/Components/ui/input/Input.vue";
 import InputLabel from "@/Components/InputLabel.vue";
 import AdminDashboardLayout from '@/Layouts/AdminDashboardLayout.vue';
 import { useToast } from 'vue-toastification';
+import { debounce } from 'lodash';
 
 const toast = useToast();
 const props = defineProps({
-    cities: Array,
-    states: Array,
-    countries: Array,
+    combinations: Object,
     radiuses: Array,
+    filters: Object,
 });
 
 // State to control dialog visibility
@@ -191,6 +202,7 @@ const isEditDialogOpen = ref(false);
 const editingRadius = ref(null);
 const formError = ref(null);
 const editFormError = ref(null);
+const search = ref('');
 
 // Form for creating a new radius
 const form = useForm({
@@ -208,6 +220,13 @@ const editForm = useForm({
     radius_km: null,
 });
 
+// Initialize search from props
+onMounted(() => {
+    if (props.filters && props.filters.search) {
+        search.value = props.filters.search;
+    }
+});
+
 // Reset form errors when dialogs close
 watch(isCreateDialogOpen, (value) => {
     if (!value) formError.value = null;
@@ -219,8 +238,7 @@ watch(isEditDialogOpen, (value) => {
 
 // Watch for flash messages
 watch(() => props.flash, (newFlash) => {
-    if (newFlash.error) {
-        // Update the appropriate error state based on which dialog is open
+    if (newFlash && newFlash.error) {
         if (isCreateDialogOpen.value) {
             formError.value = newFlash.error;
         } else if (isEditDialogOpen.value) {
@@ -233,8 +251,7 @@ watch(() => props.flash, (newFlash) => {
         }
     }
     
-    if (newFlash.success) {
-        // Close dialogs on success
+    if (newFlash && newFlash.success) {
         isCreateDialogOpen.value = false;
         isEditDialogOpen.value = false;
         
@@ -245,6 +262,33 @@ watch(() => props.flash, (newFlash) => {
     }
 }, { deep: true });
 
+// Search functionality
+const performSearch = debounce(() => {
+    router.get(
+        route('radiuses.index'),
+        {
+            search: search.value,
+            page: 1, // Reset to first page when searching
+        },
+        {
+            preserveState: true,
+            preserveScroll: true,
+        }
+    );
+}, 300);
+
+watch(search, () => {
+    performSearch();
+});
+
+
+
+// Reset search
+const resetSearch = () => {
+    search.value = '';
+    performSearch();
+};
+
 // Open create dialog and reset form
 const openCreateDialog = () => {
     form.reset();
@@ -252,15 +296,25 @@ const openCreateDialog = () => {
     isCreateDialogOpen.value = true;
 };
 
-// Open edit dialog and pre-fill form with radius data
-const openEditDialog = (radius) => {
-    editingRadius.value = radius;
-    editForm.city = radius.city || '';
-    editForm.state = radius.state || '';
-    editForm.country = radius.country || '';
-    editForm.radius_km = radius.radius_km;
+// Open edit dialog and pre-fill form with combination data
+const openEditDialog = (combination) => {
+    editingRadius.value = combination;
+    editForm.city = combination.city || '';
+    editForm.state = combination.state || '';
+    editForm.country = combination.country || '';
+    editForm.radius_km = getRadiusForCombination(combination.city, combination.state, combination.country) || null;
     editFormError.value = null;
     isEditDialogOpen.value = true;
+};
+
+// Get radius for a specific combination
+const getRadiusForCombination = (city, state, country) => {
+    const radius = props.radiuses.find(r => 
+        (r.city === city || (!r.city && !city)) &&
+        (r.state === state || (!r.state && !state)) &&
+        (r.country === country || (!r.country && !country))
+    );
+    return radius ? radius.radius_km : null;
 };
 
 // Submit new radius
@@ -291,30 +345,51 @@ const update = () => {
     if (!editingRadius.value) return;
     
     editFormError.value = null;
-    editForm.put(route('radiuses.update', editingRadius.value.id), {
-        preserveScroll: true,
-        onSuccess: () => {
-            isEditDialogOpen.value = false;
-            toast.success('Radius updated successfully!', {
-                position: 'top-right',
-                timeout: 3000,
-            });
-        },
-        onError: (errors) => {
-            Object.values(errors).forEach(error => {
-                toast.error(error, {
+    const existingRadius = props.radiuses.find(r => 
+        (r.city === editingRadius.value.city || (!r.city && !editingRadius.value.city)) &&
+        (r.state === editingRadius.value.state || (!r.state && !editingRadius.value.state)) &&
+        (r.country === editingRadius.value.country || (!r.country && !editingRadius.value.country))
+    );
+    
+    if (existingRadius) {
+        editForm.put(route('radiuses.update', existingRadius.id), {
+            preserveScroll: true,
+            onSuccess: () => {
+                isEditDialogOpen.value = false;
+                toast.success('Radius updated successfully!', {
                     position: 'top-right',
-                    timeout: 5000,
+                    timeout: 3000,
                 });
-            });
-        },
-    });
+            },
+            onError: (errors) => {
+                Object.values(errors).forEach(error => {
+                    toast.error(error, {
+                        position: 'top-right',
+                        timeout: 5000,
+                    });
+                });
+            },
+        });
+    } else {
+        // If no existing radius, create a new one
+        form.city = editForm.city;
+        form.state = editForm.state;
+        form.country = editForm.country;
+        form.radius_km = editForm.radius_km;
+        submit();
+    }
 };
 
 // Confirm and delete radius
-const confirmDeleteRadius = (radius) => {
-    if (confirm('Are you sure you want to delete this radius?')) {
-        deleteRadius(radius.id);
+const confirmDeleteRadius = (combination) => {
+    const existingRadius = props.radiuses.find(r => 
+        (r.city === combination.city || (!r.city && !combination.city)) &&
+        (r.state === combination.state || (!r.state && !combination.state)) &&
+        (r.country === combination.country || (!r.country && !combination.country))
+    );
+    
+    if (existingRadius && confirm('Are you sure you want to delete this radius?')) {
+        deleteRadius(existingRadius.id);
     }
 };
 
@@ -335,6 +410,17 @@ const deleteRadius = (id) => {
                 });
             });
         },
+    });
+};
+
+// Navigate to a specific page
+const navigateToPage = (page) => {
+    router.get(route('radiuses.index'), { 
+        page,
+        search: search.value, // Preserve search when navigating
+    }, {
+        preserveState: true,
+        preserveScroll: true,
     });
 };
 </script>

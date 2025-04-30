@@ -10,35 +10,41 @@ use Illuminate\Support\Facades\Log;
 
 class RadiusController extends Controller
 {
-    public function index()
+     public function index(Request $request)
     {
-        // Fetch unique cities, states, and countries separately
-        $cities = Vehicle::whereNotNull('city')
-            ->distinct()
-            ->pluck('city')
-            ->filter()
-            ->values();
-
-        $states = Vehicle::whereNotNull('state')
-            ->distinct()
-            ->pluck('state')
-            ->filter()
-            ->values();
-
-        $countries = Vehicle::whereNotNull('country')
-            ->distinct()
-            ->pluck('country')
-            ->filter()
-            ->values();
+        // Get search parameters
+        $search = $request->input('search', '');
+        
+        // Fetch unique city, state, country combinations with pagination
+        $query = Vehicle::select('city', 'state', 'country')
+        ->where(function($q) {
+            $q->whereNotNull('city')
+              ->orWhereNotNull('state')
+              ->orWhereNotNull('country');
+        })
+        ->distinct();
+            
+        // Apply search filter if provided
+        if (!empty($search)) {
+            $query->where(function($q) use ($search) {
+                $q->where('city', 'LIKE', "%{$search}%")
+                  ->orWhere('state', 'LIKE', "%{$search}%")
+                  ->orWhere('country', 'LIKE', "%{$search}%");
+            });
+        }
+        
+        $combinations = $query->paginate(10)
+                              ->withQueryString(); // Important to preserve search params in pagination links
 
         // Get all radii
         $radiuses = Radius::all();
 
         return inertia('AdminDashboardPages/Radius/Index', [
-            'cities' => $cities,
-            'states' => $states,
-            'countries' => $countries,
+            'combinations' => $combinations,
             'radiuses' => $radiuses,
+            'filters' => [
+                'search' => $search,
+            ],
         ]);
     }
 
