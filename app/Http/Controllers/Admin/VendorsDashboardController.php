@@ -3,6 +3,8 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Notifications\VendorStatusUpdatedNotification;
+use Illuminate\Support\Facades\Notification;
 use Inertia\Inertia;
 use App\Models\User;
 use App\Models\VendorProfile;
@@ -49,6 +51,11 @@ class VendorsDashboardController extends Controller
         $vendorProfile->update([
             'status' => $request->status,
         ]);
+
+        // Notify the user
+        $user = User::findOrFail($vendorProfile->user_id);
+        Notification::route('mail', $user->email)
+            ->notify(new VendorStatusUpdatedNotification($vendorProfile, $user));
 
         return redirect()->route('vendors.index')->with('success', 'User updated successfully.');
     }

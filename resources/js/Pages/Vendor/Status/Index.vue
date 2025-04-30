@@ -33,7 +33,7 @@ const vendorStatus = computed(() => page.props.status);
                     </template>
 
                     <!-- Show Rejected UI -->
-                    <template v-else-if="vendorStatus === 'cancelled'">
+                    <template v-else-if="vendorStatus === 'rejected'">
                         <img :src="vendorRejectedStatusIcon" alt="Rejected Status" class="max-[768px]:w-[50px]" />
                         <h3
                             class="text-[#333333] text-[1.75rem] text-center max-[768px]:my-4 max-[768px]:text-[1.2rem]">

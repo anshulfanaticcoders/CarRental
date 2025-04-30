@@ -44,6 +44,9 @@ class VehicleCreatedNotification extends Notification
             ->line('**Model:** ' . $this->vehicle->model)
             ->line('**Vendor ID:** ' . $this->vehicle->vendor_id)
             ->line('**Location:** ' . $this->vehicle->location)
+            ->line('**City:** ' . $this->vehicle->city)
+            ->line('**State:** ' . $this->vehicle->state)
+            ->line('**Country:** ' . $this->vehicle->country)
             ->line('**Price per Day:** ' . ($this->vehicle->price_per_day ? '$' . number_format($this->vehicle->price_per_day, 2) : 'Not set'))
             // ->action('View Vehicle', url('/vehicles/' . $this->vehicle->id)) // Optional: Add a link to view the vehicle
             ->line('Please review the listing if necessary.');

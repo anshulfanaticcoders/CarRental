@@ -10,13 +10,17 @@ use App\Models\VehicleBenefit;
 use App\Models\VehicleFeature;
 use App\Models\VehicleImage;
 use App\Models\VehicleSpecification;
+use App\Models\VendorProfile;
 use App\Models\VendorVehicleAddon;
 use App\Models\VendorVehiclePlan;
 use App\Notifications\VehicleCreatedNotification;
+use App\Notifications\Vendor\VendorVehicleCreateCompanyNotification;
+use App\Notifications\Vendor\VendorVehicleCreateNotification;
 use App\Providers\RouteServiceProvider;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Facades\Storage;
 use Inertia\Inertia;
 
@@ -249,10 +253,22 @@ class VehicleController extends Controller
 
 
         // Notify the admin
-        // $admin = User::where('email', 'anshul@fanaticcoders.com')->first(); // Replace with your admin email
-        // if ($admin) {
-        //     $admin->notify(new VehicleCreatedNotification($vehicle));
-        // }
+        $adminEmail = env('VITE_ADMIN_EMAIL', 'default@admin.com');
+        $admin = User::where('email', $adminEmail)->first();
+        if ($admin) {
+            $admin->notify(new VehicleCreatedNotification($vehicle));
+        }
+
+        // Notify the vendor
+        Notification::route('mail', $request->user()->email)
+            ->notify(new VendorVehicleCreateNotification($vehicle, $request->user()));
+
+            // Notify the company
+        $vendorProfile = VendorProfile::where('user_id', $request->user()->id)->first();
+        if ($vendorProfile && $vendorProfile->company_email) {
+            Notification::route('mail', $vendorProfile->company_email)
+                ->notify(new VendorVehicleCreateCompanyNotification($vehicle, $request->user()));
+        }
 
 
         return redirect('/current-vendor-vehicles')->with([

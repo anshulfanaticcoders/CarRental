@@ -4,6 +4,8 @@ namespace App\Http\Controllers;
 use App\Models\VendorDocument;
 use App\Models\VendorProfile;
 use App\Notifications\VendorRegisteredNotification;
+use App\Notifications\VendorRegisteredUserConfirmation;
+use Illuminate\Support\Facades\Notification;
 use App\Providers\RouteServiceProvider;
 use Illuminate\Http\Request;
 use App\Models\User;
@@ -81,7 +83,7 @@ class VendorController extends Controller
             ]);
 
             // Create the vendor profile
-            VendorProfile::create([
+            $vendorProfile = VendorProfile::create([
                 'user_id' => $userId,
                 'company_name' => $request->company_name,
                 'company_phone_number' => $request->company_phone_number,
@@ -97,10 +99,15 @@ class VendorController extends Controller
             $user->save();
 
             // Notify the admin
-            // $admin = User::where('email', 'anshul@fanaticcoders.com')->first(); // Replace with your admin email
-            // if ($admin) {
-            //     $admin->notify(new VendorRegisteredNotification($vendorProfile, $user));
-            // }
+            $adminEmail = env('VITE_ADMIN_EMAIL', 'default@admin.com');
+            $admin = User::where('email', $adminEmail)->first(); // Replace with your admin email
+            if ($admin) {
+                $admin->notify(new VendorRegisteredNotification($vendorProfile, $user));
+            }
+
+            // Notify the user
+            Notification::route('mail', $user->email)
+                ->notify(new VendorRegisteredUserConfirmation($vendorProfile, $user));
 
             // Return a JSON response for Inertia
             return redirect(RouteServiceProvider::HOMEPAGE)->with([

@@ -146,9 +146,9 @@ const handlePageChange = (page) => {
                   <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Status
                   </th>
-                  <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <!-- <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Actions
-                  </th>
+                  </th> -->
                 </tr>
               </thead>
               <tbody class="bg-white divide-y divide-gray-200">
@@ -198,7 +198,7 @@ const handlePageChange = (page) => {
                       {{ review.status }}
                     </span>
                   </td>
-                  <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                  <!-- <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
                     <div class="flex space-x-2">
                       <button
                         @click="updateStatus(review, 'approved')"
@@ -221,7 +221,7 @@ const handlePageChange = (page) => {
                         Reject
                       </button>
                     </div>
-                  </td>
+                  </td> -->
                 </tr>
               </tbody>
             </table>

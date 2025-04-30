@@ -7,6 +7,7 @@ use App\Http\Controllers\Controller;
 use App\Models\User;
 use App\Models\UserProfile;
 use App\Notifications\AccountCreatedNotification;
+use App\Notifications\AccountCreatedUserConfirmation;
 use App\Providers\RouteServiceProvider;
 use Illuminate\Auth\Events\Registered;
 use Illuminate\Http\RedirectResponse;
@@ -14,6 +15,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\Rules;
+use Illuminate\Support\Facades\Notification;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -83,10 +85,14 @@ class RegisteredUserController extends Controller
         ActivityLogHelper::logActivity('create', 'New User Created', $user, $request);
 
         // Notify the admin
-        // $admin = User::where('email', 'anshul@fanaticcoders.com')->first(); // Replace with your admin email
-        // if ($admin) {
-        //     $admin->notify(new AccountCreatedNotification($user));
-        // }
+        $admin = User::where('email', 'anshul@fanaticcoders.com')->first();
+        if ($admin) {
+            $admin->notify(new AccountCreatedNotification($user));
+        }
+
+        // Notify the user
+        Notification::route('mail', $user->email)
+            ->notify(new AccountCreatedUserConfirmation($user));
         return redirect(RouteServiceProvider::HOME);
     }
 

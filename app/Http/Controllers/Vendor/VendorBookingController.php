@@ -5,8 +5,14 @@ namespace App\Http\Controllers\Vendor;
 use App\Http\Controllers\Controller;
 use App\Models\Booking;
 use App\Models\Customer;
+use App\Models\User;
 use App\Models\UserDocument;
 use App\Models\Vehicle;
+use App\Models\VendorProfile;
+use App\Notifications\Booking\BookingStatusUpdatedAdminNotification;
+use App\Notifications\Booking\BookingStatusUpdatedCompanyNotification;
+use App\Notifications\Booking\BookingStatusUpdatedCustomerNotification;
+use Illuminate\Support\Facades\Notification;
 use Inertia\Inertia;
 use Illuminate\Http\Request;
 
@@ -41,7 +47,7 @@ class VendorBookingController extends Controller
             });
         })
         ->orderBy('created_at', 'desc')
-        ->paginate(2);
+        ->paginate(8);
 
     return Inertia::render('Vendor/Bookings/Index', [
         'bookings' => $bookings->items(),
@@ -77,6 +83,31 @@ class VendorBookingController extends Controller
             $vehicle->update(['status' => 'available']);
         }
 
+        // Send notifications
+        $customer = $booking->customer;
+        $vehicle = $booking->vehicle;
+        $vendor = User::find($vehicle->vendor_id);
+        $vendorProfile = VendorProfile::where('user_id', $vehicle->vendor_id)->first();
+
+        // Notify Admin
+        $adminEmail = env('VITE_ADMIN_EMAIL', 'default@admin.com');
+        $admin = User::where('email', $adminEmail)->first();
+        if ($admin) {
+            $admin->notify(new BookingStatusUpdatedAdminNotification($booking, $customer, $vehicle, $vendor));
+        }
+
+        // Notify Customer
+        if ($customer) {
+            Notification::route('mail', $customer->email)
+                ->notify(new BookingStatusUpdatedCustomerNotification($booking, $customer, $vehicle, $vendor));
+        }
+
+        // Notify Company
+    if ($vendorProfile && $vendorProfile->company_email) {
+        Notification::route('mail', $vendorProfile->company_email)
+            ->notify(new BookingStatusUpdatedCompanyNotification($booking, $customer, $vehicle, $vendorProfile));
+    }
+
         return response()->json([
             'message' => 'Booking status updated successfully',
             'booking' => $booking->fresh()
@@ -91,6 +122,26 @@ class VendorBookingController extends Controller
         }
 
         $booking->update(['booking_status' => 'cancelled']);
+
+        $vehicle = Vehicle::find($booking->vehicle_id);
+        $vehicle->update(['status' => 'available']);
+        // Send notifications
+        $customer = $booking->customer;
+        $vehicle = $booking->vehicle;
+        $vendor = User::find($vehicle->vendor_id);
+
+        // Notify Admin
+        $adminEmail = env('VITE_ADMIN_EMAIL', 'default@admin.com');
+        $admin = User::where('email', $adminEmail)->first();
+        if ($admin) {
+            $admin->notify(new BookingStatusUpdatedAdminNotification($booking, $customer, $vehicle, $vendor));
+        }
+
+        // Notify Customer
+        if ($customer) {
+            Notification::route('mail', $customer->email)
+                ->notify(new BookingStatusUpdatedCustomerNotification($booking, $customer, $vehicle, $vendor));
+        }
 
         return response()->json([
             'message' => 'Booking cancelled successfully'

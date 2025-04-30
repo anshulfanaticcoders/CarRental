@@ -1,7 +1,7 @@
 <template>
     <MyProfileLayout>
-        <div class="p-4">
-            <h1 class="text-2xl font-semibold mb-4">My Reviews</h1>
+        <div class="">
+            <p class="text-[1.5rem] max-[768px]:text-[1.2rem] text-customPrimaryColor font-bold mb-[2rem] bg-[#154D6A0D] rounded-[12px] px-[1rem] py-[1rem]"> My Reviews </p>
 
             <div v-if="reviews.data.length > 0">
                 <div v-for="review in reviews.data" :key="review.id" class="border rounded-lg p-6 mb-4 shadow-md">

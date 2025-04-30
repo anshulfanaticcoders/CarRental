@@ -41,7 +41,8 @@ import {
   Settings,
   BookOpenText,
   Mail,
-  User2Icon
+  User2Icon,
+  Star
 } from 'lucide-vue-next'
 import { onMounted, ref } from 'vue';
 
@@ -193,6 +194,17 @@ const data = {
         {
           title: 'All Blogs',
           url: '/blogs',
+        },
+      ],
+    },
+    {
+      title: 'Reviews',
+      url: '#',
+      icon: Star,
+      items: [
+        {
+          title: 'All Reviews',
+          url: '/admin/reviews',
         },
       ],
     },

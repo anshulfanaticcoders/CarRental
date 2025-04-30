@@ -1,5 +1,9 @@
 <template>
     <MyProfileLayout>
+        <!-- Loader Overlay -->
+        <div v-if="isLoading" class="fixed inset-0 z-50 flex items-center justify-center bg-white bg-opacity-70">
+            <div class="loader h-12 w-12 border-4 border-gray-300 border-t-blue-600 rounded-full animate-spin"></div>
+        </div>
         <div class="">
             <p
                 class="text-[1.75rem] font-bold text-gray-800 bg-customLightPrimaryColor p-4 rounded-[12px] mb-[1rem] max-[768px]:text-[1.2rem]">
@@ -16,17 +20,30 @@
                         <tr>
                             <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                                 ID</th>
-                            <th class="px-4 py-2 text-left text-sm font-medium tracking-wider whitespace-nowrap">Booking ID</th>
-                            <th class="px-4 py-2 text-left text-sm font-medium tracking-wider whitespace-nowrap">Customer Name</th>
-                            <th class="px-4 py-2 text-left text-sm font-medium tracking-wider whitespace-nowrap">Vehicle</th>
-                            <th class="px-4 py-2 text-left text-sm font-medium tracking-wider whitespace-nowrap">Booking Date</th>
-                            <th class="px-4 py-2 text-left text-sm font-medium tracking-wider whitespace-nowrap">Return Date</th>
-                            <th class="px-4 py-2 text-left text-sm font-medium tracking-wider whitespace-nowrap">Total Payment</th>
-                            <th class="px-4 py-2 text-left text-sm font-medium tracking-wider whitespace-nowrap">Amount Paid</th>
-                            <th class="px-4 py-2 text-left text-sm font-medium tracking-wider whitespace-nowrap">Amount Pending</th>
-                            <th class="px-4 py-2 text-left text-sm font-medium tracking-wider whitespace-nowrap">Payment Status</th>
-                            <th class="px-4 py-2 text-left text-sm font-medium tracking-wider whitespace-nowrap">Booking Status</th>
-                            <th class="px-4 py-2 text-left text-sm font-medium tracking-wider whitespace-nowrap">Actions</th>
+                            <th class="px-4 py-2 text-left text-sm font-medium tracking-wider whitespace-nowrap">Booking
+                                ID</th>
+                            <th class="px-4 py-2 text-left text-sm font-medium tracking-wider whitespace-nowrap">
+                                Customer Name</th>
+                            <th class="px-4 py-2 text-left text-sm font-medium tracking-wider whitespace-nowrap">Vehicle
+                            </th>
+                            <th class="px-4 py-2 text-left text-sm font-medium tracking-wider whitespace-nowrap">Booking
+                                Date</th>
+                            <th class="px-4 py-2 text-left text-sm font-medium tracking-wider whitespace-nowrap">Return
+                                Date</th>
+                            <th class="px-4 py-2 text-left text-sm font-medium tracking-wider whitespace-nowrap">Total
+                                Payment</th>
+                            <th class="px-4 py-2 text-left text-sm font-medium tracking-wider whitespace-nowrap">Amount
+                                Paid</th>
+                            <th class="px-4 py-2 text-left text-sm font-medium tracking-wider whitespace-nowrap">Amount
+                                Pending</th>
+                            <th class="px-4 py-2 text-left text-sm font-medium tracking-wider whitespace-nowrap">Payment
+                                Status</th>
+                            <th class="px-4 py-2 text-left text-sm font-medium tracking-wider whitespace-nowrap">Booking
+                                Status</th>
+                            <th class="px-4 py-2 text-left text-sm font-medium tracking-wider whitespace-nowrap">
+                                Cancellation Reason</th>
+                            <th class="px-4 py-2 text-left text-sm font-medium tracking-wider whitespace-nowrap">Actions
+                            </th>
                         </tr>
                     </thead>
                     <tbody>
@@ -34,7 +51,8 @@
                             class="border-b hover:bg-gray-50">
                             <td class="px-6 py-4 whitespace-nowrap">{{ (pagination.current_page - 1) *
                                 pagination.per_page + index + 1 }}</td>
-                            <td class="px-4 py-2 text-sm text-gray-700 whitespace-nowrap">{{ booking.booking_number }}</td>
+                            <td class="px-4 py-2 text-sm text-gray-700 whitespace-nowrap">{{ booking.booking_number }}
+                            </td>
                             <td class="px-4 py-2 text-sm text-gray-700 whitespace-nowrap">
                                 {{ booking.customer?.first_name }} {{ booking.customer?.last_name }}
                             </td>
@@ -43,11 +61,16 @@
                                     class="bg-customLightPrimaryColor ml-2 p-1 rounded-[12px]">{{ booking.vehicle?.model
                                     }}</span>
                             </td>
-                            <td class="px-4 py-2 text-sm text-gray-700 whitespace-nowrap">{{ formatDate(booking.pickup_date) }}</td>
-                            <td class="px-4 py-2 text-sm text-gray-700 whitespace-nowrap">{{ formatDate(booking.return_date) }}</td>
-                            <td class="px-4 py-2 text-sm text-gray-700 whitespace-nowrap">{{ booking.vendor_profile?.currency }} {{ booking.total_amount || 'N/A' }}</td>
-                            <td class="px-4 py-2 text-sm text-green-600 whitespace-nowrap font-medium">{{ booking.vendor_profile?.currency }} {{ booking.amount_paid || 'N/A' }}</td>
-                            <td class="px-4 py-2 text-sm text-yellow-600 whitespace-nowrap font-medium">{{ booking.vendor_profile?.currency }} {{ booking.pending_amount || 'N/A' }}</td>
+                            <td class="px-4 py-2 text-sm text-gray-700 whitespace-nowrap">{{
+                                formatDate(booking.pickup_date) }}</td>
+                            <td class="px-4 py-2 text-sm text-gray-700 whitespace-nowrap">{{
+                                formatDate(booking.return_date) }}</td>
+                            <td class="px-4 py-2 text-sm text-gray-700 whitespace-nowrap">{{
+                                booking.vendor_profile?.currency }} {{ booking.total_amount || 'N/A' }}</td>
+                            <td class="px-4 py-2 text-sm text-green-600 whitespace-nowrap font-medium">{{
+                                booking.vendor_profile?.currency }} {{ booking.amount_paid || 'N/A' }}</td>
+                            <td class="px-4 py-2 text-sm text-yellow-600 whitespace-nowrap font-medium">{{
+                                booking.vendor_profile?.currency }} {{ booking.pending_amount || 'N/A' }}</td>
                             <td class="px-4 py-2 text-sm capitalize">
                                 <span :class="{
                                     'text-green-600 font-semibold': booking.payments[0]?.payment_status === 'succeeded',
@@ -71,6 +94,15 @@
                                     <option value="cancelled" class="text-red-500 font-medium">Cancelled</option>
                                 </select>
                             </td>
+                            <td class="px-4 py-2 text-sm">
+                                <span v-if="booking.cancellation_reason">
+                                    {{ booking.cancellation_reason }}
+                                </span>
+                                <span v-else class="text-gray-400 italic">
+                                    Not provided
+                                </span>
+                            </td>
+
                             <td class="px-4 py-2 text-sm whitespace-nowrap">
                                 <button v-if="booking.booking_status !== 'cancelled'"
                                     class="text-red-600 font-semibold hover:underline"
@@ -159,6 +191,8 @@ const isImageModalOpen = ref(false);
 const customerDocuments = ref([]);
 const selectedImage = ref(null);
 const searchQuery = ref('');
+const isLoading = ref(false);
+
 
 const goToDamageProtection = (bookingId) => {
     router.get(route('vendor.damage-protection.index', { booking: bookingId }));
@@ -203,6 +237,7 @@ const formatDate = (dateStr) => {
 };
 
 const updateStatus = async (booking) => {
+    isLoading.value = true;
     try {
         await axios.put(`/bookings/${booking.id}`, {
             booking_status: booking.booking_status
@@ -232,6 +267,8 @@ const updateStatus = async (booking) => {
     } catch (error) {
         console.error("Error updating status:", error);
         router.reload();
+    } finally {
+        isLoading.value = false;
     }
 };
 
@@ -279,6 +316,17 @@ watch(searchQuery, (newQuery) => {
 </script>
 
 <style scoped>
+.loader {
+    border-top-color: #3490dc;
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    to {
+        transform: rotate(360deg);
+    }
+}
+
 @media screen and (max-width:768px) {
     th {
         font-size: 0.75rem;

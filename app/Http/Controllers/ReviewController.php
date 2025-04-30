@@ -3,8 +3,14 @@
 namespace App\Http\Controllers;
 
 use App\Models\Review;
+use App\Models\User;
 use App\Models\Vehicle;
+use App\Models\VendorProfile;
+use App\Notifications\Review\ReviewSubmittedAdminNotification;
+use App\Notifications\Review\ReviewSubmittedCompanyNotification;
+use App\Notifications\Review\ReviewSubmittedVendorNotification;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Notification;
 use Inertia\Inertia;
 
 class ReviewController extends Controller
@@ -37,6 +43,29 @@ class ReviewController extends Controller
 
         // Create the review
         $review = Review::create($validated);
+
+        // Fetch the vehicle and vendor profile
+        $vehicle = Vehicle::find($validated['vehicle_id']);
+        $vendorProfile = VendorProfile::where('id', $validated['vendor_profile_id'])->first();
+
+        // Notify the admin
+        $adminEmail = env('VITE_ADMIN_EMAIL', 'default@admin.com');
+        $admin = User::where('email', $adminEmail)->first();
+        if ($admin) {
+            $admin->notify(new ReviewSubmittedAdminNotification($review, $vehicle));
+        }
+
+        // Notify the company
+        if ($vendorProfile && $vendorProfile->company_email) {
+            Notification::route('mail', $vendorProfile->company_email)
+                ->notify(new ReviewSubmittedCompanyNotification($review, $vehicle));
+        }
+
+        // Notify the vendor
+        $vendor = User::find($vehicle->vendor_id);
+        if ($vendor) {
+            $vendor->notify(new ReviewSubmittedVendorNotification($review, $vehicle));
+        }
 
         return redirect()->route('profile.bookings.completed')->with('success', 'Review submitted successfully!');
 

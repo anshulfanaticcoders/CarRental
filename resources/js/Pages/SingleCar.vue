@@ -1477,7 +1477,7 @@ const openLightbox = (index) => {
                                                                 @update:model-value="handleDateFrom"
                                                                 placeholder="Select pickup date" class="w-full"
                                                                 :enable-time-picker="false" :clearable="true"
-                                                                :format="'yyyy-MM-dd'" />
+                                                                :format="'yyyy-MM-dd'" auto-apply />
                                                         </div>
 
                                                         <!-- Return Date -->
@@ -1491,7 +1491,7 @@ const openLightbox = (index) => {
                                                                 @update:model-value="handleDateTo"
                                                                 placeholder="Select return date" class="w-full"
                                                                 :enable-time-picker="false" :clearable="true"
-                                                                :format="'yyyy-MM-dd'" />
+                                                                :format="'yyyy-MM-dd'" auto-apply />
                                                         </div>
                                                         <div>
                                                             <!-- Departure Time Dropdown -->

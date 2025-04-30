@@ -4,12 +4,20 @@ namespace App\Http\Controllers;
 
 use App\Models\Message;
 use App\Models\Plan;
+use App\Models\User;
 use App\Models\Vehicle;
+use App\Models\VendorProfile;
+use App\Notifications\Booking\BookingCancelledNotification;
+use App\Notifications\Booking\BookingCreatedAdminNotification;
+use App\Notifications\Booking\BookingCreatedCompanyNotification;
+use App\Notifications\Booking\BookingCreatedCustomerNotification;
+use App\Notifications\Booking\BookingCreatedVendorNotification;
 use Illuminate\Http\Request;
 use App\Models\Booking;
 use App\Models\BookingPayment;
 use App\Models\BookingExtra;
 use App\Models\Customer;
+use Illuminate\Support\Facades\Notification;
 use Stripe\Stripe;
 use Stripe\PaymentIntent;
 use Stripe\Customer as StripeCustomer;
@@ -183,6 +191,33 @@ class BookingController extends Controller
                 'amount' => $request->input('amount_paid'),
                 'payment_status' => $paymentIntent->status,
             ]);
+
+            // Send notifications after successful payment
+            // Notify Admin
+            $adminEmail = env('VITE_ADMIN_EMAIL', 'default@admin.com');
+            $admin = User::where('email', $adminEmail)->first();
+            if ($admin) {
+                $admin->notify(new BookingCreatedAdminNotification($booking, $customer, $vehicle));
+            }
+
+            // Notify Vendor
+            $vendor = User::find($vehicle->vendor_id);
+            if ($vendor) {
+                Notification::route('mail', $vendor->email)
+                    ->notify(new BookingCreatedVendorNotification($booking, $customer, $vehicle, $vendor));
+            }
+
+
+             // Notify Company (VendorProfile)
+             $vendorProfile = VendorProfile::where('user_id', $vehicle->vendor_id)->first();
+             if ($vendorProfile && $vendorProfile->company_email) {
+                 Notification::route('mail', $vendorProfile->company_email)
+                     ->notify(new BookingCreatedCompanyNotification($booking, $customer, $vehicle, $vendorProfile));
+             }
+
+            // Notify Customer
+            Notification::route('mail', $customer->email)
+                ->notify(new BookingCreatedCustomerNotification($booking, $customer, $vehicle));
 
 
             return response()->json([
@@ -368,5 +403,70 @@ public function getCustomerBookingsForMessages()
     return Inertia::render('Messages/Index', [
         'bookings' => $bookings
     ]);
+}
+
+
+public function cancelBooking(Request $request)
+{
+    // Validate the request
+    $validatedData = $request->validate([
+        'booking_id' => 'required|exists:bookings,id',
+        'cancellation_reason' => 'required|string|min:3|max:500',
+    ]);
+
+    // Get the booking
+    $booking = Booking::findOrFail($validatedData['booking_id']);
+    
+    // Make sure the booking belongs to the authenticated user
+    $userId = auth()->id();
+    $customer = Customer::where('user_id', $userId)->first();
+    
+    if (!$customer || $booking->customer_id !== $customer->id) {
+        return response()->json([
+            'message' => 'Unauthorized action'
+        ], 403);
+    }
+    
+    // Check if booking is already cancelled
+    if ($booking->booking_status === 'cancelled') {
+        return response()->json([
+            'message' => 'Booking is already cancelled'
+        ], 400);
+    }
+    
+    // Update booking status and save cancellation reason
+    $booking->booking_status = 'cancelled';
+    $booking->cancellation_reason = $validatedData['cancellation_reason'];
+    $booking->save();
+    
+    // Update vehicle status to available
+    $vehicle = Vehicle::find($booking->vehicle_id);
+    if ($vehicle) {
+        $vehicle->update(['status' => 'available']);
+    }
+
+    // Notify Admin
+    $adminEmail = env('VITE_ADMIN_EMAIL', 'default@admin.com');
+    $admin = User::where('email', $adminEmail)->first();
+    if ($admin) {
+        $admin->notify(new BookingCancelledNotification($booking, $customer, $vehicle, 'admin'));
+    }
+
+    // Notify Vendor
+    $vendor = User::find($booking->vehicle->vendor_id);
+    if ($vendor) {
+        $vendor->notify(new BookingCancelledNotification($booking, $customer, $vehicle, 'vendor'));
+    }
+
+    // Notify Company
+    $vendorProfile = VendorProfile::where('user_id', $booking->vehicle->vendor_id)->first();
+    if ($vendorProfile && $vendorProfile->company_email) {
+        $companyUser = User::where('email', $vendorProfile->company_email)->first();
+        if ($companyUser) {
+            $companyUser->notify(new BookingCancelledNotification($booking, $customer, $vehicle, 'company'));
+        }
+    }
+    
+    return redirect()->back()->with('success', 'Booking cancelled successfully');
 }
 }

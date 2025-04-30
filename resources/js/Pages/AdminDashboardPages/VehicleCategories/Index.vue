@@ -23,9 +23,9 @@
                 <EditUser :user="editForm" @close="isEditDialogOpen = false" />
             </Dialog>
 
-            <Dialog v-model:open="isViewDialogOpen">
+            <!-- <Dialog v-model:open="isViewDialogOpen">
                 <ViewUser :user="viewForm" @close="isViewDialogOpen = false" />
-            </Dialog>
+            </Dialog> -->
 
             <div class="rounded-md border p-5  mt-[1rem] bg-[#153B4F0D]">
                 <Table>
@@ -54,9 +54,9 @@
                             </TableCell>
                             <TableCell class="text-right">
                                 <div class="flex justify-end gap-2">
-                                    <Button size="sm" variant="outline" @click="openViewDialog(user)">
+                                    <!-- <Button size="sm" variant="outline" @click="openViewDialog(user)">
                                         View
-                                    </Button>
+                                    </Button> -->
                                     <Button size="sm" variant="outline" @click="openEditDialog(user)">
                                         Edit
                                         <img :src=editIcon alt="">

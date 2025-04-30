@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Admin\ActivityLogsController;
+use App\Http\Controllers\Admin\AdminReviewController;
 use App\Http\Controllers\Admin\AdminUserDocumentController;
 use App\Http\Controllers\Admin\BlogController;
 use App\Http\Controllers\Admin\BookingDashboardController;
@@ -233,7 +234,7 @@ Route::middleware(['auth', 'role:admin'])->group(function () {
     Route::delete('admin/contact-us/delete', [ContactUsPageController::class, 'destroy'])
         ->name('admin.contact-us.delete');
 
-        // route for contact form submittions and notifications
+    // route for contact form submittions and notifications
     Route::get('/contact-us-mails', [ContactFormController::class, 'fetchSubmissions'])->name('contact.mails');
     Route::get('/notifications/unread', [ContactFormController::class, 'unreadNotifications'])->name('notifications.unread');
     Route::post('/notifications/mark-as-read/{id}', [ContactFormController::class, 'markAsRead'])->name('notifications.markAsRead');
@@ -250,6 +251,11 @@ Route::middleware(['auth', 'role:admin'])->group(function () {
     Route::post('/radiuses', [RadiusController::class, 'store'])->name('radiuses.store');
     Route::put('/radiuses/{radius}', [RadiusController::class, 'update'])->name('radiuses.update');
     Route::delete('/radiuses/{radius}', [RadiusController::class, 'destroy'])->name('radiuses.destroy');
+
+
+    Route::get('/admin/reviews', [AdminReviewController::class, 'index'])->name('admin.reviews.index');
+    Route::delete('/admin/reviews/{review}', [AdminReviewController::class, 'destroy'])->name('admin.reviews.destroy');
+    Route::patch('/admin/reviews/{review}/status', [AdminReviewController::class, 'updateStatus'])->name('admin.reviews.update-status');
 
 });
 
@@ -371,6 +377,7 @@ Route::middleware(['auth', 'role:customer'])->group(function () {
     Route::get('/booking-success/details', [BookingController::class, 'getBookingDetails'])->name('booking-success.details');
     Route::get('/booking', [BookingController::class, 'create'])->name('booking.create');
     Route::post('/booking', [BookingController::class, 'store'])->name('booking.store');
+    Route::post('/booking/cancel', [App\Http\Controllers\BookingController::class, 'cancelBooking'])->name('booking.cancel');
     Route::post('/payment/charge', [PaymentController::class, 'charge'])->name('payment.charge');
     // this route is to show customer booking in the customer profile
     Route::get('/customer/bookings', [BookingController::class, 'getCustomerBookingData'])->name('customer.bookings');
