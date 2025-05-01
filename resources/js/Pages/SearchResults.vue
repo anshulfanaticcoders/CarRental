@@ -929,6 +929,11 @@ provide('setActiveDropdown', setActiveDropdown);
                                     </span>
                                     <span class="text-[1rem] text-gray-500" v-else>No reviews</span>
                                 </div>
+
+                                 <div>
+                                    <span class="italic font-medium">{{vehicle.location}}, {{vehicle.city}}</span>
+                                 </div>
+
                                 <div class="car_short_info mt-[1rem] flex gap-3">
                                     <img :src="carIcon" alt="" />
                                     <div class="features">

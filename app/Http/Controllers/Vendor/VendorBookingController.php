@@ -153,12 +153,21 @@ class VendorBookingController extends Controller
         // Fetch customer by ID
         $customer = Customer::findOrFail($customerId);
 
-        // Retrieve the documents for the user associated with the customer
-        $documents = UserDocument::where('user_id', $customer->user_id)->get();
+        // Retrieve the single document for the user associated with the customer
+        $document = UserDocument::where('user_id', $customer->user_id)->first([
+            'id',
+            'user_id',
+            'driving_license_front',
+            'driving_license_back',
+            'passport_front',
+            'passport_back',
+            'verification_status',
+            'created_at',
+        ]);
 
-        // Return the documents as JSON
+        // Return the document as JSON
         return response()->json([
-            'documents' => $documents
+            'document' => $document,
         ]);
     }
     

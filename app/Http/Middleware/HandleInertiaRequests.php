@@ -34,36 +34,47 @@ class HandleInertiaRequests extends Middleware
         $sharedData = parent::share($request);
 
         if ($request->user()) {
-            // Fetch user documents
-            $documents = UserDocument::where('user_id', $request->user()->id)
-                ->get(['document_type', 'document_file']);
+            // Fetch the user document (single record)
+            $document = UserDocument::where('user_id', $request->user()->id)
+                ->first([
+                    'driving_license_front',
+                    'driving_license_back',
+                    'passport_front',
+                    'passport_back',
+                    'verification_status'
+                ]);
 
-            // Format the documents for easier access
-            $formattedDocuments = [];
-            foreach ($documents as $document) {
-                $formattedDocuments[$document->document_type] = $document->document_file; // Store the file path
-            }
+            // Prepare document data
+            $documentData = $document ? [
+                'driving_license_front' => $document->driving_license_front,
+                'driving_license_back' => $document->driving_license_back,
+                'passport_front' => $document->passport_front,
+                'passport_back' => $document->passport_back,
+                'verification_status' => $document->verification_status,
+            ] : null;
 
-            // Merge user and documents into shared data
+            // Merge user and document into shared data
             $sharedData = array_merge($sharedData, [
                 'auth' => [
                     'user' => $request->user(),
                     'name' => $request->user()->first_name,
-                    'documents' => $formattedDocuments, // Add documents to shared data
+                    'documents' => $documentData, // Share the single document record
                 ],
                 'vendorStatus' => function () {
-                $user = auth()->user();
-                if ($user) {
-                    $vendorProfile = VendorProfile::where('user_id', $user->id)->first();
-                    return $vendorProfile ? $vendorProfile->status : 'pending';
+                    $user = auth()->user();
+                    if ($user) {
+                        $vendorProfile = VendorProfile::where('user_id', $user->id)->first();
+                        return $vendorProfile ? $vendorProfile->status : 'pending';
+                    }
+                    return 'pending';
                 }
-            }
             ]);
         } else {
             // If the user is not authenticated
             $sharedData = array_merge($sharedData, [
                 'auth' => [
                     'user' => null,
+                    'documents' => null,
                 ],
             ]);
         }

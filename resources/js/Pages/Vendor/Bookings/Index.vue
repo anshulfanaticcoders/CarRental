@@ -132,47 +132,54 @@
             </div>
         </div>
 
-        <Dialog v-model:open="isCustomerDocumentsDialogOpen">
-            <DialogContent class="max-w-[700px]">
-                <DialogHeader>
-                    <DialogTitle>Customer Documents</DialogTitle>
-                </DialogHeader>
-                <div v-if="customerDocuments && customerDocuments.length" class="flex justify-between">
-                    <div v-for="document in customerDocuments" :key="document.id"
-                        class="mb-4 flex flex-col gap-2 items-center">
-                        <p class="font-semibold">{{ formatDocumentType(document.document_type) }}</p>
-                        <img :src="document.document_file" alt="Document Image"
-                            class="h-20 w-[150px] object-cover mb-2 cursor-pointer"
-                            @click="openImageModal(document.document_file)" />
-                        <p class="text-sm capitalize" :class="{
-                            'text-yellow-600': document.verification_status === 'pending',
-                            'text-green-600': document.verification_status === 'verified',
-                            'text-red-600': document.verification_status === 'rejected'
-                        }">
-                            Status: {{ document.verification_status }}
-                        </p>
+       <!-- Customer Documents Dialog -->
+      <Dialog v-model:open="isCustomerDocumentsDialogOpen">
+        <DialogContent class="max-w-[700px]">
+          <DialogHeader>
+            <DialogTitle>Customer Documents</DialogTitle>
+          </DialogHeader>
+          <div v-if="customerDocument" class="grid grid-cols-2 gap-4">
+            <div v-for="field in documentFields" :key="field.key" class="mb-4 flex flex-col gap-2 items-center">
+              <p class="font-semibold">{{ field.label }}</p>
+              <img
+                v-if="customerDocument[field.key]"
+                :src="customerDocument[field.key]"
+                :alt="field.label"
+                class="h-20 w-[150px] object-cover mb-2 cursor-pointer"
+                @click="openImageModal(customerDocument[field.key])"
+              />
+              <span v-else class="text-gray-500">No file uploaded</span>
+              <p
+                class="text-sm capitalize"
+                :class="{
+                  'text-yellow-600': customerDocument.verification_status === 'pending',
+                  'text-green-600': customerDocument.verification_status === 'verified',
+                  'text-red-600': customerDocument.verification_status === 'rejected',
+                }"
+              >
+                Status: {{ customerDocument.verification_status }}
+              </p>
+              <p class="text-sm text-gray-600">Uploaded on: {{ formatDate(customerDocument.created_at) }}</p>
+            </div>
+          </div>
+          <div v-else class="text-center py-6">
+            <span class="text-gray-500">No documents available.</span>
+          </div>
+          <DialogFooter>
+            <Button @click="isCustomerDocumentsDialogOpen = false">Close</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
-                        <p class="text-sm text-gray-600">Uploaded on: {{ formatDate(document.created_at) }}</p>
-                    </div>
-                </div>
-                <div v-else class="text-center py-6">
-                    <span class="text-gray-500">No documents available.</span>
-                </div>
-                <DialogFooter>
-                    <Button @click="isCustomerDocumentsDialogOpen = false">Close</Button>
-                </DialogFooter>
-            </DialogContent>
-        </Dialog>
-
-        <!-- Image Modal -->
-        <Dialog v-model:open="isImageModalOpen">
-            <DialogContent class="sm:max-w-[425px]">
-                <img :src="selectedImage" alt="Document Image" class="w-full h-auto" />
-                <DialogFooter>
-                    <Button @click="isImageModalOpen = false">Close</Button>
-                </DialogFooter>
-            </DialogContent>
-        </Dialog>
+      <!-- Image Modal -->
+      <Dialog v-model:open="isImageModalOpen">
+        <DialogContent class="sm:max-w-[425px]">
+          <img :src="selectedImage" alt="Document Image" class="w-full h-auto" />
+          <DialogFooter>
+            <Button @click="isImageModalOpen = false">Close</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </MyProfileLayout>
 </template>
 
@@ -188,10 +195,17 @@ import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '
 const toast = useToast();
 const isCustomerDocumentsDialogOpen = ref(false);
 const isImageModalOpen = ref(false);
-const customerDocuments = ref([]);
-const selectedImage = ref(null);
+const customerDocument = ref(null);
+const selectedImage = ref('');
 const searchQuery = ref('');
 const isLoading = ref(false);
+
+const documentFields = [
+  { key: 'driving_license_front', label: 'Driving License Front' },
+  { key: 'driving_license_back', label: 'Driving License Back' },
+  { key: 'passport_front', label: 'Passport Front' },
+  { key: 'passport_back', label: 'Passport Back' },
+];
 
 
 const goToDamageProtection = (bookingId) => {
@@ -199,20 +213,25 @@ const goToDamageProtection = (bookingId) => {
 };
 
 const openCustomerDocumentsDialog = async (customerId) => {
-    try {
-        const response = await axios.get(route('vendor.customer-documents.index', { customer: customerId }));
-        console.log(response.data); // Log the response
-        customerDocuments.value = response.data.documents || [];
-        isCustomerDocumentsDialogOpen.value = true;
-    } catch (error) {
-        console.error("Error fetching customer documents:", error);
-        toast.error("Failed to fetch customer documents. Please try again.");
-    }
+  try {
+    isLoading.value = true;
+    const response = await axios.get(route('vendor.customer-documents.index', { customer: customerId }));
+    console.log(response.data); // Log the response for debugging
+    customerDocument.value = response.data.document || null;
+    isCustomerDocumentsDialogOpen.value = true;
+  } catch (error) {
+    console.error('Error fetching customer documents:', error);
+    toast.error('Failed to fetch customer documents. Please try again.');
+  } finally {
+    isLoading.value = false;
+  }
 };
 
 const openImageModal = (imageUrl) => {
+  if (imageUrl) {
     selectedImage.value = imageUrl;
     isImageModalOpen.value = true;
+  }
 };
 
 const props = defineProps({

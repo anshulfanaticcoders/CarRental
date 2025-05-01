@@ -385,11 +385,11 @@ const submit = () => {
   form.value.package_type = packageType;
 
   if (form.value.city) {
-    form.value.radius = 150000;
+    form.value.radius = 30000;
   } else if (form.value.state) {
-    form.value.radius = 500000;
+    form.value.radius = 50000;
   } else if (form.value.country) {
-    form.value.radius = 1000000;
+    form.value.radius = 100000;
   }
 
   router.get("/s", form.value);

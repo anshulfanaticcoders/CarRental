@@ -33,12 +33,12 @@
                     />
                 </div>
 
-                <div class="flex flex-col space-y-2">
+                <!-- <div class="flex flex-col space-y-2">
                     <Label>Document Preview</Label>
                     <div class="border rounded-md p-2 flex justify-center">
                         <img :src="document.document_file" alt="Document" class="max-h-[200px] object-contain" />
                     </div>
-                </div>
+                </div> -->
             </div>
 
             <DialogFooter>

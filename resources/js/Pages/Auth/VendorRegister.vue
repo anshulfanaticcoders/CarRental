@@ -1,22 +1,33 @@
 <script setup>
-import { ref, defineProps, onMounted } from "vue";
+import { ref, defineProps, onMounted, computed, watch } from "vue";
 import { Head, useForm } from "@inertiajs/vue3";
-import { useToast } from 'vue-toastification'; // Add this import
-const toast = useToast(); // Initialize toast
+import { useToast } from 'vue-toastification';
 import TextInput from "@/Components/TextInput.vue";
 import InputLabel from "@/Components/InputLabel.vue";
 import PrimaryButton from "@/Components/PrimaryButton.vue";
 import AuthenticatedHeaderLayout from "@/Layouts/AuthenticatedHeaderLayout.vue";
 import vendorBgimage from "../../../assets/vendorRegisterbgImage.png";
 import warningSign from "../../../assets/WhiteWarningCircle.svg";
+import {
+    Select,
+    SelectContent,
+    SelectGroup,
+    SelectItem,
+    SelectLabel,
+    SelectTrigger,
+    SelectValue,
+} from "@/Components/ui/select";
 
 const props = defineProps({
     user: Object,
     userProfile: Object,
-    flash: Object,  // Add flash prop
-    errors: Object, // Add errors prop
+    flash: Object,
+    errors: Object,
 });
+
+
 const isLoading = ref(false);
+const toast = useToast();
 
 const form = useForm({
     phone: props.user.phone,
@@ -77,7 +88,7 @@ onMounted(() => {
     }
 });
 
-const requiredFiles = ["driving_license_front", , 'driving_license_back',  "passport_front", "passport_back",]; // Define required file fields
+const requiredFiles = ["passport_front", "passport_back",];
 
 const errors = ref({});
 
@@ -95,6 +106,17 @@ const nextStep = () => {
         }
 
         localStorage.setItem("vendorFileData", JSON.stringify(fileNames.value));
+    }
+
+    if (currentStep.value === 3) {
+        if (!selectedPhoneCode.value) {
+            errors.value.company_phone_code = "Please select a country code.";
+            return;
+        }
+        if (!phoneNumber.value || phoneNumber.value.length < 7) {
+            errors.value.company_phone_number = "Please enter a valid phone number.";
+            return;
+        }
     }
 
     currentStep.value++;
@@ -160,6 +182,56 @@ const submit = () => {
         },
     });
 };
+
+// Country code and phone number handling
+const countries = ref([]);
+const selectedPhoneCode = ref("");
+const phoneNumber = ref("");
+const fullPhone = computed({
+    get: () => `${selectedPhoneCode.value}${phoneNumber.value}`,
+    set: (value) => { },
+});
+// Restrict phone number input to digits only
+const restrictToNumbers = (event) => {
+  const value = event.target.value;
+  // Remove non-numeric characters
+  phoneNumber.value = value.replace(/[^0-9]/g, "");
+};
+
+
+// Update form.company_phone_number when phone code or number changes
+watch([selectedPhoneCode, phoneNumber], ([newCode, newNumber]) => {
+    form.company_phone_number = newCode && newNumber ? `${newCode}${newNumber}` : "";
+});
+
+const fetchCountries = async () => {
+    try {
+        const response = await fetch("/countries.json");
+        countries.value = await response.json();
+        // Set default phone code (optional, e.g., first country)
+        if (countries.value.length > 0) {
+            selectedPhoneCode.value = countries.value[0].phone_code;
+        }
+    } catch (error) {
+        console.error("Error loading countries:", error);
+    }
+};
+
+const getFlagUrl = (countryCode) => {
+    return `https://flagcdn.com/w40/${countryCode.toLowerCase()}.png`;
+};
+
+const selectedCountryCode = computed(() => {
+    if (!selectedPhoneCode.value || !countries.value || countries.value.length === 0) return null;
+    const country = countries.value.find((c) => c.phone_code === selectedPhoneCode.value);
+    return country ? country.code : null;
+});
+
+// Call fetchCountries on mount
+onMounted(() => {
+    // ... existing onMounted code ...
+    fetchCountries();
+});
 </script>
 
 <template>
@@ -222,76 +294,7 @@ const submit = () => {
                     </div>
                     <div v-else-if="currentStep === 2">
                         <div class="grid grid-cols-1 gap-5 document_section">
-                            <!-- Driving License -->
-                            <div class="column w-full">
-                                <div class="flex flex-col gap-2">
-
-                                    <div class="grid grid-cols-2 gap-5">
-                                        <!-- Clickable Upload Area -->
-                                        <div class="flex flex-col gap-4">
-                                            <InputLabel for="driving_license" class="!mb-0">Driving License Front
-                                            </InputLabel>
-                                            <div @click="$refs.drivingLicenseFrontInput.click()"
-                                                class="document-div cursor-pointer border-[2px] border-customPrimaryColor p-4 rounded-lg text-center border-dotted">
-                                                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"
-                                                    stroke-width="1.5" stroke="#153b4f"
-                                                    class="w-10 h-10 mx-auto text-gray-400">
-                                                    <path stroke-linecap="round" stroke-linejoin="round"
-                                                        d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5" />
-                                                </svg>
-                                                <p class="mt-2 text-sm text-gray-600">Click to select an image</p>
-                                                <p class="text-xs text-gray-500 mt-1">JPG, PNG and JPEG up to 2MB</p>
-                                            </div>
-                                            <!-- Show Image Preview with Remove Button -->
-                                            <div v-if="filePreviews.driving_license_front" class="relative w-[150px]">
-                                                <img :src="filePreviews.driving_license_front" alt="Preview"
-                                                    class="w-full h-[100px] object-cover rounded-md border shadow-md" />
-
-                                                <!-- Remove File Button -->
-                                                <button @click.stop="removeFile('driving_license_front')"
-                                                    class="absolute top-1 right-1 bg-red-500 text-white w-[20px] h-[20px] rounded-full text-[0.65rem]">
-                                                    ✕
-                                                </button>
-                                            </div>
-                                        </div>
-                                        <div class="flex flex-col gap-4">
-                                            <InputLabel for="driving_license" class="!mb-0">Driving License Back
-                                            </InputLabel>
-                                            <div @click="$refs.drivingLicenseBackInput.click()"
-                                                class="document-div cursor-pointer border-[2px] border-customPrimaryColor p-4 rounded-lg text-center border-dotted">
-                                                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"
-                                                    stroke-width="1.5" stroke="#153b4f"
-                                                    class="w-10 h-10 mx-auto text-gray-400">
-                                                    <path stroke-linecap="round" stroke-linejoin="round"
-                                                        d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5" />
-                                                </svg>
-                                                <p class="mt-2 text-sm text-gray-600">Click to select an image</p>
-                                                <p class="text-xs text-gray-500 mt-1">JPG, PNG and JPEG up to 2MB</p>
-                                            </div>
-                                            <div v-if="filePreviews.driving_license_back" class="relative w-[150px]">
-                                                <img :src="filePreviews.driving_license_back" alt="Preview"
-                                                    class="w-full h-[100px] object-cover rounded-md border shadow-md" />
-
-                                                <!-- Remove File Button -->
-                                                <button @click.stop="removeFile('driving_license_back')"
-                                                    class="absolute top-1 right-1 bg-red-500 text-white w-[20px] h-[20px] rounded-full text-[0.65rem]">
-                                                    ✕
-                                                </button>
-                                            </div>
-                                        </div>
-                                    </div>
-
-                                    <!-- Hidden File Input -->
-                                    <input type="file" ref="drivingLicenseFrontInput" class="hidden"
-                                        @change="handleFileChange('driving_license_front', $event)" />
-                                    <input type="file" ref="drivingLicenseBackInput" class="hidden"
-                                        @change="handleFileChange('driving_license_back', $event)" />
-                                </div>
-                            </div>
-
-
-
-
+                           
                             <div class="grid grid-cols-2 gap-5">
 
                                 <!-- Passport Front -->
@@ -381,7 +384,46 @@ const submit = () => {
                             </div>
                             <div class="column w-full">
                                 <InputLabel for="company_phone_number">Company Phone Number</InputLabel>
-                                <TextInput type="tel" v-model="form.company_phone_number" class="w-full" required />
+                                <div class="flex items-end">
+                                    <div class="w-[8rem]">
+                                        <Select v-model="selectedPhoneCode">
+                                            <SelectTrigger
+                                                class="w-full p-[1.75rem] border-customLightGrayColor bg-customPrimaryColor text-white rounded-[12px] !rounded-r-none border-r-0">
+                                                <div class="flex items-center">
+                                                    <img v-if="selectedCountryCode"
+                                                        :src="getFlagUrl(selectedCountryCode)" alt="Country Flag"
+                                                        class="mr-2 w-6 h-4 rounded" />
+                                                    <SelectValue placeholder="Select Code">{{ selectedPhoneCode }}
+                                                    </SelectValue>
+                                                </div>
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                                <SelectGroup>
+                                                    <SelectLabel>Phone Code</SelectLabel>
+                                                    <SelectItem v-for="country in countries" :key="country.phone_code"
+                                                        :value="country.phone_code">
+                                                        <div class="flex items-center w-full">
+                                                            <img :src="getFlagUrl(country.code)" alt="Country Flag"
+                                                                class="mr-2 w-6 h-4 rounded" />
+                                                            <span>{{ country.name }} ({{ country.phone_code }})</span>
+                                                        </div>
+                                                    </SelectItem>
+                                                </SelectGroup>
+                                            </SelectContent>
+                                        </Select>
+                                    </div>
+                                    <div class="w-full">
+                                        <TextInput id="company_phone_number" type="tel" v-model="phoneNumber"
+                                            class="w-full !rounded-l-none" placeholder="Enter phone number" required @input="restrictToNumbers"/>
+                                    </div>
+                                </div>
+                                <div class="mt-2 text-sm text-gray-500" v-if="selectedPhoneCode && phoneNumber">
+                                    Full number: {{ fullPhone }}
+                                </div>
+                                <p v-if="errors.company_phone_code" class="text-red-500 text-sm mt-1">{{
+                                    errors.company_phone_code }}</p>
+                                <p v-if="errors.company_phone_number" class="text-red-500 text-sm mt-1">{{
+                                    errors.company_phone_number }}</p>
                             </div>
                             <div class="column w-full">
                                 <InputLabel for="company_email">Company Email</InputLabel>
@@ -402,14 +444,18 @@ const submit = () => {
                                 </button>
                                 <PrimaryButton class="w-[15rem] max-[768px]:w-[10rem]" type="submit">
                                     <!-- Show loader or text based on isLoading -->
-                    <span v-if="isLoading" class="flex items-center justify-center">
-                        <svg class="animate-spin h-5 w-5 mr-2 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                        </svg>
-                        Loading...
-                    </span>
-                    <span v-else>Submit</span>
+                                    <span v-if="isLoading" class="flex items-center justify-center">
+                                        <svg class="animate-spin h-5 w-5 mr-2 text-white"
+                                            xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor"
+                                                stroke-width="4"></circle>
+                                            <path class="opacity-75" fill="currentColor"
+                                                d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z">
+                                            </path>
+                                        </svg>
+                                        Loading...
+                                    </span>
+                                    <span v-else>Submit</span>
                                 </PrimaryButton>
                             </div>
                         </div>
@@ -473,9 +519,19 @@ select {
     animation: spin 1s linear infinite;
 }
 
+:deep(.border-customLightGrayColor svg) {
+    display: none !important;
+}
+
+
 @keyframes spin {
-    0% { transform: rotate(0deg); }
-    100% { transform: rotate(360deg); }
+    0% {
+        transform: rotate(0deg);
+    }
+
+    100% {
+        transform: rotate(360deg);
+    }
 }
 
 @media screen and (max-width:768px) {

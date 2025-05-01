@@ -9,6 +9,7 @@ use App\Http\Controllers\CurrencyController;
 use App\Http\Controllers\Notifications\ContactUsNotificationController;
 use App\Http\Controllers\PlanController;
 use App\Http\Controllers\ProfileController;
+use App\Http\Controllers\RadiusApiController;
 use App\Http\Controllers\ReviewController;
 use App\Http\Controllers\UserDocumentController;
 use App\Http\Controllers\VehicleController;
@@ -75,3 +76,5 @@ Route::get('/faqs', [FaqController::class, 'getFaqs']);
 Route::get('/vehicles/search-locations', [VehicleController::class, 'searchLocations'])->name('vehicles.search-locations');
 
 Route::get('/testimonials/frontend', [App\Http\Controllers\Admin\TestimonialController::class, 'getFrontendTestimonials']);
+
+Route::get('/radius', [RadiusApiController::class, 'getRadius']);

@@ -680,6 +680,11 @@ watch(dateOfBirth, (newValue) => {
     padding: 0.5rem;
 }
 
+:deep(.border-customLightGrayColor svg) {
+    display: none !important;
+}
+
+
 @media screen and (max-width:768px) {
     :deep(.dp__input){
         font-size: 0.75rem;

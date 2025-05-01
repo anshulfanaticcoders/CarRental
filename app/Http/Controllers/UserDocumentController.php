@@ -1,4 +1,5 @@
 <?php
+
 namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
@@ -7,17 +8,16 @@ use App\Models\UserDocument;
 use Illuminate\Support\Facades\Auth;
 use Inertia\Inertia;
 use Inertia\Response;
-use Illuminate\Support\Str;
 
 class UserDocumentController extends Controller
 {
-    // Display all user documents
+    // Display user documents
     public function index(): Response
     {
-        $documents = UserDocument::where('user_id', Auth::id())->get();
+        $document = UserDocument::where('user_id', Auth::id())->first();
 
         return Inertia::render('Profile/Documents/Index', [
-            'documents' => $documents
+            'document' => $document,
         ]);
     }
 
@@ -27,27 +27,66 @@ class UserDocumentController extends Controller
         return Inertia::render('Profile/Documents/Create');
     }
 
-    // Store a new document
+    // Store new documents
     public function store(Request $request)
     {
-        $request->validate([
-            'document_type' => 'required|in:id_proof,address_proof,driving_license',
-            'document_file' => 'required|file|mimes:jpg,jpeg,png,pdf|max:2048',
-        ]);
+        try {
+            $request->validate([
+                'driving_license_front' => 'nullable|file|mimes:jpg,jpeg,png,pdf|max:2048',
+                'driving_license_back' => 'nullable|file|mimes:jpg,jpeg,png,pdf|max:2048',
+                'passport_front' => 'nullable|file|mimes:jpg,jpeg,png,pdf|max:2048',
+                'passport_back' => 'nullable|file|mimes:jpg,jpeg,png,pdf|max:2048',
+            ]);
 
-        $file = $request->file('document_file');
-        $path = $file->store('documents', 'upcloud');
-        $url = Storage::disk('upcloud')->url($path);
+            $userId = Auth::id();
+            $folderName = 'documents';
 
-        UserDocument::create([
-            'user_id' => Auth::id(),
-            'document_type' => $request->document_type,
-            'document_number' => Str::upper(Str::random(10)),
-            'document_file' => $url,
-            'verification_status' => 'pending',
-        ]);
+            // Handle file uploads
+            $drivingLicenseFront = null;
+            $drivingLicenseBack = null;
+            $passportFront = null;
+            $passportBack = null;
 
-        return redirect()->route('user.documents.index')->with('success', 'Document uploaded successfully.');
+            if ($request->hasFile('driving_license_front')) {
+                $path = $request->file('driving_license_front')->store($folderName, 'upcloud');
+                $drivingLicenseFront = Storage::disk('upcloud')->url($path);
+            }
+            if ($request->hasFile('driving_license_back')) {
+                $path = $request->file('driving_license_back')->store($folderName, 'upcloud');
+                $drivingLicenseBack = Storage::disk('upcloud')->url($path);
+            }
+            if ($request->hasFile('passport_front')) {
+                $path = $request->file('passport_front')->store($folderName, 'upcloud');
+                $passportFront = Storage::disk('upcloud')->url($path);
+            }
+            if ($request->hasFile('passport_back')) {
+                $path = $request->file('passport_back')->store($folderName, 'upcloud');
+                $passportBack = Storage::disk('upcloud')->url($path);
+            }
+
+            // Create or update the document record
+            UserDocument::updateOrCreate(
+                ['user_id' => $userId],
+                [
+                    'driving_license_front' => $drivingLicenseFront,
+                    'driving_license_back' => $drivingLicenseBack,
+                    'passport_front' => $passportFront,
+                    'passport_back' => $passportBack,
+                    'verification_status' => 'pending',
+                ]
+            );
+
+            return redirect()->route('user.documents.index')->with([
+                'message' => 'Documents uploaded successfully!',
+                'type' => 'success',
+            ]);
+        } catch (\Exception $e) {
+            \Log::error('Document Upload Error: ' . $e->getMessage());
+            return back()->with([
+                'message' => 'Something went wrong during upload. Please try again.',
+                'type' => 'error',
+            ])->withErrors(['error' => 'Upload failed. Please try again.']);
+        }
     }
 
     // Show edit document form
@@ -56,69 +95,115 @@ class UserDocumentController extends Controller
         $this->authorize('update', $document);
 
         return Inertia::render('Profile/Documents/Edit', [
-            'document' => $document
+            'document' => $document,
         ]);
     }
 
-    // Update an existing document
+    // Update existing documents
     public function update(Request $request, UserDocument $document)
     {
-        $this->authorize('update', $document);
+        try {
+            $this->authorize('update', $document);
 
-        $request->validate([
-            'document_file' => 'file|mimes:jpg,jpeg,png,pdf|max:2048',
-        ]);
-
-        if ($request->hasFile('document_file')) {
-            Storage::disk('upcloud')->delete($document->document_file);
-            $path = $request->file('document_file')->store('documents', 'upcloud');
-            $url = Storage::disk('upcloud')->url($path);
-            $document->update([
-                'document_file' => $url,
-                'verification_status' => 'pending'
+            $request->validate([
+                'driving_license_front' => 'nullable|file|mimes:jpg,jpeg,png,pdf|max:2048',
+                'driving_license_back' => 'nullable|file|mimes:jpg,jpeg,png,pdf|max:2048',
+                'passport_front' => 'nullable|file|mimes:jpg,jpeg,png,pdf|max:2048',
+                'passport_back' => 'nullable|file|mimes:jpg,jpeg,png,pdf|max:2048',
             ]);
-        }
 
-        return redirect()->route('user.documents.index')->with('success', 'Document updated successfully.');
+            $folderName = 'documents';
+
+            // Retain existing URLs if no new file is uploaded
+            $drivingLicenseFront = $document->driving_license_front;
+            $drivingLicenseBack = $document->driving_license_back;
+            $passportFront = $document->passport_front;
+            $passportBack = $document->passport_back;
+
+            // Handle file uploads
+            if ($request->hasFile('driving_license_front')) {
+                if ($document->driving_license_front) {
+                    Storage::disk('upcloud')->delete(parse_url($document->driving_license_front, PHP_URL_PATH));
+                }
+                $path = $request->file('driving_license_front')->store($folderName, 'upcloud');
+                $drivingLicenseFront = Storage::disk('upcloud')->url($path);
+            }
+            if ($request->hasFile('driving_license_back')) {
+                if ($document->driving_license_back) {
+                    Storage::disk('upcloud')->delete(parse_url($document->driving_license_back, PHP_URL_PATH));
+                }
+                $path = $request->file('driving_license_back')->store($folderName, 'upcloud');
+                $drivingLicenseBack = Storage::disk('upcloud')->url($path);
+            }
+            if ($request->hasFile('passport_front')) {
+                if ($document->passport_front) {
+                    Storage::disk('upcloud')->delete(parse_url($document->passport_front, PHP_URL_PATH));
+                }
+                $path = $request->file('passport_front')->store($folderName, 'upcloud');
+                $passportFront = Storage::disk('upcloud')->url($path);
+            }
+            if ($request->hasFile('passport_back')) {
+                if ($document->passport_back) {
+                    Storage::disk('upcloud')->delete(parse_url($document->passport_back, PHP_URL_PATH));
+                }
+                $path = $request->file('passport_back')->store($folderName, 'upcloud');
+                $passportBack = Storage::disk('upcloud')->url($path);
+            }
+
+            // Update the document record
+            $document->update([
+                'driving_license_front' => $drivingLicenseFront,
+                'driving_license_back' => $drivingLicenseBack,
+                'passport_front' => $passportFront,
+                'passport_back' => $passportBack,
+                'verification_status' => 'pending',
+            ]);
+
+            return redirect()->route('user.documents.index')->with([
+                'message' => 'Documents updated successfully!',
+                'type' => 'success',
+            ]);
+        } catch (\Exception $e) {
+            \Log::error('Document Update Error: ' . $e->getMessage());
+            return back()->with([
+                'message' => 'Something went wrong during update. Please try again.',
+                'type' => 'error',
+            ])->withErrors(['error' => 'Update failed. Please try again.']);
+        }
     }
 
     // Delete a document
     public function destroy(UserDocument $document)
     {
-        $this->authorize('delete', $document);
+        try {
+            $this->authorize('delete', $document);
 
-        Storage::disk('upcloud')->delete($document->document_file);
-        $document->delete();
-
-        return redirect()->route('user.documents.index')->with('success', 'Document deleted successfully.');
-    }
-
-    // Bulk upload documents
-    public function bulkUpload(Request $request)
-    {
-        $request->validate([
-            'document_type_*' => 'required|in:id_proof,address_proof,driving_license',
-            'document_file_*' => 'required|file|mimes:jpg,jpeg,png,pdf|max:2048',
-        ]);
-
-        foreach ($request->file() as $key => $file) {
-            if (strpos($key, 'document_file_') === 0) {
-                $index = str_replace('document_file_', '', $key);
-                $typeKey = 'document_type_' . $index;
-
-                $path = $file->store('documents', 'upcloud');
-                $url = Storage::disk('upcloud')->url($path);
-
-                UserDocument::create([
-                    'user_id' => Auth::id(),
-                    'document_type' => $request->$typeKey,
-                    'document_number' => Str::upper(Str::random(10)),
-                    'document_file' => $url,
-                    'verification_status' => 'pending',
-                ]);
+            // Delete associated files
+            if ($document->driving_license_front) {
+                Storage::disk('upcloud')->delete(parse_url($document->driving_license_front, PHP_URL_PATH));
             }
-        }
+            if ($document->driving_license_back) {
+                Storage::disk('upcloud')->delete(parse_url($document->driving_license_back, PHP_URL_PATH));
+            }
+            if ($document->passport_front) {
+                Storage::disk('upcloud')->delete(parse_url($document->passport_front, PHP_URL_PATH));
+            }
+            if ($document->passport_back) {
+                Storage::disk('upcloud')->delete(parse_url($document->passport_back, PHP_URL_PATH));
+            }
 
-        return redirect()->route('user.documents.index')->with('success', 'Documents uploaded successfully.');
+            $document->delete();
+
+            return redirect()->route('user.documents.index')->with([
+                'message' => 'Document deleted successfully!',
+                'type' => 'success',
+            ]);
+        } catch (\Exception $e) {
+            \Log::error('Document Deletion Error: ' . $e->getMessage());
+            return back()->with([
+                'message' => 'Something went wrong during deletion. Please try again.',
+                'type' => 'error',
+            ]);
+        }
     }
 }

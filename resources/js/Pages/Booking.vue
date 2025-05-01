@@ -99,7 +99,7 @@ const totalDays = computed(() => {
     const diffTime = endDate.getTime() - startDate.getTime();
 
     // Convert milliseconds to days
-    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)); 
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
 
     return diffDays > 0 ? diffDays : 1; // Ensure minimum 1 day rental
 });
@@ -326,12 +326,12 @@ const calculateTotal = computed(() => {
 
     total += Number(totalPrice.value);
     // Add plan value
-    total += Number(selectedPlan.value?.price || 0)* totalDays.value;
+    total += Number(selectedPlan.value?.price || 0) * totalDays.value;
 
     // Add extras with quantity multiplication
     bookingExtras.value.forEach((extra) => {
         if (extra.quantity > 0) {
-            total += Number(extra.price) * Number(extra.quantity)* totalDays.value;
+            total += Number(extra.price) * Number(extra.quantity) * totalDays.value;
         }
     });
 
@@ -447,8 +447,10 @@ const submitBooking = async () => {
             customer: customer.value,
             pickup_date: pickupDate.value,
             return_date: returnDate.value,
-            pickup_location: vehicle.value?.location,
-            return_location: vehicle.value?.location,
+            pickup_location: vehicle.value ?
+                `${vehicle.value.location}, ${vehicle.value.city}, ${vehicle.value.state}, ${vehicle.value.country}`.replace(/,\s*,/g, ',').trim().replace(/^,|,$/g, '') : null,
+            return_location: vehicle.value ?
+                `${vehicle.value.location}, ${vehicle.value.city}, ${vehicle.value.state}, ${vehicle.value.country}`.replace(/,\s*,/g, ',').trim().replace(/^,|,$/g, '') : null,
             pickup_time: pickupTime.value,
             return_time: returnTime.value,
             total_days: totalDays,
@@ -459,7 +461,7 @@ const submitBooking = async () => {
             pending_amount: calculatePendingAmount.value,
             amount_paid: calculateAmountPaid.value,
             discount_amount: Number(discountAmount.value),
-            plan: selectedPlan.value ? selectedPlan.value.plan_type : "Free",
+            plan: selectedPlan.value ? selectedPlan.value.plan_type : "Free Plan",
             plan_price: selectedPlan.value ? Number(selectedPlan.value.price) : 0,
             extras: extras.value,
             vehicle_id: vehicle.value?.id,
@@ -946,7 +948,8 @@ const submitBooking = async () => {
                                 <div class="flex flex-col gap-1">
                                     <span class="text-[1.25rem] text-medium max-[768px]:text-[1rem]">{{
                                         vehicle?.location
-                                    }}, {{ vehicle.city }}, {{ vehicle.state }}, {{ vehicle.country }}</span><span class="max-[768px]:text-[0.85rem]">From: {{ dateFrom }} {{
+                                        }}, {{ vehicle.city }}, {{ vehicle.state }}, {{ vehicle.country }}</span><span
+                                        class="max-[768px]:text-[0.85rem]">From: {{ dateFrom }} {{
                                             timeFrom }}</span>
                                 </div>
                             </div>
@@ -955,7 +958,8 @@ const submitBooking = async () => {
                                 <div class="flex flex-col gap-1">
                                     <span class="text-[1.25rem] text-medium max-[768px]:text-[1rem]">{{
                                         vehicle?.location
-                                    }}, {{ vehicle.city }}, {{ vehicle.state }}, {{ vehicle.country }}</span><span class="max-[768px]:text-[0.85rem]">To: {{ dateTo }} {{ timeTo
+                                        }}, {{ vehicle.city }}, {{ vehicle.state }}, {{ vehicle.country }}</span><span
+                                        class="max-[768px]:text-[0.85rem]">To: {{ dateTo }} {{ timeTo
                                         }}</span>
                                 </div>
                             </div>
@@ -964,7 +968,8 @@ const submitBooking = async () => {
                                 <div class="column flex flex-col justify-between gap-4">
                                     <span class="text-[1.5rem] max-[768px]:text-[1.2rem]">Payment Details</span>
 
-                                    <div class="flex justify-between items-center text-[1.15rem] max-[768px]:text-[0.875rem]">
+                                    <div
+                                        class="flex justify-between items-center text-[1.15rem] max-[768px]:text-[0.875rem]">
 
                                         <span>Price ( package type ({{ packageType }}) )</span>
                                         <strong class="text-[1.5rem] font-medium max-[768px]:text-[1.1rem]">
@@ -972,19 +977,20 @@ const submitBooking = async () => {
 
                                     </div>
                                     <!-- Selected Plan -->
-                                    <div v-if="selectedPlan" class="flex justify-between items-center text-[1.15rem] max-[768px]:text-[0.875rem]">
+                                    <div v-if="selectedPlan"
+                                        class="flex justify-between items-center text-[1.15rem] max-[768px]:text-[0.875rem]">
                                         <span>{{
                                             selectedPlan.plan_type
-                                        }}</span>
+                                            }}</span>
                                         <div>
                                             <div class="flex items-center gap-1">
-                                            <span>
-                                                {{formatPrice(selectedPlan.price)}} * {{ totalDays }} days = 
-                                            </span>
+                                                <span>
+                                                    {{ formatPrice(selectedPlan.price) }} * {{ totalDays }} days =
+                                                </span>
 
-                                            <strong class="text-[1.5rem] font-medium max-[768px]:text-[1.1rem]">{{
-                                                formatPrice(selectedPlan.price * totalDays)
-                                                }}</strong>
+                                                <strong class="text-[1.5rem] font-medium max-[768px]:text-[1.1rem]">{{
+                                                    formatPrice(selectedPlan.price * totalDays)
+                                                    }}</strong>
                                             </div>
 
                                         </div>
@@ -1001,11 +1007,11 @@ const submitBooking = async () => {
                                             }}</span>
                                         <div class="flex items-center gap-1">
                                             <span>
-                                                {{formatPrice(extra.price * extra.quantity)}} * {{ totalDays }} days
-                                            =
+                                                {{ formatPrice(extra.price * extra.quantity) }} * {{ totalDays }} days
+                                                =
                                             </span>
                                             <strong class="text-[1.5rem] font-medium max-[768px]:text-[1.1rem]">
-                                                 {{formatPrice(extra.price * extra.quantity * totalDays)}}</strong>
+                                                {{ formatPrice(extra.price * extra.quantity * totalDays) }}</strong>
 
                                         </div>
                                     </div>
@@ -1026,21 +1032,27 @@ const submitBooking = async () => {
                                         <!-- Pricing Breakdown inside Dialog -->
                                         <div class="flex flex-col gap-4">
 
-                                            <div class="flex justify-between text-[1.15rem] max-[768px]:text-[0.875rem]">
+                                            <div
+                                                class="flex justify-between text-[1.15rem] max-[768px]:text-[0.875rem]">
                                                 <span>Base Price</span>
-                                                <p class="font-medium">{{ formatPrice(totalPrice + discountAmount) }}</p>
+                                                <p class="font-medium">{{ formatPrice(totalPrice + discountAmount) }}
+                                                </p>
                                             </div>
 
-                                            <div v-if="selectedPlan" class="flex justify-between text-[1.15rem] max-[768px]:text-[0.875rem]">
+                                            <div v-if="selectedPlan"
+                                                class="flex justify-between text-[1.15rem] max-[768px]:text-[0.875rem]">
                                                 <span>Plan: {{ selectedPlan.plan_type }}</span>
-                                                <p class="font-medium">{{ formatPrice(selectedPlan.price * totalDays) }}</p>
+                                                <p class="font-medium">{{ formatPrice(selectedPlan.price * totalDays) }}
+                                                </p>
                                             </div>
 
                                             <div v-for="extra in bookingExtras" :key="extra.id"
-                                                v-show="extra.quantity > 0" class="flex justify-between text-[1.15rem] max-[768px]:text-[0.875rem]">
+                                                v-show="extra.quantity > 0"
+                                                class="flex justify-between text-[1.15rem] max-[768px]:text-[0.875rem]">
                                                 <span>{{ extra.extra_name }} {{ extra.quantity > 1 ?
                                                     `(x${extra.quantity})` : "" }}</span>
-                                                <p class="font-medium">{{ formatPrice(extra.price * extra.quantity * totalDays) }}
+                                                <p class="font-medium">{{ formatPrice(extra.price * extra.quantity *
+                                                    totalDays) }}
                                                 </p>
                                             </div>
 
@@ -1048,7 +1060,7 @@ const submitBooking = async () => {
                                                 class="flex justify-between text-[1.25rem] font-bold border-t pt-3 mt-3 max-[768px]:text-[0.875rem]">
                                                 <span>Total (incl. VAT)</span>
                                                 <p class="font-medium">{{ formatPrice(calculateTotal + discountAmount)
-                                                }}
+                                                    }}
                                                 </p>
                                             </div>
                                             <div v-if="discountAmount"
@@ -1058,7 +1070,7 @@ const submitBooking = async () => {
                                                     <p class="border-b-2 mb-1 text-red-500 font-medium">-{{
                                                         formatPrice(discountAmount) }}</p>
                                                     <strong class="text-[1.3rem]">{{ formatPrice(calculateTotal)
-                                                        }}</strong>
+                                                    }}</strong>
                                                 </div>
                                             </div>
                                         </div>
@@ -1068,16 +1080,21 @@ const submitBooking = async () => {
                                 <div class="column bg-white text-customPrimaryColor p-4 mt-[2rem] rounded-[12px]">
                                     <div class="flex items-center justify-between">
                                         <p class="flex gap-1 text-[1.15rem] max-[768px]:text-[0.875rem]">
-                                        Total Payment (incl. VAT)
-                                        <img :src="infoIcon" alt="" />
+                                            Total Payment (incl. VAT)
+                                            <img :src="infoIcon" alt="" />
                                         </p>
-                                    <span class="relative text-[1.25rem] font-bold">{{ formatPrice(calculateTotal) }} 
-                                        <span class="absolute left-0 top-[50%] w-full bg-red-600 h-[2px] -rotate-6"></span>
-                                    </span>
+                                        <span class="relative text-[1.25rem] font-bold">{{ formatPrice(calculateTotal)
+                                            }}
+                                            <span
+                                                class="absolute left-0 top-[50%] w-full bg-red-600 h-[2px] -rotate-6"></span>
+                                        </span>
                                     </div>
                                     <div class="flex justify-between items-center">
-                                        <span class="text-[1.15rem] max-[768px]:text-[0.875rem]">Pay 30% now value</span>
-                                        <span class="text-[1.25rem] font-bold text-green-600">{{ formatPrice(calculateAmountPaid) }}</span>
+                                        <span class="text-[1.15rem] max-[768px]:text-[0.875rem]">Pay 30% now
+                                            value</span>
+                                        <span class="text-[1.25rem] font-bold text-green-600">{{
+                                            formatPrice(calculateAmountPaid)
+                                            }}</span>
                                     </div>
                                 </div>
                             </div>
@@ -1211,8 +1228,9 @@ label {
 input {
     font-size: 0.85rem;
 }
+
 .strikethrough-red {
-  text-decoration: line-through;
-  color: red;
+    text-decoration: line-through;
+    color: red;
 }
 </style>

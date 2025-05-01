@@ -10,12 +10,12 @@ class UserDocument extends Model
 
     protected $fillable = [
         'user_id',
-        'document_type',
-        'document_number',
-        'document_file',
+        'driving_license_front',
+        'driving_license_back',
+        'passport_front',
+        'passport_back',
         'verification_status',
         'verified_at',
-        'expires_at',
     ];
 
     protected $casts = [
