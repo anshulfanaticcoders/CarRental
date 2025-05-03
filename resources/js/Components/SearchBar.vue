@@ -96,27 +96,27 @@
 
           <!-- Show popular places only if no search has been performed or input is empty -->
           <div v-else-if="popularPlaces.length > 0 && !isSearching">
-            <div class="text-sm font-medium mb-2 text-customPrimaryColor">Popular Searches</div>
-            <div v-for="place in popularPlaces" :key="place.id" @click="selectLocation(place)"
-              class="p-2 hover:bg-[#efefef4d] hover:text-customPrimaryColor cursor-pointer flex gap-3">
-              <div class="h-10 w-10 md:h-12 md:w-12 bg-gray-100 text-gray-300 rounded flex justify-center items-center max-[768px]:flex-[0.2]">
-                <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" class="w-1/2 h-1/2">
-                  <path clip-rule="evenodd"
-                    d="M7.838 9.79c0 2.497 1.946 4.521 4.346 4.521 2.401 0 4.347-2.024 4.347-4.52 0-2.497-1.946-4.52-4.346-4.52-2.401 0-4.347 2.023-4.347 4.52Z"
-                    stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path>
-                  <path clip-rule="evenodd"
-                    d="M20.879 9.79c0 7.937-6.696 12.387-8.335 13.36a.7.7 0 0 1-.718 0c-1.64-.973-8.334-5.425-8.334-13.36 0-4.992 3.892-9.04 8.693-9.04s8.694 4.048 8.694 9.04Z"
-                    stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path>
-                </svg>
-              </div>
-              <div class="flex flex-col max-[768px]:flex-1">
-                <div class="font-medium">{{ place.location }}</div>
-                <div v-if="place.below_label" class="text-sm text-gray-500">
-                  {{ place.below_label }}
-                </div>
-              </div>
-            </div>
-          </div>
+  <div class="text-sm font-medium mb-2 text-customPrimaryColor">Popular Searches</div>
+  <div v-for="place in popularPlaces" :key="place.id" @click="selectLocation(place)"
+    class="p-2 hover:bg-[#efefef4d] hover:text-customPrimaryColor cursor-pointer flex gap-3">
+    <div class="h-10 w-10 md:h-12 md:w-12 bg-gray-100 text-gray-300 rounded flex justify-center items-center max-[768px]:flex-[0.2]">
+      <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" class="w-1/2 h-1/2">
+        <path clip-rule="evenodd"
+          d="M7.838 9.79c0 2.497 1.946 4.521 4.346 4.521 2.401 0 4.347-2.024 4.347-4.52 0-2.497-1.946-4.52-4.346-4.52-2.401 0-4.347 2.023-4.347 4.52Z"
+          stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path>
+        <path clip-rule="evenodd"
+          d="M20.879 9.79c0 7.937-6.696 12.387-8.335 13.36a.7.7 0 0 1-.718 0c-1.64-.973-8.334-5.425-8.334-13.36 0-4.992 3.892-9.04 8.693-9.04s8.694 4.048 8.694 9.04Z"
+          stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path>
+      </svg>
+    </div>
+    <div class="flex flex-col max-[768px]:flex-1">
+      <div class="font-medium">{{ place.label }}</div> <!-- Changed from place.location to place.label -->
+      <div v-if="place.below_label" class="text-sm text-gray-500">
+        {{ place.below_label }}
+      </div>
+    </div>
+  </div>
+</div>
         </div>
 
          <!-- Error Dialog -->
@@ -145,6 +145,7 @@ const form = ref({
   city: null,
   state: null,
   country: null,
+  matched_field: null,
 });
 
 const props = defineProps({
@@ -190,38 +191,42 @@ const fetchPopularPlaces = async () => {
   try {
     const response = await axios.get('/api/footer-places');
     popularPlaces.value = response.data.map(place => {
-      let label, belowLabel;
+      let label, belowLabel, matchedField;
 
-      // Prioritize place_name as the label if it exists
-      if (place.place_name) {
-        label = place.place_name; // e.g., "Dharamshala ISBT Bus Stand"
-        belowLabel = [place.city, place.state, place.country]
-          .filter(Boolean)
-          .join(', '); // e.g., "Dharampur, Himachal Pradesh, India"
-      } else if (place.city && place.state && place.country) {
-        label = place.city; // Fallback to city if no place_name
+      // Prioritize city, handle cases like Chandigarh
+      if (place.city) {
+        label = place.city; // e.g., "Chandigarh"
         belowLabel = [place.state, place.country].filter(Boolean).join(', ');
-      } else if (place.state && place.country) {
-        label = place.state;
-        belowLabel = place.country;
+        matchedField = 'city';
+      } else if (place.state && (!place.city || place.state === place.city)) {
+        label = place.state; // Treat state as city if no city or same
+        belowLabel = place.country || null;
+        matchedField = 'city'; // Force city-based filtering
+      } else if (place.place_name) {
+        label = place.place_name;
+        belowLabel = [place.city, place.state, place.country].filter(Boolean).join(', ');
+        matchedField = 'location';
       } else if (place.country) {
         label = place.country;
         belowLabel = null;
+        matchedField = 'country';
       } else {
-        label = place.place_name || 'Unknown Location';
+        label = 'Unknown Location';
         belowLabel = null;
+        matchedField = null;
       }
 
       return {
         id: place.id,
-        label: label,
+        label,
         below_label: belowLabel,
-        location: place.place_name,
-        city: place.city,
-        state: place.state,
-        country: place.country,
-        latitude: place.latitude,
-        longitude: place.longitude
+        location: place.place_name || null,
+        city: place.city || place.state || null, // Use state as city if no city
+        state: place.state || null,
+        country: place.country || null,
+        latitude: place.latitude || null,
+        longitude: place.longitude || null,
+        matched_field: matchedField
       };
     });
   } catch (error) {
@@ -236,7 +241,6 @@ const searchAroundMe = async () => {
   isSearching.value = true;
   showSearchBox.value = true;
 
-  // Request user's current location
   if (!navigator.geolocation) {
     locationError.value = "Geolocation is not supported by your browser.";
     isSearching.value = false;
@@ -254,7 +258,7 @@ const searchAroundMe = async () => {
 
     const { latitude, longitude } = position.coords;
 
-    // Perform reverse geocoding using the correct endpoint
+    // Perform reverse geocoding
     const response = await axios.get('/api/geocoding/reverse', {
       params: { lat: latitude, lon: longitude },
     });
@@ -266,29 +270,43 @@ const searchAroundMe = async () => {
       return;
     }
 
-    // Format the location label
-    let label = "Around Me";
-    // let belowLabel = [result.city, result.region, result.country]
-    //   .filter(Boolean)
-    //   .filter(item => item !== label)
-    //   .join(", ");
+    // Prioritize city for "Around Me" as it’s a common filter level
+    let label, matchedField;
+    if (result.city) {
+      label = result.city;
+      matchedField = 'city';
+    } else if (result.region) {
+      label = result.region;
+      matchedField = 'state';
+    } else if (result.country) {
+      label = result.country;
+      matchedField = 'country';
+    } else {
+      label = result.name || 'Around Me';
+      matchedField = 'location';
+    }
+
+    const belowLabel = [result.city, result.region, result.country]
+      .filter(Boolean)
+      .filter(item => item !== label)
+      .join(', ');
 
     // Update form with location details
-    form.value.where = label ;
+    form.value.where = label;
     form.value.location = result.name || null;
     form.value.latitude = latitude;
     form.value.longitude = longitude;
     form.value.city = result.city || null;
     form.value.state = result.region || null;
     form.value.country = result.country || null;
-    form.value.radius = 50000; // Set a reasonable radius for "Around Me" (50km)
+    form.value.matched_field = matchedField;
+    form.value.radius = 50000; // 50km radius for "Around Me"
 
     // Close search box and reset search state
     showSearchBox.value = false;
     searchPerformed.value = false;
     searchResults.value = [];
     isSearching.value = false;
-
   } catch (error) {
     locationError.value = "Unable to get your location. Please allow location access or try another search.";
     isSearching.value = false;
@@ -357,13 +375,14 @@ const handleSearchInput = () => {
 };
 
 const selectLocation = (result) => {
-  form.value.where = result.label + (result.below_label ? `, ${result.below_label}` : '');
+  form.value.where = result.label;
   form.value.location = result.location || null;
   form.value.latitude = result.latitude;
   form.value.longitude = result.longitude;
   form.value.city = result.city;
   form.value.state = result.state;
   form.value.country = result.country;
+  form.value.matched_field = result.matched_field; // Set matched_field
   showSearchBox.value = false;
   searchPerformed.value = false;
   searchResults.value = [];
@@ -384,13 +403,8 @@ const submit = () => {
   let packageType = 'day';
   form.value.package_type = packageType;
 
-  if (form.value.city) {
-    form.value.radius = 30000;
-  } else if (form.value.state) {
-    form.value.radius = 50000;
-  } else if (form.value.country) {
-    form.value.radius = 100000;
-  }
+  // Remove radius adjustment since we’re not using radius-based filtering
+  // form.value.radius = 30000; // Removed
 
   router.get("/s", form.value);
 };

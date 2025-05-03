@@ -354,9 +354,16 @@ class VehicleController extends Controller
     // Normalize the query for case-insensitive comparison
     $normalizedQuery = strtolower($query);
 
-    // Fetch locations from the database with more precise matching
-    $locations = Vehicle::select('location', 'city', 'state', 'country', 'latitude', 'longitude')
-        ->where(function($q) use ($normalizedQuery) {
+    // Fetch locations from the database with partial matching
+    $locations = Vehicle::select(
+        'location',
+        'city',
+        'state',
+        'country',
+        'latitude',
+        'longitude'
+    )
+        ->where(function ($q) use ($normalizedQuery) {
             $q->whereRaw('LOWER(location) LIKE ?', ["%{$normalizedQuery}%"])
               ->orWhereRaw('LOWER(city) LIKE ?', ["%{$normalizedQuery}%"])
               ->orWhereRaw('LOWER(state) LIKE ?', ["%{$normalizedQuery}%"])
@@ -365,51 +372,64 @@ class VehicleController extends Controller
         ->whereNotNull('city')
         ->whereNotNull('state')
         ->whereNotNull('country')
-        ->groupBy('city', 'state', 'country', 'location', 'latitude', 'longitude')
+        ->groupBy('location', 'city', 'state', 'country', 'latitude', 'longitude')
         ->orderByRaw('
             CASE 
-                WHEN LOWER(city) LIKE ? THEN 0 
-                WHEN LOWER(state) LIKE ? THEN 1 
-                WHEN LOWER(country) LIKE ? THEN 2 
-                ELSE 3 
+                WHEN LOWER(location) LIKE ? THEN 0 
+                WHEN LOWER(city) LIKE ? THEN 1 
+                WHEN LOWER(state) LIKE ? THEN 2 
+                WHEN LOWER(country) LIKE ? THEN 3 
+                ELSE 4 
             END', [
-                "{$normalizedQuery}%", 
-                "{$normalizedQuery}%", 
-                "{$normalizedQuery}%"
+                "%{$normalizedQuery}%",
+                "%{$normalizedQuery}%",
+                "%{$normalizedQuery}%",
+                "%{$normalizedQuery}%"
             ])
         ->orderByRaw('
             CASE 
-                WHEN LOWER(city) = ? THEN 0 
-                WHEN LOWER(state) = ? THEN 1 
-                WHEN LOWER(country) = ? THEN 2 
-                ELSE 3 
+                WHEN LOWER(location) = ? THEN 0 
+                WHEN LOWER(city) = ? THEN 1 
+                WHEN LOWER(state) = ? THEN 2 
+                WHEN LOWER(country) = ? THEN 3 
+                ELSE 4 
             END', [
-                $normalizedQuery, 
-                $normalizedQuery, 
+                $normalizedQuery,
+                $normalizedQuery,
+                $normalizedQuery,
                 $normalizedQuery
             ])
         ->limit(50)
         ->get();
 
-    // Process results to format label and below_label
+    // Process results to format label, below_label, and matched field
     $results = $locations->map(function ($vehicle) use ($normalizedQuery) {
+        $locationLower = strtolower($vehicle->location ?? '');
         $cityLower = strtolower($vehicle->city ?? '');
         $stateLower = strtolower($vehicle->state ?? '');
         $countryLower = strtolower($vehicle->country ?? '');
 
-        // Determine the best match
-        if (str_contains($cityLower, $normalizedQuery)) {
+        $matchedField = null;
+        $label = null;
+        $belowLabel = null;
+
+        // Determine the matched field and set label/below_label
+        if (str_contains($locationLower, $normalizedQuery)) {
+            $matchedField = 'location';
+            $label = $vehicle->location;
+            $belowLabel = collect([$vehicle->city, $vehicle->state, $vehicle->country])->filter()->join(', ');
+        } elseif (str_contains($cityLower, $normalizedQuery)) {
+            $matchedField = 'city';
             $label = $vehicle->city;
             $belowLabel = collect([$vehicle->state, $vehicle->country])->filter()->join(', ');
         } elseif (str_contains($stateLower, $normalizedQuery)) {
+            $matchedField = 'state';
             $label = $vehicle->state;
             $belowLabel = $vehicle->country;
         } elseif (str_contains($countryLower, $normalizedQuery)) {
+            $matchedField = 'country';
             $label = $vehicle->country;
             $belowLabel = null;
-        } else {
-            $label = $vehicle->location;
-            $belowLabel = collect([$vehicle->city, $vehicle->state, $vehicle->country])->filter()->join(', ');
         }
 
         return [
@@ -422,15 +442,13 @@ class VehicleController extends Controller
             'country' => $vehicle->country,
             'latitude' => $vehicle->latitude,
             'longitude' => $vehicle->longitude,
+            'matched_field' => $matchedField, // Indicate which field was matched
         ];
-    });
-
-    // Remove duplicates by label and below_label combination
-    $uniqueResults = $results->unique(function ($item) {
+    })->filter()->unique(function ($item) {
         return $item['label'] . ($item['below_label'] ?? '');
     })->values();
 
-    return response()->json(['results' => $uniqueResults]);
+    return response()->json(['results' => $results]);
 }
 
 }

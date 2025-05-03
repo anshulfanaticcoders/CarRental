@@ -30,6 +30,7 @@ class SearchController extends Controller
         'radius' => 'nullable|numeric',
         'package_type' => 'nullable|string|in:day,week,month',
         'category_id' => 'nullable|exists:vehicle_categories,id',
+        'matched_field' => 'nullable|string|in:location,city,state,country', // New field
     ]);
 
     // Base query
@@ -89,47 +90,43 @@ class SearchController extends Controller
         $query->where('category_id', $validated['category_id']);
     }
 
-    // Location-based filtering
-    if (!empty($validated['where'])) {
-        $city = null;
-        $state = null;
-        $country = null;
-
-        $geocodeResponse = Http::get('https://api.stadiamaps.com/geocoding/v1/search', [
-            'api_key' => env('STADIA_MAPS_API_KEY'),
-            'text' => $validated['where'],
-            'limit' => 1,
-        ]);
-
-        if ($geocodeResponse->successful()) {
-            $geocodeData = $geocodeResponse->json()['features'][0]['properties'] ?? [];
-            $city = $geocodeData['locality'] ?? null;
-            $state = $geocodeData['region'] ?? null;
-            $country = $geocodeData['country'] ?? null;
-
-            if ($city) {
-                $query->where('city', $city);
-            } elseif ($state) {
-                $query->where('state', $state);
-            } elseif ($country) {
-                $query->where('country', $country);
-            }
+    // Location-based filtering based on matched_field
+    if (!empty($validated['where']) && !empty($validated['matched_field'])) {
+        switch ($validated['matched_field']) {
+            case 'location':
+                $query->where('location', $validated['where']);
+                break;
+            case 'city':
+                $query->where('city', $validated['where']);
+                break;
+            case 'state':
+                $query->where('state', $validated['where']);
+                break;
+            case 'country':
+                $query->where('country', $validated['where']);
+                break;
         }
+    } elseif (!empty($validated['latitude']) && !empty($validated['longitude']) && !empty($validated['radius'])) {
+        // Radius-based filtering for "Around Me"
+        $lat = $validated['latitude'];
+        $lon = $validated['longitude'];
+        $radius = $validated['radius'] / 1000; // Convert meters to kilometers
 
-        if (!empty($validated['latitude']) && !empty($validated['longitude']) && !empty($validated['radius']) && is_null($city)) {
-            $radiusInKm = $validated['radius'] / 1000;
-            $query->selectRaw('*, ( 6371 * acos( 
-                cos(radians(?)) * cos(radians(latitude)) * 
-                cos(radians(longitude) - radians(?)) + 
-                sin(radians(?)) * sin(radians(latitude)) 
-            ) ) AS distance_in_km', [
-                $validated['latitude'],
-                $validated['longitude'],
-                $validated['latitude']
-            ])
-                ->havingRaw('distance_in_km <= ?', [$radiusInKm])
-                ->orderBy('distance_in_km');
-        }
+        // Haversine formula to calculate distance
+        $query->whereRaw("
+            6371 * acos(
+                cos(radians(?)) * cos(radians(latitude)) * cos(radians(longitude) - radians(?)) +
+                sin(radians(?)) * sin(radians(latitude))
+            ) <= ?
+        ", [$lat, $lon, $lat, $radius]);
+    } elseif (!empty($validated['where'])) {
+        // Fallback: search across all fields
+        $query->where(function ($q) use ($validated) {
+            $q->where('location', $validated['where'])
+              ->orWhere('city', $validated['where'])
+              ->orWhere('state', $validated['where'])
+              ->orWhere('country', $validated['where']);
+        });
     }
 
     // Package type filter
@@ -150,17 +147,13 @@ class SearchController extends Controller
     // Paginate results
     $vehicles = $query->paginate(20)->withQueryString();
 
-    // Transform the collection to include review data and distance
+    // Transform the collection to include review data
     $vehicles->getCollection()->transform(function ($vehicle) {
         $reviews = Review::where('vehicle_id', $vehicle->id)
             ->where('status', 'approved')
             ->get();
         $vehicle->review_count = $reviews->count();
         $vehicle->average_rating = $reviews->avg('rating') ?? 0;
-
-        if (isset($vehicle->distance_in_km)) {
-            $vehicle->distance_in_km = intval($vehicle->distance_in_km);
-        }
 
         return $vehicle;
     });
@@ -172,9 +165,8 @@ class SearchController extends Controller
     $transmissions = $vehicles->pluck('transmission')->unique()->filter()->values()->all();
     $fuels = $vehicles->pluck('fuel')->unique()->filter()->values()->all();
 
-    // For mileage, since it's stored as a range in the frontend, we'll extract the mileage values
+    // For mileage, map to the range format used in the frontend
     $mileages = $vehicles->pluck('mileage')->unique()->filter()->map(function ($mileage) {
-        // Assuming mileage is a numeric value in the database, map it to the range format used in the frontend
         if ($mileage >= 0 && $mileage <= 10) return '0-10';
         if ($mileage > 10 && $mileage <= 20) return '10-20';
         if ($mileage > 20 && $mileage <= 30) return '20-30';
