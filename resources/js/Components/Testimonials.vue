@@ -10,6 +10,16 @@ import {
 } from "@/Components/ui/carousel";
 import Autoplay from "embla-carousel-autoplay";
 import axios from "axios";
+import { usePage } from '@inertiajs/vue3';
+
+// Access page props
+const page = usePage();
+
+// Translation helper
+const _p = (key) => {
+    const pageTranslations = page.props.pageTranslations || {};
+    return pageTranslations[key] || key;
+};
 
 // Data ref to hold testimonials
 const testimonials = ref([]);
@@ -22,7 +32,7 @@ const fetchTestimonials = async () => {
         const response = await axios.get('/api/testimonials/frontend');
         testimonials.value = response.data.testimonials;
     } catch (err) {
-        error.value = "Failed to load testimonials. Please try again later.";
+        error.value = _p('testimonials_error'); // Use translation key
         console.error("Error fetching testimonials:", err);
     } finally {
         loading.value = false;
@@ -45,9 +55,9 @@ const plugin = Autoplay({
          max-[768px]:mt-0 max-[768px]:py-0 max-[768px]:px-[0.5rem]">
         <div class="column text-center flex flex-col items-center text-customPrimaryColor-foreground w-[573px] py-[2rem]
          max-[768px]:w-full">
-            <span class="text-[1.25rem] max-[768px]:mb-5">-Testimonials-</span>
+            <span class="text-[1.25rem] max-[768px]:mb-5">- {{ _p('testimonials_title') }} -</span>
             <h3 class="max-w-[883px] max-[768px]:max-w-full">
-                What our customers are saying about us
+                {{ _p('testimonials_subtitle') }}
             </h3>
         </div>
 
@@ -63,7 +73,7 @@ const plugin = Autoplay({
 
         <!-- No testimonials -->
         <div v-else-if="testimonials.length === 0" class="text-white p-8 text-center">
-            No testimonials available yet.
+            {{ _p('testimonials_no_data') }}
         </div>
 
         <!-- Testimonials carousel -->

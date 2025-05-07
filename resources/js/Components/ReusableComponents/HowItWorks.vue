@@ -7,27 +7,39 @@ import {
     AccordionItem,
     AccordionTrigger,
 } from "@/Components/ui/accordion";
+import { usePage } from '@inertiajs/vue3';
+
+// Access page props
+const page = usePage();
+
+// Translation helpers
+const __ = (key) => {
+    const translations = page.props.translations || {};
+    return translations[key] || key;
+};
+
+const _p = (key) => {
+    const pageTranslations = page.props.pageTranslations || {};
+    return pageTranslations[key] || key;
+};
 
 const defaultValue = "item-1";
 
 const accordionItems = [
     {
         value: "item-1",
-        title: "Browse And Select",
-        content:
-            "Explore our diverse selection of high-end vehicles, choose your preferred pickup and return dates, and select a location that best fits your needs",
+        title: _p('how_it_works_step_1_title'), // Use translation key
+        content: _p('how_it_works_step_1_content'),
     },
     {
         value: "item-2",
-        title: "Book And Confirm",
-        content:
-            "Explore our diverse selection of high-end vehicles, choose your preferred pickup and return dates, and select a location that best fits your needs",
+        title: _p('how_it_works_step_2_title'),
+        content: _p('how_it_works_step_2_content'),
     },
     {
         value: "item-3",
-        title: "Book And Enjoy",
-        content:
-            "Explore our diverse selection of high-end vehicles, choose your preferred pickup and return dates, and select a location that best fits your needs",
+        title: _p('how_it_works_step_3_title'),
+        content: _p('how_it_works_step_3_content'),
     },
 ];
 </script>
@@ -49,12 +61,10 @@ const accordionItems = [
             <div class="column flex flex-col gap-10 w-[55%]
             max-[768px]:w-full">
                 <div class="col flex flex-col gap-5">
-                    <span class="text-cutomPrimaryColor text-[1.25rem]  max-[768px]:text-[1rem]">-How it Works -</span>
-                    <h3 class="">Treamlined processes for a hassle-free experience</h3>
-                    <p class='text-[1.25rem] text-customLightGrayColor  max-[768px]:text-[1rem]'>
-                        Our streamlined process ensures a seamless car rental
-                        experience from start to finish. With easy online
-                        booking, flexible pick-up and drop-off options.
+                    <span class="text-cutomPrimaryColor text-[1.25rem] max-[768px]:text-[1rem]">- {{ _p('how_it_works_title') }} -</span>
+                    <h3>{{ _p('how_it_works_subtitle') }}</h3>
+                    <p class="text-[1.25rem] text-customLightGrayColor max-[768px]:text-[1rem]">
+                        {{ _p('how_it_works_description') }}
                     </p>
                 </div>
                 <div class="col">
@@ -69,9 +79,9 @@ const accordionItems = [
                             :key="item.value"
                             :value="item.value"
                         >
-                            <AccordionTrigger class="text-[1.5rem] text-customPrimaryColor max-[768px]:mb-2 max-[768px]:text-[1rem]">{{
-                                item.title
-                            }}</AccordionTrigger>
+                            <AccordionTrigger class="text-[1.5rem] text-customPrimaryColor max-[768px]:mb-2 max-[768px]:text-[1rem]">
+                                {{ item.title }}
+                            </AccordionTrigger>
                             <AccordionContent class="text-[1.25rem] text-customLightGrayColor max-[768px]:text-[0.95rem] max-[768px]:leading-6">
                                 {{ item.content }}
                             </AccordionContent>
@@ -84,9 +94,9 @@ const accordionItems = [
 </template>
 
 <style scoped>
-@media screen and (max-width:768px) {
-    .how-it-works{
-        background-image: none!important;
+@media screen and (max-width: 768px) {
+    .how-it-works {
+        background-image: none !important;
     }
 }
 </style>

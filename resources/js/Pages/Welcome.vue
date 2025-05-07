@@ -167,6 +167,12 @@ const __ = (key) => {
     const translations = page.props.translations || {};
     return translations[key] || key;
 };
+
+// Access page-specific translations with a different helper
+const _p = (key) => {
+    const pageTranslations = page.props.pageTranslations || {};
+    return pageTranslations[key] || key;
+};
 </script>
 
 <template>
@@ -182,12 +188,12 @@ const __ = (key) => {
                 <div class="column bg-customPrimaryColor h-[65vh] w-full text-white flex flex-col items-end justify-center
                      max-[768px]:h-auto max-[768px]:px-[1.5rem] max-[768px]:py-[1.5rem]">
                     <div class="pl-[10%] max-[768px]:pl-0">
-                        <h1>Hit the Road with the Perfect Ride</h1>
+                        <h1>{{ _p('tagline') }}</h1>
                         <div class="h-16 mt-3 max-[768px]:h-20">
                             <!-- Typewriter text container -->
                             <p class="text-[1.25rem]  max-[768px]:text-[1rem] flex items-center">
                                 <span class="typewriter-text">{{ displayedText }}</span>
-                                <span class="cursor-blink ml-1">|</span>
+                                <span class="cursor-blink ml-1"></span>
                             </p>
                         </div>
                     </div>
@@ -212,7 +218,7 @@ const __ = (key) => {
             <div
                 class="flex min-h-[inherit] items-center gap-24 max-[768px]:flex-col max-[768px]:gap-10 max-[768px]:items-start">
                 <div class="column max-[768px]:px-[1.5rem]">
-                    <h2>Our Categories</h2>
+                    <h2>{{ _p('our_categories') }}</h2>
                 </div>
                 <div class="column carousel rounded-[20px] p-6 max-[768px]:rounded-none max-[768px]:pl-3 max-[768px]:py-6"
                     style="background: linear-gradient(90deg, rgba(21, 59, 79, 0.2) 0%, rgba(21, 59, 79, 0) 94.4%);">
@@ -272,8 +278,8 @@ const __ = (key) => {
         <!------------------------------- Top Destination Places -------------------------------------->
         <section class="flex flex-col gap-10 py-customVerticalSpacing popular-places max-[768px]:py-[1rem]">
             <div class="column ml-[2%]">
-                <span class="text-[1.15rem] text-customPrimaryColor">-Top Destinations -</span>
-                <h3 class="text-customDarkBlackColor mt-[1rem] max-[768px]:text-[1.75rem]">Popular places</h3>
+                <span class="text-[1.15rem] text-customPrimaryColor">-{{ _p('top_destinations') }} -</span>
+                <h3 class="text-customDarkBlackColor mt-[1rem] max-[768px]:text-[1.75rem]">{{ _p('popular_places') }}</h3>
             </div>
             <div class="column max-[768px]:px-[1.5rem]">
                 <Carousel class="relative w-full" :plugins="[plugin]" @mouseenter="plugin.stop"
@@ -337,10 +343,9 @@ const __ = (key) => {
         <section class="py-customVerticalSpacing">
             <div class="full-w-container flex flex-col gap-16">
                 <div class="column text-center flex flex-col gap-5 items-center">
-                    <span class="text-[1.25rem] text-customPrimaryColor">-Why Choose Us-</span>
+                    <span class="text-[1.25rem] text-customPrimaryColor">-{{ _p('why_choose_us') }}-</span>
                     <h3 class="max-w-[883px] text-customDarkBlackColor">
-                        From luxury sedans to budget-friendly compacts, we've
-                        got something for every journey
+                        {{ _p('why_subtitle') }}
                     </h3>
                 </div>
                 <div class="column grid grid-cols-3 gap-16
@@ -350,13 +355,9 @@ const __ = (key) => {
                             <img :src="locationMapIcon" alt="" />
                             <div class="flex flex-col gap-3">
                                 <span
-                                    class="text-[1.5rem] text-customDarkBlackColor font-medium  max-[768px]:text-[1.25rem]">Convenient
-                                    Locations</span>
+                                    class="text-[1.5rem] text-customDarkBlackColor font-medium  max-[768px]:text-[1.25rem]">{{ _p('convenient_locations') }}</span>
                                 <p class="text-customLightGrayColor text-[1.15rem]  max-[768px]:text-[0.95rem]">
-                                    With multiple rental locations at airports,
-                                    city centers, and popular destinations,
-                                    picking up and dropping off your rental is
-                                    quick and easy.
+                                    {{ _p('convenient_locations_text') }}
                                 </p>
                             </div>
                         </div>
@@ -364,12 +365,9 @@ const __ = (key) => {
                             <img :src="phoneIcon" alt="" />
                             <div class=" flex flex-col gap-3">
                                 <span
-                                    class="text-[1.5rem] text-customDarkBlackColor font-medium  max-[768px]:text-[1.25rem]">Fast
-                                    and Easy Booking
-                                    Process</span>
+                                    class="text-[1.5rem] text-customDarkBlackColor font-medium  max-[768px]:text-[1.25rem]">{{ _p('fast_booking') }}</span>
                                 <p class="text-customLightGrayColor text-[1.15rem]  max-[768px]:text-[0.95rem]">
-                                    Select your desired pickup and return dates,
-                                    along with the time.
+                                    {{ _p('fast_booking_text') }}
                                 </p>
                             </div>
                         </div>
@@ -383,13 +381,9 @@ const __ = (key) => {
                             <img :src="chipIcon" alt="" />
                             <div class=" flex flex-col gap-3">
                                 <span
-                                    class="text-[1.5rem] text-customDarkBlackColor font-medium  max-[768px]:text-[1.25rem]">Modern
-                                    Fleet with the
-                                    Latest
-                                    Technology</span>
+                                    class="text-[1.5rem] text-customDarkBlackColor font-medium  max-[768px]:text-[1.25rem]">{{ _p('modern_fleet') }}</span>
                                 <p class="text-customLightGrayColor text-[1.15rem]  max-[768px]:text-[0.95rem]">
-                                    Select your desired pickup and return dates,
-                                    along with the time.
+                                    {{ _p('modern_fleet_text') }}
                                 </p>
                             </div>
                         </div>
@@ -397,11 +391,9 @@ const __ = (key) => {
                             <img :src="userCoverageIcon" alt="" />
                             <div class="flex flex-col gap-3 ">
                                 <span
-                                    class="text-[1.5rem] text-customDarkBlackColor font-medium  max-[768px]:text-[1.25rem]">Insurance
-                                    Coverage</span>
+                                    class="text-[1.5rem] text-customDarkBlackColor font-medium  max-[768px]:text-[1.25rem]">{{ _p('insurance_coverage') }}</span>
                                 <p class="text-customLightGrayColor text-[1.15rem]  max-[768px]:text-[0.95rem]">
-                                    Select your desired pickup and return dates,
-                                    along with the time.
+                                    {{ _p('insurance_coverage_text') }}
                                 </p>
                             </div>
                         </div>
@@ -431,10 +423,10 @@ const __ = (key) => {
             class="blogs min-h-[80vh] flex flex-col gap-10 items-center py-customVerticalSpacing max-[768px]:py-0 max-[768px]:gap-0">
             <div
                 class="column text-center flex flex-col items-center w-[650px] py-8 max-[768px]:py-0 max-[768px]:w-full max-[768px]:mb-10">
-                <span class="text-[1.25rem] text-customPrimaryColor">-Latest Articles-</span>
+                <span class="text-[1.25rem] text-customPrimaryColor">-{{ _p('blogs_title') }}-</span>
                 <h3
                     class="max-w-[883px] text-[3rem] font-bold text-customDarkBlackColor max-[768px]:max-w-full max-[768px]:text-[1.5rem]">
-                    Stay informed and inspired for your next journey
+                    {{ _p('blogs_subtitle') }}
                 </h3>
             </div>
 
