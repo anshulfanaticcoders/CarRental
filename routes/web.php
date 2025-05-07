@@ -132,7 +132,7 @@ Route::get('/api/footer-categories', [VehicleCategoriesController::class, 'getFo
 Route::get('/contact-us', [ContactUsPageController::class, 'show'])->name('contact-us');
 Route::post('/contact', [ContactFormController::class, 'store'])->name('contact.submit');
 Route::get('/vendor/{vendorProfileId}/reviews', [ReviewController::class, 'vendorAllReviews'])->name('vendor.reviews.all');
-Route::get('/language/{locale}', [LanguageController::class, 'switch'])->name('language.switch');
+Route::post('/language/change', [LanguageController::class, 'change'])->name('language.change');
 
 
 // Show Blogs on Home page

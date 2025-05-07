@@ -79,6 +79,10 @@ class HandleInertiaRequests extends Middleware
             ]);
         }
 
+        // Share locale and translations
+    $sharedData['locale'] = fn () => app()->getLocale();
+    $sharedData['translations'] = fn () => trans('messages');
+
         return $sharedData;
     }
 }

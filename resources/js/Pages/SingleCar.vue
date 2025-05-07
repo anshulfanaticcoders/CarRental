@@ -965,7 +965,8 @@ const openLightbox = (index) => {
 
                     <div class="dot_seperator"><strong>.</strong></div>
                     <div class="car_location">
-                        <span>{{ vehicle?.location }}, {{ vehicle?.city }}, {{ vehicle?.state }}, {{ vehicle?.country }}</span>
+                        <span>{{ vehicle?.location }}, {{ vehicle?.city }}, {{ vehicle?.state }}, {{ vehicle?.country
+                            }}</span>
                     </div>
                 </div>
                 <div>
@@ -1062,7 +1063,7 @@ const openLightbox = (index) => {
                                             class="text-customLightGrayColor text-[1rem] max-[768px]:text-[0.75rem]">People</span>
                                         <span class="font-medium text-[1rem] max-[768px]:text-[0.85rem]">{{
                                             vehicle?.seating_capacity
-                                        }}</span>
+                                            }}</span>
                                     </div>
                                 </div>
                                 <div class="feature-item items-center flex gap-3">
@@ -1073,7 +1074,7 @@ const openLightbox = (index) => {
                                             class="text-customLightGrayColor text-[1rem] max-[768px]:text-[0.75rem]">Doors</span>
                                         <span class="font-medium text-[1rem] max-[768px]:text-[0.85rem]">{{
                                             vehicle?.number_of_doors
-                                        }}</span>
+                                            }}</span>
                                     </div>
                                 </div>
                                 <div class="feature-item items-center flex gap-3">
@@ -1084,7 +1085,7 @@ const openLightbox = (index) => {
                                             class="text-customLightGrayColor text-[1rem] max-[768px]:text-[0.75rem]">Luggage</span>
                                         <span class="font-medium text-[1rem] max-[768px]:text-[0.85rem]">{{
                                             vehicle?.luggage_capacity
-                                        }}</span>
+                                            }}</span>
                                     </div>
                                 </div>
                                 <div class="feature-item items-center flex gap-3">
@@ -1095,7 +1096,7 @@ const openLightbox = (index) => {
                                             class="text-customLightGrayColor text-[1rem] max-[768px]:text-[0.75rem]">Transmission</span>
                                         <span class="font-medium capitalize max-[768px]:text-[0.85rem]">{{
                                             vehicle?.transmission
-                                        }}</span>
+                                            }}</span>
                                     </div>
                                 </div>
                                 <div class="feature-item items-center flex gap-3">
@@ -1107,7 +1108,7 @@ const openLightbox = (index) => {
                                             Type</span>
                                         <span class="font-medium capitalize max-[768px]:text-[0.85rem]">{{
                                             vehicle?.fuel
-                                        }}</span>
+                                            }}</span>
                                     </div>
                                 </div>
                                 <div class="feature-item items-center flex gap-3">
@@ -1128,7 +1129,7 @@ const openLightbox = (index) => {
                                             class="text-customLightGrayColor text-[1rem] max-[768px]:text-[0.75rem]">Co2
                                             Emission</span>
                                         <span class="font-medium text-[1rem] max-[768px]:text-[0.85rem]">{{ vehicle?.co2
-                                        }} (g/km)</span>
+                                            }} (g/km)</span>
                                     </div>
                                 </div>
                                 <div class="feature-item items-center flex gap-3">
@@ -1150,8 +1151,8 @@ const openLightbox = (index) => {
                             <span class="text-[2rem] font-medium max-[768px]:text-[1rem]">Features</span>
                             <div
                                 class="grid grid-cols-4 mt-[2rem] gap-y-[2rem] max-[768px]:mt-[1rem] max-[768px]:grid-cols-3">
-                                <div class="flex items-center gap-3 max-[768px]:text-[0.65rem] whitespace-nowrap" v-if="vehicle?.features"
-                                    v-for="(feature, index) in JSON.parse(
+                                <div class="flex items-center gap-3 max-[768px]:text-[0.65rem] whitespace-nowrap"
+                                    v-if="vehicle?.features" v-for="(feature, index) in JSON.parse(
                                         vehicle.features
                                     )" :key="index">
                                     <img :src="featureIconMap[feature]" alt="Feature Icon"
@@ -1166,8 +1167,10 @@ const openLightbox = (index) => {
 
                         <div class="mt-[3rem] max-[768px]:mt-[2rem]">
                             <span class="text-[2rem] font-medium max-[768px]:text-[1rem]">Car Location</span>
-                            <div class="gap-y-[2rem] max-[768px]:mt-[0.5rem] flex items-end mt-[1rem] gap-2 max-[768px]:gap-1 max-[768px]:items-center">
-                               <img :src=locationPinIcon alt="" class="w-8 h-8 max-[768px]:w-6"> <span class="text-[1.2rem] max-[768px]:text-[0.95rem]">{{ vehicle?.location }}</span>
+                            <div
+                                class="gap-y-[2rem] max-[768px]:mt-[0.5rem] flex items-end mt-[1rem] gap-2 max-[768px]:gap-1 max-[768px]:items-center">
+                                <img :src=locationPinIcon alt="" class="w-8 h-8 max-[768px]:w-6"> <span
+                                    class="text-[1.2rem] max-[768px]:text-[0.95rem]">{{ vehicle?.location }}</span>
                             </div>
                             <div id="map" class="h-full rounded-lg mt-4"></div>
                         </div>
@@ -1191,7 +1194,7 @@ const openLightbox = (index) => {
                                                 class="flex flex-col md:flex-row md:items-center gap-1 md:gap-2">
                                                 <span class="font-medium text-blue-700">Daily Limit:</span>
                                                 <span class="text-base">{{ vehicle?.benefits?.limited_km_per_day_range
-                                                }} km/day</span>
+                                                    }} km/day</span>
                                                 <span class="text-gray-700">
                                                     (Extra: {{ formatPrice(vehicle?.benefits?.price_per_km_per_day)
                                                     }}/km)
@@ -1202,7 +1205,7 @@ const openLightbox = (index) => {
                                                 class="flex flex-col md:flex-row md:items-center gap-1 md:gap-2">
                                                 <span class="font-medium text-blue-700">Weekly Limit:</span>
                                                 <span class="text-base">{{ vehicle?.benefits?.limited_km_per_week_range
-                                                }} km/week</span>
+                                                    }} km/week</span>
                                                 <span class="text-gray-700">
                                                     (Extra: {{ formatPrice(vehicle?.benefits?.price_per_km_per_week)
                                                     }}/km)
@@ -1213,7 +1216,7 @@ const openLightbox = (index) => {
                                                 class="flex flex-col md:flex-row md:items-center gap-1 md:gap-2">
                                                 <span class="font-medium text-blue-700">Monthly Limit:</span>
                                                 <span class="text-base">{{ vehicle?.benefits?.limited_km_per_month_range
-                                                }} km/month</span>
+                                                    }} km/month</span>
                                                 <span class="text-gray-700">
                                                     (Extra: {{ formatPrice(vehicle?.benefits?.price_per_km_per_month)
                                                     }}/km)
@@ -1281,9 +1284,12 @@ const openLightbox = (index) => {
 
                             <!-- Payment Methods Section -->
                             <div class="flex flex-col gap-3">
-                                <span class="max-[768px]:text-[0.875rem]">You can make payment to vendor for security deposite using these <strong>payment
+                                <span class="max-[768px]:text-[0.875rem]">You can make payment to vendor for security
+                                    deposite using
+                                    these <strong>payment
                                         methods...</strong></span>
-                                <div v-if="isValidJSON(vehicle.payment_method)" class="flex gap-3 max-[768px]:flex-wrap">
+                                <div v-if="isValidJSON(vehicle.payment_method)"
+                                    class="flex gap-3 max-[768px]:flex-wrap">
                                     <span v-for="(payment_method, index) in JSON.parse(vehicle.payment_method)"
                                         :key="index"
                                         class="max-[768px]:text-[0.875rem] bg-customLightPrimaryColor py-2 px-3 rounded-sm capitalize border-[1px] border-customLightGrayColor">{{
@@ -1329,12 +1335,13 @@ const openLightbox = (index) => {
                         <div class="paymentInfoDiv p-5 sticky top-[3rem]">
                             <div class="flex items-center justify-between gap-3 max-[768px]:mb-4">
                                 <div class="flex items-center gap-4">
-                                    <h4 class="max-[768px]:text-[1rem] max-[768px]:max-w-[170px] max-[768px]:overflow-hidden max-[768px]:text-ellipsis max-[768px]:whitespace-nowrap">
+                                    <h4
+                                        class="max-[768px]:text-[1rem] max-[768px]:max-w-[170px] max-[768px]:overflow-hidden max-[768px]:text-ellipsis max-[768px]:whitespace-nowrap">
                                         {{ vehicle?.brand }} {{ vehicle?.model }}</h4>
-                                <span
-                                    class="bg-[#f5f5f5] inline-block px-8 py-2 max-[768px]:text-nowrap max-[768px]:px-4 text-center rounded-[40px] max-[768px]:text-[0.75rem]">
-                                    {{ vehicle?.category.name }}
-                                </span>
+                                    <span
+                                        class="bg-[#f5f5f5] inline-block px-8 py-2 max-[768px]:text-nowrap max-[768px]:px-4 text-center rounded-[40px] max-[768px]:text-[0.75rem]">
+                                        {{ vehicle?.category.name }}
+                                    </span>
                                 </div>
                                 <div class="icons flex items-center gap-3">
                                     <Link href="" class="max-[768px]:w-[1.5rem]"><img :src="ShareIcon" alt="" /></Link>
@@ -1383,7 +1390,8 @@ const openLightbox = (index) => {
                                     <div class="flex flex-col gap-1">
                                         <span>Pickup Location</span>
                                         <span class="text-[1.25rem] text-medium max-[768px]:text-[1rem]">{{
-                                            vehicle?.location }}, {{ vehicle.city }}, {{ vehicle.state }}, {{ vehicle.country }}</span>
+                                            vehicle?.location }}, {{ vehicle.city }}, {{ vehicle.state }}, {{
+                                            vehicle.country }}</span>
                                         <span class="max-[768px]:text-[0.95rem]">{{ route().params.pickup_date }}</span>
                                     </div>
                                 </div>
@@ -1392,7 +1400,8 @@ const openLightbox = (index) => {
                                     <div class="flex flex-col gap-1">
                                         <span>Return Location</span>
                                         <span class="text-[1.25rem] text-medium max-[768px]:text-[1rem]">{{
-                                            vehicle?.location }}, {{ vehicle.city }}, {{ vehicle.state }}, {{ vehicle.country }}</span>
+                                            vehicle?.location }}, {{ vehicle.city }}, {{ vehicle.state }}, {{
+                                            vehicle.country }}</span>
                                         <span class="max-[768px]:text-[0.95rem]">{{ route().params.return_date }}</span>
                                     </div>
                                 </div>
@@ -1420,19 +1429,37 @@ const openLightbox = (index) => {
 
                                                         <!-- Marquee content -->
                                                         <div
-                                                            class="absolute flex items-center gap-3 animate-marquee px-4">
-                                                            <img :src="carguaranteeIcon" alt="Guarantee Icon"
-                                                                class="w-5 h-5 object-contain" />
-                                                            <p
-                                                                class="whitespace-nowrap text-sm text-gray-800 font-medium tracking-wide">
-                                                                No car on arrival? <span
-                                                                    class="text-blue-600 font-semibold">Vrooem.com</span>
-                                                                guarantees
-                                                                you’ll get one.
-                                                                All vehicles come from trusted rental companies
-                                                                handpicked by us.
-                                                            </p>
+                                                            class="marquee-wrapper overflow-hidden relative w-full h-10">
+                                                            <div
+                                                                class="marquee-content flex absolute whitespace-nowrap animate-marquee">
+                                                                <div class="flex items-center gap-3 px-4">
+                                                                    <img :src="carguaranteeIcon" alt="Guarantee Icon"
+                                                                        class="w-5 h-5 object-contain" />
+                                                                    <p
+                                                                        class="text-sm text-gray-800 font-medium tracking-wide">
+                                                                        No car on arrival? <span
+                                                                            class="text-blue-600 font-semibold">Vrooem.com</span>
+                                                                        guarantees you’ll get one. All vehicles come
+                                                                        from trusted rental
+                                                                        companies handpicked by us.
+                                                                    </p>
+                                                                </div>
+                                                                <!-- Duplicate for seamless loop -->
+                                                                <div class="flex items-center gap-3 px-4">
+                                                                    <img :src="carguaranteeIcon" alt="Guarantee Icon"
+                                                                        class="w-5 h-5 object-contain" />
+                                                                    <p
+                                                                        class="text-sm text-gray-800 font-medium tracking-wide">
+                                                                        No car on arrival? <span
+                                                                            class="text-blue-600 font-semibold">Vrooem.com</span>
+                                                                        guarantees you’ll get one. All vehicles come
+                                                                        from trusted rental
+                                                                        companies handpicked by us.
+                                                                    </p>
+                                                                </div>
+                                                            </div>
                                                         </div>
+
                                                     </div>
 
                                                 </CardHeader>
@@ -1449,7 +1476,7 @@ const openLightbox = (index) => {
                                                             <div class="flex items-center gap-3 mb-2">
                                                                 <component :is="pkg.icon" class="w-6 h-6" />
                                                                 <span class="font-semibold text-[1rem]">{{ pkg.label
-                                                                    }}</span>
+                                                                }}</span>
                                                             </div>
                                                             <p class="text-sm text-gray-600 mb-2">{{ pkg.description }}
                                                             </p>
@@ -1805,6 +1832,28 @@ const openLightbox = (index) => {
 .pop-animation {
     animation: pop 0.3s ease-in-out;
 }
+
+
+@keyframes marquee {
+    0% {
+        transform: translateX(0%);
+    }
+
+    100% {
+        transform: translateX(-50%);
+    }
+}
+
+.marquee-wrapper {
+    position: relative;
+    overflow: hidden;
+}
+
+.marquee-content {
+    animation: marquee 25s linear infinite;
+    display: flex;
+}
+
 
 
 :deep(.dp__cell_inner.booked-date) {

@@ -4,20 +4,19 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\App;
-use Illuminate\Support\Facades\Redirect;
+use Illuminate\Support\Facades\Session;
 
 class LanguageController extends Controller
 {
-    public function switch($locale)
+    public function change(Request $request)
     {
-        if (!in_array($locale, ['en', 'fr', 'nl'])) {
-            abort(400);
-        }
+        $request->validate([
+            'locale' => 'required|in:en,fr,nl',
+        ]);
 
-        // Store the locale in session
-        session()->put('locale', $locale);
+        App::setLocale($request->locale);
+        Session::put('locale', $request->locale);
 
-        // Redirect back to the previous page
-        return Redirect::back();
+        return back();
     }
 }

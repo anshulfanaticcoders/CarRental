@@ -158,6 +158,15 @@ onBeforeUnmount(() => {
     // Clean up the timer when component is destroyed
     if (timer) clearTimeout(timer);
 });
+
+import { usePage } from '@inertiajs/vue3';
+
+const page = usePage();
+
+const __ = (key) => {
+    const translations = page.props.translations || {};
+    return translations[key] || key;
+};
 </script>
 
 <template>
@@ -174,7 +183,6 @@ onBeforeUnmount(() => {
                      max-[768px]:h-auto max-[768px]:px-[1.5rem] max-[768px]:py-[1.5rem]">
                     <div class="pl-[10%] max-[768px]:pl-0">
                         <h1>Hit the Road with the Perfect Ride</h1>
-
                         <div class="h-16 mt-3 max-[768px]:h-20">
                             <!-- Typewriter text container -->
                             <p class="text-[1.25rem]  max-[768px]:text-[1rem] flex items-center">

@@ -10,14 +10,15 @@ use Symfony\Component\HttpFoundation\Response;
 
 class LocalizationMiddleware
 {
+    /**
+     * Handle an incoming request.
+     *
+     * @param  \Closure(\Illuminate\Http\Request): (\Symfony\Component\HttpFoundation\Response)  $next
+     */
     public function handle(Request $request, Closure $next): Response
     {
-        // Check if locale is set in session
         if (Session::has('locale')) {
             App::setLocale(Session::get('locale'));
-        } else {
-            // Default language
-            App::setLocale('en');
         }
 
         return $next($request);

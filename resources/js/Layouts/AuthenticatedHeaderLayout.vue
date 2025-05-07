@@ -4,13 +4,12 @@ import ApplicationLogo from "@/Components/ApplicationLogo.vue";
 import Dropdown from "@/Components/Dropdown.vue";
 import DropdownLink from "@/Components/DropdownLink.vue";
 import ResponsiveNavLink from "@/Components/ResponsiveNavLink.vue";
-import { Link, usePage } from "@inertiajs/vue3";
+import { Link, usePage, router  } from "@inertiajs/vue3";
 const { url } = usePage();
 const showingNavigationDropdown = ref(false);
 
 import axios from "axios";
 import NotificationBell from "@/Components/NotificationBell.vue";
-// import LanguageSwitcher from "@/Components/LanguageSwitcher.vue";
 
 const user = ref(null);
 
@@ -38,6 +37,21 @@ onMounted(() => {
 
 const page = usePage();
 const vendorStatus = computed(() => page.props.vendorStatus);
+
+const changeLanguage = (locale) => {
+    router.post(route('language.change'), { locale }, {
+        preserveState: true,
+        preserveScroll: true,
+        only: [], // empty array means it won't reload any props
+    });
+};
+
+const currentLocale = computed(() => page.props.locale || 'en');
+const availableLocales = {
+    en: 'English',
+    fr: 'Français',
+    nl: 'Nederlands'
+};
 
 </script>
 
@@ -196,7 +210,7 @@ const vendorStatus = computed(() => page.props.vendorStatus);
                     <div class="flex gap-[2rem] items-center">
                         <!-- Auth Links -->
                         <!-- <LanguageSwitcher /> -->
-                        <div class="column">
+                        <div class="column flex items-center">
                             
                             <Link :href="route('login')" class="button-primary py-3 px-5 font-semibold text-gray-600 dark:text-gray-400 dark:hover:text-white focus:outline focus:outline-2 focus:rounded-sm
                                 max-[768px]:text-[0.5rem]
@@ -209,6 +223,25 @@ const vendorStatus = computed(() => page.props.vendorStatus);
                                 ">
                             Create an Account
                             </Link>
+                            <Dropdown align="right" class="ml-5 max-[768px]:hidden">
+    <template #trigger>
+        <button type="button" class="flex items-center text-gray-600 hover:text-gray-800">
+            <span class="me-1">{{ availableLocales[currentLocale] }}</span>
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+            </svg>
+        </button>
+    </template>
+    <template #content>
+        <div v-for="(language, code) in availableLocales" 
+             :key="code"
+             @click="changeLanguage(code)"
+             class="block w-full px-4 py-2 text-start text-sm leading-5 text-white hover:text-[#153B4F] hover:bg-gray-100 focus:outline-none focus:bg-gray-100 transition duration-150 ease-in-out cursor-pointer"
+             :class="{ 'bg-gray-100': currentLocale === code }">
+            {{ language }}
+        </div>
+    </template>
+</Dropdown>
                         </div>
                     </div>
                 </div>
