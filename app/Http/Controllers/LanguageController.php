@@ -14,9 +14,11 @@ class LanguageController extends Controller
             'locale' => 'required|in:en,fr,nl',
         ]);
 
-        App::setLocale($request->locale);
-        Session::put('locale', $request->locale);
+        $locale = $request->locale;
+        App::setLocale($locale);
+        Session::put('locale', $locale);
 
-        return back();
+        // Always return a redirect response
+        return redirect()->back()->with('locale', $locale);
     }
 }
