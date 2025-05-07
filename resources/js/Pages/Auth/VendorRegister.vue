@@ -127,8 +127,26 @@ const prevStep = () => {
 
 const handleFileChange = (field, event) => {
     const file = event.target.files[0];
+    const toast = useToast();
 
     if (file) {
+        // Check file extension
+        const validExtensions = ['jpg', 'jpeg', 'png'];
+        const fileExtension = file.name.split('.').pop().toLowerCase();
+
+        if (!validExtensions.includes(fileExtension)) {
+            toast.error('Invalid file format. Please upload a JPG, PNG, or JPEG file.', {
+                position: 'top-right',
+                timeout: 3000,
+                closeOnClick: true,
+                pauseOnHover: true,
+                draggable: true,
+            });
+            // Reset the input to clear the invalid file
+            event.target.value = '';
+            return;
+        }
+
         form[field] = file;
         fileNames.value[field] = file.name;
 
@@ -139,7 +157,7 @@ const handleFileChange = (field, event) => {
 
             // Save to localStorage (file names & previews)
             localStorage.setItem(
-                "vendorFileData",
+                'vendorFileData',
                 JSON.stringify({
                     fileNames: fileNames.value,
                     filePreviews: filePreviews.value,
