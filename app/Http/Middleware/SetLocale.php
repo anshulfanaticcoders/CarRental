@@ -9,50 +9,33 @@ use Inertia\Inertia;
 
 class SetLocale
 {
-    /**
-     * Handle an incoming request.
-     *
-     * @param  \Illuminate\Http\Request  $request
-     * @param  \Closure  $next
-     * @return mixed
-     */
     public function handle(Request $request, Closure $next)
     {
-        // Set the locale from the session, or fall back to the app's default locale
         $locale = session('locale', app()->getLocale());
         App::setLocale($locale);
 
-        // Share the locale and translations with Inertia
+        // Load page-specific translations
+        $pageTranslations = $this->getPageTranslations($request);
+
+        // Share the locale and page-specific translations with Inertia
         Inertia::share([
             'locale' => $locale,
-            'translations' => trans('messages') ?? [],
-            'pageTranslations' => $this->getPageTranslations($request),
-            'howItWorksTranslations' => $this->getHowItWorksTranslations($request),
+            'pageTranslations' => $pageTranslations,
         ]);
 
         return $next($request);
     }
 
-    /**
-     * Get page-specific translations based on the current route or path.
-     *
-     * @param  \Illuminate\Http\Request  $request
-     * @return array
-     */
     protected function getPageTranslations(Request $request)
     {
         $currentRoute = $request->route() ? $request->route()->getName() : null;
         $currentPath = $request->path();
 
-        // Map routes/paths to translation files
         $pageTranslationMap = [
             '/' => 'homepage',
-            // 'vehicles' => 'vehicles',
-            // 'profile' => 'profile',
         ];
 
-        // Determine which translation file to use based on current path
-        $translationFile = 'messages'; // default
+        $translationFile = null; // Default to null for non-mapped routes
         foreach ($pageTranslationMap as $path => $file) {
             if ($currentPath === $path || $currentRoute === $path) {
                 $translationFile = $file;
@@ -60,24 +43,38 @@ class SetLocale
             }
         }
 
-        return trans($translationFile) ?? [];
-    }
-
-    /**
-     * Get how_it_works translations for the homepage.
-     *
-     * @param  \Illuminate\Http\Request  $request
-     * @return array|null
-     */
-    protected function getHowItWorksTranslations(Request $request)
-    {
-        $currentRoute = $request->route() ? $request->route()->getName() : null;
-        $currentPath = $request->path();
-
-        if ($currentPath === '/' || $currentRoute === 'home') {
-            return trans('how_it_works') ?? [];
+        if ($translationFile) {
+            return $this->loadTranslationsSafely($translationFile);
         }
 
-        return null;
+        return [];
+    }
+
+    protected function loadTranslationsSafely($file)
+    {
+        $translations = trans($file);
+        if ($translations === null || !is_array($translations)) {
+            \Log::warning("Translation file '$file' is missing or did not return an array for locale '" . app()->getLocale() . "'.");
+            return [];
+        }
+
+        foreach ($translations as $key => $value) {
+            if (!$this->isSerializable($value)) {
+                \Log::warning("Non-serializable translation in file '$file' for key '$key':", ['value' => $value]);
+                $translations[$key] = null;
+            }
+        }
+
+        return $translations;
+    }
+
+    protected function isSerializable($value)
+    {
+        try {
+            json_encode($value, JSON_THROW_ON_ERROR);
+            return true;
+        } catch (\Exception $e) {
+            return false;
+        }
     }
 }
