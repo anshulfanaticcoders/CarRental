@@ -79,41 +79,6 @@ class HandleInertiaRequests extends Middleware
             ]);
         }
 
-        // Share locale and translations
-        $locale = session('locale', app()->getLocale());
-        $sharedData['locale'] = $locale;
-
-        // Load common translations
-        $sharedData['translations'] = fn() => trans('messages');
-
-        // Determine current page and load page-specific translations
-        $currentRoute = $request->route() ? $request->route()->getName() : null;
-        $currentPath = $request->path();
-
-        // Map routes/paths to translation files
-        $pageTranslationMap = [
-            '/' => 'homepage',
-            // 'vehicles' => 'vehicles',
-            // 'profile' => 'profile',
-        ];
-
-        // Determine which translation file to use based on current path
-        $translationFile = 'messages'; // default
-        foreach ($pageTranslationMap as $path => $file) {
-            if ($currentPath === $path || $currentRoute === $path) {
-                $translationFile = $file;
-                break;
-            }
-        }
-
-        // Load page-specific translations
-        $sharedData['pageTranslations'] = fn() => trans($translationFile);
-
-        // Optionally, merge how_it_works translations for the homepage
-        if ($currentPath === '/' || $currentRoute === 'home') {
-            $sharedData['howItWorksTranslations'] = fn() => trans('how_it_works');
-        }
-
         return $sharedData;
     }
 }

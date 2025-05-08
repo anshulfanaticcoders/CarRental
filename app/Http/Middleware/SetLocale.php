@@ -5,7 +5,7 @@ namespace App\Http\Middleware;
 use Closure;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\App;
-use Illuminate\Support\Facades\Session;
+use Inertia\Inertia;
 
 class SetLocale
 {
@@ -18,22 +18,66 @@ class SetLocale
      */
     public function handle(Request $request, Closure $next)
     {
-        // Check if the user has a locale preference in the session
-        if (Session::has('locale')) {
-            $locale = Session::get('locale');
-        } 
-        // Fallback to cookie if session is not available
-        else if ($request->cookie('locale')) {
-            $locale = $request->cookie('locale');
-        } 
-        // Default to the app's default locale
-        else {
-            $locale = config('app.locale');
-        }
-
-        // Set the application locale
+        // Set the locale from the session, or fall back to the app's default locale
+        $locale = session('locale', app()->getLocale());
         App::setLocale($locale);
 
+        // Share the locale and translations with Inertia
+        Inertia::share([
+            'locale' => $locale,
+            'translations' => trans('messages') ?? [],
+            'pageTranslations' => $this->getPageTranslations($request),
+            'howItWorksTranslations' => $this->getHowItWorksTranslations($request),
+        ]);
+
         return $next($request);
+    }
+
+    /**
+     * Get page-specific translations based on the current route or path.
+     *
+     * @param  \Illuminate\Http\Request  $request
+     * @return array
+     */
+    protected function getPageTranslations(Request $request)
+    {
+        $currentRoute = $request->route() ? $request->route()->getName() : null;
+        $currentPath = $request->path();
+
+        // Map routes/paths to translation files
+        $pageTranslationMap = [
+            '/' => 'homepage',
+            // 'vehicles' => 'vehicles',
+            // 'profile' => 'profile',
+        ];
+
+        // Determine which translation file to use based on current path
+        $translationFile = 'messages'; // default
+        foreach ($pageTranslationMap as $path => $file) {
+            if ($currentPath === $path || $currentRoute === $path) {
+                $translationFile = $file;
+                break;
+            }
+        }
+
+        return trans($translationFile) ?? [];
+    }
+
+    /**
+     * Get how_it_works translations for the homepage.
+     *
+     * @param  \Illuminate\Http\Request  $request
+     * @return array|null
+     */
+    protected function getHowItWorksTranslations(Request $request)
+    {
+        $currentRoute = $request->route() ? $request->route()->getName() : null;
+        $currentPath = $request->path();
+
+        if ($currentPath === '/' || $currentRoute === 'home') {
+            return trans('how_it_works') ?? [];
+        }
+
+        return null;
     }
 }
