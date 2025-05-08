@@ -343,7 +343,7 @@ class VehicleController extends Controller
     }
 
 
-    public function searchLocations(Request $request)
+public function searchLocations(Request $request)
 {
     $query = trim($request->input('text'));
 
@@ -351,8 +351,8 @@ class VehicleController extends Controller
         return response()->json(['results' => []]);
     }
 
-    // Normalize the query for case-insensitive comparison
-    $normalizedQuery = strtolower($query);
+    // Normalize the query by removing diacritics and converting to lowercase
+    $normalizedQuery = $this->normalizeString($query);
 
     // Fetch locations from the database with partial matching
     $locations = Vehicle::select(
@@ -364,10 +364,10 @@ class VehicleController extends Controller
         'longitude'
     )
         ->where(function ($q) use ($normalizedQuery) {
-            $q->whereRaw('LOWER(location) LIKE ?', ["%{$normalizedQuery}%"])
-              ->orWhereRaw('LOWER(city) LIKE ?', ["%{$normalizedQuery}%"])
-              ->orWhereRaw('LOWER(state) LIKE ?', ["%{$normalizedQuery}%"])
-              ->orWhereRaw('LOWER(country) LIKE ?', ["%{$normalizedQuery}%"]);
+            $q->whereRaw("regexp_replace(LOWER(location), '[^a-z0-9]', '') LIKE ?", ["%{$normalizedQuery}%"])
+              ->orWhereRaw("regexp_replace(LOWER(city), '[^a-z0-9]', '') LIKE ?", ["%{$normalizedQuery}%"])
+              ->orWhereRaw("regexp_replace(LOWER(state), '[^a-z0-9]', '') LIKE ?", ["%{$normalizedQuery}%"])
+              ->orWhereRaw("regexp_replace(LOWER(country), '[^a-z0-9]', '') LIKE ?", ["%{$normalizedQuery}%"]);
         })
         ->whereNotNull('city')
         ->whereNotNull('state')
@@ -375,10 +375,10 @@ class VehicleController extends Controller
         ->groupBy('location', 'city', 'state', 'country', 'latitude', 'longitude')
         ->orderByRaw('
             CASE 
-                WHEN LOWER(location) LIKE ? THEN 0 
-                WHEN LOWER(city) LIKE ? THEN 1 
-                WHEN LOWER(state) LIKE ? THEN 2 
-                WHEN LOWER(country) LIKE ? THEN 3 
+                WHEN regexp_replace(LOWER(location), \'[^a-z0-9]\', \'\') LIKE ? THEN 0 
+                WHEN regexp_replace(LOWER(city), \'[^a-z0-9]\', \'\') LIKE ? THEN 1 
+                WHEN regexp_replace(LOWER(state), \'[^a-z0-9]\', \'\') LIKE ? THEN 2 
+                WHEN regexp_replace(LOWER(country), \'[^a-z0-9]\', \'\') LIKE ? THEN 3 
                 ELSE 4 
             END', [
                 "%{$normalizedQuery}%",
@@ -388,10 +388,10 @@ class VehicleController extends Controller
             ])
         ->orderByRaw('
             CASE 
-                WHEN LOWER(location) = ? THEN 0 
-                WHEN LOWER(city) = ? THEN 1 
-                WHEN LOWER(state) = ? THEN 2 
-                WHEN LOWER(country) = ? THEN 3 
+                WHEN regexp_replace(LOWER(location), \'[^a-z0-9]\', \'\') = ? THEN 0 
+                WHEN regexp_replace(LOWER(city), \'[^a-z0-9]\', \'\') = ? THEN 1 
+                WHEN regexp_replace(LOWER(state), \'[^a-z0-9]\', \'\') = ? THEN 2 
+                WHEN regexp_replace(LOWER(country), \'[^a-z0-9]\', \'\') = ? THEN 3 
                 ELSE 4 
             END', [
                 $normalizedQuery,
@@ -404,10 +404,10 @@ class VehicleController extends Controller
 
     // Process results to format label, below_label, and matched field
     $results = $locations->map(function ($vehicle) use ($normalizedQuery) {
-        $locationLower = strtolower($vehicle->location ?? '');
-        $cityLower = strtolower($vehicle->city ?? '');
-        $stateLower = strtolower($vehicle->state ?? '');
-        $countryLower = strtolower($vehicle->country ?? '');
+        $locationLower = $this->normalizeString($vehicle->location ?? '');
+        $cityLower = $this->normalizeString($vehicle->city ?? '');
+        $stateLower = $this->normalizeString($vehicle->state ?? '');
+        $countryLower = $this->normalizeString($vehicle->country ?? '');
 
         $matchedField = null;
         $label = null;
@@ -433,7 +433,7 @@ class VehicleController extends Controller
         }
 
         return [
-            'id' => md5($label . ($belowLabel ?? '')),
+            'id' => md5($this->normalizeString($label) . ($this->normalizeString($belowLabel) ?? '')),
             'label' => $label,
             'below_label' => $belowLabel,
             'location' => $vehicle->location,
@@ -445,10 +445,30 @@ class VehicleController extends Controller
             'matched_field' => $matchedField, // Indicate which field was matched
         ];
     })->filter()->unique(function ($item) {
-        return $item['label'] . ($item['below_label'] ?? '');
+        return $this->normalizeString($item['label']) . ($this->normalizeString($item['below_label']) ?? '');
     })->values();
 
     return response()->json(['results' => $results]);
+}
+
+/**
+ * Normalize a string by removing diacritics and converting to lowercase.
+ *
+ * @param string|null $string
+ * @return string
+ */
+private function normalizeString($string)
+{
+    if (is_null($string)) {
+        return '';
+    }
+
+    // Convert to lowercase and remove diacritics
+    $normalized = strtolower($string);
+    $normalized = transliterator_transliterate('NFKD; [:Nonspacing Mark:] Remove; NFC;', $normalized);
+    $normalized = preg_replace('/[^a-z0-9]/', '', $normalized);
+
+    return $normalized;
 }
 
 }
