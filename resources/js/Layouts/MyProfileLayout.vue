@@ -57,7 +57,7 @@ onBeforeUnmount(() => {
   <Head title="Dashboard" />
   <AuthenticatedHeaderLayout />
   <main class="">
-    <div class="hidden max-[768px]:block max-[768px]:absolute max-[768px]:top-0 max-[768px]:right-0">
+    <div class="hidden max-[768px]:block max-[768px]:absolute max-[768px]:top-0 max-[768px]:right-[14px]">
       <!-- Mobile menu button - only visible on mobile -->
       <button @click="toggleMobileMenu"
         class="hidden max-[768px]:flex items-center justify-center px-3 py-2 m-4 bg-[#153b4f] text-white rounded-md top-16 left-2 z-50">
