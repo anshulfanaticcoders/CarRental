@@ -13,6 +13,9 @@ use Illuminate\Support\Facades\Notification;
 use Inertia\Inertia;
 use Stripe\Stripe;
 use Stripe\Checkout\Session;
+use Stripe\Webhook;
+use Stripe\Exception\SignatureVerificationException;
+use UnexpectedValueException;
 use Illuminate\Support\Str;
 use App\Models\Booking;
 use App\Models\Customer;
@@ -358,5 +361,148 @@ public function success(Request $request)
         return redirect()->route('booking.create')->with('error', 'Error processing payment: ' . $e->getMessage());
     }
 }
-    
+
+public function handleWebhook(Request $request)
+{
+    \Log::info('Stripe Webhook Received');
+    $payload = $request->getContent();
+    $sigHeader = $request->server('HTTP_STRIPE_SIGNATURE');
+    $endpointSecret = config('stripe.webhook_secret');
+
+    if (!$endpointSecret) {
+        \Log::error('Stripe webhook secret not configured.');
+        return response()->json(['error' => 'Webhook secret not configured.'], 500);
+    }
+
+    try {
+        $event = Webhook::constructEvent(
+            $payload, $sigHeader, $endpointSecret
+        );
+    } catch (UnexpectedValueException $e) {
+        // Invalid payload
+        \Log::error('Stripe Webhook Error: Invalid payload.', ['exception' => $e]);
+        return response()->json(['error' => 'Invalid payload'], 400);
+    } catch (SignatureVerificationException $e) {
+        // Invalid signature
+        \Log::error('Stripe Webhook Error: Invalid signature.', ['exception' => $e]);
+        return response()->json(['error' => 'Invalid signature'], 400);
+    }
+
+    // Handle the event
+    if ($event->type == 'checkout.session.completed') {
+        $session = $event->data->object;
+        \Log::info('Checkout Session Completed Event:', ['session_id' => $session->id, 'payment_status' => $session->payment_status]);
+
+        $bookingId = $session->metadata->booking_id ?? null;
+
+        if (!$bookingId) {
+            \Log::error('Booking ID not found in webhook metadata.', ['session_id' => $session->id]);
+            return response()->json(['error' => 'Booking ID missing in metadata'], 400);
+        }
+
+        $booking = Booking::find($bookingId);
+        if (!$booking) {
+            \Log::error('Booking not found for webhook.', ['booking_id' => $bookingId, 'session_id' => $session->id]);
+            return response()->json(['error' => 'Booking not found'], 404);
+        }
+
+        // Find the payment record
+        $payment = BookingPayment::where('booking_id', $booking->id)
+                                ->where('transaction_id', $session->id) // Initial transaction_id is the session_id
+                                ->first();
+
+        if (!$payment) {
+             // Fallback: if payment was created with payment_intent as transaction_id (e.g. by success method)
+            if ($session->payment_intent) {
+                $payment = BookingPayment::where('booking_id', $booking->id)
+                                        ->where('transaction_id', $session->payment_intent)
+                                        ->first();
+            }
+        }
+        
+        if (!$payment) {
+            // If still no payment record, create one (should ideally exist from the charge method)
+            \Log::warning('Payment record not found for webhook, creating one.', ['booking_id' => $bookingId, 'session_id' => $session->id]);
+            $payment = BookingPayment::create([
+                'booking_id' => $booking->id,
+                'payment_method' => 'stripe',
+                'transaction_id' => $session->payment_intent ?? $session->id,
+                'amount' => $booking->amount_paid, // Ensure this reflects the actual paid amount
+                'payment_status' => 'pending', // Will be updated below
+            ]);
+        }
+
+
+        if ($session->payment_status === 'paid') {
+            if ($booking->payment_status !== 'completed') { // Process only if not already completed
+                $booking->update([
+                    'payment_status' => 'completed',
+                    'booking_status' => 'confirmed',
+                ]);
+                \Log::info('Booking Status Updated via Webhook', [
+                    'booking_id' => $booking->id,
+                    'payment_status' => $booking->payment_status,
+                ]);
+
+                $payment->update([
+                    'payment_status' => 'succeeded',
+                    'transaction_id' => $session->payment_intent ?? $payment->transaction_id, // Update with payment_intent if available
+                    'amount' => $session->amount_total / 100, // Stripe amount is in cents
+                ]);
+                \Log::info('Payment Status Updated via Webhook', [
+                    'payment_id' => $payment->id,
+                    'payment_status' => $payment->payment_status,
+                ]);
+
+                // Send notifications
+                $customer = Customer::findOrFail($booking->customer_id);
+                $vehicle = Vehicle::findOrFail($booking->vehicle_id);
+                $vendorProfile = VendorProfile::where('user_id', $vehicle->vendor_id)->first();
+
+                $adminEmail = env('VITE_ADMIN_EMAIL', 'default@admin.com');
+                $admin = User::where('email', $adminEmail)->first();
+                if ($admin) {
+                    $admin->notify(new BookingCreatedAdminNotification($booking, $customer, $vehicle));
+                    \Log::info('Admin notification sent for booking ID: ' . $booking->id);
+                }
+
+                $vendor = User::find($vehicle->vendor_id);
+                if ($vendor) {
+                    Notification::route('mail', $vendor->email)
+                        ->notify(new BookingCreatedVendorNotification($booking, $customer, $vehicle, $vendor));
+                    \Log::info('Vendor notification sent for booking ID: ' . $booking->id . ' to ' . $vendor->email);
+                }
+
+                if ($vendorProfile && $vendorProfile->company_email) {
+                    Notification::route('mail', $vendorProfile->company_email)
+                        ->notify(new BookingCreatedCompanyNotification($booking, $customer, $vehicle, $vendorProfile));
+                    \Log::info('Company notification sent for booking ID: ' . $booking->id . ' to ' . $vendorProfile->company_email);
+                }
+
+                Notification::route('mail', $customer->email)
+                    ->notify(new BookingCreatedCustomerNotification($booking, $customer, $vehicle));
+                \Log::info('Customer notification sent for booking ID: ' . $booking->id . ' to ' . $customer->email);
+
+            } else {
+                \Log::info('Booking already marked as completed, webhook for booking ID: ' . $booking->id . ' ignored further processing.');
+            }
+        } else {
+            \Log::warning('Webhook received for non-paid session.', [
+                'session_id' => $session->id,
+                'payment_status' => $session->payment_status,
+                'booking_id' => $bookingId
+            ]);
+            // Optionally update booking/payment status to 'failed' or 'pending' based on $session->payment_status
+            if ($booking->payment_status !== 'completed') { // Avoid overwriting a completed status
+                 $booking->update(['payment_status' => $session->payment_status]); // e.g. 'unpaid', 'no_payment_required'
+                 $payment->update(['payment_status' => 'failed']); // Or map Stripe status
+            }
+        }
+    } else {
+        \Log::info('Received Stripe event type: ' . $event->type);
+        // Handle other event types if needed
+    }
+
+    return response()->json(['status' => 'success'], 200);
+}
 }
