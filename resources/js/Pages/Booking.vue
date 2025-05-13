@@ -545,16 +545,12 @@ const handlePayment = async () => {
 
 // Add this new method for alternative payments
 const handleAlternativePayment = async () => {
-  if (!validateSteps()) {
-    return;
-  }
+  if (!validateSteps()) return;
   
   isLoading.value = true;
   
   try {
-    loadSessionData();
-
-    // Prepare the complete booking data
+    // Prepare complete booking data
     const bookingData = {
       customer: {
         first_name: customer.value.first_name,
@@ -570,10 +566,8 @@ const handleAlternativePayment = async () => {
       return_date: dateTo.value,
       pickup_time: timeFrom.value,
       return_time: timeTo.value,
-      pickup_location: vehicle.value ?
-        `${vehicle.value.location}, ${vehicle.value.city}, ${vehicle.value.state}, ${vehicle.value.country}` : null,
-      return_location: vehicle.value ?
-        `${vehicle.value.location}, ${vehicle.value.city}, ${vehicle.value.state}, ${vehicle.value.country}` : null,
+      pickup_location: `${vehicle.value.location}, ${vehicle.value.city}, ${vehicle.value.state}, ${vehicle.value.country}`,
+      return_location: `${vehicle.value.location}, ${vehicle.value.city}, ${vehicle.value.state}, ${vehicle.value.country}`,
       total_days: totalDays.value,
       base_price: Number(totalPrice.value),
       preferred_day: packageType.value,
@@ -581,7 +575,7 @@ const handleAlternativePayment = async () => {
       total_amount: calculateTotal.value,
       pending_amount: calculatePendingAmount.value,
       discount_amount: Number(discountAmount.value),
-      plan: selectedPlan.value ? selectedPlan.value.plan_type : "Free Plan",
+      plan: selectedPlan.value?.plan_type || "Free Plan",
       plan_price: selectedPlan.value ? Number(selectedPlan.value.price) : 0,
       extras: bookingExtras.value
         .filter(extra => extra.quantity > 0)
@@ -592,27 +586,68 @@ const handleAlternativePayment = async () => {
           price: extra.price
         })),
       payment_method_type: selectedPaymentMethod.value,
-      currency: 'eur', // Required for Klarna/Bancontact
+      currency: ['bancontact', 'klarna'].includes(selectedPaymentMethod.value) ? 'eur' : 'usd',
       tax_amount: 0
     };
 
-    // Create Payment Intent
-    const { data: { clientSecret, paymentIntentId } } = await axios.post(
-      '/create-payment-intent', 
-      bookingData,
-      {
-        headers: {
-          'Content-Type': 'application/json'
-        }
-      }
-    );
+    // 1. Create Payment Intent
+    const { data: { clientSecret, paymentIntentId } } = await axios.post('/create-payment-intent', bookingData);
 
-    // Rest of your payment handling code...
-    
+    // 2. Handle different payment methods
+    if (['bancontact', 'klarna', 'paypal'].includes(selectedPaymentMethod.value)) {
+      const { error, paymentIntent } = await stripe.confirmPayment({
+        elements,
+        clientSecret,
+        confirmParams: {
+          return_url: `${window.location.origin}/booking-success?payment_intent=${paymentIntentId}`,
+          payment_method_data: {
+            billing_details: {
+              name: `${customer.value.first_name} ${customer.value.last_name}`,
+              email: customer.value.email,
+              phone: customer.value.phone,
+            },
+          },
+          receipt_email: customer.value.email,
+        },
+        redirect: 'always' // Force redirect for these methods
+      });
+
+      if (error) throw error;
+      
+      // For methods that complete immediately
+      if (paymentIntent?.status === 'succeeded') {
+        sessionStorage.clear();
+        Inertia.visit(`/booking-success?payment_intent=${paymentIntentId}`);
+      }
+      return;
+    }
+
+    // 3. Handle Apple Pay separately
+    if (selectedPaymentMethod.value === 'apple_pay') {
+      const paymentRequest = stripe.paymentRequest({
+        country: 'US',
+        currency: 'usd',
+        total: {
+          label: 'Total',
+          amount: calculateAmountPaid.value * 100,
+        },
+        requestPayerName: true,
+        requestPayerEmail: true,
+      });
+
+      const { error } = await paymentRequest.show();
+      if (error) throw error;
+
+      const { paymentIntent } = await paymentRequest.confirm();
+      sessionStorage.clear();
+      Inertia.visit(`/booking-success?payment_intent=${paymentIntent.id}`);
+      return;
+    }
+
   } catch (error) {
-    console.error('Full error details:', error.response?.data || error.message);
+    console.error('Payment error:', error);
     error.value = error.response?.data?.error || 
-                 error.response?.data?.message || 
+                 error.message || 
                  'Payment failed. Please try again.';
   } finally {
     isLoading.value = false;
