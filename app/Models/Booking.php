@@ -33,6 +33,7 @@ class Booking extends Model
         'amount_paid',
         'payment_status',
         'booking_status',
+        'booking_reference',
         'cancellation_reason',
         'notes',
     ];

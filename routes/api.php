@@ -65,7 +65,6 @@ Route::get('/currencies', [CurrencyController::class, 'index']);
 // In your api.php routes file
 Route::get('/vendors/{vendorProfileId}/reviews', [ReviewController::class, 'getApprovedReviews']);
 
-Route::get('/booking-success/details', [BookingController::class, 'getBookingDetails'])->name('booking-success.details');
 
 
 // this is for recent blogs
