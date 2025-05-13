@@ -7,12 +7,10 @@ use App\Http\Controllers\BookingController;
 use App\Http\Controllers\BookingExtraController;
 use App\Http\Controllers\CurrencyController;
 use App\Http\Controllers\Notifications\ContactUsNotificationController;
-use App\Http\Controllers\PaymentController;
 use App\Http\Controllers\PlanController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\RadiusApiController;
 use App\Http\Controllers\ReviewController;
-use App\Http\Controllers\StripeWebhookController;
 use App\Http\Controllers\UserDocumentController;
 use App\Http\Controllers\VehicleController;
 use App\Http\Controllers\VehicleCategoryController;
@@ -79,7 +77,3 @@ Route::get('/vehicles/search-locations', [VehicleController::class, 'searchLocat
 Route::get('/testimonials/frontend', [App\Http\Controllers\Admin\TestimonialController::class, 'getFrontendTestimonials']);
 
 Route::get('/radius', [RadiusApiController::class, 'getRadius']);
-
-Route::post('/stripe/webhook', [StripeWebhookController::class, 'handleWebhook'])
-    ->withoutMiddleware(['csrf']);
-    Route::post('/create-payment-intent', [PaymentController::class, 'createPaymentIntent']);

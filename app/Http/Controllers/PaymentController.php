@@ -1,273 +1,261 @@
 <?php
-
 namespace App\Http\Controllers;
 
-use App\Models\BookingPayment;
-use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Validator;
-use Stripe\Stripe;
-use Stripe\PaymentIntent;
-use App\Models\Booking;
-use App\Models\Customer;
-use App\Models\BookingExtra;
 use App\Models\User;
 use App\Models\VendorProfile;
 use App\Notifications\Booking\BookingCreatedAdminNotification;
-use App\Notifications\Booking\BookingCreatedVendorNotification;
 use App\Notifications\Booking\BookingCreatedCompanyNotification;
 use App\Notifications\Booking\BookingCreatedCustomerNotification;
-use Illuminate\Support\Facades\Notification;
+use App\Notifications\Booking\BookingCreatedVendorNotification;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Notification;
+use Inertia\Inertia;
+use Stripe\Stripe;
+use Stripe\Checkout\Session;
+use Illuminate\Support\Str;
+use App\Models\Booking;
+use App\Models\Customer;
+use App\Models\BookingPayment;
+use App\Models\BookingExtra;
+use App\Models\Vehicle;
 
 class PaymentController extends Controller
 {
-    /**
-     * Create a Stripe Payment Intent
-     */
-    public function createPaymentIntent(Request $request)
+    public function charge(Request $request)
     {
-        // 1. Set Stripe API key
         Stripe::setApiKey(config('stripe.secret'));
-    
-        // 2. Validate required fields
-        $validator = Validator::make($request->all(), [
-            'customer' => 'required|array',
-            'customer.email' => 'required|email',
-            'customer.first_name' => 'required|string',
-            'customer.last_name' => 'required|string',
-            'amount_paid' => 'required|numeric|min:0',
-            'vehicle_id' => 'required|exists:vehicles,id',
-            'payment_method_type' => 'required|in:card,klarna,bancontact,apple_pay,paypal',
-            'currency' => 'required|in:eur,usd',
-            'pickup_date' => 'required|date',
-            'return_date' => 'required|date|after:pickup_date'
-        ]);
-    
-        if ($validator->fails()) {
-            return response()->json([
-                'error' => $validator->errors(),
-                'message' => 'Validation failed'
-            ], 422);
-        }
-    
+
         try {
-            // 3. Find or create customer
-            $customer = Customer::firstOrCreate(
-                ['email' => $request->customer['email']],
-                [
-                    'first_name' => $request->customer['first_name'],
-                    'last_name' => $request->customer['last_name'],
-                    'phone' => $request->customer['phone'] ?? null,
-                    'flight_number' => $request->customer['flight_number'] ?? null,
-                    'driver_age' => $request->customer['driver_age'] ?? null
-                ]
-            );
-    
-            // 4. Create booking record
+            $bookingData = $request->input('bookingData');
+            
+            // First save the customer and booking to database
+            $customer = Customer::where('email', $bookingData['customer']['email'])->first();
+
+            if (!$customer) {
+                $customer = Customer::create([
+                    'user_id' => auth()->id(),
+                    'first_name' => $bookingData['customer']['first_name'],
+                    'last_name' => $bookingData['customer']['last_name'],
+                    'email' => $bookingData['customer']['email'],
+                    'phone' => $bookingData['customer']['phone'] ?? null,
+                    'flight_number' => $bookingData['customer']['flight_number'] ?? null,
+                    'driver_age' => $bookingData['customer']['driver_age'] ?? null,
+                ]);
+            }
+
+            // Generate a unique booking reference
+            $bookingReference = Str::random(32);
+
             $booking = Booking::create([
-                'booking_number' => 'BOOK-' . uniqid(),
+                'booking_number' => uniqid('BOOK-'),
+                'booking_reference' => $bookingReference,
                 'customer_id' => $customer->id,
-                'vehicle_id' => $request->vehicle_id,
-                'pickup_date' => $request->pickup_date,
-                'return_date' => $request->return_date,
-                'pickup_time' => $request->pickup_time,
-                'return_time' => $request->return_time,
-                'pickup_location' => $request->pickup_location,
-                'return_location' => $request->return_location,
-                'total_days' => $request->total_days,
-                'base_price' => $request->base_price,
-                'preferred_day' => $request->preferred_day,
-                'extra_charges' => $request->extra_charges ?? 0,
-                'tax_amount' => $request->tax_amount ?? 0,
-                'total_amount' => $request->total_amount,
-                'pending_amount' => $request->pending_amount,
-                'amount_paid' => $request->amount_paid,
+                'vehicle_id' => $bookingData['vehicle_id'],
+                'pickup_date' => $bookingData['pickup_date'],
+                'return_date' => $bookingData['return_date'],
+                'pickup_time' => $bookingData['pickup_time'],
+                'return_time' => $bookingData['return_time'],
+                'pickup_location' => $bookingData['pickup_location'],
+                'return_location' => $bookingData['return_location'],
+                'total_days' => $bookingData['total_days'],
+                'base_price' => $bookingData['base_price'],
+                'preferred_day' => $bookingData['preferred_day'] ?? null,
+                'extra_charges' => $bookingData['extra_charges'] ?? 0,
+                'tax_amount' => $bookingData['tax_amount'] ?? 0,
+                'discount_amount' => $bookingData['discount_amount'] ?? 0,
+                'total_amount' => $bookingData['total_amount'],
+                'pending_amount' => $bookingData['pending_amount'],
+                'amount_paid' => $bookingData['amount_paid'],
                 'payment_status' => 'pending',
                 'booking_status' => 'pending',
-                'plan' => $request->plan ?? 'Free Plan',
-                'plan_price' => $request->plan_price ?? 0,
-                'currency' => $request->currency
+                'plan' => $bookingData['plan'] ?? null,
+                'plan_price' => $bookingData['plan_price'] ?? null,
+                'notes' => $bookingData['notes'] ?? null,
+                'cancellation_reason' => null, // Initialize as null
             ]);
-    
-            // 5. Save extras if any
-            if (!empty($request->extras)) {
-                $extrasData = array_map(function($extra) use ($booking) {
-                    return [
-                        'booking_id' => $booking->id,
-                        'extra_type' => $extra['extra_type'],
-                        'extra_name' => $extra['extra_name'],
-                        'quantity' => $extra['quantity'],
-                        'price' => $extra['price'],
-                        'created_at' => now(),
-                        'updated_at' => now(),
-                    ];
-                }, array_filter($request->extras, function($extra) {
-                    return $extra['quantity'] > 0;
-                }));
+
+            // Save extras if any
+            if (!empty($bookingData['extras'])) {
+                $extrasData = [];
+                foreach ($bookingData['extras'] as $extra) {
+                    if ($extra['quantity'] > 0) {
+                        $extrasData[] = [
+                            'booking_id' => $booking->id,
+                            'extra_type' => $extra['extra_type'],
+                            'extra_name' => $extra['extra_name'],
+                            'quantity' => $extra['quantity'],
+                            'price' => $extra['price'],
+                            'created_at' => now(),
+                            'updated_at' => now(),
+                        ];
+                    }
+                }
                 
                 if (!empty($extrasData)) {
                     BookingExtra::insert($extrasData);
                 }
             }
-    
-            // 6. Create payment intent parameters
-            $paymentIntentParams = [
-                'amount' => $request->amount_paid * 100, // Convert to cents
-                'currency' => $request->currency,
+
+            
+
+            // Create Stripe customer
+            $stripeCustomer = \Stripe\Customer::create([
+                'email' => $customer->email,
+                'name' => "{$customer->first_name} {$customer->last_name}",
+                'phone' => $customer->phone ?? null,
+                'address' => [
+                    'line1' => '123 Test Street',
+                    'city' => 'Berlin',
+                    'country' => 'DE',
+                    'postal_code' => '10115',
+                ],
+            ]);
+
+            // Create Checkout Session
+            $session = Session::create([
+                'customer' => $stripeCustomer->id,
+                'payment_method_types' => ['card', 'bancontact', 'sofort', 'klarna'],
+                'line_items' => [[
+                    'price_data' => [
+                        'currency' => 'eur',
+                        'product_data' => [
+                            'name' => 'Car Rental Booking',
+                            'description' => "Booking for vehicle ID {$bookingData['vehicle_id']}",
+                        ],
+                        'unit_amount' => $bookingData['amount_paid'] * 100,
+                    ],
+                    'quantity' => 1,
+                ]],
+                'mode' => 'payment',
+                'success_url' => url('/booking-success/details?session_id={CHECKOUT_SESSION_ID}&booking_id=' . $booking->id),
+                'cancel_url' => url('/booking/cancel'),
                 'metadata' => [
                     'booking_id' => $booking->id,
-                    'customer_email' => $customer->email
                 ],
-                'description' => 'Booking #' . $booking->booking_number,
-            ];
-    
-            // 7. Add payment method specific parameters
-            switch ($request->payment_method_type) {
-                case 'klarna':
-                    $paymentIntentParams['payment_method_types'] = ['klarna'];
-                    $paymentIntentParams['payment_method_options'] = [
-                        'klarna' => [
-                            'preferred_locale' => 'en-US' // Default to English
-                        ]
-                    ];
-                    break;
-                    
-                case 'bancontact':
-                    $paymentIntentParams['payment_method_types'] = ['bancontact'];
-                    break;
-                    
-                case 'apple_pay':
-                    $paymentIntentParams['payment_method_types'] = ['card', 'apple_pay'];
-                    break;
-                    
-                case 'paypal':
-                    $paymentIntentParams['payment_method_types'] = ['paypal'];
-                    break;
-                    
-                default: // For regular cards
-                    $paymentIntentParams['payment_method_types'] = ['card'];
-            }
-    
-            // 8. Create the Payment Intent
-            $paymentIntent = PaymentIntent::create($paymentIntentParams);
-    
-            // 9. Send notifications
-            $this->sendBookingNotifications($booking, $customer);
-    
-            // 10. Return response
-            return response()->json([
-                'success' => true,
-                'clientSecret' => $paymentIntent->client_secret,
-                'paymentIntentId' => $paymentIntent->id,
-                'requiresAction' => in_array($paymentIntent->status, ['requires_action', 'requires_payment_method']),
-                'status' => $paymentIntent->status
             ]);
-    
-        } catch (\Exception $e) {
-            Log::error('Payment intent creation failed: ' . $e->getMessage());
+
+            // Create initial payment record
+            BookingPayment::create([
+                'booking_id' => $booking->id,
+                'payment_method' => 'stripe',
+                'transaction_id' => $session->id,
+                'amount' => $bookingData['amount_paid'],
+                'payment_status' => 'pending',
+            ]);
+
             return response()->json([
-                'error' => $e->getMessage(),
-                'message' => 'Payment processing failed'
-            ], 500);
+                'sessionId' => $session->id,
+            ]);
+
+        } catch (\Stripe\Exception\ApiErrorException $e) {
+            \Log::error('Stripe Error:', ['error' => $e->getMessage()]);
+            return response()->json(['error' => $e->getMessage()], 400);
         }
     }
 
-    /**
-     * Confirm a payment (for async methods)
-     */
-    public function confirmPayment(Request $request)
-    {
-        try {
-            // 1. Set Stripe API key
-            Stripe::setApiKey(config('stripe.secret'));
-            
-            // 2. Retrieve payment intent
-            $paymentIntent = PaymentIntent::retrieve($request->paymentIntentId);
-            
-            // 3. Check if payment succeeded
-            if ($paymentIntent->status === 'succeeded') {
-                $booking = Booking::find($paymentIntent->metadata->booking_id);
-                
-                if ($booking) {
-                    // 4. Update booking status
-                    $booking->update([
-                        'payment_status' => 'paid',
-                        'booking_status' => 'confirmed',
-                        'stripe_payment_id' => $paymentIntent->id
-                    ]);
-                    
-                    // 5. Create payment record
-                    BookingPayment::create([
-                        'booking_id' => $booking->id,
-                        'payment_method' => $paymentIntent->payment_method_types[0] ?? 'unknown',
-                        'transaction_id' => $paymentIntent->id,
-                        'amount' => $paymentIntent->amount / 100,
-                        'payment_status' => 'completed',
-                        'currency' => $paymentIntent->currency
-                    ]);
-                    
-                    // 6. Send notifications
-                    $this->sendBookingNotifications($booking, $booking->customer);
-                }
-                
-                return response()->json(['success' => true]);
-            }
-            
-            return response()->json([
-                'error' => 'Payment not completed',
-                'status' => $paymentIntent->status
-            ], 400);
-            
-        } catch (\Exception $e) {
-            Log::error('Payment confirmation failed: ' . $e->getMessage());
-            return response()->json([
-                'error' => $e->getMessage(),
-                'message' => 'Payment confirmation failed'
-            ], 500);
+
+    public function success(Request $request)
+{
+    try {
+        Stripe::setApiKey(config('stripe.secret'));
+
+        $sessionId = $request->query('session_id');
+        $bookingId = $request->query('booking_id');
+
+        if (!$sessionId || !$bookingId) {
+            Log::error('Missing session_id or booking_id in PaymentController::success');
+            return redirect()->route('booking.create')->with('error', 'Invalid payment session');
         }
-    }
-    
-    /**
-     * Send booking notifications to all parties
-     */
-    protected function sendBookingNotifications($booking, $customer)
-    {
-        try {
-            $vehicle = $booking->vehicle;
-            
-            // 1. Notify Admin
-            $adminEmail = config('app.admin_email');
-            if ($adminEmail) {
-                $admin = User::where('email', $adminEmail)->first();
-                if ($admin) {
-                    $admin->notify(new BookingCreatedAdminNotification($booking, $customer, $vehicle));
-                }
+
+        $booking = Booking::findOrFail($bookingId);
+        $customer = Customer::findOrFail($booking->customer_id);
+        $vehicle = Vehicle::findOrFail($booking->vehicle_id);
+        $payment = BookingPayment::where('booking_id', $booking->id)
+                    ->where('transaction_id', $sessionId)
+                    ->first();
+        $vendorProfile = VendorProfile::where('user_id', $vehicle->vendor_id)->first();
+
+        $session = Session::retrieve($sessionId);
+
+        if ($session->payment_status === 'paid') {
+            // Update booking status
+            $booking->update([
+                'payment_status' => 'completed',
+                'booking_status' => 'confirmed',
+            ]);
+
+            // Update payment status
+            if ($payment) {
+                $payment->update([
+                    'payment_status' => 'succeeded',
+                    'transaction_id' => $session->payment_intent ?? $session->id,
+                    'amount' => $booking->amount_paid,
+                ]);
+            } else {
+                BookingPayment::create([
+                    'booking_id' => $booking->id,
+                    'payment_method' => 'Stripe',
+                    'transaction_id' => $session->payment_intent ?? $session->id,
+                    'amount' => $booking->amount_paid,
+                    'payment_status' => 'succeeded',
+                ]);
             }
 
-            // 2. Notify Vendor
-            if ($vehicle && $vehicle->vendor_id) {
-                $vendor = User::find($vehicle->vendor_id);
-                if ($vendor) {
-                    Notification::route('mail', $vendor->email)
-                        ->notify(new BookingCreatedVendorNotification($booking, $customer, $vehicle, $vendor));
-                }
+            // Send notifications
+            $adminEmail = env('VITE_ADMIN_EMAIL', 'default@admin.com');
+            $admin = User::where('email', $adminEmail)->first();
+            if ($admin) {
+                $admin->notify(new BookingCreatedAdminNotification($booking, $customer, $vehicle));
             }
 
-            // 3. Notify Company
-            if ($vehicle && $vehicle->vendor_id) {
-                $vendorProfile = VendorProfile::where('user_id', $vehicle->vendor_id)->first();
-                if ($vendorProfile && $vendorProfile->company_email) {
-                    Notification::route('mail', $vendorProfile->company_email)
-                        ->notify(new BookingCreatedCompanyNotification($booking, $customer, $vehicle, $vendorProfile));
-                }
+            $vendor = User::find($vehicle->vendor_id);
+            if ($vendor) {
+                Notification::route('mail', $vendor->email)
+                    ->notify(new BookingCreatedVendorNotification($booking, $customer, $vehicle, $vendor));
             }
 
-            // 4. Notify Customer
+            if ($vendorProfile && $vendorProfile->company_email) {
+                Notification::route('mail', $vendorProfile->company_email)
+                    ->notify(new BookingCreatedCompanyNotification($booking, $customer, $vehicle, $vendorProfile));
+            }
+
             Notification::route('mail', $customer->email)
                 ->notify(new BookingCreatedCustomerNotification($booking, $customer, $vehicle));
 
-        } catch (\Exception $e) {
-            Log::error('Notification sending failed: ' . $e->getMessage());
+            // Clear session storage
+            session()->forget(['pending_booking_id', 'driverInfo', 'rentalDates', 'selectionData']);
+            
+            // Add JavaScript to clear browser sessionStorage
+            $clearSessionScript = "
+                <script>
+                    if(window.sessionStorage) {
+                        window.sessionStorage.clear();
+                        console.log('Session storage cleared');
+                    }
+                </script>
+            ";
+
+            return Inertia::render('Booking/Success', [
+                'booking' => $booking,
+                'vehicle' => $vehicle,
+                'customer' => $customer,
+                'payment' => $payment,
+                'vendorProfile' => $vendorProfile,
+                'plan' => $booking->plan ? ['plan_type' => $booking->plan, 'price' => $booking->plan_price] : null,
+                'clearSessionScript' => $clearSessionScript,
+            ]);
+        } else {
+            Log::warning('Payment not completed in PaymentController::success', ['session_id' => $sessionId]);
+            return redirect()->route('booking.create')->with('error', 'Payment not completed');
         }
+    } catch (\Exception $e) {
+        Log::error('Error in PaymentController::success', [
+            'message' => $e->getMessage(),
+            'trace' => $e->getTraceAsString(),
+        ]);
+        return redirect()->route('booking.create')->with('error', 'Error processing payment: ' . $e->getMessage());
     }
+}
+    
 }

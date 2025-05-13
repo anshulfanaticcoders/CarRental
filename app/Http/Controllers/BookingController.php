@@ -233,50 +233,50 @@ class BookingController extends Controller
     }
 
     public function getBookingDetails(Request $request)
-{
-    // Get payment intent or session ID from query parameters
-    $paymentIntentId = $request->query('payment_intent');
-    $sessionId = $request->query('session_id');
+    {
+        // Get payment intent or session ID from query parameters
+        $paymentIntentId = $request->query('payment_intent');
+        $sessionId = $request->query('session_id');
+        
+        if (!$paymentIntentId && !$sessionId) {
+            return response()->json(['error' => 'Payment Intent ID or Session ID is required'], 400);
+        }
     
-    if (!$paymentIntentId && !$sessionId) {
-        return response()->json(['error' => 'Payment Intent ID or Session ID is required'], 400);
+        // Fetch payment details
+        $payment = null;
+        
+        if ($paymentIntentId) {
+            $payment = BookingPayment::where('transaction_id', $paymentIntentId)->first();
+        } else if ($sessionId) {
+            $payment = BookingPayment::where('transaction_id', $sessionId)->first();
+        }
+    
+        if (!$payment) {
+            return response()->json(['error' => 'Payment not found'], 404);
+        }
+    
+        // Fetch booking details
+        $booking = Booking::with(['extras', 'customer', 'vehicle.vendorProfile'])->find($payment->booking_id);
+        
+        if (!$booking) {
+            return response()->json(['error' => 'Booking not found'], 404);
+        }
+        
+        $vehicleId = $booking->vehicle_id;
+        $vehicle = Vehicle::with(['specifications', 'images', 'category', 'user', 'vendorPlans'])->find($vehicleId);
+        $plan = Plan::where('plan_type', $booking->plan)->first();
+        
+        // Return booking and payment details in JSON format
+        return response()->json([
+            'booking' => $booking,
+            'payment' => $payment,
+            'vehicle' => $vehicle,
+            'extras' => $booking->extras,
+            'customer' => $booking->customer,
+            'plan' => $plan,
+            'vendorProfile' => $booking->vehicle->vendorProfile,
+        ]);
     }
-
-    // Fetch payment details
-    $payment = null;
-    
-    if ($paymentIntentId) {
-        $payment = BookingPayment::where('transaction_id', $paymentIntentId)->first();
-    } else if ($sessionId) {
-        $payment = BookingPayment::where('transaction_id', $sessionId)->first();
-    }
-
-    if (!$payment) {
-        return response()->json(['error' => 'Payment not found'], 404);
-    }
-
-    // Fetch booking details
-    $booking = Booking::with(['extras', 'customer', 'vehicle.vendorProfile'])->find($payment->booking_id);
-    
-    if (!$booking) {
-        return response()->json(['error' => 'Booking not found'], 404);
-    }
-    
-    $vehicleId = $booking->vehicle_id;
-    $vehicle = Vehicle::with(['specifications', 'images', 'category', 'user', 'vendorPlans'])->find($vehicleId);
-    $plan = Plan::where('plan_type', $booking->plan)->first();
-    
-    // Return booking and payment details in JSON format
-    return response()->json([
-        'booking' => $booking,
-        'payment' => $payment,
-        'vehicle' => $vehicle,
-        'extras' => $booking->extras,
-        'customer' => $booking->customer,
-        'plan' => $plan,
-        'vendorProfile' => $booking->vehicle->vendorProfile,
-    ]);
-}
 
     // this si for fetching all the booking details in Pages > Vendor >  Bookings.vue
     public function getAllBookings()

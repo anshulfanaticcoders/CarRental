@@ -386,7 +386,8 @@ Route::middleware(['auth', 'role:customer'])->group(function () {
     //  this is route is for redirecting to the success page after payment done
     Route::get('/booking-success/details', function () {
         return Inertia::render('Booking/Success', [
-            'payment_intent' => request('payment_intent'), // Pass payment intent ID
+            'payment_intent' => request('payment_intent'),
+            'session_id' => request('session_id')
         ]);
     })->name('booking-success.details');
 
@@ -405,9 +406,6 @@ Route::middleware(['auth', 'role:customer'])->group(function () {
     Route::post('/vehicles/{vehicle}/favourite', [FavoriteController::class, 'favourite'])->name('vehicles.favourite');
     Route::post('/vehicles/{vehicle}/unfavourite', [FavoriteController::class, 'unfavourite'])->name('vehicles.unfavourite');
     Route::get('/favorites', [FavoriteController::class, 'getFavorites']);
-
-    Route::post('/create-payment-intent', [PaymentController::class, 'createPaymentIntent']);
-Route::post('/confirm-payment', [PaymentController::class, 'confirmPayment']);
 });
 
 // this route is for user, not create lsiting/or access until status is not confirmed 
