@@ -34,7 +34,8 @@ class PaymentController extends Controller
                 'customer.email' => 'required|email',
                 'amount_paid' => 'required|numeric|min:0',
                 'vehicle_id' => 'required|exists:vehicles,id',
-                'payment_method_type' => 'required|in:card,klarna,bancontact,apple_pay,paypal'
+                'payment_method_type' => 'required|in:card,klarna,bancontact,apple_pay,paypal',
+                'currency' => 'required|in:eur,usd',
             ]);
     
             if ($validator->fails()) {
