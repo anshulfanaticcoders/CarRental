@@ -388,7 +388,7 @@ Route::middleware(['auth', 'role:customer'])->group(function () {
     //  this is route is for redirecting to the success page after payment done
     Route::get('/booking-success/details', function () {
         return Inertia::render('Booking/Success', [
-            'payment_intent' => request('payment_intent'), // Pass payment intent ID
+            'session_id' => request('session_id'), // Pass payment intent ID
         ]);
     })->name('booking-success.details');
 

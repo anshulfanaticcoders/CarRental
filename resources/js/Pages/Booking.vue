@@ -540,20 +540,39 @@ const bookingData = computed(() => {
     const totalDaysCalc = Math.ceil((returnDateObj - pickupDateObj) / (1000 * 3600 * 24));
 
     let extraCharges = 0;
-    bookingExtras.value.forEach((extra) => {
-        if (extra.quantity > 0) {
-            extraCharges += extra.price * extra.quantity;
-        }
+    const extrasData = bookingExtras.value
+        .filter(extra => extra.quantity > 0) // Only include extras with quantity > 0
+        .map(extra => ({
+            extra_type: extra.extra_type || 'unknown', // Fallback to avoid null
+            extra_name: extra.extra_name || 'unknown',
+            quantity: Number(extra.quantity),
+            price: Number(extra.price)
+        }));
+
+    // Log the extras data for debugging
+    console.log('Booking Data Extras Before Sending:', JSON.stringify(extrasData, null, 2));
+
+    // Calculate extra charges
+    extrasData.forEach((extra) => {
+        extraCharges += extra.price * extra.quantity;
     });
 
     return {
         customer: customer.value,
         pickup_date: dateFrom.value,
         return_date: dateTo.value,
-        pickup_location: vehicle.value ?
-            `${vehicle.value.location}, ${vehicle.value.city}, ${vehicle.value.state}, ${vehicle.value.country}`.replace(/,\s*,/g, ',').trim().replace(/^,|,$/g, '') : null,
-        return_location: vehicle.value ?
-            `${vehicle.value.location}, ${vehicle.value.city}, ${vehicle.value.state}, ${vehicle.value.country}`.replace(/,\s*,/g, ',').trim().replace(/^,|,$/g, '') : null,
+        pickup_location: vehicle.value
+            ? `${vehicle.value.location}, ${vehicle.value.city}, ${vehicle.value.state}, ${vehicle.value.country}`
+                  .replace(/,\s*,/g, ',')
+                  .trim()
+                  .replace(/^,|,$/g, '')
+            : null,
+        return_location: vehicle.value
+            ? `${vehicle.value.location}, ${vehicle.value.city}, ${vehicle.value.state}, ${vehicle.value.country}`
+                  .replace(/,\s*,/g, ',')
+                  .trim()
+                  .replace(/^,|,$/g, '')
+            : null,
         pickup_time: timeFrom.value,
         return_time: timeTo.value,
         total_days: totalDaysCalc,
@@ -564,15 +583,9 @@ const bookingData = computed(() => {
         pending_amount: calculatePendingAmount.value,
         amount_paid: calculateAmountPaid.value,
         discount_amount: Number(discountAmount.value),
-        plan: selectedPlan.value ? selectedPlan.value.plan_type : 'Free Plan',
+        plan: selectedPlan.value ? selectedPlan.value.plan_type : "Free Plan",
         plan_price: selectedPlan.value ? Number(selectedPlan.value.price) : 0,
-        extras: bookingExtras.value.filter(extra => extra.quantity > 0).map(extra => ({
-            id: extra.id,
-            extra_type: extra.extra_type,
-            extra_name: extra.extra_name,
-            quantity: extra.quantity,
-            price: extra.price,
-        })),
+        extras: extrasData,
         vehicle_id: vehicle.value?.id,
     };
 });

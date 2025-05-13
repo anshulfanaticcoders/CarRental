@@ -44,15 +44,11 @@
   
       // Create Checkout Session
       const response = await axios.post('/payment/charge', {
-        bookingData: {
-          ...props.bookingData,
-          booking_reference: bookingReference,
-        },
-      }, {
-        headers: {
-          'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
-        },
-      });
+      bookingData: {
+        ...props.bookingData,
+        booking_reference: bookingReference,
+      },
+    });
   
       const { sessionId } = response.data;
       if (!sessionId) {
