@@ -33,60 +33,42 @@
     errorMessage.value = '';
   
     try {
-      // Load Stripe.js dynamically
       const stripe = await loadStripe(import.meta.env.VITE_STRIPE_KEY);
       if (!stripe) {
-        throw new Error('Failed to load Stripe.js');
+        throw new Error('Failed to initialize Stripe');
       }
   
-      // Generate a unique booking reference
-      const bookingReference = generateRandomString(32);
-  
-      // Create Checkout Session
       const response = await axios.post('/payment/charge', {
-      bookingData: {
-        ...props.bookingData,
-        booking_reference: bookingReference,
-      },
-    });
+        bookingData: props.bookingData,
+      });
   
       const { sessionId } = response.data;
       if (!sessionId) {
-        throw new Error('Failed to create Checkout Session');
+        throw new Error('Failed to create checkout session');
       }
   
-      // Redirect to Stripe Checkout
       const { error } = await stripe.redirectToCheckout({ sessionId });
       if (error) {
         throw new Error(error.message);
       }
     } catch (err) {
-      errorMessage.value = err.message || 'An error occurred. Please try again.';
+      errorMessage.value = err.message || 'An error occurred during checkout. Please try again.';
+      console.error('Checkout Error:', err);
     } finally {
       isLoading.value = false;
     }
   };
   
   async function loadStripe(key) {
-    return new Promise((resolve) => {
-      if (window.Stripe) {
-        resolve(window.Stripe(key));
-      } else {
-        const script = document.createElement('script');
-        script.src = 'https://js.stripe.com/v3/';
-        script.onload = () => resolve(window.Stripe(key));
-        document.head.appendChild(script);
-      }
-    });
-  }
-  
-  function generateRandomString(length) {
-    const characters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
-    let result = '';
-    for (let i = 0; i < length; i++) {
-      result += characters.charAt(Math.floor(Math.random() * characters.length));
+    if (window.Stripe) {
+      return window.Stripe(key);
     }
-    return result;
+    return new Promise((resolve) => {
+      const script = document.createElement('script');
+      script.src = 'https://js.stripe.com/v3/';
+      script.onload = () => resolve(window.Stripe(key));
+      document.head.appendChild(script);
+    });
   }
   </script>
   

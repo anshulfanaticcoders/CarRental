@@ -15,7 +15,6 @@ use App\Http\Controllers\UserDocumentController;
 use App\Http\Controllers\VehicleController;
 use App\Http\Controllers\VehicleCategoryController;
 use App\Http\Controllers\PopularPlacesController;
-use App\Http\Controllers\PaymentController; // Added
 use App\Models\Booking;
 use App\Models\Message;
 use Illuminate\Http\Request;
@@ -78,5 +77,3 @@ Route::get('/vehicles/search-locations', [VehicleController::class, 'searchLocat
 Route::get('/testimonials/frontend', [App\Http\Controllers\Admin\TestimonialController::class, 'getFrontendTestimonials']);
 
 Route::get('/radius', [RadiusApiController::class, 'getRadius']);
-
-Route::post('/stripe/webhook', [PaymentController::class, 'handleWebhook'])->name('stripe.webhook');

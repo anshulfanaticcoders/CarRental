@@ -381,6 +381,7 @@ Route::middleware(['auth', 'role:customer'])->group(function () {
     Route::post('/payment/charge', [PaymentController::class, 'charge'])->name('payment.charge');
     Route::get('/payment/success', [PaymentController::class, 'success'])->name('payment.success');
     Route::get('/payment/cancel', [PaymentController::class, 'cancel'])->name('payment.cancel');
+    Route::post('/stripe/webhook', [PaymentController::class, 'webhook'])->name('stripe.webhook');
     // this route is to show customer booking in the customer profile
     Route::get('/customer/bookings', [BookingController::class, 'getCustomerBookingData'])->name('customer.bookings');
 
