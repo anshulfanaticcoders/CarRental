@@ -9,11 +9,13 @@ import walkIcon from "../../assets/walkingrayIcon.svg";
 import { Inertia } from '@inertiajs/inertia';
 import paypal from '../../assets/paypal.svg';
 import mastercard from '../../assets/mastercard.svg';
+import klarna from '../../assets/klarna.svg';
+import bancontact from '../../assets/bancontact.svg';
+import apple_pay from '../../assets/apple-pay.svg';
 import axios from 'axios';
 import { loadStripe } from '@stripe/stripe-js';
 import PrimaryButton from "@/Components/PrimaryButton.vue";
 import Footer from "@/Components/Footer.vue";
-import StripeCheckout from "@/Components/StripeCheckout.vue";
 import loader from "../../assets/loader.gif";
 import {
     Dialog,
@@ -278,6 +280,7 @@ const returnDate = ref('');
 const pickupTime = ref('');
 const returnTime = ref('');
 const extras = ref([]);
+const selectedPaymentMethod = ref('card');
 
 const loadSessionData = () => {
     // Load driver info
@@ -420,176 +423,236 @@ watch(isLoading, (newValue) => {
     }
 });
 
-// const submitBooking = async () => {
-//     if (!validateSteps()) {
-//         return;
-//     }
-//     isLoading.value = true; // Show loader
+const submitBooking = async () => {
+    if (!validateSteps()) {
+        return;
+    }
+    isLoading.value = true; // Show loader
 
-//     try {
-//         // Load session data
-//         loadSessionData();
+    try {
+        // Load session data
+        loadSessionData();
 
-//         // Calculate the total days by comparing pickup and return dates
-//         const pickupDateObj = new Date(pickupDate.value);
-//         const returnDateObj = new Date(returnDate.value);
-//         const totalDays = Math.ceil((returnDateObj - pickupDateObj) / (1000 * 3600 * 24)); // Difference in days
+        // Calculate the total days by comparing pickup and return dates
+        const pickupDateObj = new Date(pickupDate.value);
+        const returnDateObj = new Date(returnDate.value);
+        const totalDays = Math.ceil((returnDateObj - pickupDateObj) / (1000 * 3600 * 24)); // Difference in days
 
-//         // Calculate extra charges (sum of all selected extras)
-//         let extraCharges = 0;
-//         bookingExtras.value.forEach((extra) => {
-//             if (extra.quantity > 0) {
-//                 extraCharges += extra.price * extra.quantity;
-//             }
-//         });
+        // Calculate extra charges (sum of all selected extras)
+        let extraCharges = 0;
+        bookingExtras.value.forEach((extra) => {
+            if (extra.quantity > 0) {
+                extraCharges += extra.price * extra.quantity;
+            }
+        });
 
-//         // Prepare the booking data from session storage and calculated values
-//         const bookingData = {
-//             customer: customer.value,
-//             pickup_date: pickupDate.value,
-//             return_date: returnDate.value,
-//             pickup_location: vehicle.value ?
-//                 `${vehicle.value.location}, ${vehicle.value.city}, ${vehicle.value.state}, ${vehicle.value.country}`.replace(/,\s*,/g, ',').trim().replace(/^,|,$/g, '') : null,
-//             return_location: vehicle.value ?
-//                 `${vehicle.value.location}, ${vehicle.value.city}, ${vehicle.value.state}, ${vehicle.value.country}`.replace(/,\s*,/g, ',').trim().replace(/^,|,$/g, '') : null,
-//             pickup_time: pickupTime.value,
-//             return_time: returnTime.value,
-//             total_days: totalDays,
-//             base_price: Number(totalPrice.value),
-//             preferred_day: packageType.value,
-//             extra_charges: extraCharges > 0 ? extraCharges : null,
-//             total_amount: calculateTotal.value,
-//             pending_amount: calculatePendingAmount.value,
-//             amount_paid: calculateAmountPaid.value,
-//             discount_amount: Number(discountAmount.value),
-//             plan: selectedPlan.value ? selectedPlan.value.plan_type : "Free Plan",
-//             plan_price: selectedPlan.value ? Number(selectedPlan.value.price) : 0,
-//             extras: extras.value,
-//             vehicle_id: vehicle.value?.id,
-//         };
-//         console.log("Vehicle ID:", vehicle.value?.id);
-//         try {
-//             // First, create the payment method from Stripe
-//             const { error, paymentMethod } = await stripe.createPaymentMethod({
-//                 type: 'card',
-//                 card: cardNumber,
-//                 billing_details: {
-//                     name: `${customer.value.first_name} ${customer.value.last_name}`,
-//                     email: customer.value.email,
-//                     phone: customer.value.phone,
-//                     address: {
-//                         line1: 'United states',
-//                         country: 'US',
-//                         state: "California",
-//                     },
-//                 },
-//             });
+        // Prepare the booking data from session storage and calculated values
+        const bookingData = {
+            customer: customer.value,
+            pickup_date: pickupDate.value,
+            return_date: returnDate.value,
+            pickup_location: vehicle.value ?
+                `${vehicle.value.location}, ${vehicle.value.city}, ${vehicle.value.state}, ${vehicle.value.country}`.replace(/,\s*,/g, ',').trim().replace(/^,|,$/g, '') : null,
+            return_location: vehicle.value ?
+                `${vehicle.value.location}, ${vehicle.value.city}, ${vehicle.value.state}, ${vehicle.value.country}`.replace(/,\s*,/g, ',').trim().replace(/^,|,$/g, '') : null,
+            pickup_time: pickupTime.value,
+            return_time: returnTime.value,
+            total_days: totalDays,
+            base_price: Number(totalPrice.value),
+            preferred_day: packageType.value,
+            extra_charges: extraCharges > 0 ? extraCharges : null,
+            total_amount: calculateTotal.value,
+            pending_amount: calculatePendingAmount.value,
+            amount_paid: calculateAmountPaid.value,
+            discount_amount: Number(discountAmount.value),
+            plan: selectedPlan.value ? selectedPlan.value.plan_type : "Free Plan",
+            plan_price: selectedPlan.value ? Number(selectedPlan.value.price) : 0,
+            extras: extras.value,
+            vehicle_id: vehicle.value?.id,
+        };
+        console.log("Vehicle ID:", vehicle.value?.id);
+        try {
+            // First, create the payment method from Stripe
+            const { error, paymentMethod } = await stripe.createPaymentMethod({
+                type: 'card',
+                card: cardNumber,
+                billing_details: {
+                    name: `${customer.value.first_name} ${customer.value.last_name}`,
+                    email: customer.value.email,
+                    phone: customer.value.phone,
+                    address: {
+                        line1: 'United states',
+                        country: 'US',
+                        state: "California",
+                    },
+                },
+            });
 
-//             if (error) {
-//                 console.error(error);
-//                 alert("Payment error: " + error.message);
-//                 return;
-//             }
+            if (error) {
+                console.error(error);
+                alert("Payment error: " + error.message);
+                return;
+            }
 
-//             // Now send the booking data along with the paymentMethod.id
-//             const response = await axios.post('/booking', {
-//                 ...bookingData,
-//                 payment_method_id: paymentMethod.id,  // Send the payment method ID to the backend
-//             });
+            // Now send the booking data along with the paymentMethod.id
+            const response = await axios.post('/booking', {
+                ...bookingData,
+                payment_method_id: paymentMethod.id,  // Send the payment method ID to the backend
+            });
 
-//             const clientSecret = response.data.clientSecret;
-//             // Log the Payment Intent before confirming it
-//             console.log('Client Secret:', clientSecret);
+            const clientSecret = response.data.clientSecret;
+            // Log the Payment Intent before confirming it
+            console.log('Client Secret:', clientSecret);
 
-//             // Retrieve the Payment Intent to check its status
-//             const { paymentIntent } = await stripe.retrievePaymentIntent(clientSecret);
-//             console.log('Payment Intent Status:', paymentIntent.status);
+            // Retrieve the Payment Intent to check its status
+            const { paymentIntent } = await stripe.retrievePaymentIntent(clientSecret);
+            console.log('Payment Intent Status:', paymentIntent.status);
 
-//             if (paymentIntent.status === 'succeeded') {
-//                 sessionStorage.clear();
-//                 // Payment is already successful, no need to confirm again
-//                 Inertia.visit(`/booking-success/details?payment_intent=${paymentIntent.id}`);
-//                 return;
-//             }
+            if (paymentIntent.status === 'succeeded') {
+                sessionStorage.clear();
+                // Payment is already successful, no need to confirm again
+                Inertia.visit(`/booking-success/details?payment_intent=${paymentIntent.id}`);
+                return;
+            }
 
-//             if (paymentIntent.status === 'requires_action') {
-//                 const { error: actionError, paymentIntent: confirmedPaymentIntent } = await stripe.handleCardAction(clientSecret);
+            if (paymentIntent.status === 'requires_action') {
+                const { error: actionError, paymentIntent: confirmedPaymentIntent } = await stripe.handleCardAction(clientSecret);
 
-//                 if (actionError) {
-//                     console.error('Action Error:', actionError);
-//                     throw new Error(actionError.message);
-//                 }
+                if (actionError) {
+                    console.error('Action Error:', actionError);
+                    throw new Error(actionError.message);
+                }
 
-//                 console.log('Confirmed Payment Intent:', confirmedPaymentIntent);
-//                 Inertia.visit(`/booking-success/details?payment_intent=${paymentIntent.id}`);
-//                 return;
-//             }
-//         } catch (err) {
-//             error.value = err.message || 'An error occurred. Please try again.';
-//         }
-//     } finally {
-//         isLoading.value = false; // Hide loader
-//     }
-// };
-// Booking Data for Stripe Checkout
+                console.log('Confirmed Payment Intent:', confirmedPaymentIntent);
+                Inertia.visit(`/booking-success/details?payment_intent=${paymentIntent.id}`);
+                return;
+            }
+        } catch (err) {
+            error.value = err.message || 'An error occurred. Please try again.';
+        }
+    } finally {
+        isLoading.value = false; // Hide loader
+    }
+};
 
+const handlePayment = async () => {
+  if (selectedPaymentMethod.value === 'card') {
+    await submitBooking();
+  } else {
+    await handleAlternativePayment();
+  }
+};
 
-const bookingData = computed(() => {
-    const pickupDateObj = new Date(dateFrom.value);
-    const returnDateObj = new Date(dateTo.value);
-    const totalDaysCalc = Math.ceil((returnDateObj - pickupDateObj) / (1000 * 3600 * 24));
+// Add this new method for alternative payments
+const handleAlternativePayment = async () => {
+  if (!validateSteps()) {
+    return;
+  }
+  
+  isLoading.value = true;
+  
+  try {
+    loadSessionData();
 
-    let extraCharges = 0;
-    const extrasData = bookingExtras.value
-        .filter(extra => extra.quantity > 0) // Only include extras with quantity > 0
-        .map(extra => ({
-            extra_type: extra.extra_type || 'unknown', // Fallback to avoid null
-            extra_name: extra.extra_name || 'unknown',
-            quantity: Number(extra.quantity),
-            price: Number(extra.price)
-        }));
-
-    // Log the extras data for debugging
-    console.log('Booking Data Extras Before Sending:', JSON.stringify(extrasData, null, 2));
-
-    // Calculate extra charges
-    extrasData.forEach((extra) => {
-        extraCharges += extra.price * extra.quantity;
-    });
-
-    return {
-        customer: customer.value,
-        pickup_date: dateFrom.value,
-        return_date: dateTo.value,
-        pickup_location: vehicle.value
-            ? `${vehicle.value.location}, ${vehicle.value.city}, ${vehicle.value.state}, ${vehicle.value.country}`
-                  .replace(/,\s*,/g, ',')
-                  .trim()
-                  .replace(/^,|,$/g, '')
-            : null,
-        return_location: vehicle.value
-            ? `${vehicle.value.location}, ${vehicle.value.city}, ${vehicle.value.state}, ${vehicle.value.country}`
-                  .replace(/,\s*,/g, ',')
-                  .trim()
-                  .replace(/^,|,$/g, '')
-            : null,
-        pickup_time: timeFrom.value,
-        return_time: timeTo.value,
-        total_days: totalDaysCalc,
-        base_price: Number(totalPrice.value),
-        preferred_day: packageType.value,
-        extra_charges: extraCharges > 0 ? extraCharges : null,
-        total_amount: calculateTotal.value,
-        pending_amount: calculatePendingAmount.value,
-        amount_paid: calculateAmountPaid.value,
-        discount_amount: Number(discountAmount.value),
-        plan: selectedPlan.value ? selectedPlan.value.plan_type : "Free Plan",
-        plan_price: selectedPlan.value ? Number(selectedPlan.value.price) : 0,
-        extras: extrasData,
-        vehicle_id: vehicle.value?.id,
+    // Prepare booking data
+    const bookingData = {
+      // ... your existing booking data ...
+      payment_method_type: selectedPaymentMethod.value,
+      currency: 'eur', // Required for Klarna/Bancontact
+      tax_amount: 0
     };
-});
 
+    // 1. Create Payment Intent on your server
+    const { data: { clientSecret, paymentIntentId } } = await axios.post('/create-payment-intent', bookingData);
+
+    // 2. Handle different payment methods
+    if (['bancontact', 'klarna', 'paypal'].includes(selectedPaymentMethod.value)) {
+      // For redirect-based payment methods
+      const { error, paymentIntent } = await stripe.confirmPayment({
+        elements,
+        clientSecret,
+        confirmParams: {
+          return_url: `${window.location.origin}/booking-success?payment_intent=${paymentIntentId}`,
+          payment_method_data: {
+            billing_details: {
+              name: `${customer.value.first_name} ${customer.value.last_name}`,
+              email: customer.value.email,
+              phone: customer.value.phone,
+            },
+          },
+          receipt_email: customer.value.email,
+        },
+        redirect: 'if_required',
+      });
+
+      if (error) {
+        throw error;
+      }
+
+      // Check if payment requires redirect
+      if (paymentIntent?.status === 'requires_action' && paymentIntent.next_action?.type === 'redirect_to_url') {
+        // Redirect to the payment provider's page
+        window.location.href = paymentIntent.next_action.redirect_to_url.url;
+        return;
+      }
+
+      // For methods that don't redirect immediately
+      if (paymentIntent?.status === 'processing') {
+        // Store payment intent ID and booking details
+        sessionStorage.setItem('pendingPayment', JSON.stringify({
+          paymentIntentId,
+          bookingData
+        }));
+        
+        // Redirect to processing page
+        Inertia.visit(`/booking-processing?payment_intent=${paymentIntentId}`);
+        return;
+      }
+
+      // If payment is already successful
+      if (paymentIntent?.status === 'succeeded') {
+        sessionStorage.clear();
+        Inertia.visit(`/booking-success?payment_intent=${paymentIntentId}`);
+        return;
+      }
+    }
+
+    // Handle Apple Pay separately
+    if (selectedPaymentMethod.value === 'apple_pay') {
+      const paymentRequest = stripe.paymentRequest({
+        country: 'US',
+        currency: 'usd',
+        total: {
+          label: 'Total',
+          amount: calculateAmountPaid.value * 100,
+        },
+        requestPayerName: true,
+        requestPayerEmail: true,
+      });
+
+      const { error } = await paymentRequest.show();
+      if (error) throw error;
+
+      const { paymentIntent } = await paymentRequest.confirm();
+      sessionStorage.clear();
+      Inertia.visit(`/booking-success?payment_intent=${paymentIntent.id}`);
+      return;
+    }
+
+  } catch (error) {
+    console.error('Payment error:', error);
+    error.value = error.message || 'Payment failed. Please try again.';
+    
+    // Specific error handling for different payment methods
+    if (error.code === 'payment_intent_authentication_failure') {
+      error.value = 'Payment authentication failed. Please try another payment method.';
+    } else if (error.code === 'payment_intent_unexpected_state') {
+      error.value = 'Payment is already being processed. Check your email for confirmation.';
+    }
+  } finally {
+    isLoading.value = false;
+  }
+};
 </script>
 
 
@@ -883,28 +946,117 @@ const bookingData = computed(() => {
                     <h3 class="text-[2rem] font-medium max-[768px]:text-[1.2rem] max-[768px]:mt-4">Pay Now to Lock in
                         this Deal</h3>
 
-                    <div class="stripe-payment-form p-6 border rounded-lg">
-                        <p class="text-[1.5rem] mb-6 max-[768px]:text-[1.2rem]">Proceed to Payment</p>
-                        <p class="text-gray-600 text-sm mb-4">
-                            You will be redirected to Stripe's secure checkout page to complete your payment.
-                        </p>
-                        <div class="flex items-center gap-2 mb-4 max-[768px]:items-start">
-                            <input type="checkbox" id="terms" class="rounded border-gray-300 max-[768px]:mt-1"
-                                required />
-                            <label for="terms" class="text-sm">
-                                I have read, understood, and accepted vroome.com
-                                <a href="#" class="text-customDarkBlackColor font-bold">Terms & Conditions</a>
-                                and
-                                <a href="#" class="text-customDarkBlackColor font-bold">Privacy Policy</a>.
-                            </label>
-                        </div>
-                        <div
-                            class="flex justify-between gap-4 mt-4 max-[768px]:fixed max-[768px]:bottom-0 max-[768px]:left-0 max-[768px]:bg-white max-[768px]:w-full max-[768px]:z-10 max-[768px]:py-2 max-[768px]:px-[1.5rem]">
-                            <button type="button" @click="moveToPrevStep"
-                                class="button-secondary w-[15rem] max-[768px]:text-[0.75rem]">Back</button>
-                            <StripeCheckout :booking-data="bookingData" />
-                        </div>
-                    </div>
+                        <div class="stripe-payment-form p-6 border rounded-lg">
+    <p class="text-[1.5rem] mb-6 max-[768px]:text-[1.2rem]">Choose Payment Method</p>
+
+    <!-- Payment Method Icons -->
+    <div class="flex gap-4 mb-6 flex-wrap">
+        <div class="payment-method-card flex justify-center items-center w-[8rem] h-[2.5rem] rounded-[99px] cursor-pointer"
+            @click="selectedPaymentMethod = 'card'"
+            :class="{ 'bg-[#19304D]': selectedPaymentMethod === 'card' }">
+            <img :src=mastercard alt="Mastercard" class="h-full w-full" />
+        </div>
+        <div class="payment-method-card flex justify-center items-center w-[8rem] h-[2.5rem] rounded-[99px] cursor-pointer"
+            @click="selectedPaymentMethod = 'paypal'"
+            :class="{ 'bg-[#19304D]': selectedPaymentMethod === 'paypal' }">
+            <img :src="paypal" alt="PayPal" class="h-full w-full" />
+        </div>
+        <div class="payment-method-card flex justify-center items-center w-[8rem] h-[2.5rem] rounded-[99px] cursor-pointer"
+            @click="selectedPaymentMethod = 'klarna'"
+            :class="{ 'bg-[#19304D]': selectedPaymentMethod === 'klarna' }">
+            <img :src=klarna alt="Klarna" class="h-full w-full" />
+        </div>
+        <div class="payment-method-card flex justify-center items-center w-[8rem] h-[2.5rem] rounded-[99px] cursor-pointer"
+            @click="selectedPaymentMethod = 'bancontact'"
+            :class="{ 'bg-[#19304D]': selectedPaymentMethod === 'bancontact' }">
+            <img :src=bancontact alt="Bancontact" class="h-full w-full" />
+        </div>
+        <div class="payment-method-card flex justify-center items-center w-[8rem] h-[2.5rem] rounded-[99px] cursor-pointer"
+            @click="selectedPaymentMethod = 'apple_pay'"
+            :class="{ 'bg-[#19304D]': selectedPaymentMethod === 'apple_pay' }">
+            <img :src=apple_pay alt="Apple Pay" class="h-full w-full" />
+        </div>
+    </div>
+
+    <!-- Card Payment Form (shown when card is selected) -->
+    <div v-if="selectedPaymentMethod === 'card'" class="flex flex-col gap-6">
+        <div class="w-[60%] flex flex-col gap-5 max-[768px]:w-full">
+            <!-- Card Number Field -->
+            <div class="form-group">
+                <label class="block text-sm text-gray-600 mb-2">Card Number</label>
+                <div id="card-number" class="stripe-element h-12 border rounded-lg px-4 py-2"></div>
+            </div>
+
+            <!-- Expiry and CVV -->
+            <div class="grid grid-cols-2 gap-4">
+                <div class="form-group">
+                    <label class="block text-sm text-gray-600 mb-2">Expire Date</label>
+                    <div id="card-expiry" class="stripe-element h-12 border rounded-lg px-4 py-2"></div>
+                </div>
+                <div class="form-group">
+                    <label class="block text-sm text-gray-600 mb-2">CVV</label>
+                    <div id="card-cvc" class="stripe-element h-12 border rounded-lg px-4 py-2"></div>
+                </div>
+            </div>
+
+            <!-- Terms Checkbox -->
+            <div class="flex items-center gap-2 max-[768px]:items-start">
+                <input type="checkbox" id="terms" class="rounded border-gray-300 max-[768px]:mt-1" required />
+                <label for="terms" class="text-sm">
+                    I have read, understood, and accepted vroome.com
+                    <a href="#" class="text-customDarkBlackColor font-bold">Terms & Conditions</a>
+                    and
+                    <a href="#" class="text-customDarkBlackColor font-bold">Privacy Policy</a>.
+                </label>
+            </div>
+
+            <p class="text-gray-600 text-sm">
+                Your booking will be submitted once you go to payment. You can choose your payment
+                method in the next step.
+            </p>
+        </div>
+    </div>
+
+    <!-- Payment Button for non-card methods -->
+    <div v-else class="flex flex-col gap-6">
+        <div class="w-[60%] flex flex-col gap-5 max-[768px]:w-full">
+            <div class="form-group">
+                <p class="text-gray-600 mb-4">
+                    You'll be redirected to {{ selectedPaymentMethod === 'paypal' ? 'PayPal' : 
+                    selectedPaymentMethod === 'klarna' ? 'Klarna' : 
+                    selectedPaymentMethod === 'bancontact' ? 'Bancontact' : 'Apple Pay' }} 
+                    to complete your payment.
+                </p>
+            </div>
+
+            <!-- Terms Checkbox -->
+            <div class="flex items-center gap-2 max-[768px]:items-start">
+                <input type="checkbox" id="terms" class="rounded border-gray-300 max-[768px]:mt-1" required />
+                <label for="terms" class="text-sm">
+                    I have read, understood, and accepted vroome.com
+                    <a href="#" class="text-customDarkBlackColor font-bold">Terms & Conditions</a>
+                    and
+                    <a href="#" class="text-customDarkBlackColor font-bold">Privacy Policy</a>.
+                </label>
+            </div>
+        </div>
+    </div>
+
+    <!-- Button Group -->
+    <div class="flex justify-between gap-4 mt-4 max-[768px]:fixed max-[768px]:bottom-0 max-[768px]:left-0
+        max-[768px]:bg-white max-[768px]:w-full max-[768px]:z-10 max-[768px]:py-2 max-[768px]:px-[1.5rem]">
+        <button type="button" @click="moveToPrevStep"
+            class="button-secondary w-[15rem] max-[768px]:text-[0.75rem]">
+            Back
+        </button>
+        <PrimaryButton type="button" class="w-[15rem] max-[768px]:text-[0.65rem]" 
+            @click="handlePayment">
+            Book Now
+        </PrimaryButton>
+    </div>
+
+    <div id="card-errors" role="alert" class="text-red-600 text-sm"></div>
+</div>
                 </div>
 
                 <div v-if="isLoading" class="fixed z-50 h-full w-full top-0 left-0 bg-[#0000009e]">

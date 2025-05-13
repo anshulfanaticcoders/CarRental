@@ -11,6 +11,7 @@ use App\Http\Controllers\PlanController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\RadiusApiController;
 use App\Http\Controllers\ReviewController;
+use App\Http\Controllers\StripeWebhookController;
 use App\Http\Controllers\UserDocumentController;
 use App\Http\Controllers\VehicleController;
 use App\Http\Controllers\VehicleCategoryController;
@@ -77,3 +78,6 @@ Route::get('/vehicles/search-locations', [VehicleController::class, 'searchLocat
 Route::get('/testimonials/frontend', [App\Http\Controllers\Admin\TestimonialController::class, 'getFrontendTestimonials']);
 
 Route::get('/radius', [RadiusApiController::class, 'getRadius']);
+
+Route::post('/stripe/webhook', [StripeWebhookController::class, 'handleWebhook'])
+    ->withoutMiddleware(['csrf']);

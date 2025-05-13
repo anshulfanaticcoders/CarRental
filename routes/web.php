@@ -379,9 +379,6 @@ Route::middleware(['auth', 'role:customer'])->group(function () {
     Route::post('/booking', [BookingController::class, 'store'])->name('booking.store');
     Route::post('/booking/cancel', [App\Http\Controllers\BookingController::class, 'cancelBooking'])->name('booking.cancel');
     Route::post('/payment/charge', [PaymentController::class, 'charge'])->name('payment.charge');
-    Route::get('/payment/success', [PaymentController::class, 'success'])->name('payment.success');
-    Route::get('/payment/cancel', [PaymentController::class, 'cancel'])->name('payment.cancel');
-    Route::post('/stripe/webhook', [PaymentController::class, 'webhook'])->name('stripe.webhook');
     // this route is to show customer booking in the customer profile
     Route::get('/customer/bookings', [BookingController::class, 'getCustomerBookingData'])->name('customer.bookings');
 
@@ -389,7 +386,7 @@ Route::middleware(['auth', 'role:customer'])->group(function () {
     //  this is route is for redirecting to the success page after payment done
     Route::get('/booking-success/details', function () {
         return Inertia::render('Booking/Success', [
-            'session_id' => request('session_id'), // Pass payment intent ID
+            'payment_intent' => request('payment_intent'), // Pass payment intent ID
         ]);
     })->name('booking-success.details');
 
@@ -408,6 +405,9 @@ Route::middleware(['auth', 'role:customer'])->group(function () {
     Route::post('/vehicles/{vehicle}/favourite', [FavoriteController::class, 'favourite'])->name('vehicles.favourite');
     Route::post('/vehicles/{vehicle}/unfavourite', [FavoriteController::class, 'unfavourite'])->name('vehicles.unfavourite');
     Route::get('/favorites', [FavoriteController::class, 'getFavorites']);
+
+    Route::post('/create-payment-intent', [PaymentController::class, 'createPaymentIntent']);
+Route::post('/confirm-payment', [PaymentController::class, 'confirmPayment']);
 });
 
 // this route is for user, not create lsiting/or access until status is not confirmed 

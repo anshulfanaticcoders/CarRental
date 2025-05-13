@@ -33,42 +33,60 @@
     errorMessage.value = '';
   
     try {
+      // Load Stripe.js dynamically
       const stripe = await loadStripe(import.meta.env.VITE_STRIPE_KEY);
       if (!stripe) {
-        throw new Error('Failed to initialize Stripe');
+        throw new Error('Failed to load Stripe.js');
       }
   
+      // Generate a unique booking reference
+      const bookingReference = generateRandomString(32);
+  
+      // Create Checkout Session
       const response = await axios.post('/payment/charge', {
-        bookingData: props.bookingData,
-      });
+      bookingData: {
+        ...props.bookingData,
+        booking_reference: bookingReference,
+      },
+    });
   
       const { sessionId } = response.data;
       if (!sessionId) {
-        throw new Error('Failed to create checkout session');
+        throw new Error('Failed to create Checkout Session');
       }
   
+      // Redirect to Stripe Checkout
       const { error } = await stripe.redirectToCheckout({ sessionId });
       if (error) {
         throw new Error(error.message);
       }
     } catch (err) {
-      errorMessage.value = err.message || 'An error occurred during checkout. Please try again.';
-      console.error('Checkout Error:', err);
+      errorMessage.value = err.message || 'An error occurred. Please try again.';
     } finally {
       isLoading.value = false;
     }
   };
   
   async function loadStripe(key) {
-    if (window.Stripe) {
-      return window.Stripe(key);
-    }
     return new Promise((resolve) => {
-      const script = document.createElement('script');
-      script.src = 'https://js.stripe.com/v3/';
-      script.onload = () => resolve(window.Stripe(key));
-      document.head.appendChild(script);
+      if (window.Stripe) {
+        resolve(window.Stripe(key));
+      } else {
+        const script = document.createElement('script');
+        script.src = 'https://js.stripe.com/v3/';
+        script.onload = () => resolve(window.Stripe(key));
+        document.head.appendChild(script);
+      }
     });
+  }
+  
+  function generateRandomString(length) {
+    const characters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+    let result = '';
+    for (let i = 0; i < length; i++) {
+      result += characters.charAt(Math.floor(Math.random() * characters.length));
+    }
+    return result;
   }
   </script>
   

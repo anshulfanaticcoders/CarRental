@@ -49,10 +49,10 @@ const initMap = () => {
       <div class="marker-pin">
         <img src="${MapPin}" alt="Vehicle Location" />
       </div>
-    `,
-    iconSize: [30, 30],
-    iconAnchor: [15, 30],
-    popupAnchor: [0, -30]
+    `,  // Directly set the image source
+    iconSize: [30, 30],  // Adjust the size of the marker image
+    iconAnchor: [15, 30],  // Adjust the anchor to center the marker
+    popupAnchor: [0, -30]  // Adjust the popup position if needed
   });
 
   // Add vehicle location marker
@@ -73,28 +73,16 @@ const initMap = () => {
   }, 100);
 };
 
+
 // Fetch booking details
 onMounted(async () => {
-  // Clear session storage as soon as component is mounted
-  if (window.sessionStorage) {
-    window.sessionStorage.clear();
-    console.log('Session storage cleared on mount');
-  }
-
-  // Get query parameters from the URL
   const paymentIntentId = usePage().props.payment_intent;
-  const sessionId = usePage().props.session_id;
-  
-  // Use either payment_intent or session_id
-  const queryParam = paymentIntentId 
-    ? `payment_intent=${paymentIntentId}` 
-    : sessionId 
-      ? `session_id=${sessionId}` 
-      : null;
 
-  if (queryParam) {
+  if (paymentIntentId) {
     try {
-      const response = await axios.get(`/api/booking-success/details?${queryParam}`);
+      const response = await axios.get(
+        `/api/booking-success/details?payment_intent=${paymentIntentId}`
+      );
 
       booking.value = response.data.booking;
       payment.value = response.data.payment;
@@ -111,7 +99,7 @@ onMounted(async () => {
       console.error("Error fetching booking details:", err);
     }
   } else {
-    error.value = "Payment identification is missing from the URL.";
+    error.value = "Payment Intent ID is missing from the URL.";
   }
 });
 
@@ -122,6 +110,10 @@ const formatCurrency = (amount) => {
     currency: 'EUR'
   }).format(amount);
 };
+
+
+// const vendorcurrency = booking?.vendor_profile.currency;
+// console.log(vendorcurrency.value);
 
 const formatDate = (dateStr) => {
   const date = new Date(dateStr);
@@ -135,7 +127,7 @@ const formatDate = (dateStr) => {
     <div class="flex gap-8 max-[768px]:flex-col">
       <!-- Main Content Column -->
       <div class="w-2/3 max-[768px]:w-full">
-        <!-- Success Message -->
+        <!-- Success Message (unchanged) -->
         <div class="flex flex-col gap-5 mb-8">
           <h1 class="text-3xl font-semibold max-[768px]:text-[1.2rem]">Booking Successful</h1>
           <div class="p-4 bg-[#0099001A] border-[#009900] rounded-lg border">
@@ -145,7 +137,7 @@ const formatDate = (dateStr) => {
           </div>
         </div>
 
-        <!-- Error Display -->
+        <!-- Error Display (unchanged) -->
         <div v-if="error" class="mb-8 p-4 bg-red-100 border border-red-400 rounded-lg">
           <h2 class="text-red-700 font-semibold mb-2">Error</h2>
           <p class="text-red-600">{{ error }}</p>
@@ -155,7 +147,7 @@ const formatDate = (dateStr) => {
         <div v-if="booking" class="bg-white rounded-lg shadow-sm p-6 mb-8 max-[768px]:p-0">
           <h2 class="text-2xl font-semibold mb-6">Your Trip</h2>
 
-          <!-- Pickup & Return Information -->
+          <!-- Pickup & Return Information (unchanged) -->
           <div class="grid grid-cols-2 gap-8 mb-6">
             <div class="space-y-3">
               <h3 class="font-medium text-lg">Pickup</h3>
@@ -232,7 +224,7 @@ const formatDate = (dateStr) => {
         </div>
       </div>
 
-      <!-- Sidebar Column -->
+      <!-- Sidebar Column (unchanged) -->
       <div class="w-1/3 max-[768px]:w-full">
         <div v-if="vehicle"
           class="rounded-[12px] sticky top-[2rem] bg-customPrimaryColor text-customPrimaryColor-foreground">
@@ -260,6 +252,7 @@ const formatDate = (dateStr) => {
               <div class="flex justify-between items-center text-[1.15rem]">
                 <span class="capitalize">{{ booking.preferred_day }} Price</span>
                 <div>
+                  <!-- <strong class="text-[1.5rem] font-medium">€{{ booking.base_price }}</strong> -->
                   <strong class="text-[1.5rem] font-medium max-[768px]:text-[0.875rem]"
                     v-if="booking.preferred_day === 'day'">{{ vendorProfile.currency }}{{ vehicle.price_per_day
                     }}</strong>
@@ -306,6 +299,11 @@ const formatDate = (dateStr) => {
                   </li>
                 </ul>
               </div>
+              <!-- <div v-if="plan" class="flex justify-between">
+                <span>{{ plan.plan_type }}</span>
+                <span>+ {{ vendorProfile.currency }}{{ plan.plan_value }}</span>
+              </div> -->
+
 
               <div>
                 <div v-if="booking.plan_price > 0" class="flex justify-between gap-2">
@@ -344,12 +342,17 @@ const formatDate = (dateStr) => {
             </div>
           </div>
         </div>
+        <div>
+
+          <div></div>
+        </div>
       </div>
     </div>
   </div>
 
   <Footer />
 </template>
+
 
 <style scoped>
 @import 'leaflet/dist/leaflet.css';
