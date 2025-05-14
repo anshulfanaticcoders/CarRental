@@ -382,14 +382,14 @@ Route::middleware(['auth', 'role:customer'])->group(function () {
     // this route is to show customer booking in the customer profile
     Route::get('/customer/bookings', [BookingController::class, 'getCustomerBookingData'])->name('customer.bookings');
 
+ Route::get('/booking-success/details', [PaymentController::class, 'success'])->name('booking-success.details');
 
-    //  this is route is for redirecting to the success page after payment done
-    Route::get('/booking-success/details', function () {
-        return Inertia::render('Booking/Success', [
-            'payment_intent' => request('payment_intent'),
-            'session_id' => request('session_id')
-        ]);
-    })->name('booking-success.details');
+    Route::get('/booking-success', function () {
+    return Inertia::render('Booking/BookingDetails', [
+        'payment_intent' => request('payment_intent'),
+        'session_id' => request('session_id')
+    ]);
+})->name('booking-success');
 
     // these routes are used to get booking confirmation on user profile page
     Route::get('/profile/bookings/pending', [BookingController::class, 'getPendingBookings'])

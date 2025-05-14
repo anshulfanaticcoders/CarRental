@@ -75,7 +75,7 @@
                   <strong class="text-[1.5rem] font-medium" v-if="booking.preferred_day === 'month'">{{
                     formatPrice(booking.vehicle.price_per_month) }}/month</strong>
                 </div>
-                <Link :href="`/booking-success/details?payment_intent=${booking.payments[0]?.transaction_id}`" class="underline">View Booking Details</Link>
+                <Link :href="`/booking-success?payment_intent=${booking.payments[0]?.transaction_id}`" class="underline">View Booking Details</Link>
               </div>
             </div>
           </div>

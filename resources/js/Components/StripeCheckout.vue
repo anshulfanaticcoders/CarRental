@@ -1,5 +1,15 @@
 <template>
   <div class="stripe-checkout">
+    <!-- Loader Overlay -->
+    <div v-if="isLoading" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+      <div class="bg-white rounded-lg p-6 flex flex-col items-center gap-4 shadow-lg">
+        <div class="loader border-t-4 border-customPrimaryColor rounded-full w-8 h-8 animate-spin"></div>
+        <p class="text-customPrimaryColor text-lg font-medium max-[768px]:text-base">
+          Processing payment...
+        </p>
+      </div>
+    </div>
+
     <div v-if="errorMessage" class="text-red-600 text-sm mb-4">
       {{ errorMessage }}
     </div>
@@ -40,7 +50,6 @@ const initiateCheckout = async () => {
     }
 
     // Save important data to session storage before redirecting to Stripe
-    // This will help retain necessary info if Stripe redirects back
     if (window.sessionStorage) {
       sessionStorage.setItem('pendingBookingData', JSON.stringify(props.bookingData));
     }
@@ -86,5 +95,25 @@ async function loadStripe(key) {
   flex-direction: column;
   align-items: flex-start;
   gap: 1rem;
+}
+
+/* Loader styles */
+.loader {
+  border: 4px solid #f3f3f3;
+  border-top-color: #153B4F; /* Matches text-customPrimaryColor */
+  border-radius: 50%;
+  width: 32px;
+  height: 32px;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+/* Custom color for consistency with previous code */
+.text-customPrimaryColor {
+  color: #153B4F;
 }
 </style>

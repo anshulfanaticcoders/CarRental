@@ -13,6 +13,8 @@ use Illuminate\Support\Facades\Notification;
 use Inertia\Inertia;
 use Stripe\Stripe;
 use Stripe\Checkout\Session;
+use Stripe\PaymentIntent;
+use Stripe\PaymentMethod;
 use Illuminate\Support\Str;
 use App\Models\Booking;
 use App\Models\Customer;
@@ -177,32 +179,43 @@ class PaymentController extends Controller
         $vendorProfile = VendorProfile::where('user_id', $vehicle->vendor_id)->first();
 
         $session = Session::retrieve($sessionId);
+        $actualPaymentMethod = 'stripe'; // Default value
 
-        if ($session->payment_status === 'paid') {
-            // Update booking status
-            $booking->update([
-                'payment_status' => 'completed',
-                'booking_status' => 'confirmed',
-            ]);
+        if ($session->payment_intent) {
+            try {
+                $paymentIntent = PaymentIntent::retrieve($session->payment_intent);
+                if ($paymentIntent->payment_method) {
+                    $paymentMethod = PaymentMethod::retrieve($paymentIntent->payment_method);
+                    $actualPaymentMethod = $paymentMethod->type;
+                }
 
-            // Update payment status
-            if ($payment) {
-                $payment->update([
-                    'payment_status' => 'succeeded',
-                    'transaction_id' => $session->payment_intent ?? $session->id,
-                    'amount' => $booking->amount_paid,
-                ]);
-            } else {
-                BookingPayment::create([
-                    'booking_id' => $booking->id,
-                    'payment_method' => 'Stripe',
-                    'transaction_id' => $session->payment_intent ?? $session->id,
-                    'amount' => $booking->amount_paid,
-                    'payment_status' => 'succeeded',
-                ]);
-            }
+                // Check payment intent status for success
+                if ($paymentIntent->status === 'succeeded') {
+                    // Update booking status
+                    $booking->update([
+                        'payment_status' => 'completed',
+                    ]);
 
-            // Send notifications
+                    // Update payment status
+                    if ($payment) {
+                        $payment->update([
+                            'payment_status' => 'succeeded',
+                            'payment_method' => $actualPaymentMethod,
+                            'transaction_id' => $paymentIntent->id, // Use PaymentIntent ID
+                            'amount' => $booking->amount_paid,
+                        ]);
+                    } else {
+                        // This case should ideally not happen if 'charge' method created a pending payment
+                        BookingPayment::create([
+                            'booking_id' => $booking->id,
+                            'payment_method' => $actualPaymentMethod,
+                            'transaction_id' => $paymentIntent->id, // Use PaymentIntent ID
+                            'amount' => $booking->amount_paid,
+                            'payment_status' => 'succeeded',
+                        ]);
+                    }
+
+                    // Send notifications
             $adminEmail = env('VITE_ADMIN_EMAIL', 'default@admin.com');
             $admin = User::where('email', $adminEmail)->first();
             if ($admin) {
@@ -240,14 +253,34 @@ class PaymentController extends Controller
                 'booking' => $booking,
                 'vehicle' => $vehicle,
                 'customer' => $customer,
-                'payment' => $payment,
+                'payment' => $payment, 
                 'vendorProfile' => $vendorProfile,
                 'plan' => $booking->plan ? ['plan_type' => $booking->plan, 'price' => $booking->plan_price] : null,
                 'clearSessionScript' => $clearSessionScript,
+                'session_id' => $sessionId, // Explicitly pass session_id
+                'payment_intent_id' => $paymentIntent->id, // Explicitly pass payment_intent_id
+                'payment_status' => $paymentIntent->status,
             ]);
+                } else {
+                    // PaymentIntent status is not 'succeeded'
+                    Log::warning('PaymentIntent status not succeeded in PaymentController::success', [
+                        'session_id' => $sessionId,
+                        'payment_intent_id' => $paymentIntent->id,
+                        'payment_intent_status' => $paymentIntent->status,
+                    ]);
+                    return redirect()->route('booking.create')->with('error', 'Payment not completed. Status: ' . $paymentIntent->status);
+                }
+            } catch (\Stripe\Exception\ApiErrorException $e) {
+                Log::error('Stripe API Error while retrieving PaymentIntent/PaymentMethod in PaymentController::success', [
+                    'session_id' => $sessionId,
+                    'error' => $e->getMessage(),
+                ]);
+                return redirect()->route('booking.create')->with('error', 'Error processing payment details: ' . $e->getMessage());
+            }
         } else {
-            Log::warning('Payment not completed in PaymentController::success', ['session_id' => $sessionId]);
-            return redirect()->route('booking.create')->with('error', 'Payment not completed');
+
+            Log::error('PaymentIntent ID missing in session object in PaymentController::success', ['session_id' => $sessionId]);
+            return redirect()->route('booking.create')->with('error', 'Payment processing error: Missing Payment Intent.');
         }
     } catch (\Exception $e) {
         Log::error('Error in PaymentController::success', [
