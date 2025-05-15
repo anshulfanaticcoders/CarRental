@@ -21,6 +21,8 @@ class SetLocale
             'messages' => trans('messages'), // Common translations
             'homepage' => trans('homepage'),
             'how_it_works' => trans('how_it_works'),
+            'header' => trans('header'),
+            'registerUser' => trans('registerUser'),
         ],
     ]);
 

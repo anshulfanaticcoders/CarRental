@@ -3,7 +3,7 @@ import InputError from "@/Components/InputError.vue";
 import InputLabel from "@/Components/InputLabel.vue";
 import PrimaryButton from "@/Components/PrimaryButton.vue";
 import TextInput from "@/Components/TextInput.vue";
-import { Head, Link, useForm } from "@inertiajs/vue3";
+import { Head, Link, useForm, usePage } from "@inertiajs/vue3";
 import { ref, watch, computed, onMounted } from "vue";
 import AuthenticatedHeaderLayout from "@/Layouts/AuthenticatedHeaderLayout.vue";
 import { Button } from "@/Components/ui/button";
@@ -31,11 +31,18 @@ import '@vuepic/vue-datepicker/dist/main.css';
 const stepIndex = ref(1);
 const showPassword = ref(false);
 const showconfirmPassword = ref(false);
+const _t = (section, key) => {
+    const { props } = usePage();
+    if (props.translations && props.translations[section] && props.translations[section][key]) {
+        return props.translations[section][key];
+    }
+    return key; // Return key as fallback
+};
 
 const steps = [
     {
         step: 1,
-        title: "Personal Information",
+        title: "Personal Information", // Will be translated in the template
         description: "First & Last Name",
         fields: ["first_name", "last_name", "date_of_birth"],
     },
@@ -311,7 +318,7 @@ watch(dateOfBirth, (newValue) => {
     <Head title="Register" />
 
     <div class="flex justify-center items-center register py-customVerticalSpacing">
-        <div class="w-[55rem] max-w-full mx-auto px-4 max-[768px]:px-[1.5rem]">
+        <div class="w-[60rem] max-w-full mx-auto px-4 max-[768px]:px-[1.5rem]">
             <Stepper v-model="stepIndex" class="block w-full">
                 <form @submit.prevent="submit">
                     <div
@@ -348,13 +355,13 @@ watch(dateOfBirth, (newValue) => {
                                 <StepperTitle :class="[
                                     state === 'active' && 'text-primary',
                                 ]" class="text-sm font-semibold transition lg:text-base max-[768px]:text-[0.65rem]">
-                                    {{ step.title }}
+                                    {{ _t('registerUser', 'step' + (index + 1) + '_title') }}
                                 </StepperTitle>
                                 <StepperDescription :class="[
                                     state === 'active' && 'text-primary',
                                 ]"
                                     class="sr-only text-xs text-muted-foreground transition md:not-sr-only lg:text-sm max-[768px]:sr-only">
-                                    {{ step.description }}
+                                    {{ _t('registerUser', 'step' + (index + 1) + '_description').split('.')[0] }}
                                 </StepperDescription>
                             </div>
                         </StepperItem>
@@ -364,33 +371,33 @@ watch(dateOfBirth, (newValue) => {
                     <div v-if="stepIndex === 1">
                         <span
                             class="text-[3rem] max-[768px]:text-[2rem] text-center block font-medium text-customDarkBlackColor">
-                            Personal Information
+                            {{ _t('registerUser', 'step1_title') }}
                         </span>
                         <p
                             class="text-center mb-[3rem] max-[768px]:mb-[1.5rem] text-customLightGrayColor font-medium max-[768px]:text-sm">
-                            To get started, tell us about yourself.
+                            {{ _t('registerUser', 'step1_description') }}
                         </p>
                         <div class="grid grid-cols-2 max-[768px]:grid-cols-1 gap-5 max-[768px]:gap-3">
                             <div class="column w-full">
-                                <InputLabel for="first_name" value="First Name" />
+                                <InputLabel for="first_name" :value="_t('registerUser', 'first_name_label')" />
                                 <TextInput id="first_name" type="text" v-model="form.first_name" required autofocus
                                     autocomplete="given-name" class="w-full" />
                                 <InputError class="mt-2" :message="form.errors.first_name" />
                             </div>
 
                             <div class="column w-full">
-                                <InputLabel for="last_name" value="Last Name" />
+                                <InputLabel for="last_name" :value="_t('registerUser', 'last_name_label')" />
                                 <TextInput id="last_name" type="text" v-model="form.last_name" required
                                     autocomplete="family-name" class="w-full" />
                                 <InputError class="mt-2" :message="form.errors.last_name" />
                             </div>
 
                             <div class="column w-full col-span-2 max-[768px]:col-span-1">
-                                <InputLabel for="date_of_birth" value="Date of Birth" />
+                                <InputLabel for="date_of_birth" :value="_t('registerUser', 'date_of_birth_label')" />
                                 <VueDatePicker v-model="dateOfBirth" :enable-time-picker="false" uid="date-of-birth" auto-apply
-                                    placeholder="Select Date of Birth" class="w-full" :max-date="minimumDateOfBirth"
+                                    :placeholder="_t('registerUser', 'select_date_of_birth_placeholder')" class="w-full" :max-date="minimumDateOfBirth"
                                     :start-date="minimumDateOfBirth" />
-                                <small class="text-gray-500 mt-1 block">You must be at least 18 years old</small>
+                                <small class="text-gray-500 mt-1 block">{{ _t('registerUser', 'age_requirement') }}</small>
                             </div>
                         </div>
                     </div>
@@ -399,17 +406,17 @@ watch(dateOfBirth, (newValue) => {
                     <div v-if="stepIndex === 2">
                         <span
                             class="text-[3rem] max-[768px]:text-[2rem] text-center block font-medium text-customDarkBlackColor">
-                            Contact Details
+                            {{ _t('registerUser', 'step2_title') }}
                         </span>
                         <p
                             class="text-center mb-[3rem] max-[768px]:mb-[1.5rem] text-customLightGrayColor font-medium max-[768px]:text-sm">
-                            We'll send you relevant info about your bookings.
+                            {{ _t('registerUser', 'step2_description') }}
                         </p>
                         <div class="grid grid-cols-1 gap-5 max-[768px]:gap-3">
                             <div>
                                 <div class="flex items-end">
                                     <div class="w-[8rem]">
-                                        <InputLabel for="phone" value="Phone Number" />
+                                        <InputLabel for="phone" class="whitespace-nowrap" :value="_t('registerUser', 'phone_number_label')" />
                                         <Select v-model="form.phone_code">
                                             <SelectTrigger
                                                 class="w-full p-[1.75rem] border-customLightGrayColor bg-customPrimaryColor text-white rounded-[12px] !rounded-r-none border-r-0">
@@ -452,12 +459,12 @@ watch(dateOfBirth, (newValue) => {
 
                                     <div class="column w-full">
                                         <TextInput id="phone" type="text" v-model="form.phone" required
-                                            class="w-full !rounded-l-none" placeholder="Enter phone number" />
+                                            class="w-full !rounded-l-none" :placeholder="_t('registerUser', 'enter_phone_number_placeholder')"/>
                                     </div>
                                 </div>
                                 <!-- Display full phone number -->
                                 <div class="mt-2 text-sm text-gray-500" v-if="form.phone_code && form.phone">
-                                    Full number: {{ fullPhone }}
+                                    {{ _t('registerUser', 'full_number_label') }}: {{ fullPhone }}
                                 </div>
                                 <InputError class="mt-2" :message="form.errors.phone" />
                                 <InputError class="mt-2" :message="form.errors.phone_code" />
@@ -475,40 +482,40 @@ watch(dateOfBirth, (newValue) => {
                     <div v-if="stepIndex === 3">
                         <span
                             class="text-[3rem] max-[768px]:text-[2rem] text-center block font-medium text-customDarkBlackColor">
-                            Address
+                            {{ _t('registerUser', 'step3_title') }}
                         </span>
                         <p
                             class="text-center mb-[3rem] max-[768px]:mb-[1.5rem] text-customLightGrayColor font-medium max-[768px]:text-sm">
-                            We'll use it for billing purposes
+                            {{ _t('registerUser', 'step3_description') }}
                         </p>
                         <div class="grid grid-cols-2 max-[768px]:grid-cols-1 gap-5 max-[768px]:gap-3">
                             <div class="column w-full col-span-2 max-[768px]:col-span-1">
-                                <InputLabel for="address" value="Address" />
+                                <InputLabel for="address" :value="_t('registerUser', 'address_label')" />
                                 <TextInput id="address" type="text" v-model="form.address" required class="w-full" />
                                 <!-- <InputError class="mt-2" :message="form.errors.address" /> -->
                             </div>
 
                             <div class="column w-full">
-                                <InputLabel for="postcode" value="Postcode" />
+                                <InputLabel for="postcode" :value="_t('registerUser', 'postcode_label')" />
                                 <TextInput id="postcode" type="text" v-model="form.postcode" required class="w-full" />
                                 <!-- <InputError class="mt-2" :message="form.errors.postcode" /> -->
                             </div>
 
                             <div class="column w-full">
-                                <InputLabel for="city" value="City" />
+                                <InputLabel for="city" :value="_t('registerUser', 'city_label')" />
                                 <TextInput id="city" type="text" v-model="form.city" required class="w-full" />
                                 <!-- <InputError class="mt-2" :message="form.errors.city" /> -->
                             </div>
 
                             <div class="column w-full col-span-2 max-[768px]:col-span-1 relative">
-                                <InputLabel for="country" value="Country" class="mb-1" />
+                                <InputLabel for="country" :value="_t('registerUser', 'country_label')" class="mb-1" />
                                 <Select v-model="form.country">
                                     <SelectTrigger class="w-full p-[1.7rem] border-customLightGrayColor rounded-[12px]">
-                                        <SelectValue placeholder="Select Country" />
+                                        <SelectValue :placeholder="_t('registerUser', 'select_country_placeholder')" />
                                     </SelectTrigger>
                                     <SelectContent>
                                         <SelectGroup>
-                                            <SelectLabel>Country</SelectLabel>
+                                            <SelectLabel>{{ _t('registerUser', 'country_label') }}</SelectLabel>
                                             <SelectItem v-for="country in countries" :key="country.code"
                                                 :value="country.code">
                                                 <div class="flex items-center">
@@ -535,15 +542,15 @@ watch(dateOfBirth, (newValue) => {
                     <div v-if="stepIndex === 4">
                         <span
                             class="text-[3rem] max-[768px]:text-[2rem] text-center block font-medium text-customDarkBlackColor">
-                            Create Password
+                            {{ _t('registerUser', 'step4_title') }}
                         </span>
                         <p
                             class="text-center mb-[3rem] max-[768px]:mb-[1.5rem] text-customLightGrayColor font-medium max-[768px]:text-sm">
-                            Secure your account
+                            {{ _t('registerUser', 'step4_description') }}
                         </p>
                         <div class="grid grid-cols-1 gap-5 max-[768px]:gap-3">
                             <div class="column w-full relative">
-                                <InputLabel for="password" value="Password" />
+                                <InputLabel for="password" :value="_t('registerUser', 'password_label')" />
                                 <TextInput :type="showPassword ? 'text' : 'password'" id="password" type="password"
                                     v-model="form.password" required autocomplete="new-password" class="w-full" :class="{
                                         'border-red-500':
@@ -554,24 +561,23 @@ watch(dateOfBirth, (newValue) => {
                                     }" />
                                 <button type="button" @click="showPassword = !showPassword"
                                     class="absolute right-[1rem] translate-y-[1rem]  font-medium text-customDarkBlackColor text-sm max-[768px]:text-white">
-                                    {{ showPassword ? 'Hide' : 'Show' }}
+                                    {{ showPassword ? _t('registerUser', 'hide_password') : _t('registerUser', 'show_password') }}
                                 </button>
-                                <p class="flex justify-end font-medium text-[0.75rem]">Password must be atleast 8
-                                    characters</p>
+                                <p class="flex justify-end font-medium text-[0.75rem]">{{ _t('registerUser', 'password_length_instruction') }}</p>
                                 <p v-if="
                                     form.password.length > 0 &&
                                     form.password.length < 8
                                 " class="text-red-500 text-sm mt-1">
-                                    Password must be at least 8 characters long
+                                    {{ _t('registerUser', 'password_length_instruction') }}
                                 </p>
                                 <p v-else-if="form.password.length >= 8" class="text-green-500 text-sm mt-1">
-                                    Password length is valid
+                                    {{ _t('registerUser', 'password_length_valid') }}
                                 </p>
                                 <!-- <InputError class="mt-2" :message="form.errors.password" /> -->
                             </div>
 
                             <div class="column w-full relative">
-                                <InputLabel for="password_confirmation" value="Confirm Password" />
+                                <InputLabel for="password_confirmation" :value="_t('registerUser', 'confirm_password_label')" />
                                 <TextInput :type="showconfirmPassword ? 'text' : 'password'" id="password_confirmation" type="password"
                                     v-model="form.password_confirmation" required autocomplete="new-password"
                                     class="w-full" :class="{
@@ -588,21 +594,21 @@ watch(dateOfBirth, (newValue) => {
                                     }" />
                                     <button type="button" @click="showconfirmPassword = !showconfirmPassword"
                                     class="absolute right-[1rem] translate-y-[1rem] font-medium text-customDarkBlackColor text-sm max-[768px]:text-white">
-                                    {{ showconfirmPassword ? 'Hide' : 'Show' }}
+                                    {{ showconfirmPassword ? _t('registerUser', 'hide_password') : _t('registerUser', 'show_password') }}
                                 </button>
                                 <p v-if="
                                     form.password_confirmation.length > 0 &&
                                     form.password !==
                                     form.password_confirmation
                                 " class="text-red-500 text-sm mt-1">
-                                    Passwords do not match
+                                    {{ _t('registerUser', 'passwords_do_not_match') }}
                                 </p>
                                 <p v-else-if="
                                     form.password_confirmation.length > 0 &&
                                     form.password ===
                                     form.password_confirmation
                                 " class="text-green-500 text-sm mt-1">
-                                    Passwords match
+                                    {{ _t('registerUser', 'passwords_match') }}
                                 </p>
                                 <InputError class="mt-2" :message="form.errors.password_confirmation" />
                             </div>
@@ -610,7 +616,7 @@ watch(dateOfBirth, (newValue) => {
                             <div class="flex items-center justify-end mt-4">
                                 <Link :href="route('login')"
                                     class="underline text-sm text-gray-600 hover:text-gray-900 rounded-md focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
-                                Already registered?
+                                {{ _t('registerUser', 'already_registered_link') }}
                                 </Link>
                             </div>
                         </div>
@@ -621,16 +627,16 @@ watch(dateOfBirth, (newValue) => {
                         class="flex items-center justify-between mt-[3rem] max-[768px]:mt-[2rem] max-[768px]:flex-col max-[768px]:gap-3">
                         <Button v-if="stepIndex !== 1" variant="outline" size="lg"
                             class="w-[20%] max-[768px]:w-full max-[768px]:order-2" @click="prevStep">
-                            Back
+                            {{ _t('registerUser', 'back_button') }}
                         </Button>
                         <div class="flex items-center gap-3 max-[768px]:w-full max-[768px]:order-1">
                             <Button v-if="stepIndex !== 4" size="lg" class="w-[100%]" @click="nextStep"
                                 :disabled="!isStepValid">
-                                Continue
+                                {{ _t('registerUser', 'continue_button') }}
                             </Button>
                             <PrimaryButton v-if="stepIndex === 4" class="w-[100%]"
                                 :disabled="form.processing || !isStepValid" @click="submit">
-                                Register
+                                {{ _t('registerUser', 'register_button') }}
                             </PrimaryButton>
                         </div>
                     </div>

@@ -105,8 +105,8 @@ watch(() => url.value, () => {
               :href="vendorStatus === 'approved' ? '/vehicles/create' : '/vendor-status'" 
               class="button-secondary inline-flex items-center px-4 py-2 rounded-md text-sm font-medium transition-all duration-200 hover:shadow-md"
             >
-              <span v-if="vendorStatus === 'approved'">Create a Listing</span>
-              <span v-else>Complete Verification</span>
+              <span v-if="vendorStatus === 'approved'">{{ _t('header', 'create_listing') }}</span>
+              <span v-else>{{ _t('header', 'complete_verification') }}</span>
             </Link>
           </div>
 
@@ -115,7 +115,7 @@ watch(() => url.value, () => {
               href="/vendor/register" 
               class="button-secondary inline-flex items-center px-4 py-2 rounded-md text-sm font-medium transition-all duration-200 hover:shadow-md"
             >
-              Register as Vendor
+              {{ _t('header', 'register_as_vendor') }}
             </Link>
           </div>
 
@@ -177,21 +177,21 @@ watch(() => url.value, () => {
                   <svg class="mr-2 h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"></path>
                   </svg>
-                  Dashboard
+                  {{ _t('header', 'dashboard') }}
                 </DropdownLink>
                 
                 <DropdownLink v-else :href="route('profile.edit')" class="flex items-center">
                   <svg class="mr-2 h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path>
                   </svg>
-                  Profile
+                  {{ _t('header', 'profile') }}
                 </DropdownLink>
                 
                 <DropdownLink :href="route('logout')" method="post" as="button" class="flex items-center w-full text-left">
                   <svg class="mr-2 h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"></path>
                   </svg>
-                  Log Out
+                  {{ _t('header', 'log_out') }}
                 </DropdownLink>
               </template>
             </Dropdown>
@@ -206,14 +206,14 @@ watch(() => url.value, () => {
             :href="route('login')" 
             class="button-primary py-2 px-4 text-sm font-medium rounded-md transition-all duration-200 hover:shadow-md"
           >
-            Log in
+            {{ _t('header', 'log_in') }}
           </Link>
           
           <Link 
             :href="route('register')" 
             class="button-secondary py-2 px-4 text-sm font-medium rounded-md transition-all duration-200 hover:shadow-md"
           >
-            Create an Account
+            {{ _t('header', 'create_account') }}
           </Link>
           
           <!-- Language Switcher for Guests -->

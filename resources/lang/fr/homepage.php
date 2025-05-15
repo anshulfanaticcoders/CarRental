@@ -3,9 +3,9 @@
 return [
     // Hero Section
     'tagline' => 'Prenez la route avec le véhicule idéal',
-    'typewriter_text_1' => 'Découvrez des véhicules de luxe pour votre prochaine aventure',
-    'typewriter_text_2' => 'Louez des voitures avec facilité et flexibilité',
-    'typewriter_text_3' => 'Profitez d\'un service premium à des prix abordables',
+    'typewriter_text_1' => 'Réservé en un éclair. Parti en un Vrooem.',
+    'typewriter_text_2' => 'Étape 1 : Réservez en ligne. Étape 2 : Récupérez. Étape 3 : Déposez.',
+    'typewriter_text_3' => 'Aucun frais caché. Aucun stress. Vrooem s\'occupe de tout.',
     
     // Categories Section
     'our_categories' => 'Nos Catégories',

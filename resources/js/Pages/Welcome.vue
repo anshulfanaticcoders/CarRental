@@ -57,7 +57,7 @@ import {
     CarouselNext,
     CarouselPrevious,
 } from "@/Components/ui/carousel";
-import { onBeforeUnmount, onMounted, ref } from "vue";
+import { computed, onBeforeUnmount, onMounted, ref } from "vue";
 import Card from "@/Components/ui/card/Card.vue";
 import CardContent from "@/Components/ui/card/CardContent.vue";
 import Testimonials from "@/Components/Testimonials.vue";
@@ -98,11 +98,19 @@ onMounted(() => {
     fetchPopularPlaces();
 });
 
-const phrases = [
-    "Booked in a flash. Gone in a Vrooem.",
-    "Step 1: Book online. Step 2: Pick it up. Step 3: Drop it off.",
-    "No hidden fees. No stress. Vrooem's got you covered."
-];
+const _t = (key) => {
+    const { props } = usePage();
+    if (props.translations && props.translations.homepage && props.translations.homepage[key]) {
+        return props.translations.homepage[key];
+    }
+    return key; 
+};
+
+const translatedPhrases = computed(() => [
+    _t('typewriter_text_1'),
+    _t('typewriter_text_2'),
+    _t('typewriter_text_3')
+]);
 
 const displayedText = ref('');
 let currentPhraseIndex = 0;
@@ -117,34 +125,29 @@ const DELAY_AFTER_DELETE = 500; // Delay after deleting
 
 // Function to handle the typing animation
 const typeWriter = () => {
-    const currentPhrase = phrases[currentPhraseIndex];
-
+    const currentPhrase = translatedPhrases.value[currentPhraseIndex];
     if (isDeleting) {
         // Deleting characters
         displayedText.value = currentPhrase.substring(0, currentCharIndex - 1);
         currentCharIndex--;
-
         // If deletion is complete
         if (currentCharIndex === 0) {
             isDeleting = false;
-            currentPhraseIndex = (currentPhraseIndex + 1) % phrases.length;
+            currentPhraseIndex = (currentPhraseIndex + 1) % translatedPhrases.value.length;
             timer = setTimeout(typeWriter, DELAY_AFTER_DELETE);
             return;
         }
-
         timer = setTimeout(typeWriter, DELETE_SPEED);
     } else {
         // Typing characters
         displayedText.value = currentPhrase.substring(0, currentCharIndex + 1);
         currentCharIndex++;
-
         // If typing is complete
         if (currentCharIndex === currentPhrase.length) {
             isDeleting = true;
             timer = setTimeout(typeWriter, DELAY_AFTER_TYPE);
             return;
         }
-
         timer = setTimeout(typeWriter, TYPE_SPEED);
     }
 };

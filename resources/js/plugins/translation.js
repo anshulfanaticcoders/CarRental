@@ -29,5 +29,19 @@ export default {
 
       return translation;
     };
+
+    //  global translation code 
+    app.config.globalProperties._t = (category, key, replacements = {}) => {
+      const page = usePage();
+      const translations = page.props.translations?.[category] || {};
+      let translation = translations[key] || key;
+
+      // Replace placeholders if any
+      Object.keys(replacements).forEach(k => {
+        translation = translation.replace(`:${k}`, replacements[k]);
+      });
+
+      return translation;
+    };
   }
 };
