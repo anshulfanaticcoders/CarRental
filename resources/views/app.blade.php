@@ -21,7 +21,7 @@
                 };
             });
         </script>
-        <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyA6PsC-Q6KtyAUy0fk-TN48xlqhcE4gwsI&libraries=places&loading=async&callback=initGoogleMaps"></script>
+        <script src="https://maps.googleapis.com/maps/api/js?key={{ env('GOOGLE_MAPS_API_KEY') }}&libraries=places&loading=async&callback=initGoogleMaps"></script>
 
         <!-- Scripts -->
         @routes

@@ -437,9 +437,9 @@ defineExpose({ openLocationDialog });
     <!-- This replaces the direct map display and old manual address trigger -->
     <button 
         @click="openLocationDialog"
-        class="w-full mb-4 p-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600"
+        class="w-full mb-4 p-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 manual_button"
     >
-      Set Vehicle Location
+      Set Vehicle Location Manually
     </button>
     
     <!-- REMOVE OLD MAP DISPLAY AND LOCATE ME BUTTON FROM MAIN TEMPLATE -->

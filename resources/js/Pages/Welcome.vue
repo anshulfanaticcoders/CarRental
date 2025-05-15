@@ -185,7 +185,7 @@ const _p = (key) => {
         <section class="hero_section max-[768px]:bg-customPrimaryColor">
             <div class="wrapper flex justify-between w-full
             max-[768px]:flex-col">
-                <div class="column bg-customPrimaryColor h-[65vh] w-full text-white flex flex-col items-end justify-center
+                <div class="column bg-customPrimaryColor h-[38rem] w-full text-white flex flex-col items-end justify-center
                      max-[768px]:h-auto max-[768px]:px-[1.5rem] max-[768px]:py-[1.5rem]">
                     <div class="pl-[10%] max-[768px]:pl-0">
                         <h1>{{ _p('tagline') }}</h1>
@@ -199,7 +199,7 @@ const _p = (key) => {
                     </div>
                 </div>
                 <div
-                    class="column h-[80vh] w-full relative max-[768px]:h-auto max-[768px]:pb-[2rem] max-[768px]:px-[1.5rem]">
+                    class="column h-[46rem] w-full relative max-[768px]:h-auto max-[768px]:pb-[2rem] max-[768px]:px-[1.5rem]">
                     <img class="rounded-bl-[20px] h-full w-full object-cover max-[768px]:rounded-[20px]" :src="heroImg"
                         alt="" />
                     <div class="bg-customOverlayColor absolute top-0 w-full h-full rounded-bl-[20px]"></div>
