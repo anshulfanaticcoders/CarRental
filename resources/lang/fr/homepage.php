@@ -51,5 +51,20 @@ return [
       // Blogs translations
     'blogs_title' => 'Derniers Articles',
     'blogs_subtitle' => 'Restez informé et inspiré pour votre prochain voyage',
+
+    // Search Bar translations
+    'search_bar_header' => 'Avez-vous besoin d’une voiture de location ?',
+    'pickup_return_location_label' => 'Lieu de prise en charge et de retour',
+    'pickup_location_placeholder' => 'Lieu de prise en charge',
+    'searching_placeholder' => 'Recherche en cours...',
+    'pickup_date_label' => 'Date de prise en charge',
+    'pickup_date_placeholder' => 'Date de prise en charge',
+    'return_date_label' => 'Date de retour',
+    'return_date_placeholder' => 'Date de retour',
+    'search_button' => 'Rechercher',
+    'search_nearby_header' => 'À proximité',
+    'search_around_me' => 'Rechercher autour de moi..',
+    'popular_searches_header' => 'Recherches populaires',
+    'no_location_found' => 'Aucun lieu trouvé. Veuillez essayer une autre recherche.',
     
 ];

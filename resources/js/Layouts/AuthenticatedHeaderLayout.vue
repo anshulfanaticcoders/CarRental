@@ -7,6 +7,7 @@ import ResponsiveNavLink from "@/Components/ResponsiveNavLink.vue";
 import { Link, usePage, router } from "@inertiajs/vue3";
 import axios from "axios";
 import NotificationBell from "@/Components/NotificationBell.vue";
+import globeIcon from '../../assets/globe.svg'
 
 // Get page properties
 const page = usePage();
@@ -125,6 +126,7 @@ watch(() => url.value, () => {
                 type="button" 
                 class="inline-flex items-center px-3 py-2 text-sm font-medium text-gray-600 hover:text-gray-800 transition duration-150 ease-in-out"
               >
+              <img :src=globeIcon alt="" class="w-8 h-8">
                 <span>{{ availableLocales[currentLocale] }}</span>
                 <svg class="ml-1 w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
@@ -137,15 +139,14 @@ watch(() => url.value, () => {
                 :key="code"
                 @click="changeLanguage(code)"
                 class="block w-full px-4 py-2 text-left text-sm leading-5 text-white hover:text-[#153B4F] hover:bg-gray-100 transition duration-150 ease-in-out cursor-pointer"
-                :class="{ 'bg-gray-100': currentLocale === code }"
+                :class="{ 'bg-gray-500': currentLocale === code }"
               >
                 {{ language }}
               </div>
             </template>
           </Dropdown>
 
-          <!-- Notification Bell -->
-          <NotificationBell class="ml-2" />
+          
           
           <!-- User Profile Dropdown -->
           <div class="relative ml-3">
@@ -195,6 +196,8 @@ watch(() => url.value, () => {
               </template>
             </Dropdown>
           </div>
+          <!-- Notification Bell -->
+          <NotificationBell class="ml-2" />
         </div>
 
         <!-- Guest Navigation (Desktop) -->
@@ -217,9 +220,10 @@ watch(() => url.value, () => {
           <Dropdown align="right" width="48">
             <template #trigger>
               <button 
-                type="button" 
-                class="inline-flex items-center px-3 py-2 text-sm font-medium text-gray-600 hover:text-gray-800 transition duration-150 ease-in-out"
+              type="button" 
+              class="inline-flex items-center px-3 py-2 text-sm font-medium text-gray-600 hover:text-gray-800 transition duration-150 ease-in-out"
               >
+              <img :src=globeIcon alt="" class="w-8 h-8">
                 <span>{{ availableLocales[currentLocale] }}</span>
                 <svg class="ml-1 w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
@@ -232,7 +236,7 @@ watch(() => url.value, () => {
                 :key="code"
                 @click="changeLanguage(code)"
                 class="block w-full px-4 py-2 text-left text-sm leading-5 text-white hover:text-[#153B4F] hover:bg-gray-100 transition duration-150 ease-in-out cursor-pointer"
-                :class="{ 'bg-gray-100': currentLocale === code }"
+                :class="{ 'bg-gray-500': currentLocale === code }"
               >
                 {{ language }}
               </div>

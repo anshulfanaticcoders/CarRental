@@ -16,7 +16,6 @@
         <script>
             window.googleMapsReady = new Promise((resolve) => {
                 window.initGoogleMaps = () => {
-                    console.log("Google Maps SDK loaded via callback.");
                     resolve();
                 };
             });

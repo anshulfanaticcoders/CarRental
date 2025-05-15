@@ -53,5 +53,20 @@ return [
     // Blogs translations
     'blogs_title' => 'Latest Articles',
     'blogs_subtitle' => 'Stay informed and inspired for your next journey',
+
+    // Search Bar translations
+    'search_bar_header' => 'Do you need a rental car?',
+    'pickup_return_location_label' => 'Pickup & Return Location',
+    'pickup_location_placeholder' => 'Pickup Location',
+    'searching_placeholder' => 'Searching...',
+    'pickup_date_label' => 'Pickup Date',
+    'pickup_date_placeholder' => 'Pickup Date',
+    'return_date_label' => 'Return Date',
+    'return_date_placeholder' => 'Return Date',
+    'search_button' => 'Search',
+    'search_nearby_header' => 'Nearby',
+    'search_around_me' => 'Search around me..',
+    'popular_searches_header' => 'Popular Searches',
+    'no_location_found' => 'No location found. Please try another search.',
     
 ];

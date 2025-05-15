@@ -15,10 +15,29 @@ import { usePage } from '@inertiajs/vue3';
 // Access page props
 const page = usePage();
 
-// Translation helper
-const _p = (key) => {
-    const pageTranslations = page.props.pageTranslations || {};
-    return pageTranslations[key] || key;
+// Translation helpers
+const __ = (key, replacements = {}) => {
+    const translations = page.props.translations?.messages || {};
+    let translation = translations[key] || key;
+    
+    // Replace placeholders if any
+    Object.keys(replacements).forEach(k => {
+        translation = translation.replace(`:${k}`, replacements[k]);
+    });
+    
+    return translation;
+};
+
+const _p = (key, replacements = {}) => {
+    const translations = page.props.translations?.homepage || {};
+    let translation = translations[key] || key;
+    
+    // Replace placeholders if any
+    Object.keys(replacements).forEach(k => {
+        translation = translation.replace(`:${k}`, replacements[k]);
+    });
+    
+    return translation;
 };
 
 // Data ref to hold testimonials

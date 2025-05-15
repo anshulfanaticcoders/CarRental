@@ -1,6 +1,7 @@
-
 <?php
 return [
-    'welcome' => 'Welcome',
+    'homepage' => require __DIR__ . '/homepage.php',
     // ... other translations
+    'welcome' => 'Welcome',
+    
 ];

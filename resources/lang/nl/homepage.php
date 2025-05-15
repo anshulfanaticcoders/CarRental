@@ -52,4 +52,19 @@ return [
     // Blogs translations
     'blogs_title' => 'Laatste Artikelen',
     'blogs_subtitle' => 'Blijf geïnformeerd en geïnspireerd voor je volgende reis',
+
+    // Search Bar translations
+    'search_bar_header' => 'Heeft u een huurauto nodig?',
+    'pickup_return_location_label' => 'Ophaal- en inleverlocatie',
+    'pickup_location_placeholder' => 'Ophaallocatie',
+    'searching_placeholder' => 'Zoeken...',
+    'pickup_date_label' => 'Ophaaldatum',
+    'pickup_date_placeholder' => 'Ophaaldatum',
+    'return_date_label' => 'Inleverdatum',
+    'return_date_placeholder' => 'Inleverdatum',
+    'search_button' => 'Zoeken',
+    'search_nearby_header' => 'In de buurt',
+    'search_around_me' => 'Zoek in mijn omgeving..',
+    'popular_searches_header' => 'Populaire zoekopdrachten',
+    'no_location_found' => 'Geen locatie gevonden. Probeer een andere zoekopdracht.',
 ];

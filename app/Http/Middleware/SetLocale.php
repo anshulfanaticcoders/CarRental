@@ -10,49 +10,41 @@ use Inertia\Inertia;
 class SetLocale
 {
     public function handle(Request $request, Closure $next)
+{
+    $locale = session('locale', app()->getLocale());
+    App::setLocale($locale);
+
+    // Share all translations with Inertia
+    Inertia::share([
+        'locale' => $locale,
+        'translations' => [
+            'messages' => trans('messages'), // Common translations
+            'homepage' => trans('homepage'),
+            'how_it_works' => trans('how_it_works'),
+        ],
+    ]);
+
+    return $next($request);
+}
+
+    protected function getAllTranslations()
     {
-        $locale = session('locale', app()->getLocale());
-        App::setLocale($locale);
-
-        // Load page-specific translations
-        $pageTranslations = $this->getPageTranslations($request);
-
-        // Share the locale and page-specific translations with Inertia
-        Inertia::share([
-            'locale' => $locale,
-            'pageTranslations' => $pageTranslations,
-        ]);
-
-        return $next($request);
-    }
-
-    protected function getPageTranslations(Request $request)
-    {
-        $currentRoute = $request->route() ? $request->route()->getName() : null;
-        $currentPath = $request->path();
-
-        $pageTranslationMap = [
-            '/' => 'homepage',
+        // Load all message translations (which includes all other files)
+        $messages = $this->loadTranslationsSafely('messages');
+        
+        // You can still load page-specific translations if needed
+        // $pageSpecific = $this->loadTranslationsSafely('homepage');
+        
+        return [
+            'messages' => $messages,
+            // 'homepage' => $pageSpecific,
         ];
-
-        $translationFile = null; // Default to null for non-mapped routes
-        foreach ($pageTranslationMap as $path => $file) {
-            if ($currentPath === $path || $currentRoute === $path) {
-                $translationFile = $file;
-                break;
-            }
-        }
-
-        if ($translationFile) {
-            return $this->loadTranslationsSafely($translationFile);
-        }
-
-        return [];
     }
 
     protected function loadTranslationsSafely($file)
     {
         $translations = trans($file);
+        
         if ($translations === null || !is_array($translations)) {
             \Log::warning("Translation file '$file' is missing or did not return an array for locale '" . app()->getLocale() . "'.");
             return [];

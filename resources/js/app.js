@@ -9,6 +9,7 @@ import { createInertiaApp } from '@inertiajs/vue3';
 import { resolvePageComponent } from 'laravel-vite-plugin/inertia-helpers';
 import { ZiggyVue } from '../../vendor/tightenco/ziggy';
 import ScrollToTop from '@/Components/ScrollToTop.vue';
+import TranslationPlugin from '../js/plugins/translation';
 
 const appName = import.meta.env.VITE_APP_NAME || 'Laravel';
 
@@ -27,9 +28,8 @@ createInertiaApp({
         vueApp.use(plugin)
             .use(Toast)
             .use(ZiggyVue)
+            .use(TranslationPlugin)
             .mount(el);
-
-        // applyGlobalValidation(); // Call validation function globally
 
         return vueApp;
     },

@@ -162,17 +162,6 @@ onBeforeUnmount(() => {
 import { usePage } from '@inertiajs/vue3';
 
 const page = usePage();
-
-const __ = (key) => {
-    const translations = page.props.translations || {};
-    return translations[key] || key;
-};
-
-// Access page-specific translations with a different helper
-const _p = (key) => {
-    const pageTranslations = page.props.pageTranslations || {};
-    return pageTranslations[key] || key;
-};
 </script>
 
 <template>
