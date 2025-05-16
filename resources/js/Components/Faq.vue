@@ -1,6 +1,7 @@
 <script setup>
 import { ref, onMounted } from "vue";
 import axios from "axios";
+import { usePage } from '@inertiajs/vue3'; // Added usePage
 import {
     Accordion,
     AccordionContent,
@@ -12,11 +13,13 @@ import { Skeleton } from '@/Components/ui/skeleton'; // Import Skeleton componen
 const faqs = ref([]);
 const defaultValue = ref("item-1");
 const isLoading = ref(true); // Loading state
+const page = usePage(); // Get page instance
 
 // Fetch FAQs from the backend
 const fetchFaqs = async () => {
     try {
-        const response = await axios.get("/api/faqs");
+        const currentLocale = page.props.locale || 'en'; // Get current locale from Inertia props, fallback to 'en'
+        const response = await axios.get(`/api/faqs?locale=${currentLocale}`);
         faqs.value = response.data;
 
         // Set the first item as the default open value if FAQs exist
