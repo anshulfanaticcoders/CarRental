@@ -30,7 +30,7 @@
                     <TableBody>
                         <TableRow v-for="(page, index) in pages.data" :key="page.id">
                             <TableCell>{{ (pages.current_page - 1) * pages.per_page + index + 1 }}</TableCell>
-                            <TableCell>{{ page.title }}</TableCell>
+                            <TableCell class="capitalize">{{ page.slug }}</TableCell>
                             <TableCell>{{ page.slug }}</TableCell>
                             <TableCell>{{ new Date(page.created_at).toLocaleDateString() }}</TableCell>
                             <TableCell class="text-right">

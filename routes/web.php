@@ -26,6 +26,7 @@ use App\Http\Controllers\Auth\EmailValidationController;
 use App\Http\Controllers\Auth\VerifyEmailController;
 use App\Http\Controllers\BookingController;
 use App\Http\Controllers\BulkVehicleController;
+use App\Http\Controllers\BulkVehicleUploadController;
 use App\Http\Controllers\ContactFormController;
 use App\Http\Controllers\FavoriteController;
 use App\Http\Controllers\FrontendPageController;
@@ -123,7 +124,7 @@ Route::get('/search/category/{category_id}', [SearchController::class, 'searchBy
 Route::get('/api/geocoding/autocomplete', [GeocodingController::class, 'autocomplete']);
 Route::get('/api/geocoding/reverse', [GeocodingController::class, 'reverse']);
 Route::get('/blogs-page', [BlogController::class, 'showBlogPage'])->name('blogs-page');
-Route::get('/page/{slug}', [FrontendPageController::class, 'show'])->name('pages.show');
+Route::get('/page/{slug}', [PageController::class, 'showPublic'])->name('pages.show');
 Route::inertia('/faq', 'Faq');
 Route::post('/validate-email', [EmailValidationController::class, 'validateEmail'])->name('validate-email');
 Route::post('/validate-contact', [EmailValidationController::class, 'validateContact'])->name('validate-contact');
@@ -338,9 +339,10 @@ Route::middleware(['auth', 'role:vendor'])->group(function () {
     // Route::get('/vehicles/create', [VehicleController::class, 'create'])->name('vehicles.create');
 
 
-    Route::get('/vehicles/csv-import', [VehicleCsvImportController::class, 'index'])->name('vehicles.csv.import');
-    Route::post('/vehicles/csv-import', [VehicleCsvImportController::class, 'import']);
-    Route::get('/vehicles/csv-sample', [VehicleCsvImportController::class, 'downloadSample'])->name('vehicles.csv.sample');
+// Bulk Vehicle Upload Routes
+    Route::get('/vehicles/bulk-upload', [BulkVehicleUploadController::class, 'create'])->name('vehicles.bulk-upload.create');
+    Route::post('/vehicles/bulk-upload', [BulkVehicleUploadController::class, 'store'])->name('vehicles.bulk-upload.store');
+    Route::get('/vehicles/bulk-upload/template', [BulkVehicleUploadController::class, 'downloadTemplate'])->name('vehicles.bulk-upload.template');
 });
 
 
