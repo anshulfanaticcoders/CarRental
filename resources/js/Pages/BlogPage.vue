@@ -19,7 +19,7 @@
                             <img :src=calendarIcon alt=""> {{ formatDate(blog.created_at) }}
                         </p>
                         <h4 class="font-semibold text-xl text-gray-800 max-[768px]:text-[1rem]">{{ blog.title }}</h4>
-                        <p class="text-gray-600 mt-2 line-clamp-3 max-[768px]:text-[0.875rem]">{{ blog.content }}</p>
+                        <p class="text-gray-600 mt-2 line-clamp-3 max-[768px]:text-[0.875rem]" v-html="blog.content"></p>
                         <Link :href="route('blog.show', blog.id)" class="inline-flex items-center mt-4 text-customPrimaryColor hover:underline
                             max-[768px]:text-[0.875rem]">
                         Read More
@@ -66,7 +66,7 @@
 
 
 <script setup>
-import { Link } from '@inertiajs/vue3';
+import { Link, usePage } from '@inertiajs/vue3'; // Added usePage
 import goIcon from "../../assets/goIcon.svg";
 import calendarIcon from '../../assets/CalendarBlank.svg';
 import AuthenticatedHeaderLayout from '@/Layouts/AuthenticatedHeaderLayout.vue';
@@ -78,11 +78,13 @@ const props = defineProps({
     blogs: Object
 });
 
+const page = usePage(); // Get page instance
 const recentBlogs = ref([]);
 
 onMounted(async () => {
     try {
-        const response = await axios.get('/api/recent-blogs');
+        const currentLocale = page.props.locale || 'en'; // Get current locale from Inertia props, fallback to 'en'
+        const response = await axios.get(`/api/recent-blogs?locale=${currentLocale}`);
         recentBlogs.value = response.data;
     } catch (error) {
         console.error("Error fetching recent blogs:", error);

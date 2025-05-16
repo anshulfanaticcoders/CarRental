@@ -3,44 +3,15 @@
         <div class="flex flex-col gap-4 w-[95%] ml-[1.5rem]">
             <div class="flex items-center justify-between mt-[2rem]">
                 <span class="text-[1.5rem] font-semibold">Blog Management</span>
-                <Dialog>
-                    <DialogTrigger as-child>
-                        <Button>Create New Blog</Button>
-                    </DialogTrigger>
-                    <DialogContent class="max-w-4xl">
-                        <DialogHeader>
-                            <DialogTitle>Create New Blog Post</DialogTitle>
-                        </DialogHeader>
-                        <form @submit.prevent="submit" class="space-y-4">
-                            <div>
-                                <InputLabel for="title" value="Title *" />
-                                <Input v-model="form.title" required />
-                            </div>
-
-                            <div>
-                                <InputLabel for="content" value="Content *" />
-                                <textarea 
-                                    v-model="form.content"
-                                    class="w-full px-3 py-2 border rounded-lg h-32"
-                                    required
-                                ></textarea>
-                            </div>
-
-                            <div>
-                                <InputLabel for="image" value="Blog Image" />
-                                <Input 
-                                    type="file"
-                                    @input="form.image = $event.target.files[0]"
-                                    accept="image/*"
-                                />
-                            </div>
-
-                            <DialogFooter>
-                                <Button type="submit" :disabled="form.processing">Create Blog</Button>
-                            </DialogFooter>
-                        </form>
-                    </DialogContent>
-                </Dialog>
+                <div class="flex items-center gap-4">
+                    <Input v-model="search" placeholder="Search blog..." class="w-[300px] search-box" @input="handleSearch" />
+                </div>
+                <Link 
+                    :href="route('admin.blogs.create')" 
+                    class="px-4 py-2 bg-primary text-white rounded hover:bg-primary/90"
+                >
+                    Create New Blog
+                </Link>
             </div>
 
             <!-- Blogs Table -->
@@ -50,30 +21,51 @@
                         <TableRow>
                             <TableHead>ID</TableHead>
                             <TableHead>Title</TableHead>
-                            <TableHead>Content Preview</TableHead>
+                            <TableHead>Slug</TableHead>
+                            <TableHead>Published</TableHead>
                             <TableHead>Created At</TableHead>
                             <TableHead class="text-right">Actions</TableHead>
                         </TableRow>
                     </TableHeader>
                     <TableBody>
-                        <TableRow v-for="(blog, index) in blogs" :key="blog.id">
-                            <TableCell>{{ index + 1 }}</TableCell>
+                        <TableRow v-for="(blog, index) in blogs.data" :key="blog.id">
+                            <TableCell>{{ (blogs.current_page - 1) * blogs.per_page + index + 1 }}</TableCell>
                             <TableCell>{{ blog.title }}</TableCell>
-                            <TableCell>{{ blog.content.substring(0, 100) }}...</TableCell>
-                            <TableCell>{{ formatDate(blog.created_at) }}</TableCell>
+                            <TableCell>{{ blog.slug }}</TableCell>
+                            <TableCell>{{ blog.is_published ? 'Yes' : 'No' }}</TableCell>
+                            <TableCell>{{ new Date(blog.created_at).toLocaleDateString() }}</TableCell>
                             <TableCell class="text-right">
                                 <div class="flex justify-end gap-2">
-                                    <Button size="sm" variant="outline" @click="editBlog(blog)">
+                                    <Link 
+                                        :href="route('admin.blogs.edit', blog.id)"
+                                        class="px-3 py-2 bg-[#0f172a] text-white rounded hover:bg-[#0f172ae6]"
+                                    >
                                         Edit
-                                    </Button>
-                                    <Button size="sm" variant="destructive"  @click="confirmDeleteBlog(blog)">
+                                    </Link>
+                                    <Button 
+                                        variant="destructive"
+                                        @click="confirmDeleteBlog(blog.id)"
+                                    >
                                         Delete
                                     </Button>
                                 </div>
                             </TableCell>
                         </TableRow>
+                         <TableRow v-if="blogs.data.length === 0">
+                            <TableCell colspan="6" class="text-center">No blogs found.</TableCell>
+                        </TableRow>
                     </TableBody>
                 </Table>
+                
+                <!-- Pagination -->
+                <div v-if="blogs.data.length > 0" class="mt-4 flex justify-end">
+                    <Pagination 
+                        :currentPage="blogs.current_page" 
+                        :totalPages="blogs.last_page" 
+                        :links="blogs.links"
+                        @page-change="handlePageChange" 
+                    />
+                </div>
             </div>
         </div>
     </AdminDashboardLayout>
@@ -81,59 +73,40 @@
 
 <script setup>
 import { ref } from 'vue';
-import { router, useForm } from '@inertiajs/vue3';
-
-// Import UI components
-import Table from "@/Components/ui/table/Table.vue";
-import TableHeader from "@/Components/ui/table/TableHeader.vue";
-import TableRow from "@/Components/ui/table/TableRow.vue";
-import TableHead from "@/Components/ui/table/TableHead.vue";
-import TableBody from "@/Components/ui/table/TableBody.vue";
-import TableCell from "@/Components/ui/table/TableCell.vue";
-import Button from "@/Components/ui/button/Button.vue";
-import {
-    Dialog,
-    DialogContent,
-    DialogHeader,
-    DialogTitle,
-    DialogFooter,
-    DialogTrigger,
-} from "@/Components/ui/dialog";
-import Input from "@/Components/ui/input/Input.vue";
-import InputLabel from "@/Components/InputLabel.vue";
+import { Link, router } from '@inertiajs/vue3'; // Added Link
 import AdminDashboardLayout from '@/Layouts/AdminDashboardLayout.vue';
+import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from '@/Components/ui/table';
+import { Button } from '@/Components/ui/button';
+import Pagination from "@/Pages/AdminDashboardPages/Shared/Pagination.vue"; // Assuming shared pagination
+import { Input } from '@/Components/ui/input'; // Added Input
 import { useToast } from 'vue-toastification';
+
 const toast = useToast();
+
 const props = defineProps({
-    blogs: Array
+    blogs: Object, // Changed from Array to Object for paginated data
+    filters: Object,
 });
 
-const form = useForm({
-    title: '',
-    content: '',
-    image: null,
-});
+const search = ref(props.filters?.search || '');
 
-const formatDate = (date) => {
-    return new Date(date).toLocaleDateString('en-US', {
-        year: 'numeric',
-        month: 'long',
-        day: 'numeric'
-    });
+const confirmDeleteBlog = (id) => {
+  if (confirm('Are you sure you want to delete this blog?')) {
+    deleteBlog(id);
+  }
 };
 
-const submit = () => {
-    form.post(route('blogs.store'), {
+const deleteBlog = (id) => {
+    router.delete(route('admin.blogs.destroy', id), { // Assuming route name is admin.blogs.destroy
         onSuccess: () => {
-            form.reset();
-            toast.success('Blog created successfully!', {
+            toast.success('Blog deleted successfully!', {
                 position: 'top-right',
                 timeout: 3000,
             });
         },
         onError: (errors) => {
             Object.values(errors).forEach(error => {
-                toast.error(error[0], {
+                toast.error(error, { // error is already a string here
                     position: 'top-right',
                     timeout: 5000,
                 });
@@ -142,38 +115,38 @@ const submit = () => {
     });
 };
 
-const editBlog = (blog) => {
-    router.get(route('blogs.edit', blog.id));
-};
-
-const confirmDeleteBlog = (blog) => {
-  if (confirm('Are you sure you want to delete this blog?')) {
-    deleteBlog(blog.id);
-  }
-};
-
-const deleteBlog = (id) => {
-    router.delete(route('blogs.destroy', id), {
-        onSuccess: () => {
-            toast.success('Blog deleted successfully!', {  // Toast on success
-                position: 'top-right',
-                timeout: 3000,
-            });
-        },
-        onError: (errors) => {
-            Object.values(errors).forEach(error => { // Toast on error
-                toast.error(error[0], {
-                    position: 'top-right',
-                    timeout: 5000,
-                });
-            });
-        }
+// Handle search input
+const handleSearch = () => {
+    router.get(route('admin.blogs.index'), { search: search.value }, { // Assuming route name is admin.blogs.index
+        preserveState: true,
+        replace: true,
     });
+};
+
+const handlePageChange = (url) => { // Changed to accept URL from pagination component
+    if (url) {
+        router.get(url, {}, {
+            preserveState: true,
+            replace: true,
+        });
+    }
 };
 </script>
 
-
 <style scoped>
+.search-box {
+    width: 300px;
+    padding: 0.5rem;
+    border: 1px solid #e9ecef;
+    border-radius: 4px;
+    outline: none;
+}
+
+.search-box:focus {
+    border-color: #3b82f6;
+    box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2);
+}
+
 table th{
     font-size: 0.95rem;
 }

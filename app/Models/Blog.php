@@ -11,19 +11,49 @@ class Blog extends Model
     use HasFactory;
 
     protected $fillable = [
-        'title',
         'slug',
-        'content',
         'image',
         'is_published'
     ];
 
-    protected static function boot()
+    protected $appends = ['title', 'content']; // Force append accessors
+
+    // Removed automatic slug generation from here, will be handled in controller
+    // protected static function boot()
+    // {
+    //     parent::boot();
+    // }
+
+    public function translations()
     {
-        parent::boot();
-        
-        static::creating(function ($blog) {
-            $blog->slug = Str::slug($blog->title);
-        });
+        return $this->hasMany(BlogTranslation::class);
+    }
+
+    public function getTranslation(string $locale = null)
+    {
+        $locale = $locale ?? app()->getLocale();
+        return $this->translations()->where('locale', $locale)->first();
+    }
+
+    public function getTitleAttribute()
+    {
+        return $this->getTranslation(app()->getLocale())?->title;
+    }
+
+    public function getContentAttribute()
+    {
+        return $this->getTranslation(app()->getLocale())?->content;
+    }
+
+    // Helper to get title for a specific locale, useful for admin forms
+    public function getTitleForLocale(string $locale)
+    {
+        return $this->translations()->where('locale', $locale)->value('title');
+    }
+
+    // Helper to get content for a specific locale, useful for admin forms
+    public function getContentForLocale(string $locale)
+    {
+        return $this->translations()->where('locale', $locale)->value('content');
     }
 }

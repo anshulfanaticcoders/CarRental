@@ -165,7 +165,7 @@ Route::middleware(['auth', 'role:admin'])->group(function () {
     Route::resource('booking-addons', VehicleAddonsController::class)->middleware(['auth']);
     Route::resource('popular-places', PopularPlacesController::class)->except(['show']);
     Route::resource('admin/plans', PlansController::class);
-    Route::resource('blogs', BlogController::class);
+    Route::resource('blogs', BlogController::class)->names('admin.blogs');
     Route::get('/admin-dashboard', [DashboardController::class, 'index']);
 
     // activity logs
