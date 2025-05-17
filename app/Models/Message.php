@@ -4,10 +4,20 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\SoftDeletes; // Added import
 
 class Message extends Model
 {
+    use HasFactory, SoftDeletes; // Added SoftDeletes trait
+
     protected $fillable = ['sender_id', 'receiver_id', 'booking_id', 'message', 'read_at', 'parent_id'];
+
+    /**
+     * The attributes that should be mutated to dates.
+     *
+     * @var array
+     */
+    protected $dates = ['deleted_at']; // Ensure deleted_at is treated as a Carbon instance
 
     public function sender()
     {

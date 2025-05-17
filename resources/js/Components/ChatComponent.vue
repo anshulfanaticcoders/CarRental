@@ -7,9 +7,9 @@ import searchIcon from '../../assets/MagnifyingGlass.svg';
 import arrowBackIcon from '../../assets/arrowBack.svg'; // Make sure to add this icon to your assets
 
 const props = defineProps({
-    booking: Object,
+    bookingId: [String, Number], // Changed from booking: Object
     messages: Array,
-    otherUser: Object,
+    otherUser: Object, // This user object should have chat_status loaded
     showBackButton: {
         type: Boolean,
         default: false
@@ -61,7 +61,7 @@ const sendMessage = async () => {
     error.value = null;
 
     const messageData = {
-        booking_id: props.booking.id,
+        booking_id: props.bookingId, // Changed from props.booking.id
         receiver_id: props.otherUser.id,
         message: newMessage.value
     };
@@ -70,13 +70,13 @@ const sendMessage = async () => {
         const response = await axios.post('/messages', messageData);
         // Append the sent message to the local messageList immediately
         messageList.value.push({
-            id: response.data.message.id,
+            id: response.data.message.id, // Ensure this is the actual new message ID from backend
             sender_id: page.props.auth.user.id,
             receiver_id: props.otherUser.id,
-            booking_id: props.booking.id,
+            booking_id: props.bookingId, // Changed from props.booking.id
             message: newMessage.value,
-            created_at: new Date().toISOString(),
-            read_at: null
+            created_at: response.data.message.created_at || new Date().toISOString(), // Use backend created_at if available
+            read_at: null // New messages are initially unread
         });
         newMessage.value = '';
         scrollToBottom();
@@ -87,15 +87,68 @@ const sendMessage = async () => {
     }
 };
 
+const recentlyDeleted = ref(null); // To store { messageId, timerId } for undo
+const UNDO_TIMEOUT = 10000; // 10 seconds for undo
+
 const deleteMessage = async (messageId) => {
-    if (!confirm("Are you sure you want to delete this message?")) return;
+    // Optimistically update UI or wait for API response
+    const messageIndex = messageList.value.findIndex(msg => msg.id === messageId);
+    if (messageIndex === -1) return;
+
+    // Store original message content in case of immediate undo without API roundtrip (optional)
+    // const originalContent = messageList.value[messageIndex].message;
+
     try {
-        await axios.delete(`/messages/${messageId}`);
-        messageList.value = messageList.value.filter(msg => msg.id !== messageId);
+        const response = await axios.delete(`/messages/${messageId}`);
+        if (response.data.success && response.data.message) {
+            // Update the local message to reflect soft deletion
+            messageList.value[messageIndex].deleted_at = response.data.message.deleted_at;
+            messageList.value[messageIndex].message_original_content_temp = messageList.value[messageIndex].message; // Store for undo
+            messageList.value[messageIndex].message = "This message was deleted."; // Placeholder
+
+            // Set up undo option
+            if (recentlyDeleted.value && recentlyDeleted.value.timerId) {
+                clearTimeout(recentlyDeleted.value.timerId); // Clear previous undo timer
+            }
+            const timerId = setTimeout(() => {
+                if (recentlyDeleted.value && recentlyDeleted.value.messageId === messageId) {
+                    recentlyDeleted.value = null; // Clear undo option after timeout
+                }
+            }, UNDO_TIMEOUT);
+            recentlyDeleted.value = { messageId, timerId };
+            
+            showOptions.value = null; // Close options menu
+        } else {
+            alert("Failed to delete message: " + (response.data.error || "Unknown error"));
+        }
     } catch (err) {
-        alert("Failed to delete message.");
+        alert("Error deleting message: " + (err.response?.data?.message || err.message));
+        // Optionally revert optimistic UI update here if one was made
     }
 };
+
+const undoDeleteMessage = async (messageId) => {
+    if (!recentlyDeleted.value || recentlyDeleted.value.messageId !== messageId) return;
+
+    try {
+        const response = await axios.post(`/messages/${messageId}/restore`);
+        if (response.data.success && response.data.message) {
+            const messageIndex = messageList.value.findIndex(msg => msg.id === messageId);
+            if (messageIndex !== -1) {
+                messageList.value[messageIndex].deleted_at = null;
+                messageList.value[messageIndex].message = messageList.value[messageIndex].message_original_content_temp || response.data.message.message;
+                delete messageList.value[messageIndex].message_original_content_temp;
+            }
+            clearTimeout(recentlyDeleted.value.timerId);
+            recentlyDeleted.value = null;
+        } else {
+            alert("Failed to undo delete: " + (response.data.error || "Unknown error"));
+        }
+    } catch (err) {
+        alert("Error undoing delete: " + (err.response?.data?.message || err.message));
+    }
+};
+
 
 const toggleOptions = (messageId) => {
     showOptions.value = showOptions.value === messageId ? null : messageId;
@@ -109,25 +162,33 @@ const toggleSearch = () => {
 };
 
 const getProfileImage = (user) => {
-    return user.profile?.avatar ? `${user.profile.avatar}` : '/storage/avatars/default-avatar.svg';
+    return user?.profile?.avatar ? `${user.profile.avatar}` : '/storage/avatars/default-avatar.svg';
 };
 
 const goBack = () => {
     emit('back');
 };
 
-const lastSeen = computed(() => {
-    if (!props.otherUser.last_login_at) return 'Last seen: Unknown';
-    const now = new Date();
-    const lastLoginAt = new Date(props.otherUser.last_login_at);
-    const diffMs = now - lastLoginAt;
-    const diffMins = Math.floor(diffMs / 60000); // Minutes
-    const diffHrs = Math.floor(diffMins / 60);   // Hours
+const lastSeenText = computed(() => {
+    const chatStatus = props.otherUser?.chat_status;
+    if (!chatStatus) return "Status unavailable";
+    if (chatStatus.is_online) return "Online";
+    if (!chatStatus.last_logout_at) return "Offline";
 
-    if (diffMins < 1) return 'Online now';
-    if (diffMins < 60) return `Last seen: ${diffMins}m ago`;
-    if (diffHrs < 24) return `Last seen: ${diffHrs}h ago`;
-    return `Last seen: ${formatDate(props.otherUser.last_login_at)}`;
+    const now = new Date();
+    const lastSeenDate = new Date(chatStatus.last_logout_at);
+    const diffMs = now - lastSeenDate;
+    const diffSecs = Math.round(diffMs / 1000);
+    const diffMins = Math.round(diffSecs / 60);
+    const diffHours = Math.round(diffMins / 60);
+    const diffDays = Math.round(diffHours / 24);
+
+    if (diffSecs < 60) return `Last seen ${diffSecs}s ago`;
+    if (diffMins < 60) return `Last seen ${diffMins}m ago`;
+    if (diffHours < 24) return `Last seen ${diffHours}h ago`;
+    if (diffDays === 1) return `Last seen yesterday`;
+    if (diffDays < 7) return `Last seen ${diffDays}d ago`;
+    return `Last seen on ${formatDate(chatStatus.last_logout_at)}`;
 });
 
 // Watch for changes in props.messages to update local messages
@@ -140,37 +201,67 @@ watch(() => props.messages, (newMessages) => {
 
 onMounted(() => {
     scrollToBottom();
-    window.Echo.private(`chat.${props.booking.id}`)
-        .listen('NewMessage', (e) => {
-            // Only append if the message isn't already in the list (prevents duplicates)
-            if (!messageList.value.some(msg => msg.id === e.message.id)) {
-                messageList.value.push(e.message);
-                scrollToBottom();
+    if (props.bookingId) {
+        const channel = window.Echo.private(`chat.${props.bookingId}`);
+        
+        channel.listen('NewMessage', (e) => {
+            if (e.message && e.message.booking_id == props.bookingId) {
+                if (!messageList.value.some(msg => msg.id === e.message.id)) {
+                    messageList.value.push(e.message);
+                    scrollToBottom();
+                }
             }
         });
+
+        channel.listen('.message.deleted', (e) => {
+            const messageIndex = messageList.value.findIndex(msg => msg.id === e.message_id);
+            if (messageIndex !== -1) {
+                messageList.value[messageIndex].deleted_at = e.deleted_at;
+                // Ensure message content is updated if not already placeholder
+                if(messageList.value[messageIndex].message !== "This message was deleted.") {
+                    messageList.value[messageIndex].message_original_content_temp = messageList.value[messageIndex].message;
+                    messageList.value[messageIndex].message = "This message was deleted.";
+                }
+            }
+        });
+
+        channel.listen('.message.restored', (e) => {
+            const messageIndex = messageList.value.findIndex(msg => msg.id === e.message.id);
+            if (messageIndex !== -1) {
+                messageList.value[messageIndex] = e.message; // Replace with full restored message data
+                // Or more granularly:
+                // messageList.value[messageIndex].deleted_at = null;
+                // messageList.value[messageIndex].message = e.message.message;
+                // delete messageList.value[messageIndex].message_original_content_temp;
+            }
+        });
+    }
 });
 
 onUnmounted(() => {
-    window.Echo.leave(`chat.${props.booking.id}`);
+    if (props.bookingId) {
+        window.Echo.leave(`chat.${props.bookingId}`); // Changed from props.booking.id
+    }
 });
 </script>
 
 <template>
-    <div class="flex flex-col h-full bg-gray-100 rounded-xl shadow-lg overflow-hidden">
+    <div class="flex flex-col bg-gray-100 rounded-xl shadow-lg overflow-hidden"> <!-- Removed h-full -->
         <!-- Header - Fixed -->
         <div class="p-3 bg-white border-b flex items-center gap-3 shadow-sm">
             <button v-if="showBackButton" @click="goBack" class="p-1 rounded-full hover:bg-gray-100">
                 <img :src="arrowBackIcon" alt="Back" class="w-6 h-6" />
             </button>
 
-            <img :src="userRole === 'customer' ? booking.vehicle?.vendor_profile?.avatar : getProfileImage(booking.customer?.user)"
+            <!-- Use otherUser directly for profile image -->
+            <img :src="getProfileImage(otherUser)"
                 alt="User Avatar" class="w-10 h-10 rounded-full object-cover" />
 
             <div class="flex-grow">
                 <h2 class="text-base font-semibold text-gray-800">
-                    {{ userRole === 'customer' ? booking.vehicle?.vendor?.first_name : booking.customer?.first_name }}
+                    {{ otherUser?.first_name || 'Chat Partner' }} {{ otherUser?.last_name || '' }}
                 </h2>
-                <p class="text-xs text-gray-500">{{ lastSeen }}</p>
+                <p class="text-xs text-gray-500">{{ lastSeenText }}</p> <!-- Changed to lastSeenText -->
             </div>
 
             <button @click="toggleSearch" class="p-2 rounded-full hover:bg-gray-100">
@@ -214,18 +305,26 @@ onUnmounted(() => {
                             </button>
                         </div>
                     </div>
-                    <p class="mt-1 text-sm">{{ message.message }}</p>
-                    <div v-if="message.sender_id === page.props.auth.user.id" class="text-right mt-1">
-                        <span v-if="!message.read_at" class="text-gray-300 text-xs">✓</span>
-                        <span v-else class="text-blue-300 text-xs">✓✓</span>
+                    <p class="mt-1 text-sm">
+                        {{ message.deleted_at ? 'This message was deleted.' : message.message }}
+                    </p>
+                    <div v-if="message.sender_id === page.props.auth.user.id && !message.deleted_at" class="text-right mt-1">
+                        <span v-if="!message.read_at" class="text-gray-300 text-xs">✓</span> <!-- Delivered -->
+                        <span v-else class="text-blue-300 text-xs">✓✓</span> <!-- Read -->
+                    </div>
+                     <!-- Undo Button -->
+                    <div v-if="recentlyDeleted && recentlyDeleted.messageId === message.id && message.sender_id === page.props.auth.user.id" class="mt-2 text-right">
+                        <button @click="undoDeleteMessage(message.id)" class="text-xs text-blue-500 hover:underline">
+                            Undo
+                        </button>
                     </div>
                 </div>
 
-                <!-- Dropdown -->
-                <div v-if="showOptions === message.id"
-                    class="absolute right-0 mt-2 bg-white shadow-lg rounded-md py-2 w-32 z-20 border">
+                <!-- Dropdown for delete -->
+                <div v-if="showOptions === message.id && message.sender_id === page.props.auth.user.id && !message.deleted_at"
+                    class="absolute right-0 mt-2 bg-white shadow-lg rounded-md py-1 w-28 z-20 border">
                     <button @click="deleteMessage(message.id)"
-                        class="w-full text-left px-4 py-1 text-red-500 hover:bg-red-100">
+                        class="w-full text-left px-3 py-1 text-sm text-red-600 hover:bg-red-50">
                         Delete
                     </button>
                 </div>
@@ -233,7 +332,7 @@ onUnmounted(() => {
         </div>
 
         <!-- Error Message -->
-        <div v-if="error" class="px-4 py-2 text-red-500 text-xs bg-red-50">{{ error }}</div>
+        <div v-if="error" class="px-3 py-1.5 text-red-600 text-xs bg-red-100">{{ error }}</div>
 
         <!-- Input - Fixed -->
         <div class="bg-white border-t flex items-center gap-2 p-2">

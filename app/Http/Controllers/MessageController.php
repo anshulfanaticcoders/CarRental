@@ -10,34 +10,128 @@ use App\Models\Booking;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Illuminate\Support\Facades\Auth;
+use App\Events\MessageDeleted; // Added import
+use App\Events\MessageRestored; // Added import
 
 class MessageController extends Controller
 {
     public function index()
     {
-        return Inertia::render('Messages/Index');
+        // This will now also pass initial chat partners data
+        // The Vue component can decide to use this or fetch fresh via API
+        return Inertia::render('Messages/Index', [
+            'chatPartners' => $this->getCustomerChatPartnersData(),
+        ]);
+    }
+
+    // New method to fetch chat partners for the customer view
+    public function getCustomerChatPartners()
+    {
+        return response()->json($this->getCustomerChatPartnersData());
+    }
+
+    private function getCustomerChatPartnersData()
+    {
+        $customerId = auth()->id();
+
+        // Get all bookings made by the authenticated customer
+        $bookings = Booking::where('customer_id', function ($query) use ($customerId) {
+            // Assuming customer_id in bookings table refers to the id in customers table,
+            // and customers table has a user_id.
+            // If bookings.customer_id is directly users.id, this subquery is simpler.
+            // Let's check Booking model structure. Assuming Booking has direct customer_user_id or similar.
+            // For now, assuming Booking->customer is a relation to Customer model, which has user_id
+            $query->select('id')->from('customers')->where('user_id', $customerId);
+        })
+        ->with(['vehicle.vendor.profile', 'vehicle.vendor.chatStatus', 'vehicle']) // Eager load: vehicle.vendor is User, then profile and chatStatus
+        ->orderBy('created_at', 'desc') // Get latest bookings first for a vendor
+        ->get();
+
+        // Group bookings by vendor to get unique vendors
+        // vehicle.vendor_id is the user_id of the vendor
+        $vendorsData = $bookings->groupBy('vehicle.vendor_id')->map(function ($vendorBookings) use ($customerId) {
+            $latestBooking = $vendorBookings->first(); // The first one due to orderBy desc
+            $vendorUser = $latestBooking->vehicle->vendor; // vehicle->vendor is the User model of the vendor
+
+            // Calculate unread messages from this specific vendor to the customer
+            $unreadCount = Message::where('sender_id', $vendorUser->id)
+                ->where('receiver_id', $customerId)
+                ->whereIn('booking_id', $vendorBookings->pluck('id'))
+                ->whereNull('read_at')
+                ->count();
+
+            // Get the last message exchanged with this vendor across all their bookings
+            $lastMessage = Message::where(function($q) use ($customerId, $vendorUser) {
+                    $q->where('sender_id', $customerId)->where('receiver_id', $vendorUser->id);
+                })->orWhere(function($q) use ($customerId, $vendorUser) {
+                    $q->where('sender_id', $vendorUser->id)->where('receiver_id', $customerId);
+                })
+                ->whereIn('booking_id', $vendorBookings->pluck('id'))
+                ->orderBy('created_at', 'desc')
+                ->first();
+
+            return [
+                // $vendorUser already has profile and chatStatus loaded due to eager loading: 'vehicle.vendor.profile', 'vehicle.vendor.chatStatus'
+                'user' => $vendorUser, 
+                'latest_booking_id' => $latestBooking->id, // ID of the latest booking for linking
+                'vehicle_name' => $latestBooking->vehicle->name, // Example: name of vehicle from latest booking
+                'last_message_at' => $lastMessage ? $lastMessage->created_at : $latestBooking->created_at,
+                'last_message_preview' => $lastMessage ? \Illuminate\Support\Str::limit($lastMessage->message, 30) : 'No messages yet.',
+                'unread_count' => $unreadCount,
+            ];
+        })->sortByDesc('last_message_at')->values(); // Sort vendors by last message time and re-index
+
+        return $vendorsData;
     }
 
     public function vendorIndex()
 {
-    $bookings = Booking::whereHas('vehicle', function ($query) {
-        $query->where('vendor_id', auth()->id());
+    $vendorId = auth()->id();
+
+    // Get all bookings where the authenticated user is the vendor
+    $bookings = Booking::whereHas('vehicle', function ($query) use ($vendorId) {
+        $query->where('vendor_id', $vendorId);
     })
-    ->with(['customer.user.profile', 'vehicle.vendor'])
-    ->get()
-    ->map(function ($booking) {
-        // Count unread messages for this booking where vendor is the receiver
-        $unreadCount = Message::where('booking_id', $booking->id)
-            ->where('receiver_id', auth()->id())
+    ->with(['customer.user.profile', 'vehicle']) // Eager load necessary relations
+    ->orderBy('created_at', 'desc') // Get latest bookings first for a customer
+    ->get();
+
+    // Group bookings by customer to get unique customers
+    $customersData = $bookings->groupBy('customer.user_id')->map(function ($customerBookings) use ($vendorId) {
+        $latestBooking = $customerBookings->first(); // The first one due to orderBy desc
+        $customerUser = $latestBooking->customer->user;
+
+        // Calculate unread messages from this specific customer to the vendor
+        // across all bookings with this customer.
+        $unreadCount = Message::where('sender_id', $customerUser->id)
+            ->where('receiver_id', $vendorId)
+            ->whereIn('booking_id', $customerBookings->pluck('id'))
             ->whereNull('read_at')
             ->count();
+        
+        // Get the last message exchanged with this customer across all their bookings
+        $lastMessage = Message::where(function($q) use ($vendorId, $customerUser) {
+                $q->where('sender_id', $vendorId)->where('receiver_id', $customerUser->id);
+            })->orWhere(function($q) use ($vendorId, $customerUser) {
+                $q->where('sender_id', $customerUser->id)->where('receiver_id', $vendorId);
+            })
+            ->whereIn('booking_id', $customerBookings->pluck('id'))
+            ->orderBy('created_at', 'desc')
+            ->first();
 
-        $booking->unread_count = $unreadCount; // Attach unread count to booking
-        return $booking;
-    });
+        return [
+            'user' => $customerUser->load(['profile', 'chatStatus']), // Pass the customer's user model with profile and chatStatus
+            'latest_booking_id' => $latestBooking->id, // ID of the latest booking for linking
+            'vehicle_name' => $latestBooking->vehicle->name, // Example: name of vehicle from latest booking
+            'last_message_at' => $lastMessage ? $lastMessage->created_at : $latestBooking->created_at,
+            'last_message_preview' => $lastMessage ? \Illuminate\Support\Str::limit($lastMessage->message, 30) : 'No messages yet.',
+            'unread_count' => $unreadCount,
+            // We can add more details from $latestBooking or $customerUser if needed
+        ];
+    })->sortByDesc('last_message_at')->values(); // Sort customers by last message time and re-index
 
     return Inertia::render('Messages/VendorIndex', [
-        'bookings' => $bookings
+        'chatPartners' => $customersData // Changed from 'bookings' to 'chatPartners'
     ]);
 }
 
@@ -171,6 +265,10 @@ public function show($bookingId)
         ]);
     }
 
+
+
+// ... (other methods)
+
     public function destroy($id)
 {
     $message = Message::findOrFail($id);
@@ -180,9 +278,42 @@ public function show($bookingId)
         return response()->json(['error' => 'Unauthorized'], 403);
     }
 
-    $message->delete();
+    $message->delete(); // This now performs a soft delete
 
-    return response()->json(['success' => 'Message deleted successfully']);
+    // Broadcast the event
+    // Ensure the message has necessary relations loaded if broadcastWith needs them,
+    // or that booking_id is directly available.
+    // $message->loadMissing('booking'); // Example if booking relation is needed for channel name and not always loaded
+    broadcast(new MessageDeleted($message->fresh()))->toOthers(); // fresh() to get the model with deleted_at
+
+    return response()->json([
+        'success' => 'Message deleted successfully',
+        'message' => $message->fresh() // Return the soft-deleted message model
+    ]);
+}
+
+public function restore($id)
+{
+    $message = Message::withTrashed()->findOrFail($id);
+
+    // Ensure only the sender can restore the message, or implement other authorization
+    if (auth()->id() !== $message->sender_id) {
+        return response()->json(['error' => 'Unauthorized to restore this message'], 403);
+    }
+
+    // Optional: Add a time limit for undo, e.g., within 10-15 seconds of deletion
+    // if ($message->deleted_at && $message->deleted_at->diffInSeconds(now()) > 15) {
+    //     return response()->json(['error' => 'Undo time limit exceeded'], 403);
+    // }
+
+    $message->restore();
+
+    broadcast(new MessageRestored($message->fresh()->load(['sender', 'receiver'])))->toOthers();
+
+    return response()->json([
+        'success' => 'Message restored successfully',
+        'message' => $message->fresh()->load(['sender', 'receiver']) // Return the restored message model
+    ]);
 }
 
 }

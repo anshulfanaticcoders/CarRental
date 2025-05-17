@@ -4,28 +4,30 @@ import MyProfileLayout from "@/Layouts/MyProfileLayout.vue";
 import ChatComponent from '@/Components/ChatComponent.vue';
 import axios from 'axios';
 
+// Removed: import { InertiaLink } from '@inertiajs/vue3';
+
 const props = defineProps({
-    bookings: Array,
+    chatPartners: Array, // Changed from bookings
 });
 
 const searchQuery = ref("");
-const selectedBooking = ref(null);
+const selectedPartner = ref(null); // Changed from selectedBooking
+const selectedBookingId = ref(null); // To store the booking_id for ChatComponent
 const messages = ref([]);
-const otherUser = ref(null);
+const otherUser = ref(null); // This will be the user object of the chat partner
 const loadingChat = ref(false);
 const showChat = ref(false); // Controls mobile chat visibility
 const isMobile = ref(false); // Track if we're on mobile
 
-const filteredBookings = computed(() => {
-    if (!searchQuery.value) return props.bookings;
+const filteredChatPartners = computed(() => { // Renamed from filteredBookings
+    if (!props.chatPartners) return [];
+    if (!searchQuery.value) return props.chatPartners;
     const query = searchQuery.value.toLowerCase();
-    return props.bookings.filter(booking =>
-        booking?.booking_number?.toString().toLowerCase().includes(query) ||
-        booking?.vehicle?.brand?.toLowerCase().includes(query) ||
-        booking?.vehicle?.model?.toLowerCase().includes(query) ||
-        booking?.pickup_location?.toLowerCase().includes(query) ||
-        booking?.vehicle?.vendor?.first_name?.toLowerCase().includes(query) ||
-        booking?.customer?.user?.first_name?.toLowerCase().includes(query)
+    return props.chatPartners.filter(partner =>
+        partner.user?.first_name?.toLowerCase().includes(query) ||
+        partner.user?.last_name?.toLowerCase().includes(query) ||
+        partner.vehicle_name?.toLowerCase().includes(query) ||
+        partner.last_message_preview?.toLowerCase().includes(query)
     );
 });
 
@@ -40,146 +42,153 @@ const formatDate = (dateString) => {
 
 const formatTime = (dateString) => {
     if (!dateString) return '';
-    
     const date = new Date(dateString);
-    return date.toLocaleTimeString('en-US', {
-        hour: '2-digit',
-        minute: '2-digit'
-    });
+    return date.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
 };
 
-const getStatusClass = (status) => {
-    switch (status) {
-        case "pending":
-            return "bg-yellow-100 text-yellow-800";
-        case "confirmed":
-            return "bg-green-100 text-green-800";
-        case "completed":
-            return "bg-blue-100 text-blue-800";
-        case "cancelled":
-            return "bg-red-100 text-red-800";
-        default:
-            return "bg-gray-100 text-gray-800";
+const formatLastSeen = (chatStatus) => {
+    if (!chatStatus) return "Status unavailable";
+    if (chatStatus.is_online) return "Online";
+    if (!chatStatus.last_logout_at) return "Offline";
+
+    const now = new Date();
+    const lastSeenDate = new Date(chatStatus.last_logout_at);
+    const diffMs = now - lastSeenDate;
+    const diffSecs = Math.round(diffMs / 1000);
+    const diffMins = Math.round(diffSecs / 60);
+    const diffHours = Math.round(diffMins / 60);
+    const diffDays = Math.round(diffHours / 24);
+
+    if (diffSecs < 60) return `Last seen ${diffSecs}s ago`;
+    if (diffMins < 60) return `Last seen ${diffMins}m ago`;
+    if (diffHours < 24) return `Last seen ${diffHours}h ago`;
+    if (diffDays === 1) return `Last seen yesterday`;
+    return `Last seen ${diffDays}d ago`;
+};
+
+
+const getProfileImage = (user) => { // Changed parameter from customer to user
+    if (user?.profile?.avatar) return user.profile.avatar;
+    return '/storage/avatars/default-avatar.svg'; // Ensure this path is correct
+};
+
+const loadChat = async (partner) => {
+    if (!partner || !partner.latest_booking_id) {
+        console.error("Invalid partner or missing booking ID for chat.", partner);
+        return;
     }
-};
-
-const getProfileImage = (customer) => {
-    if (customer?.user?.profile?.avatar) return customer.user.profile.avatar;
-    return '/storage/avatars/default-avatar.svg';
-};
-
-const loadChat = async (booking) => {
     loadingChat.value = true;
-    selectedBooking.value = booking;
+    selectedPartner.value = partner;
+    selectedBookingId.value = partner.latest_booking_id; // Store booking_id
+    otherUser.value = partner.user; // Store the other user's details
     showChat.value = true; // Show chat view on mobile
     
     try {
-        const response = await axios.get(`/messages/${booking.id}`);
+        // The ChatComponent will use selectedBookingId.value for its operations.
+        // The messages are fetched by ChatComponent itself or passed if already loaded.
+        // For now, we assume ChatComponent handles fetching messages based on booking_id.
+        // If ChatComponent expects messages prop, we need to fetch them here.
+        // The existing ChatComponent seems to get messages via /messages/{booking.id}
+        // Let's keep the existing logic for fetching messages for now.
+        const response = await axios.get(`/messages/${partner.latest_booking_id}`);
         
         if (response.data && response.data.props) {
             messages.value = response.data.props.messages || [];
-            otherUser.value = response.data.props.otherUser || null;
+            // otherUser is already set from partner.user
+            // We might need to ensure response.data.props.otherUser matches partner.user structure
+            // or rely on the partner.user passed.
+            // For consistency, let's use the one from the partner object.
+        } else {
+            messages.value = [];
         }
     } catch (error) {
         console.error('Failed to load messages:', error);
+        messages.value = []; // Clear messages on error
     } finally {
         loadingChat.value = false;
     }
 };
 
-const getLastMessage = async (bookingId) => {
-    try {
-        const response = await axios.get(`/messages/${bookingId}/last`);
-        return response.data.message;
-    } catch (error) {
-        console.error('Failed to get last message:', error);
-        return null;
-    }
-};
 
 const backToInbox = () => {
     showChat.value = false;
+    selectedPartner.value = null; // Clear selected partner
+    selectedBookingId.value = null;
 };
 
-// Check if we're on mobile and update the isMobile ref
 const checkIfMobile = () => {
-    isMobile.value = window.innerWidth < 640;
+    isMobile.value = window.innerWidth < 768; // Adjusted breakpoint for sm/md
 };
 
 onMounted(() => {
-    console.log("Bookings Data:", props.bookings);
+    console.log("Chat Partners Data:", props.chatPartners);
     
-    // Check initial window size
     checkIfMobile();
-    
-    // Listen for window resize events
     window.addEventListener('resize', checkIfMobile);
     
-    // Default to showing the inbox list on mobile when page loads
     if (isMobile.value) {
         showChat.value = false;
-    } else if (props.bookings && props.bookings.length > 0) {
-        // On desktop, load the first chat by default
-        loadChat(props.bookings[0]);
+    } else if (props.chatPartners && props.chatPartners.length > 0) {
+        loadChat(props.chatPartners[0]);
     }
 });
 
 onUnmounted(() => {
-    // Clean up the event listener
     window.removeEventListener('resize', checkIfMobile);
 });
 </script>
 
 <template>
-    
-        <!-- Main content container -->
-        <div class="flex flex-col h-[calc(100vh-10px)]">
-            <!-- Mobile-friendly inbox header -->
+    <MyProfileLayout> <!-- title="Vendor Inbox" removed -->
+        <div class="flex flex-col h-[calc(100vh-80px)] md:h-[calc(100vh-100px)]">
             <div v-if="!showChat || !isMobile" 
-                class="flex flex-row justify-between items-center bg-[#154D6A0D] rounded-t-[12px] px-4 py-3">
-                <p class="text-lg font-bold text-customPrimaryColor">Inbox</p>
-                <input v-model="searchQuery" type="text" placeholder="Search bookings..."
-                    class="w-full max-w-[250px] px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                class="flex flex-row justify-between items-center bg-gray-50 rounded-t-lg px-4 py-3 border-b">
+                <p class="text-lg font-bold text-gray-700">Inbox</p>
+                <input v-model="searchQuery" type="text" placeholder="Search chats..."
+                    class="w-full max-w-xs px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm" />
             </div>
 
-            <!-- Empty state -->
-            <div v-if="filteredBookings.length === 0" class="text-center py-8 flex-grow">
-                <p class="text-gray-500">You don't have any bookings yet.</p>
+            <div v-if="!filteredChatPartners || filteredChatPartners.length === 0 && !loadingChat" class="text-center py-10 flex-grow">
+                <p class="text-gray-500">No conversations found.</p>
             </div>
 
-            <!-- Chat interface -->
-            <div v-else class="flex flex-row h-full overflow-hidden">
-                <!-- Chat List - hidden on mobile when chat is open -->
-                <div v-show="!showChat || !isMobile" 
-                    class="w-full sm:w-1/3 overflow-y-auto border-r bg-white">
-                    <div v-for="booking in filteredBookings" :key="booking.id" 
+            <div v-else class="flex flex-row flex-grow overflow-hidden">
+                <div v-if="!showChat || !isMobile" 
+                    class="w-full md:w-1/3 lg:w-1/4 overflow-y-auto border-r bg-white">
+                    <div v-for="partner in filteredChatPartners" :key="partner.user.id" 
                         class="border-b cursor-pointer"
-                        :class="{'bg-blue-50': selectedBooking && booking.id === selectedBooking.id}"
-                        @click="loadChat(booking)">
-                        <div class="flex items-center gap-4 w-full py-3 px-3 hover:bg-gray-50">
-                            <!-- Display Customer Avatar -->
-                            <div class="relative w-12 h-12 flex-shrink-0">
-                                <img :src="getProfileImage(booking.customer)" 
-                                    alt="Customer Avatar"
+                        :class="{'bg-blue-50': selectedPartner && partner.user.id === selectedPartner.user.id}"
+                        @click="loadChat(partner)">
+                        <div class="flex items-start gap-3 w-full py-3 px-3 hover:bg-gray-50">
+                            <div class="relative w-10 h-10 flex-shrink-0">
+                                <img :src="getProfileImage(partner.user)" 
+                                    :alt="partner.user.first_name"
                                     class="rounded-full object-cover h-full w-full" />
-                                <p class="w-3 h-3 bg-[#009900] rounded-full absolute bottom-0 right-0 border-2 border-white"></p>
+                                <span v-if="partner.user?.chat_status?.is_online"
+                                      class="w-3 h-3 bg-green-500 rounded-full absolute bottom-0 right-0 border-2 border-white"
+                                      title="Online"></span>
+                                <span v-else
+                                      class="w-3 h-3 bg-gray-400 rounded-full absolute bottom-0 right-0 border-2 border-white"
+                                      title="Offline"></span>
                             </div>
                             
-                            <!-- User info and last message -->
-                            <div class="w-full">
-                                <div class="flex justify-between w-full">
-                                    <span class="text-customDarkBlackColor font-medium">
-                                        {{ booking.customer?.user?.first_name || "N/A" }}
+                            <div class="w-full overflow-hidden">
+                                <div class="flex justify-between items-center w-full">
+                                    <span class="text-gray-800 font-semibold text-sm truncate" :title="`${partner.user.first_name} ${partner.user.last_name || ''}`">
+                                        {{ partner.user.first_name }} {{ partner.user.last_name || '' }}
                                     </span>
-                                    <span class="text-customLightGrayColor text-xs">{{ formatTime(booking.updated_at) }}</span>
+                                    <span class="text-gray-500 text-xs flex-shrink-0 ml-2">{{ formatTime(partner.last_message_at) }}</span>
                                 </div>
-                                <div class="flex justify-between">
-                                    <p class="text-customLightGrayColor text-xs truncate">
-                                        {{ booking.vehicle?.brand }} {{ booking.vehicle?.model }}
+                                <p class="text-gray-500 text-xs truncate mt-0.5" :title="formatLastSeen(partner.user?.chat_status)">
+                                    {{ formatLastSeen(partner.user?.chat_status) }}
+                                </p>
+                                <div class="flex justify-between items-end mt-1">
+                                    <p class="text-gray-600 text-xs truncate pr-2" :title="partner.last_message_preview">
+                                        {{ partner.last_message_preview }}
                                     </p>
-                                    <span v-if="booking.unread_count" 
-                                        class="bg-blue-500 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs">
-                                        {{ booking.unread_count }}
+                                    <span v-if="partner.unread_count > 0" 
+                                        class="bg-blue-600 text-white rounded-full min-w-[20px] h-5 flex items-center justify-center text-xs px-1.5">
+                                        {{ partner.unread_count }}
                                     </span>
                                 </div>
                             </div>
@@ -187,32 +196,29 @@ onUnmounted(() => {
                     </div>
                 </div>
 
-                <!-- Chat Window - full screen on mobile when a chat is selected -->
-                <div v-show="showChat || !isMobile" 
-                    class="w-full sm:w-2/3 bg-[#154D6A0D] flex flex-col h-full">
+                <div v-if="showChat || !isMobile" 
+                    class="w-full md:w-2/3 lg:w-3/4 bg-gray-50 flex flex-col h-full">
                     
-                    <!-- Loading state -->
                     <div v-if="loadingChat" class="flex-1 flex items-center justify-center">
-                        <p>Loading chat...</p>
+                        <p class="text-gray-600">Loading chat...</p>
                     </div>
                     
-                    <!-- Empty state -->
-                    <div v-else-if="!selectedBooking" class="flex-1 flex items-center justify-center">
-                        <p class="text-gray-500">Select a conversation to start chatting</p>
+                    <div v-else-if="!selectedPartner" class="flex-1 flex items-center justify-center">
+                        <p class="text-gray-500">Select a conversation to start chatting.</p>
                     </div>
                     
-                    <!-- Actual chat component with proper mobile layout -->
                     <ChatComponent 
                         v-else 
-                        :booking="selectedBooking" 
+                        :bookingId="selectedBookingId"
                         :messages="messages" 
-                        :otherUser="otherUser"
+                        :otherUser="otherUser" 
                         :showBackButton="isMobile"
                         @back="backToInbox"
-                        class="h-full"
+                        @messageSent="messages.push($event)" 
+                        class="flex-grow"
                     />
                 </div>
             </div>
         </div>
-   
+    </MyProfileLayout>
 </template>

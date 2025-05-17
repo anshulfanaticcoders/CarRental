@@ -4,6 +4,8 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
+use App\Models\ChatStatus; // Added import
+use Illuminate\Database\Eloquent\Relations\HasOne; // Added import
 
 class User extends Authenticatable
 {
@@ -81,4 +83,12 @@ public function bookings()
 {
     return $this->hasMany(Booking::class);
 }
+
+ /**
+     * Get the chat status associated with the user.
+     */
+    public function chatStatus(): HasOne
+    {
+        return $this->hasOne(ChatStatus::class);
+    }
 }

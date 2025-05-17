@@ -96,13 +96,15 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/vehicles', [VehicleController::class, 'index'])->name('vehicles.index');
 
 
-    Route::get('/messages', [BookingController::class, 'getCustomerBookingsForMessages'])->name('messages.index');
+   Route::get('/messages', [MessageController::class, 'index'])->name('messages.index'); // Changed to MessageController@index
+    Route::get('/customer-chat-partners', [MessageController::class, 'getCustomerChatPartners'])->name('messages.customer.partners'); // Added new route
     Route::get('/messages/vendor', [MessageController::class, 'vendorIndex'])->name('messages.vendor.index');
     Route::get('/messages/{booking}', [MessageController::class, 'show'])->name('messages.show');
     Route::post('/messages', [MessageController::class, 'store'])->name('messages.store');
     Route::get('/messages/unread', [MessageController::class, 'getUnreadCount'])->name('messages.unread');
     Route::get('/messages/{booking}/last', [MessageController::class, 'getLastMessage'])->name('messages.last');
     Route::delete('/messages/{id}', [MessageController::class, 'destroy'])->name('messages.destroy');
+    Route::post('/messages/{id}/restore', [MessageController::class, 'restore'])->name('messages.restore'); // Added restore route
 
     // Notification routes
     Route::get('/notifications', [NotificationController::class, 'index'])->name('notifications.index');
