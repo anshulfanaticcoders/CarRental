@@ -246,9 +246,9 @@ onUnmounted(() => {
 </script>
 
 <template>
-    <div class="flex flex-col bg-gray-100 rounded-xl shadow-lg overflow-hidden"> <!-- Removed h-full -->
+    <div class="flex flex-col h-full bg-gray-100 rounded-xl shadow-lg overflow-hidden"> <!-- Added h-full -->
         <!-- Header - Fixed -->
-        <div class="p-3 bg-white border-b flex items-center gap-3 shadow-sm">
+        <div class="p-3 bg-white border-b flex items-center gap-3 shadow-sm flex-shrink-0">
             <button v-if="showBackButton" @click="goBack" class="p-1 rounded-full hover:bg-gray-100">
                 <img :src="arrowBackIcon" alt="Back" class="w-6 h-6" />
             </button>
@@ -335,7 +335,7 @@ onUnmounted(() => {
         <div v-if="error" class="px-3 py-1.5 text-red-600 text-xs bg-red-100">{{ error }}</div>
 
         <!-- Input - Fixed -->
-        <div class="bg-white border-t flex items-center gap-2 p-2">
+        <div class="bg-white border-t flex items-center gap-2 p-2 flex-shrink-0">
             <textarea v-model="newMessage" placeholder="Type your message..."
                 class="flex-1 p-2 rounded-full border focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none h-10 text-sm"
                 @keyup.enter="sendMessage" />

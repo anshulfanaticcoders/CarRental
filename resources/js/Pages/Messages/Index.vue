@@ -1,10 +1,9 @@
 <script setup>
 import { ref, computed, onMounted, onUnmounted } from "vue";
-import MyProfileLayout from "@/Layouts/MyProfileLayout.vue";
 import ChatComponent from '@/Components/ChatComponent.vue';
 import axios from 'axios';
-
-// Removed: import { InertiaLink } from '@inertiajs/vue3';
+import { Link } from '@inertiajs/vue3';
+import arrowBackIcon from '../../../assets/arrowBack.svg'; // Assuming path relative to Pages/Messages
 
 const props = defineProps({
     chatPartners: Array, // Changed from bookings
@@ -125,29 +124,40 @@ onUnmounted(() => {
 </script>
 
 <template>
-    <MyProfileLayout> <!-- title="My Messages" removed -->
-        <div class="flex flex-col h-[calc(100vh-80px)] md:h-[calc(100vh-100px)]">
-            <div v-if="!showChat || !isMobile" 
-                class="flex flex-row justify-between items-center bg-gray-50 rounded-t-lg px-4 py-3 border-b">
-                <p class="text-lg font-bold text-gray-700">Inbox</p>
-                <input v-model="searchQuery" type="text" placeholder="Search chats..."
-                    class="w-full max-w-xs px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm" />
+    <div class="flex flex-col h-screen bg-gray-100">
+        <!-- New Page Header -->
+        <header class="bg-white shadow-sm p-3 flex items-center justify-between flex-shrink-0 border-b">
+            <div class="flex items-center">
+                <Link :href="route('profile.edit')" class="mr-3 p-1.5 rounded-full hover:bg-gray-100">
+                    <img :src="arrowBackIcon" alt="Back to Profile" class="w-5 h-5" />
+                </Link>
+                <h1 class="text-lg font-semibold text-gray-800">Inbox</h1>
             </div>
+            <!-- Placeholder for any right-side header actions if needed -->
+        </header>
 
-            <div v-if="!filteredChatPartners || filteredChatPartners.length === 0 && !loadingChat" class="text-center py-10 flex-grow">
-                <p class="text-gray-500">No conversations found.</p>
-            </div>
-
-            <div v-else class="flex flex-row flex-grow overflow-hidden">
-                <div v-if="!showChat || !isMobile" 
-                    class="w-full md:w-1/3 lg:w-1/4 overflow-y-auto border-r bg-white">
-                    <div v-for="partner in filteredChatPartners" :key="partner.user.id" 
+        <!-- Main Chat Area -->
+        <div class="flex flex-row flex-grow overflow-hidden">
+            <!-- Chat List (Left Panel) -->
+            <div v-if="!showChat || !isMobile"
+                 class="w-full md:w-1/3 lg:w-1/4 border-r bg-white flex flex-col flex-shrink-0">
+                <!-- Search bar for chat list -->
+                <div class="p-3 border-b">
+                    <input v-model="searchQuery" type="text" placeholder="Search chats..."
+                           class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm" />
+                </div>
+                <!-- Scrollable list of partners -->
+                <div class="overflow-y-auto flex-grow">
+                    <div v-if="!filteredChatPartners || filteredChatPartners.length === 0 && !loadingChat" class="text-center py-10">
+                        <p class="text-gray-500">No conversations found.</p>
+                    </div>
+                    <div v-else v-for="partner in filteredChatPartners" :key="partner.user.id"
                         class="border-b cursor-pointer"
                         :class="{'bg-blue-50': selectedPartner && partner.user.id === selectedPartner.user.id}"
                         @click="loadChat(partner)">
                         <div class="flex items-start gap-3 w-full py-3 px-3 hover:bg-gray-50">
                             <div class="relative w-10 h-10 flex-shrink-0">
-                                <img :src="getProfileImage(partner.user)" 
+                                <img :src="getProfileImage(partner.user)"
                                     :alt="partner.user.first_name"
                                     class="rounded-full object-cover h-full w-full" />
                                 <span v-if="partner.user?.chat_status?.is_online"
@@ -157,7 +167,7 @@ onUnmounted(() => {
                                       class="w-3 h-3 bg-gray-400 rounded-full absolute bottom-0 right-0 border-2 border-white"
                                       title="Offline"></span>
                             </div>
-                            
+
                             <div class="w-full overflow-hidden">
                                 <div class="flex justify-between items-center w-full">
                                     <span class="text-gray-800 font-semibold text-sm truncate" :title="`${partner.user.first_name} ${partner.user.last_name || ''}`">
@@ -167,12 +177,12 @@ onUnmounted(() => {
                                 </div>
                                  <p class="text-gray-500 text-xs truncate mt-0.5" :title="formatLastSeen(partner.user?.chat_status)">
                                     {{ formatLastSeen(partner.user?.chat_status) }}
-                                </p>
+                                 </p>
                                 <div class="flex justify-between items-end mt-1">
                                     <p class="text-gray-600 text-xs truncate pr-2" :title="partner.last_message_preview">
                                         {{ partner.last_message_preview }}
                                     </p>
-                                    <span v-if="partner.unread_count > 0" 
+                                    <span v-if="partner.unread_count > 0"
                                         class="bg-blue-600 text-white rounded-full min-w-[20px] h-5 flex items-center justify-center text-xs px-1.5">
                                         {{ partner.unread_count }}
                                     </span>
@@ -181,30 +191,31 @@ onUnmounted(() => {
                         </div>
                     </div>
                 </div>
+            </div>
 
-                <div v-if="showChat || !isMobile" 
-                    class="w-full md:w-2/3 lg:w-3/4 bg-gray-50 flex flex-col h-full">
-                    
-                    <div v-if="loadingChat" class="flex-1 flex items-center justify-center">
-                        <p class="text-gray-600">Loading chat...</p>
-                    </div>
-                    
-                    <div v-else-if="!selectedPartner" class="flex-1 flex items-center justify-center">
-                        <p class="text-gray-500">Select a conversation to start chatting.</p>
-                    </div>
-                    
-                    <ChatComponent 
-                        v-else 
-                        :bookingId="selectedBookingId"
-                        :messages="messages" 
-                        :otherUser="otherUser" 
-                        :showBackButton="isMobile"
-                        @back="backToInbox"
-                        @messageSent="messages.push($event)"
-                        class="flex-grow"
-                    />
+            <!-- Chat Component (Right Panel / Full Mobile) -->
+            <div v-if="showChat || !isMobile"
+                 class="w-full md:flex-grow bg-gray-50 flex flex-col">
+
+                <div v-if="loadingChat" class="flex-1 flex items-center justify-center">
+                    <p class="text-gray-600">Loading chat...</p>
                 </div>
+
+                <div v-else-if="!selectedPartner" class="flex-1 flex items-center justify-center">
+                    <p class="text-gray-500">Select a conversation to start chatting.</p>
+                </div>
+
+                <ChatComponent
+                    v-else
+                    :bookingId="selectedBookingId"
+                    :messages="messages"
+                    :otherUser="otherUser"
+                    :showBackButton="isMobile"
+                    @back="backToInbox"
+                    @messageSent="messages.push($event)"
+                    class="flex-grow"
+                />
             </div>
         </div>
-    </MyProfileLayout>
+    </div>
 </template>
