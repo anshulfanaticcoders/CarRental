@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Events\NewMessage;
+use App\Events\MessagesRead;
 use App\Models\Message;
 use App\Models\Notification;
 use App\Models\User;
@@ -10,15 +11,14 @@ use App\Models\Booking;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Illuminate\Support\Facades\Auth;
-use App\Events\MessageDeleted; // Added import
-use App\Events\MessageRestored; // Added import
+use App\Events\MessageDeleted; 
+use App\Events\MessageRestored;
 
 class MessageController extends Controller
 {
     public function index()
     {
-        // This will now also pass initial chat partners data
-        // The Vue component can decide to use this or fetch fresh via API
+
         return Inertia::render('Messages/Index', [
             'chatPartners' => $this->getCustomerChatPartnersData(),
         ]);
@@ -36,11 +36,7 @@ class MessageController extends Controller
 
         // Get all bookings made by the authenticated customer
         $bookings = Booking::where('customer_id', function ($query) use ($customerId) {
-            // Assuming customer_id in bookings table refers to the id in customers table,
-            // and customers table has a user_id.
-            // If bookings.customer_id is directly users.id, this subquery is simpler.
-            // Let's check Booking model structure. Assuming Booking has direct customer_user_id or similar.
-            // For now, assuming Booking->customer is a relation to Customer model, which has user_id
+
             $query->select('id')->from('customers')->where('user_id', $customerId);
         })
         ->with(['vehicle.vendor.profile', 'vehicle.vendor.chatStatus', 'vehicle']) // Eager load: vehicle.vendor is User, then profile and chatStatus
@@ -71,15 +67,14 @@ class MessageController extends Controller
                 ->first();
 
             return [
-                // $vendorUser already has profile and chatStatus loaded due to eager loading: 'vehicle.vendor.profile', 'vehicle.vendor.chatStatus'
                 'user' => $vendorUser, 
-                'latest_booking_id' => $latestBooking->id, // ID of the latest booking for linking
-                'vehicle_name' => $latestBooking->vehicle->name, // Example: name of vehicle from latest booking
+                'latest_booking_id' => $latestBooking->id,
+                'vehicle_name' => $latestBooking->vehicle->name,
                 'last_message_at' => $lastMessage ? $lastMessage->created_at : $latestBooking->created_at,
                 'last_message_preview' => $lastMessage ? \Illuminate\Support\Str::limit($lastMessage->message, 30) : 'No messages yet.',
                 'unread_count' => $unreadCount,
             ];
-        })->sortByDesc('last_message_at')->values(); // Sort vendors by last message time and re-index
+        })->sortByDesc('last_message_at')->values();
 
         return $vendorsData;
     }
@@ -164,10 +159,16 @@ public function show($bookingId)
     ->orderBy('created_at', 'asc')
     ->get();
 
-    Message::where('receiver_id', $user->id)
+    $now = now();
+    $updatedCount = Message::where('receiver_id', $user->id)
         ->where('booking_id', $bookingId)
         ->whereNull('read_at')
-        ->update(['read_at' => now()]);
+        ->update(['read_at' => $now]);
+
+    if ($updatedCount > 0) {
+        // Broadcast an event that messages have been read
+        broadcast(new MessagesRead($bookingId, $user->id, $now->toIso8601String()))->toOthers();
+    }
 
     if (request()->ajax()) {
         return response()->json([
@@ -250,6 +251,25 @@ public function show($bookingId)
     $message->load(['sender', 'receiver']);
 
     return response()->json(['message' => $message]);
+}
+
+public function markMessagesAsRead(Request $request, $bookingId)
+{
+    $user = Auth::user();
+    $now = now();
+
+    // Update messages where the current user is the receiver for the given booking
+    $updatedCount = Message::where('receiver_id', $user->id)
+        ->where('booking_id', $bookingId)
+        ->whereNull('read_at')
+        ->update(['read_at' => $now]);
+
+    if ($updatedCount > 0) {
+        // Broadcast an event that messages have been read
+        broadcast(new MessagesRead($bookingId, $user->id, $now->toIso8601String()))->toOthers();
+    }
+
+    return response()->json(['success' => true, 'message' => $updatedCount . ' messages marked as read.']);
 }
 
     public function getUnreadCount()

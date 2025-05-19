@@ -80,6 +80,26 @@ const loadChat = async (partner) => {
     selectedBookingId.value = partner.latest_booking_id;
     otherUser.value = partner.user; // This is the vendor user object
     showChat.value = true;
+
+    // Mark messages as read
+    if (partner.unread_count > 0) {
+        try {
+            // console.log(`Marking messages as read for booking ID: ${partner.latest_booking_id}`);
+            await axios.post(`/api/messages/mark-as-read/${partner.latest_booking_id}`);
+            // Optimistically update the unread count on the client side
+            const partnerInList = props.chatPartners.find(p => p.latest_booking_id === partner.latest_booking_id);
+            if (partnerInList) {
+                partnerInList.unread_count = 0;
+            }
+            // If the selectedPartner is from filtered list, ensure its unread_count is also updated
+            if (selectedPartner.value && selectedPartner.value.latest_booking_id === partner.latest_booking_id) {
+                 selectedPartner.value.unread_count = 0;
+            }
+        } catch (error) {
+            console.error('Failed to mark messages as read:', error);
+            // Optionally, handle the error, e.g., by not clearing the count or showing a notification
+        }
+    }
     
     try {
         const response = await axios.get(`/messages/${partner.latest_booking_id}`);

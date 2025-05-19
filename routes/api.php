@@ -6,6 +6,7 @@ use App\Http\Controllers\BookingAddonController;
 use App\Http\Controllers\BookingController;
 use App\Http\Controllers\BookingExtraController;
 use App\Http\Controllers\CurrencyController;
+use App\Http\Controllers\MessageController;
 use App\Http\Controllers\Notifications\ContactUsNotificationController;
 use App\Http\Controllers\PlanController;
 use App\Http\Controllers\ProfileController;
@@ -35,6 +36,8 @@ use Illuminate\Support\Facades\Route;
 Route::middleware('auth:sanctum')->get('/user', function (Request $request) {
     return $request->user();
 });
+
+Route::middleware('auth:sanctum')->post('/messages/mark-as-read/{booking_id}', [MessageController::class, 'markMessagesAsRead']);
 Route::get('/vehicle-categories', [VehicleCategoryController::class, 'index']);
 Route::get('/vehicle-features', [VehicleController::class, 'getFeatures']);
 Route::get('/vehicles', [VehicleController::class, 'showAllVendorVehicles']);

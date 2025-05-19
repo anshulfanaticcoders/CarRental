@@ -213,6 +213,33 @@ onMounted(() => {
             }
         });
 
+        channel.listen('.messages.read', (e) => {
+            // e.bookingId, e.readerId, e.readAtTimestamp
+            // Update messages sent by the current user that were read by the other user
+            if (e.bookingId == props.bookingId && e.readerId == props.otherUser.id) {
+                messageList.value.forEach(message => {
+                    if (message.sender_id === page.props.auth.user.id && message.receiver_id === e.readerId && !message.read_at) {
+                        message.read_at = e.readAtTimestamp;
+                    }
+                });
+            }
+            // Also, if the current user is the one who read the messages (e.g., action initiated from another tab/device, or by `show()` method)
+            // ensure their view reflects that messages they received are read.
+            // This part might be redundant if `markMessagesAsRead` in `index.vue` and `show()` in controller already handle local UI updates well.
+            // However, it ensures consistency if the event is the source of truth.
+            if (e.bookingId == props.bookingId && e.readerId == page.props.auth.user.id) {
+                 messageList.value.forEach(message => {
+                    if (message.receiver_id === page.props.auth.user.id && message.sender_id === props.otherUser.id && !message.read_at) {
+                        // This condition might be too broad if we only want to update based on the *other* user reading.
+                        // For now, let's assume the primary goal is to show ticks when the *other* user reads.
+                        // The `mark-as-read` API call in `index.vue` should handle the badge,
+                        // and the `show()` method in controller handles marking as read when chat is opened.
+                        // This listener is mainly for the *other* party's ticks.
+                    }
+                });
+            }
+        });
+
         channel.listen('.message.deleted', (e) => {
             const messageIndex = messageList.value.findIndex(msg => msg.id === e.message_id);
             if (messageIndex !== -1) {
