@@ -4,14 +4,15 @@
       <div class="flex relative max-[768px]:flex-col max-[768px]:items-center">
         <div
           class="column w-[20%] max-[768px]:w-[100%] max-[768px]:p-[1.5rem] bg-customPrimaryColor text-customPrimaryColor-foreground p-[2rem] rounded-tl-[20px] rounded-bl-[20px] max-[768px]:rounded-tr-[16px] max-[768px]:rounded-tl-[16px] max-[768px]:rounded-bl-[0] max-[768px]:border-[1px]">
-          <span class="text-[1.75rem] font-medium max-[768px]:text-[1.5rem]">{{ _p('search_bar_header') }}</span>
+          <span class="text-[1.75rem] font-medium max-[768px]:text-[1.5rem]">Do you need a rental car?</span>
         </div>
         <form @submit.prevent="submit"
           class="column w-[80%] max-[768px]:w-[100%] px-[2rem] py-[1rem] rounded-tr-[16px] rounded-br-[16px] bg-white grid grid-cols-5 max-[768px]:flex max-[768px]:flex-col max-[768px]:gap-10 max-[768px]:rounded-tr-[0] max-[768px]:rounded-bl-[16px] max-[768px]:px-[1rem]">
           <div class="col col-span-2 flex flex-col justify-center">
             <div class="flex flex-col">
               <div class="col">
-                <label for="" class="mb-4 inline-block text-customLightGrayColor font-medium">{{ _p('pickup_return_location_label') }}</label>
+                <label for="" class="mb-4 inline-block text-customLightGrayColor font-medium">Pickup & Return
+                  Location</label>
                 <div class="flex items-end relative">
                   <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"
                     class="absolute left-[-0.35rem] top-[-0.15rem]">
@@ -20,7 +21,7 @@
                       stroke="#153B4F" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" />
                   </svg>
                   <input type="text" v-model="form.where" @input="handleSearchInput" @focus="handleInputFocus"
-                    :placeholder="isSearching ? _p('searching_placeholder') : _p('pickup_location_placeholder')"
+                    :placeholder="isSearching ? 'Searching...' : 'Pickup Location'"
                     class="pl-7 border-b border-customLightGrayColor focus:outline-none w-[80%] max-[768px]:w-full"
                     required />
                   <!-- <span v-if="isSearching" class="absolute right-[1rem] top-0 text-customLightGrayColor">Searching...</span> -->
@@ -31,21 +32,21 @@
 
           <div class="col-span-2 flex items-center gap-4">
             <div class="flex flex-col">
-              <label class="mb-2 inline-block text-customLightGrayColor font-medium">{{ _p('pickup_date_placeholder') }}</label>
+              <label class="mb-2 inline-block text-customLightGrayColor font-medium">Pickup Date</label>
               <VueDatePicker v-model="pickupDate" :enable-time-picker="false" uid="pickup-date" auto-apply
-                :placeholder="_p('pickup_date_placeholder')" class="w-full" :min-date="new Date()" />
+                placeholder="Pickup Date" class="w-full" :min-date="new Date()" />
             </div>
             <div class="flex flex-col">
-              <label class="mb-2 inline-block text-customLightGrayColor font-medium">{{ _p('return_date_label') }}</label>
+              <label class="mb-2 inline-block text-customLightGrayColor font-medium">Return Date</label>
               <VueDatePicker v-model="returnDate" :enable-time-picker="false" uid="return-date" auto-apply
-                :placeholder="_p('return_date_placeholder')" class="w-full" :min-date="getMinReturnDate()" />
+                placeholder="Return Date" class="w-full" :min-date="getMinReturnDate()" />
             </div>
           </div>
 
           <div class="inner-col flex justify-center items-center">
             <button type="submit"
               class="bg-customPrimaryColor text-customPrimaryColor-foreground rounded-[40px] w-[138px] max-[768px]:w-full py-4 text-center">
-              {{ _p('search_button') }}
+              Search
             </button>
           </div>
         </form>
@@ -128,7 +129,7 @@
 <script setup>
 import { computed, onMounted, onUnmounted, ref, watch } from "vue";
 import axios from "axios";
-import { router, usePage } from "@inertiajs/vue3";
+import { router } from "@inertiajs/vue3";
 import VueDatePicker from '@vuepic/vue-datepicker';
 import '@vuepic/vue-datepicker/dist/main.css';
 
@@ -374,8 +375,8 @@ const handleSearchInput = () => {
 };
 
 const selectLocation = (result) => {
-  form.value.where = result.label;
-  form.value.location = result.location || null;
+  form.value.where = result.label + (result.below_label ? `, ${result.below_label}` : '');
+  form.value.location = result.location || null; // This should hold the specific location name if available
   form.value.latitude = result.latitude;
   form.value.longitude = result.longitude;
   form.value.city = result.city;
@@ -487,34 +488,6 @@ const ErrorDialog = {
       </div>
     </div>
   `,
-};
-
-// Access page props
-const page = usePage();
-
-// Translation helpers
-const __ = (key, replacements = {}) => {
-    const translations = page.props.translations?.messages || {};
-    let translation = translations[key] || key;
-    
-    // Replace placeholders if any
-    Object.keys(replacements).forEach(k => {
-        translation = translation.replace(`:${k}`, replacements[k]);
-    });
-    
-    return translation;
-};
-
-const _p = (key, replacements = {}) => {
-    const translations = page.props.translations?.homepage || {};
-    let translation = translations[key] || key;
-    
-    // Replace placeholders if any
-    Object.keys(replacements).forEach(k => {
-        translation = translation.replace(`:${k}`, replacements[k]);
-    });
-    
-    return translation;
 };
 </script>
 

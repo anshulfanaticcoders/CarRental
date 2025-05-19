@@ -343,114 +343,107 @@ class VehicleController extends Controller
     }
 
 
-    public function searchLocations(Request $request)
+     public function searchLocations(Request $request)
     {
         $query = trim($request->input('text'));
-    
+
         if (strlen($query) < 3) {
             return response()->json(['results' => []]);
         }
-    
-        // Normalize the query by removing diacritics and converting to lowercase
+
         $normalizedQuery = $this->normalizeString($query);
-    
-        // Fetch locations from the database with partial matching
         $locations = Vehicle::select(
-            'location',
+            DB::raw('MIN(location) as location'),
             'city',
             'state',
             'country',
-            'latitude',
-            'longitude'
+            DB::raw('MIN(latitude) as latitude'),   // Representative latitude
+            DB::raw('MIN(longitude) as longitude') // Representative longitude
         )
             ->where(function ($q) use ($normalizedQuery) {
-                $q->whereRaw("regexp_replace(LOWER(location), '[^a-z0-9]', '') LIKE ?", ["%{$normalizedQuery}%"])
-                  ->orWhereRaw("regexp_replace(LOWER(city), '[^a-z0-9]', '') LIKE ?", ["%{$normalizedQuery}%"])
+                $q->whereRaw("regexp_replace(LOWER(city), '[^a-z0-9]', '') LIKE ?", ["%{$normalizedQuery}%"])
                   ->orWhereRaw("regexp_replace(LOWER(state), '[^a-z0-9]', '') LIKE ?", ["%{$normalizedQuery}%"])
                   ->orWhereRaw("regexp_replace(LOWER(country), '[^a-z0-9]', '') LIKE ?", ["%{$normalizedQuery}%"]);
             })
-            ->whereNotNull('city')
+            ->whereNotNull('city') // Ensure city, state, country are present
             ->whereNotNull('state')
             ->whereNotNull('country')
-            ->groupBy('location', 'city', 'state', 'country', 'latitude', 'longitude')
+            ->groupBy('city', 'state', 'country') // Group by the administrative areas
             ->orderByRaw('
-                CASE 
-                    WHEN regexp_replace(LOWER(location), \'[^a-z0-9]\', \'\') LIKE ? THEN 0 
-                    WHEN regexp_replace(LOWER(city), \'[^a-z0-9]\', \'\') LIKE ? THEN 1 
-                    WHEN regexp_replace(LOWER(state), \'[^a-z0-9]\', \'\') LIKE ? THEN 2 
-                    WHEN regexp_replace(LOWER(country), \'[^a-z0-9]\', \'\') LIKE ? THEN 3 
-                    ELSE 4 
+                CASE
+                    WHEN regexp_replace(LOWER(city), \'[^a-z0-9]\', \'\') = ? THEN 0    -- Exact city match
+                    WHEN regexp_replace(LOWER(state), \'[^a-z0-9]\', \'\') = ? THEN 1   -- Exact state match
+                    WHEN regexp_replace(LOWER(country), \'[^a-z0-9]\', \'\') = ? THEN 2 -- Exact country match
+                    WHEN regexp_replace(LOWER(city), \'[^a-z0-9]\', \'\') LIKE ? THEN 3  -- Partial city match
+                    WHEN regexp_replace(LOWER(state), \'[^a-z0-9]\', \'\') LIKE ? THEN 4 -- Partial state match
+                    WHEN regexp_replace(LOWER(country), \'[^a-z0-9]\', \'\') LIKE ? THEN 5-- Partial country match
+                    ELSE 6
                 END', [
-                    "%{$normalizedQuery}%",
-                    "%{$normalizedQuery}%",
-                    "%{$normalizedQuery}%",
-                    "%{$normalizedQuery}%"
-                ])
-            ->orderByRaw('
-                CASE 
-                    WHEN regexp_replace(LOWER(location), \'[^a-z0-9]\', \'\') = ? THEN 0 
-                    WHEN regexp_replace(LOWER(city), \'[^a-z0-9]\', \'\') = ? THEN 1 
-                    WHEN regexp_replace(LOWER(state), \'[^a-z0-9]\', \'\') = ? THEN 2 
-                    WHEN regexp_replace(LOWER(country), \'[^a-z0-9]\', \'\') = ? THEN 3 
-                    ELSE 4 
-                END', [
-                    $normalizedQuery,
-                    $normalizedQuery,
-                    $normalizedQuery,
-                    $normalizedQuery
+                    $normalizedQuery, $normalizedQuery, $normalizedQuery, // Exact matches
+                    "%{$normalizedQuery}%", "%{$normalizedQuery}%", "%{$normalizedQuery}%" // Partial matches
                 ])
             ->limit(50)
             ->get();
-    
-        // Process results to format label, below_label, and matched field
-        $results = $locations->map(function ($vehicle) use ($normalizedQuery) {
-            $locationLower = $this->normalizeString($vehicle->location ?? '');
-            $cityLower = $this->normalizeString($vehicle->city ?? '');
-            $stateLower = $this->normalizeString($vehicle->state ?? '');
-            $countryLower = $this->normalizeString($vehicle->country ?? '');
-    
+
+        $results = $locations->map(function ($area) use ($normalizedQuery) {
+            // Normalize fields from the aggregated $area result
+            $cityLower = $this->normalizeString($area->city ?? '');
+            $stateLower = $this->normalizeString($area->state ?? '');
+            $countryLower = $this->normalizeString($area->country ?? '');
+
             $matchedField = null;
             $label = null;
             $belowLabel = null;
-    
+
             // Determine the matched field and set label/below_label
-            if (str_contains($locationLower, $normalizedQuery)) {
-                $matchedField = 'location';
-                $label = $vehicle->location;
-                $belowLabel = collect([$vehicle->city, $vehicle->state, $vehicle->country])->filter()->join(', ');
-            } elseif (str_contains($cityLower, $normalizedQuery)) {
+            // Priority: City > State > Country
+            if (str_contains($cityLower, $normalizedQuery) && $area->city) {
                 $matchedField = 'city';
-                $label = $vehicle->city;
-                $belowLabel = collect([$vehicle->state, $vehicle->country])->filter()->join(', ');
-            } elseif (str_contains($stateLower, $normalizedQuery)) {
+                $label = $area->city;
+                $belowLabelParts = [];
+                if ($area->state) $belowLabelParts[] = $area->state;
+                if ($area->country) $belowLabelParts[] = $area->country;
+                $belowLabel = implode(', ', $belowLabelParts);
+            } elseif (str_contains($stateLower, $normalizedQuery) && $area->state) {
                 $matchedField = 'state';
-                $label = $vehicle->state;
-                $belowLabel = $vehicle->country;
-            } elseif (str_contains($countryLower, $normalizedQuery)) {
+                $label = $area->state;
+                $belowLabel = $area->country ?? null;
+            } elseif (str_contains($countryLower, $normalizedQuery) && $area->country) {
                 $matchedField = 'country';
-                $label = $vehicle->country;
+                $label = $area->country;
                 $belowLabel = null;
             }
-    
+
+            if (!$label) {
+                return null; // Skip if no valid label could be formed
+            }
+            
+            // Generate a unique ID for the suggestion item
+            // This ID should be based on the distinct combination of label and below_label
+            $uniqueIdContent = $this->normalizeString($label) . ($belowLabel ? $this->normalizeString($belowLabel) : '');
+
             return [
-                'id' => md5($this->normalizeString($label) . ($this->normalizeString($belowLabel) ?? '')),
+                // Use a hash of the normalized label and below_label for a more stable ID
+                'id' => md5($uniqueIdContent),
                 'label' => $label,
-                'below_label' => $belowLabel,
-                'location' => $vehicle->location,
-                'city' => $vehicle->city,
-                'state' => $vehicle->state,
-                'country' => $vehicle->country,
-                'latitude' => $vehicle->latitude,
-                'longitude' => $vehicle->longitude,
-                'matched_field' => $matchedField, // Indicate which field was matched
+                'below_label' => $belowLabel ?: null, // Ensure null if empty
+                'location' => $area->location,
+                'city' => $area->city,
+                'state' => $area->state,
+                'country' => $area->country,
+                'latitude' => $area->latitude,   // Representative lat
+                'longitude' => $area->longitude, // Representative lon
+                'matched_field' => $matchedField,
             ];
-        })->filter()->unique(function ($item) {
-            return $this->normalizeString($item['label']) . ($this->normalizeString($item['below_label']) ?? '');
-        })->values();
-    
+        })->filter() // Remove any null entries (e.g. if label couldn't be formed)
+          ->unique(function ($item) {
+            // Ensure uniqueness based on the combination of normalized label and below_label
+            return $this->normalizeString($item['label']) . ($item['below_label'] ? $this->normalizeString($item['below_label']) : '');
+        })->values(); // Re-index the array
+
         return response()->json(['results' => $results]);
     }
-    
+
     /**
      * Normalize a string by removing diacritics and converting to lowercase.
      *
@@ -466,7 +459,7 @@ class VehicleController extends Controller
         // Convert to lowercase and remove diacritics
         $normalized = strtolower($string);
         $normalized = transliterator_transliterate('NFKD; [:Nonspacing Mark:] Remove; NFC;', $normalized);
-        $normalized = preg_replace('/[^a-z0-9]/', '', $normalized);
+        $normalized = preg_replace('/[^a-z0-9]/', '', $normalized); // Keep only alphanumeric
     
         return $normalized;
     }

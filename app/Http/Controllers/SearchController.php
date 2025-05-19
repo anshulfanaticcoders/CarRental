@@ -24,13 +24,17 @@ class SearchController extends Controller
         'mileage' => 'nullable|string',
         'date_from' => 'nullable|date',
         'date_to' => 'nullable|date|after:date_from',
-        'where' => 'nullable|string',
+        'where' => 'nullable|string', 
+        'location' => 'nullable|string',
+        'city' => 'nullable|string',
+        'state' => 'nullable|string',
+        'country' => 'nullable|string',
         'latitude' => 'nullable|numeric',
         'longitude' => 'nullable|numeric',
         'radius' => 'nullable|numeric',
         'package_type' => 'nullable|string|in:day,week,month',
         'category_id' => 'nullable|exists:vehicle_categories,id',
-        'matched_field' => 'nullable|string|in:location,city,state,country', // New field
+        'matched_field' => 'nullable|string|in:location,city,state,country',
     ]);
 
     // Base query
@@ -91,20 +95,38 @@ class SearchController extends Controller
     }
 
     // Location-based filtering based on matched_field
-    if (!empty($validated['where']) && !empty($validated['matched_field'])) {
+    if (!empty($validated['matched_field'])) {
+        $fieldToQuery = null;
+        $valueToQuery = null;
+
         switch ($validated['matched_field']) {
             case 'location':
-                $query->where('location', $validated['where']);
+                if (!empty($validated['location'])) {
+                    $fieldToQuery = 'location';
+                    $valueToQuery = $validated['location']; // Use the specific location name
+                }
                 break;
             case 'city':
-                $query->where('city', $validated['where']);
+                if (!empty($validated['city'])) {
+                    $fieldToQuery = 'city';
+                    $valueToQuery = $validated['city'];
+                }
                 break;
             case 'state':
-                $query->where('state', $validated['where']);
+                if (!empty($validated['state'])) {
+                    $fieldToQuery = 'state';
+                    $valueToQuery = $validated['state'];
+                }
                 break;
             case 'country':
-                $query->where('country', $validated['where']);
+                if (!empty($validated['country'])) {
+                    $fieldToQuery = 'country';
+                    $valueToQuery = $validated['country'];
+                }
                 break;
+        }
+        if ($fieldToQuery && $valueToQuery) {
+            $query->where($fieldToQuery, $valueToQuery);
         }
     } elseif (!empty($validated['latitude']) && !empty($validated['longitude']) && !empty($validated['radius'])) {
         // Radius-based filtering for "Around Me"
@@ -120,12 +142,12 @@ class SearchController extends Controller
             ) <= ?
         ", [$lat, $lon, $lat, $radius]);
     } elseif (!empty($validated['where'])) {
-        // Fallback: search across all fields
-        $query->where(function ($q) use ($validated) {
-            $q->where('location', $validated['where'])
-              ->orWhere('city', $validated['where'])
-              ->orWhere('state', $validated['where'])
-              ->orWhere('country', $validated['where']);
+        $searchTerm = $validated['where'];
+        $query->where(function ($q) use ($searchTerm) {
+            $q->where('location', 'LIKE', "%{$searchTerm}%")
+              ->orWhere('city', 'LIKE', "%{$searchTerm}%")
+              ->orWhere('state', 'LIKE', "%{$searchTerm}%")
+              ->orWhere('country', 'LIKE', "%{$searchTerm}%");
         });
     }
 

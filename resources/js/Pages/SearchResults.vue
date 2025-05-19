@@ -26,15 +26,11 @@ import SearchBar from "@/Components/SearchBar.vue";
 import { Label } from "@/Components/ui/label";
 import { Switch } from "@/Components/ui/switch";
 import CaretDown from "../../assets/CaretDown.svg";
-import fullStar from "../../assets/fullstar.svg"; // Add star imports
+import fullStar from "../../assets/fullstar.svg"; 
 import halfStar from "../../assets/halfstar.svg";
 import blankStar from "../../assets/blankstar.svg";
-import 'leaflet.markercluster/dist/leaflet.markercluster';
-import 'leaflet.markercluster/dist/MarkerCluster.css';
-import 'leaflet.markercluster/dist/MarkerCluster.Default.css';
 import VueSlider from 'vue-slider-component';
 import 'vue-slider-component/theme/default.css';
-
 
 const props = defineProps({
     vehicles: Object,
@@ -44,11 +40,11 @@ const props = defineProps({
     brands: Array,
     colors: Array,
     seatingCapacities: Array,
-    transmissions: Array, // Add this
-    fuels: Array,         // Add this
-    mileages: Array,      // Add this
+    transmissions: Array, 
+    fuels: Array,         
+    mileages: Array,      
 });
-// Debounce function
+
 const debounce = (fn, delay) => {
     let timeoutId;
     return (...args) => {
@@ -57,7 +53,6 @@ const debounce = (fn, delay) => {
     };
 };
 const page = usePage();
-// Use Inertia's form handling
 const form = useForm({
     seating_capacity: usePage().props.filters.seating_capacity || "",
     brand: usePage().props.filters.brand || "",
@@ -76,13 +71,12 @@ const form = useForm({
     category_id: usePage().props.filters.category_id || "",
 });
 
-// Debounced filter submission
 const submitFilters = debounce(() => {
     form.get('/s', {
         preserveState: true,
         preserveScroll: true,
         onSuccess: (response) => {
-            console.log('Filter response:', response.props.vehicles);
+            // console.log('Filter response:', response.props.vehicles);
         },
         onError: (errors) => {
             console.error('Filter errors:', errors);
@@ -98,63 +92,87 @@ watch(
     { deep: true }
 );
 let map = null;
-let markers = [];
+let markers = []; 
+
+const isValidCoordinate = (coord) => {
+    const num = parseFloat(coord);
+    return !isNaN(num) && isFinite(num);
+};
 
 const initMap = () => {
-    if (!props.vehicles.data || props.vehicles.data.length === 0) {
-        console.warn("No vehicles data available to initialize map.");
-        map = L.map("map", {
-            zoomControl: true,
-            maxZoom: 18,
-            minZoom: 4,
-        }).setView([0, 0], 2); // Default to world view
-        L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
-            attribution: "© OpenStreetMap contributors",
-        }).addTo(map);
-        return;
+    const getValidVehicleCoords = () => {
+        if (!props.vehicles || !props.vehicles.data) return [];
+        return props.vehicles.data
+            .map(vehicle => 
+                (isValidCoordinate(vehicle.latitude) && isValidCoordinate(vehicle.longitude)) 
+                ? [parseFloat(vehicle.latitude), parseFloat(vehicle.longitude)] 
+                : null
+            )
+            .filter(coord => coord !== null);
+    };
+
+    let vehicleCoords = getValidVehicleCoords();
+
+    if (map) { 
+        map.remove();
+        map = null;
     }
 
-    // Calculate bounds for all vehicles
-    const bounds = L.latLngBounds(
-        props.vehicles.data.map((vehicle) => [
-            vehicle.latitude,
-            vehicle.longitude,
-        ])
-    );
-
     map = L.map("map", {
+        zoomControl: true,
+        maxZoom: 18,
+        minZoom: 3, 
         zoomSnap: 0.25,
         markerZoomAnimation: false,
         preferCanvas: true,
-        zoomControl: true,
-        maxZoom: 18,
-        minZoom: 4,
     });
 
-    // Set initial view to fit all markers
-    map.fitBounds(bounds, {
-        padding: [50, 50],
-        maxZoom: 12,
-    });
-
+    if (vehicleCoords.length === 0) {
+        console.warn("No vehicles with valid coordinates to initialize map view.");
+        map.setView([20, 0], 2); 
+    } else {
+        const bounds = L.latLngBounds(vehicleCoords);
+        if (bounds.isValid()) {
+             if (vehicleCoords.length === 1) {
+                map.setView(bounds.getCenter(), 13);
+            } else {
+                map.fitBounds(bounds, { padding: [50, 50] });
+            }
+        } else {
+            map.setView([20,0],2); 
+        }
+    }
+    
     L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
         attribution: "© OpenStreetMap contributors",
     }).addTo(map);
 
-    // Create a custom pane for markers with high z-index
     map.createPane("markers");
     map.getPane("markers").style.zIndex = 1000;
 
-    addMarkers();
+    addMarkers(); 
 
-    // Force a map refresh after a short delay
     setTimeout(() => {
-        map.invalidateSize();
-        map.fitBounds(bounds, {
-            padding: [50, 50],
-            maxZoom: 12,
-        });
-    }, 100);
+        if (map) {
+            map.invalidateSize();
+            if (props.vehicles && props.vehicles.data) {
+                const currentCoords = getValidVehicleCoords();
+                if (currentCoords.length > 0) {
+                    const currentBounds = L.latLngBounds(currentCoords);
+                    if (currentBounds.isValid()) {
+                        if (currentCoords.length === 1) {
+                           if(map.getZoom() < 10) map.setView(currentBounds.getCenter(), 13); 
+                           else map.panTo(currentBounds.getCenter());
+                        } else {
+                           map.fitBounds(currentBounds, { padding: [50, 50] });
+                        }
+                    }
+                } else if (!map.getCenter() || (map.getCenter().lat === 20 && map.getCenter().lng === 0 && map.getZoom() === 2) ) { 
+                    map.setView([20,0],2);
+                }
+            }
+        }
+    }, 200); 
 };
 
 const createCustomIcon = (price, currency) => {
@@ -165,18 +183,15 @@ const createCustomIcon = (price, currency) => {
       <span class="font-bold">${currency || "₹"}${price}</span>
     </div>
   `,
-        iconSize: [50, 30],
-        iconAnchor: [25, 15],
+        iconSize: [L.point(0,0)], 
+        iconAnchor: [25, 15], 
         popupAnchor: [0, -15],
         pane: "markers",
     });
 };
 
 const resetFilters = () => {
-    // Completely reset the form to initial empty state
     form.reset();
-
-    // Reset all individual form fields explicitly
     form.seating_capacity = "";
     form.brand = "";
     form.transmission = "";
@@ -186,90 +201,109 @@ const resetFilters = () => {
     form.mileage = "";
     form.package_type = "day";
     form.category_id = "";
-
-    // Reset price range slider
     priceRangeValues.value = [0, 20000];
     tempPriceRangeValues.value = [0, 20000];
-
-    // Force submit to reload with empty filters
     submitFilters();
 };
 
 const addMarkers = () => {
-    // Remove existing markers
     markers.forEach((marker) => marker.remove());
     markers = [];
 
     if (!props.vehicles.data || props.vehicles.data.length === 0) {
-        console.warn("No vehicles data available to add markers.");
         return;
     }
 
-    // Create a MarkerClusterGroup
-    const markerClusterGroup = L.markerClusterGroup({
-        spiderfyOnMaxZoom: true,
-        showCoverageOnHover: true,
-        maxClusterRadius: 40,
-        disableClusteringAtZoom: 20,
-    });
+    const coordData = new Map(); 
 
-    // Add markers to the cluster group
     props.vehicles.data.forEach((vehicle) => {
+        if (!isValidCoordinate(vehicle.latitude) || !isValidCoordinate(vehicle.longitude)) {
+            console.warn(`Skipping vehicle ID ${vehicle.id} with invalid coordinates: Lat=${vehicle.latitude}, Lng=${vehicle.longitude}`);
+            return;
+        }
+        
+        const lat = parseFloat(vehicle.latitude);
+        const lng = parseFloat(vehicle.longitude);
+        const coordKey = `${lat.toFixed(5)}_${lng.toFixed(5)}`; 
+        
+        if (!coordData.has(coordKey)) {
+            coordData.set(coordKey, { count: 0, originalLat: lat, originalLng: lng });
+        }
+        const dataAtCoord = coordData.get(coordKey);
+        dataAtCoord.count += 1;
+
+        let displayLat = lat;
+        let displayLng = lng;
+        const occurrence = dataAtCoord.count;
+
+        if (occurrence > 1) {
+            const K_MAX_MARKERS_PER_RING = 8; // Max markers in one ring before increasing radius
+            const ringNum = Math.floor((occurrence - 2) / K_MAX_MARKERS_PER_RING);
+            const indexInRing = (occurrence - 2) % K_MAX_MARKERS_PER_RING;
+            
+            const angle = indexInRing * (2 * Math.PI / K_MAX_MARKERS_PER_RING);
+            
+            // Start with a more significant base radius, and increase for new "rings"
+            const baseEffectiveRadius = 0.00030; // Approx 33 meters, adjust as needed
+            const effectiveRadius = baseEffectiveRadius * (1 + ringNum * 0.65); // Increase radius for outer rings
+
+            displayLat = lat + effectiveRadius * Math.sin(angle);
+            displayLng = lng + effectiveRadius * Math.cos(angle);
+        }
+
         const currency = vehicle.vendor_profile?.currency || "$";
-        // Find the primary image
         const primaryImage = vehicle.images?.find((image) => image.image_type === 'primary')?.image_url || '/default-image.png';
 
-        const marker = L.marker([vehicle.latitude, vehicle.longitude], {
+        const marker = L.marker([displayLat, displayLng], {
             icon: createCustomIcon(vehicle.price_per_day, currency),
             pane: "markers",
         }).bindPopup(`
             <div class="text-center popup-content">
                 <img src="${primaryImage}" alt="${vehicle.brand} ${vehicle.model}" class="popup-image" />
-                <p class="rating">${vehicle.average_rating} ★ (${vehicle.review_count} reviews)</p>
+                <p class="rating">${vehicle.average_rating ? vehicle.average_rating.toFixed(1) : '0.0'} ★ (${vehicle.review_count} reviews)</p>
                 <p class="font-semibold">${vehicle.brand} ${vehicle.model}</p>
-                <p class="">${vehicle.location}, ${vehicle.city}, ${vehicle.state}, ${vehicle.country}</p>
+                <p class="">${vehicle.location || ''}, ${vehicle.city || ''}, ${vehicle.state || ''}, ${vehicle.country || ''}</p>
                 <a href="/vehicle/${vehicle.id}" 
                    class="text-blue-500 hover:text-blue-700"
-                   onclick="window.location.href='/vehicle/${vehicle.id}'; return false;">
+                   onclick="event.preventDefault(); window.location.href='/vehicle/${vehicle.id}';"> 
                     View Details
                 </a>
             </div>
         `);
-
-        markerClusterGroup.addLayer(marker);
+        
+        map.addLayer(marker);
         markers.push(marker);
     });
 
-    // Add the cluster group to the map
-    map.addLayer(markerClusterGroup);
+    const validCoords = props.vehicles.data
+        .filter(v => isValidCoordinate(v.latitude) && isValidCoordinate(v.longitude))
+        .map(v => [parseFloat(v.latitude), parseFloat(v.longitude)]);
 
-    // Fit bounds after adding markers
-    const groupBounds = markerClusterGroup.getBounds();
-    if (groupBounds.isValid()) {
-        map.fitBounds(groupBounds, {
-            padding: [50, 50],
-            maxZoom: 14,
-        });
-
-        // Listen for zoom changes to trigger spiderfy
-        map.on('zoomend', () => {
-            if (map.getZoom() >= markerClusterGroup.options.disableClusteringAtZoom) {
-                markerClusterGroup.eachLayer((layer) => {
-                    if (layer instanceof L.MarkerCluster && map.getBounds().contains(layer.getLatLng())) {
-                        layer.spiderfy();
-                    }
-                });
+    if (validCoords.length > 0) {
+        const allVehicleBounds = L.latLngBounds(validCoords);
+        if (allVehicleBounds.isValid()) {
+            if (validCoords.length === 1) {
+                map.setView(allVehicleBounds.getCenter(), 13); 
+            } else {
+                map.fitBounds(allVehicleBounds, { padding: [50, 50] }); 
             }
-        });
+        }
+    } else {
+        if (map && (!map.getCenter() || (map.getCenter().lat === 20 && map.getCenter().lng === 0 && map.getZoom() === 2))) {
+             map.setView([20,0],2);
+        }
+        console.warn("No vehicles with valid coordinates to fit map bounds after adding markers.");
     }
 };
 
-// Watch for changes in vehicles data
+
 watch(
     () => props.vehicles,
-    () => {
+    (newVehicles, oldVehicles) => {
         if (map) {
-            addMarkers();
+            if (JSON.stringify(newVehicles) !== JSON.stringify(oldVehicles)) {
+                 addMarkers(); 
+            }
         }
     },
     { deep: true }
@@ -279,35 +313,44 @@ onMounted(() => {
     initMap();
 });
 
-// Toggle map functionality
 const showMap = ref(true);
 
-// Add a function to handle the toggle
 const handleMapToggle = (value) => {
     showMap.value = value;
-    // Force map to refresh when showing it again
     if (value && map) {
         setTimeout(() => {
             map.invalidateSize();
+            const validCoords = props.vehicles.data
+                .filter(v => isValidCoordinate(v.latitude) && isValidCoordinate(v.longitude))
+                .map(v => [parseFloat(v.latitude), parseFloat(v.longitude)]);
+            
+            if (validCoords.length > 0) {
+                const currentBounds = L.latLngBounds(validCoords);
+                if (currentBounds.isValid()) {
+                    if (validCoords.length === 1) {
+                        map.setView(currentBounds.getCenter(), 13);
+                    } else {
+                        map.fitBounds(currentBounds, { padding: [50, 50] });
+                    }
+                }
+            } else if(map && (!map.getCenter() || (map.getCenter().lat === 20 && map.getCenter().lng === 0 && map.getZoom() === 2))){
+                 map.setView([20,0],2);
+            }
         }, 100);
     }
 };
 
-// add to favourite vehicle functionality
-
-// Function to toggle favourite status
-import { useToast } from "vue-toastification"; // Reuse your existing import
+import { useToast } from "vue-toastification"; 
 import { Inertia } from "@inertiajs/inertia";
 import CustomDropdown from "@/Components/CustomDropdown.vue";
-const toast = useToast(); // Initialize toast
-const favoriteStatus = ref({}); // Store favorite status for each vehicle
+const toast = useToast(); 
+const favoriteStatus = ref({}); 
 
 const fetchFavoriteStatus = async () => {
     try {
+        if (!props.vehicles.data || props.vehicles.data.length === 0) return;
         const response = await axios.get("/favorites");
         const favoriteIds = response.data.map((v) => v.id);
-
-        // ✅ Initialize favorite status for each vehicle
         props.vehicles.data.forEach((vehicle) => {
             favoriteStatus.value[vehicle.id] = favoriteIds.includes(vehicle.id);
         });
@@ -317,11 +360,11 @@ const fetchFavoriteStatus = async () => {
 };
 const $page = usePage();
 
-const popEffect = ref({}); // Store animation state
+const popEffect = ref({}); 
 
 const toggleFavourite = async (vehicle) => {
     if (!$page.props.auth?.user) {
-        return Inertia.visit("/login"); // Redirect if not logged in
+        return Inertia.visit("/login"); 
     }
 
     const endpoint = favoriteStatus.value[vehicle.id]
@@ -332,12 +375,11 @@ const toggleFavourite = async (vehicle) => {
         await axios.post(endpoint);
         favoriteStatus.value[vehicle.id] = !favoriteStatus.value[vehicle.id];
 
-        // Trigger pop effect
         if (favoriteStatus.value[vehicle.id]) {
             popEffect.value[vehicle.id] = true;
             setTimeout(() => {
                 popEffect.value[vehicle.id] = false;
-            }, 300); // Remove class after animation duration
+            }, 300); 
         }
 
         toast.success(
@@ -366,9 +408,6 @@ const toggleFavourite = async (vehicle) => {
         }
     }
 };
-
-// ✅ Fetch Data on Component Mount
-// onMounted(fetchFavoriteStatus);
 
 onMounted(() => {
     if (page.props.auth?.user) {
@@ -448,15 +487,12 @@ const getStarAltText = (rating, starNumber) => {
     }
 };
 
-
-// Price slider logic
 const showPriceSlider = ref(false);
 const priceRangeMin = ref(0);
 const priceRangeMax = ref(20000);
 const priceRangeValues = ref([0, 20000]);
 const tempPriceRangeValues = ref([0, 20000]);
 
-// Initialize price range from form if it exists
 onMounted(() => {
     if (form.price_range) {
         const [min, max] = form.price_range.split('-').map(Number);
@@ -465,14 +501,12 @@ onMounted(() => {
     }
 });
 
-// Apply price range and update form
 const applyPriceRange = () => {
     priceRangeValues.value = [...tempPriceRangeValues.value];
     form.price_range = `${priceRangeValues.value[0]}-${priceRangeValues.value[1]}`;
     showPriceSlider.value = false;
 };
 
-// Reset price range to default
 const resetPriceRange = () => {
     tempPriceRangeValues.value = [0, 20000];
     priceRangeValues.value = [0, 20000];
@@ -480,7 +514,6 @@ const resetPriceRange = () => {
     showPriceSlider.value = false;
 };
 
-// Global dropdown state management
 const activeDropdown = ref(null);
 
 const setActiveDropdown = (name) => {
@@ -491,7 +524,6 @@ const setActiveDropdown = (name) => {
     }
 };
 
-// Provide these to child components
 provide('activeDropdown', activeDropdown);
 provide('setActiveDropdown', setActiveDropdown);
 
@@ -663,17 +695,6 @@ provide('setActiveDropdown', setActiveDropdown);
                     class="hover:border-customPrimaryColor bg-customPrimaryColor/5 transition-all duration-300" />
                 </div>
                 
-                <!-- Search Button -->
-                <!-- <div class="filter-group">
-                    <div class="text-xs font-medium text-gray-500 mb-1 ml-1">&nbsp;</div>
-                    <button @click="applyFilters" type="button"
-                        class="h-10 bg-customPrimaryColor text-white py-2 px-5 rounded-lg font-medium hover:bg-opacity-90 transition-all duration-300 flex items-center justify-center gap-2">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                            <path fill-rule="evenodd" d="M8 4a4 4 0 100 8 4 4 0 000-8zM2 8a6 6 0 1110.89 3.476l4.817 4.817a1 1 0 01-1.414 1.414l-4.816-4.816A6 6 0 012 8z" clip-rule="evenodd" />
-                        </svg>
-                        Search Cars
-                    </button>
-                </div> -->
             </div>
         </form>
 
@@ -1252,28 +1273,7 @@ select:focus+.caret-rotate {
     animation: pop 0.3s ease-in-out;
 }
 
-.marker-cluster-small div {
-    box-shadow: 1px 1px 2px rgba(0, 0, 0, 0.7);
-}
-
-.marker-cluster-small div::before {
-    content: "";
-    position: absolute;
-    top: 0;
-    left: 0;
-    width: 40px;
-    height: 40px;
-    background-image: url('../../assets/carmarkerIcon.svg');
-    background-size: cover;
-    background-position: center;
-    background-repeat: no-repeat;
-    color: white;
-    text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.7);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    z-index: 1000;
-}
+/* Removed .marker-cluster-small styles as clustering is removed */
 
 .popup-image {
     width: 100%;

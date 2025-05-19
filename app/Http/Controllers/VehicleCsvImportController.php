@@ -136,16 +136,60 @@ class VehicleCsvImportController extends Controller
             foreach ($data as $rowIndex => $row) {
                 $rowData = array_combine($headers, $row);
                 
-                // Validate required fields
-                $validator = Validator::make($rowData, [
+                // Validate required fields and formats
+                $rules = [
                     'brand' => 'required|string|max:50',
                     'model' => 'required|string|max:50',
                     'category_id' => 'required|exists:vehicle_categories,id',
-                    // Add other validation rules as needed
-                ]);
+                    'color' => 'nullable|string|max:30',
+                    'mileage' => 'nullable|numeric|min:0',
+                    'transmission' => 'required|in:automatic,manual,semi-automatic', // Example enum
+                    'fuel' => 'required|in:petrol,diesel,electric,hybrid', // Example enum
+                    'seating_capacity' => 'required|integer|min:1',
+                    'number_of_doors' => 'nullable|integer|min:1',
+                    'luggage_capacity' => 'nullable|integer|min:0',
+                    'horsepower' => 'nullable|integer|min:0',
+                    'co2' => 'nullable|numeric|min:0',
+                    'location' => 'required|string',
+                    'status' => 'required|in:available,unavailable,booked,maintenance', // Example enum
+                    'featured' => 'required|boolean', // Handles 0, 1, true, false
+                    'security_deposit' => 'nullable|numeric|min:0',
+                    'price_per_day' => 'nullable|numeric|min:0',
+                    'price_per_week' => 'nullable|numeric|min:0',
+                    'weekly_discount' => 'nullable|numeric|min:0|max:100',
+                    'price_per_month' => 'nullable|numeric|min:0',
+                    'monthly_discount' => 'nullable|numeric|min:0|max:100',
+                    'preferred_price_type' => 'required|in:day,week,month',
+                    'limited_km' => 'required|boolean',
+                    'cancellation_available' => 'required|boolean',
+                    'price_per_km' => 'nullable|numeric|min:0',
+                    'registration_number' => 'required|string|max:20',
+                    'registration_country' => 'required|string|max:50',
+                    'registration_date' => 'required|date',
+                    'phone_number' => 'required|string|max:20', // Consider a more specific phone validation rule
+                    'minimum_driver_age' => 'nullable|integer|min:18',
+                    // Plan/Addon counts could be validated here if needed, or by checking array lengths after explode
+                ];
+
+                // Prepare data for validation (e.g., convert boolean-like strings)
+                $validationData = $rowData;
+                $booleanFields = ['featured', 'limited_km', 'cancellation_available'];
+                foreach ($booleanFields as $field) {
+                    if (isset($validationData[$field])) {
+                        $validationData[$field] = filter_var($validationData[$field], FILTER_VALIDATE_BOOLEAN, FILTER_NULL_ON_FAILURE);
+                    }
+                }
+                
+                $validator = Validator::make($validationData, $rules);
 
                 if ($validator->fails()) {
-                    $errors[] = "Row " . ($rowIndex + 2) . ": " . implode(', ', $validator->errors()->all());
+                    foreach ($validator->errors()->messages() as $field => $message) {
+                        $errors[] = [
+                            'row' => $rowIndex + 2, // User-friendly row number (1-based for data rows)
+                            'column' => $field,
+                            'message' => implode(', ', $message)
+                        ];
+                    }
                     $errorCount++;
                     continue;
                 }
@@ -296,18 +340,28 @@ class VehicleCsvImportController extends Controller
 
             DB::commit();
             
-            return redirect()->back()->with([
-                'message' => "Import completed: $importedCount vehicles imported successfully, $errorCount errors",
-                'errors' => $errors,
-                'type' => $errorCount > 0 ? 'warning' : 'success'
-            ]);
+            $flashData = [
+                'type' => $errorCount > 0 ? ($importedCount > 0 ? 'warning' : 'error') : 'success',
+                'message' => "$importedCount vehicle(s) imported. $errorCount error(s) found.",
+            ];
+            if ($errorCount > 0) {
+                $flashData['csv_errors'] = $errors; // Use a specific key for CSV errors
+                if ($importedCount == 0) {
+                     $flashData['message'] = "Import failed. Please fix the " . $errorCount . " error(s) in your CSV file.";
+                } else {
+                     $flashData['message'] = "Import partially completed. $importedCount vehicle(s) imported, but $errorCount error(s) were found.";
+                }
+            } else {
+                $flashData['message'] = "$importedCount vehicle(s) imported successfully.";
+            }
+            return redirect()->back()->with('flash', $flashData);
             
         } catch (\Exception $e) {
             DB::rollBack();
             
-            return redirect()->back()->with([
-                'message' => 'Import failed: ' . $e->getMessage(),
-                'type' => 'error'
+            return redirect()->back()->with('flash', [
+                'type' => 'error',
+                'message' => 'A critical error occurred during import: ' . $e->getMessage()
             ]);
         }
     }

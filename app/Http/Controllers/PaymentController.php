@@ -117,7 +117,7 @@ class PaymentController extends Controller
             // Create Checkout Session
             $session = Session::create([
                 'customer' => $stripeCustomer->id,
-                'payment_method_types' => ['card', 'bancontact', 'sofort', 'klarna'],
+                'payment_method_types' => ['card', 'bancontact', 'klarna'],
                 'line_items' => [[
                     'price_data' => [
                         'currency' => 'eur',

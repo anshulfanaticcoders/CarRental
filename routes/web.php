@@ -48,6 +48,7 @@ use App\Http\Controllers\Vendor\VendorOverviewController;
 use App\Http\Controllers\Vendor\VendorVehicleAddonController;
 use App\Http\Controllers\Vendor\VendorVehicleController;
 use App\Http\Controllers\Vendor\VendorVehiclePlanController;
+use App\Http\Controllers\VendorBulkImageController;
 use App\Http\Controllers\VendorController;
 use App\Http\Controllers\PaymentController;
 use App\Http\Controllers\Admin\VendorsDashboardController;
@@ -345,6 +346,11 @@ Route::middleware(['auth', 'role:vendor'])->group(function () {
     Route::get('/vehicles/bulk-upload', [BulkVehicleUploadController::class, 'create'])->name('vehicles.bulk-upload.create');
     Route::post('/vehicles/bulk-upload', [BulkVehicleUploadController::class, 'store'])->name('vehicles.bulk-upload.store');
     Route::get('/vehicles/bulk-upload/template', [BulkVehicleUploadController::class, 'downloadTemplate'])->name('vehicles.bulk-upload.template');
+
+     // Bulk Vehicle Image Routes
+    Route::get('/bulk-vehicle-images', [VendorBulkImageController::class, 'index'])->name('vendor.bulk-vehicle-images.index');
+    Route::post('/bulk-vehicle-images', [VendorBulkImageController::class, 'store'])->name('vendor.bulk-vehicle-images.store');
+    Route::delete('/bulk-vehicle-images/{image}', [VendorBulkImageController::class, 'destroy'])->name('vendor.bulk-vehicle-images.destroy');
 });
 
 

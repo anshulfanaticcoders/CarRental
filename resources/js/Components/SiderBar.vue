@@ -132,6 +132,7 @@ const vendorMenus = [
     items: [
       { name: "All Vehicles", path: "/current-vendor-vehicles" },
       { name: "Add New Vehicle", path: "/vehicles/create" },
+      { name: "Create bulk listing", path: "/vehicles/bulk-upload" },
       { name: "Manage Plans", path: "/plans" },
     ],
   },
