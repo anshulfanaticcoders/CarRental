@@ -1,6 +1,8 @@
 <?php
 
 use App\Http\Controllers\Admin\ActivityLogsController;
+use App\Http\Controllers\Admin\AdminFeaturesController;
+use App\Http\Controllers\Admin\AdminMediaController;
 use App\Http\Controllers\Admin\AdminReviewController;
 use App\Http\Controllers\Admin\AdminUserDocumentController;
 use App\Http\Controllers\Admin\BlogController;
@@ -260,6 +262,19 @@ Route::middleware(['auth', 'role:admin'])->group(function () {
     Route::get('/admin/reviews', [AdminReviewController::class, 'index'])->name('admin.reviews.index');
     Route::delete('/admin/reviews/{review}', [AdminReviewController::class, 'destroy'])->name('admin.reviews.destroy');
     Route::patch('/admin/reviews/{review}/status', [AdminReviewController::class, 'updateStatus'])->name('admin.reviews.update-status');
+
+    // Vehicle Features Routes
+    Route::get('features', [AdminFeaturesController::class, 'index'])->name('admin.features.index');
+    Route::get('features/create/{category}', [AdminFeaturesController::class, 'create'])->name('admin.features.create');
+    Route::post('features', [AdminFeaturesController::class, 'store'])->name('admin.features.store');
+    Route::get('features/{feature}/edit', [AdminFeaturesController::class, 'edit'])->name('admin.features.edit');
+    Route::put('features/{feature}', [AdminFeaturesController::class, 'update'])->name('admin.features.update');
+    Route::delete('features/{feature}', [AdminFeaturesController::class, 'destroy'])->name('admin.features.destroy');
+
+    // Media Library Routes
+    Route::get('media', [AdminMediaController::class, 'index'])->name('admin.media.index');
+    Route::post('media', [AdminMediaController::class, 'store'])->name('admin.media.store');
+    Route::delete('media/{medium}', [AdminMediaController::class, 'destroy'])->name('admin.media.destroy');
 
 });
 

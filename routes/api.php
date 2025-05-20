@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Admin\BlogController;
 use App\Http\Controllers\Admin\FaqController;
+use App\Http\Controllers\Api\CategoryFeaturesController;
 use App\Http\Controllers\BookingAddonController;
 use App\Http\Controllers\BookingController;
 use App\Http\Controllers\BookingExtraController;
@@ -36,6 +37,10 @@ use Illuminate\Support\Facades\Route;
 Route::middleware('auth:sanctum')->get('/user', function (Request $request) {
     return $request->user();
 });
+
+// Route to get features for a specific category (public)
+Route::get('/categories/{category}/features', [CategoryFeaturesController::class, 'index'])
+    ->name('api.categories.features');
 
 Route::middleware('auth:sanctum')->post('/messages/mark-as-read/{booking_id}', [MessageController::class, 'markMessagesAsRead']);
 Route::get('/vehicle-categories', [VehicleCategoryController::class, 'index']);

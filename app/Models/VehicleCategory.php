@@ -16,4 +16,12 @@ class VehicleCategory extends Model
         'status',
         'image'
     ];
+
+    /**
+     * Get all of the features for the VehicleCategory.
+     */
+    public function features()
+    {
+        return $this->hasMany(VehicleFeature::class, 'category_id');
+    }
 }

@@ -9,5 +9,17 @@ class VehicleFeature extends Model
 {
     use HasFactory;
 
-    protected $fillable = ['name'];
+    protected $fillable = [
+        'category_id',
+        'feature_name',
+        'icon_url',
+    ];
+
+    /**
+     * Get the category that owns the feature.
+     */
+    public function category()
+    {
+        return $this->belongsTo(VehicleCategory::class, 'category_id');
+    }
 }

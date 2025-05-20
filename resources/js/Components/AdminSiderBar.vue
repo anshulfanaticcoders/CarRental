@@ -42,7 +42,8 @@ import {
   BookOpenText,
   Mail,
   User2Icon,
-  Star
+  Star,
+  CameraIcon
 } from 'lucide-vue-next'
 import { onMounted, ref } from 'vue';
 
@@ -141,6 +142,17 @@ const data = {
         {
           title: 'All Locations',
           url: '/popular-places',
+        },
+      ],
+    },
+    {
+      title: 'Media',
+      url: '#',
+      icon: CameraIcon,
+      items: [
+        {
+          title: 'All Media',
+          url: '/media',
         },
       ],
     },
