@@ -209,6 +209,7 @@ const resetFilters = () => {
 const addMarkers = () => {
     markers.forEach((marker) => marker.remove());
     markers = [];
+    vehicleMarkers.value = {}; // Clear previous vehicle to marker mappings
 
     if (!props.vehicles.data || props.vehicles.data.length === 0) {
         return;
@@ -273,6 +274,7 @@ const addMarkers = () => {
         
         map.addLayer(marker);
         markers.push(marker);
+        vehicleMarkers.value[vehicle.id] = marker; // Store marker instance
     });
 
     const validCoords = props.vehicles.data
@@ -312,6 +314,33 @@ watch(
 onMounted(() => {
     initMap();
 });
+
+const vehicleMarkers = ref({}); // To store vehicle.id -> marker mapping
+
+const highlightVehicleOnMap = (vehicle) => {
+    if (!map || !vehicle || !isValidCoordinate(vehicle.latitude) || !isValidCoordinate(vehicle.longitude)) return;
+
+    const marker = vehicleMarkers.value[vehicle.id];
+    if (marker) {
+        map.panTo([parseFloat(vehicle.latitude), parseFloat(vehicle.longitude)], { animate: true, duration: 0.5 });
+        // Check if map zoom is too far out, then zoom in
+        if (map.getZoom() < 13) {
+            map.setZoom(13, { animate: true });
+        }
+        marker.openPopup();
+    }
+};
+
+const unhighlightVehicleOnMap = (vehicle) => {
+    if (!map || !vehicle) return;
+
+    const marker = vehicleMarkers.value[vehicle.id];
+    if (marker) {
+        // Closing the popup on mouseleave might be disruptive if the user wants to interact with it.
+        // Consider if marker.closePopup() is desired here or only on a different event.
+    }
+};
+
 
 const showMap = ref(true);
 
@@ -889,7 +918,9 @@ provide('setActiveDropdown', setActiveDropdown);
                         </button>
                     </div>
                     <div v-for="vehicle in vehicles.data" :key="vehicle.id"
-                        class="rounded-[12px] border-[1px] border-[#E7E7E7] relative overflow-hidden">
+                        class="rounded-[12px] border-[1px] border-[#E7E7E7] relative overflow-hidden"
+                        @mouseenter="highlightVehicleOnMap(vehicle)"
+                        @mouseleave="unhighlightVehicleOnMap(vehicle)">
                         <div class="flex justify-end mb-3 absolute right-3 top-3">
                             <div class="column flex justify-end">
                                 <button @click.stop="toggleFavourite(vehicle)"
