@@ -213,7 +213,7 @@ class SearchController extends Controller
     ]);
 }
 
-public function searchByCategory(Request $request, $category_id)
+public function searchByCategory(Request $request, $category_id = null)
 {
     $validated = $request->validate([
         'seating_capacity' => 'nullable|integer',
@@ -226,6 +226,9 @@ public function searchByCategory(Request $request, $category_id)
         'date_from' => 'nullable|date',
         'date_to' => 'nullable|date|after:date_from',
         'where' => 'nullable|string',
+        'city' => 'nullable|string',
+        'state' => 'nullable|string',
+        'country' => 'nullable|string',
         'latitude' => 'nullable|numeric',
         'longitude' => 'nullable|numeric',
         'radius' => 'nullable|numeric',
@@ -233,8 +236,13 @@ public function searchByCategory(Request $request, $category_id)
     ]);
 
     // Base query
-    $query = Vehicle::query()->where('category_id', $category_id)
-        ->whereIn('status', ['available', 'rented'])
+    $query = Vehicle::query();
+
+    if ($category_id) {
+        $query->where('category_id', $category_id);
+    }
+    
+    $query->whereIn('status', ['available', 'rented'])
         ->with('images', 'bookings', 'vendorProfile', 'benefits');
 
     // Exclude vehicles booked in the selected date range
@@ -288,10 +296,17 @@ public function searchByCategory(Request $request, $category_id)
     }
 
     // Location-based filtering
-    if (!empty($validated['where'])) {
-        $city = null;
-        $state = null;
-        $country = null;
+    if (!empty($validated['city'])) {
+        $query->where('city', 'LIKE', "%{$validated['city']}%");
+    } elseif (!empty($validated['state'])) {
+        $query->where('state', 'LIKE', "%{$validated['state']}%");
+    } elseif (!empty($validated['country'])) {
+        $query->where('country', 'LIKE', "%{$validated['country']}%");
+    } elseif (!empty($validated['where'])) { // Fallback to 'where' if specific fields are not provided
+        // Attempt geocoding only if specific city/state/country are not given
+        $cityFromGeocode = null;
+        // $stateFromGeocode = null; // Not strictly needed if we prioritize direct inputs
+        // $countryFromGeocode = null; // Not strictly needed
 
         $geocodeResponse = Http::get('https://api.stadiamaps.com/geocoding/v1/search', [
             'api_key' => env('STADIA_MAPS_API_KEY'),
@@ -301,20 +316,23 @@ public function searchByCategory(Request $request, $category_id)
 
         if ($geocodeResponse->successful()) {
             $geocodeData = $geocodeResponse->json()['features'][0]['properties'] ?? [];
-            $city = $geocodeData['locality'] ?? null;
-            $state = $geocodeData['region'] ?? null;
-            $country = $geocodeData['country'] ?? null;
+            $cityFromGeocode = $geocodeData['locality'] ?? null;
+            // $stateFromGeocode = $geocodeData['region'] ?? null;
+            // $countryFromGeocode = $geocodeData['country'] ?? null;
 
-            if ($city) {
-                $query->where('city', $city);
-            } elseif ($state) {
-                $query->where('state', $state);
-            } elseif ($country) {
-                $query->where('country', $country);
+            // Use geocoded city if found and no direct city/state/country was input
+            if ($cityFromGeocode) {
+                $query->where('city', $cityFromGeocode);
+            } else { // If geocoding doesn't give a city, search broadly in 'where'
+                 $query->where(function ($q) use ($validated) {
+                    $q->where('location', 'LIKE', "%{$validated['where']}%")
+                      ->orWhere('city', 'LIKE', "%{$validated['where']}%")
+                      ->orWhere('state', 'LIKE', "%{$validated['where']}%")
+                      ->orWhere('country', 'LIKE', "%{$validated['where']}%");
+                });
             }
-        }
-
-        if (!empty($validated['latitude']) && !empty($validated['longitude']) && !empty($validated['radius']) && is_null($city)) {
+        } elseif (!empty($validated['latitude']) && !empty($validated['longitude']) && !empty($validated['radius'])) {
+            // Fallback to radius search if 'where' fails or not provided, and lat/lon/radius are available
             $radiusInKm = $validated['radius'] / 1000;
             $query->selectRaw('*, ( 6371 * acos( 
                 cos(radians(?)) * cos(radians(latitude)) * 
@@ -327,8 +345,31 @@ public function searchByCategory(Request $request, $category_id)
             ])
                 ->havingRaw('distance_in_km <= ?', [$radiusInKm])
                 ->orderBy('distance_in_km');
+        } else {
+            // If 'where' is provided but geocoding fails and no lat/lon, search broadly
+            $query->where(function ($q) use ($validated) {
+                $q->where('location', 'LIKE', "%{$validated['where']}%")
+                  ->orWhere('city', 'LIKE', "%{$validated['where']}%")
+                  ->orWhere('state', 'LIKE', "%{$validated['where']}%")
+                  ->orWhere('country', 'LIKE', "%{$validated['where']}%");
+            });
         }
+    } elseif (!empty($validated['latitude']) && !empty($validated['longitude']) && !empty($validated['radius'])) {
+        // Radius search if no city/state/country/where are provided but lat/lon/radius are
+        $radiusInKm = $validated['radius'] / 1000;
+        $query->selectRaw('*, ( 6371 * acos( 
+            cos(radians(?)) * cos(radians(latitude)) * 
+            cos(radians(longitude) - radians(?)) + 
+            sin(radians(?)) * sin(radians(latitude)) 
+        ) ) AS distance_in_km', [
+            $validated['latitude'],
+            $validated['longitude'],
+            $validated['latitude']
+        ])
+            ->havingRaw('distance_in_km <= ?', [$radiusInKm])
+            ->orderBy('distance_in_km');
     }
+
 
     // Package type filter
     if (!empty($validated['package_type'])) {
