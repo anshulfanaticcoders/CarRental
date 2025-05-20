@@ -89,7 +89,7 @@
               <span class="text-customPrimaryColor text-[1.5rem] font-medium">{{ formatPrice(booking.total_amount) }}</span>
             </div>
             <div class="flex gap-4">
-            <Link :href="`/booking-success/details?payment_intent=${booking.payments[0]?.transaction_id}`" class="underline">View Booking Details</Link>
+            <Link :href="`/booking-success?payment_intent=${booking.payments[0]?.transaction_id}`" class="underline">View Booking Details</Link>
             <button 
                 @click="openCancellationModal(booking)" 
                 class="text-red-600 underline"

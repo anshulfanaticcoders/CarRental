@@ -180,8 +180,12 @@ const formatDate = (dateStr) => {
           <div class="border-t pt-6">
             <table class="w-full">
               <tr class="border-b">
-                <td class="text-customDarkBlackColor py-2">Booking Reference</td>
+                <td class="text-customDarkBlackColor py-2">Booking Number</td>
                 <td class="text-customPrimaryColor font-medium text-right py-2">{{ booking.booking_number }}</td>
+              </tr>
+              <tr class="border-b">
+                <td class="text-customDarkBlackColor py-2">Booking Reference</td>
+                <td class="text-customPrimaryColor font-medium text-right py-2">{{ booking.booking_reference }}</td>
               </tr>
               <tr class="border-b">
                 <td class="text-customDarkBlackColor py-2">Total Amount</td>
@@ -209,6 +213,11 @@ const formatDate = (dateStr) => {
               <tr class="border-b">
                 <td class="text-customDarkBlackColor py-2">Payment Status</td>
                 <td class="text-customPrimaryColor font-medium capitalize text-right py-2">{{ payment.payment_status }}
+                </td>
+              </tr>
+              <tr class="border-b">
+                <td class="text-customDarkBlackColor py-2">Payment Method</td>
+                <td class="text-customPrimaryColor font-medium capitalize text-right py-2">{{ payment.payment_method }}
                 </td>
               </tr>
               <tr class="border-b">
@@ -381,6 +390,15 @@ const formatDate = (dateStr) => {
   min-height: 500px;
   width: 100%;
   z-index: 1;
+}
+tr{
+  scale: 1;
+  transition: all 0.1s ease;
+  cursor: pointer;
+}
+tr:hover{
+background-color: rgba(182, 182, 182, 0.256);
+scale: 1.01;
 }
 
 @media screen and (max-width:768px) {
