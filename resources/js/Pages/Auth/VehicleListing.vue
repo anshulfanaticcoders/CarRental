@@ -7,9 +7,9 @@
     </div>
 
     <Head title="Vehicle Listing" />
-    <div v-if="currentStep === 0" class="overflow-x-hidden vehicle-listing">
-        <div class="flex justify-between min-h-[100vh] max-[768px]:flex-col max-[768px]:gap-10">
-            <div class="column min-h-full w-[50%] flex items-center justify-center max-[768px]:w-full">
+    <div v-if="currentStep === 0" class="overflow-x-hidden vehicle-listing h-screen md:overflow-y-hidden relative">
+        <div class="absolute inset-0 flex justify-between max-[768px]:relative max-[768px]:flex-col max-[768px]:h-auto max-[768px]:gap-10">
+            <div class="column h-full w-[50%] flex items-center justify-center max-[768px]:w-full  max-[768px]:h-auto">
                 <div class="flex flex-col gap-5 w-[90%] max-[768px]:w-full">
                     <Link href="/" class="max-[768px]:hidden absolute top-[2rem]">
                     <ApplicationLogo />
@@ -33,7 +33,7 @@
                 </div>
             </div>
             <div
-                class="column min-h-full w-[50%] flex-1 bg-customPrimaryColor relative max-[768px]:w-full max-[768px]:px-[1.5rem] max-[768px]:py-[2rem] max-[768px]:mt-20">
+                class="column h-full w-[50%] flex-1 bg-customPrimaryColor relative max-[768px]:w-full max-[768px]:px-[1.5rem] max-[768px]:py-[2rem] max-[768px]:mt-20">
                 <div class="flex flex-col gap-10 items-center justify-center h-full">
                     <div class="col text-customPrimaryColor-foreground w-[70%] max-[768px]:w-full">
                         <img :src="warningSign" alt="" class="max-[768px]:w-[35px]" />
@@ -64,10 +64,10 @@
     </div>
 
     <!-- Step-1 -->
-    <div v-if="currentStep === 1" class="overflow-x-hidden vehicle-listing">
-        <div class="flex justify-between h-[100vh] max-[768px]:flex-col max-[768px]:h-auto">
+    <div v-if="currentStep === 1" class="overflow-x-hidden vehicle-listing h-screen md:overflow-y-hidden relative">
+        <div class="absolute inset-0 flex justify-between max-[768px]:relative max-[768px]:flex-col max-[768px]:h-auto">
             <div
-                class="column overflow-y-auto w-[50%] flex justify-center pb-[5rem] max-[768px]:pb-0 max-[768px]:w-full bg-white">
+                class="column overflow-y-auto w-[50%] h-full flex justify-center pb-[5rem] max-[768px]:pb-0 max-[768px]:w-full bg-white">
                 <div class="flex flex-col gap-10 w-[90%] max-[768px]:w-full">
                     <Link href="/" class="max-[768px]:hidden mt-[2rem]">
                     <ApplicationLogo />
@@ -342,7 +342,7 @@
                     </div>
                 </div>
             </div>
-            <div class="column w-[50%] bg-customPrimaryColor relative max-[768px]:w-full overflow-hidden">
+            <div class="column w-[50%] h-full bg-customPrimaryColor relative max-[768px]:w-full max-[768px]:h-auto overflow-hidden">
                 <div class="flex flex-col gap-10 items-center h-full justify-center max-[768px]:gap-0">
                     <div
                         class="col text-customPrimaryColor-foreground w-[70%] p-[2rem] border-b-[2px] max-[768px]:w-full">
@@ -373,9 +373,9 @@
     </div>
 
     <!-- Step-2 -->
-    <div v-if="currentStep === 2" class="overflow-x-hidden vehicle-listing">
-        <div class="flex justify-between h-[100vh] max-[768px]:h-auto max-[768px]:flex-col">
-            <div class="column overflow-y-auto w-[50%] flex justify-center pb-[4rem] max-[768px]:w-full bg-white">
+    <div v-if="currentStep === 2" class="overflow-x-hidden vehicle-listing h-screen md:overflow-y-hidden relative">
+        <div class="absolute inset-0 flex justify-between max-[768px]:relative max-[768px]:flex-col max-[768px]:h-auto">
+            <div class="column overflow-y-auto w-[50%] h-full flex justify-center pb-[4rem] max-[768px]:w-full max-[768px]:h-auto bg-white">
                 <div class="flex flex-col gap-5 w-[90%] max-[768px]:w-full">
                     <Link href="/" class="max-[768px]:hidden mt-[2rem]">
                     <ApplicationLogo />
@@ -510,7 +510,7 @@
                 </div>
             </div>
             <div
-                class="column min-h-full w-[50%] flex-1 bg-customPrimaryColor relative max-[768px]:w-full overflow-hidden">
+                class="column h-full w-[50%] flex-1 bg-customPrimaryColor relative max-[768px]:w-full max-[768px]:h-auto overflow-hidden">
                 <div class="flex flex-col gap-10 items-center justify-center h-full max-[768px]:gap-0">
                     <div
                         class="col text-customPrimaryColor-foreground w-[70%] max-[768px]:w-full max-[768px]:px-[1.5rem] p-[2rem] border-b-[2px]">
@@ -548,9 +548,9 @@
     </div>
 
     <!-- Step-3 -->
-    <div v-if="currentStep === 3" class="overflow-x-hidden vehicle-listing">
-        <div class="flex justify-between h-[100vh] max-[768px]:flex-col max-[768px]:h-auto">
-            <div class="column overflow-y-auto w-[50%] flex justify-center pb-[4rem] max-[768px]:w-full bg-white">
+    <div v-if="currentStep === 3" class="overflow-x-hidden vehicle-listing h-screen md:overflow-y-hidden relative">
+        <div class="absolute inset-0 flex justify-between max-[768px]:relative max-[768px]:flex-col max-[768px]:h-auto">
+            <div class="column overflow-y-auto w-[50%] h-full flex justify-center pb-[4rem] max-[768px]:w-full max-[768px]:h-auto bg-white">
                 <div class="flex flex-col gap-5 w-[90%] max-[768px]:w-full">
                     <Link href="/" class="max-[768px]:hidden mt-[2rem]">
                     <ApplicationLogo />
@@ -585,7 +585,7 @@
                 </div>
             </div>
             <div
-                class="column min-h-full w-[50%] flex-1 bg-customPrimaryColor relative max-[768px]:w-full overflow-hidden">
+                class="column h-full w-[50%] flex-1 bg-customPrimaryColor relative max-[768px]:w-full max-[768px]:h-auto overflow-hidden">
                 <div class="flex flex-col gap-10 items-center justify-center h-full max-[768px]:gap-0">
                     <div
                         class="col text-customPrimaryColor-foreground w-[70%] p-[2rem] border-b-[2px] max-[768px]:w-full">
@@ -614,9 +614,9 @@
     </div>
 
     <!-- Step-4 -->
-    <div v-if="currentStep === 4" class="overflow-x-hidden vehicle-listing">
-        <div class="flex justify-between h-[100vh] max-[768px]:h-auto max-[768px]:flex-col">
-            <div class="column overflow-y-auto w-[50%] flex justify-center pb-[4rem] max-[768px]:w-full bg-white">
+    <div v-if="currentStep === 4" class="overflow-x-hidden vehicle-listing h-screen md:overflow-y-hidden relative">
+        <div class="absolute inset-0 flex justify-between max-[768px]:relative max-[768px]:flex-col max-[768px]:h-auto">
+            <div class="column overflow-y-auto w-[50%] h-full flex justify-center pb-[4rem] max-[768px]:w-full max-[768px]:h-auto bg-white">
                 <div class="flex flex-col gap-5 w-[90%] max-[768px]:w-full">
                     <Link href="/" class="max-[768px]:hidden mt-[2rem]">
                     <ApplicationLogo />
@@ -1053,7 +1053,7 @@
                 </div>
             </div>
             <div
-                class="column min-h-full w-[50%] flex-1 bg-customPrimaryColor relative max-[768px]:w-full overflow-hidden">
+                class="column h-full w-[50%] flex-1 bg-customPrimaryColor relative max-[768px]:w-full max-[768px]:h-auto overflow-hidden">
                 <div class="flex flex-col gap-10 items-center justify-center h-full max-[768px]:gap-0">
                     <div
                         class="col text-customPrimaryColor-foreground w-[70%] p-[2rem] border-b-[2px] max-[768px]:w-full">
@@ -1090,9 +1090,9 @@
 
 
     <!-- Step-5 -->
-    <div v-if="currentStep === 5" class="overflow-x-hidden vehicle-listing">
-        <div class="flex justify-between h-[100vh] max-[768px]:h-auto max-[768px]:flex-col">
-            <div class="column overflow-y-auto w-[50%] flex justify-center pb-[4rem] max-[768px]:w-full bg-white">
+    <div v-if="currentStep === 5" class="overflow-x-hidden vehicle-listing h-screen md:overflow-y-hidden relative">
+        <div class="absolute inset-0 flex justify-between max-[768px]:relative max-[768px]:flex-col max-[768px]:h-auto">
+            <div class="column overflow-y-auto w-[50%] h-full flex justify-center pb-[4rem] max-[768px]:w-full max-[768px]:h-auto bg-white">
                 <div class="flex flex-col gap-5 w-[90%] max-[768px]:w-full">
                     <Link href="/" class="max-[768px]:hidden mt-[2rem]">
                     <ApplicationLogo />
@@ -1250,7 +1250,7 @@
             </div>
 
             <div
-                class="column min-h-full w-[50%] flex-1 bg-customPrimaryColor relative max-[768px]:w-full overflow-hidden">
+                class="column h-full w-[50%] flex-1 bg-customPrimaryColor relative max-[768px]:w-full max-[768px]:h-auto overflow-hidden">
                 <div class="flex flex-col gap-10 items-center justify-center h-full max-[768px]:gap-0">
                     <div
                         class="col text-customPrimaryColor-foreground w-[70%] max-[768px]:w-full p-[2rem] border-b-[2px]">
@@ -1287,9 +1287,9 @@
 
 
     <!-- Step-6: Addon Selection -->
-    <div v-if="currentStep === 6" class="overflow-x-hidden vehicle-listing">
-        <div class="flex justify-between h-[100vh] max-[768px]:h-auto max-[768px]:flex-col">
-            <div class="column overflow-y-auto w-[50%] flex justify-center pb-[4rem] max-[768px]:w-full bg-white">
+    <div v-if="currentStep === 6" class="overflow-x-hidden vehicle-listing h-screen md:overflow-y-hidden relative">
+        <div class="absolute inset-0 flex justify-between max-[768px]:relative max-[768px]:flex-col max-[768px]:h-auto">
+            <div class="column overflow-y-auto w-[50%] h-full flex justify-center pb-[4rem] max-[768px]:w-full max-[768px]:h-auto bg-white">
                 <div class="flex flex-col gap-5 w-[90%] max-[768px]:w-full">
                     <Link href="/" class="max-[768px]:hidden mt-[2rem]">
                     <ApplicationLogo />
@@ -1346,7 +1346,7 @@
                 </div>
             </div>
             <div
-                class="column min-h-full w-[50%] flex-1 bg-customPrimaryColor relative max-[768px]:w-full overflow-hidden">
+                class="column h-full w-[50%] flex-1 bg-customPrimaryColor relative max-[768px]:w-full max-[768px]:h-auto overflow-hidden">
                 <div class="flex flex-col gap-10 items-center justify-center h-full max-[768px]:gap-0">
                     <div
                         class="col text-customPrimaryColor-foreground w-[70%] max-[768px]:w-full p-[2rem] border-b-[2px]">
@@ -1382,9 +1382,9 @@
     </div>
 
     <!-- Step-7 -->
-    <div v-if="currentStep === 7" class="overflow-x-hidden .vehicle-listing ">
-        <div class="flex justify-between h-[100vh] max-[768px]:h-auto max-[768px]:flex-col">
-            <div class="column overflow-y-auto w-[50%] flex justify-center pb-[4rem] max-[768px]:w-full bg-white">
+    <div v-if="currentStep === 7" class="overflow-x-hidden vehicle-listing h-screen md:overflow-y-hidden relative ">
+        <div class="absolute inset-0 flex justify-between max-[768px]:relative max-[768px]:flex-col max-[768px]:h-auto">
+            <div class="column overflow-y-auto w-[50%] h-full flex justify-center pb-[4rem] max-[768px]:w-full max-[768px]:h-auto bg-white">
                 <div class="flex flex-col gap-5 w-[90%] max-[768px]:w-full">
                     <Link href="/" class="max-[768px]:hidden mt-[2rem]">
                     <ApplicationLogo />
@@ -1436,7 +1436,7 @@
                 </div>
             </div>
             <div
-                class="column min-h-full w-[50%] flex-1 bg-customPrimaryColor relative max-[768px]:w-full overflow-hidden">
+                class="column h-full w-[50%] flex-1 bg-customPrimaryColor relative max-[768px]:w-full max-[768px]:h-auto overflow-hidden">
                 <div class="flex flex-col gap-10 items-center justify-center h-full max-[768px]:gap-0">
                     <div
                         class="col text-customPrimaryColor-foreground w-[70%] max-[768px]:w-full p-[2rem] border-b-[2px]">
