@@ -443,12 +443,19 @@
                                 <div class="col-span-2">
                                     <InputLabel for="features">Features:</InputLabel>
                                     <div class="flex gap-10 flex-wrap">
-                                        <label v-for="feature in features" :key="feature.id"
+                                        <label v-for="feature in availableFeatures" :key="feature.id"
                                             class="flex items-center text-nowrap gap-2">
                                             <input type="checkbox" v-model="form.features" :value="feature.name"
                                                 class="w-auto" />
+                                            <img v-if="feature.icon_url" :src="feature.icon_url" :alt="feature.name" class="w-4 h-4 mr-1 inline-block object-contain"/>
                                             {{ feature.name }}
                                         </label>
+                                    </div>
+                                    <div v-if="!availableFeatures.length && form.category_id">
+                                        <p class="text-gray-500">No features available for this category or features are loading.</p>
+                                    </div>
+                                    <div v-if="!form.category_id">
+                                        <p class="text-gray-500">Please select a vehicle category to see available features.</p>
                                     </div>
                                 </div>
                             </div>
@@ -536,9 +543,13 @@
                                             class="relative group border rounded-lg overflow-hidden h-48">
                                             <img :src="`${image.image_url}`" alt="Vehicle image"
                                                 class="w-full h-full object-cover" />
-                                            <div class="absolute top-0 right-0 p-1">
+                                            <div class="absolute top-0 right-0 p-1 flex gap-1">
+                                                <button v-if="image.image_type !== 'primary'" type="button" @click="setExistingImageAsPrimary(image.id)"
+                                                    class="bg-white text-blue-600 rounded-full p-1 hover:bg-blue-50 transition-colors" title="Set as Primary">
+                                                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-star"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+                                                </button>
                                                 <button type="button" @click="deleteImage(props.vehicle.id, image.id)"
-                                                    class="bg-white text-red-600 rounded-full p-1 hover:bg-red-50 transition-colors">
+                                                    class="bg-white text-red-600 rounded-full p-1 hover:bg-red-50 transition-colors" title="Delete Image">
                                                     <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20"
                                                         viewBox="0 0 24 24" fill="none" stroke="currentColor"
                                                         stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
@@ -552,7 +563,8 @@
                                                 </button>
                                             </div>
                                             <div
-                                                class="absolute bottom-0 left-0 right-0 bg-black/70 text-white p-1 text-center text-xs">
+                                                class="absolute bottom-0 left-0 right-0 bg-black/70 text-white p-1 text-center text-xs"
+                                                :class="{'bg-blue-600/90': image.image_type === 'primary'}">
                                                 {{ image.image_type === 'primary' ? 'Primary' : 'Gallery' }}
                                             </div>
                                         </div>
@@ -587,18 +599,25 @@
                                         <h4 class="font-medium text-sm mb-2">Selected Files:</h4>
                                         <ul class="text-sm text-gray-600">
                                             <li v-for="(file, index) in selectedFiles" :key="index"
-                                                class="flex justify-between items-center py-1">
-                                                <span>{{ file.name }}</span>
-                                                <button type="button" @click="removeFile(index)"
-                                                    class="text-red-500 hover:text-red-700">
-                                                    Remove
-                                                </button>
+                                                class="flex justify-between items-center py-1 border-b last:border-b-0">
+                                                <span class="truncate max-w-[200px]">{{ file.name }}</span>
+                                                <div class="flex items-center gap-2">
+                                                    <button type="button" @click="setNewImageAsPrimary(index)"
+                                                        :class="['text-xs px-2 py-1 rounded', form.primary_image_index === index ? 'bg-blue-500 text-white cursor-default' : 'bg-gray-200 hover:bg-gray-300']"
+                                                        :disabled="form.primary_image_index === index">
+                                                        {{ form.primary_image_index === index ? 'Primary' : 'Set Primary' }}
+                                                    </button>
+                                                    <button type="button" @click="removeFile(index)"
+                                                        class="text-red-500 hover:text-red-700 text-xs px-2 py-1 rounded hover:bg-red-50">
+                                                        Remove
+                                                    </button>
+                                                </div>
                                             </li>
                                         </ul>
                                     </div>
                                 </div>
                                 <p v-else class="text-amber-600">
-                                    Maximum number of images (5) reached. Delete some images to upload new ones.
+                                    Maximum number of images (20) reached. Delete some images to upload new ones.
                                 </p>
                             </div>
                         </TabsContent>
@@ -730,7 +749,9 @@ const form = useForm({
         price_per_km_per_week: 0.00,
         price_per_km_per_month: 0.00,
         minimum_driver_age: 18
-    }
+    },
+    primary_image_index: null, // For new uploads
+    existing_primary_image_id: null // For existing images
 })
 
 const remainingImageSlots = computed(() => {
@@ -739,7 +760,7 @@ const remainingImageSlots = computed(() => {
 })
 
 const categories = ref([]);
-const features = ref([]);
+const availableFeatures = ref([]); // Will hold category-specific features
 const addPickupTime = () => {
     form.pickup_times.push(""); // Push empty value for a new time input
 };
@@ -755,43 +776,75 @@ const removeReturnTime = (index) => {
 };
 
 
-const fetchCategoriesAndFeatures = async () => {
+const fetchCategories = async () => {
     try {
         const response = await axios.get('/api/vehicle-categories')
         categories.value = response.data
     } catch (error) {
         console.error('Error fetching vehicle categories:', error)
     }
-
-    features.value = props.features
 }
+
+const fetchFeaturesForCategory = async (categoryId) => {
+    if (!categoryId) {
+        availableFeatures.value = [];
+        // form.features = []; // Optionally clear selected features
+        return;
+    }
+    try {
+        const response = await axios.get(route('api.categories.features', categoryId));
+        availableFeatures.value = response.data.map(feature => ({
+            id: feature.id,
+            name: feature.feature_name, // Ensure this matches the structure used in the template
+            icon_url: feature.icon_url
+        }));
+    } catch (error) {
+        console.error(`Error fetching vehicle features for category ${categoryId}:`, error);
+        availableFeatures.value = [];
+    }
+};
+
 
 const handleFileUpload = (event) => {
-    const newFiles = Array.from(event.target.files)
-
-    // Check if adding new files would exceed the limit
-    const currentImagesCount = props.vehicle?.images?.length || 0
-    const totalAfterAdding = currentImagesCount + selectedFiles.value.length + newFiles.length
+    const newFiles = Array.from(event.target.files);
+    const currentImagesCount = props.vehicle?.images?.length || 0;
+    const totalAfterAdding = currentImagesCount + selectedFiles.value.length + newFiles.length;
 
     if (totalAfterAdding > maxImages) {
-        toast.error(`You can only upload a maximum of ${maxImages} images.`, {
-            position: 'top-right',
-            timeout: 3000
-        })
-        return
+        toast.error(`Maximum of ${maxImages} images allowed.`, { position: 'top-right' });
+        return;
     }
 
-    // Add new files to the selected files array
-    selectedFiles.value = [...selectedFiles.value, ...newFiles]
-
-    // Update the form's images field with the selected files
-    form.images = selectedFiles.value
-}
+    selectedFiles.value = [...selectedFiles.value, ...newFiles];
+    form.images = selectedFiles.value; // This form field is used for submitting NEW files
+};
 
 const removeFile = (index) => {
-    selectedFiles.value.splice(index, 1)
-    form.images = selectedFiles.value
-}
+    selectedFiles.value.splice(index, 1);
+    form.images = selectedFiles.value;
+    if (form.primary_image_index === index) {
+        form.primary_image_index = null; // Reset if primary was removed
+    } else if (form.primary_image_index > index) {
+        form.primary_image_index--; // Adjust index
+    }
+};
+
+const setNewImageAsPrimary = (index) => {
+    form.primary_image_index = index;
+    form.existing_primary_image_id = null; // Clear existing primary if new one is chosen
+};
+
+const setExistingImageAsPrimary = (imageId) => {
+    form.existing_primary_image_id = imageId;
+    form.primary_image_index = null; // Clear new primary if existing one is chosen
+
+    // Update local props.vehicle.images to reflect primary status for UI
+    if (props.vehicle && props.vehicle.images) {
+        props.vehicle.images.forEach(img => {
+            img.image_type = img.id === imageId ? 'primary' : 'gallery';
+        });
+    }
+};
 
 const deleteImage = async (vehicleId, imageId) => {
     try {
@@ -849,10 +902,13 @@ watch(() => form.benefits.cancellation_available_per_month, (newValue) => {
 
 
 onMounted(() => {
-    fetchCategoriesAndFeatures()
+    fetchCategories(); // Fetch all categories
     if (props.vehicle) {
-        form.category_id = props.vehicle.category_id
-        form.brand = props.vehicle.brand
+        form.category_id = props.vehicle.category_id;
+        if (form.category_id) {
+            fetchFeaturesForCategory(form.category_id); // Fetch features for current category
+        }
+        form.brand = props.vehicle.brand;
         form.model = props.vehicle.model
         form.color = props.vehicle.color
         form.mileage = props.vehicle.mileage
@@ -869,14 +925,16 @@ onMounted(() => {
         form.country = props.vehicle.country || '';
         form.latitude = props.vehicle.latitude ? parseFloat(props.vehicle.latitude) : 0;
         form.longitude = props.vehicle.longitude ? parseFloat(props.vehicle.longitude) : 0;
-        form.status = props.vehicle.status
+        form.status = props.vehicle.status;
         try {
-            form.features = JSON.parse(props.vehicle.features)
+            // Ensure features are parsed correctly, might be an array of names or empty
+            const parsedFeatures = JSON.parse(props.vehicle.features);
+            form.features = Array.isArray(parsedFeatures) ? parsedFeatures : [];
         } catch (e) {
-            form.features = []
+            form.features = [];
         }
-        form.featured = props.vehicle.featured
-        form.security_deposit = parseFloat(props.vehicle.security_deposit)
+        form.featured = props.vehicle.featured;
+        form.security_deposit = parseFloat(props.vehicle.security_deposit);
         try {
             form.payment_method = JSON.parse(props.vehicle.payment_method)
         } catch (e) {
@@ -888,7 +946,13 @@ onMounted(() => {
         form.weekly_discount = parseFloat(props.vehicle.weekly_discount) || 0.00
         form.monthly_discount = parseFloat(props.vehicle.monthly_discount) || 0.00
         form.preferred_price_type = props.vehicle.preferred_price_type
-        form.guidelines = props.vehicle.guidelines
+        form.guidelines = props.vehicle.guidelines;
+
+        // Set existing primary image ID if one exists
+        const primaryExistingImage = props.vehicle.images?.find(img => img.image_type === 'primary');
+        if (primaryExistingImage) {
+            form.existing_primary_image_id = primaryExistingImage.id;
+        }
 
 
         // Handle benefits
@@ -987,14 +1051,19 @@ const updateVehicle = () => {
 
     // Append other form data
     for (const key in form) {
-        if (key !== 'benefits') {
+        if (key !== 'benefits' && key !== 'images') { // Exclude 'images' here as it's for new files only
             if (Array.isArray(form[key])) {
                 form[key].forEach(value => formData.append(`${key}[]`, value));
-            } else {
+            } else if (form[key] !== null) { // Ensure null values are not appended or appended as empty string if required by backend
                 formData.append(key, form[key]);
             }
         }
     }
+    // Append new image files specifically
+    selectedFiles.value.forEach((file, index) => {
+        formData.append(`images[${index}]`, file);
+    });
+
 
     axios.post(route('current-vendor-vehicles.update', props.vehicle.id), formData, {
         method: 'POST',
@@ -1049,7 +1118,7 @@ const forceMapResize = () => {
             if (mapElement && window.L) {
                 // Trigger map resize
                 window.dispatchEvent(new Event('resize'))
-                // Get the map instance and invalidate its size
+    // Get the map instance and invalidate its size
                 const map = window.L.map(mapElement)
                 map.invalidateSize()
                 // Reset the view to ensure it's properly centered
@@ -1066,6 +1135,16 @@ watch(showLocationPicker, (newVal) => {
         forceMapResize()
     }
 })
+
+// Watch for category_id changes to fetch new features
+watch(() => form.category_id, (newCategoryId, oldCategoryId) => {
+    if (newCategoryId !== oldCategoryId) {
+        fetchFeaturesForCategory(newCategoryId);
+        // Optionally clear selected features if category changes,
+        // or backend should handle features not belonging to the new category.
+        // form.features = []; 
+    }
+});
 
 const toggleLocationPicker = () => {
     showLocationPicker.value = !showLocationPicker.value

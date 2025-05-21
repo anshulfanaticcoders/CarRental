@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Vendor;
 
 use App\Http\Controllers\Controller;
 use App\Models\Vehicle;
+use App\Models\VehicleFeature;
 use App\Models\VehicleImage;
 use App\Models\VehicleSpecification;
 use Illuminate\Http\Request;
@@ -58,23 +59,11 @@ class VendorVehicleController extends Controller
                 ->with('error', 'You do not have permission to edit this vehicle');
         }
 
-        $features = [
-            'Bluetooth',
-            'Music System',
-            'Toolkit',
-            'USB Charger',
-            'Key Lock',
-            'Back Camera',
-            'Voice Control',
-            'Navigation'
-        ];
-
         return Inertia::render('Vendor/Vehicles/Edit', [
             'vehicle' => $vehicle,
             'categories' => DB::table('vehicle_categories')->select('id', 'name')->get(),
-            'features' => array_map(function ($feature) {
-                return ['id' => $feature, 'name' => $feature];
-            }, $features)
+            // Fetch features specific to the vehicle's category
+            'features' => VehicleFeature::where('category_id', $vehicle->category_id)->get(['id', 'feature_name as name', 'icon_url'])->toArray()
         ]);
     }
 
@@ -112,7 +101,7 @@ class VendorVehicleController extends Controller
             'co2' => 'required|string',
             'location' => 'nullable|string',
             'status' => 'required|in:available,rented,maintenance',
-            'features' => 'nullable|array',
+            'features' => 'nullable|array', // Features will be an array of selected feature names
             'featured' => 'boolean',
             'security_deposit' => 'required|numeric|min:0',
             'payment_method' => 'required|array',
@@ -130,7 +119,9 @@ class VendorVehicleController extends Controller
             'vehicle_height' => 'required|numeric|min:0',
             'dealer_cost' => 'required|numeric|min:0',
             'phone_number' => 'required|string|max:15',
-            'images.*' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048',
+            'images.*' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048', // Max 2MB per image
+            'primary_image_index' => 'nullable|integer|min:0', // Index of the primary image among newly uploaded files
+            'existing_primary_image_id' => 'nullable|integer|exists:vehicle_images,id', // ID of an existing image to set as primary
 
             'city' => 'nullable|string|max:100',
             'state' => 'nullable|string|max:100',
@@ -254,8 +245,16 @@ class VendorVehicleController extends Controller
         }
 
         // Handle vehicle images if included in the request
+        // Handle primary image update for existing images
+        if ($request->filled('existing_primary_image_id') && !$request->hasFile('images')) {
+            VehicleImage::where('vehicle_id', $vehicle->id)->update(['image_type' => 'gallery']); // Reset all to gallery
+            VehicleImage::where('id', $request->existing_primary_image_id)
+                        ->where('vehicle_id', $vehicle->id)
+                        ->update(['image_type' => 'primary']);
+        }
+
+        // Handle vehicle images if included in the request
         if ($request->hasFile('images')) {
-            // Check total image count before adding
             $currentImageCount = $vehicle->images->count();
             $newImageCount = count($request->file('images'));
 
@@ -263,21 +262,45 @@ class VendorVehicleController extends Controller
                 return redirect()->back()->with('error', 'Maximum of 20 images allowed');
             }
 
+            $primaryImageIndex = $request->filled('primary_image_index') ? (int)$request->primary_image_index : -1; // -1 if not making a new image primary
+
+            // If a new primary is set, or if existing_primary_image_id was set, ensure all existing are gallery first
+            if ($primaryImageIndex !== -1 || $request->filled('existing_primary_image_id')) {
+                 VehicleImage::where('vehicle_id', $vehicle->id)->update(['image_type' => 'gallery']);
+            }
+            
+            // If existing_primary_image_id is set and it's different from any new primary, prioritize existing.
+            if ($request->filled('existing_primary_image_id')) {
+                VehicleImage::where('id', $request->existing_primary_image_id)
+                            ->where('vehicle_id', $vehicle->id)
+                            ->update(['image_type' => 'primary']);
+                // If an existing image is set to primary, new images cannot also be primary from this batch.
+                $primaryImageIndex = -1; 
+            }
+
+
             foreach ($request->file('images') as $index => $image) {
-                // Store image on UpCloud storage
                 $originalName = $image->getClientOriginalName();
                 $folderName = 'vehicle_images';
                 $path = $image->storeAs($folderName, $originalName, 'upcloud');
                 $url = Storage::disk('upcloud')->url($path);
 
-                // Determine image type
-                $imageType = ($currentImageCount === 0 && $index === 0) ? 'primary' : 'gallery';
+                $imageType = 'gallery';
+                if ($primaryImageIndex === $index) {
+                    // This new image is designated as primary
+                    // Ensure all other images (existing and newly added in this loop before this one) are gallery
+                    VehicleImage::where('vehicle_id', $vehicle->id)->update(['image_type' => 'gallery']);
+                    $imageType = 'primary';
+                } elseif ($vehicle->images()->where('image_type', 'primary')->doesntExist() && $index === 0 && $primaryImageIndex === -1 && !$request->filled('existing_primary_image_id')) {
+                    // If no primary is set yet (neither existing nor new), make the first uploaded image primary
+                    $imageType = 'primary';
+                }
 
-                // Create vehicle image record - store the full URL
+
                 VehicleImage::create([
                     'vehicle_id' => $vehicle->id,
-                    'image_path' => $path, // Store the path
-                    'image_url' => $url,   // Store the full URL
+                    'image_path' => $path,
+                    'image_url' => $url,
                     'image_type' => $imageType,
                 ]);
             }
