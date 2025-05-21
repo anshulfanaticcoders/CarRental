@@ -29,6 +29,94 @@
                             </div>
                         </div>
 
+                        <!-- Second Row: Two Columns -->
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <!-- Left Column: Upload CSV File -->
+                            <div class="p-4 border border-gray-300 rounded-md space-y-4">
+                                <h3 class="text-lg font-semibold text-gray-700">Upload CSV File</h3>
+                                <form @submit.prevent="submitCsvForm">
+                                    <div class="mb-4">
+                                        <InputLabel for="csv_file" value="CSV File" />
+                                        <input type="file" id="csv_file" @change="handleCsvFileChange" class="mt-1 block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100" accept=".csv,.txt" required />
+                                        <InputError class="mt-2" :message="csvForm.errors.csv_file" />
+                                    </div>
+
+                                    <div class="flex items-center justify-between mt-4">
+                                        <a :href="route('vehicles.bulk-upload.template')" class="text-sm text-blue-600 hover:underline">
+                                            Download CSV Template
+                                        </a>
+                                        <PrimaryButton :class="{ 'opacity-25': csvForm.processing }" :disabled="csvForm.processing">
+                                            Upload Vehicles
+                                        </PrimaryButton>
+                                    </div>
+                                </form>
+                                <div v-if="csvForm.progress" class="mt-4">
+                                    <progress :value="csvForm.progress.percentage" max="100" class="w-full h-2 rounded">
+                                        {{ csvForm.progress.percentage }}%
+                                    </progress>
+                                </div>
+                            </div>
+
+                            <!-- Right Column: Manage Vehicle Images -->
+                            <div class="p-4 border border-gray-300 rounded-md space-y-4">
+                                <h3 class="text-lg font-semibold text-gray-700">Manage Vehicle Images</h3>
+                                
+                                <div v-if="showImageUploadTutorial && bulkImages.length === 0" class="p-3 bg-indigo-50 border border-indigo-200 rounded-md">
+                                    <p class="text-sm text-indigo-700">
+                                        Upload your vehicle images here first. You can then copy their URLs for your CSV file.
+                                    </p>
+                                </div>
+
+                                <form @submit.prevent="uploadImage" class="space-y-3">
+                                    <div>
+                                        <InputLabel for="vehicle_images" value="Upload New Images (up to 50)" />
+                                        <input type="file" id="vehicle_images" @change="handleImageFileChange" class="mt-1 block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100" accept="image/*" multiple />
+                                        <InputError class="mt-1" :message="imageUploadForm.errors.images" />
+                                        <!-- Displaying specific errors for each file if validation fails for images.* -->
+                                        <div v-for="(errorArray, key) in imageUploadForm.errors" :key="key">
+                                            <template v-if="key.startsWith('images.')">
+                                                <InputError v-for="(msg, i) in errorArray" :key="`${key}-${i}`" class="mt-1" :message="`File ${parseInt(key.split('.')[1]) + 1}: ${msg}`" />
+                                            </template>
+                                        </div>
+                                    </div>
+                                <PrimaryButton :class="{ 'opacity-25': imageUploadForm.processing }" :disabled="imageUploadForm.processing || selectedImageFiles.length === 0">
+                                    Upload Selected Images
+                                </PrimaryButton>
+                            </form>
+                            
+                            <div v-if="imageUploadForm.progress" class="mt-2">
+                                    <progress :value="imageUploadForm.progress.percentage" max="100" class="w-full h-2 rounded">
+                                        {{ imageUploadForm.progress.percentage }}%
+                                    </progress>
+                                </div>
+                                
+                                <h4 class="text-md font-semibold text-gray-600">Your Uploaded Images:</h4>
+                                <div v-if="loadingImages" class="text-sm text-gray-500">Loading images...</div>
+                                <div v-else-if="paginatedImages.length === 0 && bulkImages.length === 0" class="text-sm text-gray-500">
+                                    No images uploaded yet for bulk import.
+                                </div>
+                                <div v-else-if="paginatedImages.length === 0 && bulkImages.length > 0" class="text-sm text-gray-500">
+                                    No images on this page.
+                                </div>
+                                <div v-else class="grid grid-cols-2 sm:grid-cols-3 gap-4">
+                                    <div v-for="image in paginatedImages" :key="image.id" class="relative group border rounded-md p-2 shadow">
+                                        <img :src="image.url" :alt="image.original_name" class="w-full h-24 object-cover rounded-md mb-2">
+                                        <p class="text-xs text-gray-600 truncate" :title="image.original_name">{{ image.original_name }}</p>
+                                        <div class="mt-1 space-x-1 flex flex-wrap gap-1">
+                                            <button @click="copyImageUrl(image.url)" class="text-xs bg-green-500 hover:bg-green-600 text-white py-1 px-2 rounded">Copy URL</button>
+                                            <button @click="deleteImage(image.id)" class="text-xs bg-red-500 hover:bg-red-600 text-white py-1 px-2 rounded absolute top-1 right-1 opacity-0 group-hover:opacity-100 transition-opacity">X</button>
+                                        </div>
+                                    </div>
+                                </div>
+                                <!-- Pagination Controls -->
+                                <div v-if="totalPages > 1" class="mt-4 flex justify-between items-center text-sm">
+                                    <button @click="prevPage" :disabled="currentPage === 1" class="px-3 py-1 border rounded-md hover:bg-gray-100 disabled:opacity-50">Previous</button>
+                                    <span>Page {{ currentPage }} of {{ totalPages }}</span>
+                                    <button @click="nextPage" :disabled="currentPage === totalPages" class="px-3 py-1 border rounded-md hover:bg-gray-100 disabled:opacity-50">Next</button>
+                                </div>
+                            </div>
+                        </div>
+
                         <!-- Top Row: Instructions -->
                         <div class="p-4 bg-blue-50 border border-blue-200 rounded-md mb-6">
                             <h3 class="text-lg font-medium text-blue-700 mb-2">Important Instructions for Bulk Upload:</h3>
@@ -120,93 +208,7 @@
                             </div>
                         </div>
 
-                        <!-- Second Row: Two Columns -->
-                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                            <!-- Left Column: Upload CSV File -->
-                            <div class="p-4 border border-gray-300 rounded-md space-y-4">
-                                <h3 class="text-lg font-semibold text-gray-700">Upload CSV File</h3>
-                                <form @submit.prevent="submitCsvForm">
-                                    <div class="mb-4">
-                                        <InputLabel for="csv_file" value="CSV File" />
-                                        <input type="file" id="csv_file" @change="handleCsvFileChange" class="mt-1 block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100" accept=".csv,.txt" required />
-                                        <InputError class="mt-2" :message="csvForm.errors.csv_file" />
-                                    </div>
-
-                                    <div class="flex items-center justify-between mt-4">
-                                        <a :href="route('vehicles.bulk-upload.template')" class="text-sm text-blue-600 hover:underline">
-                                            Download CSV Template
-                                        </a>
-                                        <PrimaryButton :class="{ 'opacity-25': csvForm.processing }" :disabled="csvForm.processing">
-                                            Upload Vehicles
-                                        </PrimaryButton>
-                                    </div>
-                                </form>
-                                <div v-if="csvForm.progress" class="mt-4">
-                                    <progress :value="csvForm.progress.percentage" max="100" class="w-full h-2 rounded">
-                                        {{ csvForm.progress.percentage }}%
-                                    </progress>
-                                </div>
-                            </div>
-
-                            <!-- Right Column: Manage Vehicle Images -->
-                            <div class="p-4 border border-gray-300 rounded-md space-y-4">
-                                <h3 class="text-lg font-semibold text-gray-700">Manage Vehicle Images</h3>
-                                
-                                <div v-if="showImageUploadTutorial && bulkImages.length === 0" class="p-3 bg-indigo-50 border border-indigo-200 rounded-md">
-                                    <p class="text-sm text-indigo-700">
-                                        Upload your vehicle images here first. You can then copy their URLs for your CSV file.
-                                    </p>
-                                </div>
-
-                                <form @submit.prevent="uploadImage" class="space-y-3">
-                                    <div>
-                                        <InputLabel for="vehicle_images" value="Upload New Images (up to 50)" />
-                                        <input type="file" id="vehicle_images" @change="handleImageFileChange" class="mt-1 block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100" accept="image/*" multiple />
-                                        <InputError class="mt-1" :message="imageUploadForm.errors.images" />
-                                        <!-- Displaying specific errors for each file if validation fails for images.* -->
-                                        <div v-for="(errorArray, key) in imageUploadForm.errors" :key="key">
-                                            <template v-if="key.startsWith('images.')">
-                                                <InputError v-for="(msg, i) in errorArray" :key="`${key}-${i}`" class="mt-1" :message="`File ${parseInt(key.split('.')[1]) + 1}: ${msg}`" />
-                                            </template>
-                                        </div>
-                                    </div>
-                                <PrimaryButton :class="{ 'opacity-25': imageUploadForm.processing }" :disabled="imageUploadForm.processing || selectedImageFiles.length === 0">
-                                    Upload Selected Images
-                                </PrimaryButton>
-                            </form>
-                            
-                            <div v-if="imageUploadForm.progress" class="mt-2">
-                                    <progress :value="imageUploadForm.progress.percentage" max="100" class="w-full h-2 rounded">
-                                        {{ imageUploadForm.progress.percentage }}%
-                                    </progress>
-                                </div>
-                                
-                                <h4 class="text-md font-semibold text-gray-600">Your Uploaded Images:</h4>
-                                <div v-if="loadingImages" class="text-sm text-gray-500">Loading images...</div>
-                                <div v-else-if="paginatedImages.length === 0 && bulkImages.length === 0" class="text-sm text-gray-500">
-                                    No images uploaded yet for bulk import.
-                                </div>
-                                <div v-else-if="paginatedImages.length === 0 && bulkImages.length > 0" class="text-sm text-gray-500">
-                                    No images on this page.
-                                </div>
-                                <div v-else class="grid grid-cols-2 sm:grid-cols-3 gap-4">
-                                    <div v-for="image in paginatedImages" :key="image.id" class="relative group border rounded-md p-2 shadow">
-                                        <img :src="image.url" :alt="image.original_name" class="w-full h-24 object-cover rounded-md mb-2">
-                                        <p class="text-xs text-gray-600 truncate" :title="image.original_name">{{ image.original_name }}</p>
-                                        <div class="mt-1 space-x-1 flex flex-wrap gap-1">
-                                            <button @click="copyImageUrl(image.url)" class="text-xs bg-green-500 hover:bg-green-600 text-white py-1 px-2 rounded">Copy URL</button>
-                                            <button @click="deleteImage(image.id)" class="text-xs bg-red-500 hover:bg-red-600 text-white py-1 px-2 rounded absolute top-1 right-1 opacity-0 group-hover:opacity-100 transition-opacity">X</button>
-                                        </div>
-                                    </div>
-                                </div>
-                                <!-- Pagination Controls -->
-                                <div v-if="totalPages > 1" class="mt-4 flex justify-between items-center text-sm">
-                                    <button @click="prevPage" :disabled="currentPage === 1" class="px-3 py-1 border rounded-md hover:bg-gray-100 disabled:opacity-50">Previous</button>
-                                    <span>Page {{ currentPage }} of {{ totalPages }}</span>
-                                    <button @click="nextPage" :disabled="currentPage === totalPages" class="px-3 py-1 border rounded-md hover:bg-gray-100 disabled:opacity-50">Next</button>
-                                </div>
-                            </div>
-                        </div>
+                        
                     </div>
                 </div>
             </div>

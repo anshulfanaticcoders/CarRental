@@ -13,23 +13,15 @@
               <TableHead>ID</TableHead>
               <TableHead>Booking ID</TableHead>
               <TableHead>Booking No.</TableHead>
-              <TableHead>Vendor ID</TableHead>
-              <TableHead>Vendor Name</TableHead>
-              <TableHead>Customer ID</TableHead>
-              <TableHead>Customer Name</TableHead>
               <TableHead>Before Images</TableHead>
               <TableHead>After Images</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
-            <TableRow v-for="item in damageRecords" :key="item.id" class="hover:bg-gray-100">
-              <TableCell>{{ item.id }}</TableCell>
+            <TableRow v-for="(item, index) in damageRecords.data" :key="item.id" class="hover:bg-gray-100">
+              <TableCell>{{ index + 1 }}</TableCell>
               <TableCell>{{ item.booking_id }}</TableCell>
               <TableCell>{{ item.booking_number }}</TableCell>
-              <TableCell>{{ item.vendor_id }}</TableCell>
-              <TableCell>{{ item.vendor_name }}</TableCell>
-              <TableCell>{{ item.customer_id }}</TableCell>
-              <TableCell>{{ item.customer_name }}</TableCell>
               <TableCell>
                 <Button v-if="item.before_images && item.before_images.length > 0"
                         size="sm" variant="outline"
@@ -47,12 +39,17 @@
                 <span v-else>N/A</span>
               </TableCell>
             </TableRow>
-            <TableRow v-if="!damageRecords || damageRecords.length === 0">
+            <TableRow v-if="!damageRecords.data || damageRecords.data.length === 0">
               <TableCell colspan="9" class="text-center">No damage protection records found.</TableCell>
             </TableRow>
           </TableBody>
         </Table>
-        <!-- TODO: Add Pagination if needed, similar to Vendors/Index.vue -->
+        <!-- Pagination -->
+        <div v-if="damageRecords.data && damageRecords.data.length > 0" class="mt-4 flex justify-end">
+          <Pagination :currentPage="damageRecords.current_page"
+                      :totalPages="damageRecords.last_page"
+                      @page-change="handlePageChange" />
+        </div>
       </div>
 
       <!-- Modal for Image Carousel using Dialog component -->
@@ -102,6 +99,8 @@ import TableHead from "@/Components/ui/table/TableHead.vue";
 import TableBody from "@/Components/ui/table/TableBody.vue";
 import TableCell from "@/Components/ui/table/TableCell.vue";
 import Button from "@/Components/ui/button/Button.vue";
+import Pagination from "@/Pages/AdminDashboardPages/Vendors/Pagination.vue"; // Import Pagination
+import { router } from "@inertiajs/vue3"; // Import router for navigation
 import {
   Dialog,
   DialogContent,
@@ -114,7 +113,7 @@ import {
 
 // Data will be passed by Inertia from the Laravel controller
 const props = defineProps({
-  damageRecords: Array,
+  damageRecords: Object, // Expecting a paginator object
 });
 
 const isModalOpen = ref(false);
@@ -145,6 +144,13 @@ const prevImage = () => {
   if (currentImages.value.length > 0) {
     currentIndex.value = (currentIndex.value - 1 + currentImages.value.length) % currentImages.value.length;
   }
+};
+
+const handlePageChange = (page) => {
+  router.get(route('admin.damage-protection.index', { page: page }), {}, { // Assuming your route is named 'admin.damage-protection.index'
+    preserveState: true,
+    replace: true,
+  });
 };
 </script>
 

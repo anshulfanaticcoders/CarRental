@@ -12,13 +12,14 @@ class DamageProtectionController extends Controller
 {
     public function index()
     {
-        $damageRecords = DamageProtection::with([
+        $damageRecordsPaginator = DamageProtection::with([
             'booking.vehicle',          // For booking_number and vehicle.vendor_id
             'booking.vendorProfile',    // Loads UserProfile of the vendor via Booking->vendorProfile()
             'booking.customer.profile', // Loads Customer, then UserProfile of the customer via Customer->profile()
-        ])->latest()->get();
+        ])->latest()->paginate(10); // Using paginate instead of get
 
-        $formattedRecords = $damageRecords->map(function ($record) {
+        // Transform the items within the paginator
+        $formattedRecords = $damageRecordsPaginator->through(function ($record) {
             $booking = $record->booking;
 
             $vendorUserProfile = $booking ? $booking->vendorProfile : null;
@@ -73,7 +74,7 @@ class DamageProtectionController extends Controller
         });
 
         return Inertia::render('AdminDashboardPages/DamageProtection/Index', [
-            'damageRecords' => $formattedRecords,
+            'damageRecords' => $formattedRecords, // This will now be a paginator instance
         ]);
     }
 }
