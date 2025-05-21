@@ -43,7 +43,8 @@ import {
   Mail,
   User2Icon,
   Star,
-  CameraIcon
+  CameraIcon,
+  ShieldPlusIcon
 } from 'lucide-vue-next'
 import { onMounted, ref } from 'vue';
 
@@ -184,6 +185,17 @@ const data = {
         {
           title: 'Cancelled',
           url: '/customer-bookings/cancelled',
+        },
+      ],
+    },
+    {
+      title: 'Damage Protection',
+      url: '#',
+      icon: ShieldPlusIcon,
+      items: [
+        {
+          title: 'Damage',
+          url: '/damage-protection-records',
         },
       ],
     },

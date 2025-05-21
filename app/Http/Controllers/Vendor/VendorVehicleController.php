@@ -350,4 +350,50 @@ class VendorVehicleController extends Controller
 
         return response()->json(['message' => 'Image deleted successfully']);
     }
+
+    public function bulkDestroy(Request $request)
+    {
+        $vendorId = auth()->id();
+        $validated = $request->validate([
+            'ids' => 'required|array',
+            'ids.*' => 'integer|exists:vehicles,id',
+        ]);
+
+        $vehicleIdsToDelete = $validated['ids'];
+
+        // Fetch only vehicles that belong to the authenticated vendor
+        $vehicles = Vehicle::where('vendor_id', $vendorId)
+                            ->whereIn('id', $vehicleIdsToDelete)
+                            ->with('images') // Eager load images
+                            ->get();
+
+        if ($vehicles->isEmpty()) {
+            return redirect()->route('current-vendor-vehicles.index')
+                             ->with('error', 'No vehicles found or you do not have permission to delete them.');
+        }
+
+        $deletedCount = 0;
+        foreach ($vehicles as $vehicle) {
+            // Delete images from storage
+            foreach ($vehicle->images as $image) {
+                if ($image->image_url) { // Check if image_url is not null
+                    try {
+                        Storage::disk('upcloud')->delete($image->image_url);
+                    } catch (\Exception $e) {
+                        // Log error or handle as needed
+                    }
+                }
+            }
+            $vehicle->delete();
+            $deletedCount++;
+        }
+
+        if ($deletedCount > 0) {
+            return redirect()->route('current-vendor-vehicles.index')
+                             ->with('success', $deletedCount . ' vehicle(s) deleted successfully.');
+        }
+
+        return redirect()->route('current-vendor-vehicles.index')
+                         ->with('error', 'Could not delete the selected vehicles.');
+    }
 }

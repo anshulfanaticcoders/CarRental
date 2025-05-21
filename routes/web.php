@@ -22,7 +22,7 @@ use App\Http\Controllers\Admin\UsersController;
 use App\Http\Controllers\Admin\UsersReportController;
 use App\Http\Controllers\Admin\VehicleAddonsController;
 use App\Http\Controllers\Admin\VehicleDashboardController;
-
+use App\Http\Controllers\Admin\DamageProtectionController as AdminDamageProtectionController; // Added for clarity
 use App\Http\Controllers\Admin\VendorsReportController;
 use App\Http\Controllers\Auth\EmailValidationController;
 use App\Http\Controllers\Auth\VerifyEmailController;
@@ -276,6 +276,8 @@ Route::middleware(['auth', 'role:admin'])->group(function () {
     Route::post('media', [AdminMediaController::class, 'store'])->name('admin.media.store');
     Route::delete('media/{medium}', [AdminMediaController::class, 'destroy'])->name('admin.media.destroy');
 
+    // Damage Protection Records for Admin
+    Route::get('/damage-protection-records', [AdminDamageProtectionController::class, 'index'])->name('admin.damage-protection.index');
 });
 
 
@@ -303,9 +305,10 @@ Route::middleware(['auth', 'role:vendor'])->group(function () {
     Route::get('/vendor/payments', [BookingController::class, 'getVendorPaymentHistory'])->name('vendor.payments');
 
     // this is for showing All Vehicles of vendor in vendor profile
-    Route::resource('current-vendor-vehicles', VendorVehicleController::class);
-    Route::delete('/current-vendor-vehicles/{vehicle}/images/{image}', [VendorVehicleController::class, 'deleteImage'])
-        ->name('current-vendor-vehicles.deleteImage');
+Route::resource('current-vendor-vehicles', VendorVehicleController::class);
+Route::post('current-vendor-vehicles/bulk-destroy', [VendorVehicleController::class, 'bulkDestroy'])->name('current-vendor-vehicles.bulk-destroy');
+Route::delete('/current-vendor-vehicles/{vehicle}/images/{image}', [VendorVehicleController::class, 'deleteImage'])
+    ->name('current-vendor-vehicles.deleteImage');
 
     //this route is used to block rental dates in vendor profile 
     Route::resource('blocking-dates', BlockingDateController::class)->names('vendor.blocking-dates');

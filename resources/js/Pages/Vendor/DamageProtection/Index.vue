@@ -1,142 +1,149 @@
 <template>
     <MyProfileLayout>
-        <div class="">
-            <div class="flex items-center justify-between text-[1.75rem] font-bold text-gray-800 bg-customLightPrimaryColor p-4 rounded-[12px] mb-[1rem]">
-                <div class="flex gap-2 items-center">
-                    <span class="text-2xl font-bold">Damage Protection for Booking number :- </span>
-                <p class="bg-customPrimaryColor text-white px-3 rounded-[99px] text-[1.1rem]">{{ booking.booking_number }}</p>
+        <div class="w-full">
+            <!-- Header Section -->
+            <div class="flex flex-col md:flex-row md:items-center justify-between bg-customLightPrimaryColor p-3 md:p-4 rounded-[12px] mb-4 md:mb-6">
+                <div class="flex flex-col md:flex-row md:gap-2 md:items-center mb-3 md:mb-0">
+                    <span class="text-xl md:text-2xl font-bold text-gray-800">Damage Protection for Booking number :- </span>
+                    <p class="bg-customPrimaryColor text-white px-3 py-1 rounded-[99px] text-base md:text-lg w-fit mt-1 md:mt-0">{{ booking.booking_number }}</p>
                 </div>
-                <Button variant="destructive" @click="navigateToBooking">
+                <Button variant="destructive" @click="navigateToBooking" class="w-full md:w-auto">
                     Cancel
                 </Button>
             </div>
-            <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg p-6 flex justify-between">
 
-                <!-- Before Images Section -->
-                <div class="w-[40%]">
-                    <h2 class="text-xl font-semibold mb-4">Before Rental Images</h2>
-                    
-                    <form @submit.prevent="submitBeforeImages" class="mb-6">
-                        <div class="mb-4">
-                            <input 
-                                type="file" 
-                                multiple 
-                                accept="image/*" 
-                                @change="handleBeforeFileUpload"
-                                ref="beforeImageInput"
-                                class="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
-                            />
-                            <p v-if="beforeImageError" class="text-red-500 text-sm">{{ beforeImageError }}</p>
+            <!-- Main Content -->
+            <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg p-4 md:p-6">
+                <div class="flex flex-col lg:flex-row lg:justify-between gap-8">
+                    <!-- Before Images Section -->
+                    <div class="w-full lg:w-[48%]">
+                        <h2 class="text-xl font-semibold mb-4">Before Rental Images</h2>
+                        
+                        <form @submit.prevent="submitBeforeImages" class="mb-6">
+                            <div class="mb-4">
+                                <input 
+                                    type="file" 
+                                    multiple 
+                                    accept="image/*" 
+                                    @change="handleBeforeFileUpload"
+                                    ref="beforeImageInput"
+                                    class="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
+                                />
+                                <p v-if="beforeImageError" class="text-red-500 text-sm mt-1">{{ beforeImageError }}</p>
+                            </div>
+                            <button 
+                                type="submit" 
+                                :disabled="!beforeImages.length"
+                                class="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600 disabled:bg-gray-300 w-full md:w-auto"
+                            >
+                                Upload Before Images
+                            </button>
+                        </form>
+
+                        <!-- Display Existing Before Images -->
+                        <div v-if="damageProtection?.before_images?.length" class="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                            <div 
+                                v-for="(image, index) in damageProtection.before_images" 
+                                :key="index" 
+                                class="relative"
+                            >
+                                <img 
+                                    :src="image" 
+                                    class="w-full h-24 md:h-28 hover:scale-105 transition-transform cursor-pointer object-cover rounded"
+                                    @click="openImageModal(damageProtection.before_images, index)"
+                                />
+                            </div>
                         </div>
+                        <p v-else class="text-gray-500">No before images uploaded yet.</p>
                         <button 
-                            type="submit" 
-                            :disabled="!beforeImages.length"
-                            class="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600 disabled:bg-gray-300"
+                            v-if="damageProtection?.before_images?.length"
+                            @click="deleteBeforeImages"
+                            class="bg-red-500 text-white px-4 py-2 rounded hover:bg-red-600 mt-4 w-full md:w-auto"
                         >
-                            Upload Before Images
+                            Delete All Before Images
                         </button>
-                    </form>
-
-                    <!-- Display Existing Before Images -->
-                    <div v-if="damageProtection?.before_images?.length" class="grid grid-cols-3 gap-4">
-                        <div 
-                            v-for="(image, index) in damageProtection.before_images" 
-                            :key="index" 
-                            class="relative"
-                        >
-                            <img 
-                                :src="image" 
-                                class="w-full h-[100px] hover:scale-105 cursor-pointer object-cover rounded"
-                                @click="openImageModal(damageProtection.before_images, index)"
-                            />
-                        </div>
                     </div>
-                    <p v-else class="text-gray-500">No before images uploaded yet.</p>
-                    <button 
-                        v-if="damageProtection?.before_images?.length"
-                        @click="deleteBeforeImages"
-                        class="bg-red-500 text-white px-4 py-2 rounded hover:bg-red-600 mt-4"
-                    >
-                        Delete All Before Images
-                    </button>
-                </div>
 
-                <!-- After Images Section -->
-                <div class="w-[40%]">
-                    <h2 class="text-xl font-semibold mb-4">After Rental Images</h2>
-                    
-                    <form @submit.prevent="submitAfterImages" class="mb-6">
-                        <div class="mb-4">
-                            <input 
-                                type="file" 
-                                multiple 
-                                accept="image/*" 
-                                @change="handleAfterFileUpload"
-                                ref="afterImageInput"
-                                class="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
-                            />
-                            <p v-if="afterImageError" class="text-red-500 text-sm">{{ afterImageError }}</p>
+                    <!-- Divider for mobile view -->
+                    <div class="border-t border-gray-200 my-6 lg:hidden"></div>
+
+                    <!-- After Images Section -->
+                    <div class="w-full lg:w-[48%]">
+                        <h2 class="text-xl font-semibold mb-4">After Rental Images</h2>
+                        
+                        <form @submit.prevent="submitAfterImages" class="mb-6">
+                            <div class="mb-4">
+                                <input 
+                                    type="file" 
+                                    multiple 
+                                    accept="image/*" 
+                                    @change="handleAfterFileUpload"
+                                    ref="afterImageInput"
+                                    class="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
+                                />
+                                <p v-if="afterImageError" class="text-red-500 text-sm mt-1">{{ afterImageError }}</p>
+                            </div>
+                            <button 
+                                type="submit" 
+                                :disabled="!afterImages.length"
+                                class="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600 disabled:bg-gray-300 w-full md:w-auto"
+                            >
+                                Upload After Images
+                            </button>
+                        </form>
+
+                        <!-- Display Existing After Images -->
+                        <div v-if="damageProtection?.after_images?.length" class="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                            <div 
+                                v-for="(image, index) in damageProtection.after_images" 
+                                :key="index" 
+                                class="relative"
+                            >
+                                <img 
+                                    :src="image" 
+                                    class="w-full h-24 md:h-28 hover:scale-105 transition-transform cursor-pointer object-cover rounded"
+                                    @click="openImageModal(damageProtection.after_images, index)"
+                                />
+                            </div>
                         </div>
+                        <p v-else class="text-gray-500">No after images uploaded yet.</p>
                         <button 
-                            type="submit" 
-                            :disabled="!afterImages.length"
-                            class="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600 disabled:bg-gray-300"
+                            v-if="damageProtection?.after_images?.length"
+                            @click="deleteAfterImages"
+                            class="bg-red-500 text-white px-4 py-2 rounded hover:bg-red-600 mt-4 w-full md:w-auto"
                         >
-                            Upload After Images
+                            Delete All After Images
                         </button>
-                    </form>
-
-                    <!-- Display Existing After Images -->
-                    <div v-if="damageProtection?.after_images?.length" class="grid grid-cols-3 gap-4">
-                        <div 
-                            v-for="(image, index) in damageProtection.after_images" 
-                            :key="index" 
-                            class="relative"
-                        >
-                            <img 
-                                :src="image" 
-                                class="w-full h-[100px] hover:scale-105 cursor-pointer object-cover rounded"
-                                @click="openImageModal(damageProtection.after_images, index)"
-                            />
-                        </div>
                     </div>
-                    <p v-else class="text-gray-500">No after images uploaded yet.</p>
-                    <button 
-                        v-if="damageProtection?.after_images?.length"
-                        @click="deleteAfterImages"
-                        class="bg-red-500 text-white px-4 py-2 rounded hover:bg-red-600 mt-4"
-                    >
-                        Delete All After Images
-                    </button>
                 </div>
             </div>
         </div>
 
         <!-- Image Viewer Modal with Carousel -->
-        <Dialog v-model:open="isImageModalOpen">
-            <DialogContent class="max-w-[40rem]">
-                <DialogHeader>
+        <Dialog v-model:open="isImageModalOpen" class="sm:max-w-md">
+            <DialogContent class="w-[90vw] max-w-[90vw] sm:max-w-2xl p-0 md:p-2">
+                <DialogHeader class="p-4 pb-0">
                     <DialogTitle>Image Viewer</DialogTitle>
                 </DialogHeader>
                 
-                <Carousel class="relative w-full">
+                <Carousel class="w-full">
                     <CarouselContent>
                         <CarouselItem v-for="(image, index) in selectedImages" :key="index">
                             <div class="p-1">
                                 <Card>
                                     <CardContent class="flex aspect-square items-center justify-center p-2">
-                                        <img :src="image" class="w-full h-auto rounded-lg object-cover" />
+                                        <img :src="image" class="w-full h-auto max-h-[70vh] rounded-lg object-contain" />
                                     </CardContent>
                                 </Card>
                             </div>
                         </CarouselItem>
                     </CarouselContent>
-                    <CarouselPrevious />
-                    <CarouselNext />
+                    <CarouselPrevious class="hidden sm:flex" />
+                    <CarouselNext class="hidden sm:flex" />
                 </Carousel>
                 
-                <DialogFooter>
-                    <button class="bg-red-500 text-white px-4 py-2 rounded hover:bg-red-600" @click="isImageModalOpen = false">
+                <DialogFooter class="p-4 flex justify-center sm:justify-end">
+                    <button class="bg-red-500 text-white px-4 py-2 rounded hover:bg-red-600 w-full sm:w-auto" @click="isImageModalOpen = false">
                         Close
                     </button>
                 </DialogFooter>
@@ -229,11 +236,6 @@ const deleteBeforeImages = () => {
 const deleteAfterImages = () => {
     router.delete(route('vendor.damage-protection.delete-after-images', { booking: booking.id }), { preserveScroll: true });
 };
-
-const getImageUrl = (imagePath) => {
-    return imagePath;
-};
-
 
 const navigateToBooking = () => {
   router.visit(route('bookings.index'));

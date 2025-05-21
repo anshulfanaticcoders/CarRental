@@ -2,10 +2,19 @@
   <MyProfileLayout>
     <div class="flex justify-between items-center">
       <h2 class="font-semibold text-xl text-gray-800">My Vehicles</h2>
-      <Link :href="route('vehicles.create')"
-        class="px-4 py-2 bg-customPrimaryColor border-customPrimaryColor border-[1px] text-white rounded-md hover:bg-white hover:text-customPrimaryColor">
-      Add New Vehicle
-      </Link>
+      <div class="flex space-x-2">
+        <button
+          v-if="selectedVehicleIds.length > 0"
+          @click="confirmBulkDeletion"
+          class="px-4 py-2 bg-red-600 border-red-600 border-[1px] text-white rounded-md hover:bg-white hover:text-red-600"
+        >
+          Delete Selected ({{ selectedVehicleIds.length }})
+        </button>
+        <Link :href="route('vehicles.create')"
+          class="px-4 py-2 bg-customPrimaryColor border-customPrimaryColor border-[1px] text-white rounded-md hover:bg-white hover:text-customPrimaryColor">
+        Add New Vehicle
+        </Link>
+      </div>
     </div>
 
     <div class="py-12">
@@ -19,6 +28,9 @@
             <table class="min-w-full divide-y divide-gray-200">
               <thead class="bg-gray-50">
                 <tr class="">
+                  <th class="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <input type="checkbox" @change="toggleSelectAll" :checked="isAllSelected" class="rounded"/>
+                  </th>
                   <th class="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">ID</th>
                   <th class="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Image</th>
                   <th class="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Brand &
@@ -41,7 +53,10 @@
                 </tr>
               </thead>
               <tbody>
-                <tr v-for="(vehicle, index) in filteredVehicles" :key="vehicle.id" class="border-b">
+                <tr v-for="(vehicle, index) in filteredVehicles" :key="vehicle.id" class="border-b" :class="{'bg-blue-100': selectedVehicleIds.includes(vehicle.id)}">
+                  <td class="px-2 py-4 whitespace-nowrap">
+                    <input type="checkbox" :value="vehicle.id" v-model="selectedVehicleIds" class="rounded"/>
+                  </td>
                   <td class="px-6 py-4 whitespace-nowrap text-[0.875rem]">{{ (pagination.current_page - 1) *
                     pagination.per_page + index + 1 }}</td>
                   <Link :href="`/vehicle/${vehicle.id}`" class="w-full">
@@ -130,13 +145,16 @@
     <!-- Delete Confirmation Modal -->
     <Modal :show="showDeleteModal" @close="showDeleteModal = false">
       <div class="p-6">
-        <h3 class="text-lg font-medium">Delete Vehicle</h3>
-        <p class="mt-2 text-gray-600">Are you sure you want to delete this vehicle? This action cannot be undone.</p>
+        <h3 class="text-lg font-medium">{{ vehicleToDelete ? 'Delete Vehicle' : 'Delete Selected Vehicles' }}</h3>
+        <p class="mt-2 text-gray-600">
+          {{ vehicleToDelete ? 'Are you sure you want to delete this vehicle?' : `Are you sure you want to delete the ${selectedVehicleIds.length} selected vehicles?` }}
+          This action cannot be undone.
+        </p>
         <div class="mt-4 flex justify-end space-x-3">
-          <button @click="showDeleteModal = false" class="px-4 py-2 bg-gray-200 rounded hover:bg-gray-300">
+          <button @click="showDeleteModal = false; vehicleToDelete = null;" class="px-4 py-2 bg-gray-200 rounded hover:bg-gray-300">
             Cancel
           </button>
-          <button @click="deleteVehicle" class="px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700">
+          <button @click="vehicleToDelete ? deleteVehicle() : deleteSelectedVehicles()" class="px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700">
             Delete
           </button>
         </div>
@@ -165,6 +183,20 @@ const props = defineProps({
 })
 const searchQuery = ref('');
 
+// Define filteredVehicles earlier as other computed/watchers depend on it
+const filteredVehicles = computed(() => {
+  return props.vehicles.filter(vehicle => {
+    const query = searchQuery.value.toLowerCase();
+    return (
+      vehicle.brand.toLowerCase().includes(query) ||
+      vehicle.model.toLowerCase().includes(query) ||
+      vehicle.transmission.toLowerCase().includes(query) ||
+      vehicle.fuel.toLowerCase().includes(query) ||
+      vehicle.location.toLowerCase().includes(query) ||
+      vehicle.status.toLowerCase().includes(query)
+    );
+  });
+});
 
 watch(searchQuery, (newQuery) => {
   router.get(
@@ -180,6 +212,35 @@ const handlePageChange = (page) => {
 };
 const showDeleteModal = ref(false)
 const vehicleToDelete = ref(null)
+const selectedVehicleIds = ref([])
+
+// Computed property to check if all filtered vehicles are selected
+const isAllSelected = computed(() => {
+  if (!filteredVehicles.value.length) return false;
+  return filteredVehicles.value.every(vehicle => selectedVehicleIds.value.includes(vehicle.id));
+});
+
+// Toggle select all vehicles
+const toggleSelectAll = (event) => {
+  if (event.target.checked) {
+    selectedVehicleIds.value = filteredVehicles.value.map(vehicle => vehicle.id);
+  } else {
+    selectedVehicleIds.value = [];
+  }
+};
+
+watch(filteredVehicles, () => {
+  // If filtered vehicles change, we might need to prune selectedVehicleIds
+  // or ensure the "select all" state is accurate.
+  // For now, we'll clear selection if filters change to avoid complexity,
+  // or you could implement more sophisticated logic.
+  // selectedVehicleIds.value = []; // Simplest approach
+  // A more nuanced approach would be to filter selectedVehicleIds based on new filteredVehicles
+   selectedVehicleIds.value = selectedVehicleIds.value.filter(id =>
+    filteredVehicles.value.some(vehicle => vehicle.id === id)
+  );
+});
+
 
 const getPrimaryImage = (vehicle) => {
   const primaryImage = vehicle.images.find(img => img.image_type === 'primary')
@@ -200,14 +261,45 @@ const confirmDeletion = (vehicle) => {
   showDeleteModal.value = true
 }
 
+const confirmBulkDeletion = () => {
+  vehicleToDelete.value = null; // Ensure we are in bulk delete mode
+  if (selectedVehicleIds.value.length > 0) {
+    showDeleteModal.value = true;
+  }
+};
+
 const deleteVehicle = () => {
   router.delete(route('current-vendor-vehicles.destroy', vehicleToDelete.value.id), {
     onSuccess: () => {
       showDeleteModal.value = false
       vehicleToDelete.value = null
+      // Optionally, remove from selectedVehicleIds if it was there
+      const index = selectedVehicleIds.value.indexOf(vehicleToDelete.value.id);
+      if (index > -1) {
+        selectedVehicleIds.value.splice(index, 1);
+      }
+    },
+    onError: () => {
+        showDeleteModal.value = false;
     }
   })
 }
+
+const deleteSelectedVehicles = () => {
+  if (selectedVehicleIds.value.length === 0) return;
+  router.post(route('current-vendor-vehicles.bulk-destroy'), { ids: selectedVehicleIds.value }, {
+    onSuccess: () => {
+      showDeleteModal.value = false;
+      selectedVehicleIds.value = [];
+    },
+    onError: (errors) => {
+      console.error('Error deleting selected vehicles:', errors);
+      showDeleteModal.value = false;
+      // Handle error display if necessary
+    }
+  });
+};
+
 const formatPricing = (vehicle) => {
   if (!vehicle || !vehicle.vendor_profile || !vehicle.vendor_profile.currency) {
     return 'N/A'; // Fallback if data is missing
@@ -223,19 +315,7 @@ const formatPricing = (vehicle) => {
   return prices.length ? prices.join(' | ') : 'N/A';
 };
 
-const filteredVehicles = computed(() => {
-  return props.vehicles.filter(vehicle => {
-    const query = searchQuery.value.toLowerCase();
-    return (
-      vehicle.brand.toLowerCase().includes(query) ||
-      vehicle.model.toLowerCase().includes(query) ||
-      vehicle.transmission.toLowerCase().includes(query) ||
-      vehicle.fuel.toLowerCase().includes(query) ||
-      vehicle.location.toLowerCase().includes(query) ||
-      vehicle.status.toLowerCase().includes(query)
-    );
-  });
-});
+// filteredVehicles definition was moved up
 
 </script>
 
@@ -251,4 +331,4 @@ const filteredVehicles = computed(() => {
     text-wrap-mode: nowrap;
   }
 }
-</style>
+</style >
