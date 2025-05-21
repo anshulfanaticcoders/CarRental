@@ -1028,7 +1028,7 @@ const openLightbox = (index) => {
 
                         <div class="dot_seperator"><strong>.</strong></div>
                         <div class="car_location">
-                            <span>{{ vehicle?.location }}, {{ vehicle?.city }}, {{ vehicle?.state }}, {{ vehicle?.country
+                            <span class="text-[0.875rem]">{{ vehicle?.location }}, {{ vehicle?.city }}, {{ vehicle?.state }}, {{ vehicle?.country
                             }}</span>
                         </div>
                     </div>
@@ -1318,7 +1318,7 @@ const openLightbox = (index) => {
                     <div class="column w-[40%] max-[768px]:w-full max-[768px]:mt-[2rem]">
                         <div class="paymentInfoDiv p-5 sticky top-[3rem]">
                             <div class="flex items-center justify-between gap-3 max-[768px]:mb-4">
-                                <div class="flex items-center gap-4">
+                                <div class="flex items-center gap-4 max-[768px]:w-[75%]">
                                     <h4
                                         class="max-[768px]:text-[1rem] max-[768px]:max-w-[170px] max-[768px]:overflow-hidden max-[768px]:text-ellipsis max-[768px]:whitespace-nowrap">
                                         {{ vehicle?.brand }} {{ vehicle?.model }}</h4>
