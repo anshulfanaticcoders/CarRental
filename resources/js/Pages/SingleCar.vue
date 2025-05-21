@@ -126,15 +126,29 @@ const averageRating = computed(() => {
 
 
 // Feature-Icon Mapping
-const featureIconMap = {
-    "Bluetooth": "/storage/icons/bluetooth.svg",
-    "Music System": "/storage/icons/music.svg",
-    "Toolkit": "/storage/icons/toolkit.svg",
-    "USB Charger": "/storage/icons/usb.svg",
-    "Key Lock": "/storage/icons/lock.svg",
-    "Back Camera": "/storage/icons/camera.svg",
-    "Voice Control": "/storage/icons/voiceControl.svg",
-    "Navigation": "/storage/icons/gps-navigation.svg",
+const allFeaturesMap = ref({});
+
+const fetchAllVehicleFeatures = async () => {
+    try {
+        // Assuming '/api/vehicle-features' returns all features: [{ id, feature_name, icon_url }, ...]
+        // If you have a different endpoint or it's paginated, this might need adjustment.
+        const response = await axios.get('/api/vehicle-features'); 
+        if (response.data && Array.isArray(response.data)) {
+            response.data.forEach(feature => {
+                allFeaturesMap.value[feature.feature_name] = feature.icon_url;
+            });
+            console.log('All Features Map Populated (SingleCar.vue):', JSON.parse(JSON.stringify(allFeaturesMap.value)));
+            if (vehicle.value && vehicle.value.features && isValidJSON(vehicle.value.features)) {
+                console.log('Vehicle Specific Feature Names (SingleCar.vue):', JSON.parse(vehicle.value.features));
+            } else {
+                console.log('Vehicle features data (SingleCar.vue):', vehicle.value?.features);
+            }
+        } else {
+            console.error('Failed to fetch all vehicle features or data is not an array (SingleCar.vue):', response.data);
+        }
+    } catch (error) {
+        console.error('Error fetching all vehicle features (SingleCar.vue):', error);
+    }
 };
 
 
@@ -200,6 +214,7 @@ const initMap = () => {
 // Add this in your script setup
 onMounted(() => {
     initMap();
+    fetchAllVehicleFeatures();
 });
 
 import axios from "axios";
@@ -216,40 +231,7 @@ const form = ref({
     longitude: null,
     radius: 831867.4340914232,
 });
-const searchResults = ref([]);
 
-const handleSearchInput = async () => {
-    if (form.value.where.length < 3) return;
-
-    try {
-        const response = await axios.get(
-            `/api/geocoding/autocomplete?text=${encodeURIComponent(
-                form.value.where
-            )}`
-        );
-        searchResults.value = response.data.features;
-    } catch (error) {
-        console.error("Error fetching locations:", error);
-    }
-};
-
-const selectLocation = (result) => {
-    form.value.where = result.properties?.label || "Unknown Location";
-    form.value.latitude = result.geometry.coordinates[1];
-    form.value.longitude = result.geometry.coordinates[0];
-    searchResults.value = [];
-
-    const latLng = [form.value.latitude, form.value.longitude];
-
-};
-
-const submit = () => {
-    router.get("/s", form.value);
-};
-
-const getCurrentDate = () => {
-    return new Date().toISOString().split('T')[0];
-};
 // Add these helper functions
 const departureTimeOptions = computed(() => {
     return vehicle.value.pickup_times?.map(time => ({
@@ -1149,19 +1131,18 @@ const openLightbox = (index) => {
 
                         <div class="features mt-[3rem]">
                             <span class="text-[2rem] font-medium max-[768px]:text-[1rem]">Features</span>
-                            <div
+                            <div v-if="vehicle?.features && isValidJSON(vehicle.features) && JSON.parse(vehicle.features).length > 0"
                                 class="grid grid-cols-4 mt-[2rem] gap-y-[2rem] max-[768px]:mt-[1rem] max-[768px]:grid-cols-3">
-                                <div class="flex items-center gap-3 max-[768px]:text-[0.65rem] whitespace-nowrap"
-                                    v-if="vehicle?.features" v-for="(feature, index) in JSON.parse(
-                                        vehicle.features
-                                    )" :key="index">
-                                    <img :src="featureIconMap[feature]" alt="Feature Icon"
-                                        class="feature-icon w-[30px] h-[30px] max-[768px]:w-[24px] max-[768px]:h-[24px" />
-                                    {{ feature }}
+                                <div v-for="(featureName, index) in JSON.parse(vehicle.features)" :key="index"
+                                    class="flex items-center gap-3 max-[768px]:text-[0.65rem] whitespace-nowrap">
+                                    <img v-if="allFeaturesMap[featureName]" :src="allFeaturesMap[featureName]" :alt="featureName"
+                                        class="feature-icon w-[30px] h-[30px] max-[768px]:w-[24px] max-[768px]:h-[24px] object-contain" />
+                                    <span v-else class="feature-icon w-[30px] h-[30px] max-[768px]:w-[24px] max-[768px]:h-[24px] inline-flex items-center justify-center text-gray-400 text-xs border rounded">?</span> <!-- Placeholder for no icon -->
+                                    {{ featureName }}
                                 </div>
-                                <div v-else>
-                                    <p>No features available.</p>
-                                </div>
+                            </div>
+                            <div v-else class="mt-[2rem]">
+                                <p>No features listed for this vehicle.</p>
                             </div>
                         </div>
 

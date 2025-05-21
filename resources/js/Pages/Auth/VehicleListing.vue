@@ -305,21 +305,29 @@
                             </p>
 
                             <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
-                                <div v-for="feature in features" :key="feature.id"
+                                <div v-if="!form.category_id" class="col-span-2 md:col-span-4">
+                                     <p class="text-gray-500">Please select a vehicle category to see available features.</p>
+                                </div>
+                                <div v-else-if="availableFeatures.length === 0 && form.category_id" class="col-span-2 md:col-span-4">
+                                    <p class="text-gray-500">No features available for this category, or still loading...</p>
+                                </div>
+                                <!-- Loop through features if category is selected and features are available -->
+                                <div v-else v-for="feature in availableFeatures" :key="feature.id"
                                     class="flex items-center space-x-2 max-[768px]:items-start">
-                                    <input type="checkbox" :id="'feature-' + feature.id" :value="feature.name"
+                                    <input type="checkbox" :id="'feature-' + feature.id" :value="feature.name" 
                                         v-model="form.features"
                                         class="rounded border-gray-300 text-customPrimaryColor focus:ring-customPrimaryColor" />
 
                                     <InputLabel :for="'feature-' + feature.id"
                                         class="mb-0 flex items-center cursor-pointer mt-[6px] max-[768px]:mt-0">
+                                        <img v-if="feature.icon_url" :src="feature.icon_url" :alt="feature.name" class="w-4 h-4 mr-1 inline-block object-contain"/>
                                         {{ feature.name }}
                                     </InputLabel>
                                 </div>
                             </div>
 
                             <!-- Selected Features Display -->
-                            <div v-if="form.features.length > 0" class="mt-4">
+                             <div v-if="form.features.length > 0" class="mt-4">
                                 <p class="text-sm text-gray-600 mb-2">
                                     Selected Features:
                                 </p>
@@ -1896,20 +1904,53 @@ const removeImage = (index) => {
     form.images.splice(index, 1);
 };
 // Vehicle Features
-const features = ref([]);
+const availableFeatures = ref([]); // Renamed and will hold category-specific features
 
-const fetchFeatures = async () => {
+const fetchFeaturesForCategory = async (categoryId) => {
+    if (!categoryId) {
+        availableFeatures.value = [];
+        form.features = []; // Clear selected features if no category
+        return;
+    }
     try {
-        const response = await axios.get("/api/vehicle-features");
-        features.value = response.data;
+        // Ensure the route name 'api.categories.features' is correct and returns expected data
+        // The controller returns [{id, feature_name, icon_url}, ...]
+        const response = await axios.get(route('api.categories.features', categoryId));
+        availableFeatures.value = response.data.map(feature => ({
+            id: feature.id, // Keep id if needed for keys or future use
+            name: feature.feature_name, // Use 'name' to match existing template iteration (feature.name)
+            icon_url: feature.icon_url 
+        }));
+        form.features = []; // Clear previously selected features when category changes
     } catch (error) {
-        console.error("Error fetching vehicle features:", error);
+        console.error(`Error fetching vehicle features for category ${categoryId}:`, error);
+        availableFeatures.value = [];
+        form.features = [];
     }
 };
 
+// Watch for category_id changes
+watch(() => form.category_id, (newCategoryId, oldCategoryId) => {
+    if (newCategoryId !== oldCategoryId) {
+        fetchFeaturesForCategory(newCategoryId);
+    }
+}, { immediate: false }); // Set to true if initial fetch needed and category_id might be pre-filled
+
 onMounted(() => {
     fetchCategories();
-    fetchFeatures();
+    // fetchFeatures(); // Old call that fetched all features is removed.
+    // If form.category_id could be pre-filled (e.g., when editing), fetch features for it.
+    if (props.vehicle && props.vehicle.category_id) { // Assuming vehicle prop might exist for editing
+        form.category_id = props.vehicle.category_id; // Ensure form.category_id is set
+        fetchFeaturesForCategory(props.vehicle.category_id);
+        // If editing, you might also want to pre-select features based on props.vehicle.features
+        if (props.vehicle.features && Array.isArray(props.vehicle.features)) {
+            // Assuming props.vehicle.features is an array of feature names or objects with a name property
+            form.features = props.vehicle.features.map(f => typeof f === 'string' ? f : f.name);
+        }
+    } else if (form.category_id) { // If form.category_id is set by other means on init
+         fetchFeaturesForCategory(form.category_id);
+    }
 });
 
 const imageCountMessage = computed(() => {

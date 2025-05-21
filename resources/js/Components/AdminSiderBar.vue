@@ -132,6 +132,10 @@ const data = {
           title: 'Plans',
           url: '/admin/plans',
         },
+        {
+          title: 'Features',
+          url: '/features',
+        },
       ],
     },
     {
