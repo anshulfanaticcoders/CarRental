@@ -74,7 +74,7 @@ const submit = () => {
               </div>
 
               <div class="mb-4">
-                <label for="icon_url" class="block text-sm font-medium text-gray-700">Icon URL (Optional)</label>
+                <label for="icon_url" class="block text-sm font-medium text-gray-700">Icon URL</label>
                 <div class="mt-1 flex rounded-md shadow-sm">
                   <input type="url" v-model="form.icon_url" id="icon_url"
                          class="focus:ring-indigo-500 focus:border-indigo-500 flex-1 block w-full rounded-none rounded-l-md sm:text-sm border-gray-300" />
