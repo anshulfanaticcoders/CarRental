@@ -38,8 +38,8 @@ Route::get('/categories/{category}/features', [CategoryFeaturesController::class
     ->name('api.categories.features');
 
 Route::middleware('auth:sanctum')->post('/messages/mark-as-read/{booking_id}', [MessageController::class, 'markMessagesAsRead']);
-Route::get('/vehicle-categories', [VehicleCategoryController::class, 'index']);
-Route::get('/vehicle-features', [VehicleController::class, 'getFeatures']);
+Route::get('/vehicle-categories', [VehicleCategoryController::class, 'index'])->name('api.vehicle-categories.index');
+Route::get('/vehicle-features', [VehicleController::class, 'getFeatures'])->name('api.vehicle-features.index');
 Route::get('/vehicles', [VehicleController::class, 'showAllVendorVehicles']);
 
 Route::get('/popular-places', [PopularPlacesController::class, 'index']);

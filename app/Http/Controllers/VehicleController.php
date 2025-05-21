@@ -294,11 +294,11 @@ class VehicleController extends Controller
 
     public function getFeatures()
     {
-        $features = VehicleFeature::all();
+        $features = VehicleFeature::with('category')->get();
         return response()->json($features);
     }
 
-    //This is for getting particular vehicle information to the single car page 
+    //This is for getting particular vehicle information to the single car page
     public function show($id, Request $request)
     {
 

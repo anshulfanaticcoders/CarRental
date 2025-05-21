@@ -39,6 +39,87 @@
                             </ul>
                         </div>
 
+                        <!-- Vehicle Categories Information -->
+                        <div class="p-4 bg-green-50 border border-green-200 rounded-md mb-6">
+                            <h3 class="text-lg font-medium text-green-700 mb-2">Available Vehicle Categories:</h3>
+                            <p class="text-sm text-gray-700 mb-2">
+                                When preparing your CSV, use the following Category IDs for the 'vehicle_category_id' column:
+                            </p>
+                            <!-- TODO: Fetch and display categories dynamically -->
+                            <div v-if="vehicleCategories.length > 0" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2 text-sm">
+                                <div v-for="category in vehicleCategories" :key="category.id" class="p-2 bg-white border rounded">
+                                    <strong>{{ category.name }}</strong>: ID <code>{{ category.id }}</code>
+                                </div>
+                            </div>
+                            <div v-else-if="loadingCategories" class="text-sm text-gray-500">
+                                Loading categories...
+                            </div>
+                            <div v-else class="text-sm text-red-500">
+                                Could not load vehicle categories. Please ensure they are set up in the admin panel.
+                            </div>
+                        </div>
+
+                        <!-- Pricing Plans Information -->
+                        <div class="p-4 bg-purple-50 border border-purple-200 rounded-md mb-6">
+                            <h3 class="text-lg font-medium text-purple-700 mb-2">Pricing Plan Guidelines:</h3>
+                            <ul class="list-disc list-inside text-sm text-gray-700 space-y-1">
+                                <li>You can add up to <strong>two pricing plans</strong> per vehicle.</li>
+                                <li>For each plan, specify the plan name (e.g., "Daily", "Weekly").</li>
+                                <li>List features for each plan in the designated columns (e.g., 'plan1_feature1', 'plan1_feature2', 'plan2_feature1').</li>
+                                <li>Example Format for Plan Features in CSV:
+                                    <ul class="list-circle list-inside ml-4">
+                                        <li>plan1_name: Daily</li>
+                                        <li>plan1_price: 50</li>
+                                        <li>plan1_feature1: Unlimited Mileage</li>
+                                        <li>plan1_feature2: Basic Insurance</li>
+                                        <li>plan2_name: Weekly</li>
+                                        <li>plan2_price: 300</li>
+                                        <li>plan2_feature1: 1000km Limit</li>
+                                        <li>plan2_feature2: Full Insurance</li>
+                                    </ul>
+                                </li>
+                            </ul>
+                        </div>
+
+                        <!-- Extras Information -->
+                        <div class="p-4 bg-yellow-50 border border-yellow-200 rounded-md mb-6">
+                            <h3 class="text-lg font-medium text-yellow-700 mb-2">About Extras:</h3>
+                            <p class="text-sm text-gray-700 mb-2">
+                                Extras are additional services or items a customer can add to their booking (e.g., GPS, Child Seat).
+                            </p>
+                            <ul class="list-disc list-inside text-sm text-gray-700 space-y-1">
+                                <li>Define your available extras in the admin panel first.</li>
+                                <li>In the CSV, you will use the ID of the extra. For example, if "GPS" has an ID of 1 and "Child Seat" has an ID of 2, you would enter these IDs.</li>
+                                <li>The CSV template has columns like 'extra1_id', 'extra1_price', 'extra2_id', 'extra2_price', etc.</li>
+                                <li>Ensure the Extra IDs you use in the CSV correspond to existing extras in the system.</li>
+                            </ul>
+                            <!-- TODO: Optionally, fetch and display available extras and their IDs here if helpful -->
+                        </div>
+
+                        <!-- Vehicle Features Information -->
+                        <div class="p-4 bg-teal-50 border border-teal-200 rounded-md mb-6">
+                            <h3 class="text-lg font-medium text-teal-700 mb-2">Available Vehicle Features:</h3>
+                            <p class="text-sm text-gray-700 mb-3">
+                                Below is a list of available features, grouped by vehicle category. Use the feature names in your CSV under columns like 'feature_1', 'feature_2', etc.
+                                Ensure the feature name in the CSV exactly matches the name shown here.
+                            </p>
+                            <div v-if="loadingFeatures" class="text-sm text-gray-500">Loading features...</div>
+                            <div v-else-if="Object.keys(groupedFeatures).length > 0">
+                                <div v-for="(features, categoryName) in groupedFeatures" :key="categoryName" class="mb-3">
+                                    <h4 class="text-md font-semibold text-teal-600 mb-1">{{ categoryName }}</h4>
+                                    <ul class="list-disc list-inside text-sm text-gray-600 space-y-0.5 ml-4">
+                                        <li v-for="feature in features" :key="feature.id">
+                                            {{ feature.feature_name }}
+                                            <span v-if="feature.icon_url" class="text-xs text-gray-400 ml-1">(has icon)</span>
+                                        </li>
+                                    </ul>
+                                </div>
+                            </div>
+                            <div v-else class="text-sm text-red-500">
+                                Could not load vehicle features or no features are defined. Please ensure they are set up in the admin panel.
+                            </div>
+                        </div>
+
                         <!-- Second Row: Two Columns -->
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                             <!-- Left Column: Upload CSV File -->
@@ -144,6 +225,65 @@ import axios from 'axios';
 import AuthenticatedHeaderLayout from '@/Layouts/AuthenticatedHeaderLayout.vue';
 
 const page = usePage();
+
+// Vehicle Categories
+const vehicleCategories = ref([]);
+const loadingCategories = ref(true);
+
+// Vehicle Features
+const allFeatures = ref([]);
+const loadingFeatures = ref(true);
+
+const fetchVehicleCategories = async () => {
+    loadingCategories.value = true;
+    try {
+        const response = await axios.get(route('api.vehicle-categories.index'));
+        vehicleCategories.value = response.data;
+    } catch (error) {
+        console.error('Error fetching vehicle categories:', error);
+    } finally {
+        loadingCategories.value = false;
+    }
+};
+
+const fetchVehicleFeatures = async () => {
+    loadingFeatures.value = true;
+    try {
+        const response = await axios.get(route('api.vehicle-features.index'));
+        allFeatures.value = response.data;
+    } catch (error) {
+        console.error('Error fetching vehicle features:', error);
+    } finally {
+        loadingFeatures.value = false;
+    }
+};
+
+const groupedFeatures = computed(() => {
+    const groups = {};
+    allFeatures.value.forEach(feature => {
+        const categoryName = feature.category ? feature.category.name : 'General Features';
+        if (!groups[categoryName]) {
+            groups[categoryName] = [];
+        }
+        groups[categoryName].push(feature);
+    });
+    // Sort features within each group alphabetically
+    for (const categoryName in groups) {
+        groups[categoryName].sort((a, b) => a.feature_name.localeCompare(b.feature_name));
+    }
+    // Sort categories alphabetically, keeping "General Features" first if it exists
+    const sortedGroupNames = Object.keys(groups).sort((a, b) => {
+        if (a === 'General Features') return -1;
+        if (b === 'General Features') return 1;
+        return a.localeCompare(b);
+    });
+    const sortedGroups = {};
+    sortedGroupNames.forEach(name => {
+        sortedGroups[name] = groups[name];
+    });
+    return sortedGroups;
+});
+
 
 // "Copied!" Notification
 const showCopyNotification = ref(false);
@@ -279,6 +419,8 @@ const copyImageUrl = (url) => {
 
 onMounted(() => {
     fetchBulkImages();
+    fetchVehicleCategories();
+    fetchVehicleFeatures();
 });
 
 </script>

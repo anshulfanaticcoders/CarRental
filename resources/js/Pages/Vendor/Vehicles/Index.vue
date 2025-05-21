@@ -54,9 +54,7 @@
                   <td class="px-2 py-4 whitespace-nowrap text-[0.875rem] capitalize">{{ vehicle.fuel }}</td>
                   <td class="px-2 py-4 whitespace-wrap text-[0.875rem]">{{ vehicle.location }}</td>
                   <td class="px-2 py-4 whitespace-wrap text-[0.875rem]">
-                    <template
-                      v-if="vehicle.benefits.limited_km_per_day_range || vehicle.benefits.limited_km_per_week_range || vehicle.benefits.limited_km_per_month_range">
-
+                    <template v-if="vehicle.benefits && (vehicle.benefits.limited_km_per_day_range || vehicle.benefits.limited_km_per_week_range || vehicle.benefits.limited_km_per_month_range)">
                       <span v-if="vehicle.benefits.limited_km_per_day_range > 0">
                         {{ vehicle.benefits.limited_km_per_day_range }} km/day
                       </span>
@@ -64,7 +62,6 @@
                         v-if="vehicle.benefits.limited_km_per_day_range && (vehicle.benefits.limited_km_per_week_range || vehicle.benefits.limited_km_per_month_range)">
                         |
                       </span>
-
                       <span v-if="vehicle.benefits.limited_km_per_week_range > 0">
                         {{ vehicle.benefits.limited_km_per_week_range }} km/week
                       </span>
@@ -72,34 +69,27 @@
                         v-if="vehicle.benefits.limited_km_per_week_range && vehicle.benefits.limited_km_per_month_range">
                         
                       </span>
-
                       <span v-if="vehicle.benefits.limited_km_per_month_range > 0">
                         |
                         {{ vehicle.benefits.limited_km_per_month_range }} km/month
                       </span>
                     </template>
-
-                    <span v-else>Unlimited</span>
+                    <span v-else-if="!vehicle.benefits || (vehicle.benefits && !vehicle.benefits.limited_km_per_day_range && !vehicle.benefits.limited_km_per_week_range && !vehicle.benefits.limited_km_per_month_range)">Unlimited</span>
                   </td>
 
-
-
                   <td class="px-2 py-4 whitespace-wrap text-[0.875rem]">
-                    <template
-                      v-if="vehicle.benefits.cancellation_available_per_day || vehicle.benefits.cancellation_available_per_week || vehicle.benefits.cancellation_available_per_month">
+                    <template v-if="vehicle.benefits && (vehicle.benefits.cancellation_available_per_day || vehicle.benefits.cancellation_available_per_week || vehicle.benefits.cancellation_available_per_month)">
                       <span v-if="vehicle.benefits.cancellation_available_per_day">Day</span>
                       <span
                         v-if="vehicle.benefits.cancellation_available_per_day && (vehicle.benefits.cancellation_available_per_week || vehicle.benefits.cancellation_available_per_month)">
                         | </span>
-
                       <span v-if="vehicle.benefits.cancellation_available_per_week">Week</span>
                       <span
                         v-if="vehicle.benefits.cancellation_available_per_week && vehicle.benefits.cancellation_available_per_month">
                         | </span>
-
                       <span v-if="vehicle.benefits.cancellation_available_per_month">Month</span>
                     </template>
-                    <span v-else>Not Available</span>
+                    <span v-else-if="!vehicle.benefits || (vehicle.benefits && !vehicle.benefits.cancellation_available_per_day && !vehicle.benefits.cancellation_available_per_week && !vehicle.benefits.cancellation_available_per_month)">Not Available</span>
                   </td>
 
 

@@ -1021,62 +1021,120 @@ onMounted(() => {
 
 const updateVehicle = () => {
     isLoading.value = true;
-    // Convert numeric fields to numbers
-    const benefitsData = {
-        ...form.benefits,
-        limited_km_per_day_range: Number(form.benefits.limited_km_per_day_range),
-        limited_km_per_week_range: Number(form.benefits.limited_km_per_week_range),
-        limited_km_per_month_range: Number(form.benefits.limited_km_per_month_range),
-        cancellation_available_per_day_date: Number(form.benefits.cancellation_available_per_day_date),
-        cancellation_available_per_week_date: Number(form.benefits.cancellation_available_per_week_date),
-        cancellation_available_per_month_date: Number(form.benefits.cancellation_available_per_month_date),
-        price_per_km_per_day: Number(form.benefits.price_per_km_per_day),
-        price_per_km_per_week: Number(form.benefits.price_per_km_per_week),
-        price_per_km_per_month: Number(form.benefits.price_per_km_per_month),
-        minimum_driver_age: Number(form.benefits.minimum_driver_age),
-    };
 
-    let formData = new FormData();
+    // Get a plain JS object of the form data to modify for submission
+    let submitData = form.data();
 
-    // Append benefits data with proper number types
-    Object.keys(benefitsData).forEach(key => {
-        const value = benefitsData[key];
-        // Handle boolean values properly
-        if (typeof value === 'boolean') {
-            formData.append(`benefits[${key}]`, value ? '1' : '0');
-        } else {
-            formData.append(`benefits[${key}]`, value !== null ? value : '');
+    // Define numeric fields at the top level that should be null if their value is 0
+    const numericFieldsToNullifyIfZero = [
+        'mileage', 'luggage_capacity', 'horsepower', 'security_deposit',
+        'price_per_day', 'price_per_week', 'price_per_month',
+        'weekly_discount', 'monthly_discount', 'gross_vehicle_mass',
+        'vehicle_height', 'dealer_cost'
+    ];
+
+    numericFieldsToNullifyIfZero.forEach(key => {
+        if (submitData.hasOwnProperty(key) && Number(submitData[key]) === 0) {
+            submitData[key] = null;
         }
     });
 
+    // Define numeric fields within 'benefits' that should be null if their value is 0
+    // This also includes fields that are set to null by watch functions if their checkbox is false
+    const benefitNumericFieldsToNullifyIfZeroOrAlreadyNull = [
+        'limited_km_per_day_range', 'limited_km_per_week_range', 'limited_km_per_month_range',
+        'cancellation_available_per_day_date', 'cancellation_available_per_week_date', 'cancellation_available_per_month_date',
+        'price_per_km_per_day', 'price_per_km_per_week', 'price_per_km_per_month'
+    ];
+
+    if (submitData.benefits) {
+        benefitNumericFieldsToNullifyIfZeroOrAlreadyNull.forEach(key => {
+            // If it's already null (e.g., from a watch function), keep it null.
+            // If it's 0 (e.g., from an empty v-model.number input), make it null.
+            if (submitData.benefits.hasOwnProperty(key)) {
+                if (submitData.benefits[key] === null) {
+                    // Already null, do nothing
+                } else if (Number(submitData.benefits[key]) === 0) {
+                    submitData.benefits[key] = null;
+                }
+            }
+        });
+    }
+    
+    // Ensure specific top-level fields are numbers if they are not null and not empty strings
+    const fieldsToEnsureNumber = [
+        'mileage', 'luggage_capacity', 'horsepower', 'security_deposit',
+        'price_per_day', 'price_per_week', 'price_per_month',
+        'weekly_discount', 'monthly_discount', 'gross_vehicle_mass',
+        'vehicle_height', 'dealer_cost', 'seating_capacity', 'number_of_doors',
+        'latitude', 'longitude' 
+    ];
+
+    fieldsToEnsureNumber.forEach(key => {
+        if (submitData.hasOwnProperty(key) && submitData[key] !== null && submitData[key] !== '') {
+            submitData[key] = Number(submitData[key]);
+        }
+    });
+
+    // Ensure specific fields within 'benefits' are numbers if they are not null and not empty strings
+    if (submitData.benefits) {
+        const benefitFieldsToEnsureNumber = [
+            'limited_km_per_day_range', 'limited_km_per_week_range', 'limited_km_per_month_range',
+            'cancellation_available_per_day_date', 'cancellation_available_per_week_date', 'cancellation_available_per_month_date',
+            'price_per_km_per_day', 'price_per_km_per_week', 'price_per_km_per_month',
+            'minimum_driver_age'
+        ];
+        benefitFieldsToEnsureNumber.forEach(key => {
+            if (submitData.benefits.hasOwnProperty(key) && submitData.benefits[key] !== null && submitData.benefits[key] !== '') {
+                submitData.benefits[key] = Number(submitData.benefits[key]);
+            }
+        });
+    }
+
+    let formData = new FormData();
+
+    // Append benefits data
+    if (submitData.benefits) {
+        Object.keys(submitData.benefits).forEach(key => {
+            const value = submitData.benefits[key];
+            if (typeof value === 'boolean') {
+                formData.append(`benefits[${key}]`, value ? '1' : '0');
+            } else {
+                // Send empty string for null, otherwise send the value
+                formData.append(`benefits[${key}]`, value !== null ? value : '');
+            }
+        });
+    }
+
     // Append other form data
-    for (const key in form) {
-        if (key !== 'benefits' && key !== 'images') { // Exclude 'images' here as it's for new files only
-            if (Array.isArray(form[key])) {
-                form[key].forEach(value => formData.append(`${key}[]`, value));
-            } else if (form[key] !== null) { // Ensure null values are not appended or appended as empty string if required by backend
-                formData.append(key, form[key]);
+    for (const key in submitData) {
+        // Ensure we only append actual data properties, not 'benefits' (handled above) or 'images' (handled below)
+        if (key !== 'benefits' && key !== 'images' && submitData.hasOwnProperty(key)) {
+            const value = submitData[key];
+            if (Array.isArray(value)) {
+                value.forEach(item => formData.append(`${key}[]`, item !== null ? item : ''));
+            } else {
+                // Send empty string for null, otherwise send the value
+                formData.append(key, value !== null ? value : '');
             }
         }
     }
-    // Append new image files specifically
+
+    // Append new image files
     selectedFiles.value.forEach((file, index) => {
         formData.append(`images[${index}]`, file);
     });
 
+    // For Laravel to treat POST as PUT when FormData is used
+    formData.append('_method', 'PUT');
 
     axios.post(route('current-vendor-vehicles.update', props.vehicle.id), formData, {
-        method: 'POST',
         headers: { 'Content-Type': 'multipart/form-data' },
-        params: { _method: 'PUT' } // Laravel treats this as PUT
     })
         .then(() => {
             isLoading.value = false;
-            // Reset selected files after upload
-            selectedFiles.value = [];
-
+            selectedFiles.value = []; // Reset selected files after successful upload
             toast.success('Vehicle updated successfully!', { position: 'top-right', timeout: 1000 });
-
             setTimeout(() => {
                 window.location.href = route('current-vendor-vehicles.index');
             }, 1500);
@@ -1084,7 +1142,7 @@ const updateVehicle = () => {
         .catch(error => {
             isLoading.value = false;
             toast.error('Something went wrong.', { position: 'top-right', timeout: 3000 });
-            // console.error(error);
+            // console.error('Error updating vehicle:', error.response ? error.response.data : error);
         });
 };
 
