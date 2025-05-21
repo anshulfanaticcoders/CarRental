@@ -1016,7 +1016,8 @@ const openLightbox = (index) => {
                         </span>
                     </div>
                     <div class="flex gap-2 items-center text-[1.25rem] max-[768px]:flex-wrap">
-                        <div class="car_ratings flex gap-2 items-center" v-if="reviews.length > 0">
+                        <div class="car_ratings flex gap-2 items-center" v-if="reviews.length > 0"
+                            @click="scrollToReviews">
                             <div class="flex items-center gap-1">
                                 <img v-for="n in 5" :key="n" :src="getStarIcon(averageRating, n)"
                                     :alt="getStarAltText(averageRating, n)" class="w-[20px] h-[20px]" />
@@ -1027,7 +1028,8 @@ const openLightbox = (index) => {
 
                         <div class="dot_seperator"><strong>.</strong></div>
                         <div class="car_location">
-                            <span class="max-[768px]:text-[12px]">{{ vehicle?.location }}</span>
+                            <span>{{ vehicle?.location }}, {{ vehicle?.city }}, {{ vehicle?.state }}, {{ vehicle?.country
+                            }}</span>
                         </div>
                     </div>
                 </div>
@@ -1151,7 +1153,8 @@ const openLightbox = (index) => {
                             <div
                                 class="gap-y-[2rem] max-[768px]:mt-[0.5rem] flex items-end mt-[1rem] gap-2 max-[768px]:gap-1 max-[768px]:items-center">
                                 <img :src=locationPinIcon alt="" class="w-8 h-8 max-[768px]:w-6"> <span
-                                    class="text-[1.2rem] max-[768px]:text-[0.95rem]">{{ vehicle?.location }}</span>
+                                    class="text-[1.2rem] max-[768px]:text-[0.95rem]">{{ vehicle?.location }}, {{ vehicle?.city }}, {{ vehicle?.state }}, {{ vehicle?.country
+                            }}</span>
                             </div>
                             <div id="map" class="h-full rounded-lg mt-4"></div>
                         </div>

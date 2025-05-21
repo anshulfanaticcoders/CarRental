@@ -55,7 +55,7 @@ class VehicleController extends Controller
             'horsepower' => 'required|decimal:0,2',
             'co2' => 'required|string',
             'location' => 'required|string',
-            'city' => 'nullable|string|max:100', 
+            'city' => 'nullable|string|max:100',
             'state' => 'nullable|string|max:100',
             'country' => 'nullable|string|max:100',
             'status' => 'required|in:available,rented,maintenance',
@@ -103,10 +103,15 @@ class VehicleController extends Controller
             'minimum_driver_age' => 'nullable|integer',
 
             'pickup_times' => 'required|array',
-
             'return_times' => 'required|array',
+            'primary_image_index' => 'required|numeric|min:0',
+            'images.*' => 'image|mimes:jpeg,png,jpg,gif,svg|max:10240',
 
         ]);
+
+        if ($request->hasFile('images') && $request->primary_image_index >= count($request->file('images'))) {
+            return back()->withErrors(['primary_image_index' => 'Primary image index is out of bounds.'])->withInput();
+        }
 
         // Create the vehicle
         $vehicle = Vehicle::create([
@@ -126,7 +131,7 @@ class VehicleController extends Controller
             'location' => $request->location,
             'latitude' => $request->latitude,
             'longitude' => $request->longitude,
-            'city' => $request->city, 
+            'city' => $request->city,
             'state' => $request->state,
             'country' => $request->country,
             'status' => $request->status,
@@ -224,28 +229,30 @@ class VehicleController extends Controller
         }
 
         // Handle vehicle images
-        $primaryImageUploaded = false;
-        foreach ($request->file('images') as $index => $image) {
-            // Get the original file name
-            $originalName = $image->getClientOriginalName();
+        if ($request->hasFile('images')) {
+            $primaryImageIndex = (int)$request->primary_image_index;
+            foreach ($request->file('images') as $index => $image) {
+                // Get the original file name
+                $originalName = $image->getClientOriginalName();
+                
+                // Define the folder and file path
+                $folderName = 'vehicle_images';
+                $path = $image->storeAs($folderName, $originalName, 'upcloud');
+                
+                // Get the full URL from UpCloud storage
+                $url = Storage::disk('upcloud')->url($path);
             
-            // Define the folder and file path
-            $folderName = 'vehicle_images';
-            $path = $image->storeAs($folderName, $originalName, 'upcloud');
+                // Determine image type
+                $imageType = ($index === $primaryImageIndex) ? 'primary' : 'gallery';
             
-            // Get the full URL from UpCloud storage
-            $url = Storage::disk('upcloud')->url($path);
-        
-            // Determine image type
-            $imageType = ($index === 0) ? 'primary' : 'gallery';
-        
-            // Create vehicle image record - store the path and full URL
-            VehicleImage::create([
-                'vehicle_id' => $vehicle->id,
-                'image_path' => $path, // Store the path (e.g., vehicle_images/background.jpg)
-                'image_url' => $url,   // Store the full URL
-                'image_type' => $imageType,
-            ]);
+                // Create vehicle image record - store the path and full URL
+                VehicleImage::create([
+                    'vehicle_id' => $vehicle->id,
+                    'image_path' => $path, // Store the path (e.g., vehicle_images/background.jpg)
+                    'image_url' => $url,   // Store the full URL
+                    'image_type' => $imageType,
+                ]);
+            }
         }
 
 
@@ -263,7 +270,7 @@ class VehicleController extends Controller
         Notification::route('mail', $request->user()->email)
             ->notify(new VendorVehicleCreateNotification($vehicle, $request->user()));
 
-            // Notify the company
+        // Notify the company
         $vendorProfile = VendorProfile::where('user_id', $request->user()->id)->first();
         if ($vendorProfile && $vendorProfile->company_email) {
             Notification::route('mail', $vendorProfile->company_email)
@@ -343,7 +350,7 @@ class VehicleController extends Controller
     }
 
 
-     public function searchLocations(Request $request)
+    public function searchLocations(Request $request)
     {
         $query = trim($request->input('text'));
 
@@ -362,8 +369,8 @@ class VehicleController extends Controller
         )
             ->where(function ($q) use ($normalizedQuery) {
                 $q->whereRaw("regexp_replace(LOWER(city), '[^a-z0-9]', '') LIKE ?", ["%{$normalizedQuery}%"])
-                  ->orWhereRaw("regexp_replace(LOWER(state), '[^a-z0-9]', '') LIKE ?", ["%{$normalizedQuery}%"])
-                  ->orWhereRaw("regexp_replace(LOWER(country), '[^a-z0-9]', '') LIKE ?", ["%{$normalizedQuery}%"]);
+                    ->orWhereRaw("regexp_replace(LOWER(state), '[^a-z0-9]', '') LIKE ?", ["%{$normalizedQuery}%"])
+                    ->orWhereRaw("regexp_replace(LOWER(country), '[^a-z0-9]', '') LIKE ?", ["%{$normalizedQuery}%"]);
             })
             ->whereNotNull('city') // Ensure city, state, country are present
             ->whereNotNull('state')
@@ -379,9 +386,13 @@ class VehicleController extends Controller
                     WHEN regexp_replace(LOWER(country), \'[^a-z0-9]\', \'\') LIKE ? THEN 5-- Partial country match
                     ELSE 6
                 END', [
-                    $normalizedQuery, $normalizedQuery, $normalizedQuery, // Exact matches
-                    "%{$normalizedQuery}%", "%{$normalizedQuery}%", "%{$normalizedQuery}%" // Partial matches
-                ])
+                $normalizedQuery,
+                $normalizedQuery,
+                $normalizedQuery, // Exact matches
+                "%{$normalizedQuery}%",
+                "%{$normalizedQuery}%",
+                "%{$normalizedQuery}%" // Partial matches
+            ])
             ->limit(50)
             ->get();
 
@@ -401,8 +412,10 @@ class VehicleController extends Controller
                 $matchedField = 'city';
                 $label = $area->city;
                 $belowLabelParts = [];
-                if ($area->state) $belowLabelParts[] = $area->state;
-                if ($area->country) $belowLabelParts[] = $area->country;
+                if ($area->state)
+                    $belowLabelParts[] = $area->state;
+                if ($area->country)
+                    $belowLabelParts[] = $area->country;
                 $belowLabel = implode(', ', $belowLabelParts);
             } elseif (str_contains($stateLower, $normalizedQuery) && $area->state) {
                 $matchedField = 'state';
@@ -417,7 +430,7 @@ class VehicleController extends Controller
             if (!$label) {
                 return null; // Skip if no valid label could be formed
             }
-            
+
             // Generate a unique ID for the suggestion item
             // This ID should be based on the distinct combination of label and below_label
             $uniqueIdContent = $this->normalizeString($label) . ($belowLabel ? $this->normalizeString($belowLabel) : '');
@@ -436,10 +449,10 @@ class VehicleController extends Controller
                 'matched_field' => $matchedField,
             ];
         })->filter() // Remove any null entries (e.g. if label couldn't be formed)
-          ->unique(function ($item) {
-            // Ensure uniqueness based on the combination of normalized label and below_label
-            return $this->normalizeString($item['label']) . ($item['below_label'] ? $this->normalizeString($item['below_label']) : '');
-        })->values(); // Re-index the array
+            ->unique(function ($item) {
+                // Ensure uniqueness based on the combination of normalized label and below_label
+                return $this->normalizeString($item['label']) . ($item['below_label'] ? $this->normalizeString($item['below_label']) : '');
+            })->values(); // Re-index the array
 
         return response()->json(['results' => $results]);
     }
@@ -455,12 +468,12 @@ class VehicleController extends Controller
         if (is_null($string)) {
             return '';
         }
-    
+
         // Convert to lowercase and remove diacritics
         $normalized = strtolower($string);
         $normalized = transliterator_transliterate('NFKD; [:Nonspacing Mark:] Remove; NFC;', $normalized);
         $normalized = preg_replace('/[^a-z0-9]/', '', $normalized); // Keep only alphanumeric
-    
+
         return $normalized;
     }
 

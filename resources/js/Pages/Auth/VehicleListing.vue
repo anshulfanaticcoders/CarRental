@@ -1420,12 +1420,21 @@
                             accept="image/*" />
                         <div v-if="form.images.length"
                             class="image-preview-container mt-4 grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3 w-full px-4">
-                            <div v-for="(image, index) in form.images" :key="index" class="image-preview relative">
+                            <div v-for="(image, index) in form.images" :key="index" 
+                                 class="image-preview relative group"
+                                 :class="{ 'border-4 border-blue-500 p-1': form.primary_image_index === index }">
                                 <img :src="getImageUrl(image)" alt="Vehicle Image"
                                     class="w-full h-24 object-cover rounded" />
                                 <button
-                                    class="remove-btn absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center"
+                                    class="remove-btn absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
                                     @click.prevent="removeImage(index)">✖</button>
+                                <button v-if="form.primary_image_index !== index"
+                                    @click.prevent="setPrimaryImage(index)"
+                                    class="absolute bottom-1 left-1/2 transform -translate-x-1/2 bg-blue-500 text-white text-xs px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity">
+                                    Set as Primary
+                                </button>
+                                <span v-if="form.primary_image_index === index" 
+                                      class="absolute top-1 left-1 bg-blue-500 text-white text-xs px-2 py-1 rounded">Primary</span>
                             </div>
                         </div>
                         <p class="mt-2 text-sm" :class="form.images.length < 5 ? 'text-red-500' : 'text-green-500'">{{
@@ -1578,6 +1587,7 @@ const form = useForm({
 
     // vehicle images
     images: [],
+    primary_image_index: null,
     pickup_times: [],
     return_times: [],
     radius: 831867.4340914232,
@@ -1902,7 +1912,24 @@ const getImageUrl = (image) => {
 // Remove image from preview
 const removeImage = (index) => {
     form.images.splice(index, 1);
+
+    // Adjust primary_image_index if necessary
+    if (form.images.length === 0) {
+        form.primary_image_index = null;
+    } else if (form.primary_image_index === index) {
+        // If the removed image was primary, set the first image as new primary
+        form.primary_image_index = 0;
+    } else if (form.primary_image_index > index) {
+        // If an image before the primary was removed, decrement primary_image_index
+        form.primary_image_index--;
+    }
 };
+
+const setPrimaryImage = (index) => {
+    form.primary_image_index = index;
+};
+
+
 // Vehicle Features
 const availableFeatures = ref([]); // Renamed and will hold category-specific features
 
