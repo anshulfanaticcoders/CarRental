@@ -68,9 +68,14 @@
               </div>
             </div>
             <div class='flex justify-between items-center'>
-              <span class="text-customPrimaryColor text-[1.5rem] font-medium">
-                {{ formatPrice(booking.total_amount, booking.vehicle) }}
-              </span>
+              <div>
+                  <strong class="text-[1.5rem] font-medium" v-if="booking.preferred_day === 'day'">{{
+                    formatPrice(booking.vehicle.price_per_day) }}/day</strong>
+                  <strong class="text-[1.5rem] font-medium" v-if="booking.preferred_day === 'week'">{{
+                    formatPrice(booking.vehicle.price_per_week) }}/week</strong>
+                  <strong class="text-[1.5rem] font-medium" v-if="booking.preferred_day === 'month'">{{
+                    formatPrice(booking.vehicle.price_per_month) }}/month</strong>
+                </div>
               <div>
                 <button v-if="!booking.review" @click="openReviewModal(booking)"
                   class="button-primary px-[1.5rem] py-[0.75rem] max-[768px]:text-[0.75rem]">

@@ -127,7 +127,7 @@ const checkIfMobile = () => {
 };
 
 onMounted(() => {
-    console.log("Chat Partners Data (Customer View):", props.chatPartners);
+    // console.log("Chat Partners Data (Customer View):", props.chatPartners);
     checkIfMobile();
     window.addEventListener('resize', checkIfMobile);
 

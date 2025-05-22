@@ -86,16 +86,30 @@
               </div>
             </div>
             <div>
-              <span class="text-customPrimaryColor text-[1.5rem] font-medium">{{ formatPrice(booking.total_amount) }}</span>
-            </div>
-            <div class="flex gap-4">
-            <Link :href="`/booking-success?payment_intent=${booking.payments[0]?.transaction_id}`" class="underline">View Booking Details</Link>
+                  <strong class="text-[1.5rem] font-medium" v-if="booking.preferred_day === 'day'">{{
+                    formatPrice(booking.vehicle.price_per_day) }}/day</strong>
+                  <strong class="text-[1.5rem] font-medium" v-if="booking.preferred_day === 'week'">{{
+                    formatPrice(booking.vehicle.price_per_week) }}/week</strong>
+                  <strong class="text-[1.5rem] font-medium" v-if="booking.preferred_day === 'month'">{{
+                    formatPrice(booking.vehicle.price_per_month) }}/month</strong>
+                </div>
+            <div class="flex gap-4 max-[768px]:flex-col items-center justify-between">
+            <div class="flex gap-5">
+              <Link :href="`/booking-success?payment_intent=${booking.payments[0]?.transaction_id}`" class="underline">View Booking Details</Link>
             <button 
                 @click="openCancellationModal(booking)" 
                 class="text-red-600 underline"
               >
                 Cancel Booking
               </button>
+            </div>
+              <Link
+                  v-if="booking.vehicle && booking.vehicle.vendor_id"
+                  class="button-primary px-5 py-4 max-[768px]:text-[0.75rem] max-[768px]:w-full max-[768px]:text-center"
+                  :href="`/messages?vendor_id=${booking.vehicle.vendor_id}`"
+                >
+                  Chat with owner
+                </Link>
           </div>
           </div>
         </div>

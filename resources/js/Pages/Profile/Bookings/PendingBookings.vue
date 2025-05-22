@@ -75,7 +75,16 @@
                   <strong class="text-[1.5rem] font-medium" v-if="booking.preferred_day === 'month'">{{
                     formatPrice(booking.vehicle.price_per_month) }}/month</strong>
                 </div>
-                <Link :href="`/booking-success?payment_intent=${booking.payments[0]?.transaction_id}`" class="underline">View Booking Details</Link>
+                <div class="flex items-center justify-between">
+                  <Link :href="`/booking-success?payment_intent=${booking.payments[0]?.transaction_id}`" class="underline">View Booking Details</Link>
+                <Link
+                  v-if="booking.vehicle && booking.vehicle.vendor_id"
+                  class="button-primary px-5 py-4 max-[768px]:text-[0.75rem] ml-4"
+                  :href="`/messages?vendor_id=${booking.vehicle.vendor_id}`"
+                >
+                  Chat with owner
+                </Link>
+                </div>
               </div>
             </div>
           </div>
