@@ -235,7 +235,12 @@ const formatDate = (dateStr) => {
         </div>
 
         <div class="flex justify-between">
-          <Link class="button-primary px-5 py-4 max-[768px]:text-[0.75rem]" href="/messages">Chat with owner</Link>
+          <Link 
+            class="button-primary px-5 py-4 max-[768px]:text-[0.75rem]" 
+            :href="vendorProfile ? `/messages?vendor_id=${vendorProfile.user_id}` : '/messages'"
+          >
+            Chat with owner
+          </Link>
           <Link class="button-secondary px-5 py-4 max-[768px]:text-[0.75rem]" href="/profile/bookings/pending">Go to
           Bookings</Link>
         </div>

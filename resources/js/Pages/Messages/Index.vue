@@ -2,7 +2,7 @@
 import { ref, computed, onMounted, onUnmounted } from "vue";
 import ChatComponent from '@/Components/ChatComponent.vue';
 import axios from 'axios';
-import { Link } from '@inertiajs/vue3';
+import { Link, usePage } from '@inertiajs/vue3';
 import arrowBackIcon from '../../../assets/arrowBack.svg'; // Assuming path relative to Pages/Messages
 
 const props = defineProps({
@@ -130,11 +130,24 @@ onMounted(() => {
     console.log("Chat Partners Data (Customer View):", props.chatPartners);
     checkIfMobile();
     window.addEventListener('resize', checkIfMobile);
-    
-    if (isMobile.value) {
+
+    const page = usePage();
+    const urlParams = new URLSearchParams(window.location.search);
+    const vendorIdFromUrl = urlParams.get('vendor_id');
+
+    if (vendorIdFromUrl && props.chatPartners) {
+        const targetPartner = props.chatPartners.find(partner => partner.user?.id.toString() === vendorIdFromUrl);
+        if (targetPartner) {
+            loadChat(targetPartner);
+        } else if (props.chatPartners.length > 0 && !isMobile.value) {
+            loadChat(props.chatPartners[0]); // Fallback to first if specific not found
+        }
+    } else if (props.chatPartners && props.chatPartners.length > 0 && !isMobile.value) {
+        loadChat(props.chatPartners[0]); // Default to first if no vendor_id
+    }
+
+    if (isMobile.value && !selectedPartner.value) { // Ensure chat doesn't auto-show on mobile unless a partner is selected
         showChat.value = false;
-    } else if (props.chatPartners && props.chatPartners.length > 0) {
-        loadChat(props.chatPartners[0]);
     }
 });
 

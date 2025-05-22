@@ -494,7 +494,7 @@ public function getCustomerPaymentHistory(Request $request)
         ]);
     }
 
-    $payments = BookingPayment::with(['booking.vehicle'])
+    $payments = BookingPayment::with(['booking.vehicle.vendorProfile'])
         ->whereHas('booking', function ($query) use ($customer) {
             $query->where('customer_id', $customer->id);
         })
