@@ -34,11 +34,11 @@
         </div>
       </div>
 
-      <div v-else>
+      <div v-else class="flex flex-col gap-10">
         <div v-for="booking in bookings.data" :key="booking.id"
           class="bg-white shadow-md rounded-lg p-6 gap-10 flex justify-between mb-6 max-[768px]:flex-col">
-          <Link :href="`/vehicle/${booking.vehicle.id}`">
-          <div class="w-20% max-[768px]:w-full"> 
+          <Link :href="`/vehicle/${booking.vehicle.id}`" class="w-[30%] max-[768px]:w-full">
+          <div class=""> 
             <img v-if="booking.vehicle?.images"
               :src="`${booking.vehicle.images.find(image => image.image_type === 'primary')?.image_url}`"
               alt="Primary Vehicle Image" class="w-full h-[250px] object-cover rounded-md" /> <img v-else
@@ -160,14 +160,11 @@ import { Link,router } from '@inertiajs/vue3';
 import Pagination from './Pagination.vue';
 
 const props = defineProps({
-  bookings: {
-    type: Object,
-    default: () => ({
-      data: [],
-      current_page: 1,
-      last_page: 1,
-    })
-  }
+    bookings: Object,
+    filters: {
+        type: Object,
+        default: () => ({})
+    }
 });
 
 // Cancellation related state
@@ -233,10 +230,13 @@ const formatPrice = (price, vehicle) => {
 };
 
 // Handle pagination
-const handlePageChange = (page) => {
-  router.get('/profile/bookings/confirmedbookings', { page }, {
-    preserveState: true,
-    replace: true,
-  });
+  const handlePageChange = (page) => {
+    router.get(route('profile.bookings.confirmed'), {
+        ...props.filters,
+        page
+    }, {
+        preserveState: true,
+        preserveScroll: true
+    });
 };
 </script>

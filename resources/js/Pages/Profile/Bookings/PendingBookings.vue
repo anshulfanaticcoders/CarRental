@@ -12,11 +12,11 @@
           </div>
         </div>
   
-        <div v-else>
+        <div v-else class="flex flex-col gap-10">
           <div v-for="booking in bookings.data" :key="booking.id"
             class="bg-white shadow-md rounded-lg p-6 gap-10 flex justify-between max-[768px]:flex-col">
-            <Link :href="`/vehicle/${booking.vehicle.id}`">
-              <div class="w-20% max-[768px]:w-full">
+            <Link :href="`/vehicle/${booking.vehicle.id}`" class="w-[30%] max-[768px]:w-full">
+              <div class="">
                 <img v-if="booking.vehicle?.images" :src="`${booking.vehicle.images.find(
                   (image) => image.image_type === 'primary'
                 )?.image_url}`" alt="Primary Vehicle Image"
@@ -97,13 +97,17 @@
   import MyProfileLayout from '@/Layouts/MyProfileLayout.vue';
   import bookingstatusIcon from '../../../../assets/bookingstatusIcon.svg';
   import carIcon from '../../../../assets/carIcon.svg';
-  import walkIcon from '../../../../assets/walking.svg';
-  import { Link, usePage } from '@inertiajs/vue3';
+  import { Link, usePage, router } from '@inertiajs/vue3';
   import Pagination from './Pagination.vue';
   import { ref } from 'vue';
-  
-  const { props } = usePage();
-  const bookings = ref(props.bookings);
+
+const props = defineProps({
+    bookings: Object,
+    filters: {
+        type: Object,
+        default: () => ({})
+    }
+});
   
   const formatDate = (dateString) => {
     return new Date(dateString).toLocaleDateString('en-US', {
@@ -112,13 +116,16 @@
       day: 'numeric',
     });
   };
-  
+
   const handlePageChange = (page) => {
-    router.get('/profile/bookings/pendingbookings', { page }, {
-      preserveState: true,
-      replace: true,
+    router.get(route('profile.bookings.pending'), {
+        ...props.filters,
+        page
+    }, {
+        preserveState: true,
+        preserveScroll: true
     });
-  };
+};
 
   const formatPrice = (price, vehicle) => {
     const currencySymbol = vehicle?.vendor_profile?.currency ?? '$'; // Default to '$' if missing

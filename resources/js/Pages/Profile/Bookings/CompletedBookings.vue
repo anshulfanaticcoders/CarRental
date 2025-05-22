@@ -12,11 +12,11 @@
         </div>
       </div>
 
-      <div v-else>
+      <div v-else class="flex flex-col gap-10">
         <div v-for="booking in bookings.data" :key="booking.id"
           class="bg-white shadow-md rounded-lg p-6 gap-10 flex justify-between mb-6 max-[768px]:flex-col">
-          <Link :href="`/vehicle/${booking.vehicle.id}`">
-          <div class="w-20% max-[768px]:w-full">
+          <Link :href="`/vehicle/${booking.vehicle.id}`" class="w-[30%] max-[768px]:w-full">
+          <div class="">
             <img v-if="booking.vehicle?.images"
               :src="`${booking.vehicle.images.find(image => image.image_type === 'primary')?.image_url}`"
               alt="Image of the booked {{ booking.vehicle.brand }} {{ booking.vehicle.model }}"
@@ -122,21 +122,18 @@ import MyProfileLayout from '@/Layouts/MyProfileLayout.vue';
 import bookingstatusIcon from '../../../../assets/bookingstatusIcon.svg';
 import carIcon from '../../../../assets/carIcon.svg';
 import { defineProps, ref, onMounted } from 'vue';
-import { Link, usePage } from '@inertiajs/vue3';
+import { Link, usePage, router } from '@inertiajs/vue3';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/Components/ui/dialog";
 import FormReview from '@/Components/ReviewForm.vue';
 import { CheckCircle } from 'lucide-vue-next';
 import Pagination from './Pagination.vue';
 
 const props = defineProps({
-  bookings: {
-    type: Object,
-    default: () => ({
-      data: [],
-      current_page: 1,
-      last_page: 1,
-    })
-  }
+    bookings: Object,
+    filters: {
+        type: Object,
+        default: () => ({})
+    }
 });
 
 console.log(props.bookings.data);
@@ -197,11 +194,15 @@ const handleReviewSubmitted = () => {
 };
 
 // Handle pagination
-const handlePageChange = (page) => {
-  router.get('/profile/bookings/completedbookings', { page }, {
-    preserveState: true,
-    replace: true,
-  });
+// Handle pagination
+  const handlePageChange = (page) => {
+    router.get(route('profile.bookings.completed'), {
+        ...props.filters,
+        page
+    }, {
+        preserveState: true,
+        preserveScroll: true
+    });
 };
 
 // Watch for flash messages from the backend

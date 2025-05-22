@@ -387,7 +387,7 @@ Route::middleware(['auth', 'role:customer'])->group(function () {
     Route::inertia('completed-bookings', 'Profile/CompletedBookings');
     Route::inertia('confirmed-bookings', 'Profile/ConfirmedBookings');
     Route::inertia('pending-bookings', 'Profile/PendingBookings');
-    Route::inertia('issued-payments', 'Profile/IssuedPayments');
+    Route::get('/profile/payments', [BookingController::class, 'getCustomerPaymentHistory'])->name('profile.payments');
     Route::inertia('review', 'Profile/Review');
     Route::inertia('favourites', 'Profile/Favourites');
     Route::inertia('inbox', 'Profile/Inbox');

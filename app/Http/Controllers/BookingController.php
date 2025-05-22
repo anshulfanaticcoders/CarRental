@@ -480,4 +480,37 @@ public function cancelBooking(Request $request)
     
     return redirect()->back()->with('success', 'Booking cancelled successfully');
 }
+
+
+public function getCustomerPaymentHistory(Request $request)
+{
+    $userId = Auth::id();
+    $customer = Customer::where('user_id', $userId)->first();
+
+    if (!$customer) {
+        return Inertia::render('Profile/IssuedPayments', [
+            'payments' => [],
+            'pagination' => null,
+        ]);
+    }
+
+    $payments = BookingPayment::with(['booking.vehicle'])
+        ->whereHas('booking', function ($query) use ($customer) {
+            $query->where('customer_id', $customer->id);
+        })
+        ->orderBy('booking_payments.created_at', 'desc')
+        ->paginate(8); // Or any other number for pagination
+
+    return Inertia::render('Profile/IssuedPayments', [
+        'payments' => $payments->items(),
+        'pagination' => [
+            'current_page' => $payments->currentPage(),
+            'last_page' => $payments->lastPage(),
+            'per_page' => $payments->perPage(),
+            'total' => $payments->total(),
+            'from' => $payments->firstItem(),
+            'to' => $payments->lastItem(),
+        ]
+    ]);
+}
 }
