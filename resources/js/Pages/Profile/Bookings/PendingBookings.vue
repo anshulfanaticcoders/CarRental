@@ -69,11 +69,11 @@
               <div>
                 <div>
                   <strong class="text-[1.5rem] font-medium" v-if="booking.preferred_day === 'day'">{{
-                    formatPrice(booking.vehicle.price_per_day) }}/day</strong>
+                    formatPrice(booking.vehicle.price_per_day, booking.vehicle) }}/day</strong>
                   <strong class="text-[1.5rem] font-medium" v-if="booking.preferred_day === 'week'">{{
-                    formatPrice(booking.vehicle.price_per_week) }}/week</strong>
+                    formatPrice(booking.vehicle.price_per_week, booking.vehicle) }}/week</strong>
                   <strong class="text-[1.5rem] font-medium" v-if="booking.preferred_day === 'month'">{{
-                    formatPrice(booking.vehicle.price_per_month) }}/month</strong>
+                    formatPrice(booking.vehicle.price_per_month, booking.vehicle) }}/month</strong>
                 </div>
                 <div class="flex items-center justify-between">
                   <Link :href="`/booking-success?payment_intent=${booking.payments[0]?.transaction_id}`" class="underline">View Booking Details</Link>

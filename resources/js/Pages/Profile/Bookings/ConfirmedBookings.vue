@@ -87,11 +87,11 @@
             </div>
             <div>
                   <strong class="text-[1.5rem] font-medium" v-if="booking.preferred_day === 'day'">{{
-                    formatPrice(booking.vehicle.price_per_day) }}/day</strong>
+                    formatPrice(booking.vehicle.price_per_day, booking.vehicle) }}/day</strong>
                   <strong class="text-[1.5rem] font-medium" v-if="booking.preferred_day === 'week'">{{
-                    formatPrice(booking.vehicle.price_per_week) }}/week</strong>
+                    formatPrice(booking.vehicle.price_per_week, booking.vehicle) }}/week</strong>
                   <strong class="text-[1.5rem] font-medium" v-if="booking.preferred_day === 'month'">{{
-                    formatPrice(booking.vehicle.price_per_month) }}/month</strong>
+                    formatPrice(booking.vehicle.price_per_month, booking.vehicle) }}/month</strong>
                 </div>
             <div class="flex gap-4 max-[768px]:flex-col items-center justify-between">
             <div class="flex gap-5">
