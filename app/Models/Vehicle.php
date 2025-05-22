@@ -31,6 +31,7 @@ class Vehicle extends Model
         'city',
         'state', 
         'country',
+        'full_vehicle_address',
         'status',
         'features',
         'featured',

@@ -1616,6 +1616,7 @@ const form = useForm({
     selected_addons: selectedAddons.value,
     addon_prices: addonPrices.value,
     addon_quantities: addonQuantities.value,
+    full_vehicle_address: null,
 
 });
 const props = defineProps({
@@ -1854,6 +1855,10 @@ const submit = () => {
     form.selected_addons = selectedAddons.value;
     form.addon_prices = addonPrices.value;
     form.addon_quantities = addonQuantities.value;
+
+    // Construct full_vehicle_address
+    const addressParts = [form.location, form.city, form.state, form.country];
+    form.full_vehicle_address = addressParts.filter(Boolean).join(', ');
     form.post(route("vehicles.store"), {
         onSuccess: () => {
             toast.success('Vehicle Added Successfully', {

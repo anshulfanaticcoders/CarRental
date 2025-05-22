@@ -67,7 +67,7 @@
                   <td class="px-2 py-4 whitespace-nowrap text-[0.875rem]">{{ vehicle.brand }} {{ vehicle.model }}</td>
                   <td class="px-2 py-4 whitespace-nowrap text-[0.875rem] capitalize">{{ vehicle.transmission }}</td>
                   <td class="px-2 py-4 whitespace-nowrap text-[0.875rem] capitalize">{{ vehicle.fuel }}</td>
-                  <td class="px-2 py-4 whitespace-wrap text-[0.875rem]">{{ vehicle.location }}</td>
+                  <td class="px-2 py-4 whitespace-wrap text-[0.875rem]">{{ vehicle.full_vehicle_address }}</td>
                   <td class="px-2 py-4 whitespace-wrap text-[0.875rem]">
                     <template v-if="vehicle.benefits && (vehicle.benefits.limited_km_per_day_range || vehicle.benefits.limited_km_per_week_range || vehicle.benefits.limited_km_per_month_range)">
                       <span v-if="vehicle.benefits.limited_km_per_day_range > 0">
@@ -192,7 +192,7 @@ const filteredVehicles = computed(() => {
       vehicle.model.toLowerCase().includes(query) ||
       vehicle.transmission.toLowerCase().includes(query) ||
       vehicle.fuel.toLowerCase().includes(query) ||
-      vehicle.location.toLowerCase().includes(query) ||
+      vehicle.full_vehicle_address.toLowerCase().includes(query) ||
       vehicle.status.toLowerCase().includes(query)
     );
   });

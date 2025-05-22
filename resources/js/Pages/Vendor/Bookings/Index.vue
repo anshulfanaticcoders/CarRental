@@ -30,6 +30,8 @@
                                 Date</th>
                             <th class="px-4 py-2 text-left text-sm font-medium tracking-wider whitespace-nowrap">Return
                                 Date</th>
+                            <th class="px-4 py-2 text-left text-sm font-medium tracking-wider whitespace-nowrap">Booking
+                                Location</th>
                             <th class="px-4 py-2 text-left text-sm font-medium tracking-wider whitespace-nowrap">Total
                                 Payment</th>
                             <th class="px-4 py-2 text-left text-sm font-medium tracking-wider whitespace-nowrap">Amount
@@ -65,6 +67,8 @@
                                 formatDate(booking.pickup_date) }}</td>
                             <td class="px-4 py-2 text-sm text-gray-700 whitespace-nowrap">{{
                                 formatDate(booking.return_date) }}</td>
+                            <td class="px-4 py-2 text-sm text-gray-700 whitespace-nowrap">{{
+                               booking.pickup_location}}</td>
                             <td class="px-4 py-2 text-sm text-gray-700 whitespace-nowrap">{{
                                 booking.vendor_profile?.currency }} {{ booking.total_amount || 'N/A' }}</td>
                             <td class="px-4 py-2 text-sm text-green-600 whitespace-nowrap font-medium">{{

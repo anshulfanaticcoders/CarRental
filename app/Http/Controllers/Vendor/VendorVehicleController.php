@@ -27,7 +27,7 @@ class VendorVehicleController extends Controller
                         ->orWhere('model', 'like', '%' . $searchQuery . '%')
                         ->orWhere('transmission', 'like', '%' . $searchQuery . '%')
                         ->orWhere('fuel', 'like', '%' . $searchQuery . '%')
-                        ->orWhere('location', 'like', '%' . $searchQuery . '%')
+                        ->orWhere('full_vehicle_address', 'like', '%' . $searchQuery . '%')
                         ->orWhere('status', 'like', '%' . $searchQuery . '%');
                 });
             })
@@ -126,6 +126,7 @@ class VendorVehicleController extends Controller
             'city' => 'nullable|string|max:100',
             'state' => 'nullable|string|max:100',
             'country' => 'nullable|string|max:100',
+            'full_vehicle_address' => 'nullable|string|max:255', // Added validation
             'latitude' => 'nullable|numeric|between:-90,90',
             'longitude' => 'nullable|numeric|between:-180,180',
 
@@ -174,6 +175,7 @@ class VendorVehicleController extends Controller
             'city' => $request->city ?? '',
             'state' => $request->state ?? '',
             'country' => $request->country ?? '',
+            'full_vehicle_address' => $request->full_vehicle_address, // Added to update
             'latitude' => $latitude,
             'longitude' => $longitude,
             'status' => $request->status,

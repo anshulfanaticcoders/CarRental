@@ -273,7 +273,7 @@ const addMarkers = () => {
                 <img src="${primaryImage}" alt="${vehicle.brand} ${vehicle.model}" class="popup-image" />
                 <p class="rating">${vehicle.average_rating ? vehicle.average_rating.toFixed(1) : '0.0'} ★ (${vehicle.review_count} reviews)</p>
                 <p class="font-semibold">${vehicle.brand} ${vehicle.model}</p>
-                <p class="">${vehicle.location || ''}, ${vehicle.city || ''}, ${vehicle.state || ''}, ${vehicle.country || ''}</p>
+                <p class="">${vehicle.full_vehicle_address || ''}</p>
                 <a href="/vehicle/${vehicle.id}" 
                    class="text-blue-500 hover:text-blue-700"
                    onclick="event.preventDefault(); window.location.href='/vehicle/${vehicle.id}';"> 
@@ -969,7 +969,7 @@ const handleCategorySearchUpdate = (params) => {
                                 </div>
 
                                  <div>
-                                    <span class="italic font-medium">{{vehicle.location}}, {{vehicle.city}}</span>
+                                    <span class="italic font-medium">{{vehicle.full_vehicle_address}}</span>
                                  </div>
 
                                 <div class="car_short_info mt-[1rem] flex gap-3">

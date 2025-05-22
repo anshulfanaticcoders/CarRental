@@ -200,7 +200,7 @@ const initMap = () => {
         .bindPopup(`
             <div class="text-center">
                 <p class="font-semibold">${vehicle.value.brand}</p>
-                <p>${vehicle.value.location}</p>
+                <p>${vehicle.value.full_vehicle_address}</p>
             </div>
         `)
         .addTo(map);
@@ -947,8 +947,7 @@ const openLightbox = (index) => {
 
                     <div class="dot_seperator"><strong>.</strong></div>
                     <div class="car_location">
-                        <span>{{ vehicle?.location }}, {{ vehicle?.city }}, {{ vehicle?.state }}, {{ vehicle?.country
-                            }}</span>
+                        <span>{{ vehicle?.full_vehicle_address }}</span>
                     </div>
                 </div>
                 <div>
@@ -1028,8 +1027,7 @@ const openLightbox = (index) => {
 
                         <div class="dot_seperator"><strong>.</strong></div>
                         <div class="car_location">
-                            <span class="text-[0.875rem]">{{ vehicle?.location }}, {{ vehicle?.city }}, {{ vehicle?.state }}, {{ vehicle?.country
-                            }}</span>
+                            <span class="text-[0.875rem]"><span>{{ vehicle?.full_vehicle_address }}</span></span>
                         </div>
                     </div>
                 </div>
@@ -1153,8 +1151,7 @@ const openLightbox = (index) => {
                             <div
                                 class="gap-y-[2rem] max-[768px]:mt-[0.5rem] flex items-end mt-[1rem] gap-2 max-[768px]:gap-1 max-[768px]:items-center">
                                 <img :src=locationPinIcon alt="" class="w-8 h-8 max-[768px]:w-6"> <span
-                                    class="text-[1.2rem] max-[768px]:text-[0.95rem]">{{ vehicle?.location }}, {{ vehicle?.city }}, {{ vehicle?.state }}, {{ vehicle?.country
-                            }}</span>
+                                    class="text-[1.2rem] max-[768px]:text-[0.95rem]">{{ vehicle?.full_vehicle_address }}</span>
                             </div>
                             <div id="map" class="h-full rounded-lg mt-4"></div>
                         </div>
@@ -1373,9 +1370,7 @@ const openLightbox = (index) => {
                                     <img :src="pickupLocationIcon" alt="" class="max-[768px]:w-[24px]" />
                                     <div class="flex flex-col gap-1">
                                         <span>Pickup Location</span>
-                                        <span class="text-[1.25rem] text-medium max-[768px]:text-[1rem]">{{
-                                            vehicle?.location }}, {{ vehicle.city }}, {{ vehicle.state }}, {{
-                                            vehicle.country }}</span>
+                                        <span class="text-[1.25rem] text-medium max-[768px]:text-[1rem]">{{ vehicle?.full_vehicle_address }}</span>
                                         <span class="max-[768px]:text-[0.95rem]">{{ route().params.pickup_date }}</span>
                                     </div>
                                 </div>
@@ -1383,9 +1378,7 @@ const openLightbox = (index) => {
                                     <img :src="returnLocationIcon" alt="" class="max-[768px]:w-[24px]" />
                                     <div class="flex flex-col gap-1">
                                         <span>Return Location</span>
-                                        <span class="text-[1.25rem] text-medium max-[768px]:text-[1rem]">{{
-                                            vehicle?.location }}, {{ vehicle.city }}, {{ vehicle.state }}, {{
-                                            vehicle.country }}</span>
+                                        <span class="text-[1.25rem] text-medium max-[768px]:text-[1rem]">{{ vehicle?.full_vehicle_address }}</span>
                                         <span class="max-[768px]:text-[0.95rem]">{{ route().params.return_date }}</span>
                                     </div>
                                 </div>

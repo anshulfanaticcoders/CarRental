@@ -66,7 +66,7 @@
                             index + 1 }}</td>
                         <td class="px-4 py-2 text-sm text-gray-700">{{ vehicle.brand }}</td>
                         <td class="px-4 py-2 text-sm text-gray-700">{{ vehicle.model }}</td>
-                        <td class="px-4 py-2 text-sm text-gray-700">{{ vehicle.location }}</td>
+                        <td class="px-4 py-2 text-sm text-gray-700">{{ vehicle.full_vehicle_address }}</td>
                         <td class="px-4 py-2 text-sm text-gray-700">
                             <div v-if="vehicle.bookings && vehicle.bookings.length > 0">
                                 <div v-for="(booking, index) in vehicle.bookings" :key="index" class="mb-1">

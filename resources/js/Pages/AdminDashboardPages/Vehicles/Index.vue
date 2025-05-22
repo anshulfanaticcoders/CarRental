@@ -28,6 +28,7 @@
                             <TableHead>Location</TableHead>
                             <TableHead>Country</TableHead>
                             <TableHead>Price</TableHead>
+                            <TableHead>Date Added</TableHead>
                             <TableHead>Status</TableHead>
                             <TableHead class="text-right">Actions</TableHead>
                         </TableRow>
@@ -39,7 +40,7 @@
                             <TableCell>{{ user.model }}</TableCell>
                             <TableCell>{{ user.brand }}</TableCell>
                             <TableCell>{{ user.color }}</TableCell>
-                            <TableCell>{{ user.location }}</TableCell>
+                            <TableCell>{{ user.full_vehicle_address }}</TableCell>
                             <TableCell>{{ user.vendor_profile.country }}</TableCell>
                             <TableCell>
                                 <template v-if="user.price_per_day || user.price_per_week || user.price_per_month">
@@ -60,6 +61,7 @@
                                 </template>
                                 <span v-else>-</span> <!-- Placeholder if no prices are available -->
                             </TableCell>
+                            <TableCell>{{ formatDate(user.created_at) }}</TableCell>
 
                             <TableCell>
                                 <Badge :variant="getStatusBadgeVariant(user.vendor_profile?.status)">
@@ -136,6 +138,15 @@ const props = defineProps({
     users: Object,
     filters: Object,
 });
+
+// Format date
+const formatDate = (date) => {
+    return new Date(date).toLocaleDateString('en-US', {
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric'
+    });
+};
 
 const search = ref(props.filters.search || ''); // Initialize search with the filter value
 const isViewDialogOpen = ref(false);

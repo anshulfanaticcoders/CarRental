@@ -751,7 +751,8 @@ const form = useForm({
         minimum_driver_age: 18
     },
     primary_image_index: null, // For new uploads
-    existing_primary_image_id: null // For existing images
+    existing_primary_image_id: null, // For existing images
+    full_vehicle_address: '', // Initialize new field
 })
 
 const remainingImageSlots = computed(() => {
@@ -925,6 +926,7 @@ onMounted(() => {
         form.country = props.vehicle.country || '';
         form.latitude = props.vehicle.latitude ? parseFloat(props.vehicle.latitude) : 0;
         form.longitude = props.vehicle.longitude ? parseFloat(props.vehicle.longitude) : 0;
+        form.full_vehicle_address = props.vehicle.full_vehicle_address || ''; // Populate from props
         form.status = props.vehicle.status;
         try {
             // Ensure features are parsed correctly, might be an array of names or empty
@@ -1021,6 +1023,10 @@ onMounted(() => {
 
 const updateVehicle = () => {
     isLoading.value = true;
+
+    // Construct full_vehicle_address before getting form.data()
+    const addressParts = [form.location, form.city, form.state, form.country];
+    form.full_vehicle_address = addressParts.filter(Boolean).join(', ');
 
     // Get a plain JS object of the form data to modify for submission
     let submitData = form.data();

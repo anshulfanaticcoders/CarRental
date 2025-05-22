@@ -23,11 +23,12 @@ class VehicleDashboardController extends Controller
                     ->orWhere('status', 'like', "%{$search}%")
                     ->orWhere('color', 'like', "%{$search}%")
                     ->orWhere('price_per_day', 'like', "%{$search}%")
-                    ->orWhere('location', 'like', "%{$search}%")
+                    ->orWhere('full_vehicle_address', 'like', "%{$search}%")
                     ->orWhere('first_name', 'like', "%{$search}%")
                     ->orWhere('last_name', 'like', "%{$search}%");
             }
         })
+        ->orderBy('created_at', 'desc')
             ->with(['User','vendorProfile'])
             ->paginate(6);
 

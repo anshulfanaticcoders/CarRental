@@ -561,18 +561,8 @@ const bookingData = computed(() => {
         customer: customer.value,
         pickup_date: dateFrom.value,
         return_date: dateTo.value,
-        pickup_location: vehicle.value
-            ? `${vehicle.value.location}, ${vehicle.value.city}, ${vehicle.value.state}, ${vehicle.value.country}`
-                .replace(/,\s*,/g, ',')
-                .trim()
-                .replace(/^,|,$/g, '')
-            : null,
-        return_location: vehicle.value
-            ? `${vehicle.value.location}, ${vehicle.value.city}, ${vehicle.value.state}, ${vehicle.value.country}`
-                .replace(/,\s*,/g, ',')
-                .trim()
-                .replace(/^,|,$/g, '')
-            : null,
+        pickup_location: vehicle.value.full_vehicle_address,
+        return_location: vehicle.value.full_vehicle_address,
         pickup_time: timeFrom.value,
         return_time: timeTo.value,
         total_days: totalDaysCalc,
@@ -955,9 +945,8 @@ const bookingData = computed(() => {
                             <div class="col flex items-start gap-4">
                                 <img :src="pickupLocationIcon" alt="" />
                                 <div class="flex flex-col gap-1">
-                                    <span class="text-[1.25rem] text-medium max-[768px]:text-[1rem]">{{
-                                        vehicle?.location
-                                    }}, {{ vehicle.city }}, {{ vehicle.state }}, {{ vehicle.country }}</span><span
+                                    <span class="text-[1.25rem] text-medium max-[768px]:text-[1rem]">{{ vehicle?.full_vehicle_address }}</span>
+                                    <span
                                         class="max-[768px]:text-[0.85rem]">From: {{ dateFrom }} {{
                                             timeFrom }}</span>
                                 </div>
@@ -965,9 +954,7 @@ const bookingData = computed(() => {
                             <div class="col flex items-start gap-4 mt-[2.5rem]">
                                 <img :src="returnLocationIcon" alt="" />
                                 <div class="flex flex-col gap-1">
-                                    <span class="text-[1.25rem] text-medium max-[768px]:text-[1rem]">{{
-                                        vehicle?.location
-                                    }}, {{ vehicle.city }}, {{ vehicle.state }}, {{ vehicle.country }}</span><span
+                                    <span class="text-[1.25rem] text-medium max-[768px]:text-[1rem]">{{ vehicle?.full_vehicle_address }}</span><span
                                         class="max-[768px]:text-[0.85rem]">To: {{ dateTo }} {{ timeTo
                                         }}</span>
                                 </div>

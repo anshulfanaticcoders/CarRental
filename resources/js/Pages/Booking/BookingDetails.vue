@@ -62,7 +62,7 @@ const initMap = () => {
     .bindPopup(`
       <div class="text-center">
         <p class="font-semibold">Vehicle Location</p>
-        <p>${vehicle.value.location || 'No location name available'}</p>
+        <p>${vehicle.value.full_vehicle_address || 'No location name available'}</p>
       </div>
     `)
     .addTo(map.value);
