@@ -3,12 +3,12 @@
       <div class="container mx-auto px-4 max-[768px]:px-0">
         <p
           class="text-[1.5rem] max-[768px]:text-[1.2rem] text-customPrimaryColor font-bold mb-[2rem] bg-[#154D6A0D] rounded-[12px] px-[1rem] py-[1rem]">
-          Pending Bookings</p>
+          {{ _t('customerbooking', 'pending_bookings_header') }}</p>
   
           <div v-if="!bookings.data || bookings.data.length === 0" class="text-center text-gray-500">
           <div class="flex flex-col justify-center items-center">
             <img :src="bookingstatusIcon" alt="" class="w-[30rem] max-[768px]:w-full">
-            <p>No pending bookings found.</p>
+            <p>{{ _t('customerbooking', 'no_pending_bookings_found') }}</p>
           </div>
         </div>
   
@@ -31,8 +31,7 @@
                       booking.vehicle?.category.name
                     }}</span>
                     </div>
-                <span class="bg-[#906F001A] text-[#906F00] px-[1.5rem] py-[0.75rem] rounded-[99px] max-[768px]:text-[0.75rem]">Booking
-                  under progress</span>
+                <span class="bg-[#906F001A] text-[#906F00] px-[1.5rem] py-[0.75rem] rounded-[99px] max-[768px]:text-[0.75rem]">{{ _t('customerbooking', 'booking_under_progress_status') }}</span>
               </div>
   
               <div class="flex items-end gap-2 max-[768px]:text-[0.875rem]">
@@ -41,13 +40,13 @@
                   .</span>
                 <span class="capitalize text-customLightGrayColor">{{ booking.vehicle.fuel }} .</span>
                 <span class="capitalize text-customLightGrayColor">{{ booking.vehicle.seating_capacity }}
-                  Seats</span>
+                  {{ _t('customerbooking', 'seats_suffix') }}</span>
               </div>
   
               <div class="flex justify-between w-[70%] max-[768px]:w-full max-[768px]:flex-col max-[768px]:gap-5">
                 <div class="col">
                   <div>
-                    <strong>From:</strong>
+                    <strong>{{ _t('customerbooking', 'from_label') }}</strong>
                     <span class="ml-2">{{ booking.pickup_location }}</span>
                   </div>
                   <div class="flex gap-2">
@@ -57,7 +56,7 @@
                 </div>
                 <div class="col">
                   <div>
-                    <strong>To:</strong>
+                    <strong>{{ _t('customerbooking', 'to_label') }}</strong>
                     <span class="ml-2">{{ booking.pickup_location }}</span>
                   </div>
                   <div class="flex gap-2">
@@ -69,20 +68,20 @@
               <div>
                 <div>
                   <strong class="text-[1.5rem] font-medium" v-if="booking.preferred_day === 'day'">{{
-                    formatPrice(booking.vehicle.price_per_day, booking.vehicle) }}/day</strong>
+                    formatPrice(booking.vehicle.price_per_day, booking.vehicle) }}{{_t('customerbooking', 'price_per_day_suffix')}}</strong>
                   <strong class="text-[1.5rem] font-medium" v-if="booking.preferred_day === 'week'">{{
-                    formatPrice(booking.vehicle.price_per_week, booking.vehicle) }}/week</strong>
+                    formatPrice(booking.vehicle.price_per_week, booking.vehicle) }}{{_t('customerbooking', 'price_per_week_suffix')}}</strong>
                   <strong class="text-[1.5rem] font-medium" v-if="booking.preferred_day === 'month'">{{
-                    formatPrice(booking.vehicle.price_per_month, booking.vehicle) }}/month</strong>
+                    formatPrice(booking.vehicle.price_per_month, booking.vehicle) }}{{_t('customerbooking', 'price_per_month_suffix')}}</strong>
                 </div>
                 <div class="flex items-center justify-between">
-                  <Link :href="`/booking-success?payment_intent=${booking.payments[0]?.transaction_id}`" class="underline">View Booking Details</Link>
+                  <Link :href="`/booking-success?payment_intent=${booking.payments[0]?.transaction_id}`" class="underline">{{ _t('customerbooking', 'view_booking_details_link') }}</Link>
                 <Link
                   v-if="booking.vehicle && booking.vehicle.vendor_id"
                   class="button-primary px-5 py-4 max-[768px]:text-[0.75rem] ml-4"
                   :href="`/messages?vendor_id=${booking.vehicle.vendor_id}`"
                 >
-                  Chat with owner
+                  {{ _t('customerbooking', 'chat_with_owner_link') }}
                 </Link>
                 </div>
               </div>
@@ -108,7 +107,10 @@
   import carIcon from '../../../../assets/carIcon.svg';
   import { Link, usePage, router } from '@inertiajs/vue3';
   import Pagination from './Pagination.vue';
-  import { ref } from 'vue';
+  import { ref, getCurrentInstance } from 'vue';
+
+const { appContext } = getCurrentInstance();
+const _t = appContext.config.globalProperties._t;
 
 const props = defineProps({
     bookings: Object,

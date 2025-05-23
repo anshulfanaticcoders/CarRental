@@ -9,4 +9,6 @@ return [
    'login' => require __DIR__.'/login.php',
    'common' => require __DIR__.'/common.php',
    'customerprofile' => require __DIR__.'/customerprofile.php',
+   'customerbooking' => require __DIR__.'/customerbooking.php',
+   'authpages' => require __DIR__.'/authpages.php',
 ];

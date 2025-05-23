@@ -3,12 +3,12 @@
     <div class="container mx-auto px-4 max-[768px]:px-0">
       <p
         class="text-[1.5rem] max-[768px]:text-[1.2rem] text-customPrimaryColor font-bold mb-[2rem] bg-[#154D6A0D] rounded-[12px] px-[1rem] py-[1rem]">
-        Completed Bookings</p>
+        {{ _t('customerbooking', 'completed_bookings_header') }}</p>
 
         <div v-if="!bookings.data || bookings.data.length === 0" class="text-center text-gray-500">
         <div class="flex flex-col justify-center items-center">
           <img :src="bookingstatusIcon" alt="" class="w-[30rem] max-[768px]:w-full">
-          <p>No completed bookings found.</p>
+          <p>{{ _t('customerbooking', 'no_completed_bookings_found') }}</p>
         </div>
       </div>
 
@@ -19,9 +19,9 @@
           <div class="">
             <img v-if="booking.vehicle?.images"
               :src="`${booking.vehicle.images.find(image => image.image_type === 'primary')?.image_url}`"
-              alt="Image of the booked {{ booking.vehicle.brand }} {{ booking.vehicle.model }}"
+              :alt="_t('customerbooking', 'booked_vehicle_image_alt')"
               class="w-full h-[250px] object-cover rounded-md" />
-            <img v-else src="/path/to/placeholder-image.jpg" alt="Placeholder Image"
+            <img v-else src="/path/to/placeholder-image.jpg" :alt="_t('customerbooking', 'placeholder_image_alt')"
               class="w-full h-[250px] object-cover rounded-md" />
           </div>
           </Link>
@@ -34,21 +34,20 @@
                   booking.vehicle?.category?.name }}</span>
               </div>
               <span
-                class="bg-[#0099001A] text-[#009900] px-[1.5rem] py-[0.75rem] rounded-[99px] max-[768px]:text-[0.75rem]">Trip
-                Completed</span>
+                class="bg-[#0099001A] text-[#009900] px-[1.5rem] py-[0.75rem] rounded-[99px] max-[768px]:text-[0.75rem]">{{ _t('customerbooking', 'trip_completed_status') }}</span>
             </div>
 
             <div class="flex items-end gap-2 max-[768px]:text-[0.875rem]">
-              <img :src="carIcon" alt="Icon of a car">
+              <img :src="carIcon" :alt="_t('customerbooking', 'car_icon_alt')">
               <span class="capitalize text-customLightGrayColor">{{ booking.vehicle.transmission }} .</span>
               <span class="capitalize text-customLightGrayColor">{{ booking.vehicle.fuel }} .</span>
-              <span class="capitalize text-customLightGrayColor">{{ booking.vehicle.seating_capacity }} Seats</span>
+              <span class="capitalize text-customLightGrayColor">{{ booking.vehicle.seating_capacity }} {{ _t('customerbooking', 'seats_suffix') }}</span>
             </div>
 
             <div class="flex justify-between w-[70%] max-[768px]:w-full max-[768px]:flex-col max-[768px]:gap-5">
               <div class="col">
                 <div>
-                  <strong>From:</strong>
+                  <strong>{{ _t('customerbooking', 'from_label') }}</strong>
                   <span class="ml-2">{{ booking.pickup_location }}</span>
                 </div>
                 <div class="flex gap-2">
@@ -58,7 +57,7 @@
               </div>
               <div class="col">
                 <div>
-                  <strong>To:</strong>
+                  <strong>{{ _t('customerbooking', 'to_label') }}</strong>
                   <span class="ml-2">{{ booking.return_location }}</span>
                 </div>
                 <div class="flex gap-2">
@@ -70,26 +69,22 @@
             <div class='flex justify-between items-center'>
               <div>
                   <strong class="text-[1.5rem] font-medium" v-if="booking.preferred_day === 'day'">{{
-                    formatPrice(booking.vehicle.price_per_day, booking.vehicle) }}/day</strong>
+                    formatPrice(booking.vehicle.price_per_day, booking.vehicle) }}{{ _t('customerbooking', 'price_per_day_suffix') }}</strong>
                   <strong class="text-[1.5rem] font-medium" v-if="booking.preferred_day === 'week'">{{
-                    formatPrice(booking.vehicle.price_per_week, booking.vehicle) }}/week</strong>
+                    formatPrice(booking.vehicle.price_per_week, booking.vehicle) }}{{ _t('customerbooking', 'price_per_week_suffix') }}</strong>
                   <strong class="text-[1.5rem] font-medium" v-if="booking.preferred_day === 'month'">{{
-                    formatPrice(booking.vehicle.price_per_month, booking.vehicle) }}/month</strong>
+                    formatPrice(booking.vehicle.price_per_month, booking.vehicle) }}{{ _t('customerbooking', 'price_per_month_suffix') }}</strong>
                 </div>
               <div>
                 <button v-if="!booking.review" @click="openReviewModal(booking)"
                   class="button-primary px-[1.5rem] py-[0.75rem] max-[768px]:text-[0.75rem]">
-                  Write a Review
+                  {{ _t('customerbooking', 'write_a_review_button') }}
                 </button>
                 <div v-else class="text-green-600 flex items-center gap-2">
                   <CheckCircle class="w-5 h-5" />
-                  <span>Review Submitted</span>
+                  <span>{{ _t('customerbooking', 'review_submitted_text') }}</span>
                 </div>
-
-                <div v-else class="text-green-600 flex items-center gap-2">
-                  <CheckCircle class="w-5 h-5" />
-                  <span>Review Submitted</span>
-                </div>
+                <!-- Redundant block was here, its closing div is removed below -->
               </div>
             </div>
           </div>
@@ -105,7 +100,7 @@
       <Dialog v-model:open="isReviewModalOpen">
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Write a Review</DialogTitle>
+            <DialogTitle>{{ _t('customerbooking', 'dialog_title_write_review') }}</DialogTitle>
           </DialogHeader>
           <FormReview :booking="selectedBooking" @close="closeReviewModal" @reviewSubmitted="handleReviewSubmitted" />
         </DialogContent>
@@ -116,7 +111,7 @@
         'fixed bottom-4 right-4 p-4 rounded-md shadow-lg transition-all duration-500',
         notification.type === 'success' ? 'bg-green-500' : 'bg-red-500'
       ]">
-        <div class="text-white">{{ notification.message }}</div>
+        <div class="text-white">{{ notification.message }}</div> <!-- Assuming notification.message is already translated or dynamic -->
       </div>
     </div>
   </MyProfileLayout>
@@ -126,12 +121,15 @@
 import MyProfileLayout from '@/Layouts/MyProfileLayout.vue';
 import bookingstatusIcon from '../../../../assets/bookingstatusIcon.svg';
 import carIcon from '../../../../assets/carIcon.svg';
-import { defineProps, ref, onMounted } from 'vue';
+import { defineProps, ref, onMounted, getCurrentInstance } from 'vue';
 import { Link, usePage, router } from '@inertiajs/vue3';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/Components/ui/dialog";
 import FormReview from '@/Components/ReviewForm.vue';
 import { CheckCircle } from 'lucide-vue-next';
 import Pagination from './Pagination.vue';
+
+const { appContext } = getCurrentInstance();
+const _t = appContext.config.globalProperties._t;
 
 const props = defineProps({
     bookings: Object,
@@ -186,7 +184,7 @@ const closeReviewModal = () => {
 };
 
 const handleReviewSubmitted = () => {
-  showNotification('Review submitted successfully!');
+  showNotification(_t('customerbooking', 'toast_review_submitted_success'));
   closeReviewModal();
 
   // Update the local booking to show review submitted

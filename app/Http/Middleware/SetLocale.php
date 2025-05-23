@@ -30,6 +30,7 @@ class SetLocale
             'customerprofile' => trans('customerprofile'),
             'customerprofilepages' => trans('customerprofilepages'),
             'authpages' => trans('authpages'),
+            'customerbooking' => trans('customerbooking'),
         ],
     ]);
 
