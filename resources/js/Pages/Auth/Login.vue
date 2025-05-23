@@ -36,26 +36,27 @@ const submit = () => {
 <template>
     <main class="">
 
-        <Head title="Log in" />
+       <Head :title="_t('login', 'log_in')" />
+
         <GuestHeader />
 
         <div v-if="status" class="mb-4 font-medium text-sm text-green-600">
             {{ status }}
         </div>
 
-        <div class="ml-[10%] flex justify-between items-center gap-16 h-[100vh] sign_in
+        <div class="ml-[10%] flex justify-between items-center gap-16 h-[91vh] sign_in
         max-[768px]:flex-col max-[768px]:ml-0 max-[768px]:px-[1.5rem] max-[768px]:justify-center relative
         ">
             <div class="column w-[40%] max-[768px]:w-full">
                 <div class="text-center mb-[4rem] text-[#111111]">
-                    <h3 class="font-medium text-[3rem] max-[768px]:text-[1.5rem] max-[768px]:text-white">Sign In</h3>
+                    <h3 class="font-medium text-[3rem] max-[768px]:text-[1.5rem] max-[768px]:text-white">{{ _t('login', 'sign_in') }}</h3>
                     <p
                         class='text-customLightGrayColor max-[768px]:text-white max-[768px]:text-[1rem] max-[768px]:mt-2'>
-                        Login for free to access to in any of our products</p>
+                        {{ _t('login', 'login_description') }}</p>
                 </div>
                 <form @submit.prevent="submit">
                     <div>
-                        <InputLabel for="email" value="Email address" class="max-[768px]:!text-white" />
+                        <InputLabel for="email" :value="_t('login', 'email_address')" class="max-[768px]:!text-white" />
 
                         <TextInput id="email" type="email" class="mt-1 block w-full" v-model="form.email" required
                             autofocus autocomplete="username" />
@@ -64,7 +65,7 @@ const submit = () => {
                     </div>
 
                     <div class="mt-4 relative">
-                        <InputLabel for="password" value="Password" class="max-[768px]:!text-white" />
+                        <InputLabel for="password" :value="_t('login', 'password')" class="max-[768px]:!text-white" />
 
                         <TextInput :type="showPassword ? 'text' : 'password'" id="password"
                             class="mt-1 block w-full pr-12" v-model="form.password" required
@@ -72,7 +73,7 @@ const submit = () => {
 
                         <button type="button" @click="showPassword = !showPassword"
                             class="absolute right-3 top-[50%] translate-y-[0%] font-medium text-customDarkBlackColor text-sm max-[768px]:text-white">
-                            {{ showPassword ? 'Hide' : 'Show' }}
+                             {{ showPassword ? _t('registerUser', 'hide_password') : _t('registerUser', 'show_password') }}
                         </button>
 
                         <InputError class="mt-2" :message="form.errors.password" />
@@ -83,12 +84,11 @@ const submit = () => {
                         <label class="flex items-center">
                             <Checkbox name="remember" v-model:checked="form.remember" />
                             <span
-                                class="ms-2 text-lg text-gray-600 max-[768px]:text-white max-[768px]:text-[1rem]">Remember
-                                me</span>
+                                class="ms-2 text-lg text-gray-600 max-[768px]:text-white max-[768px]:text-[1rem]">{{ _t('login', 'remember_me') }}</span>
                         </label>
                         <Link v-if="canResetPassword" :href="route('password.request')"
                             class="underline max-[768px]:text-[1rem] max-[768px]:text-white text-lg text-gray-600 hover:text-gray-900 rounded-md focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
-                        Forgot your password?
+                        {{ _t('login', 'forgot_password') }}
                         </Link>
 
                     </div>
@@ -97,15 +97,15 @@ const submit = () => {
                         <button
                             class="button-primary w-full p-4 text-[1.15rem] max-[768px]:text-[1rem] max-[768px]:mt-5"
                             :class="{ 'opacity-25': form.processing }" :disabled="form.processing">
-                            Sign in
+                            {{ _t('login', 'sign_in_button') }}
                         </button>
                     </div>
                 </form>
             </div>
 
             <div
-                class="column overflow-hidden h-full w-[40%] max-[768px]:w-full max-[768px]:absolute max-[768px]:top-0 max-[768px]:-z-10">
-                <img :src=loginBg alt="" class="w-full h-full object-cover repeat-0 max-[768px]:brightness-50">
+                class="column overflow-hidden h-full w-[50%] max-[768px]:w-full max-[768px]:absolute max-[768px]:top-0 max-[768px]:-z-10">
+                <img :src=loginBg alt="" class="w-full h-full brightness-90 object-cover repeat-0 max-[768px]:brightness-50">
             </div>
         </div>
 

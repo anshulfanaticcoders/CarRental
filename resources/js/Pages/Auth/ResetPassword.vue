@@ -52,12 +52,12 @@ const submit = () => {
                     <ApplicationLogo class="mx-auto md:mx-0 w-32" />
                 </Link>
 
-                <h2 class="text-2xl font-semibold text-gray-700 mb-6 text-center md:text-left">Reset Your Password</h2>
+                <h2 class="text-2xl font-semibold text-gray-700 mb-6 text-center md:text-left">{{ _t('resetpassword', 'reset_password_title') }}</h2>
 
                 <form @submit.prevent="submit" class="space-y-5">
                     <!-- Email -->
                     <div>
-                        <InputLabel for="email" value="Email" />
+                        <InputLabel for="email" :value="_t('resetpassword', 'email')" />
                         <TextInput
                             id="email"
                             type="email"
@@ -72,7 +72,7 @@ const submit = () => {
 
                     <!-- Password -->
                     <div>
-                        <InputLabel for="password" value="New Password" />
+                        <InputLabel for="password" :value="_t('resetpassword', 'new_password')" />
                         <TextInput
                             id="password"
                             type="password"
@@ -86,7 +86,7 @@ const submit = () => {
 
                     <!-- Confirm Password -->
                     <div>
-                        <InputLabel for="password_confirmation" value="Confirm Password" />
+                        <InputLabel for="password_confirmation" :value="_t('resetpassword', 'confirm_password')" />
                         <TextInput
                             id="password_confirmation"
                             type="password"
@@ -105,7 +105,7 @@ const submit = () => {
                             :disabled="form.processing"
                             class="px-6 py-2 rounded-lg bg-blue-600 hover:bg-blue-700 text-white transition"
                         >
-                            Reset Password
+                            {{ _t('resetpassword', 'reset_password_button') }}
                         </PrimaryButton>
                     </div>
                 </form>

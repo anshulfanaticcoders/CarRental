@@ -1,5 +1,5 @@
 <script setup>
-import { ref, defineProps, onMounted, computed, watch } from "vue";
+import { ref, defineProps, onMounted, computed, watch, getCurrentInstance } from "vue";
 import { Head, useForm } from "@inertiajs/vue3";
 import { useToast } from 'vue-toastification';
 import TextInput from "@/Components/TextInput.vue";
@@ -28,6 +28,9 @@ const props = defineProps({
 
 const isLoading = ref(false);
 const toast = useToast();
+
+const { appContext } = getCurrentInstance();
+const _t = appContext.config.globalProperties._t;
 
 const form = useForm({
     phone: props.user.phone,
@@ -101,7 +104,7 @@ const nextStep = () => {
         );
 
         if (!allFilesSelected) {
-            errors.value.files = "Please upload all the document to proceed.";
+            errors.value.files = _t('authpages', 'error_all_documents_required');
             return;
         }
 
@@ -110,11 +113,11 @@ const nextStep = () => {
 
     if (currentStep.value === 3) {
         if (!selectedPhoneCode.value) {
-            errors.value.company_phone_code = "Please select a country code.";
+            errors.value.company_phone_code = _t('authpages', 'error_company_phone_code_required');
             return;
         }
         if (!phoneNumber.value || phoneNumber.value.length < 7) {
-            errors.value.company_phone_number = "Please enter a valid phone number.";
+            errors.value.company_phone_number = _t('authpages', 'error_company_phone_number_invalid');
             return;
         }
     }
@@ -135,7 +138,7 @@ const handleFileChange = (field, event) => {
         const fileExtension = file.name.split('.').pop().toLowerCase();
 
         if (!validExtensions.includes(fileExtension)) {
-            toast.error('Invalid file format. Please upload a JPG, PNG, or JPEG file.', {
+            toast.error(_t('authpages', 'toast_invalid_file_format'), {
                 position: 'top-right',
                 timeout: 3000,
                 closeOnClick: true,
@@ -173,8 +176,8 @@ const submit = () => {
     isLoading.value = true;
     form.post(route("vendor.store"), {
         onSuccess: () => {
-            const errorMessage = props.flash?.error || props.errors?.error || 'Something went wrong. Please check your inputs.';
-            toast.success('Vendor registration completed successfully! Wait for confimation', {
+            // const errorMessage = props.flash?.error || props.errors?.error || _t('authpages', 'toast_generic_error'); // Not used directly
+            toast.success(_t('authpages', 'toast_vendor_registration_success'), {
                 position: 'top-right',
                 timeout: 3000,
                 closeOnClick: true,
@@ -187,8 +190,8 @@ const submit = () => {
             isLoading.value = false;
         },
         onError: (errors) => {
-            const errorMessage = props.flash?.error || props.errors?.error || 'Something went wrong. Please check your inputs.';
-            toast.error('Something went wrong. Please check your inputs.', {
+            // const errorMessage = props.flash?.error || props.errors?.error || _t('authpages', 'toast_generic_error'); // Not used directly
+            toast.error(_t('authpages', 'toast_generic_error'), {
                 position: 'top-right',
                 timeout: 3000,
                 closeOnClick: true,
@@ -254,7 +257,7 @@ onMounted(() => {
 
 <template>
 
-    <Head title="Vendor Register" />
+    <Head :title="_t('authpages', 'vendor_register_title')" />
     <AuthenticatedHeaderLayout />
     <div class="max-[768px]:mt-8">
         <div
@@ -263,39 +266,34 @@ onMounted(() => {
                 <form @submit.prevent="submit" class="w-full max-[768px]:px-[1.5rem]">
                     <div v-if="currentStep === 0">
                         <div class="flex flex-col gap-5">
-                            <span class="text-[3rem] font-medium max-[768px]:text-[1.2rem]">Create Vendor</span>
+                            <span class="text-[3rem] font-medium max-[768px]:text-[1.2rem]">{{ _t('authpages', 'create_vendor_header') }}</span>
                             <p class="text-customLightGrayColor text-[1.15rem] max-[768px]:text-[0.875rem]">
-                                Create your listing in a few minutes to receive
-                                rental requests! All you need is a photo, a
-                                rate, and an address and our team will contact
-                                you and offer you a personalized appointment.
-                                Also, make sure you have the vehicle's
-                                registration certificate nearby.
+                                {{ _t('authpages', 'create_vendor_intro_text') }}
                             </p>
                             <PrimaryButton class="w-[15rem] max-[768px]:w-[10rem] max-[768px]:text-[0.65rem]"
-                                type="button" @click="nextStep">Create a vendor
+                                type="button" @click="nextStep">{{ _t('authpages', 'create_a_vendor_button') }}
                             </PrimaryButton>
                         </div>
                     </div>
                     <div v-if="currentStep === 1">
                         <div class="grid grid-cols-1 gap-5">
                             <div class="column w-full">
-                                <InputLabel for="full_name">Full Name</InputLabel>
+                                <InputLabel for="full_name">{{ _t('authpages', 'full_name_label') }}</InputLabel>
                                 <TextInput type="text" v-model="fullName" readonly class="w-full" />
                             </div>
 
                             <div class="column w-full">
-                                <InputLabel for="phone">Phone Number</InputLabel>
+                                <InputLabel for="phone">{{ _t('authpages', 'phone_number_label') }}</InputLabel>
                                 <TextInput type="tel" v-model="form.phone" class="w-full" readonly />
                             </div>
 
                             <div class="column w-full">
-                                <InputLabel for="email">Email</InputLabel>
+                                <InputLabel for="email">{{ _t('authpages', 'email_label') }}</InputLabel>
                                 <TextInput type="email" v-model="form.email" readonly class="w-full" />
                             </div>
 
                             <div class="column w-full">
-                                <InputLabel for="address">Address</InputLabel>
+                                <InputLabel for="address">{{ _t('authpages', 'address_label') }}</InputLabel>
                                 <textarea v-model="form.address" class="w-full" readonly></textarea>
                             </div>
 
@@ -303,10 +301,10 @@ onMounted(() => {
                                 <button
                                     class="button-secondary w-[15rem] max-[768px]:w-[10rem] max-[768px]:text-[0.65rem]"
                                     type="button" @click="prevStep" :disabled="currentStep === 0">
-                                    Back
+                                    {{ _t('authpages', 'back_button') }}
                                 </button>
                                 <PrimaryButton class="w-[15rem] max-[768px]:w-[10rem] max-[768px]:text-[0.65rem]"
-                                    type="button" @click="nextStep">Next</PrimaryButton>
+                                    type="button" @click="nextStep">{{ _t('authpages', 'next_button') }}</PrimaryButton>
                             </div>
                         </div>
                     </div>
@@ -317,7 +315,7 @@ onMounted(() => {
 
                                 <!-- Passport Front -->
                                 <div class="column w-full">
-                                    <InputLabel for="passport_front">Passport Front</InputLabel>
+                                    <InputLabel for="passport_front">{{ _t('authpages', 'passport_front_label') }}</InputLabel>
                                     <div class="flex flex-col gap-2">
                                         <!-- Clickable Upload Area -->
                                         <div @click="$refs.passportFrontInput.click()"
@@ -328,8 +326,8 @@ onMounted(() => {
                                                 <path stroke-linecap="round" stroke-linejoin="round"
                                                     d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5" />
                                             </svg>
-                                            <p class="mt-2 text-sm text-gray-600">Click to select an image</p>
-                                            <p class="text-xs text-gray-500 mt-1">JPG, PNG and JPEG up to 2MB</p>
+                                            <p class="mt-2 text-sm text-gray-600">{{ _t('authpages', 'click_to_select_image') }}</p>
+                                            <p class="text-xs text-gray-500 mt-1">{{ _t('authpages', 'image_format_hint') }}</p>
                                         </div>
 
                                         <!-- Hidden File Input -->
@@ -349,7 +347,7 @@ onMounted(() => {
                                 </div>
                                 <!-- Passport Back -->
                                 <div class="column w-full">
-                                    <InputLabel for="passport_back">Passport Back</InputLabel>
+                                    <InputLabel for="passport_back">{{ _t('authpages', 'passport_back_label') }}</InputLabel>
                                     <div class="flex flex-col gap-2">
                                         <!-- Clickable Upload Area -->
                                         <div @click="$refs.passportBackInput.click()"
@@ -360,8 +358,8 @@ onMounted(() => {
                                                 <path stroke-linecap="round" stroke-linejoin="round"
                                                     d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5" />
                                             </svg>
-                                            <p class="mt-2 text-sm text-gray-600">Click to select an image</p>
-                                            <p class="text-xs text-gray-500 mt-1">JPG, PNG and JPEG up to 2MB</p>
+                                            <p class="mt-2 text-sm text-gray-600">{{ _t('authpages', 'click_to_select_image') }}</p>
+                                            <p class="text-xs text-gray-500 mt-1">{{ _t('authpages', 'image_format_hint') }}</p>
                                         </div>
 
                                         <!-- Hidden File Input -->
@@ -386,9 +384,9 @@ onMounted(() => {
                         <!-- Buttons -->
                         <div class="flex justify-between mt-[2rem] gap-[1.5rem]">
                             <button class="button-secondary w-[15rem] max-[768px]:w-[10rem] max-[768px]:text-[0.65rem]"
-                                type="button" @click="prevStep">Back</button>
+                                type="button" @click="prevStep">{{ _t('authpages', 'back_button') }}</button>
                             <PrimaryButton class="w-[15rem] max-[768px]:w-[10rem] max-[768px]:text-[0.65rem]"
-                                type="button" @click="nextStep">Next</PrimaryButton>
+                                type="button" @click="nextStep">{{ _t('authpages', 'next_button') }}</PrimaryButton>
                         </div>
 
 
@@ -397,11 +395,11 @@ onMounted(() => {
                     <div v-else-if="currentStep === 3">
                         <div class="grid grid-cols-1 gap-5">
                             <div class="column w-full">
-                                <InputLabel for="company_name">Company Name</InputLabel>
+                                <InputLabel for="company_name">{{ _t('authpages', 'company_name_label') }}</InputLabel>
                                 <TextInput type="text" v-model="form.company_name" class="w-full" required />
                             </div>
                             <div class="column w-full">
-                                <InputLabel for="company_phone_number">Company Phone Number</InputLabel>
+                                <InputLabel for="company_phone_number">{{ _t('authpages', 'company_phone_number_label') }}</InputLabel>
                                 <div class="flex items-end">
                                     <div class="w-[8rem]">
                                         <Select v-model="selectedPhoneCode">
@@ -411,13 +409,13 @@ onMounted(() => {
                                                     <img v-if="selectedCountryCode"
                                                         :src="getFlagUrl(selectedCountryCode)" alt="Country Flag"
                                                         class="mr-2 w-6 h-4 rounded" />
-                                                    <SelectValue placeholder="Select Code">{{ selectedPhoneCode }}
+                                                    <SelectValue :placeholder="_t('authpages', 'select_code_placeholder')">{{ selectedPhoneCode }}
                                                     </SelectValue>
                                                 </div>
                                             </SelectTrigger>
                                             <SelectContent>
                                                 <SelectGroup>
-                                                    <SelectLabel>Phone Code</SelectLabel>
+                                                    <SelectLabel>{{ _t('authpages', 'phone_code_label') }}</SelectLabel>
                                                     <SelectItem v-for="country in countries" :key="country.phone_code"
                                                         :value="country.phone_code">
                                                         <div class="flex items-center w-full">
@@ -432,11 +430,11 @@ onMounted(() => {
                                     </div>
                                     <div class="w-full">
                                         <TextInput id="company_phone_number" type="tel" v-model="phoneNumber"
-                                            class="w-full !rounded-l-none" placeholder="Enter phone number" required @input="restrictToNumbers"/>
+                                            class="w-full !rounded-l-none" :placeholder="_t('authpages', 'enter_phone_number_placeholder')" required @input="restrictToNumbers"/>
                                     </div>
                                 </div>
                                 <div class="mt-2 text-sm text-gray-500" v-if="selectedPhoneCode && phoneNumber">
-                                    Full number: {{ fullPhone }}
+                                    {{ _t('authpages', 'full_phone_number_display') }}{{ fullPhone }}
                                 </div>
                                 <p v-if="errors.company_phone_code" class="text-red-500 text-sm mt-1">{{
                                     errors.company_phone_code }}</p>
@@ -444,21 +442,21 @@ onMounted(() => {
                                     errors.company_phone_number }}</p>
                             </div>
                             <div class="column w-full">
-                                <InputLabel for="company_email">Company Email</InputLabel>
+                                <InputLabel for="company_email">{{ _t('authpages', 'company_email_label') }}</InputLabel>
                                 <TextInput type="email" v-model="form.company_email" class="w-full" required />
                             </div>
                             <div class="column w-full">
-                                <InputLabel for="company_address">Company Address</InputLabel>
+                                <InputLabel for="company_address">{{ _t('authpages', 'company_address_label') }}</InputLabel>
                                 <textarea v-model="form.company_address" class="w-full" required></textarea>
                             </div>
                             <div class="column w-full">
-                                <InputLabel for="company_gst_number">VAT Number</InputLabel>
+                                <InputLabel for="company_gst_number">{{ _t('authpages', 'vat_number_label') }}</InputLabel>
                                 <TextInput type="text" v-model="form.company_gst_number" class="w-full" required />
                             </div>
                             <div class="flex justify-between max-[768px]:mt-4">
                                 <button class="button-secondary w-[15rem] max-[768px]:w-[10rem]" type="button"
                                     @click="prevStep">
-                                    Back
+                                    {{ _t('authpages', 'back_button') }}
                                 </button>
                                 <PrimaryButton class="w-[15rem] max-[768px]:w-[10rem]" type="submit">
                                     <!-- Show loader or text based on isLoading -->
@@ -471,9 +469,9 @@ onMounted(() => {
                                                 d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z">
                                             </path>
                                         </svg>
-                                        Loading...
+                                        {{ _t('authpages', 'loading_button_text') }}
                                     </span>
-                                    <span v-else>Submit</span>
+                                    <span v-else>{{ _t('authpages', 'submit_button') }}</span>
                                 </PrimaryButton>
                             </div>
                         </div>
@@ -487,22 +485,18 @@ onMounted(() => {
                     <div class="col text-customPrimaryColor-foreground w-[70%] max-[768px]:w-full">
                         <img :src="warningSign" alt="" class="max-[768px]:w-[40px]" />
                         <h4 class="text-[1.5rem] font-medium max-[768px]:text-[1.2rem] max-[768px]:py-2">
-                            Temporary documents
+                            {{ _t('authpages', 'temporary_documents_title') }}
                         </h4>
                         <p class="max-[768px]:text-[0.875rem]">
-                            You can submit your ad with temporary documents
-                            (order form, temporary registration certificate,
-                            crossed out vehicle registration document and
-                            transfer certificate) while waiting to receive your
-                            final vehicle registration document.
+                            {{ _t('authpages', 'temporary_documents_text') }}
                         </p>
                     </div>
                     <div class="col text-customPrimaryColor-foreground w-[70%] max-[768px]:w-full">
                         <img :src="warningSign" alt="" class="max-[768px]:w-[40px]" />
                         <h4 class="text-[1.5rem] font-medium max-[768px]:text-[1.2rem] max-[768px]:py-2">
-                            Need some help?
+                            {{ _t('authpages', 'need_help_title') }}
                         </h4>
-                        <p class="max-[768px]:text-[0.875rem]">Contact us on: +91 524555552</p>
+                        <p class="max-[768px]:text-[0.875rem]">{{ _t('authpages', 'need_help_contact_text') }}</p>
                     </div>
                 </div>
                 <img :src="vendorBgimage" alt="" class="absolute bottom-0 left-[-4rem] max-[768px]:w-[222px]

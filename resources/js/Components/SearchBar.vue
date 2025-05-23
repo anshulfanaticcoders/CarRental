@@ -4,15 +4,14 @@
       <div class="flex relative max-[768px]:flex-col max-[768px]:items-center">
         <div
           class="column w-[20%] max-[768px]:w-[100%] max-[768px]:p-[1.5rem] bg-customPrimaryColor text-customPrimaryColor-foreground p-[2rem] rounded-tl-[20px] rounded-bl-[20px] max-[768px]:rounded-tr-[16px] max-[768px]:rounded-tl-[16px] max-[768px]:rounded-bl-[0] max-[768px]:border-[1px]">
-          <span class="text-[1.75rem] font-medium max-[768px]:text-[1.5rem]">Do you need a rental car?</span>
+          <span class="text-[1.75rem] font-medium max-[768px]:text-[1.5rem]">{{ _t('homepage', 'search_bar_header') }}</span>
         </div>
         <form @submit.prevent="submit"
           class="column w-[80%] max-[768px]:w-[100%] px-[2rem] py-[1rem] rounded-tr-[16px] rounded-br-[16px] bg-white grid grid-cols-5 max-[768px]:flex max-[768px]:flex-col max-[768px]:gap-10 max-[768px]:rounded-tr-[0] max-[768px]:rounded-bl-[16px] max-[768px]:px-[1rem]">
           <div class="col col-span-2 flex flex-col justify-center">
             <div class="flex flex-col">
               <div class="col">
-                <label for="" class="mb-4 inline-block text-customLightGrayColor font-medium">Pickup & Return
-                  Location</label>
+                <label for="" class="mb-4 inline-block text-customLightGrayColor font-medium">{{ _t('homepage', 'pickup_return_location_label') }}</label>
                 <div class="flex items-end relative">
                   <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"
                     class="absolute left-[-0.35rem] top-[-0.15rem]">
@@ -21,7 +20,7 @@
                       stroke="#153B4F" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" />
                   </svg>
                   <input type="text" v-model="form.where" @input="handleSearchInput" @focus="handleInputFocus"
-                    :placeholder="isSearching ? 'Searching...' : 'Pickup Location'"
+                    :placeholder="isSearching ? _t('homepage', 'searching_placeholder') : _t('homepage', 'pickup_location_placeholder')"
                     class="pl-7 border-b border-customLightGrayColor focus:outline-none w-[80%] max-[768px]:w-full"
                     required />
                   <!-- <span v-if="isSearching" class="absolute right-[1rem] top-0 text-customLightGrayColor">Searching...</span> -->
@@ -32,21 +31,21 @@
 
           <div class="col-span-2 flex items-center gap-4">
             <div class="flex flex-col">
-              <label class="mb-2 inline-block text-customLightGrayColor font-medium">Pickup Date</label>
+              <label class="mb-2 inline-block text-customLightGrayColor font-medium">{{ _t('homepage', 'pickup_date_label') }}</label>
               <VueDatePicker v-model="pickupDate" :enable-time-picker="false" uid="pickup-date" auto-apply
-                placeholder="Pickup Date" class="w-full" :min-date="new Date()" />
+                :placeholder="_t('homepage', 'pickup_date_placeholder')" class="w-full" :min-date="new Date()" />
             </div>
             <div class="flex flex-col">
-              <label class="mb-2 inline-block text-customLightGrayColor font-medium">Return Date</label>
+              <label class="mb-2 inline-block text-customLightGrayColor font-medium">{{ _t('homepage', 'return_date_label') }}</label>
               <VueDatePicker v-model="returnDate" :enable-time-picker="false" uid="return-date" auto-apply
-                placeholder="Return Date" class="w-full" :min-date="getMinReturnDate()" />
+                :placeholder="_t('homepage', 'return_date_placeholder')" class="w-full" :min-date="getMinReturnDate()" />
             </div>
           </div>
 
           <div class="inner-col flex justify-center items-center">
             <button type="submit"
               class="bg-customPrimaryColor text-customPrimaryColor-foreground rounded-[40px] w-[138px] max-[768px]:w-full py-4 text-center">
-              Search
+              {{ _t('homepage', 'search_button') }}
             </button>
           </div>
         </form>
@@ -56,13 +55,13 @@
           class="search-results absolute z-20 top-[105%] w-[50%] rounded-[12px] border-[1px] border-white left-[20%] p-5 bg-white text-customDarkBlackColor max-h-[400px] overflow-y-auto max-[768px]:w-full max-[768px]:top-[45%] max-[768px]:left-0">
           <!-- Around Me button -->
           <div v-if="!searchPerformed && !isSearching" class="p-2 border-b border-gray-200 mb-2">
-            <div class="text-sm font-medium mb-2 text-customPrimaryColor">Nearby</div>
+            <div class="text-sm font-medium mb-2 text-customPrimaryColor">{{ _t('homepage', 'search_nearby_header') }}</div>
             <button @click="searchAroundMe"
               class="flex items-center gap-3 w-full text-left hover:bg-[#efefef4d] hover:text-customPrimaryColor cursor-pointer p-2">
               <div class="h-10 w-10 md:h-12 md:w-12 bg-gray-100 text-gray-300 rounded flex justify-center items-center">
                 <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" class="w-6 h-6 text-gray-500"><path fill-rule="evenodd" clip-rule="evenodd" d="M20.0322 3.05334C20.2938 2.94495 20.5948 3.00481 20.7951 3.20499C20.9952 3.40518 21.055 3.70625 20.9467 3.96778L14.0632 20.5685C13.9451 20.8529 13.6551 21.0267 13.3486 20.9966C13.0421 20.9666 12.7913 20.7398 12.7308 20.4379L11.2023 12.7977L3.56212 11.2693C3.26022 11.2087 3.0334 10.9579 3.00336 10.6514C2.97331 10.3449 3.1471 10.0548 3.43148 9.93681L20.0322 3.05334Z" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path></svg>
               </div>
-              <div class="font-medium">Search around me..</div>
+              <div class="font-medium">{{ _t('homepage', 'search_around_me') }}</div>
             </button>
           </div>
 
@@ -91,12 +90,12 @@
 
           <!-- Show "No location found" if a search was performed with no results -->
           <div v-else-if="searchPerformed && !isSearching" class="p-3 text-center">
-            No location found. Please try another search.
+            {{ _t('homepage', 'no_location_found') }}
           </div>
 
           <!-- Show popular places only if no search has been performed or input is empty -->
           <div v-else-if="popularPlaces.length > 0 && !isSearching">
-  <div class="text-sm font-medium mb-2 text-customPrimaryColor">Popular Searches</div>
+  <div class="text-sm font-medium mb-2 text-customPrimaryColor">{{ _t('homepage', 'popular_searches_header') }}</div>
   <div v-for="place in popularPlaces" :key="place.id" @click="selectLocation(place)"
     class="p-2 hover:bg-[#efefef4d] hover:text-customPrimaryColor cursor-pointer flex gap-3">
     <div class="h-10 w-10 md:h-12 md:w-12 bg-gray-100 text-gray-300 rounded flex justify-center items-center max-[768px]:flex-[0.2]">

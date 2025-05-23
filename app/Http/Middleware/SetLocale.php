@@ -23,6 +23,13 @@ class SetLocale
             'how_it_works' => trans('how_it_works'),
             'header' => trans('header'),
             'registerUser' => trans('registerUser'),
+            'login' => trans('login'),
+            'forgetpassword' => trans('forgetpassword'),
+            'resetpassword' => trans('resetpassword'),
+            'common' => trans('common'),
+            'customerprofile' => trans('customerprofile'),
+            'customerprofilepages' => trans('customerprofilepages'),
+            'authpages' => trans('authpages'),
         ],
     ]);
 

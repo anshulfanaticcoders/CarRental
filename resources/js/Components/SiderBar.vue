@@ -1,5 +1,5 @@
 <script setup>
-import { ref, computed, onMounted, watch, inject } from "vue";
+import { ref, computed, onMounted, watch, inject, getCurrentInstance } from "vue";
 import { Link, usePage } from "@inertiajs/vue3";
 import chevronIcon from "../../assets/chaveronDown.svg";
 import profileIcon from "../../assets/userDashIcon.svg";
@@ -25,6 +25,9 @@ import {
 } from '@/Components/ui/alert-dialog'
 
 // Get the states from parent component
+const { appContext } = getCurrentInstance();
+const _t = appContext.config.globalProperties._t;
+
 const isCollapsed = inject('isSidebarCollapsed', ref(false));
 const isMobileMenuOpen = inject('isMobileMenuOpen', ref(false));
 const isMobile = inject('isMobile', ref(false));
@@ -84,66 +87,66 @@ const userRole = usePage().props.auth.user.role;
 // Menus for "customer" (existing logic)
 const menus = [
   {
-    title: "My Profile",
+    title: _t('customerprofile','my_profile'),
     key: "profile",
     icon: profileIcon,
     items: [
-      { name: "Profile", path: "/profile" },
-      { name: "Travel Documents", path: "/user/documents" },
-      { name: "Issued Payments", path: "/profile/payments" },
-      { name: "Register as vendor", path: "/vendor/register" },
+      { name: _t('customerprofile','profile'), path: "/profile" },
+      { name: _t('customerprofile','travel_documents'), path: "/user/documents" },
+      { name: _t('customerprofile','issued_payments'), path: "/profile/payments" },
+      { name: _t('customerprofile','register_as_vendor'), path: "/vendor/register" },
     ],
   },
   {
-    title: "My Bookings",
+    title: _t('customerprofile','my_bookings'),
     key: "bookings",
     icon: bookingsIcon,
     items: [
-      { name: "Confirmed", path: "/profile/bookings/confirmed" },
-      { name: "Pending", path: "/profile/bookings/pending" },
-      { name: "Completed", path: "/profile/bookings/completed" },
+      { name: _t('customerprofile','confirmed'), path: "/profile/bookings/confirmed" },
+      { name: _t('customerprofile','pending'), path: "/profile/bookings/pending" },
+      { name: _t('customerprofile','completed'), path: "/profile/bookings/completed" },
     ],
   },
 ];
 
 const otherLinks = [
-  { name: "Inbox", path: "/messages", icon: inboxIcon },
-  { name: "Favorites", path: "/favourites", icon: favoritesIcon },
-  { name: "My Reviews", path: "/profile/reviews", icon: reviewsIcon },
+  { name: _t('customerprofile','inbox'), path: "/messages", icon: inboxIcon },
+  { name: _t('customerprofile','favorites'), path: "/favourites", icon: favoritesIcon },
+  { name: _t('customerprofile','my_reviews'), path: "/profile/reviews", icon: reviewsIcon },
 ];
 
 // Additional menus for "vendor"
 const vendorMenus = [
   {
-    title: "Dashboard",
+    title: _t('customerprofile','dashboard'),
     key: "dashboard",
     icon: dashboardIcon,
     items: [
-      { name: "Profile", path: "/profile" },
-      { name: "Overview", path: "/vendor/overview" },
-      { name: "Documents", path: "/vendor/documents" },
-      { name: "Verification Status", path: "/vendor-status" },
+      { name: _t('customerprofile','profile'), path: "/profile" },
+      { name: _t('customerprofile','overview'), path: "/vendor/overview" },
+      { name: _t('customerprofile','documents'), path: "/vendor/documents" },
+      { name: _t('customerprofile','verification_status'), path: "/vendor-status" },
     ],
   },
   {
-    title: "Vehicles",
+    title: _t('customerprofile','vehicles'),
     key: "vehicles",
     icon: vehiclesIcon,
     items: [
-      { name: "All Vehicles", path: "/current-vendor-vehicles" },
-      { name: "Add New Vehicle", path: "/vehicles/create" },
-      { name: "Create bulk listing", path: "/vehicles/bulk-upload" },
-      { name: "Manage Plans", path: "/plans" },
+      { name: _t('customerprofile','all_vehicles'), path: "/current-vendor-vehicles" },
+      { name: _t('customerprofile','add_new_vehicle'), path: "/vehicles/create" },
+      { name: _t('customerprofile','create_bulk_listing'), path: "/vehicles/bulk-upload" },
+      { name: _t('customerprofile','manage_plans'), path: "/plans" },
     ],
   },
 ];
 
 const vendorOtherLinks = [
-  { name: "Payment History", path: "/vendor/payments", icon: clockIcon },
-  { name: "Bookings", path: "/bookings", icon: vehiclesIcon },
-  { name: "Date Blocking", path: "/blocking-dates", icon: dateblockingIcon },
-  { name: "Inbox", path: "/messages/vendor", icon: inboxIcon },
-  { name: "Customer Reviews", path: "/customer-reviews", icon: reviewsIcon },
+  { name: _t('customerprofile','payment_history'), path: "/vendor/payments", icon: clockIcon },
+  { name: _t('customerprofile','bookings'), path: "/bookings", icon: vehiclesIcon },
+  { name: _t('customerprofile','date_blocking'), path: "/blocking-dates", icon: dateblockingIcon },
+  { name: _t('customerprofile','inbox'), path: "/messages/vendor", icon: inboxIcon },
+  { name: _t('customerprofile','customer_reviews'), path: "/customer-reviews", icon: reviewsIcon },
 ];
 
 // Active menus based on role
@@ -160,9 +163,9 @@ const setActiveSubmenu = (submenu) => {
 
 const greetingMessage = computed(() => {
   const hours = new Date().getHours();
-  if (hours < 12) return "Good Morning";
-  if (hours < 18) return "Good Afternoon";
-  return "Good Evening";
+  if (hours < 12) return _t('customerprofile','greeting_morning');
+  if (hours < 18) return _t('customerprofile','greeting_afternoon');
+  return _t('customerprofile','greeting_evening');
 });
 
 const setActiveLinkFromRoute = () => {
@@ -342,7 +345,7 @@ const showProfileAlert = computed(() => profileCompletion.value < 90);
           'ml-0': isCollapsed && !isMobile 
         }">
         <img :src="logoutIcon" alt="">
-        <span v-if="!isCollapsed || isMobile">Log out</span>
+        <span v-if="!isCollapsed || isMobile">{{ _t('customerprofile','log_out') }}</span>
       </Link>
     </div>
   </div>

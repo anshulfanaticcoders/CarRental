@@ -483,8 +483,7 @@ const page = usePage();
             </div>
 
             <Link href="/blogs-page"
-                class="button-secondary text-center w-[10rem] mt-6 hover:bg-customPrimaryColor hover:text-white">More
-            </Link>
+                class="button-secondary text-center w-[10rem] mt-6 hover:bg-customPrimaryColor hover:text-white">{{ _p('more_blogs') }}</Link>
         </section>
 
 

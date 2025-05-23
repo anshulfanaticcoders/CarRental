@@ -5,7 +5,7 @@ import PrimaryButton from '@/Components/PrimaryButton.vue';
 import TextArea from '@/Components/TextArea.vue';
 import TextInput from '@/Components/TextInput.vue';
 import { useForm, usePage } from '@inertiajs/vue3';
-import { computed, onMounted, ref, watch } from 'vue';
+import { computed, onMounted, ref, watch, getCurrentInstance } from 'vue';
 import { useToast } from 'vue-toastification';
 import {
     Select,
@@ -22,6 +22,9 @@ import '@vuepic/vue-datepicker/dist/main.css';
 const toast = useToast();
 const user = usePage().props.auth.user;
 const profile = usePage().props.auth.user.profile;
+
+const { appContext } = getCurrentInstance();
+const _t = appContext.config.globalProperties._t;
 
 const form = useForm({
     first_name: user.first_name,
@@ -71,7 +74,7 @@ const handleSubmit = () => {
     form.post(route('profile.update'), {
         preserveScroll: true, // Keeps scroll position unless overridden
         onSuccess: () => {
-            toast.success('Profile updated successfully!', {
+            toast.success(_t('customerprofilepages', 'profile_updated_success_toast'), {
                 position: 'top-right',
                 timeout: 1000,
                 closeOnClick: true,
@@ -192,10 +195,10 @@ onMounted(() => {
 
 <template>
     <header>
-        <h2 class="text-[1.75rem] font-medium text-gray-900 max-[768px]:text-[1.2rem]">Personal Details</h2>
+        <h2 class="text-[1.75rem] font-medium text-gray-900 max-[768px]:text-[1.2rem]">{{ _t('customerprofilepages', 'personal_details') }}</h2>
         <div class="w-[25rem] max-[768px]:w-full">
             <div class="profile-completion">
-                <p class="mb-2">Profile Completion: {{ profileCompletion }}%</p>
+                <p class="mb-2">{{ _t('customerprofilepages', 'profile_completion') }}{{ profileCompletion }}%</p>
                 <div class="progress-bar">
                     <div class="progress-fill" :style="{ width: profileCompletion + '%' }"></div>
                 </div>
@@ -225,13 +228,13 @@ onMounted(() => {
                 <div class="col-span-2 w-[6rem]">
                     <Select v-model="form.title">
                         <SelectTrigger class="w-full p-[1.7rem] border-customLightGrayColor rounded-[12px]">
-                            <SelectValue placeholder="Select Title" />
+                            <SelectValue :placeholder="_t('customerprofilepages', 'select_title_placeholder')" />
                         </SelectTrigger>
                         <SelectContent>
                             <SelectGroup>
-                                <SelectLabel>Title</SelectLabel>
-                                <SelectItem value="Mr.">Mr.</SelectItem>
-                                <SelectItem value="Miss">Miss</SelectItem>
+                                <SelectLabel>{{ _t('customerprofilepages', 'title_label') }}</SelectLabel>
+                                <SelectItem value="Mr.">{{ _t('customerprofilepages', 'title_mr') }}</SelectItem>
+                                <SelectItem value="Miss">{{ _t('customerprofilepages', 'title_miss') }}</SelectItem>
                             </SelectGroup>
                         </SelectContent>
                     </Select>
@@ -242,14 +245,14 @@ onMounted(() => {
                 <!-- First and Last Name -->
 
                 <div class="w-full">
-                    <InputLabel for="first_name" value="First Name (as on passport)" />
+                    <InputLabel for="first_name" :value="_t('customerprofilepages', 'first_name_label')" />
                     <TextInput id="first_name" type="text" class="mt-1 block w-full" v-model="form.first_name"
                         required />
                     <InputError class="mt-2" :message="form.errors.first_name" />
                 </div>
 
                 <div class="w-full">
-                    <InputLabel for="last_name" value="Last Name (as on passport)" />
+                    <InputLabel for="last_name" :value="_t('customerprofilepages', 'last_name_label')" />
                     <TextInput id="last_name" type="text" class="mt-1 block w-full" v-model="form.last_name" required />
                     <InputError class="mt-2" :message="form.errors.last_name" />
                 </div>
@@ -257,14 +260,14 @@ onMounted(() => {
 
 
                 <div>
-                    <InputLabel for="phone" value="Phone Number" />
+                    <InputLabel for="phone" :value="_t('customerprofilepages', 'phone_number_label')" />
                     <TextInput id="phone" type="tel" class="mt-1 block w-full" v-model="form.phone" required />
                     <InputError class="mt-2" :message="form.errors.phone" />
                 </div>
 
 
                 <div>
-                    <InputLabel for="email" value="Email" />
+                    <InputLabel for="email" :value="_t('customerprofilepages', 'email_label')" />
                     <TextInput id="email" type="email" class="mt-1 block w-full bg-gray-200" v-model="form.email"
                         required readonly />
                     <InputError class="mt-2" :message="form.errors.email" />
@@ -272,22 +275,22 @@ onMounted(() => {
 
 
                 <div>
-                    <InputLabel for="date_of_birth" value="Date of Birth" class="mb-1" />
+                    <InputLabel for="date_of_birth" :value="_t('customerprofilepages', 'date_of_birth_label')" class="mb-1" />
                     <VueDatePicker v-model="dateOfBirth" :enable-time-picker="false" uid="date-of-birth" auto-apply
-                        placeholder="Select Date of Birth" class="w-full" :max-date="minimumDateOfBirth"
+                        :placeholder="_t('customerprofilepages', 'date_of_birth_placeholder')" class="w-full" :max-date="minimumDateOfBirth"
                         :start-date="minimumDateOfBirth" />
                     <InputError class="mt-2" :message="form.errors.date_of_birth" />
                 </div>
 
                 <div class="relative">
-                    <InputLabel for="country" value="Country" class="mb-1" />
+                    <InputLabel for="country" :value="_t('customerprofilepages', 'country_label')" class="mb-1" />
                     <Select v-model="form.country">
                         <SelectTrigger class="w-full p-[1.7rem] border-customLightGrayColor rounded-[12px]">
-                            <SelectValue placeholder="Select Country" />
+                            <SelectValue :placeholder="_t('customerprofilepages', 'select_country_placeholder')" />
                         </SelectTrigger>
                         <SelectContent>
                             <SelectGroup>
-                                <SelectLabel>Country</SelectLabel>
+                                <SelectLabel>{{ _t('customerprofilepages', 'country_label') }}</SelectLabel>
                                 <SelectItem v-for="country in countries" :key="country.code" :value="country.code">
                                     <div class="flex items-center gap-2">
                                         <img :src="getFlagUrl(country.code)" :alt="`${country.name} flag`"
@@ -308,14 +311,14 @@ onMounted(() => {
 
 
                 <div>
-                    <InputLabel for="currency" value="Currency" class="mb-1" />
+                    <InputLabel for="currency" :value="_t('customerprofilepages', 'currency_label')" class="mb-1" />
                     <Select v-model="selectedCurrency">
                         <SelectTrigger class="w-full p-[1.7rem] border-customLightGrayColor rounded-[12px]">
-                            <SelectValue placeholder="Select Currency" />
+                            <SelectValue :placeholder="_t('customerprofilepages', 'select_currency_placeholder')" />
                         </SelectTrigger>
                         <SelectContent>
                             <SelectGroup>
-                                <SelectLabel>Currency</SelectLabel>
+                                <SelectLabel>{{ _t('customerprofilepages', 'currency_label') }}</SelectLabel>
                                 <SelectItem v-for="currency in currencies" :key="currency.code" :value="currency.code">
                                     {{ currency.code }}
                                 </SelectItem>
@@ -327,39 +330,38 @@ onMounted(() => {
 
 
                 <div>
-                    <InputLabel for="city" value="City" />
+                    <InputLabel for="city" :value="_t('customerprofilepages', 'city_label')" />
                     <TextInput id="city" type="text" class="mt-1 block w-full" v-model="form.city" />
                     <InputError class="mt-2" :message="form.errors.city" />
                 </div>
 
 
                 <div>
-                    <InputLabel for="state" value="State" />
+                    <InputLabel for="state" :value="_t('customerprofilepages', 'state_label')" />
                     <TextInput id="state" type="text" class="mt-1 block w-full" v-model="form.state" />
                     <InputError class="mt-2" :message="form.errors.state" />
                 </div>
 
                 <div>
-                    <InputLabel for="postal_code" value="Postal Code" />
+                    <InputLabel for="postal_code" :value="_t('customerprofilepages', 'postal_code_label')" />
                     <TextInput id="postal_code" type="text" class="mt-1 block w-full" v-model="form.postal_code" />
                     <InputError class="mt-2" :message="form.errors.postal_code" />
                 </div>
 
                 <div class="col-span-2">
-                    <InputLabel for="address_line1" value="Address Line 1" />
+                    <InputLabel for="address_line1" :value="_t('customerprofilepages', 'address_line1_label')" />
                     <TextInput id="address_line1" type="text" class="mt-1 block w-full" v-model="form.address_line1" />
                     <InputError class="mt-2" :message="form.errors.address_line1" />
                 </div>
 
 
-                <h2 class="text-[1.5rem] font-medium text-gray-900 max-[768px]:text-[1.2rem] leading-4 mt-10">Profile
+                <h2 class="text-[1.5rem] font-medium text-gray-900 max-[768px]:text-[1.2rem] leading-4 mt-10">{{ _t('customerprofilepages', 'profile_section_title') }}
                 </h2>
 
                 <div class="col-span-2">
-                    <p class="mb-[1rem] text-customLightGrayColor font-medium max-[768px]:text-[0.95rem]">Who am I?
-                        <i>(optional)</i>
+                    <p class="mb-[1rem] text-customLightGrayColor font-medium max-[768px]:text-[0.95rem]">{{ _t('customerprofilepages', 'who_am_i_prompt') }}
                     </p>
-                    <InputLabel for="about" value="About" />
+                    <InputLabel for="about" :value="_t('customerprofilepages', 'about_label')" />
                     <TextArea id="about" class="mt-1 block w-full" v-model="form.about" />
                     <InputError class="mt-2" :message="form.errors.about" />
                 </div>
@@ -367,7 +369,7 @@ onMounted(() => {
 
 
                 <div class="col-span-2">
-                    <InputLabel for="address_line2" value="Address Line 2" />
+                    <InputLabel for="address_line2" :value="_t('customerprofilepages', 'address_line2_label')" />
                     <TextInput id="address_line2" type="text" class="mt-1 block w-full" v-model="form.address_line2" />
                     <InputError class="mt-2" :message="form.errors.address_line2" />
                 </div>
@@ -375,16 +377,15 @@ onMounted(() => {
 
                 <div class="max-[768px]:col-span-2">
                     <span
-                        class="text-[1.5rem] font-medium text-gray-900 max-[768px]:text-[1.2rem] mb-4 inline-block mt-5 max-[768px]:mb-4">Tax
-                        Identification Number</span>
-                    <InputLabel for="tax_identification" value="Tax Identification Number" />
+                        class="text-[1.5rem] font-medium text-gray-900 max-[768px]:text-[1.2rem] mb-4 inline-block mt-5 max-[768px]:mb-4">{{ _t('customerprofilepages', 'tax_identification_number_title') }}</span>
+                    <InputLabel for="tax_identification" :value="_t('customerprofilepages', 'tax_identification_number_label')" />
                     <TextInput id="tax_identification" type="text" class="mt-1 block w-full"
                         v-model="form.tax_identification" />
                     <InputError class="mt-2" :message="form.errors.tax_identification" />
                 </div>
 
                 <div class="flex items-end gap-4 row-span-3 col-span-2">
-                    <PrimaryButton :disabled="form.processing" class="w-[10rem]">Update Profile </PrimaryButton>
+                    <PrimaryButton :disabled="form.processing" class="w-[10rem]">{{ _t('customerprofilepages', 'update_profile_button') }} </PrimaryButton>
                 </div>
             </div>
         </form>

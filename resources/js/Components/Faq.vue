@@ -46,7 +46,7 @@ onMounted(fetchFaqs);
             <div class="column w-[573px] max-[768px]:text-[2rem] flex flex-col gap-5 text-center max-[768px]:px-[1.5rem]">
                 <span class="text-customPrimaryColor text-[3rem] font-bold max-[768px]:text-[2rem]">FAQ's</span>
                 <p class="text-customPrimaryColor text-[1.25rem] max-[768px]:text-[1rem]">
-                    From luxury sedans to budget-friendly compacts, we've got something for every journey.
+                    {{ _t('common','faqs_description') }}
                 </p>
             </div>
         </div>

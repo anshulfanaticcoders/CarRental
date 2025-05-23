@@ -113,51 +113,33 @@ class UserDocumentController extends Controller
             ]);
 
             $folderName = 'documents';
+            $dataToUpdate = [];
+            $fields = ['driving_license_front', 'driving_license_back', 'passport_front', 'passport_back'];
 
-            // Retain existing URLs if no new file is uploaded
-            $drivingLicenseFront = $document->driving_license_front;
-            $drivingLicenseBack = $document->driving_license_back;
-            $passportFront = $document->passport_front;
-            $passportBack = $document->passport_back;
+            foreach ($fields as $field) {
+                $currentFileUrl = $document->$field; // Get current URL from the model instance
+                $newFileUrl = $currentFileUrl; // Default to current URL
 
-            // Handle file uploads
-            if ($request->hasFile('driving_license_front')) {
-                if ($document->driving_license_front) {
-                    Storage::disk('upcloud')->delete(parse_url($document->driving_license_front, PHP_URL_PATH));
+                if ($request->hasFile($field)) {
+                    // New file uploaded
+                    if ($currentFileUrl) {
+                        Storage::disk('upcloud')->delete(parse_url($currentFileUrl, PHP_URL_PATH));
+                    }
+                    $path = $request->file($field)->store($folderName, 'upcloud');
+                    $newFileUrl = Storage::disk('upcloud')->url($path);
+                } elseif ($request->exists($field) && ($request->input($field) === '' || $request->input($field) === null) && $currentFileUrl) {
+                    // Field was sent as an empty string or is null after validation (due to nullable), indicating removal
+                    Storage::disk('upcloud')->delete(parse_url($currentFileUrl, PHP_URL_PATH));
+                    $newFileUrl = null;
                 }
-                $path = $request->file('driving_license_front')->store($folderName, 'upcloud');
-                $drivingLicenseFront = Storage::disk('upcloud')->url($path);
+                // If field not in request or not an empty string/null, $newFileUrl remains $currentFileUrl (no change)
+                $dataToUpdate[$field] = $newFileUrl;
             }
-            if ($request->hasFile('driving_license_back')) {
-                if ($document->driving_license_back) {
-                    Storage::disk('upcloud')->delete(parse_url($document->driving_license_back, PHP_URL_PATH));
-                }
-                $path = $request->file('driving_license_back')->store($folderName, 'upcloud');
-                $drivingLicenseBack = Storage::disk('upcloud')->url($path);
-            }
-            if ($request->hasFile('passport_front')) {
-                if ($document->passport_front) {
-                    Storage::disk('upcloud')->delete(parse_url($document->passport_front, PHP_URL_PATH));
-                }
-                $path = $request->file('passport_front')->store($folderName, 'upcloud');
-                $passportFront = Storage::disk('upcloud')->url($path);
-            }
-            if ($request->hasFile('passport_back')) {
-                if ($document->passport_back) {
-                    Storage::disk('upcloud')->delete(parse_url($document->passport_back, PHP_URL_PATH));
-                }
-                $path = $request->file('passport_back')->store($folderName, 'upcloud');
-                $passportBack = Storage::disk('upcloud')->url($path);
-            }
+            
+            $dataToUpdate['verification_status'] = 'pending'; // Always reset to pending on update
 
             // Update the document record
-            $document->update([
-                'driving_license_front' => $drivingLicenseFront,
-                'driving_license_back' => $drivingLicenseBack,
-                'passport_front' => $passportFront,
-                'passport_back' => $passportBack,
-                'verification_status' => 'pending',
-            ]);
+            $document->update($dataToUpdate);
 
             return redirect()->route('user.documents.index')->with([
                 'message' => 'Documents updated successfully!',
