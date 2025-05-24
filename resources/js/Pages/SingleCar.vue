@@ -951,22 +951,22 @@ const openLightbox = (index) => {
                     </div>
                 </div>
                 <div>
-                    <div class="w-full mt-4 flex gap-2 max-[768px]:flex-col">
-                        <!-- Primary image -->
-                        <div class="primary-image w-[60%] max-h-[500px] max-[768px]:w-full max-[768px]:max-h-auto cursor-pointer"
-                            @click="openLightbox(0)">
-                            <img v-if="!isLoading && vehicle?.images" :src="primaryImage?.image_url" alt="Primary Image"
-                                class="w-full h-full object-cover rounded-lg transition-all duration-300 hover:brightness-90" />
+                <div class="w-full mt-4 flex gap-2 max-[768px]:flex-col">
+                    <!-- Primary image -->
+                    <div class="primary-image w-[60%] max-h-[500px] aspect-video max-[768px]:w-full max-[768px]:aspect-[4/3] cursor-pointer"
+                        @click="openLightbox(0)">
+                        <img v-if="!isLoading && vehicle?.images" :src="primaryImage?.image_url" alt="Primary Image"
+                            class="w-full h-full object-cover rounded-lg transition-all duration-300 hover:brightness-90" />
                             <Skeleton v-else
                                 class="w-full h-[500px] object-cover rounded-lg max-[768px]:w-full max-[768px]:max-h-[200px]" />
                         </div>
 
                         <!-- Gallery images -->
                         <div
-                            class="gallery w-[40%] grid grid-cols-2 gap-2 max-h-[500px] max-[768px]:w-full max-[768px]:flex max-[768px]:h-[100px]">
+                            class="gallery w-[40%] grid grid-cols-2 gap-2 max-h-[500px] max-[768px]:w-full max-[768px]:flex">
                             <template v-if="vehicle?.images && vehicle.images.length > 5">
                                 <div v-for="(image, index) in galleryImages.slice(0, 3)" :key="image.id"
-                                    class="gallery-item max-[768px]:flex-1 cursor-pointer"
+                                    class="gallery-item max-[768px]:flex-1 max-[768px]:aspect-square cursor-pointer"
                                     @click="openLightbox(index + 1)">
                                     <img v-if="!isLoading && vehicle" :src="image.image_url"
                                         :alt="`Gallery Image ${index + 1}`"
@@ -976,7 +976,7 @@ const openLightbox = (index) => {
                                 </div>
 
                                 <!-- View All overlay -->
-                                <div class="gallery-item max-[768px]:flex-1 cursor-pointer relative"
+                                <div class="gallery-item max-[768px]:flex-1 max-[768px]:aspect-square cursor-pointer relative"
                                     @click="openLightbox(4)">
                                     <div
                                         class="absolute inset-0 bg-black/50 flex items-center justify-center rounded-lg z-10">
@@ -994,7 +994,7 @@ const openLightbox = (index) => {
 
                             <!-- Default gallery rendering when 5 or fewer images -->
                             <div v-else v-for="(image, index) in galleryImages" :key="image.id"
-                                class="gallery-item max-[768px]:flex-1 cursor-pointer" @click="openLightbox(index + 1)">
+                                class="gallery-item max-[768px]:flex-1 max-[768px]:aspect-square cursor-pointer" @click="openLightbox(index + 1)">
                                 <img v-if="!isLoading && vehicle" :src="image.image_url"
                                     :alt="`Gallery Image ${index + 1}`"
                                     class="w-full h-[245px] object-cover rounded-lg max-[768px]:h-full transition-all duration-300 hover:brightness-90" />
