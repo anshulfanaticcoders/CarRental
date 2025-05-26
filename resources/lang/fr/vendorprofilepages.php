@@ -50,4 +50,18 @@ return [
         'warning_dialog_title' => 'Avertissement',
         'document_update_warning_text' => 'Si vous modifiez le permis de conduire, la photo de passeport ou le passeport, vous ne pourrez pas créer d’annonce de véhicule car elle passera en statut en attente.',
         'proceed_button' => 'Continuer',
+
+         // Vendor/Status/Index.vue
+        'alt_pending_status' => 'Statut en attente',
+        'pending_header' => 'Vérification du compte en attente',
+        'pending_message' => 'Votre compte est actuellement en cours de vérification. Notre équipe examine vos documents et détails pour s’assurer que tout est en ordre. Ce processus peut prendre jusqu’à 24 heures. Nous vous remercions de votre patience !',
+        'go_to_home_link' => 'Aller à la page d’accueil',
+        'go_to_profile_link' => 'Aller au profil',
+        'alt_rejected_status' => 'Statut refusé',
+        'rejected_header' => 'Refusé',
+        'rejected_message' => 'Nous sommes désolés, mais la vérification de votre compte n’a pas pu être complétée. Veuillez examiner les problèmes suivants et soumettre à nouveau vos informations pour approbation.',
+        'check_documents_link' => 'Vérifier vos documents',
+        'alt_approved_status' => 'Statut approuvé',
+        'approved_header' => 'Approuvé',
+        'approved_message' => 'Félicitations ! Votre compte a été vérifié avec succès. Vous pouvez maintenant commencer à lister vos véhicules et gérer votre flotte sans effort. Cliquez sur le bouton ci-dessous pour ajouter votre premier véhicule.',
 ];

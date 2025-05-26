@@ -50,4 +50,18 @@ return [
     'warning_dialog_title' => 'Warning',
     'document_update_warning_text' => 'If you change the driving license, passport photo, or passport, you will not be able to create a vehicle listing because it will go to pending status.',
     'proceed_button' => 'Proceed',
+
+    // Vendor/Status/Index.vue
+    'alt_pending_status' => 'Pending Status',
+    'pending_header' => 'Account Verification Pending',
+    'pending_message' => 'Your account is currently being verified. Our team is reviewing your documents and details to ensure everything is in order. This process may take up to 24 hours. We appreciate your patience!',
+    'go_to_home_link' => 'Go to Home Page',
+    'go_to_profile_link' => 'Go to Profile',
+    'alt_rejected_status' => 'Rejected Status',
+    'rejected_header' => 'Rejected',
+    'rejected_message' => 'We’re sorry, but your account verification could not be completed. Please review the following issues and resubmit your details for approval.',
+    'check_documents_link' => 'Check your documents',
+    'alt_approved_status' => 'Approved Status',
+    'approved_header' => 'Approved',
+    'approved_message' => 'Congratulations! Your account has been successfully verified. You can now start listing your vehicles and managing your fleet effortlessly. Click the button below to add your first vehicle.',
 ];

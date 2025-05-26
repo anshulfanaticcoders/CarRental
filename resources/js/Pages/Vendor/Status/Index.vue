@@ -2,12 +2,15 @@
 import vendorApprovedStatusIcon from '../../../../assets/vendorApprovedStatusIcon.svg';
 import vendorPendingStatusIcon from '../../../../assets/vendorPendingStatusIcon.svg';
 import vendorRejectedStatusIcon from '../../../../assets/vendorRejectedStatusIcon.svg';
-import { computed } from 'vue';
+import { computed, getCurrentInstance } from 'vue';
 import { Link, usePage } from '@inertiajs/vue3';
 import MyProfileLayout from '@/Layouts/MyProfileLayout.vue';
 
 const page = usePage();
 const vendorStatus = computed(() => page.props.status);
+
+const { appContext } = getCurrentInstance();
+const _t = appContext.config.globalProperties._t;
 </script>
 
 <template>
@@ -17,47 +20,41 @@ const vendorStatus = computed(() => page.props.status);
                 <div class="flex flex-col justify-center items-center w-[650px] max-[768px]:w-full">
                     <!-- Show Pending UI -->
                     <template v-if="vendorStatus === 'pending'">
-                        <img :src="vendorPendingStatusIcon" alt="Pending Status" class="max-[768px]:w-[50px]" />
+                        <img :src="vendorPendingStatusIcon" :alt="_t('vendorprofilepages', 'alt_pending_status')" class="max-[768px]:w-[50px]" />
                         <h3
                             class="text-[#333333] text-[1.75rem] text-center max-[768px]:my-4 max-[768px]:text-[1.2rem]">
-                            Account Verification Pending</h3>
+                            {{ _t('vendorprofilepages', 'pending_header') }}</h3>
                         <p class="text-center max-[768px]:text-[0.875rem]">
-                            Your account is currently being verified. Our team is reviewing your documents and details
-                            to ensure everything is in order. This process may take up to 24 hours. We appreciate your
-                            patience!
+                            {{ _t('vendorprofilepages', 'pending_message') }}
                         </p>
                         <div class="flex justify-between items-center gap-10 mt-[2rem] max-[768px]:text-[0.875rem]">
-                            <Link href="/" class="text-blue-700 underline">Go to Home Page</Link>
-                            <Link href="/profile" class="text-blue-700 underline">Go to Profile</Link>
+                            <Link href="/" class="text-blue-700 underline">{{ _t('vendorprofilepages', 'go_to_home_link') }}</Link>
+                            <Link href="/profile" class="text-blue-700 underline">{{ _t('vendorprofilepages', 'go_to_profile_link') }}</Link>
                         </div>
                     </template>
 
                     <!-- Show Rejected UI -->
                     <template v-else-if="vendorStatus === 'rejected'">
-                        <img :src="vendorRejectedStatusIcon" alt="Rejected Status" class="max-[768px]:w-[50px]" />
+                        <img :src="vendorRejectedStatusIcon" :alt="_t('vendorprofilepages', 'alt_rejected_status')" class="max-[768px]:w-[50px]" />
                         <h3
                             class="text-[#333333] text-[1.75rem] text-center max-[768px]:my-4 max-[768px]:text-[1.2rem]">
-                            Rejected</h3>
+                            {{ _t('vendorprofilepages', 'rejected_header') }}</h3>
                         <p class="text-center max-[768px]:text-[0.875rem]">
-                            We’re sorry, but your account verification could not be completed. Please review the
-                            following issues
-                            and resubmit your details for approval.
+                            {{ _t('vendorprofilepages', 'rejected_message') }}
                         </p>
                         <div class="flex justify-between items-center gap-10 mt-[2rem] max-[768px]:text-[0.875rem]">
-                            <Link href="/" class="text-blue-700 underline">Go to Home Page</Link>
-                            <Link href="/vendor/documents" class="text-blue-700 underline">Check your doucments</Link>
+                            <Link href="/" class="text-blue-700 underline">{{ _t('vendorprofilepages', 'go_to_home_link') }}</Link>
+                            <Link href="/vendor/documents" class="text-blue-700 underline">{{ _t('vendorprofilepages', 'check_documents_link') }}</Link>
                         </div>
                     </template>
 
                     <!-- Show Confirmed UI -->
                     <template v-else-if="vendorStatus === 'approved'">
-                        <img :src="vendorApprovedStatusIcon" alt="" class="max-[768px]:w-[50px]">
+                        <img :src="vendorApprovedStatusIcon" :alt="_t('vendorprofilepages', 'alt_approved_status')" class="max-[768px]:w-[50px]">
                         <h3
                             class="text-[#333333] text-[1.75rem] text-center max-[768px]:my-4 max-[768px]:text-[1.2rem]">
-                            Approved</h3>
-                        <p class="text-center max-[768px]:text-[0.875rem]">Congratulations! Your account has been
-                            successfully verified. You can now start listing your vehicles and managing your fleet
-                            effortlessly. Click the button below to add your first vehicle.</p>
+                            {{ _t('vendorprofilepages', 'approved_header') }}</h3>
+                        <p class="text-center max-[768px]:text-[0.875rem]">{{ _t('vendorprofilepages', 'approved_message') }}</p>
                     </template>
                 </div>
             </div>

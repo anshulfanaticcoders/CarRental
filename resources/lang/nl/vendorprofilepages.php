@@ -50,4 +50,18 @@ return [
         'warning_dialog_title' => 'Waarschuwing',
         'document_update_warning_text' => 'Als u het rijbewijs, de pasfoto of het paspoort wijzigt, kunt u geen voertuigadvertentie maken omdat deze in de status "in behandeling" komt.',
         'proceed_button' => 'Doorgaan',
+
+        // Vendor/Status/Index.vue
+        'alt_pending_status' => 'In afwachting status',
+        'pending_header' => 'Accountverificatie in afwachting',
+        'pending_message' => 'Uw account wordt momenteel geverifieerd. Ons team controleert uw documenten en gegevens om te zorgen dat alles in orde is. Dit proces kan tot 24 uur duren. Wij waarderen uw geduld!',
+        'go_to_home_link' => 'Ga naar de startpagina',
+        'go_to_profile_link' => 'Ga naar profiel',
+        'alt_rejected_status' => 'Afgekeurde status',
+        'rejected_header' => 'Afgekeurd',
+        'rejected_message' => 'Het spijt ons, maar de verificatie van uw account kon niet worden voltooid. Controleer de volgende problemen en dien uw gegevens opnieuw in voor goedkeuring.',
+        'check_documents_link' => 'Controleer uw documenten',
+        'alt_approved_status' => 'Goedgekeurde status',
+        'approved_header' => 'Goedgekeurd',
+        'approved_message' => 'Gefeliciteerd! Uw account is succesvol geverifieerd. U kunt nu beginnen met het aanbieden van uw voertuigen en het moeiteloos beheren van uw vloot. Klik op de knop hieronder om uw eerste voertuig toe te voegen.',
 ];
