@@ -1,10 +1,14 @@
 <!-- Pages/Vendor/Review/Index.vue -->
 <script setup>
-import { computed, ref, watch } from 'vue'
+import { computed, ref, watch, getCurrentInstance } from 'vue'
 import { Head, useForm } from '@inertiajs/vue3'
 import MyProfileLayout from '@/Layouts/MyProfileLayout.vue'
 import Pagination from './Pagination.vue'
 import { router } from '@inertiajs/vue3'
+
+const { appContext } = getCurrentInstance();
+const _t = appContext.config.globalProperties._t;
+
 const props = defineProps({
   reviews: {
     type: Object,
@@ -92,19 +96,19 @@ const handlePageChange = (page) => {
 <template>
   <MyProfileLayout>
     <div>
-      <Head title="Customer Reviews" />
+      <Head :title="_t('vendorprofilepages', 'customer_reviews_header')" />
 
       <div class="">
         <!-- Statistics Header -->
-        <p class="text-[1.75rem] font-bold text-gray-800 bg-customLightPrimaryColor p-4 rounded-[12px] mb-[2rem] max-[768px]:text-[1.2rem]">Customer Reviews</p>
+        <p class="text-[1.75rem] font-bold text-gray-800 bg-customLightPrimaryColor p-4 rounded-[12px] mb-[2rem] max-[768px]:text-[1.2rem]">{{ _t('vendorprofilepages', 'customer_reviews_header') }}</p>
         <div class="bg-white rounded-lg shadow p-6 mb-6">
           <div class="grid grid-cols-2 gap-4">
             <div class="text-center">
-              <h3 class="text-lg font-medium text-gray-900">Total Reviews</h3>
+              <h3 class="text-lg font-medium text-gray-900">{{ _t('vendorprofilepages', 'total_reviews_label') }}</h3>
               <p class="text-3xl font-bold text-gray-700">{{ statistics.total_reviews || 0 }}</p>
             </div>
             <div class="text-center">
-              <h3 class="text-lg font-medium text-gray-900">Average Rating</h3>
+              <h3 class="text-lg font-medium text-gray-900">{{ _t('vendorprofilepages', 'average_rating_label') }}</h3>
               <p class="text-3xl font-bold" :class="getRatingColor(statistics.average_rating)">
                 {{ averageRating }} <span class="text-lg">/5</span>
               </p>
@@ -117,7 +121,7 @@ const handlePageChange = (page) => {
           <input 
             v-model="searchQuery" 
             type="text" 
-            placeholder="Search Reviews..." 
+            :placeholder="_t('vendorprofilepages', 'search_reviews_placeholder')" 
             class="px-4 py-2 border border-gray-300 rounded-md w-full">
         </div>
 
@@ -127,27 +131,27 @@ const handlePageChange = (page) => {
             <table class="min-w-full divide-y divide-gray-200">
               <thead class="bg-gray-50">
                 <tr>
-                  <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">ID</th>
+                  <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">{{ _t('vendorprofilepages', 'table_id_header') }}</th>
                   <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Customer
+                    {{ _t('vendorprofilepages', 'table_customer_header') }}
                   </th>
                   <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Vehicle
+                    {{ _t('vendorprofilepages', 'table_vehicle_header') }}
                   </th>
                   <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Rating
+                    {{ _t('vendorprofilepages', 'table_rating_header') }}
                   </th>
                   <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Review
+                    {{ _t('vendorprofilepages', 'table_review_header') }}
                   </th>
                   <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Date
+                    {{ _t('vendorprofilepages', 'table_date_header') }}
                   </th>
                   <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Status
+                    {{ _t('vendorprofilepages', 'status_table_header') }}
                   </th>
                   <!-- <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Actions
+                    {{ _t('vendorprofilepages', 'actions_table_header') }}
                   </th> -->
                 </tr>
               </thead>

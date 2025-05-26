@@ -3,18 +3,18 @@
     <div class="">
       <div class="mb-6">
         <p class="text-[1.75rem] font-bold text-gray-800 bg-customLightPrimaryColor p-4 rounded-[12px] mb-[1rem] max-[768px]:text-[1.2rem]">
-          Payment History</p>
-        <p class="text-gray-600">View and manage all your booking payments</p>
+          {{ _t('vendorprofilepages', 'payment_history_header') }}</p>
+        <p class="text-gray-600">{{ _t('vendorprofilepages', 'payment_history_subheader') }}</p>
       </div>
 
       <!-- Search Bar -->
       <div class="mb-4">
-        <input type="text" v-model="searchQuery" placeholder="Search payments..." class="px-4 py-2 border border-gray-300 rounded-md w-full" />
+        <input type="text" v-model="searchQuery" :placeholder="_t('vendorprofilepages', 'search_payments_placeholder')" class="px-4 py-2 border border-gray-300 rounded-md w-full" />
       </div>
 
       <!-- No Payments -->
       <div v-if="!filteredPayments.length" class="bg-gray-50 p-8 text-center rounded-md">
-        <p class="text-gray-600">No payment history found.</p>
+        <p class="text-gray-600">{{ _t('vendorprofilepages', 'no_payment_history_found_text') }}</p>
       </div>
 
       <!-- Payments Table -->
@@ -22,27 +22,27 @@
         <table class="min-w-full divide-y divide-gray-200">
           <thead class="bg-gray-50">
             <tr>
-              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">ID</th>
+              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">{{ _t('vendorprofilepages', 'table_id_header') }}</th>
               <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Transaction ID
+                {{ _t('vendorprofilepages', 'table_transaction_id_header') }}
               </th>
               <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Customer
+                {{ _t('vendorprofilepages', 'table_customer_header') }}
               </th>
               <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Vehicle
+                {{ _t('vendorprofilepages', 'table_vehicle_header') }}
               </th>
               <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Amount
+                {{ _t('vendorprofilepages', 'table_amount_header') }}
               </th>
               <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Payment Method
+                {{ _t('vendorprofilepages', 'table_payment_method_header') }}
               </th>
               <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Status
+                {{ _t('vendorprofilepages', 'status_table_header') }}
               </th>
               <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Date
+                {{ _t('vendorprofilepages', 'table_date_header') }}
               </th>
             </tr>
           </thead>
@@ -53,11 +53,11 @@
                 <span class="text-sm font-medium text-gray-900">{{ payment.transaction_id }}</span>
               </td>
               <td class="px-6 py-4 whitespace-nowrap">
-                <span class="text-sm text-gray-900 mr-2">{{ payment.booking?.customer?.first_name || 'N/A' }}</span>
-                <span class="text-sm text-gray-900">{{ payment.booking?.customer?.last_name || 'N/A' }}</span>
+                <span class="text-sm text-gray-900 mr-2">{{ payment.booking?.customer?.first_name || _t('vendorprofilepages', 'not_applicable_text') }}</span>
+                <span class="text-sm text-gray-900">{{ payment.booking?.customer?.last_name || _t('vendorprofilepages', 'not_applicable_text') }}</span>
               </td>
               <td class="px-6 py-4 whitespace-nowrap">
-                <span class="text-sm text-gray-900">{{ payment.booking?.vehicle?.brand || 'N/A' }}</span>
+                <span class="text-sm text-gray-900">{{ payment.booking?.vehicle?.brand || _t('vendorprofilepages', 'not_applicable_text') }}</span>
               </td>
               <td class="px-6 py-4 whitespace-nowrap">
                 <span class="text-sm font-medium text-gray-900">€{{ Number(payment.amount).toFixed(2) }}</span>
@@ -95,11 +95,14 @@
 </template>
 
 <script setup>
-import { ref, computed } from 'vue';
+import { ref, computed, getCurrentInstance } from 'vue';
 import MyProfileLayout from '@/Layouts/MyProfileLayout.vue';
 import { defineProps } from 'vue'
 import Pagination from './Pagination.vue';
 import { Link, router } from '@inertiajs/vue3';
+
+const { appContext } = getCurrentInstance();
+const _t = appContext.config.globalProperties._t;
 
 const props = defineProps({
   payments: {

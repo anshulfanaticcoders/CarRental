@@ -2,36 +2,36 @@
     <div v-if="isLoading" class="fixed z-50 h-full w-full top-0 left-0 bg-[#0000009e]">
         <div class="flex justify-center flex-col items-center h-full w-full">
             <img :src=loader alt="" class="w-[150px]">
-            <p class="text-[white] text-[1.5rem]">Updating..</p>
+            <p class="text-[white] text-[1.5rem]">{{ _t('vendorprofilepages', 'loader_updating_text') }}</p>
         </div>
     </div>
     <MyProfileLayout>
         <div class="flex justify-between items-center">
-            <h2 class="font-semibold text-xl text-gray-800">Edit Vehicle</h2>
+            <h2 class="font-semibold text-xl text-gray-800">{{ _t('vendorprofilepages', 'edit_vehicle_header') }}</h2>
         </div>
         <div class="py-12">
             <div class="mx-auto">
                 <form @submit.prevent="updateVehicle">
                     <Tabs defaultValue="basic" class="w-full">
                         <TabsList class="grid w-full grid-cols-5">
-                            <TabsTrigger value="basic">Basic Information</TabsTrigger>
-                            <TabsTrigger value="specifications">Specifications</TabsTrigger>
-                            <TabsTrigger value="pricing">Pricing & Features</TabsTrigger>
-                            <TabsTrigger value="guidelines">Guidelines & Timings</TabsTrigger>
-                            <TabsTrigger value="images">Images</TabsTrigger>
+                            <TabsTrigger value="basic">{{ _t('vendorprofilepages', 'tab_basic_information') }}</TabsTrigger>
+                            <TabsTrigger value="specifications">{{ _t('vendorprofilepages', 'tab_specifications') }}</TabsTrigger>
+                            <TabsTrigger value="pricing">{{ _t('vendorprofilepages', 'tab_pricing_features') }}</TabsTrigger>
+                            <TabsTrigger value="guidelines">{{ _t('vendorprofilepages', 'tab_guidelines_timings') }}</TabsTrigger>
+                            <TabsTrigger value="images">{{ _t('vendorprofilepages', 'tab_images') }}</TabsTrigger>
                         </TabsList>
 
                         <TabsContent value="basic">
                             <div class="grid grid-cols-2 gap-4">
                                 <div>
-                                    <InputLabel for="category_id">Vehicle Category:</InputLabel>
+                                    <InputLabel for="category_id">{{ _t('vendorprofilepages', 'label_vehicle_category') }}</InputLabel>
                                     <Select v-model="form.category_id" required>
                                         <SelectTrigger id="category_id">
-                                            <SelectValue placeholder="Select a category" />
+                                            <SelectValue :placeholder="_t('vendorprofilepages', 'placeholder_select_category')" />
                                         </SelectTrigger>
                                         <SelectContent>
                                             <SelectGroup>
-                                                <SelectLabel>Categories</SelectLabel>
+                                                <SelectLabel>{{ _t('vendorprofilepages', 'select_label_categories') }}</SelectLabel>
                                                 <SelectItem v-for="category in categories" :key="category.id"
                                                     :value="category.id">
                                                     {{ category.name }}
@@ -41,84 +41,84 @@
                                     </Select>
                                 </div>
                                 <div>
-                                    <InputLabel for="brand">Brand:</InputLabel>
+                                    <InputLabel for="brand">{{ _t('vendorprofilepages', 'label_brand') }}</InputLabel>
                                     <Input type="text" v-model="form.brand" id="brand" required />
                                 </div>
                                 <div>
-                                    <InputLabel for="model">Model:</InputLabel>
+                                    <InputLabel for="model">{{ _t('vendorprofilepages', 'label_model') }}</InputLabel>
                                     <Input type="text" v-model="form.model" id="model" required />
                                 </div>
                                 <div>
-                                    <InputLabel for="color">Color:</InputLabel>
+                                    <InputLabel for="color">{{ _t('vendorprofilepages', 'label_color') }}</InputLabel>
                                     <Input type="text" v-model="form.color" id="color" required />
                                 </div>
                                 <div>
-                                    <InputLabel for="mileage">Mileage:</InputLabel>
+                                    <InputLabel for="mileage">{{ _t('vendorprofilepages', 'label_mileage') }}</InputLabel>
                                     <Input type="number" step="0.01" v-model.number="form.mileage" id="mileage"
                                         required />
                                 </div>
                                 <div>
-                                    <InputLabel for="transmission">Transmission:</InputLabel>
+                                    <InputLabel for="transmission">{{ _t('vendorprofilepages', 'label_transmission_select') }}</InputLabel>
                                     <Select v-model="form.transmission" required>
                                         <SelectTrigger id="transmission">
-                                            <SelectValue placeholder="Select transmission" />
+                                            <SelectValue :placeholder="_t('vendorprofilepages', 'placeholder_select_transmission')" />
                                         </SelectTrigger>
                                         <SelectContent>
                                             <SelectGroup>
-                                                <SelectLabel>Transmission</SelectLabel>
-                                                <SelectItem value="manual">Manual</SelectItem>
-                                                <SelectItem value="automatic">Automatic</SelectItem>
+                                                <SelectLabel>{{ _t('vendorprofilepages', 'select_label_transmission') }}</SelectLabel>
+                                                <SelectItem value="manual">{{ _t('vendorprofilepages', 'transmission_manual') }}</SelectItem>
+                                                <SelectItem value="automatic">{{ _t('vendorprofilepages', 'transmission_automatic') }}</SelectItem>
                                             </SelectGroup>
                                         </SelectContent>
                                     </Select>
                                 </div>
                                 <div>
-                                    <InputLabel for="fuel">Fuel:</InputLabel>
+                                    <InputLabel for="fuel">{{ _t('vendorprofilepages', 'label_fuel_select') }}</InputLabel>
                                     <Select v-model="form.fuel" required>
                                         <SelectTrigger id="fuel">
-                                            <SelectValue placeholder="Select fuel type" />
+                                            <SelectValue :placeholder="_t('vendorprofilepages', 'placeholder_select_fuel')" />
                                         </SelectTrigger>
                                         <SelectContent>
                                             <SelectGroup>
-                                                <SelectLabel>Fuel</SelectLabel>
-                                                <SelectItem value="petrol">Petrol</SelectItem>
-                                                <SelectItem value="diesel">Diesel</SelectItem>
-                                                <SelectItem value="electric">Electric</SelectItem>
-                                                <SelectItem value="hybrid">Hybrid</SelectItem>
+                                                <SelectLabel>{{ _t('vendorprofilepages', 'select_label_fuel') }}</SelectLabel>
+                                                <SelectItem value="petrol">{{ _t('vendorprofilepages', 'fuel_petrol') }}</SelectItem>
+                                                <SelectItem value="diesel">{{ _t('vendorprofilepages', 'fuel_diesel') }}</SelectItem>
+                                                <SelectItem value="electric">{{ _t('vendorprofilepages', 'fuel_electric') }}</SelectItem>
+                                                <SelectItem value="hybrid">{{ _t('vendorprofilepages', 'fuel_hybrid') }}</SelectItem>
                                             </SelectGroup>
                                         </SelectContent>
                                     </Select>
                                 </div>
                                 <div>
-                                    <InputLabel for="status">Status:</InputLabel>
+                                    <InputLabel for="status">{{ _t('vendorprofilepages', 'label_status_select') }}</InputLabel>
                                     <Select v-model="form.status" required>
                                         <SelectTrigger id="status">
-                                            <SelectValue placeholder="Select status" />
+                                            <SelectValue :placeholder="_t('vendorprofilepages', 'placeholder_select_status')" />
                                         </SelectTrigger>
                                         <SelectContent>
                                             <SelectGroup>
-                                                <SelectLabel>Status</SelectLabel>
-                                                <SelectItem value="available">Available</SelectItem>
-                                                <SelectItem value="rented">Rented</SelectItem>
-                                                <SelectItem value="maintenance">Maintenance</SelectItem>
+                                                <SelectLabel>{{ _t('vendorprofilepages', 'select_label_status') }}</SelectLabel>
+                                                <SelectItem value="available">{{ _t('vendorprofilepages', 'status_available') }}</SelectItem>
+                                                <SelectItem value="rented">{{ _t('vendorprofilepages', 'status_rented') }}</SelectItem>
+                                                <SelectItem value="maintenance">{{ _t('vendorprofilepages', 'maintenance_vehicles_card_title') }}</SelectItem>
                                             </SelectGroup>
                                         </SelectContent>
                                     </Select>
                                 </div>
 
                                 <div class="col-span-2 space-y-3">
-                                    <InputLabel for="location" class="text-gray-700 font-medium">Location:</InputLabel>
+                                    <InputLabel for="location" class="text-gray-700 font-medium">{{ _t('vendorprofilepages', 'label_location') }}</InputLabel>
 
                                     <div v-if="form.location"
                                         class="p-4 bg-gray-50 rounded-lg border border-gray-200 shadow-sm">
                                         <div class="grid grid-cols-2 gap-2 text-[1rem]">
-                                            <div class="col-span-2 font-medium text-gray-700">Current Location: {{
+                                            <div class="col-span-2 font-medium text-gray-700">{{ _t('vendorprofilepages', 'current_location_label') }} {{
                                                 form.location }}, {{ form.city }}, {{ form.state }}, {{ form.country }}
                                             </div>
-                                            <div><span class="text-gray-500">City:</span> {{ form.city }}</div>
-                                            <div><span class="text-gray-500">State:</span> {{ form.state }}</div>
-                                            <div><span class="text-gray-500">Country:</span> {{ form.country }}</div>
-                                            <div class=""><span class="text-gray-500">Coordinates:</span> {{
+                                            <div><span class="text-gray-500">{{ _t('vendorprofilepages', 'label_city') }}</span> {{ form.city }}</div>
+                                            <div><span class="text-gray-500">{{ _t('vendorprofilepages', 'label_state') }}</span> {{ form.state }}</div>
+                                            <div><span class="text-gray-500">{{ _t('vendorprofilepages', 'label_country') }}</span> {{ form.country }}</div>
+                                            <div class=""><span class="text-gray-500">{{ _t('vendorprofilepages', 'label_coordinates') }}</span> {{
                                                 form.latitude }}, {{ form.longitude }}</div>
                                         </div>
                                     </div>
@@ -131,7 +131,7 @@
                                                 d="M5.05 4.05a7 7 0 119.9 9.9L10 18.9l-4.95-4.95a7 7 0 010-9.9zM10 11a2 2 0 100-4 2 2 0 000 4z"
                                                 clip-rule="evenodd" />
                                         </svg>
-                                        {{ showLocationPicker ? 'Hide Location Picker' : 'Change Location' }}
+                                        {{ showLocationPicker ? _t('vendorprofilepages', 'button_hide_location_picker') : _t('vendorprofilepages', 'button_change_location') }}
                                     </button>
 
                                     <transition name="slide-fade" enter-active-class="transition ease-out duration-200"
@@ -152,14 +152,14 @@
                         <TabsContent value="specifications">
                             <div class="grid grid-cols-2 gap-4">
                                 <div>
-                                    <InputLabel for="seating_capacity">Seating Capacity:</InputLabel>
+                                    <InputLabel for="seating_capacity">{{ _t('vendorprofilepages', 'label_seating_capacity') }}</InputLabel>
                                     <Select v-model.number="form.seating_capacity" required>
                                         <SelectTrigger id="seating_capacity">
-                                            <SelectValue placeholder="Select seating capacity" />
+                                            <SelectValue :placeholder="_t('vendorprofilepages', 'placeholder_select_seating_capacity')" />
                                         </SelectTrigger>
                                         <SelectContent>
                                             <SelectGroup>
-                                                <SelectLabel>Seating Capacity</SelectLabel>
+                                                <SelectLabel>{{ _t('vendorprofilepages', 'select_label_seating_capacity') }}</SelectLabel>
                                                 <SelectItem v-for="num in 8" :key="num" :value="num">{{ num }}
                                                 </SelectItem>
                                             </SelectGroup>
@@ -167,14 +167,14 @@
                                     </Select>
                                 </div>
                                 <div>
-                                    <InputLabel for="number_of_doors">Number of Doors:</InputLabel>
+                                    <InputLabel for="number_of_doors">{{ _t('vendorprofilepages', 'label_number_of_doors') }}</InputLabel>
                                     <Select v-model.number="form.number_of_doors" required>
                                         <SelectTrigger id="number_of_doors">
-                                            <SelectValue placeholder="Select number of doors" />
+                                            <SelectValue :placeholder="_t('vendorprofilepages', 'placeholder_select_number_of_doors')" />
                                         </SelectTrigger>
                                         <SelectContent>
                                             <SelectGroup>
-                                                <SelectLabel>Number of Doors</SelectLabel>
+                                                <SelectLabel>{{ _t('vendorprofilepages', 'select_label_number_of_doors') }}</SelectLabel>
                                                 <SelectItem v-for="num in 8" :key="num" :value="num">{{ num }}
                                                 </SelectItem>
                                             </SelectGroup>
@@ -182,37 +182,37 @@
                                     </Select>
                                 </div>
                                 <div>
-                                    <InputLabel for="luggage_capacity">Luggage Capacity:</InputLabel>
+                                    <InputLabel for="luggage_capacity">{{ _t('vendorprofilepages', 'label_luggage_capacity') }}</InputLabel>
                                     <Input type="number" v-model.number="form.luggage_capacity" id="luggage_capacity"
                                         required />
                                 </div>
                                 <div>
-                                    <InputLabel for="horsepower">Horsepower:</InputLabel>
+                                    <InputLabel for="horsepower">{{ _t('vendorprofilepages', 'label_horsepower') }}</InputLabel>
                                     <Input type="number" step="0.01" v-model.number="form.horsepower" id="horsepower"
                                         required />
                                 </div>
                                 <div>
-                                    <InputLabel for="co2">CO2 Emissions:</InputLabel>
+                                    <InputLabel for="co2">{{ _t('vendorprofilepages', 'label_co2_emissions') }}</InputLabel>
                                     <Input type="text" v-model="form.co2" id="co2" required />
                                 </div>
                                 <div>
-                                    <InputLabel for="registration_number">Registration Number:</InputLabel>
+                                    <InputLabel for="registration_number">{{ _t('vendorprofilepages', 'label_registration_number') }}</InputLabel>
                                     <Input type="text" v-model="form.registration_number" id="registration_number"
                                         required />
                                 </div>
                                 <div class="relative w-full">
-                                    <InputLabel class="text-black" for="registration_country">Registration Country:
+                                    <InputLabel class="text-black" for="registration_country">{{ _t('vendorprofilepages', 'label_registration_country') }}
                                     </InputLabel>
 
                                     <div class="relative">
                                         <Select v-model="form.registration_country">
                                             <SelectTrigger
                                                 class="w-full p-[1.5rem] border-customLightGrayColor rounded-[12px]">
-                                                <SelectValue placeholder="Select a country" />
+                                                <SelectValue :placeholder="_t('vendorprofilepages', 'placeholder_select_country')" />
                                             </SelectTrigger>
                                             <SelectContent>
                                                 <SelectGroup>
-                                                    <SelectLabel>Countries</SelectLabel>
+                                                    <SelectLabel>{{ _t('vendorprofilepages', 'select_label_countries') }}</SelectLabel>
                                                     <SelectItem v-for="country in countries" :key="country.code"
                                                         :value="country.code">
                                                         {{ country.name }}
@@ -223,14 +223,14 @@
 
                                         <!-- Dynamic Flag -->
                                         <img v-if="form.registration_country"
-                                            :src="getFlagUrl(form.registration_country)" alt="Country Flag"
+                                            :src="getFlagUrl(form.registration_country)" :alt="_t('vendorprofilepages', 'alt_country_flag')"
                                             class="absolute right-3 top-1/2 transform -translate-y-1/2 w-[2.1rem] h-[1.5rem] rounded" />
                                     </div>
                                 </div>
                                 <div>
-                            <InputLabel class="text-black" for="registration_date">Registration Date:</InputLabel>
+                            <InputLabel class="text-black" for="registration_date">{{ _t('vendorprofilepages', 'label_registration_date') }}</InputLabel>
                             <VueDatePicker v-model="form.registration_date" :format="'yyyy-MM-dd'" auto-apply
-                                placeholder="Select Registration Date" class="w-full"
+                                :placeholder="_t('vendorprofilepages', 'placeholder_select_registration_date')" class="w-full"
                                  :clearable="false"
                                 :max-date="new Date()"
                                 :input-class-name="'w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition duration-200 bg-white shadow-sm text-gray-700'"
@@ -238,17 +238,17 @@
                             
                         </div>
                                 <div>
-                                    <InputLabel for="gross_vehicle_mass">Gross Vehicle Mass:</InputLabel>
+                                    <InputLabel for="gross_vehicle_mass">{{ _t('vendorprofilepages', 'label_gross_vehicle_mass') }}</InputLabel>
                                     <Input type="number" v-model.number="form.gross_vehicle_mass"
                                         id="gross_vehicle_mass" required />
                                 </div>
                                 <div>
-                                    <InputLabel for="vehicle_height">Vehicle Height:</InputLabel>
+                                    <InputLabel for="vehicle_height">{{ _t('vendorprofilepages', 'label_vehicle_height') }}</InputLabel>
                                     <Input type="number" v-model.number="form.vehicle_height" id="vehicle_height"
                                          step="0.01" />
                                 </div>
                                 <div>
-                                    <InputLabel for="phone_number">Phone Number:</InputLabel>
+                                    <InputLabel for="phone_number">{{ _t('vendorprofilepages', 'label_phone_number_vehicle') }}</InputLabel>
                                     <Input type="text" v-model="form.phone_number" id="phone_number" required />
                                 </div>
                             </div>
@@ -257,54 +257,54 @@
                         <TabsContent value="pricing">
                             <div class="grid grid-cols-2 gap-4">
                                 <div>
-                                    <InputLabel for="security_deposit">Security Deposit:</InputLabel>
+                                    <InputLabel for="security_deposit">{{ _t('vendorprofilepages', 'label_security_deposit') }}</InputLabel>
                                     <Input type="number" v-model.number="form.security_deposit" id="security_deposit"
                                         required min="0" step="0.01" />
                                 </div>
                                 <div>
-                                    <InputLabel for="dealer_cost">Dealer Cost:</InputLabel>
+                                    <InputLabel for="dealer_cost">{{ _t('vendorprofilepages', 'label_dealer_cost') }}</InputLabel>
                                     <Input type="number" v-model.number="form.dealer_cost" id="dealer_cost"
                                         step="0.01" />
                                 </div>
                                 <div>
-                                    <InputLabel for="price_per_day">Price Per Day:</InputLabel>
+                                    <InputLabel for="price_per_day">{{ _t('vendorprofilepages', 'label_price_per_day') }}</InputLabel>
                                     <Input type="number" v-model.number="form.price_per_day" id="price_per_day"
                                         min="0" step="0.01" />
                                 </div>
                                 <div>
-                                    <InputLabel for="price_per_week">Price Per Week:</InputLabel>
+                                    <InputLabel for="price_per_week">{{ _t('vendorprofilepages', 'label_price_per_week') }}</InputLabel>
                                     <Input type="number" v-model.number="form.price_per_week" id="price_per_week"
                                         min="0" step="0.01" />
                                 </div>
                                 <div>
-                                    <InputLabel for="price_per_month">Price Per Month:</InputLabel>
+                                    <InputLabel for="price_per_month">{{ _t('vendorprofilepages', 'label_price_per_month') }}</InputLabel>
                                     <Input type="number" v-model.number="form.price_per_month" id="price_per_month"
                                         min="0" step="0.01" />
                                 </div>
                                 <div>
-                                    <InputLabel for="weekly_discount">Weekly Discount:</InputLabel>
+                                    <InputLabel for="weekly_discount">{{ _t('vendorprofilepages', 'label_weekly_discount') }}</InputLabel>
                                     <Input type="number" v-model.number="form.weekly_discount" id="weekly_discount"
                                         min="0" max="1000.00" step="0.01" />
                                 </div>
                                 <div>
-                                    <InputLabel for="monthly_discount">Monthly Discount:</InputLabel>
+                                    <InputLabel for="monthly_discount">{{ _t('vendorprofilepages', 'label_monthly_discount') }}</InputLabel>
                                     <Input type="number" v-model.number="form.monthly_discount" id="monthly_discount"
                                         min="0" max="10000.00" step="0.01" />
                                 </div>
 
                                 <!-- New fields -->
                                 <div class="flex gap-3 flex-col col-span-2">
-                                    <span class="text-[1.2rem] font-medium">Rental Conditions & Benefits</span>
+                                    <span class="text-[1.2rem] font-medium">{{ _t('vendorprofilepages', 'section_rental_conditions_benefits') }}</span>
 
                                     <!-- Limited KM Per Day -->
                                     <div class="flex items-center gap-2">
                                         <input type="checkbox" v-model="form.benefits.limited_km_per_day"
                                             id="limited_km_per_day" class="w-auto" />
-                                        <InputLabel for="limited_km_per_day" class="mb-0">Limited Kilometers Per Day:
+                                        <InputLabel for="limited_km_per_day" class="mb-0">{{ _t('vendorprofilepages', 'label_limited_km_per_day') }}
                                         </InputLabel>
                                     </div>
                                     <div v-if="form.benefits.limited_km_per_day" class="w-[50%]">
-                                        <InputLabel for="limited_km_per_day_range">KM Limit Per Day:</InputLabel>
+                                        <InputLabel for="limited_km_per_day_range">{{ _t('vendorprofilepages', 'label_km_limit_per_day') }}</InputLabel>
                                         <Input type="number" v-model.number="form.benefits.limited_km_per_day_range"
                                             id="limited_km_per_day_range" />
                                     </div>
@@ -313,11 +313,11 @@
                                     <div class="flex items-center gap-2">
                                         <input type="checkbox" v-model="form.benefits.limited_km_per_week"
                                             id="limited_km_per_week" class="w-auto" />
-                                        <InputLabel for="limited_km_per_week" class="mb-0">Limited Kilometers Per Week:
+                                        <InputLabel for="limited_km_per_week" class="mb-0">{{ _t('vendorprofilepages', 'label_limited_km_per_week') }}
                                         </InputLabel>
                                     </div>
                                     <div v-if="form.benefits.limited_km_per_week" class="w-[50%]">
-                                        <InputLabel for="limited_km_per_week_range">KM Limit Per Week:</InputLabel>
+                                        <InputLabel for="limited_km_per_week_range">{{ _t('vendorprofilepages', 'label_km_limit_per_week') }}</InputLabel>
                                         <Input type="number" v-model.number="form.benefits.limited_km_per_week_range"
                                             id="limited_km_per_week_range" />
                                     </div>
@@ -326,11 +326,11 @@
                                     <div class="flex items-center gap-2">
                                         <input type="checkbox" v-model="form.benefits.limited_km_per_month"
                                             id="limited_km_per_month" class="w-auto" />
-                                        <InputLabel for="limited_km_per_month" class="mb-0">Limited Kilometers Per
-                                            Month:</InputLabel>
+                                        <InputLabel for="limited_km_per_month" class="mb-0">{{ _t('vendorprofilepages', 'label_limited_km_per_month') }}
+                                        </InputLabel>
                                     </div>
                                     <div v-if="form.benefits.limited_km_per_month" class="w-[50%]">
-                                        <InputLabel for="limited_km_per_month_range">KM Limit Per Month:</InputLabel>
+                                        <InputLabel for="limited_km_per_month_range">{{ _t('vendorprofilepages', 'label_km_limit_per_month') }}</InputLabel>
                                         <Input type="number" v-model.number="form.benefits.limited_km_per_month_range"
                                             id="limited_km_per_month_range" />
                                     </div>
@@ -339,12 +339,12 @@
                                     <div class="flex items-center gap-2">
                                         <input type="checkbox" v-model="form.benefits.cancellation_available_per_day"
                                             id="cancellation_available_per_day" class="w-auto" />
-                                        <InputLabel for="cancellation_available_per_day" class="mb-0">Cancellation
-                                            Available Per Day:</InputLabel>
+                                        <InputLabel for="cancellation_available_per_day" class="mb-0">{{ _t('vendorprofilepages', 'label_cancellation_available_per_day') }}
+                                        </InputLabel>
                                     </div>
                                     <div v-if="form.benefits.cancellation_available_per_day" class="w-[50%]">
-                                        <InputLabel for="cancellation_available_per_day_date">Cancellation Allowed Until
-                                            (Days):</InputLabel>
+                                        <InputLabel for="cancellation_available_per_day_date">{{ _t('vendorprofilepages', 'label_cancellation_allowed_until_days') }}
+                                        </InputLabel>
                                         <Input type="number"
                                             v-model.number="form.benefits.cancellation_available_per_day_date"
                                             id="cancellation_available_per_day_date" min="0" />
@@ -354,12 +354,12 @@
                                     <div class="flex items-center gap-2">
                                         <input type="checkbox" v-model="form.benefits.cancellation_available_per_week"
                                             id="cancellation_available_per_week" class="w-auto" />
-                                        <InputLabel for="cancellation_available_per_week" class="mb-0">Cancellation
-                                            Available Per Week:</InputLabel>
+                                        <InputLabel for="cancellation_available_per_week" class="mb-0">{{ _t('vendorprofilepages', 'label_cancellation_available_per_week') }}
+                                        </InputLabel>
                                     </div>
                                     <div v-if="form.benefits.cancellation_available_per_week" class="w-[50%]">
-                                        <InputLabel for="cancellation_available_per_week_date">Cancellation Allowed
-                                            Until (Weeks):</InputLabel>
+                                        <InputLabel for="cancellation_available_per_week_date">{{ _t('vendorprofilepages', 'label_cancellation_allowed_until_weeks') }}
+                                        </InputLabel>
                                         <Input type="number"
                                             v-model.number="form.benefits.cancellation_available_per_week_date"
                                             id="cancellation_available_per_week_date" min="0" />
@@ -369,12 +369,12 @@
                                     <div class="flex items-center gap-2">
                                         <input type="checkbox" v-model="form.benefits.cancellation_available_per_month"
                                             id="cancellation_available_per_month" class="w-auto" />
-                                        <InputLabel for="cancellation_available_per_month" class="mb-0">Cancellation
-                                            Available Per Month:</InputLabel>
+                                        <InputLabel for="cancellation_available_per_month" class="mb-0">{{ _t('vendorprofilepages', 'label_cancellation_available_per_month') }}
+                                        </InputLabel>
                                     </div>
                                     <div v-if="form.benefits.cancellation_available_per_month" class="w-[50%]">
-                                        <InputLabel for="cancellation_available_per_month_date">Cancellation Allowed
-                                            Until (Months):</InputLabel>
+                                        <InputLabel for="cancellation_available_per_month_date">{{ _t('vendorprofilepages', 'label_cancellation_allowed_until_months') }}
+                                        </InputLabel>
                                         <Input type="number"
                                             v-model.number="form.benefits.cancellation_available_per_month_date"
                                             id="cancellation_available_per_month_date" min="0" />
@@ -382,26 +382,26 @@
 
                                     <!-- Price Per KM -->
                                     <div class="w-[50%]">
-                                        <InputLabel for="price_per_km_per_day">Price Per KM Per Day:</InputLabel>
+                                        <InputLabel for="price_per_km_per_day">{{ _t('vendorprofilepages', 'label_price_per_km_per_day') }}</InputLabel>
                                         <Input type="number" v-model.number="form.benefits.price_per_km_per_day"
                                             id="price_per_km_per_day" min="0" step="0.01" />
                                     </div>
 
                                     <div class="w-[50%]">
-                                        <InputLabel for="price_per_km_per_week">Price Per KM Per Week:</InputLabel>
+                                        <InputLabel for="price_per_km_per_week">{{ _t('vendorprofilepages', 'label_price_per_km_per_week') }}</InputLabel>
                                         <Input type="number" v-model.number="form.benefits.price_per_km_per_week"
                                             id="price_per_km_per_week" min="0" step="0.01" />
                                     </div>
 
                                     <div class="w-[50%]">
-                                        <InputLabel for="price_per_km_per_month">Price Per KM Per Month:</InputLabel>
+                                        <InputLabel for="price_per_km_per_month">{{ _t('vendorprofilepages', 'label_price_per_km_per_month') }}</InputLabel>
                                         <Input type="number" v-model.number="form.benefits.price_per_km_per_month"
                                             id="price_per_km_per_month" min="0" step="0.01" />
                                     </div>
 
                                     <!-- Minimum Driver Age -->
                                     <div class="w-[50%]">
-                                        <InputLabel for="minimum_driver_age">Minimum Driver Age:</InputLabel>
+                                        <InputLabel for="minimum_driver_age">{{ _t('vendorprofilepages', 'label_minimum_driver_age') }}</InputLabel>
                                         <Input type="number" v-model.number="form.benefits.minimum_driver_age"
                                             id="minimum_driver_age" min="18" required />
                                     </div>
@@ -410,38 +410,38 @@
 
 
                                 <div class="col-span-2">
-                                    <InputLabel for="payment_method">Payment Methods:</InputLabel>
+                                    <InputLabel for="payment_method">{{ _t('vendorprofilepages', 'label_payment_methods') }}</InputLabel>
                                     <div class="flex items-center gap-10 flex-wrap">
                                         <label class="flex gap-2 items-center text-nowrap">
                                             <input type="checkbox" v-model="form.payment_method" value="credit_card"
                                                 class="w-auto" />
-                                            Credit Card
+                                            {{ _t('vendorprofilepages', 'payment_method_credit_card') }}
                                         </label>
                                         <label class="flex gap-1 items-center text-nowrap">
                                             <input type="checkbox" v-model="form.payment_method" value="cheque"
                                                 class="w-auto" />
-                                            Cheque
+                                            {{ _t('vendorprofilepages', 'payment_method_cheque') }}
                                         </label>
                                         <label class="flex gap-1 items-center text-nowrap">
                                             <input type="checkbox" v-model="form.payment_method" value="bank_wire"
                                                 class="w-auto" />
-                                            Bank Wire
+                                            {{ _t('vendorprofilepages', 'payment_method_bank_wire') }}
                                         </label>
                                         <label class="flex gap-1 items-center text-nowrap">
                                             <input type="checkbox" v-model="form.payment_method" value="cryptocurrency"
                                                 class="w-auto" />
-                                            Cryptocurrency
+                                            {{ _t('vendorprofilepages', 'payment_method_cryptocurrency') }}
                                         </label>
                                         <label class="flex gap-1 items-center text-nowrap">
                                             <input type="checkbox" v-model="form.payment_method" value="cash"
                                                 class="w-auto" />
-                                            Cash
+                                            {{ _t('vendorprofilepages', 'payment_method_cash') }}
                                         </label>
                                     </div>
                                 </div>
 
                                 <div class="col-span-2">
-                                    <InputLabel for="features">Features:</InputLabel>
+                                    <InputLabel for="features">{{ _t('vendorprofilepages', 'label_features') }}</InputLabel>
                                     <div class="flex gap-10 flex-wrap">
                                         <label v-for="feature in availableFeatures" :key="feature.id"
                                             class="flex items-center text-nowrap gap-2">
@@ -452,10 +452,10 @@
                                         </label>
                                     </div>
                                     <div v-if="!availableFeatures.length && form.category_id">
-                                        <p class="text-gray-500">No features available for this category or features are loading.</p>
+                                        <p class="text-gray-500">{{ _t('vendorprofilepages', 'text_no_features_for_category') }}</p>
                                     </div>
                                     <div v-if="!form.category_id">
-                                        <p class="text-gray-500">Please select a vehicle category to see available features.</p>
+                                        <p class="text-gray-500">{{ _t('vendorprofilepages', 'text_select_category_for_features') }}</p>
                                     </div>
                                 </div>
                             </div>
@@ -463,22 +463,21 @@
 
                         <TabsContent value="guidelines">
                             <div>
-                                <InputLabel for="guidelines">Guidelines:</InputLabel>
+                                <InputLabel for="guidelines">{{ _t('vendorprofilepages', 'label_guidelines') }}</InputLabel>
                                 <textarea type="text" v-model="form.guidelines" id="guidelines" required
                                     class="border p-2 rounded-lg w-full" />
                             </div>
                             <div class="time-selector p-6 bg-gray-50 rounded-xl shadow-lg w-full">
-                                <p>Choose Your Pickup and Return Time for the vehicle</p>
+                                <p>{{ _t('vendorprofilepages', 'text_choose_pickup_return_time') }}</p>
                                 <div class="grid grid-cols-2 gap-10">
                                     <div>
                                         <!-- Pickup Times Section -->
-                                        <label class="block text-lg font-semibold text-gray-800 mb-2">Pickup
-                                            Times</label>
+                                        <label class="block text-lg font-semibold text-gray-800 mb-2">{{ _t('vendorprofilepages', 'label_pickup_times') }}</label>
                                         <div v-for="(time, index) in form.pickup_times" :key="'pickup-' + index"
                                             class="time-input-group flex items-center mb-3">
                                             <input type="time" v-model="form.pickup_times[index]"
                                                 class="time-input max-[768px]:text-[0.75rem] w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition duration-200 bg-white shadow-sm" />
-                                            <button type="button" @click="removePickupTime(index)" title="Remove"
+                                            <button type="button" @click="removePickupTime(index)" :title="_t('vendorprofilepages', 'title_remove_time')"
                                                 class="ml-1 text-red-600 hover:bg-red-50">
                                                 <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20"
                                                     viewBox="0 0 24 24" fill="none" stroke="currentColor"
@@ -495,18 +494,17 @@
 
                                         <button type="button" @click="addPickupTime"
                                             class="w-full py-2 max-[768px]:text-[0.75rem] bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition duration-200 font-medium shadow-md">
-                                            + Add Pickup Time
+                                            {{ _t('vendorprofilepages', 'button_add_pickup_time') }}
                                         </button>
                                     </div>
                                     <div>
                                         <!-- Return Times Section -->
-                                        <label class="block text-lg font-semibold text-gray-800 mb-2">Return
-                                            Times</label>
+                                        <label class="block text-lg font-semibold text-gray-800 mb-2">{{ _t('vendorprofilepages', 'label_return_times') }}</label>
                                         <div v-for="(time, index) in form.return_times" :key="'return-' + index"
                                             class="time-input-group flex items-center mb-3">
                                             <input type="time" v-model="form.return_times[index]"
                                                 class="time-input max-[768px]:text-[0.75rem] w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition duration-200 bg-white shadow-sm" />
-                                            <button type="button" @click="removeReturnTime(index)" title="Remove"
+                                            <button type="button" @click="removeReturnTime(index)" :title="_t('vendorprofilepages', 'title_remove_time')"
                                                 class="ml-1 text-red-600 hover:bg-red-50">
                                                 <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20"
                                                     viewBox="0 0 24 24" fill="none" stroke="currentColor"
@@ -523,7 +521,7 @@
 
                                         <button type="button" @click="addReturnTime"
                                             class="w-full py-2 max-[768px]:text-[0.75rem] bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition duration-200 font-medium shadow-md">
-                                            + Add Return Time
+                                            {{ _t('vendorprofilepages', 'button_add_return_time') }}
                                         </button>
                                     </div>
                                 </div>
@@ -537,19 +535,19 @@
                             <div class="grid gap-6">
                                 <!-- Current Images -->
                                 <div v-if="props.vehicle && props.vehicle.images && props.vehicle.images.length > 0">
-                                    <h3 class="font-medium text-lg mb-3">Current Images</h3>
+                                    <h3 class="font-medium text-lg mb-3">{{ _t('vendorprofilepages', 'label_current_images') }}</h3>
                                     <div class="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-5 gap-4">
                                         <div v-for="image in props.vehicle.images" :key="image.id"
                                             class="relative group border rounded-lg overflow-hidden h-48">
-                                            <img :src="`${image.image_url}`" alt="Vehicle image"
+                                            <img :src="`${image.image_url}`" :alt="_t('vendorprofilepages', 'alt_vehicle_image')"
                                                 class="w-full h-full object-cover" />
                                             <div class="absolute top-0 right-0 p-1 flex gap-1">
                                                 <button v-if="image.image_type !== 'primary'" type="button" @click="setExistingImageAsPrimary(image.id)"
-                                                    class="bg-white text-blue-600 rounded-full p-1 hover:bg-blue-50 transition-colors" title="Set as Primary">
+                                                    class="bg-white text-blue-600 rounded-full p-1 hover:bg-blue-50 transition-colors" :title="_t('vendorprofilepages', 'button_set_as_primary')">
                                                     <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-star"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
                                                 </button>
                                                 <button type="button" @click="deleteImage(props.vehicle.id, image.id)"
-                                                    class="bg-white text-red-600 rounded-full p-1 hover:bg-red-50 transition-colors" title="Delete Image">
+                                                    class="bg-white text-red-600 rounded-full p-1 hover:bg-red-50 transition-colors" :title="_t('vendorprofilepages', 'title_delete_image')">
                                                     <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20"
                                                         viewBox="0 0 24 24" fill="none" stroke="currentColor"
                                                         stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
@@ -565,18 +563,18 @@
                                             <div
                                                 class="absolute bottom-0 left-0 right-0 bg-black/70 text-white p-1 text-center text-xs"
                                                 :class="{'bg-blue-600/90': image.image_type === 'primary'}">
-                                                {{ image.image_type === 'primary' ? 'Primary' : 'Gallery' }}
+                                                {{ image.image_type === 'primary' ? _t('vendorprofilepages', 'text_image_type_primary') : _t('vendorprofilepages', 'text_image_type_gallery') }}
                                             </div>
                                         </div>
                                     </div>
                                     <p class="text-gray-500 mt-2">
-                                        {{ props.vehicle.images.length }}/20 images uploaded
+                                        {{ _t('vendorprofilepages', 'text_images_uploaded_count', {count: props.vehicle.images.length}) }}
                                     </p>
                                 </div>
 
                                 <!-- Upload New Images -->
                                 <div v-if="!props.vehicle || !props.vehicle.images || props.vehicle.images.length < 20">
-                                    <h3 class="font-medium text-lg mb-3">Upload New Images</h3>
+                                    <h3 class="font-medium text-lg mb-3">{{ _t('vendorprofilepages', 'label_upload_new_images') }}</h3>
                                     <div class="border-2 border-dashed border-gray-300 p-6 rounded-lg text-center">
                                         <input type="file" ref="fileInput" multiple @change="handleFileUpload"
                                             accept="image/jpeg,image/png,image/jpg,image/gif" class="hidden" />
@@ -587,16 +585,15 @@
                                                 <path stroke-linecap="round" stroke-linejoin="round"
                                                     d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5" />
                                             </svg>
-                                            <p class="mt-2 text-sm text-gray-600">Click to select images or drag and
-                                                drop</p>
-                                            <p class="text-xs text-gray-500 mt-1">JPG, PNG, GIF up to 2MB</p>
+                                            <p class="mt-2 text-sm text-gray-600">{{ _t('vendorprofilepages', 'text_click_or_drag_images') }}</p>
+                                            <p class="text-xs text-gray-500 mt-1">{{ _t('vendorprofilepages', 'text_image_format_hint') }}</p>
                                             <p class="text-xs text-gray-500 mt-1">
-                                                {{ selectedFiles.length }} file(s) selected
+                                                {{ _t('vendorprofilepages', 'text_files_selected_count', {count: selectedFiles.length}) }}
                                             </p>
                                         </div>
                                     </div>
                                     <div v-if="selectedFiles.length > 0" class="mt-4">
-                                        <h4 class="font-medium text-sm mb-2">Selected Files:</h4>
+                                        <h4 class="font-medium text-sm mb-2">{{ _t('vendorprofilepages', 'label_selected_files') }}</h4>
                                         <ul class="text-sm text-gray-600">
                                             <li v-for="(file, index) in selectedFiles" :key="index"
                                                 class="flex justify-between items-center py-1 border-b last:border-b-0">
@@ -605,11 +602,11 @@
                                                     <button type="button" @click="setNewImageAsPrimary(index)"
                                                         :class="['text-xs px-2 py-1 rounded', form.primary_image_index === index ? 'bg-blue-500 text-white cursor-default' : 'bg-gray-200 hover:bg-gray-300']"
                                                         :disabled="form.primary_image_index === index">
-                                                        {{ form.primary_image_index === index ? 'Primary' : 'Set Primary' }}
+                                                        {{ form.primary_image_index === index ? _t('vendorprofilepages', 'text_image_type_primary') : _t('vendorprofilepages', 'button_set_as_primary') }}
                                                     </button>
                                                     <button type="button" @click="removeFile(index)"
                                                         class="text-red-500 hover:text-red-700 text-xs px-2 py-1 rounded hover:bg-red-50">
-                                                        Remove
+                                                        {{ _t('vendorprofilepages', 'button_remove_file') }}
                                                     </button>
                                                 </div>
                                             </li>
@@ -617,7 +614,7 @@
                                     </div>
                                 </div>
                                 <p v-else class="text-amber-600">
-                                    Maximum number of images (20) reached. Delete some images to upload new ones.
+                                    {{ _t('vendorprofilepages', 'text_max_images_reached') }}
                                 </p>
                             </div>
                         </TabsContent>
@@ -626,11 +623,11 @@
                     <div class="flex justify-between mt-8">
                         <PrimaryButton type="submit" :disabled="form.limited_km && !form.price_per_km"
                             :class="{ 'opacity-50 cursor-not-allowed': form.limited_km && !form.price_per_km }">
-                            Update Vehicle
+                            {{ _t('vendorprofilepages', 'update_vehicle_button') }}
                         </PrimaryButton>
                         <Link href="/current-vendor-vehicles"
                             class="px-4 flex justify-center items-center bg-[#EA3C3C] text-white rounded hover:bg-[#ea3c3ca2]">
-                        Cancel
+                        {{ _t('vendorprofilepages', 'cancel_button') }}
                         </Link>
                     </div>
                 </form>
@@ -641,7 +638,7 @@
 
 
 <script setup>
-import { ref, onMounted, computed, watch, nextTick } from 'vue';
+import { ref, onMounted, computed, watch, nextTick, getCurrentInstance } from 'vue';
 import { useForm } from '@inertiajs/vue3';
 import { useToast } from 'vue-toastification';
 import { usePage } from '@inertiajs/vue3';
@@ -666,6 +663,9 @@ import { Input } from '@/Components/ui/input';
 import LocationPicker from '@/Components/LocationPicker.vue';
 import VueDatePicker from '@vuepic/vue-datepicker'
 import '@vuepic/vue-datepicker/dist/main.css'
+
+const { appContext } = getCurrentInstance();
+const _t = appContext.config.globalProperties._t;
 
 const toast = useToast();
 const { props } = usePage();

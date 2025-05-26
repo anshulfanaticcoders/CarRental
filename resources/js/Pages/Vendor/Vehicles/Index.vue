@@ -1,18 +1,18 @@
 <template>
   <MyProfileLayout>
     <div class="flex justify-between items-center">
-      <h2 class="font-semibold text-xl text-gray-800">My Vehicles</h2>
+      <h2 class="font-semibold text-xl text-gray-800">{{ _t('vendorprofilepages', 'my_vehicles_header') }}</h2>
       <div class="flex space-x-2">
         <button
           v-if="selectedVehicleIds.length > 0"
           @click="confirmBulkDeletion"
           class="px-4 py-2 bg-red-600 border-red-600 border-[1px] text-white rounded-md hover:bg-white hover:text-red-600"
         >
-          Delete Selected ({{ selectedVehicleIds.length }})
+          {{ _t('vendorprofilepages', 'delete_selected_button') }} ({{ selectedVehicleIds.length }})
         </button>
         <Link :href="route('vehicles.create')"
           class="px-4 py-2 bg-customPrimaryColor border-customPrimaryColor border-[1px] text-white rounded-md hover:bg-white hover:text-customPrimaryColor">
-        Add New Vehicle
+        {{ _t('vendorprofilepages', 'add_new_vehicle_button') }}
         </Link>
       </div>
     </div>
@@ -20,7 +20,7 @@
     <div class="py-12">
       <div class="mx-auto">
         <div class="rounded-[12px] mb-4">
-          <input type="text" v-model="searchQuery" placeholder="Search vehicles..."
+          <input type="text" v-model="searchQuery" :placeholder="_t('vendorprofilepages', 'search_vehicles_placeholder')"
             class="px-4 py-2 border border-gray-300 rounded-md w-full" />
         </div>
         <div class="rounded-[12px]">
@@ -31,24 +31,23 @@
                   <th class="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     <input type="checkbox" @change="toggleSelectAll" :checked="isAllSelected" class="rounded"/>
                   </th>
-                  <th class="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">ID</th>
-                  <th class="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Image</th>
-                  <th class="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Brand &
-                    Model</th>
+                  <th class="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">{{ _t('vendorprofilepages', 'table_id_header') }}</th>
+                  <th class="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">{{ _t('vendorprofilepages', 'table_image_header') }}</th>
+                  <th class="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">{{ _t('vendorprofilepages', 'table_brand_model_header') }}</th>
                   <th class="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Transmission</th>
-                  <th class="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Fuel</th>
-                  <th class="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Location
+                    {{ _t('vendorprofilepages', 'table_transmission_header') }}</th>
+                  <th class="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">{{ _t('vendorprofilepages', 'table_fuel_header') }}</th>
+                  <th class="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">{{ _t('vendorprofilepages', 'table_location_header') }}
                   </th>
-                  <th class="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Limited KM
+                  <th class="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">{{ _t('vendorprofilepages', 'table_limited_km_header') }}
                   </th>
                   <th class="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Cancellation Available
+                    {{ _t('vendorprofilepages', 'table_cancellation_header') }}
                   </th>
-                  <th class="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Price
+                  <th class="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">{{ _t('vendorprofilepages', 'table_price_header') }}
                   </th>
-                  <th class="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
-                  <th class="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions
+                  <th class="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">{{ _t('vendorprofilepages', 'status_table_header') }}</th>
+                  <th class="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">{{ _t('vendorprofilepages', 'actions_table_header') }}
                   </th>
                 </tr>
               </thead>
@@ -61,7 +60,7 @@
                     pagination.per_page + index + 1 }}</td>
                   <Link :href="`/vehicle/${vehicle.id}`" class="w-full">
                   <td class="px-2 py-4 whitespace-nowrap">
-                    <img :src="getPrimaryImage(vehicle)" alt="no image" class="h-12 w-24 object-cover rounded">
+                    <img :src="getPrimaryImage(vehicle)" :alt="_t('vendorprofilepages', 'alt_no_image')" class="h-12 w-24 object-cover rounded">
                   </td>
                   </Link>
                   <td class="px-2 py-4 whitespace-nowrap text-[0.875rem]">{{ vehicle.brand }} {{ vehicle.model }}</td>
@@ -71,14 +70,14 @@
                   <td class="px-2 py-4 whitespace-wrap text-[0.875rem]">
                     <template v-if="vehicle.benefits && (vehicle.benefits.limited_km_per_day_range || vehicle.benefits.limited_km_per_week_range || vehicle.benefits.limited_km_per_month_range)">
                       <span v-if="vehicle.benefits.limited_km_per_day_range > 0">
-                        {{ vehicle.benefits.limited_km_per_day_range }} km/day
+                        {{ vehicle.benefits.limited_km_per_day_range }} {{ _t('vendorprofilepages', 'unit_km_day') }}
                       </span>
                       <span
                         v-if="vehicle.benefits.limited_km_per_day_range && (vehicle.benefits.limited_km_per_week_range || vehicle.benefits.limited_km_per_month_range)">
                         |
                       </span>
                       <span v-if="vehicle.benefits.limited_km_per_week_range > 0">
-                        {{ vehicle.benefits.limited_km_per_week_range }} km/week
+                        {{ vehicle.benefits.limited_km_per_week_range }} {{ _t('vendorprofilepages', 'unit_km_week') }}
                       </span>
                       <span
                         v-if="vehicle.benefits.limited_km_per_week_range && vehicle.benefits.limited_km_per_month_range">
@@ -86,25 +85,25 @@
                       </span>
                       <span v-if="vehicle.benefits.limited_km_per_month_range > 0">
                         |
-                        {{ vehicle.benefits.limited_km_per_month_range }} km/month
+                        {{ vehicle.benefits.limited_km_per_month_range }} {{ _t('vendorprofilepages', 'unit_km_month') }}
                       </span>
                     </template>
-                    <span v-else-if="!vehicle.benefits || (vehicle.benefits && !vehicle.benefits.limited_km_per_day_range && !vehicle.benefits.limited_km_per_week_range && !vehicle.benefits.limited_km_per_month_range)">Unlimited</span>
+                    <span v-else-if="!vehicle.benefits || (vehicle.benefits && !vehicle.benefits.limited_km_per_day_range && !vehicle.benefits.limited_km_per_week_range && !vehicle.benefits.limited_km_per_month_range)">{{ _t('vendorprofilepages', 'unlimited_km_text') }}</span>
                   </td>
 
                   <td class="px-2 py-4 whitespace-wrap text-[0.875rem]">
                     <template v-if="vehicle.benefits && (vehicle.benefits.cancellation_available_per_day || vehicle.benefits.cancellation_available_per_week || vehicle.benefits.cancellation_available_per_month)">
-                      <span v-if="vehicle.benefits.cancellation_available_per_day">Day</span>
+                      <span v-if="vehicle.benefits.cancellation_available_per_day">{{ _t('vendorprofilepages', 'cancellation_day') }}</span>
                       <span
                         v-if="vehicle.benefits.cancellation_available_per_day && (vehicle.benefits.cancellation_available_per_week || vehicle.benefits.cancellation_available_per_month)">
                         | </span>
-                      <span v-if="vehicle.benefits.cancellation_available_per_week">Week</span>
+                      <span v-if="vehicle.benefits.cancellation_available_per_week">{{ _t('vendorprofilepages', 'cancellation_week') }}</span>
                       <span
                         v-if="vehicle.benefits.cancellation_available_per_week && vehicle.benefits.cancellation_available_per_month">
                         | </span>
-                      <span v-if="vehicle.benefits.cancellation_available_per_month">Month</span>
+                      <span v-if="vehicle.benefits.cancellation_available_per_month">{{ _t('vendorprofilepages', 'cancellation_month') }}</span>
                     </template>
-                    <span v-else-if="!vehicle.benefits || (vehicle.benefits && !vehicle.benefits.cancellation_available_per_day && !vehicle.benefits.cancellation_available_per_week && !vehicle.benefits.cancellation_available_per_month)">Not Available</span>
+                    <span v-else-if="!vehicle.benefits || (vehicle.benefits && !vehicle.benefits.cancellation_available_per_day && !vehicle.benefits.cancellation_available_per_week && !vehicle.benefits.cancellation_available_per_month)">{{ _t('vendorprofilepages', 'not_available_text') }}</span>
                   </td>
 
 
@@ -120,11 +119,11 @@
                   <td class="px-2 py-4 whitespace-nowrap text-xs font-medium">
                     <Link :href="route('current-vendor-vehicles.edit', vehicle.id)"
                       class="px-3 mr-2 py-1 bg-gray-600 text-white rounded hover:bg-gray-700">
-                    Edit
+                    {{ _t('vendorprofilepages', 'edit_button') }}
                     </Link>
                     <button @click="confirmDeletion(vehicle)"
                       class="px-3 py-1 bg-red-600 text-white rounded hover:bg-red-700">
-                      Delete
+                      {{ _t('vendorprofilepages', 'delete_button_general') }}
                     </button>
                   </td>
                 </tr>
@@ -132,7 +131,7 @@
             </table>
           </div>
           <div v-else class="text-center py-12">
-            <p class="text-gray-500">No vehicles found. Start by adding a new vehicle.</p>
+            <p class="text-gray-500">{{ _t('vendorprofilepages', 'no_vehicles_found_text') }}</p>
           </div>
         </div>
       </div>
@@ -145,17 +144,17 @@
     <!-- Delete Confirmation Modal -->
     <Modal :show="showDeleteModal" @close="showDeleteModal = false">
       <div class="p-6">
-        <h3 class="text-lg font-medium">{{ vehicleToDelete ? 'Delete Vehicle' : 'Delete Selected Vehicles' }}</h3>
+        <h3 class="text-lg font-medium">{{ vehicleToDelete ? _t('vendorprofilepages', 'delete_vehicle_modal_title_single') : _t('vendorprofilepages', 'delete_vehicle_modal_title_bulk') }}</h3>
         <p class="mt-2 text-gray-600">
-          {{ vehicleToDelete ? 'Are you sure you want to delete this vehicle?' : `Are you sure you want to delete the ${selectedVehicleIds.length} selected vehicles?` }}
-          This action cannot be undone.
+          {{ vehicleToDelete ? _t('vendorprofilepages', 'delete_vehicle_modal_confirm_single') : _t('vendorprofilepages', 'delete_vehicle_modal_confirm_bulk', {count: selectedVehicleIds.length}) }}
+          {{ _t('vendorprofilepages', 'action_cannot_be_undone_text') }}
         </p>
         <div class="mt-4 flex justify-end space-x-3">
           <button @click="showDeleteModal = false; vehicleToDelete = null;" class="px-4 py-2 bg-gray-200 rounded hover:bg-gray-300">
-            Cancel
+            {{ _t('vendorprofilepages', 'cancel_button') }}
           </button>
           <button @click="vehicleToDelete ? deleteVehicle() : deleteSelectedVehicles()" class="px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700">
-            Delete
+            {{ _t('vendorprofilepages', 'delete_button_general') }}
           </button>
         </div>
       </div>
@@ -164,12 +163,15 @@
 </template>
 
 <script setup>
-import { ref, computed, watch } from 'vue'
+import { ref, computed, watch, getCurrentInstance } from 'vue'
 import { Link } from '@inertiajs/vue3'
 import { router } from '@inertiajs/vue3'
 import Modal from '@/Components/Modal.vue'
 import MyProfileLayout from '@/Layouts/MyProfileLayout.vue'
 import Pagination from './Pagination.vue'
+
+const { appContext } = getCurrentInstance();
+const _t = appContext.config.globalProperties._t;
 
 const props = defineProps({
   vehicles: {
@@ -302,17 +304,17 @@ const deleteSelectedVehicles = () => {
 
 const formatPricing = (vehicle) => {
   if (!vehicle || !vehicle.vendor_profile || !vehicle.vendor_profile.currency) {
-    return 'N/A'; // Fallback if data is missing
+    return _t('vendorprofilepages', 'not_applicable_text'); // Fallback if data is missing
   }
 
   const currencySymbol = vehicle.vendor_profile.currency;
   const prices = [];
 
-  if (vehicle.price_per_day) prices.push(`${currencySymbol}${vehicle.price_per_day}/day`);
-  if (vehicle.price_per_week) prices.push(`${currencySymbol}${vehicle.price_per_week}/week`);
-  if (vehicle.price_per_month) prices.push(`${currencySymbol}${vehicle.price_per_month}/month`);
+  if (vehicle.price_per_day) prices.push(`${currencySymbol}${vehicle.price_per_day}${_t('vendorprofilepages', 'price_per_day_suffix')}`);
+  if (vehicle.price_per_week) prices.push(`${currencySymbol}${vehicle.price_per_week}${_t('vendorprofilepages', 'price_per_week_suffix')}`);
+  if (vehicle.price_per_month) prices.push(`${currencySymbol}${vehicle.price_per_month}${_t('vendorprofilepages', 'price_per_month_suffix')}`);
 
-  return prices.length ? prices.join(' | ') : 'N/A';
+  return prices.length ? prices.join(' | ') : _t('vendorprofilepages', 'not_applicable_text');
 };
 
 // filteredVehicles definition was moved up

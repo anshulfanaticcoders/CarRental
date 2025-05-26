@@ -1,37 +1,37 @@
 <template>
     <MyProfileLayout>
         <div class="flex justify-between items-center mb-4">
-            <h2 class="font-semibold text-xl text-gray-800 max-[768px]:text-[0.875rem]">Manage Blocking Dates</h2>
+            <h2 class="font-semibold text-xl text-gray-800 max-[768px]:text-[0.875rem]">{{ _t('vendorprofilepages', 'manage_blocking_dates_header') }}</h2>
             <Dialog>
                 <DialogTrigger class="px-4 py-2 bg-customPrimaryColor text-white rounded hover:bg-[#153b4fdc] max-[768px]:text-[0.75rem]">
-                    Add Blocking Date
+                    {{ _t('vendorprofilepages', 'add_blocking_date_button') }}
                 </DialogTrigger>
                 <DialogContent>
                     <DialogHeader>
-                        <DialogTitle>Add Blocking Date</DialogTitle>
-                        <DialogDescription>Select a vehicle and set the blocking dates.</DialogDescription>
+                        <DialogTitle>{{ _t('vendorprofilepages', 'add_blocking_date_dialog_title') }}</DialogTitle>
+                        <DialogDescription>{{ _t('vendorprofilepages', 'add_blocking_date_dialog_description') }}</DialogDescription>
                     </DialogHeader>
                     <form @submit.prevent="submitForm">
                         <div class="mb-4">
-                            <label class="block text-sm font-medium text-gray-700">Vehicle</label>
+                            <label class="block text-sm font-medium text-gray-700">{{ _t('vendorprofilepages', 'label_vehicle_select') }}</label>
                             <select v-model="form.vehicle_id" class="w-full border rounded p-2">
-                                <option value="">Select a vehicle</option>
+                                <option value="">{{ _t('vendorprofilepages', 'placeholder_select_vehicle') }}</option>
                                 <option v-for="vehicle in props.vehicles" :key="vehicle.id" :value="vehicle.id">
                                     {{ vehicle.brand }} - {{ vehicle.model }}
                                 </option>
                             </select>
                         </div>
                         <div class="mb-4">
-                            <label class="block text-sm font-medium text-gray-700">Start Date</label>
+                            <label class="block text-sm font-medium text-gray-700">{{ _t('vendorprofilepages', 'label_start_date') }}</label>
                             <input type="date" v-model="form.blocking_start_date" class="w-full border rounded p-2" />
                         </div>
                         <div class="mb-4">
-                            <label class="block text-sm font-medium text-gray-700">End Date</label>
+                            <label class="block text-sm font-medium text-gray-700">{{ _t('vendorprofilepages', 'label_end_date') }}</label>
                             <input type="date" v-model="form.blocking_end_date" class="w-full border rounded p-2" />
                         </div>
                         <DialogFooter>
                             <button type="submit" class="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700">
-                                Save
+                                {{ _t('vendorprofilepages', 'button_save') }}
                             </button>
                         </DialogFooter>
                     </form>
@@ -41,7 +41,7 @@
 
         <!-- Search Bar -->
         <div class="mb-4">
-            <input type="text" v-model="searchQuery" placeholder="Search vehicles..."
+            <input type="text" v-model="searchQuery" :placeholder="_t('vendorprofilepages', 'search_vehicles_placeholder')"
                 class="px-4 py-2 border border-gray-300 rounded-md w-full" />
         </div>
 
@@ -49,14 +49,14 @@
             <table class="min-w-full divide-y divide-gray-200">
                 <thead class="bg-gray-50">
                     <tr>
-                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">ID</th>
-                        <th class="px-4 py-2 text-left text-sm font-bold">Brand</th>
-                        <th class="px-4 py-2 text-left text-sm font-bold">Model</th>
-                        <th class="px-4 py-2 text-left text-sm font-bold">Location</th>
-                        <th class="px-4 py-2 text-left text-sm font-bold">Booking Dates</th>
-                        <th class="px-4 py-2 text-left text-sm font-bold">Blocking Start Date</th>
-                        <th class="px-4 py-2 text-left text-sm font-bold">Blocking End Date</th>
-                        <th class="px-4 py-2 text-left text-sm font-bold">Actions</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">{{ _t('vendorprofilepages', 'table_id_header') }}</th>
+                        <th class="px-4 py-2 text-left text-sm font-bold">{{ _t('vendorprofilepages', 'table_brand_header') }}</th>
+                        <th class="px-4 py-2 text-left text-sm font-bold">{{ _t('vendorprofilepages', 'label_model') }}</th>
+                        <th class="px-4 py-2 text-left text-sm font-bold">{{ _t('vendorprofilepages', 'table_location_header') }}</th>
+                        <th class="px-4 py-2 text-left text-sm font-bold">{{ _t('vendorprofilepages', 'table_booking_dates_header') }}</th>
+                        <th class="px-4 py-2 text-left text-sm font-bold">{{ _t('vendorprofilepages', 'table_blocking_start_date_header') }}</th>
+                        <th class="px-4 py-2 text-left text-sm font-bold">{{ _t('vendorprofilepages', 'table_blocking_end_date_header') }}</th>
+                        <th class="px-4 py-2 text-left text-sm font-bold">{{ _t('vendorprofilepages', 'actions_table_header') }}</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -70,10 +70,10 @@
                         <td class="px-4 py-2 text-sm text-gray-700">
                             <div v-if="vehicle.bookings && vehicle.bookings.length > 0">
                                 <div v-for="(booking, index) in vehicle.bookings" :key="index" class="mb-1">
-                                    Pickup: {{ formatDate(booking.pickup_date) }} - Return: {{ formatDate(booking.return_date) }}
+                                    {{ _t('vendorprofilepages', 'text_pickup_prefix') }} {{ formatDate(booking.pickup_date) }} - {{ _t('vendorprofilepages', 'text_return_prefix') }} {{ formatDate(booking.return_date) }}
                                 </div>
                             </div>
-                            <span v-else>N/A</span>
+                            <span v-else>{{ _t('vendorprofilepages', 'not_applicable_text') }}</span>
                         </td>
 
                         <td class="px-4 py-2 text-sm text-gray-700">
@@ -82,7 +82,7 @@
                                     {{ formatDate(blocking.blocking_start_date) }}
                                 </div>
                             </div>
-                            <span v-else>N/A</span>
+                            <span v-else>{{ _t('vendorprofilepages', 'not_applicable_text') }}</span>
                         </td>
                         <td class="px-4 py-2 text-sm text-gray-700">
                             <div v-if="vehicle.blockings && vehicle.blockings.length > 0">
@@ -90,53 +90,52 @@
                                     {{ formatDate(blocking.blocking_end_date) }}
                                 </div>
                             </div>
-                            <span v-else>N/A</span>
+                            <span v-else>{{ _t('vendorprofilepages', 'not_applicable_text') }}</span>
                         </td>
                         <td class="px-4 py-2 text-sm">
                             <div v-if="vehicle.blockings && vehicle.blockings.length > 0">
                                 <div v-for="blocking in vehicle.blockings" :key="blocking.id" class="flex mb-1">
                                     <Dialog>
-                                        <DialogTrigger class="text-blue-600 hover:underline mr-2" @click="prepareEditForm(blocking)">Edit</DialogTrigger>
+                                        <DialogTrigger class="text-blue-600 hover:underline mr-2" @click="prepareEditForm(blocking)">{{ _t('vendorprofilepages', 'edit_button') }}</DialogTrigger>
                                         <DialogContent>
                                             <DialogHeader>
-                                                <DialogTitle>Edit Blocking Date</DialogTitle>
-                                                <DialogDescription>Modify the blocking dates for this vehicle.
+                                                <DialogTitle>{{ _t('vendorprofilepages', 'edit_blocking_date_dialog_title') }}</DialogTitle>
+                                                <DialogDescription>{{ _t('vendorprofilepages', 'edit_blocking_date_dialog_description') }}
                                                 </DialogDescription>
                                             </DialogHeader>
                                             <form @submit.prevent="updateBlockingDate(blocking.id)">
                                                 <div class="mb-4">
-                                                    <label class="block text-sm font-medium text-gray-700">Start
-                                                        Date</label>
+                                                    <label class="block text-sm font-medium text-gray-700">{{ _t('vendorprofilepages', 'label_start_date') }}</label>
                                                     <input type="date" v-model="editForm.blocking_start_date"
                                                         class="w-full border rounded p-2" />
                                                 </div>
                                                 <div class="mb-4">
-                                                    <label class="block text-sm font-medium text-gray-700">End Date</label>
+                                                    <label class="block text-sm font-medium text-gray-700">{{ _t('vendorprofilepages', 'label_end_date') }}</label>
                                                     <input type="date" v-model="editForm.blocking_end_date"
                                                         class="w-full border rounded p-2" />
                                                 </div>
                                                 <DialogFooter>
                                                     <button type="submit"
                                                         class="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700">
-                                                        Save Changes
+                                                        {{ _t('vendorprofilepages', 'save_changes_button') }}
                                                     </button>
                                                 </DialogFooter>
                                             </form>
                                         </DialogContent>
                                     </Dialog>
                                     <button @click="removeBlockingDates(blocking.id)" class="text-red-600 hover:underline">
-                                        Remove
+                                        {{ _t('vendorprofilepages', 'button_remove_blocking_date') }}
                                     </button>
                                 </div>
                             </div>
-                            <span v-else>N/A</span>
+                            <span v-else>{{ _t('vendorprofilepages', 'not_applicable_text') }}</span>
                         </td>
                     </tr>
                 </tbody>
             </table>
         </div>
         <div v-else class="text-center py-6">
-            <span class="text-gray-500">No vehicles found.</span>
+            <span class="text-gray-500">{{ _t('vendorprofilepages', 'no_vehicles_found_text') }}</span>
         </div>
 
         <!-- Pagination -->
@@ -149,7 +148,7 @@
 
 <script setup>
 import MyProfileLayout from '@/Layouts/MyProfileLayout.vue';
-import { ref, computed, watch, onMounted } from 'vue';
+import { ref, computed, watch, onMounted, getCurrentInstance } from 'vue';
 import { usePage, router } from '@inertiajs/vue3';
 import { useToast } from 'vue-toastification';
 import axios from 'axios';
@@ -163,6 +162,9 @@ import {
     DialogTrigger,
 } from '@/Components/ui/dialog';
 import Pagination from './Pagination.vue';
+
+const { appContext } = getCurrentInstance();
+const _t = appContext.config.globalProperties._t;
 
 const toast = useToast();
 const form = ref({ 
@@ -201,23 +203,23 @@ const handlePageChange = (page) => {
 const submitForm = async () => {
     // Form validation
     if (!form.value.vehicle_id) {
-        toast.error('Please select a vehicle');
+        toast.error(_t('vendorprofilepages', 'toast_error_select_vehicle'));
         return;
     }
     
     if (!form.value.blocking_start_date) {
-        toast.error('Please select a start date');
+        toast.error(_t('vendorprofilepages', 'toast_error_select_start_date'));
         return;
     }
     
     if (!form.value.blocking_end_date) {
-        toast.error('Please select an end date');
+        toast.error(_t('vendorprofilepages', 'toast_error_select_end_date'));
         return;
     }
     
     try {
         await axios.post(route('vendor.blocking-dates.store'), form.value);
-        toast.success('Blocking date added successfully!');
+        toast.success(_t('vendorprofilepages', 'toast_success_blocking_date_added'));
         // Reset form
         form.value = { vehicle_id: '', blocking_start_date: '', blocking_end_date: '' };
         // Reload to see changes
@@ -226,7 +228,7 @@ const submitForm = async () => {
         }, 1000);
     } catch (error) {
         console.error('Error:', error.response?.data || error);
-        toast.error(error.response?.data?.message || 'Failed to add blocking date. Please try again.');
+        toast.error(error.response?.data?.message || _t('vendorprofilepages', 'toast_error_add_blocking_date'));
     }
 };
 
@@ -241,25 +243,25 @@ const updateBlockingDate = async (blockingId) => {
             blocking_start_date: editForm.value.blocking_start_date,
             blocking_end_date: editForm.value.blocking_end_date,
         });
-        toast.success('Blocking date updated successfully!');
+        toast.success(_t('vendorprofilepages', 'toast_success_blocking_date_updated'));
         setTimeout(() => {
             window.location.reload();
         }, 1000);
     } catch (error) {
-        toast.error('Failed to update blocking date. Please try again.');
+        toast.error(_t('vendorprofilepages', 'toast_error_update_blocking_date'));
     }
 };
 
 const removeBlockingDates = async (blockingId) => {
-    if (confirm('Are you sure you want to remove this blocking date?')) {
+    if (confirm(_t('vendorprofilepages', 'confirm_remove_blocking_date'))) {
         try {
             await axios.delete(route('vendor.blocking-dates.destroy', blockingId));
-            toast.success('Blocking date removed successfully!');
+            toast.success(_t('vendorprofilepages', 'toast_success_blocking_date_removed'));
             setTimeout(() => {
                 window.location.reload();
             }, 1000);
         } catch (error) {
-            toast.error('Failed to remove blocking date. Please try again.');
+            toast.error(_t('vendorprofilepages', 'toast_error_remove_blocking_date'));
         }
     }
 };
