@@ -29,6 +29,7 @@ class SetLocale
             'common' => trans('common'),
             'customerprofile' => trans('customerprofile'),
             'customerprofilepages' => trans('customerprofilepages'),
+            'vendorprofilepages' => trans('vendorprofilepages'),
             'authpages' => trans('authpages'),
             'customerbooking' => trans('customerbooking'),
         ],

@@ -1,0 +1,53 @@
+<?php
+
+return [
+    // Vendor/Overview/Index.vue
+        'vendor_overview_header' => 'Aperçu des vendeurs',
+        'total_vehicles_card_title' => 'Total des véhicules',
+        'vehicles_available_card_title' => 'Véhicules disponibles',
+        'vehicles_rented_card_title' => 'Véhicules loués',
+        'maintenance_vehicles_card_title' => 'Maintenance',
+        'total_bookings_card_title' => 'Total des réservations',
+        'active_bookings_card_title' => 'Réservations actives',
+        'completed_bookings_card_title' => 'Réservations terminées',
+        'cancelled_bookings_card_title' => 'Réservations annulées',
+        'total_revenue_card_title' => 'Revenu total',
+        'booking_overview_chart_title' => 'Aperçu des réservations',
+        'revenue_last_12_months_chart_title' => 'Revenu (12 derniers mois)',
+
+        // Vendor/Documents/Index.vue
+        'my_vendor_documents_header' => 'Mes documents de vendeur',
+        'document_preview_dialog_title' => 'Aperçu du document',
+        'passport_front_table_header' => 'Recto du passeport',
+        'passport_back_table_header' => 'Verso du passeport',
+        'status_table_header' => 'Statut',
+        'actions_table_header' => 'Actions',
+        'view_button' => 'Voir',
+        'not_uploaded_text' => 'Non téléchargé',
+        'edit_button' => 'Modifier',
+        'documents_cannot_be_edited_text' => 'Les documents ne peuvent pas être modifiés une fois approuvés',
+        'no_vendor_documents_found_text' => 'Aucun document de vendeur trouvé. Veuillez d’abord compléter votre inscription en tant que vendeur.',
+        'company_information_header' => 'Informations sur l’entreprise',
+        'company_name_label' => 'Nom de l’entreprise :',
+        'company_phone_label' => 'Numéro de téléphone :',
+        'company_email_label' => 'Adresse e-mail :',
+        'company_vat_label' => 'Numéro de TVA :',
+        'company_address_label' => 'Adresse :',
+
+         // Vendor/Documents/Edit.vue
+        'edit_vendor_documents_dialog_title' => 'Modifier les documents des vendeurs',
+        'edit_vendor_documents_dialog_description' => 'Mettez à jour vos documents de vendeur et vos informations de profil ici.',
+        'company_name_form_label' => 'Nom de l’entreprise',
+        'company_phone_form_label' => 'Téléphone de l’entreprise',
+        'company_gst_form_label' => 'Numéro GST',
+        'company_email_form_label' => 'Adresse e-mail de l’entreprise',
+        'company_address_form_label' => 'Adresse de l’entreprise',
+        'passport_front_form_label' => 'Recto du passeport',
+        'view_current_button' => 'Voir actuel',
+        'passport_back_form_label' => 'Verso du passeport',
+        'cancel_button' => 'Annuler',
+        'save_changes_button' => 'Enregistrer les modifications',
+        'warning_dialog_title' => 'Avertissement',
+        'document_update_warning_text' => 'Si vous modifiez le permis de conduire, la photo de passeport ou le passeport, vous ne pourrez pas créer d’annonce de véhicule car elle passera en statut en attente.',
+        'proceed_button' => 'Continuer',
+];

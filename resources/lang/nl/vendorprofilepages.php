@@ -1,0 +1,53 @@
+<?php
+
+return [
+        // Vendor/Overview/Index.vue
+        'vendor_overview_header' => 'Overzicht verkoper',
+        'total_vehicles_card_title' => 'Totaal aantal voertuigen',
+        'vehicles_available_card_title' => 'Beschikbare voertuigen',
+        'vehicles_rented_card_title' => 'Verhuurde voertuigen',
+        'maintenance_vehicles_card_title' => 'Onderhoud',
+        'total_bookings_card_title' => 'Totaal aantal boekingen',
+        'active_bookings_card_title' => 'Actieve boekingen',
+        'completed_bookings_card_title' => 'Voltooide boekingen',
+        'cancelled_bookings_card_title' => 'Geannuleerde boekingen',
+        'total_revenue_card_title' => 'Totale omzet',
+        'booking_overview_chart_title' => 'Overzicht boekingen',
+        'revenue_last_12_months_chart_title' => 'Omzet (Laatste 12 maanden)',
+
+       // Vendor/Documents/Index.vue
+        'my_vendor_documents_header' => 'Mijn verkopersdocumenten',
+        'document_preview_dialog_title' => 'Documentvoorvertoning',
+        'passport_front_table_header' => 'Voorzijde paspoort',
+        'passport_back_table_header' => 'Achterzijde paspoort',
+        'status_table_header' => 'Status',
+        'actions_table_header' => 'Acties',
+        'view_button' => 'Bekijken',
+        'not_uploaded_text' => 'Niet geüpload',
+        'edit_button' => 'Bewerken',
+        'documents_cannot_be_edited_text' => 'Documenten kunnen niet worden bewerkt wanneer ze zijn goedgekeurd',
+        'no_vendor_documents_found_text' => 'Geen verkopersdocumenten gevonden. Voltooi eerst uw verkopersregistratie.',
+        'company_information_header' => 'Bedrijfsinformatie',
+        'company_name_label' => 'Bedrijfsnaam:',
+        'company_phone_label' => 'Telefoonnummer:',
+        'company_email_label' => 'E-mailadres:',
+        'company_vat_label' => 'BTW-nummer:',
+        'company_address_label' => 'Adres:',
+
+        // Vendor/Documents/Edit.vue
+        'edit_vendor_documents_dialog_title' => 'Verkopersdocumenten bewerken',
+        'edit_vendor_documents_dialog_description' => 'Werk hier uw verkopersdocumenten en profielinformatie bij.',
+        'company_name_form_label' => 'Bedrijfsnaam',
+        'company_phone_form_label' => 'Bedrijfstelefoon',
+        'company_gst_form_label' => 'GST-nummer',
+        'company_email_form_label' => 'E-mailadres van het bedrijf',
+        'company_address_form_label' => 'Bedrijfsadres',
+        'passport_front_form_label' => 'Voorzijde paspoort',
+        'view_current_button' => 'Huidige bekijken',
+        'passport_back_form_label' => 'Achterzijde paspoort',
+        'cancel_button' => 'Annuleren',
+        'save_changes_button' => 'Wijzigingen opslaan',
+        'warning_dialog_title' => 'Waarschuwing',
+        'document_update_warning_text' => 'Als u het rijbewijs, de pasfoto of het paspoort wijzigt, kunt u geen voertuigadvertentie maken omdat deze in de status "in behandeling" komt.',
+        'proceed_button' => 'Doorgaan',
+];

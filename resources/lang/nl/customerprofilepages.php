@@ -89,4 +89,17 @@ return [
         'table_header_payment_status' => 'Betalingsstatus',
         'no_payments_found_text' => 'Geen betalingen gevonden.',
         'not_applicable' => 'N.v.t.',
+
+        // Profile/Review/Index.vue
+        'my_reviews_header' => 'Mijn beoordelingen',
+        'vehicle_seats' => 'zitplaatsen',
+        'verified_company' => 'Geverifieerd bedrijf',
+        'verified_customer' => 'Geverifieerde klant',
+        'booking_from' => 'Van:',
+        'booking_to' => 'Tot:',
+        'review_ratings' => 'Beoordelingen',
+        'no_reviews_submitted' => 'U heeft nog geen beoordelingen ingediend.',
+        'alt_full_star' => 'Volle ster',
+        'alt_half_star' => 'Halve ster',
+        'alt_blank_star' => 'Lege ster',
 ];

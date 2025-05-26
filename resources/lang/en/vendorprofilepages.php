@@ -1,0 +1,53 @@
+<?php
+
+return [
+    // Vendor/Overview/Index.vue
+    'vendor_overview_header' => 'Vendor Overview',
+    'total_vehicles_card_title' => 'Total Vehicles',
+    'vehicles_available_card_title' => 'Vehicles Available',
+    'vehicles_rented_card_title' => 'Vehicles Rented',
+    'maintenance_vehicles_card_title' => 'Maintenance',
+    'total_bookings_card_title' => 'Total Bookings',
+    'active_bookings_card_title' => 'Active Bookings',
+    'completed_bookings_card_title' => 'Completed Bookings',
+    'cancelled_bookings_card_title' => 'Cancelled Bookings',
+    'total_revenue_card_title' => 'Total Revenue',
+    'booking_overview_chart_title' => 'Booking Overview',
+    'revenue_last_12_months_chart_title' => 'Revenue (Last 12 Months)',
+
+    // Vendor/Documents/Index.vue
+    'my_vendor_documents_header' => 'My Vendor Documents',
+    'document_preview_dialog_title' => 'Document Preview',
+    'passport_front_table_header' => 'Passport Front',
+    'passport_back_table_header' => 'Passport Back',
+    'status_table_header' => 'Status',
+    'actions_table_header' => 'Actions',
+    'view_button' => 'View',
+    'not_uploaded_text' => 'Not uploaded',
+    'edit_button' => 'Edit',
+    'documents_cannot_be_edited_text' => 'Documents cannot be edited when approved',
+    'no_vendor_documents_found_text' => 'No vendor documents found. Please complete your vendor registration first.',
+    'company_information_header' => 'Company Information',
+    'company_name_label' => 'Company Name:',
+    'company_phone_label' => 'Phone Number:',
+    'company_email_label' => 'Email:',
+    'company_vat_label' => 'VAT Number:',
+    'company_address_label' => 'Address:',
+
+    // Vendor/Documents/Edit.vue
+    'edit_vendor_documents_dialog_title' => 'Edit Vendor Documents',
+    'edit_vendor_documents_dialog_description' => 'Update your vendor documents and profile information here.',
+    'company_name_form_label' => 'Company Name',
+    'company_phone_form_label' => 'Company Phone',
+    'company_gst_form_label' => 'GST Number',
+    'company_email_form_label' => 'Company Email',
+    'company_address_form_label' => 'Company Address',
+    'passport_front_form_label' => 'Passport Front',
+    'view_current_button' => 'View Current',
+    'passport_back_form_label' => 'Passport Back',
+    'cancel_button' => 'Cancel',
+    'save_changes_button' => 'Save Changes',
+    'warning_dialog_title' => 'Warning',
+    'document_update_warning_text' => 'If you change the driving license, passport photo, or passport, you will not be able to create a vehicle listing because it will go to pending status.',
+    'proceed_button' => 'Proceed',
+];

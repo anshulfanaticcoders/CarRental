@@ -86,4 +86,17 @@ return [
     'table_header_payment_status' => 'Payment Status',
     'no_payments_found_text' => 'No payments found.',
     'not_applicable' => 'N/A',
+
+    // Profile/Review/Index.vue
+    'my_reviews_header' => 'My Reviews',
+    'vehicle_seats' => 'seats',
+    'verified_company' => 'Verified Company',
+    'verified_customer' => 'Verified Customer',
+    'booking_from' => 'From:',
+    'booking_to' => 'To:',
+    'review_ratings' => 'Ratings',
+    'no_reviews_submitted' => 'You have not submitted any reviews yet.',
+    'alt_full_star' => 'Full Star',
+    'alt_half_star' => 'Half Star',
+    'alt_blank_star' => 'Blank Star',
 ];

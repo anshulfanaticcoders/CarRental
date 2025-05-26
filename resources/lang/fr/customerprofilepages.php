@@ -87,4 +87,18 @@ return [
         'table_header_payment_status' => 'Statut du paiement',
         'no_payments_found_text' => 'Aucun paiement trouvé.',
         'not_applicable' => 'N/A',
+
+
+        // Profile/Review/Index.vue
+        'my_reviews_header' => 'Mes avis',
+        'vehicle_seats' => 'sièges',
+        'verified_company' => 'Entreprise vérifiée',
+        'verified_customer' => 'Client vérifié',
+        'booking_from' => 'De :',
+        'booking_to' => 'À :',
+        'review_ratings' => 'Évaluations',
+        'no_reviews_submitted' => 'Vous n’avez pas encore soumis d’avis.',
+        'alt_full_star' => 'Étoile pleine',
+        'alt_half_star' => 'Demi-étoile',
+        'alt_blank_star' => 'Étoile vide',
 ];

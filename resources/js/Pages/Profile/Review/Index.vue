@@ -1,7 +1,7 @@
 <template>
     <MyProfileLayout>
         <div class="">
-            <p class="text-[1.5rem] max-[768px]:text-[1.2rem] text-customPrimaryColor font-bold mb-[2rem] bg-[#154D6A0D] rounded-[12px] px-[1rem] py-[1rem]"> My Reviews </p>
+            <p class="text-[1.5rem] max-[768px]:text-[1.2rem] text-customPrimaryColor font-bold mb-[2rem] bg-[#154D6A0D] rounded-[12px] px-[1rem] py-[1rem]"> {{ _t('customerprofilepages', 'my_reviews_header') }} </p>
 
             <div v-if="reviews.data.length > 0">
                 <div v-for="review in reviews.data" :key="review.id" class="border rounded-lg p-6 mb-4 shadow-md">
@@ -25,15 +25,14 @@
                                 </div>
 
                                 <p class="text-sm text-gray-600 capitalize">{{ review.vehicle.transmission }} . {{
-                                    review.vehicle.fuel }} . {{ review.vehicle.seating_capacity }} seats</p>
+                                    review.vehicle.fuel }} . {{ review.vehicle.seating_capacity }} {{ _t('customerprofilepages', 'vehicle_seats') }}</p>
                                 <div class="flex max-[768px]:mb-3">
                                     <img v-if="review.vehicle.vendor_profile && review.vehicle.vendor_profile.avatar"
                                         :src="`${review.vehicle.vendor_profile.avatar}`"
                                         class="w-12 h-12 rounded-full mr-2" />
                                     <div>
                                         <p class="text-[1.1rem]">{{ review.vendor_profile_data.company_name }}</p>
-                                        <p class="text-[0.75rem] text-customLightGrayColor font-medium">Verified
-                                            Company</p>
+                                        <p class="text-[0.75rem] text-customLightGrayColor font-medium">{{ _t('customerprofilepages', 'verified_company') }}</p>
 
                                     </div>
                                 </div>
@@ -45,13 +44,13 @@
                             <div class="flex items-center mb-2">
                                 <div>
                                     <p class="font-semibold">{{ review.user.name }}</p>
-                                    <p v-if="review.user.verified" class="text-green-500">Verified Customer</p>
+                                    <p v-if="review.user.verified" class="text-green-500">{{ _t('customerprofilepages', 'verified_customer') }}</p>
                                 </div>
                             </div>
                             <div
                                 class="bg-gray-200 rounded-[6px] min-w-[300px] min-h-[160px] flex flex-col gap-5 justify-between p-4">
                                 <div class="flex flex-col gap-1">
-                                    <strong class="text-customPrimaryColor">From:</strong>
+                                    <strong class="text-customPrimaryColor">{{ _t('customerprofilepages', 'booking_from') }}</strong>
                                     <p class="text-customPrimaryColor font-medium text-[0.875rem]"> {{
                                         review.booking.pickup_location }}</p>
                                     <div class="flex gap-1">
@@ -60,7 +59,7 @@
                                     </div>
                                 </div>
                                 <div class="flex flex-col gap-1">
-                                    <strong class="text-customPrimaryColor">To:</strong>
+                                    <strong class="text-customPrimaryColor">{{ _t('customerprofilepages', 'booking_to') }}</strong>
                                     <p class="text-customPrimaryColor font-medium text-[0.875rem]"> {{
                                         review.booking.return_location }}</p>
                                     <div class="flex gap-1">
@@ -79,7 +78,7 @@
                                     <img v-for="n in 5" :key="n" :src="getStarIcon(review.rating, n)"
                                         :alt="getStarAltText(review.rating, n)" class="w-[20px] h-[20px]" />
                                 </div>
-                                <span>{{ review.rating.toFixed(1) }} Ratings</span>
+                                <span>{{ review.rating.toFixed(1) }} {{ _t('customerprofilepages', 'review_ratings') }}</span>
                             </div>
                         </div>
                         <p class="text-gray-700">
@@ -92,7 +91,7 @@
                     @page-change="handlePageChange" />
             </div>
             <div v-else>
-                <p>You have not submitted any reviews yet.</p>
+                <p>{{ _t('customerprofilepages', 'no_reviews_submitted') }}</p>
             </div>
         </div>
     </MyProfileLayout>
@@ -102,10 +101,13 @@
 import MyProfileLayout from '@/Layouts/MyProfileLayout.vue';
 import Pagination from './Pagination.vue';
 import { router } from '@inertiajs/vue3';
-import { ref } from 'vue';
+import { ref, getCurrentInstance } from 'vue';
 import fullStar from "../../../../assets/fullstar.svg";
 import halfStar from "../../../../assets/halfstar.svg";
 import blankStar from "../../../../assets/blankstar.svg";
+
+const { appContext } = getCurrentInstance();
+const _t = appContext.config.globalProperties._t;
 
 const props = defineProps({
     reviews: Object,
@@ -169,11 +171,11 @@ const getStarAltText = (rating, starNumber) => {
     const hasHalfStar = rating % 1 !== 0;
 
     if (starNumber <= fullStars) {
-        return "Full Star";
+        return _t('customerprofilepages', 'alt_full_star');
     } else if (starNumber === fullStars + 1 && hasHalfStar) {
-        return "Half Star";
+        return _t('customerprofilepages', 'alt_half_star');
     } else {
-        return "Blank Star";
+        return _t('customerprofilepages', 'alt_blank_star');
     }
 };
 </script>
