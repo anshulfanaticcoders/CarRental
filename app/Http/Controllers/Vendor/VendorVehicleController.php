@@ -106,7 +106,7 @@ class VendorVehicleController extends Controller
             'security_deposit' => 'required|numeric|min:0',
             'payment_method' => 'required|array',
             'payment_method.*' => 'string|in:credit_card,cheque,bank_wire,cryptocurrency,cash',
-            'price_per_day' => 'required|numeric|min:0',
+            'price_per_day' => 'nullable|numeric|min:0',
             'price_per_week' => 'nullable|numeric|min:0',
             'weekly_discount' => 'nullable|numeric|min:0|max:100000',
             'price_per_month' => 'nullable|numeric|min:0',
@@ -116,17 +116,17 @@ class VendorVehicleController extends Controller
             'registration_country' => 'required|string|max:50',
             'registration_date' => 'required|date',
             'gross_vehicle_mass' => 'required|integer|min:0',
-            'vehicle_height' => 'required|numeric|min:0',
-            'dealer_cost' => 'required|numeric|min:0',
+            'vehicle_height' => 'nullable|numeric|min:0',
+            'dealer_cost' => 'nullable|numeric|min:0',
             'phone_number' => 'required|string|max:15',
-            'images.*' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048', // Max 2MB per image
-            'primary_image_index' => 'nullable|integer|min:0', // Index of the primary image among newly uploaded files
-            'existing_primary_image_id' => 'nullable|integer|exists:vehicle_images,id', // ID of an existing image to set as primary
+            'images.*' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048',
+            'primary_image_index' => 'nullable|integer|min:0',
+            'existing_primary_image_id' => 'nullable|integer|exists:vehicle_images,id',
 
             'city' => 'nullable|string|max:100',
             'state' => 'nullable|string|max:100',
             'country' => 'nullable|string|max:100',
-            'full_vehicle_address' => 'nullable|string|max:255', // Added validation
+            'full_vehicle_address' => 'nullable|string|max:255',
             'latitude' => 'nullable|numeric|between:-90,90',
             'longitude' => 'nullable|numeric|between:-180,180',
 

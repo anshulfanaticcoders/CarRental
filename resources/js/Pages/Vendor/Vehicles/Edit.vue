@@ -245,7 +245,7 @@
                                 <div>
                                     <InputLabel for="vehicle_height">Vehicle Height:</InputLabel>
                                     <Input type="number" v-model.number="form.vehicle_height" id="vehicle_height"
-                                        required step="0.01" />
+                                         step="0.01" />
                                 </div>
                                 <div>
                                     <InputLabel for="phone_number">Phone Number:</InputLabel>
@@ -263,12 +263,12 @@
                                 </div>
                                 <div>
                                     <InputLabel for="dealer_cost">Dealer Cost:</InputLabel>
-                                    <Input type="number" v-model.number="form.dealer_cost" id="dealer_cost" required
+                                    <Input type="number" v-model.number="form.dealer_cost" id="dealer_cost"
                                         step="0.01" />
                                 </div>
                                 <div>
                                     <InputLabel for="price_per_day">Price Per Day:</InputLabel>
-                                    <Input type="number" v-model.number="form.price_per_day" id="price_per_day" required
+                                    <Input type="number" v-model.number="form.price_per_day" id="price_per_day"
                                         min="0" step="0.01" />
                                 </div>
                                 <div>
