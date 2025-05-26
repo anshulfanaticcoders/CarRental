@@ -190,7 +190,7 @@ const handlePageChange = (page) => {
                   <td class="px-6 py-4">
                     <div class="text-sm text-gray-900">{{ review.review_text }}</div>
                     <div v-if="review.reply_text" class="mt-2 text-sm text-gray-500">
-                      <span class="font-medium">Reply:</span> {{ review.reply_text }}
+                      <span class="font-medium">{{ _t('vendorprofilepages', 'text_reply_prefix') }}</span> {{ review.reply_text }}
                     </div>
                   </td>
                   <td class="px-6 py-4 whitespace-nowrap">
@@ -212,7 +212,7 @@ const handlePageChange = (page) => {
                           'bg-gray-400': review.status === 'approved'
                         }"
                         class="px-3 py-1 rounded text-white text-sm">
-                        Approve
+                        {{ _t('vendorprofilepages', 'button_approve') }}
                       </button>
                       <button
                         @click="updateStatus(review, 'rejected')"
@@ -222,7 +222,7 @@ const handlePageChange = (page) => {
                           'bg-gray-400': review.status === 'rejected'
                         }"
                         class="px-3 py-1 rounded text-white text-sm">
-                        Reject
+                        {{ _t('vendorprofilepages', 'button_reject') }}
                       </button>
                     </div>
                   </td> -->

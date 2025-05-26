@@ -32,6 +32,7 @@ class SetLocale
             'vendorprofilepages' => trans('vendorprofilepages'),
             'authpages' => trans('authpages'),
             'customerbooking' => trans('customerbooking'),
+            'createvehicle' => trans('createvehicle'),
         ],
     ]);
 

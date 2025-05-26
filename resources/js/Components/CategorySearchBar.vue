@@ -50,7 +50,7 @@
         </form>
 
         <div v-if="showSearchBox && (searchResults.length > 0 || popularPlaces.length > 0 || searchPerformed)"
-          class="search-results absolute z-20 top-[105%] w-[50%] rounded-[12px] border-[1px] border-white left-[20%] p-5 bg-white text-customDarkBlackColor max-h-[400px] overflow-y-auto max-[768px]:w-full max-[768px]:top-[45%] max-[768px]:left-0">
+          class="search-results absolute z-20 top-[105%] w-[50%] rounded-[12px] border-[1px] border-white left-[20%] p-5 bg-white text-customDarkBlackColor max-h-[400px] overflow-y-auto max-[768px]:w-full max-[768px]:top-[50%] max-[768px]:left-0">
           <div v-if="!searchPerformed && !isSearching" class="p-2 border-b border-gray-200 mb-2">
             <div class="text-sm font-medium mb-2 text-customPrimaryColor">Nearby</div>
             <button @click="searchAroundMe"

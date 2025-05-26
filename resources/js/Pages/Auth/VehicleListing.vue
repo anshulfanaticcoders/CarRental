@@ -15,20 +15,14 @@
                     <ApplicationLogo />
                     </Link>
                     <AuthenticatedHeaderLayout class="hidden max-[768px]:block max-[768px]:border-b-0" />
-                    <span class="text-[3rem] font-medium max-[768px]:text-[1.2rem] max-[768px]:px-[1.5rem]">Create Car
-                        Listing</span>
+                    <span class="text-[3rem] font-medium max-[768px]:text-[1.2rem] max-[768px]:px-[1.5rem]">{{ _t('createvehicle','step0_create_car_listing_header') }}</span>
                     <p
                         class="text-customLightGrayColor text-[1.15rem] max-[768px]:text-[0.875rem] max-[768px]:px-[1.5rem] w-[70%] max-[768px]:w-full">
-                        Create your listing in a few minutes to receive rental
-                        requests! All you need is a photo, a rate, and an
-                        address and our team will contact you and offer you a
-                        personalized appointment. Also, make sure you have the
-                        vehicle's registration certificate nearby.
+                       {{ _t('createvehicle','step0_create_car_listing_subheader') }}
                     </p>
                     <div
                         class="buttons flex justify-between gap-[1.5rem] max-[768px]:text-[0.875rem] max-[768px]:px-[1.5rem] w-[30rem]">
-                        <PrimaryButton class="w-[40%] max-[768px]:w-fit" type="button" @click="nextStep">Create a
-                            Listing</PrimaryButton>
+                        <PrimaryButton class="w-[40%] max-[768px]:w-fit" type="button" @click="nextStep"> {{ _t('createvehicle','step0_create_listing_button') }}</PrimaryButton>
                     </div>
                 </div>
             </div>
@@ -65,561 +59,446 @@
 
     <!-- Step-1 -->
     <div v-if="currentStep === 1" class="overflow-x-hidden vehicle-listing h-screen md:overflow-y-hidden relative">
-        <div class="absolute inset-0 flex justify-between max-[768px]:relative max-[768px]:flex-col max-[768px]:h-auto">
-            <div
-                class="column overflow-y-auto w-[50%] h-full flex justify-center pb-[5rem] max-[768px]:pb-0 max-[768px]:w-full bg-white">
-                <div class="flex flex-col gap-10 w-[90%] max-[768px]:w-full">
-                    <Link href="/" class="max-[768px]:hidden mt-[2rem]">
+    <div class="absolute inset-0 flex justify-between max-[768px]:relative max-[768px]:flex-col max-[768px]:h-auto">
+        <div class="column overflow-y-auto w-[50%] h-full flex justify-center pb-[5rem] max-[768px]:pb-0 max-[768px]:w-full bg-white">
+            <div class="flex flex-col gap-10 w-[90%] max-[768px]:w-full">
+                <Link href="/" class="max-[768px]:hidden mt-[2rem]">
                     <ApplicationLogo />
-                    </Link>
-                    <AuthenticatedHeaderLayout class="hidden max-[768px]:block max-[768px]:border-b-0" />
-                    <div class="mt-[3rem] max-[768px]:mt-0 max-[768px]:px-[1.5rem]">
-                        <span class="text-[3rem] font-medium max-[768px]:text-[1.2rem]">Vehicle Category</span>
-                        <p
-                            class="text-customLightGrayColor text-[1.15rem] max-[768px]:text-[0.875rem] max-[768px]:mt-2">
-                            Please provide vehicle category.
-                        </p>
-                    </div>
-                    <!-- Vehicle Category Dropdown -->
-                    <div class="grid grid-cols-3 gap-5 max-[768px]:grid-cols-2 max-[768px]:px-[1.5rem]">
-                        <div v-for="category in categories" :key="category.id"
-                            class="relative flex flex-col justify-center items-center">
-                            <input type="radio" :id="category.id" v-model="form.category_id" :value="category.id"
-                                class="peer sr-only" />
-                            <InputLabel :for="category.id" class="flex flex-col items-center p-4 cursor-pointer rounded-lg border-2 
+                </Link>
+                <AuthenticatedHeaderLayout class="hidden max-[768px]:block max-[768px]:border-b-0" />
+                <div class="mt-[3rem] max-[768px]:mt-0 max-[768px]:px-[1.5rem]">
+                    <span class="text-[3rem] font-medium max-[768px]:text-[1.2rem]">{{ _t('createvehicle', 'step1_vehicle_category_header') }}</span>
+                    <p class="text-customLightGrayColor text-[1.15rem] max-[768px]:text-[0.875rem] max-[768px]:mt-2">
+                        {{ _t('createvehicle', 'step1_vehicle_category_subheader') }}
+                    </p>
+                </div>
+                <!-- Vehicle Category Dropdown -->
+                <div class="grid grid-cols-3 gap-5 max-[768px]:grid-cols-2 max-[768px]:px-[1.5rem]">
+                    <div v-for="category in categories" :key="category.id" class="relative flex flex-col justify-center items-center">
+                        <input type="radio" :id="category.id" v-model="form.category_id" :value="category.id" class="peer sr-only" />
+                        <InputLabel :for="category.id" class="flex flex-col items-center p-4 cursor-pointer rounded-lg border-2 
                             border-gray-200 hover:border-customLightGrayColor 
                             peer-checked:border-customPrimaryColor peer-checked:bg-blue-50 peer-checked:scale-105 transition-transform duration-300 ease-in-out
-                                max-[768px]:p-1">
-                                <img :src="`${category.image}`" :alt="category.InputLabel"
-                                    class="mb-2 w-[200px] h-[150px] max-[768px]:h-[100px] object-cover rounded-lg" />
-                                <p class="text-center max-[768px]:text-[0.75rem]">{{ category.name }}</p>
-                                <span class="text-[1.5rem] text-center block font-medium text-gray-700">{{
-                                    category.InputLabel }}</span>
-                            </InputLabel>
-                        </div>
-                        <span v-if="errors.category_id" class="text-red-500 max-[768px]:text-[0.75rem] text-sm">{{
-                            errors.category_id }}</span>
+                            max-[768px]:p-1">
+                            <img :src="`${category.image}`" :alt="category.InputLabel" class="mb-2 w-[200px] h-[150px] max-[768px]:h-[100px] object-cover rounded-lg" />
+                            <p class="text-center max-[768px]:text-[0.75rem]">{{ category.name }}</p>
+                            <span class="text-[1.5rem] text-center block font-medium text-gray-700">{{ category.InputLabel }}</span>
+                        </InputLabel>
+                    </div>
+                    <span v-if="errors.category_id" class="text-red-500 max-[768px]:text-[0.75rem] text-sm">{{ _t('createvehicle', 'error_field_required_category_id') }}</span>
+                </div>
+
+                <div class="mt-[1rem] max-[768px]:px-[1.5rem]">
+                    <span class="text-[3rem] font-medium max-[768px]:text-[1.2rem]">{{ _t('createvehicle', 'step1_vehicle_details_header') }}</span>
+                    <p class="text-customLightGrayColor text-[1.15rem] max-[768px]:text-[0.875rem] max-[768px]:mt-2">
+                        {{ _t('createvehicle', 'step1_vehicle_details_subheader') }}
+                    </p>
+                </div>
+
+                <div class="grid grid-cols-3 gap-5 max-[768px]:grid-cols-2 max-[768px]:px-[1.5rem]">
+                    <!-- Brand -->
+                    <div>
+                        <InputLabel for="brand">{{ _t('createvehicle', 'step1_label_brand') }}</InputLabel>
+                        <input type="text" v-model="form.brand" id="brand" required :placeholder="_t('createvehicle', 'step1_placeholder_brand')" />
+                        <span v-if="errors.brand" class="text-red-500 max-[768px]:text-[0.75rem] text-sm">{{ _t('createvehicle', 'error_field_required_brand') }}</span>
                     </div>
 
-                    <div class="mt-[1rem] max-[768px]:px-[1.5rem]">
-                        <span class="text-[3rem] font-medium max-[768px]:text-[1.2rem]">Vehicle Details</span>
-                        <p
-                            class="text-customLightGrayColor text-[1.15rem] max-[768px]:text-[0.875rem] max-[768px]:mt-2">
-                            Please provide vehicle details .
-                        </p>
+                    <!-- Model -->
+                    <div>
+                        <InputLabel for="model">{{ _t('createvehicle', 'step1_label_model') }}</InputLabel>
+                        <input type="text" v-model="form.model" id="model" required :placeholder="_t('createvehicle', 'step1_placeholder_model')" />
+                        <span v-if="errors.model" class="text-red-500 max-[768px]:text-[0.75rem] text-sm">{{ _t('createvehicle', 'error_field_required_model') }}</span>
                     </div>
 
-                    <div class="grid grid-cols-3 gap-5 max-[768px]:grid-cols-2 max-[768px]:px-[1.5rem]">
-                        <!-- Brand -->
-                        <div>
-                            <InputLabel for="brand">Brand:</InputLabel>
-                            <input type="text" v-model="form.brand" id="brand" required
-                                placeholder="Enter vehicle brand" />
-                            <span v-if="errors.brand" class="text-red-500 max-[768px]:text-[0.75rem] text-sm">{{
-                                errors.brand }}</span>
-                        </div>
+                    <!-- Color -->
+                    <div>
+                        <InputLabel for="color">{{ _t('createvehicle', 'step1_label_color') }}</InputLabel>
+                        <input type="text" v-model="form.color" id="color" required :placeholder="_t('createvehicle', 'step1_placeholder_color')" />
+                        <span v-if="errors.color" class="text-red-500 max-[768px]:text-[0.75rem] text-sm">{{ _t('createvehicle', 'error_field_required_color') }}</span>
+                    </div>
 
-                        <!-- Model -->
-                        <div>
-                            <InputLabel for="model">Model:</InputLabel>
-                            <input type="text" v-model="form.model" id="model" required
-                                placeholder="Enter vehicle model" />
-                            <span v-if="errors.model" class="text-red-500 max-[768px]:text-[0.75rem] text-sm">{{
-                                errors.model }}</span>
-                        </div>
-
-                        <!-- Color -->
-                        <div>
-                            <InputLabel for="color">Color:</InputLabel>
-                            <input type="text" v-model="form.color" id="color" required
-                                placeholder="Enter vehicle color" />
-                            <span v-if="errors.color" class="text-red-500 max-[768px]:text-[0.75rem] text-sm">{{
-                                errors.color }}</span>
-                        </div>
-
-                        <!-- Mileage -->
-                        <div>
-                            <InputLabel for="mileage">Mileage:</InputLabel>
-                            <div class="relative">
-                                <input type="number" v-model="form.mileage" id="mileage" required />
-                                <span
-                                    class="absolute bg-white text-[0.875rem] top-[50%] right-3 translate-y-[-50%] text-customLightGrayColor font-medium">(km/d)</span>
-                                <span v-if="errors.mileage" class="text-red-500 max-[768px]:text-[0.75rem] text-sm">{{
-                                    errors.mileage }}</span>
-                            </div>
-                        </div>
-
-                        <!-- Transmission -->
-                        <div>
-                            <InputLabel for="transmission">Transmission:</InputLabel>
-                            <Select v-model="form.transmission">
-                                <SelectTrigger class="w-full p-[1.7rem] border-customLightGrayColor rounded-[12px]">
-                                    <SelectValue :placeholder="form.transmission || 'Select transmission type'" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    <SelectGroup>
-                                        <SelectLabel>Transmission</SelectLabel>
-                                        <SelectItem value="manual">Manual</SelectItem>
-                                        <SelectItem value="automatic">Automatic</SelectItem>
-                                    </SelectGroup>
-                                </SelectContent>
-                            </Select>
-                        </div>
-
-
-                        <!-- Fuel -->
-                        <div>
-                            <InputLabel for="fuel">Fuel:</InputLabel>
-                            <Select v-model="form.fuel">
-                                <SelectTrigger class="w-full p-[1.7rem] border-customLightGrayColor rounded-[12px]">
-                                    <SelectValue :placeholder="form.fuel || 'Select fuel type'" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    <SelectGroup>
-                                        <SelectLabel>Fuel Type</SelectLabel>
-                                        <SelectItem value="petrol">Petrol</SelectItem>
-                                        <SelectItem value="diesel">Diesel</SelectItem>
-                                        <SelectItem value="electric">Electric</SelectItem>
-                                        <SelectItem value="hybrid">Hybrid</SelectItem>
-                                    </SelectGroup>
-                                </SelectContent>
-                            </Select>
-                        </div>
-
-
-                        <!-- Seating Capacity -->
-                        <div>
-                            <InputLabel for="seating_capacity">Seating Capacity:</InputLabel>
-                            <Select v-model="form.seating_capacity">
-                                <SelectTrigger class="w-full p-[1.7rem] border-customLightGrayColor rounded-[12px]">
-                                    <SelectValue :placeholder="form.seating_capacity || 'Select seating capacity'" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    <SelectGroup>
-                                        <SelectLabel>Seating Capacity</SelectLabel>
-                                        <SelectItem v-for="capacity in [1, 2, 3, 4, 5, 6, 7, 8]" :key="capacity"
-                                            :value="capacity">
-                                            {{ capacity }}
-                                        </SelectItem>
-                                    </SelectGroup>
-                                </SelectContent>
-                            </Select>
-                        </div>
-
-
-                        <!-- Number of Doors -->
-                        <div>
-                            <InputLabel for="number_of_doors">Number of Doors:</InputLabel>
-                            <Select v-model="form.number_of_doors">
-                                <SelectTrigger class="w-full p-[1.7rem] border-customLightGrayColor rounded-[12px]">
-                                    <SelectValue :placeholder="form.number_of_doors || 'Select number of doors'" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    <SelectGroup>
-                                        <SelectLabel>Number of Doors</SelectLabel>
-                                        <SelectItem v-for="doors in 8" :key="doors" :value="doors">
-                                            {{ doors }}
-                                        </SelectItem>
-
-                                    </SelectGroup>
-                                </SelectContent>
-                            </Select>
-                        </div>
-
-
-                        <!-- Luggage Capacity -->
-                        <div>
-                            <InputLabel for="luggage_capacity">Luggage Capacity:</InputLabel>
-                            <Select v-model="form.luggage_capacity">
-                                <SelectTrigger class="w-full p-[1.7rem] border-customLightGrayColor rounded-[12px]">
-                                    <SelectValue placeholder="Select luggage capacity" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    <SelectGroup>
-                                        <SelectLabel>Luggage Capacity</SelectLabel>
-                                        <SelectItem v-for="capacity in [0, 1, 2, 3, 4, 5]" :key="capacity"
-                                            :value="capacity">
-                                            {{ capacity }}
-                                        </SelectItem>
-                                    </SelectGroup>
-                                </SelectContent>
-                            </Select>
-                            <span v-if="errors.luggage_capacity"
-                                class="text-red-500 max-[768px]:text-[0.75rem] text-sm">{{ errors.luggage_capacity
-                                }}</span>
-                        </div>
-
-                        <!-- Horsepower -->
-                        <div>
-                            <InputLabel for="horsepower">Horsepower:</InputLabel>
-                            <div class="relative">
-                                <input type="number" v-model="form.horsepower" id="horsepower" required min="0" />
-                                <span
-                                    class="absolute bg-white text-[0.875rem] top-[50%] right-3 translate-y-[-50%] text-customLightGrayColor font-medium">hp</span>
-                            </div>
-                            <span v-if="errors.horsepower" class="text-red-500 max-[768px]:text-[0.75rem] text-sm">{{
-                                errors.horsepower }}</span>
-                        </div>
-
-                        <!-- CO2 Emissions -->
-                        <div>
-                            <InputLabel for="co2">CO2 Emissions:</InputLabel>
-                            <div class="relative">
-                                <input type="text" v-model="form.co2" id="co2" required />
-                                <span
-                                    class="absolute bg-white text-[0.875rem] top-[50%] right-3 translate-y-[-50%] text-customLightGrayColor font-medium">(g/km)</span>
-                            </div>
-                            <span v-if="errors.co2" class="text-red-500 max-[768px]:text-[0.75rem] text-sm">{{
-                                errors.co2 }}</span>
-                        </div>
-
-                        <!-- Status -->
-                        <div>
-                            <InputLabel for="status">Status:</InputLabel>
-                            <Select v-model="form.status">
-                                <SelectTrigger class="w-full p-[1.7rem] border-customLightGrayColor rounded-[12px]">
-                                    <SelectValue placeholder="Select status" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    <SelectGroup>
-                                        <SelectLabel>Status</SelectLabel>
-                                        <SelectItem value="available">Available</SelectItem>
-                                        <SelectItem value="rented">Rented</SelectItem>
-                                        <SelectItem value="maintenance">Maintenance</SelectItem>
-                                    </SelectGroup>
-                                </SelectContent>
-                            </Select>
-
+                    <!-- Mileage -->
+                    <div>
+                        <InputLabel for="mileage">{{ _t('createvehicle', 'step1_label_mileage') }}</InputLabel>
+                        <div class="relative">
+                            <input type="number" v-model="form.mileage" id="mileage" required />
+                            <span class="absolute bg-white text-[0.875rem] top-[50%] right-3 translate-y-[-50%] text-customLightGrayColor font-medium">{{ _t('createvehicle', 'step1_unit_mileage') }}</span>
+                            <span v-if="errors.mileage" class="text-red-500 max-[768px]:text-[0.75rem] text-sm">{{ _t('createvehicle', 'error_field_required_mileage') }}</span>
                         </div>
                     </div>
 
-                    <!-- Car Features -->
-                    <div class="max-[768px]:px-[1.5rem]">
-                        <div class="mt-8">
-                            <span class="text-black mb-2 text-[3rem] font-medium max-[768px]:text-[1.2rem]">Vehicle
-                                Features</span>
-                            <p
-                                class="text-customLightGrayColor text-[1.15rem] mb-[2rem] max-[768px]:text-[0.875rem] max-[768px]:mt-2">
-                                Select all the features available in your
-                                vehicle
-                            </p>
-
-                            <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
-                                <div v-if="!form.category_id" class="col-span-2 md:col-span-4">
-                                     <p class="text-gray-500">Please select a vehicle category to see available features.</p>
-                                </div>
-                                <div v-else-if="availableFeatures.length === 0 && form.category_id" class="col-span-2 md:col-span-4">
-                                    <p class="text-gray-500">No features available for this category, or still loading...</p>
-                                </div>
-                                <!-- Loop through features if category is selected and features are available -->
-                                <div v-else v-for="feature in availableFeatures" :key="feature.id"
-                                    class="flex items-center space-x-2 max-[768px]:items-start">
-                                    <input type="checkbox" :id="'feature-' + feature.id" :value="feature.name" 
-                                        v-model="form.features"
-                                        class="rounded border-gray-300 text-customPrimaryColor focus:ring-customPrimaryColor" />
-
-                                    <InputLabel :for="'feature-' + feature.id"
-                                        class="mb-0 flex items-center cursor-pointer mt-[6px] max-[768px]:mt-0">
-                                        <img v-if="feature.icon_url" :src="feature.icon_url" :alt="feature.name" class="w-4 h-4 mr-1 inline-block object-contain"/>
-                                        {{ feature.name }}
-                                    </InputLabel>
-                                </div>
-                            </div>
-
-                            <!-- Selected Features Display -->
-                             <div v-if="form.features.length > 0" class="mt-4">
-                                <p class="text-sm text-gray-600 mb-2">
-                                    Selected Features:
-                                </p>
-                                <div class="flex flex-wrap gap-2">
-                                    <span v-for="featureName in form.features" :key="featureName"
-                                        class="px-3 py-1 text-sm bg-blue-50 text-customPrimaryColor rounded-full">
-                                        {{ featureName }}
-                                    </span>
-                                </div>
-                            </div>
-                            <span v-if="errors.features" class="text-red-500 max-[768px]:text-[0.75rem] text-sm">{{
-                                errors.features }}</span>
-                        </div>
+                    <!-- Transmission -->
+                    <div>
+                        <InputLabel for="transmission">{{ _t('createvehicle', 'step1_label_transmission') }}</InputLabel>
+                        <Select v-model="form.transmission">
+                            <SelectTrigger class="w-full p-[1.7rem] border-customLightGrayColor rounded-[12px]">
+                                <SelectValue :placeholder="form.transmission || _t('createvehicle', 'step1_placeholder_transmission')" />
+                            </SelectTrigger>
+                            <SelectContent>
+                                <SelectGroup>
+                                    <SelectLabel>{{ _t('createvehicle', 'step1_select_label_transmission') }}</SelectLabel>
+                                    <SelectItem value="manual">{{ _t('createvehicle', 'step1_transmission_manual') }}</SelectItem>
+                                    <SelectItem value="automatic">{{ _t('createvehicle', 'step1_transmission_automatic') }}</SelectItem>
+                                </SelectGroup>
+                            </SelectContent>
+                        </Select>
                     </div>
-                    <div class="buttons flex justify-between gap-[1.5rem] pb-[4rem] max-[768px]:px-[1.5rem]">
-                        <button class="button-secondary w-[15rem] max-[768px]:w-[10rem]" @click="prevStep">
-                            Back
-                        </button>
-                        <PrimaryButton class="w-[15rem] max-[768px]:w-[10rem]" @click="nextStep">Next</PrimaryButton>
+
+                    <!-- Fuel -->
+                    <div>
+                        <InputLabel for="fuel">{{ _t('createvehicle', 'step1_label_fuel') }}</InputLabel>
+                        <Select v-model="form.fuel">
+                            <SelectTrigger class="w-full p-[1.7rem] border-customLightGrayColor rounded-[12px]">
+                                <SelectValue :placeholder="form.fuel || _t('createvehicle', 'step1_placeholder_fuel')" />
+                            </SelectTrigger>
+                            <SelectContent>
+                                <SelectGroup>
+                                    <SelectLabel>{{ _t('createvehicle', 'step1_select_label_fuel_type') }}</SelectLabel>
+                                    <SelectItem value="petrol">{{ _t('createvehicle', 'step1_fuel_petrol') }}</SelectItem>
+                                    <SelectItem value="diesel">{{ _t('createvehicle', 'step1_fuel_diesel') }}</SelectItem>
+                                    <SelectItem value="electric">{{ _t('createvehicle', 'step1_fuel_electric') }}</SelectItem>
+                                    <SelectItem value="hybrid">{{ _t('createvehicle', 'step1_fuel_hybrid') }}</SelectItem>
+                                </SelectGroup>
+                            </SelectContent>
+                        </Select>
+                    </div>
+
+                    <!-- Seating Capacity -->
+                    <div>
+                        <InputLabel for="seating_capacity">{{ _t('createvehicle', 'step1_label_seating_capacity') }}</InputLabel>
+                        <Select v-model="form.seating_capacity">
+                            <SelectTrigger class="w-full p-[1.7rem] border-customLightGrayColor rounded-[12px]">
+                                <SelectValue :placeholder="form.seating_capacity || _t('createvehicle', 'step1_placeholder_seating_capacity')" />
+                            </SelectTrigger>
+                            <SelectContent>
+                                <SelectGroup>
+                                    <SelectLabel>{{ _t('createvehicle', 'step1_select_label_seating_capacity') }}</SelectLabel>
+                                    <SelectItem v-for="capacity in [1, 2, 3, 4, 5, 6, 7, 8]" :key="capacity" :value="capacity">
+                                        {{ capacity }}
+                                    </SelectItem>
+                                </SelectGroup>
+                            </SelectContent>
+                        </Select>
+                    </div>
+
+                    <!-- Number of Doors -->
+                    <div>
+                        <InputLabel for="number_of_doors">{{ _t('createvehicle', 'step1_label_number_of_doors') }}</InputLabel>
+                        <Select v-model="form.number_of_doors">
+                            <SelectTrigger class="w-full p-[1.7rem] border-customLightGrayColor rounded-[12px]">
+                                <SelectValue :placeholder="form.number_of_doors || _t('createvehicle', 'step1_placeholder_number_of_doors')" />
+                            </SelectTrigger>
+                            <SelectContent>
+                                <SelectGroup>
+                                    <SelectLabel>{{ _t('createvehicle', 'step1_select_label_number_of_doors') }}</SelectLabel>
+                                    <SelectItem v-for="doors in 8" :key="doors" :value="doors">
+                                        {{ doors }}
+                                    </SelectItem>
+                                </SelectGroup>
+                            </SelectContent>
+                        </Select>
+                    </div>
+
+                    <!-- Luggage Capacity -->
+                    <div>
+                        <InputLabel for="luggage_capacity">{{ _t('createvehicle', 'step1_label_luggage_capacity') }}</InputLabel>
+                        <Select v-model="form.luggage_capacity">
+                            <SelectTrigger class="w-full p-[1.7rem] border-customLightGrayColor rounded-[12px]">
+                                <SelectValue :placeholder="_t('createvehicle', 'step1_placeholder_luggage_capacity')" />
+                            </SelectTrigger>
+                            <SelectContent>
+                                <SelectGroup>
+                                    <SelectLabel>{{ _t('createvehicle', 'step1_select_label_luggage_capacity') }}</SelectLabel>
+                                    <SelectItem v-for="capacity in [0, 1, 2, 3, 4, 5]" :key="capacity" :value="capacity">
+                                        {{ capacity }}
+                                    </SelectItem>
+                                </SelectGroup>
+                            </SelectContent>
+                        </Select>
+                        <span v-if="errors.luggage_capacity" class="text-red-500 max-[768px]:text-[0.75rem] text-sm">{{ _t('createvehicle', 'error_field_required_luggage_capacity') }}</span>
+                    </div>
+
+                    <!-- Horsepower -->
+                    <div>
+                        <InputLabel for="horsepower">{{ _t('createvehicle', 'step1_label_horsepower') }}</InputLabel>
+                        <div class="relative">
+                            <input type="number" v-model="form.horsepower" id="horsepower" required min="0" />
+                            <span class="absolute bg-white text-[0.875rem] top-[50%] right-3 translate-y-[-50%] text-customLightGrayColor font-medium">{{ _t('createvehicle', 'step1_unit_horsepower') }}</span>
+                        </div>
+                        <span v-if="errors.horsepower" class="text-red-500 max-[768px]:text-[0.75rem] text-sm">{{ _t('createvehicle', 'error_field_required_horsepower') }}</span>
+                    </div>
+
+                    <!-- CO2 Emissions -->
+                    <div>
+                        <InputLabel for="co2">{{ _t('createvehicle', 'step1_label_co2_emissions') }}</InputLabel>
+                        <div class="relative">
+                            <input type="text" v-model="form.co2" id="co2" required />
+                            <span class="absolute bg-white text-[0.875rem] top-[50%] right-3 translate-y-[-50%] text-customLightGrayColor font-medium">{{ _t('createvehicle', 'step1_unit_co2') }}</span>
+                        </div>
+                        <span v-if="errors.co2" class="text-red-500 max-[768px]:text-[0.75rem] text-sm">{{ _t('createvehicle', 'error_field_required_co2') }}</span>
+                    </div>
+
+                    <!-- Status -->
+                    <div>
+                        <InputLabel for="status">{{ _t('createvehicle', 'step1_label_status') }}</InputLabel>
+                        <Select v-model="form.status">
+                            <SelectTrigger class="w-full p-[1.7rem] border-customLightGrayColor rounded-[12px]">
+                                <SelectValue :placeholder="_t('createvehicle', 'step1_placeholder_status')" />
+                            </SelectTrigger>
+                            <SelectContent>
+                                <SelectGroup>
+                                    <SelectLabel>{{ _t('createvehicle', 'step1_select_label_status') }}</SelectLabel>
+                                    <SelectItem value="available">{{ _t('createvehicle', 'step1_status_available') }}</SelectItem>
+                                    <SelectItem value="rented">{{ _t('createvehicle', 'step1_status_rented') }}</SelectItem>
+                                    <SelectItem value="maintenance">{{ _t('createvehicle', 'step1_status_maintenance') }}</SelectItem>
+                                </SelectGroup>
+                            </SelectContent>
+                        </Select>
                     </div>
                 </div>
-            </div>
-            <div class="column w-[50%] h-full bg-customPrimaryColor relative max-[768px]:w-full max-[768px]:h-auto overflow-hidden">
-                <div class="flex flex-col gap-10 items-center h-full justify-center max-[768px]:gap-0">
-                    <div
-                        class="col text-customPrimaryColor-foreground w-[70%] p-[2rem] border-b-[2px] max-[768px]:w-full">
-                        <img :src="warningSign" alt="" class="max-[768px]:w-[35px]" />
-                        <h4 class="text-[1.5rem] font-medium max-[768px]:text-[1.2rem] max-[768px]:py-2">Welcome!</h4>
-                        <p class="max-[768px]:text-[0.875rem]">Placing an ad on Vrooem 100% free.</p>
-                    </div>
-                    <div
-                        class="col text-customPrimaryColor-foreground w-[70%] p-[2rem] border-b-[2px] max-[768px]:w-full">
-                        <img :src="warningSign" alt="" class="max-[768px]:w-[35px]" />
-                        <h4 class="text-[1.5rem] font-medium max-[768px]:text-[1.2rem] max-[768px]:py-2">Tip</h4>
-                        <p class="max-[768px]:text-[0.875rem]">
-                            To save time while creating your ad, make sure to
-                            have your registration certificate handy.
+
+                <!-- Car Features -->
+                <div class="max-[768px]:px-[1.5rem]">
+                    <div class="mt-8">
+                        <span class="text-black mb-2 text-[3rem] font-medium max-[768px]:text-[1.2rem]">{{ _t('createvehicle', 'step1_vehicle_features_header') }}</span>
+                        <p class="text-customLightGrayColor text-[1.15rem] mb-[2rem] max-[768px]:text-[0.875rem] max-[768px]:mt-2">
+                            {{ _t('createvehicle', 'step1_vehicle_features_subheader') }}
                         </p>
+
+                        <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+                            <div v-if="!form.category_id" class="col-span-2 md:col-span-4">
+                                <p class="text-gray-500">{{ _t('createvehicle', 'step1_text_select_category_for_features') }}</p>
+                            </div>
+                            <div v-else-if="availableFeatures.length === 0 && form.category_id" class="col-span-2 md:col-span-4">
+                                <p class="text-gray-500">{{ _t('createvehicle', 'step1_text_no_features_for_category') }}</p>
+                            </div>
+                            <!-- Loop through features if category is selected and features are available -->
+                            <div v-else v-for="feature in availableFeatures" :key="feature.id" class="flex items-center space-x-2 max-[768px]:items-start">
+                                <input type="checkbox" :id="'feature-' + feature.id" :value="feature.name" v-model="form.features"
+                                    class="rounded border-gray-300 text-customPrimaryColor focus:ring-customPrimaryColor" />
+                                <InputLabel :for="'feature-' + feature.id" class="mb-0 flex items-center cursor-pointer mt-[6px] max-[768px]:mt-0">
+                                    <img v-if="feature.icon_url" :src="feature.icon_url" :alt="feature.name" class="w-4 h-4 mr-1 inline-block object-contain"/>
+                                    {{ feature.name }}
+                                </InputLabel>
+                            </div>
+                        </div>
+
+                        <!-- Selected Features Display -->
+                        <div v-if="form.features.length > 0" class="mt-4">
+                            <p class="text-sm text-gray-600 mb-2">
+                                {{ _t('createvehicle', 'step1_selected_features_label') }}
+                            </p>
+                            <div class="flex flex-wrap gap-2">
+                                <span v-for="featureName in form.features" :key="featureName" class="px-3 py-1 text-sm bg-blue-50 text-customPrimaryColor rounded-full">
+                                    {{ featureName }}
+                                </span>
+                            </div>
+                        </div>
+                        <span v-if="errors.features" class="text-red-500 max-[768px]:text-[0.75rem] text-sm">{{ _t('createvehicle', 'error_field_required_features') }}</span>
                     </div>
-                    <div class="col text-customPrimaryColor-foreground w-[70%] p-[2rem] max-[768px]:w-full">
-                        <img :src="warningSign" alt="" class="max-[768px]:w-[35px]" />
-                        <h4 class="text-[1.5rem] font-medium max-[768px]:text-[1.2rem] max-[768px]:py-2">
-                            Need some help?
-                        </h4>
-                        <p class="max-[768px]:text-[0.875rem]">Contact us on: +91 524555552</p>
-                    </div>
-                    <img :src="circleImg" alt="" class="absolute top-[-30%] right-[-15%]" />
+                </div>
+                <div class="buttons flex justify-between gap-[1.5rem] pb-[4rem] max-[768px]:px-[1.5rem]">
+                    <button class="button-secondary w-[15rem] max-[768px]:w-[10rem]" @click="prevStep">
+                        {{ _t('createvehicle', 'step1_button_back') }}
+                    </button>
+                    <PrimaryButton class="w-[15rem] max-[768px]:w-[10rem]" @click="nextStep">{{ _t('createvehicle', 'step1_button_next') }}</PrimaryButton>
                 </div>
             </div>
         </div>
+        <div class="column w-[50%] h-full bg-customPrimaryColor relative max-[768px]:w-full max-[768px]:h-auto overflow-hidden">
+            <div class="flex flex-col gap-10 items-center h-full justify-center max-[768px]:gap-0">
+                <div class="col text-customPrimaryColor-foreground w-[70%] p-[2rem] border-b-[2px] max-[768px]:w-full">
+                    <img :src="warningSign" alt="" class="max-[768px]:w-[35px]" />
+                    <h4 class="text-[1.5rem] font-medium max-[768px]:text-[1.2rem] max-[768px]:py-2">{{ _t('createvehicle', 'step1_info_welcome_title') }}</h4>
+                    <p class="max-[768px]:text-[0.875rem]">{{ _t('createvehicle', 'step1_info_welcome_text') }}</p>
+                </div>
+                <div class="col text-customPrimaryColor-foreground w-[70%] p-[2rem] border-b-[2px] max-[768px]:w-full">
+                    <img :src="warningSign" alt="" class="max-[768px]:w-[35px]" />
+                    <h4 class="text-[1.5rem] font-medium max-[768px]:text-[1.2rem] max-[768px]:py-2">{{ _t('createvehicle', 'step1_info_tip_title') }}</h4>
+                    <p class="max-[768px]:text-[0.875rem]">{{ _t('createvehicle', 'step1_info_tip_text') }}</p>
+                </div>
+                <div class="col text-customPrimaryColor-foreground w-[70%] p-[2rem] max-[768px]:w-full">
+                    <img :src="warningSign" alt="" class="max-[768px]:w-[35px]" />
+                    <h4 class="text-[1.5rem] font-medium max-[768px]:text-[1.2rem] max-[768px]:py-2">{{ _t('createvehicle', 'step0_info_need_help_title') }}</h4>
+                    <p class="max-[768px]:text-[0.875rem]">{{ _t('createvehicle', 'step0_info_contact_us_text') }}</p>
+                </div>
+                <img :src="circleImg" alt="" class="absolute top-[-30%] right-[-15%]" />
+            </div>
+        </div>
     </div>
+</div>
 
     <!-- Step-2 -->
     <div v-if="currentStep === 2" class="overflow-x-hidden vehicle-listing h-screen md:overflow-y-hidden relative">
-        <div class="absolute inset-0 flex justify-between max-[768px]:relative max-[768px]:flex-col max-[768px]:h-auto">
-            <div class="column overflow-y-auto w-[50%] h-full flex justify-center pb-[4rem] max-[768px]:w-full max-[768px]:h-auto bg-white">
-                <div class="flex flex-col gap-5 w-[90%] max-[768px]:w-full">
-                    <Link href="/" class="max-[768px]:hidden mt-[2rem]">
+    <div class="absolute inset-0 flex justify-between max-[768px]:relative max-[768px]:flex-col max-[768px]:h-auto">
+        <div class="column overflow-y-auto w-[50%] h-full flex justify-center pb-[4rem] max-[768px]:w-full max-[768px]:h-auto bg-white">
+            <div class="flex flex-col gap-5 w-[90%] max-[768px]:w-full">
+                <Link href="/" class="max-[768px]:hidden mt-[2rem]">
                     <ApplicationLogo />
-                    </Link>
-                    <AuthenticatedHeaderLayout class="hidden max-[768px]:block max-[768px]:border-b-0" />
-                    <div class="mt-[5rem] mb-[2rem] max-[768px]:mt-0 max-[768px]:px-[1.5rem] max-[768px]:mb-[1rem]">
-                        <span class="text-[1.75rem] font-medium max-[768px]:text-[1.2rem]">Key Technical Specifications
-                            of Your Vehicle</span>
-                        <p class="max-[768px]:text-[0.875rem] max-[768px]:mt-2">This information is needed to list your
-                            vehicle.</p>
+                </Link>
+                <AuthenticatedHeaderLayout class="hidden max-[768px]:block max-[768px]:border-b-0" />
+                <div class="mt-[5rem] mb-[2rem] max-[768px]:mt-0 max-[768px]:px-[1.5rem] max-[768px]:mb-[1rem]">
+                    <span class="text-[1.75rem] font-medium max-[768px]:text-[1.2rem]">{{ _t('createvehicle', 'step2_header') }}</span>
+                    <p class="max-[768px]:text-[0.875rem] max-[768px]:mt-2">{{ _t('createvehicle', 'step2_subheader') }}</p>
+                </div>
+                <div class="grid grid-cols-2 gap-8 max-[768px]:px-[1.5rem] max-[768px]:gap-3 max-[768px]:gap-y-8">
+                    <div class="col-span-2">
+                        <InputLabel class="text-black mb-0" for="registration_number">{{ _t('createvehicle', 'step2_label_registration_number') }}</InputLabel>
+                        <span class="text-[0.675rem] mb-[1rem] inline-block">{{ _t('createvehicle', 'step2_info_registration_number') }}</span>
+                        <input class="w-full" type="text" v-model="form.registration_number" id="registration_number" required
+                            :placeholder="_t('createvehicle', 'step2_placeholder_registration_number')" />
+                        <span v-if="errors.registration_number" class="text-red-600 max-[768px]:text-xs text-sm">{{ _t('createvehicle', 'error_field_required_registration_number') }}</span>
                     </div>
-                    <div class="grid grid-cols-2 gap-8 max-[768px]:px-[1.5rem] max-[768px]:gap-3 max-[768px]:gap-y-8">
-                        <div class="col-span-2">
-                            <InputLabel class="text-black mb-0" for="registration_number">Registration Number:
-                            </InputLabel>
-                            <span class="text-[0.675rem] mb-[1rem] inline-block">As mentioned on your vehicle's
-                                registration
-                                certificate.</span>
-                            <input class="w-full" type="text" v-model="form.registration_number"
-                                id="registration_number" required
-                                placeholder="Enter your vehicle registration number" />
-                            <span v-if="errors.registration_number"
-                                class="text-red-500 max-[768px]:text-[0.75rem] text-sm">{{
-                                    errors.registration_number }}</span>
+
+                    <!-- Registration Country -->
+                    <div class="relative w-full">
+                        <InputLabel class="text-black" for="registration_country">{{ _t('createvehicle', 'step2_label_registration_country') }}</InputLabel>
+                        <div class="relative">
+                            <Select v-model="form.registration_country">
+                                <SelectTrigger class="w-full p-[1.7rem] border-customLightGrayColor rounded-[12px]">
+                                    <SelectValue :placeholder="_t('createvehicle', 'step2_placeholder_registration_country')" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectGroup>
+                                        <SelectLabel>{{ _t('createvehicle', 'step2_select_label_countries') }}</SelectLabel>
+                                        <SelectItem v-for="country in countries" :key="country.code" :value="country.code">
+                                            <div class="flex items-center gap-2">
+                                                <img :src="getFlagUrl(country.code)" :alt="`${country.name} flag`" class="w-[1.5rem] h-[1rem] rounded-[0.5rem]"/>
+                                                <span>{{ country.name }}</span>
+                                            </div>
+                                        </SelectItem>
+                                    </SelectGroup>
+                                </SelectContent>
+                            </Select>
                         </div>
+                        <span v-if="errors.registration_country" class="text-red-600 max-[600px]:text-xs text-sm">
+                            {{ _t('createvehicle', 'error_field_required_registration_country') }}
+                        </span>
+                    </div>
 
-                        <!-- Registration Country -->
-                        <div class="relative w-full">
-                            <InputLabel class="text-black" for="registration_country">Registration Country:</InputLabel>
+                    <!-- Registration Date -->
+                    <div>
+                        <InputLabel class="text-black" for="registration_date">{{ _t('createvehicle', 'step2_label_registration_date') }}</InputLabel>
+                        <VueDatePicker v-model="form.registration_date" :format="'yyyy-MM-dd'" auto-apply :placeholder="_t('createvehicle', 'step2_placeholder_registration_date')"
+                            class="w-full" :class="{ 'dp__error': errors.registration_date }" :clearable="false"
+                            :max-date="new Date()"
+                            :input-class-name="'w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition duration-200 bg-white shadow-sm text-gray-700'"
+                            @update:modelValue="formatDate" required />
+                        <span v-if="errors.registration_date" class="text-red-600 max-[600px]:text-xs text-sm">
+                            {{ _t('createvehicle', 'error_field_required_registration_date') }}
+                        </span>
+                    </div>
 
-                            <div class="relative">
-                                <Select v-model="form.registration_country">
-                                    <SelectTrigger class="w-full p-[1.7rem] border-customLightGrayColor rounded-[12px]">
-                                        <SelectValue placeholder="Select a country" />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                        <SelectGroup>
-                                            <SelectLabel>Countries</SelectLabel>
-                                            <SelectItem v-for="country in countries" :key="country.code"
-                                                :value="country.code">
-                                                <div class="flex items-center gap-2">
-                                                    <img :src="getFlagUrl(country.code)" :alt="`${country.name} flag`"
-                                                        class="w-[1.5rem] h-[1rem] rounded-sm" />
-                                                    <span>{{ country.name }}</span>
-                                                </div>
-                                            </SelectItem>
-                                        </SelectGroup>
-                                    </SelectContent>
-                                </Select>
-
-                                <!-- Dynamic Flag in Trigger -->
-                                <!-- <img v-if="form.registration_country" :src="getFlagUrl(form.registration_country)"
-                                    alt="Country Flag"
-                                    class="absolute right-3 top-1/2 transform -translate-y-1/2 w-[2.1rem] h-[1.5rem] rounded" /> -->
-                            </div>
-
-                            <span v-if="errors.registration_country"
-                                class="text-red-500 max-[768px]:text-[0.75rem] text-sm">
-                                {{ errors.registration_country }}
-                            </span>
-                        </div>
-
-
-                        <!-- Registration Date -->
-                        <div>
-                            <InputLabel class="text-black" for="registration_date">Registration Date:</InputLabel>
-                            <VueDatePicker v-model="form.registration_date" :format="'yyyy-MM-dd'" auto-apply
-                                placeholder="Select Registration Date" class="w-full"
-                                :class="{ 'dp__error': errors.registration_date }" :clearable="false"
-                                :max-date="new Date()"
-                                :input-class-name="'w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition duration-200 bg-white shadow-sm text-gray-700'"
-                                @update:modelValue="formatDate" required />
-                            <span v-if="errors.registration_date"
-                                class="text-red-500 max-[768px]:text-[0.75rem] text-sm">
-                                {{ errors.registration_date }}
-                            </span>
-                        </div>
-
-                        <!-- Gross Vehicle Mass -->
-                        <div>
-                            <InputLabel class="text-black" for="gross_vehicle_mass">Gross Vehicle Mass:</InputLabel>
-                            <div class="relative">
-                                <input class="w-full" type="number" v-model="form.gross_vehicle_mass"
-                                    id="gross_vehicle_mass" />
-                                <span
-                                    class="absolute bg-white text-[0.875rem] top-[50%] right-3 translate-y-[-50%] text-customLightGrayColor font-medium">in
-                                    (lb's)</span>
-                            </div>
-                        </div>
-
-                        <!-- Vehicle Height -->
-                        <div>
-                            <InputLabel class="text-black" for="vehicle_height">Vehicle Height:</InputLabel>
-                            <div class="relative">
-                                <input class="w-full" type="number" v-model="form.vehicle_height" id="vehicle_height" />
-                                <span
-                                    class="absolute bg-white text-[0.875rem] top-[50%] right-3 translate-y-[-50%] text-customLightGrayColor font-medium">in
-                                    m(meters)</span>
-                            </div>
-
-                        </div>
-
-                        <!-- Dealer Cost -->
-                        <div class="col-span-2">
-                            <InputLabel class="text-black" for="dealer_cost">Dealer Cost:</InputLabel>
-                            <input class="" type="number" v-model="form.dealer_cost" id="dealer_cost" required />
-                            <span v-if="errors.dealer_cost" class="text-red-500 max-[768px]:text-[0.75rem] text-sm">{{
-                                errors.dealer_cost }}</span>
-                        </div>
-
-                        <!-- Phone Number -->
-                        <div class="col-span-2">
-                            <InputLabel class="text-black mb-0" for="phone_number">Phone Number:</InputLabel>
-                            <span class="text-[0.675rem] mb-[1rem] inline-block">Indicate the telephone number on which
-                                you wish
-                                to receive your requests</span>
-                            <input class="w-full" type="text" v-model="form.phone_number" id="phone_number" required
-                                placeholder="+91" />
-                            <span v-if="errors.phone_number" class="text-red-500 max-[768px]:text-[0.75rem] text-sm">{{
-                                errors.phone_number
-                            }}</span>
+                    <!-- Gross Vehicle Mass -->
+                    <div>
+                        <InputLabel class="text-black" for="gross_vehicle_mass">{{ _t('createvehicle', 'step2_label_gross_vehicle_mass') }}</InputLabel>
+                        <div class="relative">
+                            <input class="w-full" type="number" v-model="form.gross_vehicle_mass" id="gross_vehicle_mass" />
+                            <span class="absolute bg-white text-[0.875rem] top-[50%] right-3 translate-y-[-50%] text-customLightGrayColor font-medium">{{ _t('createvehicle', 'step2_unit_gross_vehicle_mass') }}</span>
                         </div>
                     </div>
-                    <div
-                        class="buttons flex justify-between gap-[1.5rem] mt-[2rem] pb-[4rem] max-[768px]:px-[1.5rem] max-[768px]:pb-0">
-                        <button class="button-secondary w-[15rem] max-[768px]:w-[10rem]" @click="prevStep">
-                            Back
-                        </button>
-                        <PrimaryButton class="w-[15rem] max-[768px]:w-[10rem]" type="button" @click="nextStep">Next
-                        </PrimaryButton>
+
+                    <!-- Vehicle Height -->
+                    <div>
+                        <InputLabel class="text-black" for="vehicle_height">{{ _t('createvehicle', 'step2_label_vehicle_height') }}</InputLabel>
+                        <div class="relative">
+                            <input class="w-full" type="number" v-model="form.vehicle_height" id="vehicle_height" />
+                            <span class="absolute bg-white text-[0.875rem] top-[50%] right-3 translate-y-[-50%] text-customLightGrayColor font-medium">{{ _t('createvehicle', 'step2_unit_vehicle_height') }}</span>
+                        </div>
+                    </div>
+
+                    <!-- Dealer Cost -->
+                    <div class="col-span-2">
+                        <InputLabel class="text-black" for="dealer_cost">{{ _t('createvehicle', 'step2_label_dealer_cost') }}</InputLabel>
+                        <input class="" type="number" v-model="form.dealer_cost" id="dealer_cost" required />
+                        <span v-if="errors.dealer_cost" class="text-red-600 max-[600px]:text-xs text-sm">{{ _t('createvehicle', 'error_field_required_dealer_cost') }}</span>
+                    </div>
+
+                    <!-- Phone Number -->
+                    <div class="col-span-2">
+                        <InputLabel class="text-black mb-0" for="phone_number">{{ _t('createvehicle', 'step2_label_phone_number') }}</InputLabel>
+                        <span class="text-[0.675rem] mb-[1rem] inline-block">{{ _t('createvehicle', 'step2_info_phone_number') }}</span>
+                        <input class="w-full" type="text" v-model="form.phone_number" id="phone_number" required :placeholder="_t('createvehicle', 'step2_placeholder_phone_number')" />
+                        <span v-if="errors.phone_number" class="text-red-600 max-[600px]:text-xs text-sm">{{ _t('createvehicle', 'error_field_required_phone_number') }}</span>
                     </div>
                 </div>
+                <div class="buttons flex justify-between gap-[1.5rem] mt-[2rem] pb-[4rem] max-[768px]:px-[1.5rem] max-[768px]:pb-0">
+                    <button class="button-secondary w-[15rem] max-[768px]:w-[10rem]" @click="prevStep">
+                        {{ _t('createvehicle', 'step1_button_back') }}
+                    </button>
+                    <PrimaryButton class="w-[15rem] max-[768px]:w-[10rem]" type="button" @click="nextStep">{{ _t('createvehicle', 'step1_button_next') }}</PrimaryButton>
+                </div>
             </div>
-            <div
-                class="column h-full w-[50%] flex-1 bg-customPrimaryColor relative max-[768px]:w-full max-[768px]:h-auto overflow-hidden">
-                <div class="flex flex-col gap-10 items-center justify-center h-full max-[768px]:gap-0">
-                    <div
-                        class="col text-customPrimaryColor-foreground w-[70%] max-[768px]:w-full max-[768px]:px-[1.5rem] p-[2rem] border-b-[2px]">
-                        <img :src="warningSign" alt="" class="max-[768px]:w-[35px]" />
-                        <h4 class="text-[1.5rem] font-medium max-[768px]:text-[1.2rem] max-[768px]:py-2">
-                            Data protection
-                        </h4>
-                        <p class="max-[768px]:text-[0.875rem]">
-                            Temporary documents Your vehicle's licence plate and
-                            value remain strictly confidential and secure.
-                        </p>
-                    </div>
-                    <div
-                        class="col text-customPrimaryColor-foreground w-[70%] max-[768px]:w-full max-[768px]:px-[1.5rem] p-[2rem] border-b-[2px]">
-                        <img :src="warningSign" alt="" class="max-[768px]:w-[35px]" />
-                        <h4 class="text-[1.5rem] font-medium max-[768px]:text-[1.2rem] max-[768px]:py-2">Information
-                        </h4>
-                        <p class="max-[768px]:text-[0.875rem]">
-                            All this information is necessary so that we can
-                            secure your listing.
-                        </p>
-                    </div>
-                    <div
-                        class="col text-customPrimaryColor-foreground w-[70%] max-[768px]:w-full max-[768px]:px-[1.5rem] p-[2rem]">
-                        <img :src="warningSign" alt="" class="max-[768px]:w-[35px]" />
-                        <h4 class="text-[1.5rem] font-medium max-[768px]:text-[1.2rem] max-[768px]:py-2">
-                            Need some help?
-                        </h4>
-                        <p class="max-[768px]:text-[0.875rem]">Contact us on: +91 524555552</p>
-                    </div>
+        </div>
+        <div class="column h-full w-[50%] flex-1 bg-customPrimaryColor relative max-[768px]:w-full max-[768px]:h-auto overflow-hidden">
+            <div class="flex flex-col gap-10 items-center justify-center h-full max-[768px]:gap-0">
+                <div class="col text-customPrimaryColor-foreground w-[70%] max-[768px]:w-full max-[768px]:px-[1.5rem] p-[2rem] border-b-[2px]">
+                    <img :src="warningSign" alt="" class="max-[768px]:w-[35px]" />
+                    <h4 class="text-[1.5rem] font-medium max-[768px]:text-[1.2rem] max-[768px]:py-2">{{ _t('createvehicle', 'step2_info_data_protection_title') }}</h4>
+                    <p class="max-[768px]:text-[0.875rem]">{{ _t('createvehicle', 'step2_info_data_protection_text') }}</p>
+                </div>
+                <div class="col text-customPrimaryColor-foreground w-[70%] max-[768px]:w-full max-[768px]:px-[1.5rem] p-[2rem] border-b-[2px]">
+                    <img :src="warningSign" alt="" class="max-[768px]:w-[35px]" />
+                    <h4 class="text-[1.5rem] font-medium max-[768px]:text-[1.2rem] max-[768px]:py-2">{{ _t('createvehicle', 'step2_info_information_title') }}</h4>
+                    <p class="max-[768px]:text-[0.875rem]">{{ _t('createvehicle', 'step2_info_information_text') }}</p>
+                </div>
+                <div class="col text-customPrimaryColor-foreground w-[70%] max-[768px]:w-full max-[768px]:px-[1.5rem] p-[2rem]">
+                    <img :src="warningSign" alt="" class="max-[768px]:w-[35px]" />
+                    <h4 class="text-[1.5rem] font-medium max-[768px]:text-[1.2rem] max-[768px]:py-2">{{ _t('createvehicle', 'step0_info_need_help_title') }}</h4>
+                    <p class="max-[768px]:text-[0.875rem]">{{ _t('createvehicle', 'step0_info_contact_us_text') }}</p>
                 </div>
                 <img :src="circleImg" alt="" class="absolute top-[-30%] right-[-15%]" />
             </div>
         </div>
     </div>
+</div>
 
     <!-- Step-3 -->
     <div v-if="currentStep === 3" class="overflow-x-hidden vehicle-listing h-screen md:overflow-y-hidden relative">
-        <div class="absolute inset-0 flex justify-between max-[768px]:relative max-[768px]:flex-col max-[768px]:h-auto">
-            <div class="column overflow-y-auto w-[50%] h-full flex justify-center pb-[4rem] max-[768px]:w-full max-[768px]:h-auto bg-white">
-                <div class="flex flex-col gap-5 w-[90%] max-[768px]:w-full">
-                    <Link href="/" class="max-[768px]:hidden mt-[2rem]">
+    <div class="absolute inset-0 flex justify-between max-[768px]:relative max-[768px]:flex-col max-[768px]:h-auto">
+        <div class="column overflow-y-auto w-[50%] h-full flex justify-center pb-[4rem] max-[768px]:w-full max-[768px]:h-auto bg-white">
+            <div class="flex flex-col gap-5 w-[90%] max-[768px]:w-full">
+                <Link href="/" class="max-[768px]:hidden mt-[2rem]">
                     <ApplicationLogo />
-                    </Link>
-                    <AuthenticatedHeaderLayout class="hidden max-[768px]:block max-[768px]:border-b-0" />
-                    <div class="mt-[5rem] max-[768px]:mt-0 max-[768px]:px-[1.5rem] max-[768px]:mb-1">
-                        <span class="text-[1.75rem] font-medium max-[768px]:text-[1.2rem]">Parking Address of the
-                            Vehicle</span>
-                        <p class="max-[768px]:text-[0.875rem] max-[768px]:mt-2">This allows renters to search by
-                            location</p>
-                    </div>
-                    <div class="max-[768px]:px-[1.5rem]">
-                        <span class="text-[0.875rem] text-black font-medium">Search your address</span>
-                        <p class="text-[0.675rem] max-[768px]:mt-2">
-                            If you can't find your address, please indicate the
-                            closest address that can be geolocated.
-                        </p>
-                    </div>
-                    <div class="search-container">
-                        <LocationPicker :onLocationSelect="selectLocation" />
-                    </div>
-                    <span v-if="errors.location" class="text-red-500 max-[768px]:text-[0.75rem] text-sm">{{
-                        errors.location }}</span>
-                    <div
-                        class="buttons flex justify-between gap-[1.5rem] mt-[2rem] pb-[4rem] max-[768px]:pb-0 max-[768px]:px-[1.5rem]">
-                        <button class="button-secondary w-[15rem] max-[768px]:w-[10rem]" @click="prevStep">
-                            Back
-                        </button>
-                        <PrimaryButton class="w-[15rem] max-[768px]:w-[10rem]" type="button" @click="nextStep">Next
-                        </PrimaryButton>
-                    </div>
+                </Link>
+                <AuthenticatedHeaderLayout class="hidden max-[768px]:block max-[768px]:border-b-0" />
+                <div class="mt-[5rem] max-[768px]:mt-0 max-[768px]:px-[1.5rem] max-[768px]:mb-1">
+                    <span class="text-[1.75rem] font-medium max-[768px]:text-[1.2rem]">{{ _t('createvehicle', 'step3_header') }}</span>
+                    <p class="max-[768px]:text-[0.875rem] max-[768px]:mt-2">{{ _t('createvehicle', 'step3_subheader') }}</p>
                 </div>
-            </div>
-            <div
-                class="column h-full w-[50%] flex-1 bg-customPrimaryColor relative max-[768px]:w-full max-[768px]:h-auto overflow-hidden">
-                <div class="flex flex-col gap-10 items-center justify-center h-full max-[768px]:gap-0">
-                    <div
-                        class="col text-customPrimaryColor-foreground w-[70%] p-[2rem] border-b-[2px] max-[768px]:w-full">
-                        <img :src="warningSign" alt="" class="max-[768px]:w-[35px]" />
-                        <h4 class="text-[1.5rem] font-medium max-[768px]:text-[1.2rem] max-[768px]:py-2">
-                            Data protection
-                        </h4>
-                        <p class="max-[768px]:text-[0.875rem]">
-                            Your exact address will never be shared on our site.
-                            It will be sent directly to the renter after
-                            confirmation of a booking.
-                        </p>
-                    </div>
-
-                    <div class="col text-customPrimaryColor-foreground w-[70%] max-[768px]:w-full p-[2rem]">
-                        <img :src="warningSign" alt="" class="max-[768px]:w-[35px]" />
-                        <h4 class="text-[1.5rem] font-medium max-[768px]:text-[1.2rem] max-[768px]:py-2">
-                            Need some help?
-                        </h4>
-                        <p class="max-[768px]:text-[0.875rem]">Contact us on: +91 524555552</p>
-                    </div>
+                <div class="max-[768px]:px-[1.5rem]">
+                    <span class="text-[0.875rem] text-black font-medium">{{ _t('createvehicle', 'step3_label_search_address') }}</span>
+                    <p class="text-[0.675rem] max-[768px]:mt-2">{{ _t('createvehicle', 'step3_info_search_address') }}</p>
                 </div>
-                <img :src="circleImg" alt="" class="absolute top-[-30%] right-[-15%]" />
+                <div class="search-container">
+                    <LocationPicker :onLocationSelect="selectLocation" />
+                </div>
+                <span v-if="errors.location" class="text-red-500 max-[768px]:text-[0.75rem] text-sm">{{ _t('createvehicle', 'error_field_required_location') }}</span>
+                <div class="buttons flex justify-between gap-[1.5rem] mt-[2rem] pb-[4rem] max-[768px]:pb-0 max-[768px]:px-[1.5rem]">
+                    <button class="button-secondary w-[15rem] max-[768px]:w-[10rem]" @click="prevStep">
+                        {{ _t('createvehicle', 'step1_button_back') }}
+                    </button>
+                    <PrimaryButton class="w-[15rem] max-[768px]:w-[10rem]" type="button" @click="nextStep">{{ _t('createvehicle', 'step1_button_next') }}</PrimaryButton>
+                </div>
             </div>
         </div>
+        <div class="column h-full w-[50%] flex-1 bg-customPrimaryColor relative max-[768px]:w-full max-[768px]:h-auto overflow-hidden">
+            <div class="flex flex-col gap-10 items-center justify-center h-full max-[768px]:gap-0">
+                <div class="col text-customPrimaryColor-foreground w-[70%] p-[2rem] border-b-[2px] max-[768px]:w-full">
+                    <img :src="warningSign" alt="" class="max-[768px]:w-[35px]" />
+                    <h4 class="text-[1.5rem] font-medium max-[768px]:text-[1.2rem] max-[768px]:py-2">{{ _t('createvehicle', 'step2_info_data_protection_title') }}</h4>
+                    <p class="max-[768px]:text-[0.875rem]">{{ _t('createvehicle', 'step3_info_data_protection_text') }}</p>
+                </div>
+                <div class="col text-customPrimaryColor-foreground w-[70%] max-[768px]:w-full p-[2rem]">
+                    <img :src="warningSign" alt="" class="max-[768px]:w-[35px]" />
+                    <h4 class="text-[1.5rem] font-medium max-[768px]:text-[1.2rem] max-[768px]:py-2">{{ _t('createvehicle', 'step0_info_need_help_title') }}</h4>
+                    <p class="max-[768px]:text-[0.875rem]">{{ _t('createvehicle', 'step0_info_contact_us_text') }}</p>
+                </div>
+            </div>
+            <img :src="circleImg" alt="" class="absolute top-[-30%] right-[-15%]" />
+        </div>
     </div>
+</div>
 
     <!-- Step-4 -->
     <div v-if="currentStep === 4" class="overflow-x-hidden vehicle-listing h-screen md:overflow-y-hidden relative">
@@ -2065,7 +1944,7 @@ const closeErrorDialog = () => {
 
 let map = null;
 let marker = null // Marker instance
-const currentStep = ref(0);
+const currentStep = ref(4);
 
 const errors = reactive({
     category_id: '',
