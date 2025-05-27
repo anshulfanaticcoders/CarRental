@@ -11,7 +11,7 @@
 
             <div class="mx-auto sm:px-6 lg:px-8">
                 <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg">
-                    <div class="p-6 bg-white border-b border-gray-200 space-y-6">
+                    <div class="p-6 bg-white border-b border-gray-200 space-y-6 max-[768px]:p-0">
                         <!-- Flash Messages for general page and CSV upload -->
                         <div v-if="$page.props.flash && $page.props.flash.message" class="mb-4">
                             <div :class="`p-4 rounded-md ${$page.props.flash.type === 'success' ? 'bg-green-100 text-green-700' : ($page.props.flash.type === 'warning' ? 'bg-yellow-100 text-yellow-700' : 'bg-red-100 text-red-700')}`">
@@ -41,7 +41,7 @@
                                         <InputError class="mt-2" :message="csvForm.errors.csv_file" />
                                     </div>
 
-                                    <div class="flex items-center justify-between mt-4">
+                                    <div class="flex items-center justify-between mt-4 max-[768px]:flex-col max-[768px]:gap-5 max-[768px]:items-start">
                                         <a :href="route('vehicles.bulk-upload.template')" class="text-sm text-blue-600 hover:underline">
                                             Download CSV Template
                                         </a>
@@ -90,7 +90,7 @@
                                     </progress>
                                 </div>
                                 
-                                <h4 class="text-md font-semibold text-gray-600">Your Uploaded Images:</h4>
+                                <h4 class="text-md font-semibold text-gray-600 max-[768px]:text-[1.25rem]">Your Uploaded Images:</h4>
                                 <div v-if="loadingImages" class="text-sm text-gray-500">Loading images...</div>
                                 <div v-else-if="paginatedImages.length === 0 && bulkImages.length === 0" class="text-sm text-gray-500">
                                     No images uploaded yet for bulk import.
@@ -194,7 +194,7 @@
                             <div v-if="loadingFeatures" class="text-sm text-gray-500">Loading features...</div>
                             <div v-else-if="Object.keys(groupedFeatures).length > 0">
                                 <div v-for="(features, categoryName) in groupedFeatures" :key="categoryName" class="mb-3">
-                                    <h4 class="text-md font-semibold text-teal-600 mb-1">{{ categoryName }}</h4>
+                                    <h4 class="text-md font-semibold text-teal-600 mb-1 max-[768px]:text-[1.25rem]">{{ categoryName }}</h4>
                                     <ul class="list-disc list-inside text-sm text-gray-600 space-y-0.5 ml-4">
                                         <li v-for="feature in features" :key="feature.id">
                                             {{ feature.feature_name }}

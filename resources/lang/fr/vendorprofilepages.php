@@ -1,7 +1,7 @@
 <?php
 
 return [
-    // Vendor/Overview/Index.vue
+        // Vendor/Overview/Index.vue
         'vendor_overview_header' => 'Aperçu des vendeurs',
         'total_vehicles_card_title' => 'Total des véhicules',
         'vehicles_available_card_title' => 'Véhicules disponibles',
@@ -34,7 +34,7 @@ return [
         'company_vat_label' => 'Numéro de TVA :',
         'company_address_label' => 'Adresse :',
 
-         // Vendor/Documents/Edit.vue
+        // Vendor/Documents/Edit.vue
         'edit_vendor_documents_dialog_title' => 'Modifier les documents des vendeurs',
         'edit_vendor_documents_dialog_description' => 'Mettez à jour vos documents de vendeur et vos informations de profil ici.',
         'company_name_form_label' => 'Nom de l’entreprise',
@@ -51,7 +51,7 @@ return [
         'document_update_warning_text' => 'Si vous modifiez le permis de conduire, la photo de passeport ou le passeport, vous ne pourrez pas créer d’annonce de véhicule car elle passera en statut en attente.',
         'proceed_button' => 'Continuer',
 
-         // Vendor/Status/Index.vue
+        // Vendor/Status/Index.vue
         'alt_pending_status' => 'Statut en attente',
         'pending_header' => 'Vérification du compte en attente',
         'pending_message' => 'Votre compte est actuellement en cours de vérification. Notre équipe examine vos documents et détails pour s’assurer que tout est en ordre. Ce processus peut prendre jusqu’à 24 heures. Nous vous remercions de votre patience !',
@@ -218,7 +218,7 @@ return [
         'text_max_images_reached' => 'Nombre maximum d’images (20) atteint. Supprimez certaines images pour en télécharger de nouvelles.',
 
 
-         // Vendor/Payments/Index.vue
+        // Vendor/Payments/Index.vue
         'payment_history_header' => 'Historique des paiements',
         'payment_history_subheader' => 'Consultez et gérez tous vos paiements de réservation',
         'search_payments_placeholder' => 'Rechercher des paiements...',
@@ -296,7 +296,7 @@ return [
         'toast_error_remove_blocking_date' => 'Échec de la suppression de la date de blocage. Veuillez réessayer.',
 
 
-                // Vendor/Review/Index.vue
+        // Vendor/Review/Index.vue
         'customer_reviews_header' => 'Avis des clients',
         'total_reviews_label' => 'Total des avis',
         'average_rating_label' => 'Note moyenne',
@@ -306,4 +306,49 @@ return [
         'text_reply_prefix' => 'Réponse :',
         'button_approve' => 'Approuver',
         'button_reject' => 'Rejeter',
+
+
+        // Vendor/Plan/Index.vue
+        'plans_title' => 'Plans',
+        'plans_create_button' => 'Créer un plan',
+        'plans_create_dialog_title' => 'Créer un plan',
+        'plans_create_dialog_description' => 'Entrez les détails de votre plan ci-dessous.',
+        'plans_vehicle_label' => 'Véhicule',
+        'plans_plan_type_label' => 'Type de plan',
+        'plans_price_label' => 'Prix',
+        'plans_description_label' => 'Description',
+        'plans_features_label' => 'Caractéristiques',
+        'plans_feature_description_placeholder' => 'Description de la caractéristique',
+        'plans_add_feature_button' => 'Ajouter une caractéristique',
+        'plans_save_button' => 'Enregistrer',
+        'plans_view_edit_plans_info' => 'Consultez et modifiez vos plans, cela se reflétera pour les clients lors du processus de réservation.',
+        'plans_search_placeholder' => 'Rechercher des plans...',
+        'plans_table_header_id' => 'ID',
+        'plans_table_header_vehicle' => 'Véhicule',
+        'plans_table_header_plan_type' => 'Type de plan',
+        'plans_table_header_price' => 'Prix',
+        'plans_table_header_plan_description' => 'Description du plan',
+        'plans_table_header_plan_features' => 'Caractéristiques du plan',
+        'plans_table_header_created' => 'Créé',
+        'plans_table_header_updated' => 'Mis à jour',
+        'plans_table_header_actions' => 'Actions',
+        'plans_edit_button' => 'Modifier',
+        'plans_edit_dialog_title' => 'Modifier le plan',
+        'plans_edit_dialog_description' => 'Mettez à jour les détails de votre plan ci-dessous.',
+        'plans_delete_button' => 'Supprimer',
+        'plans_delete_confirmation' => 'Êtes-vous sûr de vouloir supprimer ce plan ?',
+        'plans_plan_updated_success' => 'Plan mis à jour avec succès !',
+        'plans_plan_created_success' => 'Plan créé avec succès !',
+        'plans_plan_deleted_success' => 'Plan supprimé avec succès !',
+
+        // Vendor/Plan/Edit.vue
+        'edit_plan_title' => 'Modifier les détails du plan',
+        'edit_plan_plan_type_label' => 'Type de plan',
+        'edit_plan_price_label' => 'Prix',
+        'edit_plan_description_label' => 'Description',
+        'edit_plan_features_label' => 'Caractéristiques',
+        'edit_plan_feature_description_placeholder' => 'Description de la caractéristique',
+        'edit_plan_add_feature_button' => 'Ajouter une caractéristique',
+        'edit_plan_cancel_button' => 'Annuler',
+        'edit_plan_save_button' => 'Enregistrer',
 ];

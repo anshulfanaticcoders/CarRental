@@ -2,12 +2,12 @@
   <MyProfileLayout>
     <div class="container mx-auto py-6">
       <div class="max-w-lg mx-auto">
-        <h1 class="text-2xl font-bold mb-6">Edit Plan Details</h1>
+        <h1 class="text-2xl font-bold mb-6">{{ _t('vendorprofilepages', 'edit_plan_title') }}</h1>
         
         <div class="bg-white shadow-md rounded-lg p-6">
           <form @submit.prevent="submit">
             <div class="mb-4">
-              <label for="plan_type" class="block text-sm font-medium text-gray-700 mb-2">Plan Type</label>
+              <label for="plan_type" class="block text-sm font-medium text-gray-700 mb-2">{{ _t('vendorprofilepages', 'edit_plan_plan_type_label') }}</label>
               <input 
                 type="text" 
                 id="plan_type" 
@@ -19,7 +19,7 @@
             </div>
             
             <div class="mb-4">
-              <label for="price" class="block text-sm font-medium text-gray-700 mb-2">Price</label>
+              <label for="price" class="block text-sm font-medium text-gray-700 mb-2">{{ _t('vendorprofilepages', 'edit_plan_price_label') }}</label>
               <input 
                 type="number" 
                 step="0.01" 
@@ -32,7 +32,7 @@
             </div>
             
             <div class="mb-4">
-              <label for="plan_description" class="block text-sm font-medium text-gray-700 mb-2">Description</label>
+              <label for="plan_description" class="block text-sm font-medium text-gray-700 mb-2">{{ _t('vendorprofilepages', 'edit_plan_description_label') }}</label>
               <textarea 
                 id="plan_description" 
                 v-model="form.plan_description" 
@@ -43,13 +43,13 @@
             </div>
             
             <div class="mb-4">
-              <label class="block text-sm font-medium text-gray-700 mb-2">Features</label>
+              <label class="block text-sm font-medium text-gray-700 mb-2">{{ _t('vendorprofilepages', 'edit_plan_features_label') }}</label>
               <div v-for="(feature, index) in form.features" :key="index" class="flex mb-2">
                 <input 
                   type="text" 
                   v-model="form.features[index]" 
                   class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
-                  placeholder="Feature description"
+                  :placeholder="_t('vendorprofilepages', 'edit_plan_feature_description_placeholder')"
                 >
                 <button 
                   type="button" 
@@ -66,16 +66,16 @@
                 @click="addFeature" 
                 class="mt-2 inline-flex items-center px-3 py-2 border border-transparent text-sm leading-4 font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
               >
-                Add Feature
+                {{ _t('vendorprofilepages', 'edit_plan_add_feature_button') }}
               </button>
             </div>
             
             <div class="flex justify-end mt-6">
               <Link :href="route('VendorPlanIndex')" class="bg-gray-200 py-2 px-4 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 hover:bg-gray-300 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 mr-3">
-                Cancel
+                {{ _t('vendorprofilepages', 'edit_plan_cancel_button') }}
               </Link>
               <Button type="submit" class="inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
-                Save
+                {{ _t('vendorprofilepages', 'edit_plan_save_button') }}
               </Button>
             </div>
           </form>

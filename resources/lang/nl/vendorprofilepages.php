@@ -15,7 +15,7 @@ return [
         'booking_overview_chart_title' => 'Overzicht boekingen',
         'revenue_last_12_months_chart_title' => 'Omzet (Laatste 12 maanden)',
 
-       // Vendor/Documents/Index.vue
+        // Vendor/Documents/Index.vue
         'my_vendor_documents_header' => 'Mijn verkopersdocumenten',
         'document_preview_dialog_title' => 'Documentvoorvertoning',
         'passport_front_table_header' => 'Voorzijde paspoort',
@@ -230,7 +230,7 @@ return [
         'table_date_header' => 'Datum',
 
 
-         // Vendor/Bookings/Index.vue
+        // Vendor/Bookings/Index.vue
         'booking_details_header' => 'Boekingsdetails',
         'search_bookings_placeholder' => 'Boekingen zoeken...',
         'table_booking_id_header' => 'Boekings-ID',
@@ -263,7 +263,7 @@ return [
         'alert_failed_to_cancel_booking' => 'Het annuleren van de boeking is mislukt. Probeer het opnieuw.',
 
 
-         // Vendor/BlockingDates/Index.vue
+        // Vendor/BlockingDates/Index.vue
         'manage_blocking_dates_header' => 'Blokkeringsdatums beheren',
         'add_blocking_date_button' => 'Blokkeringsdatum toevoegen',
         'add_blocking_date_dialog_title' => 'Blokkeringsdatum toevoegen',
@@ -293,7 +293,7 @@ return [
         'toast_success_blocking_date_removed' => 'Blokkeringsdatum succesvol verwijderd!',
         'toast_error_remove_blocking_date' => 'Kan blokkeringsdatum niet verwijderen. Probeer opnieuw.',
 
-                // Vendor/Review/Index.vue
+        // Vendor/Review/Index.vue
         'customer_reviews_header' => 'Klantbeoordelingen',
         'total_reviews_label' => 'Totaal aantal beoordelingen',
         'average_rating_label' => 'Gemiddelde beoordeling',
@@ -303,4 +303,49 @@ return [
         'text_reply_prefix' => 'Antwoord:',
         'button_approve' => 'Goedkeuren',
         'button_reject' => 'Afwijzen',
+
+
+        // Vendor/Plan/Index.vue
+        'plans_title' => 'Plannen',
+        'plans_create_button' => 'Plan aanmaken',
+        'plans_create_dialog_title' => 'Plan aanmaken',
+        'plans_create_dialog_description' => 'Voer de details van uw plan hieronder in.',
+        'plans_vehicle_label' => 'Voertuig',
+        'plans_plan_type_label' => 'Plantype',
+        'plans_price_label' => 'Prijs',
+        'plans_description_label' => 'Beschrijving',
+        'plans_features_label' => 'Kenmerken',
+        'plans_feature_description_placeholder' => 'Beschrijving van het kenmerk',
+        'plans_add_feature_button' => 'Kenmerk toevoegen',
+        'plans_save_button' => 'Opslaan',
+        'plans_view_edit_plans_info' => 'Bekijk en bewerk uw plannen, dit zal worden weergegeven aan klanten tijdens het boekingsproces.',
+        'plans_search_placeholder' => 'Plannen zoeken...',
+        'plans_table_header_id' => 'ID',
+        'plans_table_header_vehicle' => 'Voertuig',
+        'plans_table_header_plan_type' => 'Plantype',
+        'plans_table_header_price' => 'Prijs',
+        'plans_table_header_plan_description' => 'Planbeschrijving',
+        'plans_table_header_plan_features' => 'Plankenmerken',
+        'plans_table_header_created' => 'Gemaakt',
+        'plans_table_header_updated' => 'Bijgewerkt',
+        'plans_table_header_actions' => 'Acties',
+        'plans_edit_button' => 'Bewerken',
+        'plans_edit_dialog_title' => 'Plan bewerken',
+        'plans_edit_dialog_description' => 'Werk de details van uw plan hieronder bij.',
+        'plans_delete_button' => 'Verwijderen',
+        'plans_delete_confirmation' => 'Weet u zeker dat u dit plan wilt verwijderen?',
+        'plans_plan_updated_success' => 'Plan succesvol bijgewerkt!',
+        'plans_plan_created_success' => 'Plan succesvol aangemaakt!',
+        'plans_plan_deleted_success' => 'Plan succesvol verwijderd!',
+
+        // Vendor/Plan/Edit.vue
+        'edit_plan_title' => 'Plandetails bewerken',
+        'edit_plan_plan_type_label' => 'Plantype',
+        'edit_plan_price_label' => 'Prijs',
+        'edit_plan_description_label' => 'Beschrijving',
+        'edit_plan_features_label' => 'Kenmerken',
+        'edit_plan_feature_description_placeholder' => 'Beschrijving van het kenmerk',
+        'edit_plan_add_feature_button' => 'Kenmerk toevoegen',
+        'edit_plan_cancel_button' => 'Annuleren',
+        'edit_plan_save_button' => 'Opslaan',
 ];

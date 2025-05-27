@@ -4,21 +4,21 @@
             <div class="mb-6">
                 <div class="flex justify-between bg-customLightPrimaryColor p-4 rounded-[12px] mb-[1rem]">
                     <p class="text-[1.75rem] font-bold text-gray-800">
-                        Plans
+                        {{ _t('vendorprofilepages', 'plans_title') }}
                     </p>
                     <!-- Create Plan Dialog -->
                     <Dialog v-model:open="isCreateDialogOpen">
                         <DialogTrigger as-child>
-                            <Button>Create Plan</Button>
+                            <Button>{{ _t('vendorprofilepages', 'plans_create_button') }}</Button>
                         </DialogTrigger>
                         <DialogContent class="max-h-[90vh] overflow-y-auto p-4">
                             <DialogHeader>
-                                <DialogTitle>Create Plan</DialogTitle>
-                                <DialogDescription>Enter your plan details below.</DialogDescription>
+                                <DialogTitle>{{ _t('vendorprofilepages', 'plans_create_dialog_title') }}</DialogTitle>
+                                <DialogDescription>{{ _t('vendorprofilepages', 'plans_create_dialog_description') }}</DialogDescription>
                             </DialogHeader>
                             <form @submit.prevent="createPlan">
                                 <div class="mb-4">
-                                    <label class="block text-sm font-medium text-gray-700">Vehicle</label>
+                                    <label class="block text-sm font-medium text-gray-700">{{ _t('vendorprofilepages', 'plans_vehicle_label') }}</label>
                                     <select v-model="newPlan.vehicle_id" class="w-full border rounded p-2">
                                         <option v-for="vehicle in vehicles" :key="vehicle.id" :value="vehicle.id">
                                             {{ vehicle.brand }}
@@ -26,27 +26,27 @@
                                     </select>
                                 </div>
                                 <div class="mb-4">
-                                    <label class="block text-sm font-medium text-gray-700">Plan Type</label>
+                                    <label class="block text-sm font-medium text-gray-700">{{ _t('vendorprofilepages', 'plans_plan_type_label') }}</label>
                                     <input type="text" v-model="newPlan.plan_type" class="w-full border rounded p-2" />
                                 </div>
                                 <div class="mb-4">
-                                    <label class="block text-sm font-medium text-gray-700">Price</label>
+                                    <label class="block text-sm font-medium text-gray-700">{{ _t('vendorprofilepages', 'plans_price_label') }}</label>
                                     <input type="number" v-model="newPlan.price" class="w-full border rounded p-2" />
                                     <div v-if="newPlan.errors.price" class="text-red-500 text-sm mt-1">
                                         {{ newPlan.errors.price }}
                                     </div>
                                 </div>
                                 <div class="mb-4">
-                                    <label class="block text-sm font-medium text-gray-700">Description</label>
+                                    <label class="block text-sm font-medium text-gray-700">{{ _t('vendorprofilepages', 'plans_description_label') }}</label>
                                     <textarea v-model="newPlan.plan_description"
                                         class="w-full border rounded p-2"></textarea>
                                 </div>
                                 <div class="mb-4">
-                                    <label class="block text-sm font-medium text-gray-700">Features</label>
+                                    <label class="block text-sm font-medium text-gray-700">{{ _t('vendorprofilepages', 'plans_features_label') }}</label>
                                     <div v-for="(feature, index) in newPlan.features" :key="index" class="flex mb-2">
                                         <input type="text" v-model="newPlan.features[index]"
                                             class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
-                                            placeholder="Feature description">
+                                            :placeholder="_t('vendorprofilepages', 'plans_feature_description_placeholder')">
                                         <button type="button" @click="removeNewFeature(index)"
                                             class="ml-2 inline-flex items-center p-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-red-600 hover:bg-red-700">
                                             <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none"
@@ -58,23 +58,22 @@
                                     </div>
                                     <button type="button" @click="addNewFeature"
                                         class="mt-2 inline-flex items-center px-3 py-2 border border-transparent text-sm leading-4 font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
-                                        Add Feature
+                                        {{ _t('vendorprofilepages', 'plans_add_feature_button') }}
                                     </button>
                                 </div>
                                 <DialogFooter>
-                                    <Button type="submit">Save</Button>
+                                    <Button type="submit">{{ _t('vendorprofilepages', 'plans_save_button') }}</Button>
                                 </DialogFooter>
                             </form>
                         </DialogContent>
                     </Dialog>
 
                 </div>
-                <p class="text-gray-600">View and Edit your plans, it will reflect to customers during the booking
-                    process.</p>
+                <p class="text-gray-600">{{ _t('vendorprofilepages', 'plans_view_edit_plans_info') }}</p>
             </div>
 
             <div class="mb-4">
-                <input type="text" v-model="searchQuery" placeholder="Search plans..."
+                <input type="text" v-model="searchQuery" :placeholder="_t('vendorprofilepages', 'plans_search_placeholder')"
                     class="px-4 py-2 border border-gray-300 rounded-md w-full" />
             </div>
 
@@ -84,31 +83,31 @@
                         <tr>
                             <th scope="col"
                                 class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                ID</th>
+                                {{ _t('vendorprofilepages', 'plans_table_header_id') }}</th>
                             <th scope="col"
                                 class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                Vehicle</th>
+                                {{ _t('vendorprofilepages', 'plans_table_header_vehicle') }}</th>
                             <th scope="col"
                                 class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                Plan Type</th>
+                                {{ _t('vendorprofilepages', 'plans_table_header_plan_type') }}</th>
                             <th scope="col"
                                 class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                Price</th>
+                                {{ _t('vendorprofilepages', 'plans_table_header_price') }}</th>
                             <th scope="col"
                                 class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                Plan Description</th>
+                                {{ _t('vendorprofilepages', 'plans_table_header_plan_description') }}</th>
                             <th scope="col"
                                 class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                Plan Features</th>
+                                {{ _t('vendorprofilepages', 'plans_table_header_plan_features') }}</th>
                             <th scope="col"
                                 class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                Created</th>
+                                {{ _t('vendorprofilepages', 'plans_table_header_created') }}</th>
                             <th scope="col"
                                 class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                Updated</th>
+                                {{ _t('vendorprofilepages', 'plans_table_header_updated') }}</th>
                             <th scope="col"
                                 class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                Actions</th>
+                                {{ _t('vendorprofilepages', 'plans_table_header_actions') }}</th>
                         </tr>
                     </thead>
                     <tbody class="bg-white divide-y divide-gray-200">
@@ -139,21 +138,21 @@
                             <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
                                 <Dialog v-model:open="isDialogOpen">
                                     <DialogTrigger as-child>
-                                        <Button @click="openEditDialog(plan)">Edit</Button>
+                                        <Button @click="openEditDialog(plan)">{{ _t('vendorprofilepages', 'plans_edit_button') }}</Button>
                                     </DialogTrigger>
                                     <DialogContent class="max-h-[90vh] overflow-y-auto p-4">
                                         <DialogHeader>
-                                            <DialogTitle>Edit Plan</DialogTitle>
-                                            <DialogDescription>Update your plan details below.</DialogDescription>
+                                            <DialogTitle>{{ _t('vendorprofilepages', 'plans_edit_dialog_title') }}</DialogTitle>
+                                            <DialogDescription>{{ _t('vendorprofilepages', 'plans_edit_dialog_description') }}</DialogDescription>
                                         </DialogHeader>
                                         <form @submit.prevent="updatePlan">
                                             <div class="mb-4">
-                                                <label class="block text-sm font-medium text-gray-700">Plan Type</label>
+                                                <label class="block text-sm font-medium text-gray-700">{{ _t('vendorprofilepages', 'plans_plan_type_label') }}</label>
                                                 <input type="text" v-model="form.plan_type"
                                                     class="w-full border rounded p-2" />
                                             </div>
                                             <div class="mb-4">
-                                                <label class="block text-sm font-medium text-gray-700">Price</label>
+                                                <label class="block text-sm font-medium text-gray-700">{{ _t('vendorprofilepages', 'plans_price_label') }}</label>
                                                 <input type="number" v-model="form.price"
                                                     class="w-full border rounded p-2" />
                                                 <div v-if="form.errors.price" class="text-red-500 text-sm mt-1">
@@ -162,17 +161,17 @@
                                             </div>
                                             <div class="mb-4">
                                                 <label
-                                                    class="block text-sm font-medium text-gray-700">Description</label>
+                                                    class="block text-sm font-medium text-gray-700">{{ _t('vendorprofilepages', 'plans_description_label') }}</label>
                                                 <textarea v-model="form.plan_description"
                                                     class="w-full border rounded p-2"></textarea>
                                             </div>
                                             <div class="mb-4">
-                                                <label class="block text-sm font-medium text-gray-700">Features</label>
+                                                <label class="block text-sm font-medium text-gray-700">{{ _t('vendorprofilepages', 'plans_features_label') }}</label>
                                                 <div v-for="(feature, index) in form.features" :key="index"
                                                     class="flex mb-2">
                                                     <input type="text" v-model="form.features[index]"
                                                         class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
-                                                        placeholder="Feature description">
+                                                        :placeholder="_t('vendorprofilepages', 'plans_feature_description_placeholder')">
                                                     <button type="button" @click="removeFeature(index)"
                                                         class="ml-2 inline-flex items-center p-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-red-600 hover:bg-red-700">
                                                         <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4"
@@ -184,18 +183,18 @@
                                                 </div>
                                                 <button type="button" @click="addFeature"
                                                     class="mt-2 inline-flex items-center px-3 py-2 border border-transparent text-sm leading-4 font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
-                                                    Add Feature
+                                                    {{ _t('vendorprofilepages', 'plans_add_feature_button') }}
                                                 </button>
                                             </div>
                                             <DialogFooter>
-                                                <Button type="submit">Save</Button>
+                                                <Button type="submit">{{ _t('vendorprofilepages', 'plans_save_button') }}</Button>
                                             </DialogFooter>
                                         </form>
                                     </DialogContent>
                                 </Dialog>
 
                                 <Button @click="deletePlan(plan.id)"
-                                    class="ml-2 bg-red-600 hover:bg-red-700">Delete</Button>
+                                    class="ml-2 bg-red-600 hover:bg-red-700">{{ _t('vendorprofilepages', 'plans_delete_button') }}</Button>
                             </td>
                         </tr>
                     </tbody>
