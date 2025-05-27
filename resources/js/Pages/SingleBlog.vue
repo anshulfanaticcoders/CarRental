@@ -9,7 +9,7 @@
                 </li>
                 <span class="mx-2 text-customPrimaryColor font-medium">></span>
                 <li>
-                    <Link :href="route('blogs-page')" class="hover:underline text-customPrimaryColor max-[768px]:text-[0.75rem]">Blog</Link>
+                    <Link :href="route('blog')" class="hover:underline text-customPrimaryColor max-[768px]:text-[0.75rem]">Blog</Link>
                 </li>
                 <span class="mx-2 text-customPrimaryColor font-medium">></span>
                 <li class="text-gray-900 font-semibold max-[768px]:text-[0.75rem]">{{ blog.title }}</li>

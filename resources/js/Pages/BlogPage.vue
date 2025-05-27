@@ -11,7 +11,7 @@
 
                 <div v-for="blog in blogs.data" :key="blog.id" class="rounded-lg overflow-hidden shadow-md
                 hover:scale-[1.03] transition-transform duration-300 ease-in-out ">
-                    <Link :href="route('blog.show', blog.id)">
+                    <Link :href="route('blog.show', blog.slug)">
 
                     <img :src="blog.image" :alt="blog.title" class="w-full h-48 object-cover">
                     <div class="p-6">
@@ -20,7 +20,7 @@
                         </p>
                         <h4 class="font-semibold text-xl text-gray-800 max-[768px]:text-[1rem]">{{ blog.title }}</h4>
                         <p class="text-gray-600 mt-2 line-clamp-3 max-[768px]:text-[0.875rem]" v-html="blog.content"></p>
-                        <Link :href="route('blog.show', blog.id)" class="inline-flex items-center mt-4 text-customPrimaryColor hover:underline
+                        <Link :href="route('blog.show', blog.slug)" class="inline-flex items-center mt-4 text-customPrimaryColor hover:underline
                             max-[768px]:text-[0.875rem]">
                         Read More
                         <img :src=goIcon alt="" class="w-8 ml-2 max-[768px]:w-6">
@@ -48,7 +48,7 @@
                 <li v-for="recentBlog in recentBlogs" :key="recentBlog.id" class="flex items-start">
                     <img :src="recentBlog.image" :alt="recentBlog.title" class="w-20 h-20 object-cover rounded mr-4">
                     <div>
-                        <Link :href="route('blog.show', recentBlog.id)"
+                        <Link :href="route('blog.show', recentBlog.slug)"
                             class="font-medium text-gray-800 hover:underline">
                         {{ recentBlog.title }}
                         </Link>

@@ -128,7 +128,7 @@ Route::post('/store-search', [SearchController::class, 'storeSearchData'])->name
 Route::get('/search/category/{category_id?}', [SearchController::class, 'searchByCategory'])->name('search.category');
 Route::get('/api/geocoding/autocomplete', [GeocodingController::class, 'autocomplete']);
 Route::get('/api/geocoding/reverse', [GeocodingController::class, 'reverse']);
-Route::get('/blogs-page', [BlogController::class, 'showBlogPage'])->name('blogs-page');
+Route::get('/blog', [BlogController::class, 'showBlogPage'])->name('blog');
 Route::get('/page/{slug}', [PageController::class, 'showPublic'])->name('pages.show');
 Route::inertia('/faq', 'Faq');
 Route::post('/validate-email', [EmailValidationController::class, 'validateEmail'])->name('validate-email');
@@ -144,7 +144,7 @@ Route::post('/language/change', [LanguageController::class, 'change'])->name('la
 // Show Blogs on Home page
 // Route::get('/', [BlogController::class, 'show'])->name('welcome');
 Route::get('/', [BlogController::class, 'homeBlogs'])->name('welcome');
-Route::get('blog/{blog}', [BlogController::class, 'show'])->name('blog.show');
+Route::get('/blog/{blog:slug}', [BlogController::class, 'show'])->name('blog.show');
 
 
 // Stripe Routes
