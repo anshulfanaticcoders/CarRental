@@ -15,20 +15,14 @@
                     <ApplicationLogo />
                     </Link>
                     <AuthenticatedHeaderLayout class="hidden max-[768px]:block max-[768px]:border-b-0" />
-                    <span class="text-[3rem] font-medium max-[768px]:text-[1.2rem] max-[768px]:px-[1.5rem]">Create Car
-                        Listing</span>
+                    <span class="text-[3rem] font-medium max-[768px]:text-[1.2rem] max-[768px]:px-[1.5rem]">{{ _t('createvehicle','step0_create_listing_title') }}</span>
                     <p
                         class="text-customLightGrayColor text-[1.15rem] max-[768px]:text-[0.875rem] max-[768px]:px-[1.5rem] w-[70%] max-[768px]:w-full">
-                        Create your listing in a few minutes to receive rental
-                        requests! All you need is a photo, a rate, and an
-                        address and our team will contact you and offer you a
-                        personalized appointment. Also, make sure you have the
-                        vehicle's registration certificate nearby.
+                        {{ _t('createvehicle','step0_create_listing_description') }}
                     </p>
                     <div
                         class="buttons flex justify-between gap-[1.5rem] max-[768px]:text-[0.875rem] max-[768px]:px-[1.5rem] w-[30rem]">
-                        <PrimaryButton class="w-[40%] max-[768px]:w-fit" type="button" @click="nextStep">Create a
-                            Listing</PrimaryButton>
+                        <PrimaryButton class="w-[40%] max-[768px]:w-fit" type="button" @click="nextStep">{{ _t('createvehicle','step0_create_a_listing_button') }}</PrimaryButton>
                     </div>
                 </div>
             </div>
@@ -38,22 +32,18 @@
                     <div class="col text-customPrimaryColor-foreground w-[70%] max-[768px]:w-full">
                         <img :src="warningSign" alt="" class="max-[768px]:w-[35px]" />
                         <h4 class="text-[1.5rem] font-medium max-[768px]:text-[1.2rem] max-[768px]:py-2">
-                            Temporary documents
+                            {{ _t('createvehicle','step0_temporary_documents_title') }}
                         </h4>
                         <p class="max-[768px]:text-[0.875rem]">
-                            You can submit your ad with temporary documents
-                            (order form, temporary registration certificate,
-                            crossed out vehicle registration document and
-                            transfer certificate) while waiting to receive your
-                            final vehicle registration document.
+                            {{ _t('createvehicle','step0_temporary_documents_description') }}
                         </p>
                     </div>
                     <div class="col text-customPrimaryColor-foreground w-[70%] max-[768px]:w-full">
                         <img :src="warningSign" alt="" class="max-[768px]:w-[35px]" />
                         <h4 class="text-[1.5rem] font-medium max-[768px]:text-[1.2rem] max-[768px]:py-2">
-                            Need some help?
+                            {{ _t('createvehicle','need_help_title') }}
                         </h4>
-                        <p class="max-[768px]:text-[0.875rem]">Contact us on: +91 524555552</p>
+                        <p class="max-[768px]:text-[0.875rem]">{{ _t('createvehicle','contact_us_on') }}</p>
                     </div>
                 </div>
                 <img :src="vendorBgimage" alt=""
@@ -74,10 +64,10 @@
                     </Link>
                     <AuthenticatedHeaderLayout class="hidden max-[768px]:block max-[768px]:border-b-0" />
                     <div class="mt-[3rem] max-[768px]:mt-0 max-[768px]:px-[1.5rem]">
-                        <span class="text-[3rem] font-medium max-[768px]:text-[1.2rem]">Vehicle Category</span>
+                        <span class="text-[3rem] font-medium max-[768px]:text-[1.2rem]">{{ _t('createvehicle','step1_vehicle_category_title') }}</span>
                         <p
                             class="text-customLightGrayColor text-[1.15rem] max-[768px]:text-[0.875rem] max-[768px]:mt-2">
-                            Please provide vehicle category.
+                            {{ _t('createvehicle','step1_vehicle_category_placeholder') }}
                         </p>
                     </div>
                     <!-- Vehicle Category Dropdown -->
@@ -102,48 +92,48 @@
                     </div>
 
                     <div class="mt-[1rem] max-[768px]:px-[1.5rem]">
-                        <span class="text-[3rem] font-medium max-[768px]:text-[1.2rem]">Vehicle Details</span>
+                        <span class="text-[3rem] font-medium max-[768px]:text-[1.2rem]">{{ _t('createvehicle','step1_vehicle_details_title') }}</span>
                         <p
                             class="text-customLightGrayColor text-[1.15rem] max-[768px]:text-[0.875rem] max-[768px]:mt-2">
-                            Please provide vehicle details .
+                           {{ _t('createvehicle','step1_vehicle_details_placeholder') }}
                         </p>
                     </div>
 
                     <div class="grid grid-cols-3 gap-5 max-[768px]:grid-cols-2 max-[768px]:px-[1.5rem]">
                         <!-- Brand -->
                         <div>
-                            <InputLabel for="brand">Brand:</InputLabel>
+                            <InputLabel for="brand">{{ _t('createvehicle','step1_brand_label') }}</InputLabel>
                             <input type="text" v-model="form.brand" id="brand" required
-                                placeholder="Enter vehicle brand" />
+                                :placeholder="_t('createvehicle','step1_brand_placeholder')" />
                             <span v-if="errors.brand" class="text-red-500 max-[768px]:text-[0.75rem] text-sm">{{
                                 errors.brand }}</span>
                         </div>
 
                         <!-- Model -->
                         <div>
-                            <InputLabel for="model">Model:</InputLabel>
+                            <InputLabel for="model">{{ _t('createvehicle','step1_model_label') }}</InputLabel>
                             <input type="text" v-model="form.model" id="model" required
-                                placeholder="Enter vehicle model" />
+                                :placeholder="_t('createvehicle','step1_model_placeholder')" />
                             <span v-if="errors.model" class="text-red-500 max-[768px]:text-[0.75rem] text-sm">{{
                                 errors.model }}</span>
                         </div>
 
                         <!-- Color -->
                         <div>
-                            <InputLabel for="color">Color:</InputLabel>
+                            <InputLabel for="color">{{ _t('createvehicle','step1_color_label') }}</InputLabel>
                             <input type="text" v-model="form.color" id="color" required
-                                placeholder="Enter vehicle color" />
+                                :placeholder="_t('createvehicle','step1_color_placeholder')" />
                             <span v-if="errors.color" class="text-red-500 max-[768px]:text-[0.75rem] text-sm">{{
                                 errors.color }}</span>
                         </div>
 
                         <!-- Mileage -->
                         <div>
-                            <InputLabel for="mileage">Mileage:</InputLabel>
+                            <InputLabel for="mileage">{{ _t('createvehicle','step1_mileage_label') }}</InputLabel>
                             <div class="relative">
                                 <input type="number" v-model="form.mileage" id="mileage" required />
                                 <span
-                                    class="absolute bg-white text-[0.875rem] top-[50%] right-3 translate-y-[-50%] text-customLightGrayColor font-medium">(km/d)</span>
+                                    class="absolute bg-white text-[0.875rem] top-[50%] right-3 translate-y-[-50%] text-customLightGrayColor font-medium">{{ _t('createvehicle','step1_mileage_unit') }}</span>
                                 <span v-if="errors.mileage" class="text-red-500 max-[768px]:text-[0.75rem] text-sm">{{
                                     errors.mileage }}</span>
                             </div>
@@ -151,16 +141,16 @@
 
                         <!-- Transmission -->
                         <div>
-                            <InputLabel for="transmission">Transmission:</InputLabel>
+                            <InputLabel for="transmission">{{ _t('createvehicle','step1_transmission_label') }}</InputLabel>
                             <Select v-model="form.transmission">
                                 <SelectTrigger class="w-full p-[1.7rem] border-customLightGrayColor rounded-[12px]">
                                     <SelectValue :placeholder="form.transmission || 'Select transmission type'" />
                                 </SelectTrigger>
                                 <SelectContent>
                                     <SelectGroup>
-                                        <SelectLabel>Transmission</SelectLabel>
-                                        <SelectItem value="manual">Manual</SelectItem>
-                                        <SelectItem value="automatic">Automatic</SelectItem>
+                                        <SelectLabel>{{ _t('createvehicle','step1_transmission_select_label') }}</SelectLabel>
+                                        <SelectItem value="manual">{{ _t('createvehicle','step1_transmission_manual') }}</SelectItem>
+                                        <SelectItem value="automatic">{{ _t('createvehicle','step1_transmission_automatic') }}</SelectItem>
                                     </SelectGroup>
                                 </SelectContent>
                             </Select>
@@ -169,18 +159,18 @@
 
                         <!-- Fuel -->
                         <div>
-                            <InputLabel for="fuel">Fuel:</InputLabel>
+                            <InputLabel for="fuel">{{ _t('createvehicle','step1_fuel_label') }}</InputLabel>
                             <Select v-model="form.fuel">
                                 <SelectTrigger class="w-full p-[1.7rem] border-customLightGrayColor rounded-[12px]">
                                     <SelectValue :placeholder="form.fuel || 'Select fuel type'" />
                                 </SelectTrigger>
                                 <SelectContent>
                                     <SelectGroup>
-                                        <SelectLabel>Fuel Type</SelectLabel>
-                                        <SelectItem value="petrol">Petrol</SelectItem>
-                                        <SelectItem value="diesel">Diesel</SelectItem>
-                                        <SelectItem value="electric">Electric</SelectItem>
-                                        <SelectItem value="hybrid">Hybrid</SelectItem>
+                                        <SelectLabel>{{ _t('createvehicle','step1_fuel_select_label') }}</SelectLabel>
+                                        <SelectItem value="petrol">{{ _t('createvehicle','step1_fuel_petrol') }}</SelectItem>
+                                        <SelectItem value="diesel">{{ _t('createvehicle','step1_fuel_diesel') }}</SelectItem>
+                                        <SelectItem value="electric">{{ _t('createvehicle','step1_fuel_electric') }}</SelectItem>
+                                        <SelectItem value="hybrid">{{ _t('createvehicle','step1_fuel_hybrid') }}</SelectItem>
                                     </SelectGroup>
                                 </SelectContent>
                             </Select>
@@ -189,14 +179,14 @@
 
                         <!-- Seating Capacity -->
                         <div>
-                            <InputLabel for="seating_capacity">Seating Capacity:</InputLabel>
+                            <InputLabel for="seating_capacity">{{ _t('createvehicle','step1_seating_capacity_label') }}</InputLabel>
                             <Select v-model="form.seating_capacity">
                                 <SelectTrigger class="w-full p-[1.7rem] border-customLightGrayColor rounded-[12px]">
                                     <SelectValue :placeholder="form.seating_capacity || 'Select seating capacity'" />
                                 </SelectTrigger>
                                 <SelectContent>
                                     <SelectGroup>
-                                        <SelectLabel>Seating Capacity</SelectLabel>
+                                        <SelectLabel>{{ _t('createvehicle','step1_seating_capacity_select_label') }}</SelectLabel>
                                         <SelectItem v-for="capacity in [1, 2, 3, 4, 5, 6, 7, 8]" :key="capacity"
                                             :value="capacity">
                                             {{ capacity }}
@@ -209,14 +199,14 @@
 
                         <!-- Number of Doors -->
                         <div>
-                            <InputLabel for="number_of_doors">Number of Doors:</InputLabel>
+                            <InputLabel for="number_of_doors">{{ _t('createvehicle','step1_doors_label') }}</InputLabel>
                             <Select v-model="form.number_of_doors">
                                 <SelectTrigger class="w-full p-[1.7rem] border-customLightGrayColor rounded-[12px]">
                                     <SelectValue :placeholder="form.number_of_doors || 'Select number of doors'" />
                                 </SelectTrigger>
                                 <SelectContent>
                                     <SelectGroup>
-                                        <SelectLabel>Number of Doors</SelectLabel>
+                                        <SelectLabel>{{ _t('createvehicle','step1_doors_select_label') }}</SelectLabel>
                                         <SelectItem v-for="doors in 8" :key="doors" :value="doors">
                                             {{ doors }}
                                         </SelectItem>
@@ -229,14 +219,14 @@
 
                         <!-- Luggage Capacity -->
                         <div>
-                            <InputLabel for="luggage_capacity">Luggage Capacity:</InputLabel>
+                            <InputLabel for="luggage_capacity">{{ _t('createvehicle','step1_luggage_label') }}</InputLabel>
                             <Select v-model="form.luggage_capacity">
                                 <SelectTrigger class="w-full p-[1.7rem] border-customLightGrayColor rounded-[12px]">
                                     <SelectValue placeholder="Select luggage capacity" />
                                 </SelectTrigger>
                                 <SelectContent>
                                     <SelectGroup>
-                                        <SelectLabel>Luggage Capacity</SelectLabel>
+                                        <SelectLabel>{{ _t('createvehicle','step1_luggage_select_label') }}</SelectLabel>
                                         <SelectItem v-for="capacity in [0, 1, 2, 3, 4, 5]" :key="capacity"
                                             :value="capacity">
                                             {{ capacity }}
@@ -251,7 +241,7 @@
 
                         <!-- Horsepower -->
                         <div>
-                            <InputLabel for="horsepower">Horsepower:</InputLabel>
+                            <InputLabel for="horsepower">{{ _t('createvehicle','step1_horsepower_label') }}</InputLabel>
                             <div class="relative">
                                 <input type="number" v-model="form.horsepower" id="horsepower" required min="0" />
                                 <span
@@ -263,7 +253,7 @@
 
                         <!-- CO2 Emissions -->
                         <div>
-                            <InputLabel for="co2">CO2 Emissions:</InputLabel>
+                            <InputLabel for="co2">{{ _t('createvehicle','step1_co2_label') }}</InputLabel>
                             <div class="relative">
                                 <input type="text" v-model="form.co2" id="co2" required />
                                 <span
@@ -275,17 +265,17 @@
 
                         <!-- Status -->
                         <div>
-                            <InputLabel for="status">Status:</InputLabel>
+                            <InputLabel for="status">{{ _t('createvehicle','step1_status_label') }}</InputLabel>
                             <Select v-model="form.status">
                                 <SelectTrigger class="w-full p-[1.7rem] border-customLightGrayColor rounded-[12px]">
                                     <SelectValue placeholder="Select status" />
                                 </SelectTrigger>
                                 <SelectContent>
                                     <SelectGroup>
-                                        <SelectLabel>Status</SelectLabel>
-                                        <SelectItem value="available">Available</SelectItem>
-                                        <SelectItem value="rented">Rented</SelectItem>
-                                        <SelectItem value="maintenance">Maintenance</SelectItem>
+                                        <SelectLabel>{{ _t('createvehicle','step1_status_select_label') }}</SelectLabel>
+                                        <SelectItem value="available">{{ _t('createvehicle','step1_status_available') }}</SelectItem>
+                                        <SelectItem value="rented">{{ _t('createvehicle','step1_status_rented') }}</SelectItem>
+                                        <SelectItem value="maintenance">{{ _t('createvehicle','step1_status_maintenance') }}</SelectItem>
                                     </SelectGroup>
                                 </SelectContent>
                             </Select>
@@ -296,20 +286,18 @@
                     <!-- Car Features -->
                     <div class="max-[768px]:px-[1.5rem]">
                         <div class="mt-8">
-                            <span class="text-black mb-2 text-[3rem] font-medium max-[768px]:text-[1.2rem]">Vehicle
-                                Features</span>
+                            <span class="text-black mb-2 text-[3rem] font-medium max-[768px]:text-[1.2rem]">{{ _t('createvehicle','step1_features_title') }}</span>
                             <p
                                 class="text-customLightGrayColor text-[1.15rem] mb-[2rem] max-[768px]:text-[0.875rem] max-[768px]:mt-2">
-                                Select all the features available in your
-                                vehicle
+                                {{ _t('createvehicle','step1_features_description') }}
                             </p>
 
                             <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
                                 <div v-if="!form.category_id" class="col-span-2 md:col-span-4">
-                                     <p class="text-gray-500">Please select a vehicle category to see available features.</p>
+                                     <p class="text-gray-500">{{ _t('createvehicle','step1_features_select_category_message') }}</p>
                                 </div>
                                 <div v-else-if="availableFeatures.length === 0 && form.category_id" class="col-span-2 md:col-span-4">
-                                    <p class="text-gray-500">No features available for this category, or still loading...</p>
+                                    <p class="text-gray-500">{{ _t('createvehicle','step1_features_no_features_message') }}</p>
                                 </div>
                                 <!-- Loop through features if category is selected and features are available -->
                                 <div v-else v-for="feature in availableFeatures" :key="feature.id"
@@ -329,7 +317,7 @@
                             <!-- Selected Features Display -->
                              <div v-if="form.features.length > 0" class="mt-4">
                                 <p class="text-sm text-gray-600 mb-2">
-                                    Selected Features:
+                                    {{ _t('createvehicle','step1_features_selected_title') }}
                                 </p>
                                 <div class="flex flex-wrap gap-2">
                                     <span v-for="featureName in form.features" :key="featureName"
@@ -344,9 +332,9 @@
                     </div>
                     <div class="buttons flex justify-between gap-[1.5rem] pb-[4rem] max-[768px]:px-[1.5rem]">
                         <button class="button-secondary w-[15rem] max-[768px]:w-[10rem]" @click="prevStep">
-                            Back
+                            {{ _t('createvehicle','back_button') }}
                         </button>
-                        <PrimaryButton class="w-[15rem] max-[768px]:w-[10rem]" @click="nextStep">Next</PrimaryButton>
+                        <PrimaryButton class="w-[15rem] max-[768px]:w-[10rem]" @click="nextStep">{{ _t('createvehicle','next_button') }}</PrimaryButton>
                     </div>
                 </div>
             </div>
@@ -355,24 +343,23 @@
                     <div
                         class="col text-customPrimaryColor-foreground w-[70%] p-[2rem] border-b-[2px] max-[768px]:w-full">
                         <img :src="warningSign" alt="" class="max-[768px]:w-[35px]" />
-                        <h4 class="text-[1.5rem] font-medium max-[768px]:text-[1.2rem] max-[768px]:py-2">Welcome!</h4>
-                        <p class="max-[768px]:text-[0.875rem]">Placing an ad on Vrooem 100% free.</p>
+                        <h4 class="text-[1.5rem] font-medium max-[768px]:text-[1.2rem] max-[768px]:py-2">{{ _t('createvehicle','step1_welcome_message_title') }}</h4>
+                        <p class="max-[768px]:text-[0.875rem]">{{ _t('createvehicle','step1_welcome_message_content') }}</p>
                     </div>
                     <div
                         class="col text-customPrimaryColor-foreground w-[70%] p-[2rem] border-b-[2px] max-[768px]:w-full">
                         <img :src="warningSign" alt="" class="max-[768px]:w-[35px]" />
-                        <h4 class="text-[1.5rem] font-medium max-[768px]:text-[1.2rem] max-[768px]:py-2">Tip</h4>
+                        <h4 class="text-[1.5rem] font-medium max-[768px]:text-[1.2rem] max-[768px]:py-2">{{ _t('createvehicle','tip_title') }}</h4>
                         <p class="max-[768px]:text-[0.875rem]">
-                            To save time while creating your ad, make sure to
-                            have your registration certificate handy.
+                            {{ _t('createvehicle','step1_tip_registration_certificate') }}
                         </p>
                     </div>
                     <div class="col text-customPrimaryColor-foreground w-[70%] p-[2rem] max-[768px]:w-full">
                         <img :src="warningSign" alt="" class="max-[768px]:w-[35px]" />
                         <h4 class="text-[1.5rem] font-medium max-[768px]:text-[1.2rem] max-[768px]:py-2">
-                            Need some help?
+                            {{ _t('createvehicle','need_help_title') }}
                         </h4>
-                        <p class="max-[768px]:text-[0.875rem]">Contact us on: +91 524555552</p>
+                        <p class="max-[768px]:text-[0.875rem]">{{ _t('createvehicle','contact_us_on') }}</p>
                     </div>
                     <img :src="circleImg" alt="" class="absolute top-[-30%] right-[-15%]" />
                 </div>
@@ -390,21 +377,17 @@
                     </Link>
                     <AuthenticatedHeaderLayout class="hidden max-[768px]:block max-[768px]:border-b-0" />
                     <div class="mt-[5rem] mb-[2rem] max-[768px]:mt-0 max-[768px]:px-[1.5rem] max-[768px]:mb-[1rem]">
-                        <span class="text-[1.75rem] font-medium max-[768px]:text-[1.2rem]">Key Technical Specifications
-                            of Your Vehicle</span>
-                        <p class="max-[768px]:text-[0.875rem] max-[768px]:mt-2">This information is needed to list your
-                            vehicle.</p>
+                        <span class="text-[1.75rem] font-medium max-[768px]:text-[1.2rem]">{{ _t('createvehicle','step2_technical_specifications_title') }}</span>
+                        <p class="max-[768px]:text-[0.875rem] max-[768px]:mt-2">{{ _t('createvehicle','step2_technical_specifications_description') }}</p>
                     </div>
                     <div class="grid grid-cols-2 gap-8 max-[768px]:px-[1.5rem] max-[768px]:gap-3 max-[768px]:gap-y-8">
                         <div class="col-span-2">
-                            <InputLabel class="text-black mb-0" for="registration_number">Registration Number:
+                            <InputLabel class="text-black mb-0" for="registration_number">{{ _t('createvehicle','step2_registration_number_label') }}
                             </InputLabel>
-                            <span class="text-[0.675rem] mb-[1rem] inline-block">As mentioned on your vehicle's
-                                registration
-                                certificate.</span>
+                            <span class="text-[0.675rem] mb-[1rem] inline-block">{{ _t('createvehicle','step2_registration_number_tooltip') }}</span>
                             <input class="w-full" type="text" v-model="form.registration_number"
                                 id="registration_number" required
-                                placeholder="Enter your vehicle registration number" />
+                                :placeholder="_t('createvehicle','step2_registration_number_placeholder')" />
                             <span v-if="errors.registration_number"
                                 class="text-red-500 max-[768px]:text-[0.75rem] text-sm">{{
                                     errors.registration_number }}</span>
@@ -412,16 +395,16 @@
 
                         <!-- Registration Country -->
                         <div class="relative w-full">
-                            <InputLabel class="text-black" for="registration_country">Registration Country:</InputLabel>
+                            <InputLabel class="text-black" for="registration_country">{{ _t('createvehicle','step2_registration_country_label') }}</InputLabel>
 
                             <div class="relative">
                                 <Select v-model="form.registration_country">
                                     <SelectTrigger class="w-full p-[1.7rem] border-customLightGrayColor rounded-[12px]">
-                                        <SelectValue placeholder="Select a country" />
+                                        <SelectValue :placeholder="_t('createvehicle','step2_registration_country_placeholder')" />
                                     </SelectTrigger>
                                     <SelectContent>
                                         <SelectGroup>
-                                            <SelectLabel>Countries</SelectLabel>
+                                            <SelectLabel>{{ _t('createvehicle','step2_registration_country_select_label') }}</SelectLabel>
                                             <SelectItem v-for="country in countries" :key="country.code"
                                                 :value="country.code">
                                                 <div class="flex items-center gap-2">
@@ -449,9 +432,9 @@
 
                         <!-- Registration Date -->
                         <div>
-                            <InputLabel class="text-black" for="registration_date">Registration Date:</InputLabel>
+                            <InputLabel class="text-black" for="registration_date">{{ _t('createvehicle','step2_registration_date_label') }}</InputLabel>
                             <VueDatePicker v-model="form.registration_date" :format="'yyyy-MM-dd'" auto-apply
-                                placeholder="Select Registration Date" class="w-full"
+                                :placeholder="_t('createvehicle','step2_registration_date_placeholder')" class="w-full"
                                 :class="{ 'dp__error': errors.registration_date }" :clearable="false"
                                 :max-date="new Date()"
                                 :input-class-name="'w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition duration-200 bg-white shadow-sm text-gray-700'"
@@ -464,31 +447,29 @@
 
                         <!-- Gross Vehicle Mass -->
                         <div>
-                            <InputLabel class="text-black" for="gross_vehicle_mass">Gross Vehicle Mass:</InputLabel>
+                            <InputLabel class="text-black" for="gross_vehicle_mass">{{ _t('createvehicle','step2_gross_vehicle_mass_label') }}</InputLabel>
                             <div class="relative">
                                 <input class="w-full" type="number" v-model="form.gross_vehicle_mass"
                                     id="gross_vehicle_mass" />
                                 <span
-                                    class="absolute bg-white text-[0.875rem] top-[50%] right-3 translate-y-[-50%] text-customLightGrayColor font-medium">in
-                                    (lb's)</span>
+                                    class="absolute bg-white text-[0.875rem] top-[50%] right-3 translate-y-[-50%] text-customLightGrayColor font-medium">{{ _t('createvehicle','step2_gross_vehicle_mass_unit') }}</span>
                             </div>
                         </div>
 
                         <!-- Vehicle Height -->
                         <div>
-                            <InputLabel class="text-black" for="vehicle_height">Vehicle Height:</InputLabel>
+                            <InputLabel class="text-black" for="vehicle_height">{{ _t('createvehicle','step2_vehicle_height_label') }}</InputLabel>
                             <div class="relative">
                                 <input class="w-full" type="number" v-model="form.vehicle_height" id="vehicle_height" />
                                 <span
-                                    class="absolute bg-white text-[0.875rem] top-[50%] right-3 translate-y-[-50%] text-customLightGrayColor font-medium">in
-                                    m(meters)</span>
+                                    class="absolute bg-white text-[0.875rem] top-[50%] right-3 translate-y-[-50%] text-customLightGrayColor font-medium">{{ _t('createvehicle','step2_vehicle_height_unit') }}</span>
                             </div>
 
                         </div>
 
                         <!-- Dealer Cost -->
                         <div class="col-span-2">
-                            <InputLabel class="text-black" for="dealer_cost">Dealer Cost:</InputLabel>
+                            <InputLabel class="text-black" for="dealer_cost">{{ _t('createvehicle','step2_dealer_cost_label') }}</InputLabel>
                             <input class="" type="number" v-model="form.dealer_cost" id="dealer_cost" required />
                             <span v-if="errors.dealer_cost" class="text-red-500 max-[768px]:text-[0.75rem] text-sm">{{
                                 errors.dealer_cost }}</span>
@@ -496,10 +477,8 @@
 
                         <!-- Phone Number -->
                         <div class="col-span-2">
-                            <InputLabel class="text-black mb-0" for="phone_number">Phone Number:</InputLabel>
-                            <span class="text-[0.675rem] mb-[1rem] inline-block">Indicate the telephone number on which
-                                you wish
-                                to receive your requests</span>
+                            <InputLabel class="text-black mb-0" for="phone_number">{{ _t('createvehicle','step2_phone_number_label') }}</InputLabel>
+                            <span class="text-[0.675rem] mb-[1rem] inline-block">{{ _t('createvehicle','step2_phone_number_tooltip') }}</span>
                             <input class="w-full" type="text" v-model="form.phone_number" id="phone_number" required
                                 placeholder="+91" />
                             <span v-if="errors.phone_number" class="text-red-500 max-[768px]:text-[0.75rem] text-sm">{{
@@ -510,9 +489,9 @@
                     <div
                         class="buttons flex justify-between gap-[1.5rem] mt-[2rem] pb-[4rem] max-[768px]:px-[1.5rem] max-[768px]:pb-0">
                         <button class="button-secondary w-[15rem] max-[768px]:w-[10rem]" @click="prevStep">
-                            Back
+                            {{ _t('createvehicle','back_button') }}
                         </button>
-                        <PrimaryButton class="w-[15rem] max-[768px]:w-[10rem]" type="button" @click="nextStep">Next
+                        <PrimaryButton class="w-[15rem] max-[768px]:w-[10rem]" type="button" @click="nextStep">{{ _t('createvehicle','next_button') }}
                         </PrimaryButton>
                     </div>
                 </div>
@@ -524,30 +503,28 @@
                         class="col text-customPrimaryColor-foreground w-[70%] max-[768px]:w-full max-[768px]:px-[1.5rem] p-[2rem] border-b-[2px]">
                         <img :src="warningSign" alt="" class="max-[768px]:w-[35px]" />
                         <h4 class="text-[1.5rem] font-medium max-[768px]:text-[1.2rem] max-[768px]:py-2">
-                            Data protection
+                            {{ _t('createvehicle','data_protection_title') }}
                         </h4>
                         <p class="max-[768px]:text-[0.875rem]">
-                            Temporary documents Your vehicle's licence plate and
-                            value remain strictly confidential and secure.
+                            {{ _t('createvehicle','step0_temporary_documents_description') }}
                         </p>
                     </div>
                     <div
                         class="col text-customPrimaryColor-foreground w-[70%] max-[768px]:w-full max-[768px]:px-[1.5rem] p-[2rem] border-b-[2px]">
                         <img :src="warningSign" alt="" class="max-[768px]:w-[35px]" />
-                        <h4 class="text-[1.5rem] font-medium max-[768px]:text-[1.2rem] max-[768px]:py-2">Information
+                        <h4 class="text-[1.5rem] font-medium max-[768px]:text-[1.2rem] max-[768px]:py-2"> {{ _t('createvehicle','information_title') }}
                         </h4>
                         <p class="max-[768px]:text-[0.875rem]">
-                            All this information is necessary so that we can
-                            secure your listing.
+                            {{ _t('createvehicle','step2_information_secure_listing') }}
                         </p>
                     </div>
                     <div
                         class="col text-customPrimaryColor-foreground w-[70%] max-[768px]:w-full max-[768px]:px-[1.5rem] p-[2rem]">
                         <img :src="warningSign" alt="" class="max-[768px]:w-[35px]" />
                         <h4 class="text-[1.5rem] font-medium max-[768px]:text-[1.2rem] max-[768px]:py-2">
-                            Need some help?
+                            {{ _t('createvehicle','need_help_title') }}
                         </h4>
-                        <p class="max-[768px]:text-[0.875rem]">Contact us on: +91 524555552</p>
+                        <p class="max-[768px]:text-[0.875rem]">{{ _t('createvehicle','contact_us_on') }}</p>
                     </div>
                 </div>
                 <img :src="circleImg" alt="" class="absolute top-[-30%] right-[-15%]" />
@@ -565,16 +542,13 @@
                     </Link>
                     <AuthenticatedHeaderLayout class="hidden max-[768px]:block max-[768px]:border-b-0" />
                     <div class="mt-[5rem] max-[768px]:mt-0 max-[768px]:px-[1.5rem] max-[768px]:mb-1">
-                        <span class="text-[1.75rem] font-medium max-[768px]:text-[1.2rem]">Parking Address of the
-                            Vehicle</span>
-                        <p class="max-[768px]:text-[0.875rem] max-[768px]:mt-2">This allows renters to search by
-                            location</p>
+                        <span class="text-[1.75rem] font-medium max-[768px]:text-[1.2rem]">{{ _t('createvehicle','step3_parking_address_title') }}</span>
+                        <p class="max-[768px]:text-[0.875rem] max-[768px]:mt-2">{{ _t('createvehicle','step3_parking_address_description') }}</p>
                     </div>
                     <div class="max-[768px]:px-[1.5rem]">
-                        <span class="text-[0.875rem] text-black font-medium">Search your address</span>
+                        <span class="text-[0.875rem] text-black font-medium">{{ _t('createvehicle','step3_search_address_label') }}</span>
                         <p class="text-[0.675rem] max-[768px]:mt-2">
-                            If you can't find your address, please indicate the
-                            closest address that can be geolocated.
+                            {{ _t('createvehicle','step3_search_address_tooltip') }}
                         </p>
                     </div>
                     <div class="search-container">
@@ -585,9 +559,9 @@
                     <div
                         class="buttons flex justify-between gap-[1.5rem] mt-[2rem] pb-[4rem] max-[768px]:pb-0 max-[768px]:px-[1.5rem]">
                         <button class="button-secondary w-[15rem] max-[768px]:w-[10rem]" @click="prevStep">
-                            Back
+                           {{ _t('createvehicle','back_button') }}
                         </button>
-                        <PrimaryButton class="w-[15rem] max-[768px]:w-[10rem]" type="button" @click="nextStep">Next
+                        <PrimaryButton class="w-[15rem] max-[768px]:w-[10rem]" type="button" @click="nextStep">{{ _t('createvehicle','next_button') }}
                         </PrimaryButton>
                     </div>
                 </div>
@@ -599,21 +573,19 @@
                         class="col text-customPrimaryColor-foreground w-[70%] p-[2rem] border-b-[2px] max-[768px]:w-full">
                         <img :src="warningSign" alt="" class="max-[768px]:w-[35px]" />
                         <h4 class="text-[1.5rem] font-medium max-[768px]:text-[1.2rem] max-[768px]:py-2">
-                            Data protection
+                            {{ _t('createvehicle','data_protection_title') }}
                         </h4>
                         <p class="max-[768px]:text-[0.875rem]">
-                            Your exact address will never be shared on our site.
-                            It will be sent directly to the renter after
-                            confirmation of a booking.
+                           {{ _t('createvehicle','step3_data_protection_address_sharing') }}
                         </p>
                     </div>
 
                     <div class="col text-customPrimaryColor-foreground w-[70%] max-[768px]:w-full p-[2rem]">
                         <img :src="warningSign" alt="" class="max-[768px]:w-[35px]" />
                         <h4 class="text-[1.5rem] font-medium max-[768px]:text-[1.2rem] max-[768px]:py-2">
-                            Need some help?
+                            {{ _t('createvehicle','need_help_title') }}
                         </h4>
-                        <p class="max-[768px]:text-[0.875rem]">Contact us on: +91 524555552</p>
+                        <p class="max-[768px]:text-[0.875rem]">{{ _t('createvehicle','contact_us_on') }}</p>
                     </div>
                 </div>
                 <img :src="circleImg" alt="" class="absolute top-[-30%] right-[-15%]" />
@@ -631,36 +603,34 @@
                     </Link>
                     <AuthenticatedHeaderLayout class="hidden max-[768px]:block max-[768px]:border-b-0" />
                     <div class="mt-[5rem] max-[768px]:mt-0 max-[768px]:px-[1.5rem]">
-                        <span class="text-[1.75rem] font-medium max-[768px]:text-[1.2rem]">Hire Cost of Your
-                            Vehicle</span>
+                        <span class="text-[1.75rem] font-medium max-[768px]:text-[1.2rem]"> {{ _t('createvehicle','step4_hire_cost_title') }}</span>
                         <div class="mt-[2rem]">
-                            <span class="text-[0.875rem] text-black font-medium">Basic daily rate</span>
+                            <span class="text-[0.875rem] text-black font-medium">{{ _t('createvehicle','step4_basic_daily_rate_label') }}</span>
                             <p class="text-[0.75rem] font-medium mb-[1rem] text-customLightGrayColor">
-                                Once your listing is created, you can modify the
-                                daily rate prices according to the season
+                                {{ _t('createvehicle','step4_basic_daily_rate_tooltip') }}
                             </p>
                         </div>
                     </div>
                     <div class="">
                         <div class="border-[1px] p-8 flex flex-col gap-8 max-[768px]:p-0">
                             <div class="price-section">
-                                <h3 class="text-lg font-semibold mb-4">Select Your Pricing Options</h3>
+                                <h3 class="text-lg font-semibold mb-4">{{ _t('createvehicle','step4_pricing_options_title') }}</h3>
 
                                 <!-- Price Type Selection -->
                                 <div class="mb-8 max-[768px]:mb-3">
-                                    <InputLabel class="text-black mb-2">Preferred Price Types:</InputLabel>
+                                    <InputLabel class="text-black mb-2">{{ _t('createvehicle','step4_preferred_price_types_label') }}</InputLabel>
                                     <div class="flex gap-4">
                                         <label class="flex items-center">
                                             <input type="checkbox" v-model="selectedTypes.day" class="mr-2" />
-                                            Daily
+                                            {{ _t('createvehicle','step4_price_type_daily') }}
                                         </label>
                                         <label class="flex items-center">
                                             <input type="checkbox" v-model="selectedTypes.week" class="mr-2" />
-                                            Weekly
+                                            {{ _t('createvehicle','step4_price_type_weekly') }}
                                         </label>
                                         <label class="flex items-center">
                                             <input type="checkbox" v-model="selectedTypes.month" class="mr-2" />
-                                            Monthly
+                                          {{ _t('createvehicle','step4_price_type_monthly') }}
                                         </label>
                                     </div>
                                 </div>
@@ -668,29 +638,28 @@
                                 <div class="grid grid-cols-2 gap-10 max-[768px]:grid-cols-1 max-[768px]:gap-2">
                                     <!-- Daily Price Slider -->
                                     <div v-if="selectedTypes.day" class="price-slider  bg-gray-50 p-5 rounded-[12px]">
-                                        <label for="price_per_day" class="font-medium">Daily Rate:</label>
+                                        <label for="price_per_day" class="font-medium">{{ _t('createvehicle','step4_daily_rate_label') }}</label>
                                         <div class="slider-container">
                                             <input type="number" v-model="form.price_per_day" id="price_per_day"
                                                 class="mt-1 block w-32 rounded-md border-gray-300 shadow-sm px-2" />
                                         </div>
                                         <div class="mt-2 flex flex-col items-end gap-1">
-                                            <span class="text-sm text-gray-600">Recommended: €67-€74/day</span>
+                                            <span class="text-sm text-gray-600">{{ _t('createvehicle','step4_daily_rate_recommended') }}</span>
                                         </div>
                                     </div>
 
                                     <!-- Weekly Price Slider -->
                                     <div v-if="selectedTypes.week" class="price-slider  bg-gray-50 p-5 rounded-[12px]">
-                                        <label for="price_per_week" class="font-medium">Weekly Rate:</label>
+                                        <label for="price_per_week" class="font-medium">{{ _t('createvehicle','step4_weekly_rate_label') }}</label>
                                         <div class="slider-container">
                                             <input type="number" v-model="form.price_per_week" id="price_per_week"
                                                 class="mt-1 block w-32 rounded-md border-gray-300 shadow-sm px-2" />
                                         </div>
                                         <div class="mt-2 flex flex-col items-end gap-1">
-                                            <span class="text-sm text-gray-600">Recommended: €400-€450/week</span>
+                                            <span class="text-sm text-gray-600">{{ _t('createvehicle','step4_weekly_rate_recommended') }}</span>
                                         </div>
                                         <div class="mt-2 flex flex-col">
-                                            <label for="weekly_discount" class="text-sm font-medium mb-0">Weekly
-                                                Discount
+                                            <label for="weekly_discount" class="text-sm font-medium mb-0">{{ _t('createvehicle','step4_weekly_discount_label') }}
                                             </label>
                                             <input type="number" v-model="form.weekly_discount" id="weekly_discount"
                                                 class="mt-1 block w-32 rounded-md border-gray-300 shadow-sm px-2" />
@@ -700,17 +669,16 @@
 
                                     <!-- Monthly Price Slider -->
                                     <div v-if="selectedTypes.month" class="price-slider  bg-gray-50 p-5 rounded-[12px]">
-                                        <label for="price_per_month" class="font-medium">Monthly Rate:</label>
+                                        <label for="price_per_month" class="font-medium">{{ _t('createvehicle','step4_monthly_rate_label') }}</label>
                                         <div class="slider-container">
                                             <input type="number" v-model="form.price_per_month" id="price_per_month"
                                                 class="mt-1 block w-32 rounded-md border-gray-300 shadow-sm px-2" />
                                         </div>
                                         <div class="mt-2 flex flex-col items-end gap-1">
-                                            <span class="text-sm text-gray-600">Recommended: €1500-€1800/month</span>
+                                            <span class="text-sm text-gray-600">{{ _t('createvehicle','step4_monthly_rate_recommended') }}</span>
                                         </div>
                                         <div class="mt-2 flex flex-col">
-                                            <label for="monthly_discount" class="text-sm font-medium mb-0">Monthly
-                                                Discount
+                                            <label for="monthly_discount" class="text-sm font-medium mb-0">{{ _t('createvehicle','step4_monthly_discount_label') }}
                                             </label>
                                             <input type="number" v-model="form.monthly_discount" id="monthly_discount"
                                                 class="mt-1 block w-32 rounded-md border-gray-300 shadow-sm px-2" />
@@ -725,12 +693,9 @@
                         </div>
                         <!-- Security Deposit -->
                         <div class="mt-[2rem] max-[768px]:px-[1.5rem]">
-                            <InputLabel for="security_deposit" class="text-black mb-0">Guarantee Deposit:</InputLabel>
+                            <InputLabel for="security_deposit" class="text-black mb-0">{{ _t('createvehicle','step4_security_deposit_label') }}</InputLabel>
                             <span
-                                class="text-[0.75rem] font-medium mb-[1rem] inline-block text-customLightGrayColor">This
-                                is the deposit that the renter must give
-                                you no later than the first day of the rental
-                                period.</span>
+                                class="text-[0.75rem] font-medium mb-[1rem] inline-block text-customLightGrayColor">{{ _t('createvehicle','step4_security_deposit_tooltip') }}</span>
                             <input type="number" v-model="form.security_deposit" id="security_deposit" required min="0"
                                 step="0.01" />
                         </div>
@@ -741,17 +706,17 @@
 
                     <!-- Guidelines -->
                     <div class="max-[768px]:px-[1.5rem]">
-                        <InputLabel for="brand">Guidelines:</InputLabel>
+                        <InputLabel for="brand">{{ _t('createvehicle','step4_guidelines_label') }}</InputLabel>
                         <textarea type="text" v-model="form.guidelines" id="guidelines" required
-                            placeholder="Enter vehicle guidelines" class="w-full min-h-[150px]" />
+                            :placeholder="_t('createvehicle','step4_guidelines_placeholder')" class="w-full min-h-[150px]" />
                     </div>
 
                     <div class="time-selector p-6 bg-gray-50 rounded-xl shadow-lg w-full">
-                        <p>Choose Your Pickup and Return Time for the vehicle</p>
+                        <p>{{ _t('createvehicle','step4_pickup_return_time_title') }}</p>
                         <div class="grid grid-cols-2 gap-10 max-[768px]:gap-5">
                             <!-- Pickup Times Section -->
                             <div>
-                                <label class="block text-lg font-semibold text-gray-800 mb-2">Pickup Times</label>
+                                <label class="block text-lg font-semibold text-gray-800 mb-2">{{ _t('createvehicle','step4_pickup_times_label') }}</label>
                                 <div v-for="(time, index) in form.pickup_times" :key="'pickup-' + index"
                                     class="time-input-group flex items-center mb-3">
                                     <input type="time" v-model="form.pickup_times[index]"
@@ -776,13 +741,13 @@
                                 </span>
                                 <button type="button" @click="addPickupTime"
                                     class="w-full py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition duration-200 font-medium shadow-md">
-                                    + Add Pickup Time
+                                    {{ _t('createvehicle','step4_add_pickup_time_button') }}
                                 </button>
                             </div>
 
                             <div>
                                 <!-- Return Times Section -->
-                                <label class="block text-lg font-semibold text-gray-800 mb-2">Return Times</label>
+                                <label class="block text-lg font-semibold text-gray-800 mb-2">{{ _t('createvehicle','step4_return_times_label') }}</label>
                                 <div v-for="(time, index) in form.return_times" :key="'return-' + index"
                                     class="time-input-group flex items-center mb-3">
                                     <input type="time" v-model="form.return_times[index]"
@@ -807,7 +772,7 @@
                                 </span>
                                 <button type="button" @click="addReturnTime"
                                     class="w-full py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition duration-200 font-medium shadow-md">
-                                    + Add Return Time
+                                    {{ _t('createvehicle','step4_add_return_time_button') }}
                                 </button>
                             </div>
                         </div>
@@ -817,33 +782,33 @@
 
                     <!-- Payment Method -->
                     <div class="mt-[2rem] max-[768px]:px-[1.5rem] max-[768px]:mt-[1rem]">
-                        <InputLabel class="text-black text-[1.15rem]">Payment methods for the security deposit
+                        <InputLabel class="text-black text-[1.15rem]">{{ _t('createvehicle','step4_payment_methods_title') }}
                         </InputLabel>
                         <span class="text-[0.75rem] font-medium mb-[1rem] inline-block text-customLightGrayColor">
-                            Select the payment method(s) you accept
+                            {{ _t('createvehicle','step4_payment_methods_description') }}
                         </span>
                         <div class="flex gap-[1rem] max-[768px]:flex-wrap">
                             <InputLabel>
                                 <input type="checkbox" v-model="form.payment_method" value="credit_card"
                                     id="credit_card" />
-                                <label class="ml-2" for="credit_card">Credit Card</label>
+                                <label class="ml-2" for="credit_card">{{ _t('createvehicle','step4_payment_method_credit_card') }}</label>
                             </InputLabel>
                             <InputLabel>
                                 <input type="checkbox" v-model="form.payment_method" value="cheque" id="cheque" />
-                                <label class="ml-2" for="cheque">Cheque</label>
+                                <label class="ml-2" for="cheque">{{ _t('createvehicle','step4_payment_method_cheque') }}</label>
                             </InputLabel>
                             <InputLabel>
                                 <input type="checkbox" v-model="form.payment_method" value="bank_wire" id="bank_wire" />
-                                <label class="ml-2" for="bank_wire">Bank Wire</label>
+                                <label class="ml-2" for="bank_wire">{{ _t('createvehicle','step4_payment_method_bank_wire') }}</label>
                             </InputLabel>
                             <InputLabel>
                                 <input type="checkbox" v-model="form.payment_method" value="cryptocurrency"
                                     id="cryptocurrency" />
-                                <label class="ml-2" for="cryptocurrency">Cryptocurrency</label>
+                                <label class="ml-2" for="cryptocurrency">{{ _t('createvehicle','step4_payment_method_cryptocurrency') }}</label>
                             </InputLabel>
                             <InputLabel>
                                 <input type="checkbox" v-model="form.payment_method" value="cash" id="cash" />
-                                <label class="ml-2" for="cash">Cash</label>
+                                <label class="ml-2" for="cash">{{ _t('createvehicle','step4_payment_method_cash') }}</label>
                             </InputLabel>
                         </div>
                         <span v-if="errors.payment_method" class="text-red-500 max-[768px]:text-[0.75rem] text-sm">{{
@@ -851,22 +816,21 @@
                         }}</span>
 
                         <div v-if="paymentMethodsArray.length > 0">
-                            <p class="text-[0.85rem] text-green-400">Selected Payment Methods:</p>
+                            <p class="text-[0.85rem] text-green-400">{{ _t('createvehicle','step4_selected_payment_methods_label') }}</p>
                             <ul class="mt-2 flex items-center gap-3">
                                 <li class="bg-green-200 px-2 rounded-[12px]" v-for="method in paymentMethodsArray"
                                     :key="method">{{ method }}</li>
                             </ul>
                         </div>
                         <div v-else>
-                            <p class="text-[0.85rem] text-red-500 max-[768px]:text-[0.75rem]">No payment methods
-                                selected yet</p>
+                            <p class="text-[0.85rem] text-red-500 max-[768px]:text-[0.75rem]">{{ _t('createvehicle','step4_no_payment_methods_selected') }}</p>
                         </div>
                     </div>
 
                     <div class="max-[768px]:px-[1.5rem]">
                         <!-- Limited Kilometer Section -->
                         <div class="mb-6">
-                            <h3 class="font-medium text-lg mb-2">Kilometer Limitations</h3>
+                            <h3 class="font-medium text-lg mb-2">{{ _t('createvehicle','step4_kilometer_limitations_title') }}</h3>
 
                             <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
                                 <!-- Per Day Limitation -->
@@ -874,13 +838,13 @@
                                     <div class="flex gap-2 items-center mb-0">
                                         <input type="checkbox" v-model="form.limited_km_per_day"
                                             id="limited_km_per_day" />
-                                        <InputLabel for="limited_km_per_day" class="!mb-0">Limited Kilometer Per Day
+                                        <InputLabel for="limited_km_per_day" class="!mb-0">{{ _t('createvehicle','step4_limited_km_per_day_label') }}
                                         </InputLabel>
                                     </div>
 
                                     <div v-if="form.limited_km_per_day">
                                         <div class="mb-0">
-                                            <InputLabel for="limited_km_per_day_range">KM Limit</InputLabel>
+                                            <InputLabel for="limited_km_per_day_range">{{ _t('createvehicle','step4_km_limit_label') }}</InputLabel>
                                             <input type="number" v-model="form.limited_km_per_day_range"
                                                 id="limited_km_per_day_range" step="0.01" class="w-full" />
                                             <span v-if="errors.limited_km_per_day_range" class="text-red-500 text-sm">
@@ -889,7 +853,7 @@
                                         </div>
 
                                         <div>
-                                            <InputLabel for="price_per_km_per_day">Price Per Extra KM</InputLabel>
+                                            <InputLabel for="price_per_km_per_day">{{ _t('createvehicle','step4_price_per_extra_km_label') }}</InputLabel>
                                             <input type="number" v-model="form.price_per_km_per_day"
                                                 id="price_per_km_per_day" class="w-full" />
                                             <span v-if="errors.price_per_km_per_day" class="text-red-500 text-sm">
@@ -904,13 +868,13 @@
                                     <div class="flex gap-2 items-center mb-0">
                                         <input type="checkbox" v-model="form.limited_km_per_week"
                                             id="limited_km_per_week" />
-                                        <InputLabel for="limited_km_per_week" class="!mb-0">Limited Kilometer Per Week
+                                        <InputLabel for="limited_km_per_week" class="!mb-0">{{ _t('createvehicle','step4_limited_km_per_week_label') }}
                                         </InputLabel>
                                     </div>
 
                                     <div v-if="form.limited_km_per_week">
                                         <div class="mb-0">
-                                            <InputLabel for="limited_km_per_week_range">KM Limit</InputLabel>
+                                            <InputLabel for="limited_km_per_week_range">{{ _t('createvehicle','step4_km_limit_label') }}</InputLabel>
                                             <input type="number" v-model="form.limited_km_per_week_range"
                                                 id="limited_km_per_week_range" step="0.01" class="w-full" />
                                             <span v-if="errors.limited_km_per_week_range" class="text-red-500 text-sm">
@@ -919,7 +883,7 @@
                                         </div>
 
                                         <div>
-                                            <InputLabel for="price_per_km_per_week">Price Per Extra KM</InputLabel>
+                                            <InputLabel for="price_per_km_per_week">{{ _t('createvehicle','step4_price_per_extra_km_label') }}</InputLabel>
                                             <input type="number" v-model="form.price_per_km_per_week"
                                                 id="price_per_km_per_week" class="w-full" />
                                             <span v-if="errors.price_per_km_per_week" class="text-red-500 text-sm">
@@ -934,13 +898,13 @@
                                     <div class="flex gap-2 items-center mb-0">
                                         <input type="checkbox" v-model="form.limited_km_per_month"
                                             id="limited_km_per_month" />
-                                        <InputLabel for="limited_km_per_month" class="!mb-0">Limited Kilometer Per Month
+                                        <InputLabel for="limited_km_per_month" class="!mb-0">{{ _t('createvehicle','step4_limited_km_per_month_label') }}
                                         </InputLabel>
                                     </div>
 
                                     <div v-if="form.limited_km_per_month">
                                         <div class="mb-0">
-                                            <InputLabel for="limited_km_per_month_range">KM Limit</InputLabel>
+                                            <InputLabel for="limited_km_per_month_range">{{ _t('createvehicle','step4_km_limit_label') }}</InputLabel>
                                             <input type="number" v-model="form.limited_km_per_month_range"
                                                 id="limited_km_per_month_range" step="0.01" class="w-full" />
                                             <span v-if="errors.limited_km_per_month_range" class="text-red-500 text-sm">
@@ -949,7 +913,7 @@
                                         </div>
 
                                         <div>
-                                            <InputLabel for="price_per_km_per_month">Price Per Extra KM</InputLabel>
+                                            <InputLabel for="price_per_km_per_month">{{ _t('createvehicle','step4_price_per_extra_km_label') }}</InputLabel>
                                             <input type="number" v-model="form.price_per_km_per_month"
                                                 id="price_per_km_per_month" class="w-full" />
                                             <span v-if="errors.price_per_km_per_month" class="text-red-500 text-sm">
@@ -963,7 +927,7 @@
 
                         <!-- Cancellation Policy Section -->
                         <div class="mb-6">
-                            <h3 class="font-medium text-lg mb-2">Cancellation Policy</h3>
+                            <h3 class="font-medium text-lg mb-2">{{ _t('createvehicle','step4_cancellation_policy_title') }}</h3>
 
                             <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
                                 <!-- Per Day Cancellation -->
@@ -971,12 +935,11 @@
                                     <div class="flex gap-2 items-center mb-0">
                                         <input type="checkbox" v-model="form.cancellation_available_per_day"
                                             id="cancellation_available_per_day" />
-                                        <InputLabel for="cancellation_available_per_day" class="!mb-0">Cancellation
-                                            Available Per Day</InputLabel>
+                                        <InputLabel for="cancellation_available_per_day" class="!mb-0">{{ _t('createvehicle','step4_cancellation_available_per_day_label') }}</InputLabel>
                                     </div>
 
                                     <div v-if="form.cancellation_available_per_day">
-                                        <InputLabel for="cancellation_available_per_day_date">Days Prior Notice Required
+                                        <InputLabel for="cancellation_available_per_day_date">{{ _t('createvehicle','step4_days_prior_notice_label') }}
                                         </InputLabel>
                                         <input type="number" v-model="form.cancellation_available_per_day_date"
                                             id="cancellation_available_per_day_date" class="w-full" />
@@ -992,13 +955,12 @@
                                     <div class="flex gap-2 items-center mb-0">
                                         <input type="checkbox" v-model="form.cancellation_available_per_week"
                                             id="cancellation_available_per_week" />
-                                        <InputLabel for="cancellation_available_per_week" class="!mb-0">Cancellation
-                                            Available Per Week</InputLabel>
+                                        <InputLabel for="cancellation_available_per_week" class="!mb-0">{{ _t('createvehicle','step4_cancellation_available_per_week_label') }}</InputLabel>
                                     </div>
 
                                     <div v-if="form.cancellation_available_per_week">
-                                        <InputLabel for="cancellation_available_per_week_date">Days Prior Notice
-                                            Required</InputLabel>
+                                        <InputLabel for="cancellation_available_per_week_date">{{ _t('createvehicle','step4_days_prior_notice_label') }}
+                                            </InputLabel>
                                         <input type="number" v-model="form.cancellation_available_per_week_date"
                                             id="cancellation_available_per_week_date" class="w-full" />
                                         <span v-if="errors.cancellation_available_per_week_date"
@@ -1013,13 +975,11 @@
                                     <div class="flex gap-2 items-center mb-0">
                                         <input type="checkbox" v-model="form.cancellation_available_per_month"
                                             id="cancellation_available_per_month" />
-                                        <InputLabel for="cancellation_available_per_month" class="!mb-0">Cancellation
-                                            Available Per Month</InputLabel>
+                                        <InputLabel for="cancellation_available_per_month" class="!mb-0">{{ _t('createvehicle','step4_cancellation_available_per_month_label') }}</InputLabel>
                                     </div>
 
                                     <div v-if="form.cancellation_available_per_month">
-                                        <InputLabel for="cancellation_available_per_month_date">Days Prior Notice
-                                            Required</InputLabel>
+                                        <InputLabel for="cancellation_available_per_month_date">{{ _t('createvehicle','step4_days_prior_notice_label') }}</InputLabel>
                                         <input type="number" v-model="form.cancellation_available_per_month_date"
                                             id="cancellation_available_per_month_date" class="w-full" />
                                         <span v-if="errors.cancellation_available_per_month_date"
@@ -1034,10 +994,10 @@
 
                         <!-- Driver Requirements Section -->
                         <div>
-                            <h3 class="font-medium text-lg mb-2">Driver Requirements</h3>
+                            <h3 class="font-medium text-lg mb-2">{{ _t('createvehicle','step4_driver_requirements_title') }}</h3>
 
                             <div class="max-w-xs">
-                                <InputLabel for="minimum_driver_age">Minimum Driver Age</InputLabel>
+                                <InputLabel for="minimum_driver_age">{{ _t('createvehicle','step4_minimum_driver_age_label') }}</InputLabel>
                                 <input type="number" v-model="form.minimum_driver_age" id="minimum_driver_age"
                                     class="w-full" />
                                 <span v-if="errors.minimum_driver_age" class="text-red-500 text-sm">
@@ -1053,9 +1013,9 @@
                     <div
                         class="buttons flex justify-between gap-[1.5rem] mt-[2rem] pb-[4rem] max-[768px]:pb-0 max-[768px]:px-[1.5rem]">
                         <button class="button-secondary w-[15rem] max-[768px]:w-[10rem]" @click="prevStep">
-                            Back
+                           {{ _t('createvehicle','back_button') }}
                         </button>
-                        <PrimaryButton class="w-[15rem] max-[768px]:w-[10rem]" type="button" @click="nextStep">Next
+                        <PrimaryButton class="w-[15rem] max-[768px]:w-[10rem]" type="button" @click="nextStep">{{ _t('createvehicle','next_button') }}
                         </PrimaryButton>
                     </div>
                 </div>
@@ -1066,29 +1026,26 @@
                     <div
                         class="col text-customPrimaryColor-foreground w-[70%] p-[2rem] border-b-[2px] max-[768px]:w-full">
                         <img :src="warningSign" alt="" class="max-[768px]:w-[35px]" />
-                        <h4 class="text-[1.5rem] font-medium max-[768px]:text-[1.2rem] max-[768px]:py-2">Tip</h4>
+                        <h4 class="text-[1.5rem] font-medium max-[768px]:text-[1.2rem] max-[768px]:py-2">{{ _t('createvehicle','tip_title') }}</h4>
                         <p class="max-[768px]:text-[0.875rem]">
-                            The rate indicated corresponds to the daily rate of
-                            the hire. Please note your remuneration will
-                            correspond to 85% of the rate applied for the hire.
+                            {{ _t('createvehicle','step4_tip_remuneration') }}
                         </p>
                     </div>
                     <div
                         class="col text-customPrimaryColor-foreground w-[70%] max-[768px]:w-full p-[2rem] border-b-[2px]">
                         <img :src="warningSign" alt="" class="max-[768px]:w-[35px]" />
-                        <h4 class="text-[1.5rem] font-medium max-[768px]:text-[1.2rem] max-[768px]:py-2">Information
+                        <h4 class="text-[1.5rem] font-medium max-[768px]:text-[1.2rem] max-[768px]:py-2">{{ _t('createvehicle','information_title') }}
                         </h4>
                         <p class="max-[768px]:text-[0.875rem]">
-                            All this information is necessary so that we can
-                            secure your listing.
+                            {{ _t('createvehicle','step2_information_secure_listing') }}
                         </p>
                     </div>
                     <div class="col text-customPrimaryColor-foreground w-[70%] max-[768px]:w-full p-[2rem]">
                         <img :src="warningSign" alt="" class="max-[768px]:w-[35px]" />
                         <h4 class="text-[1.5rem] font-medium max-[768px]:text-[1.2rem] max-[768px]:py-2">
-                            Need some help?
+                            {{ _t('createvehicle','need_help_title') }}
                         </h4>
-                        <p class="max-[768px]:text-[0.875rem]">Contact us on: +91 524555552</p>
+                        <p class="max-[768px]:text-[0.875rem]">{{ _t('createvehicle','contact_us_on') }}</p>
                     </div>
                 </div>
                 <img :src="circleImg" alt="" class="absolute top-[-30%] right-[-15%]" />
@@ -1108,18 +1065,14 @@
                     <AuthenticatedHeaderLayout class="hidden max-[768px]:block max-[768px]:border-b-0" />
 
                     <div class="mt-10 max-[768px]:mt-0 max-[768px]:px-[1.5rem]">
-                        <span class="text-[1.7rem] font-medium text-gray-800 max-[768px]:text-[1.2rem]">Choose Your
-                            Protection Plan</span>
+                        <span class="text-[1.7rem] font-medium text-gray-800 max-[768px]:text-[1.2rem]">{{ _t('createvehicle','step5_protection_plan_title') }}</span>
                         <p class="text-gray-600 mt-5 max-[768px]:text-[0.875rem]">
-                            You can <strong>select Exclsive plan or can proceed with Free plan by default</strong>.
-                            These plans will be visible to the customers and customers can select one of these methods
-                            during the booking process.
-                            <strong class="underline text-red-500 max-[768px]:text-[0.75rem]">Click below Plan card to
-                                select or edit the Plan
-                                price </strong>
+                            {{ _t('createvehicle','step5_protection_plan_description') }} <strong>{{ _t('createvehicle','step5_protection_plan_description2') }}</strong>.
+                            {{ _t('createvehicle','step5_protection_plan_description3') }}
+                            <strong class="underline text-red-500 max-[768px]:text-[0.75rem]">{{ _t('createvehicle','step5_protection_plan_description4') }}</strong>
                         </p>
                     </div>
-                    <!-- Protection Plan -->
+
                     <!-- Protection Plan -->
                     <div class="protection_plan flex gap-10 mt-4 max-[768px]:flex-col max-[768px]:px-[1.5rem]">
                         <div v-for="plan in plans" :key="plan.id" class="cursor-pointer col w-[45%] rounded-[20px] border-[1px] border-[#153B4F] p-5 flex flex-col gap-5 
@@ -1159,7 +1112,7 @@
                                 @click.stop="togglePlanSelection(plan)" :class="{
                                     'bg-[#016501]': selectedPlans.some(p => p.id === plan.id),
                                 }">
-                                {{selectedPlans.some(p => p.id === plan.id) ? 'Selected' : 'Select'}}
+                                {{selectedPlans.some(p => p.id === plan.id) ? _t('createvehicle','step5_plan_selected_button') : _t('createvehicle','step5_plan_select_button')}}
                             </button>
 
                             <div class="checklist features">
@@ -1178,45 +1131,45 @@
                     <Dialog :open="isEditDialogOpen" @update:open="isEditDialogOpen = $event">
                         <DialogContent class="max-h-[90vh] overflow-y-auto p-4">
                             <DialogHeader>
-                                <DialogTitle>Edit Protection Plan</DialogTitle>
+                                <DialogTitle>{{ _t('createvehicle','step5_edit_plan_dialog_title') }}</DialogTitle>
                                 <DialogDescription>
-                                    Make changes to the plan details below.
+                                    {{ _t('createvehicle','step5_edit_plan_dialog_description') }}
                                 </DialogDescription>
                             </DialogHeader>
 
                             <div class="grid gap-4 py-4">
                                 <div class="space-y-2">
-                                    <label for="plan-type" class="text-sm font-medium">Plan Type</label>
+                                    <label for="plan-type" class="text-sm font-medium">{{ _t('createvehicle','step5_plan_type_label') }}</label>
                                     <input id="plan-type" v-model="editPlanData.plan_type"
-                                        class="w-full p-2 border rounded-md" placeholder="Enter plan type" />
+                                        class="w-full p-2 border rounded-md" :placeholder="_t('createvehicle','step5_plan_type_placeholder')" />
                                 </div>
 
                                 <div class="space-y-2">
-                                    <label for="plan-value" class="text-sm font-medium">Plan Value</label>
+                                    <label for="plan-value" class="text-sm font-medium">{{ _t('createvehicle','step5_plan_value_label') }}</label>
                                     <input id="plan-value" v-model="editPlanData.plan_value" type="number"
-                                        class="w-full p-2 border rounded-md" placeholder="Enter plan value" />
+                                        class="w-full p-2 border rounded-md" :placeholder="_t('createvehicle','step5_plan_value_placeholder')" />
                                 </div>
 
                                 <div class="space-y-2">
-                                    <label for="plan-description" class="text-sm font-medium">Plan Description</label>
+                                    <label for="plan-description" class="text-sm font-medium">{{ _t('createvehicle','step5_plan_description_label') }}</label>
                                     <textarea id="plan-description" v-model="editPlanData.plan_description"
-                                        class="w-full p-2 border rounded-md" placeholder="Enter plan description"
+                                        class="w-full p-2 border rounded-md" :placeholder="_t('createvehicle','step5_plan_description_placeholder')"
                                         rows="3"></textarea>
                                 </div>
 
                                 <div class="space-y-2">
                                     <div class="flex items-center justify-between">
-                                        <label class="text-sm font-medium">Plan Features</label>
+                                        <label class="text-sm font-medium">{{ _t('createvehicle','step5_plan_features_label') }}</label>
                                         <button @click="addFeature"
                                             class="text-sm px-2 py-1 bg-blue-500 text-white rounded hover:bg-blue-600">
-                                            Add Feature
+                                            {{ _t('createvehicle','step5_add_feature_button') }}
                                         </button>
                                     </div>
 
                                     <div v-for="(feature, index) in editPlanData.features" :key="index"
                                         class="flex gap-2">
                                         <input v-model="editPlanData.features[index]"
-                                            class="w-full p-2 border rounded-md" placeholder="Enter feature" />
+                                            class="w-full p-2 border rounded-md" :placeholder="_t('createvehicle','step5_feature_placeholder')" />
                                         <button @click="removeFeature(index)"
                                             class="p-2 text-red-500 hover:bg-red-50 rounded-md">
                                             <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20"
@@ -1237,11 +1190,11 @@
                             <DialogFooter>
                                 <button @click="isEditDialogOpen = false"
                                     class="px-4 py-2 border rounded-md hover:bg-gray-100">
-                                    Cancel
+                                    {{ _t('createvehicle','cancel_button') }}
                                 </button>
                                 <button @click="saveEditedPlan"
                                     class="px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 ml-2">
-                                    Save Changes
+                                    {{ _t('createvehicle','save_changes_button') }}
                                 </button>
                             </DialogFooter>
                         </DialogContent>
@@ -1249,9 +1202,9 @@
                     <div
                         class="buttons flex justify-between gap-[1.5rem] mt-[2rem] pb-[4rem] max-[768px]:pb-0 max-[768px]:px-[1.5rem]">
                         <button class="button-secondary w-[15rem] max-[768px]:w-[10rem]" @click="prevStep">
-                            Back
+                            {{ _t('createvehicle','back_button') }}
                         </button>
-                        <PrimaryButton class="w-[15rem] max-[768px]:w-[10rem]" type="button" @click="nextStep">Next
+                        <PrimaryButton class="w-[15rem] max-[768px]:w-[10rem]" type="button" @click="nextStep">{{ _t('createvehicle','next_button') }}
                         </PrimaryButton>
                     </div>
                 </div>
@@ -1263,29 +1216,26 @@
                     <div
                         class="col text-customPrimaryColor-foreground w-[70%] max-[768px]:w-full p-[2rem] border-b-[2px]">
                         <img :src="warningSign" alt="" class="max-[768px]:w-[35px]" />
-                        <h4 class="text-[1.5rem] font-medium max-[768px]:text-[1.2rem] max-[768px]:py-2">Tip</h4>
+                        <h4 class="text-[1.5rem] font-medium max-[768px]:text-[1.2rem] max-[768px]:py-2">{{ _t('createvehicle','tip_title') }}</h4>
                         <p class="max-[768px]:text-[0.875rem]">
-                            The rate indicated corresponds to the daily rate of the hire.
-                            Please note your remuneration will correspond to 85% of the rate
-                            applied for the hire.
+                            {{ _t('createvehicle','step4_tip_remuneration') }}
                         </p>
                     </div>
                     <div
                         class="col text-customPrimaryColor-foreground w-[70%] max-[768px]:w-full p-[2rem] border-b-[2px]">
                         <img :src="warningSign" alt="" class="max-[768px]:w-[35px]" />
-                        <h4 class="text-[1.5rem] font-medium max-[768px]:text-[1.2rem] max-[768px]:py-2">Information
+                        <h4 class="text-[1.5rem] font-medium max-[768px]:text-[1.2rem] max-[768px]:py-2">{{ _t('createvehicle','information_title') }}
                         </h4>
                         <p class="max-[768px]:text-[0.875rem]">
-                            All this information is necessary so that we can secure your
-                            listing.
+                            {{ _t('createvehicle','step2_information_secure_listing') }}
                         </p>
                     </div>
                     <div class="col text-customPrimaryColor-foreground w-[70%] max-[768px]:w-full p-[2rem]">
                         <img :src="warningSign" alt="" class="max-[768px]:w-[35px]" />
                         <h4 class="text-[1.5rem] font-medium max-[768px]:text-[1.2rem] max-[768px]:py-2">
-                            Need some help?
+                            {{ _t('createvehicle','need_help_title') }}
                         </h4>
-                        <p class="max-[768px]:text-[0.875rem]">Contact us on: +91 524555552</p>
+                        <p class="max-[768px]:text-[0.875rem]">{{ _t('createvehicle','contact_us_on') }}</p>
                     </div>
                 </div>
                 <img :src="circleImg" alt="" class="absolute top-[-30%] right-[-15%]" />
@@ -1305,10 +1255,9 @@
                     <AuthenticatedHeaderLayout class="hidden max-[768px]:block max-[768px]:border-b-0" />
                     <div class="mt-[5rem] mb-[2rem] max-[768px]:mt-0 max-[768px]:px-[1.5rem] max-[768px]:mb-0">
                         <p class="text-[1.75rem] font-medium max-[768px]:text-[1.2rem]">
-                            Select Addons
+                            {{ _t('createvehicle','step6_addons_title') }}
                         </p>
-                        <span class="text-[0.75rem] text-customLightGrayColor font-medium">Select addons for your
-                            vehicle and set prices</span>
+                        <span class="text-[0.75rem] text-customLightGrayColor font-medium">{{ _t('createvehicle','step6_addons_description') }}</span>
                     </div>
                     <div v-for="addon in addons" :key="addon.id"
                         class="flex justify-between gap-10 items-center border rounded-lg p-4 max-[768px]:mx-[1.5rem] max-[768px]:flex-col">
@@ -1324,12 +1273,12 @@
                         <!-- Right Section: Price & Quantity -->
                         <div class="flex  gap-4 items-end">
                             <div class="flex flex-col items-start">
-                                <label for="price" class="text-sm text-gray-500">Price Per Day (€)</label>
+                                <label for="price" class="text-sm text-gray-500">{{ _t('createvehicle','step6_price_per_day_label') }}</label>
                                 <input type="number" v-model="addonPrices[addon.id]"
                                     class="w-24 px-2 py-1 border rounded max-[768px]:!py-2" />
                             </div>
                             <div>
-                                <p class="text-sm text-gray-500 mb-2">Quantity</p>
+                                <p class="text-sm text-gray-500 mb-2">{{ _t('createvehicle','step6_quantity_label') }}</p>
                                 <div class="flex items-center gap-2">
                                     <button @click="decrementQuantity(addon.id)"
                                         class="px-2 py-1 border rounded">-</button>
@@ -1346,9 +1295,9 @@
                     <div
                         class="buttons flex justify-between gap-[1.5rem] mt-[2rem] pb-[4rem] max-[768px]:pb-0 max-[768px]:px-[1.5rem]">
                         <button class="button-secondary w-[15rem] max-[768px]:w-[10rem]" @click="prevStep">
-                            Back
+                            {{ _t('createvehicle','back_button') }}
                         </button>
-                        <PrimaryButton class="w-[15rem] max-[768px]:w-[10rem]" type="button" @click="nextStep">Next
+                        <PrimaryButton class="w-[15rem] max-[768px]:w-[10rem]" type="button" @click="nextStep">{{ _t('createvehicle','next_button') }}
                         </PrimaryButton>
                     </div>
                 </div>
@@ -1359,29 +1308,26 @@
                     <div
                         class="col text-customPrimaryColor-foreground w-[70%] max-[768px]:w-full p-[2rem] border-b-[2px]">
                         <img :src="warningSign" alt="" class="max-[768px]:w-[35px]" />
-                        <h4 class="text-[1.5rem] font-medium max-[768px]:text-[1.2rem] max-[768px]:py-2">Tip</h4>
+                        <h4 class="text-[1.5rem] font-medium max-[768px]:text-[1.2rem] max-[768px]:py-2">{{ _t('createvehicle','tip_title') }}</h4>
                         <p class="max-[768px]:text-[0.875rem]">
-                            The rate indicated corresponds to the daily rate of the hire.
-                            Please note your remuneration will correspond to 85% of the rate
-                            applied for the hire.
+                            {{ _t('createvehicle','step4_tip_remuneration') }}
                         </p>
                     </div>
                     <div
                         class="col text-customPrimaryColor-foreground w-[70%] max-[768px]:w-full p-[2rem] border-b-[2px]">
                         <img :src="warningSign" alt="" class="max-[768px]:w-[35px]" />
-                        <h4 class="text-[1.5rem] font-medium max-[768px]:text-[1.2rem] max-[768px]:py-2">Information
+                        <h4 class="text-[1.5rem] font-medium max-[768px]:text-[1.2rem] max-[768px]:py-2">{{ _t('createvehicle','information_title') }}
                         </h4>
                         <p class="max-[768px]:text-[0.875rem]">
-                            All this information is necessary so that we can secure your
-                            listing.
+                            {{ _t('createvehicle','step2_information_secure_listing') }}
                         </p>
                     </div>
                     <div class="col text-customPrimaryColor-foreground w-[70%] max-[768px]:w-full p-[2rem]">
                         <img :src="warningSign" alt="" class="max-[768px]:w-[35px]" />
                         <h4 class="text-[1.5rem] font-medium max-[768px]:text-[1.2rem] max-[768px]:py-2">
-                            Need some help?
+                            {{ _t('createvehicle','need_help_title') }}
                         </h4>
-                        <p class="max-[768px]:text-[0.875rem]">Contact us on: +91 524555552</p>
+                        <p class="max-[768px]:text-[0.875rem]">{{ _t('createvehicle','contact_us_on') }}</p>
                     </div>
                 </div>
                 <img :src="circleImg" alt="" class="absolute top-[-30%] right-[-15%]" />
@@ -1400,21 +1346,20 @@
                     <AuthenticatedHeaderLayout class="hidden max-[768px]:block max-[768px]:border-b-0" />
                     <div class="mt-[5rem] mb-[2rem] max-[768px]:mt-0 max-[768px]:px-[1.5rem]">
                         <p class="text-[1.75rem] font-medium max-[768px]:text-[1.2rem]">
-                            Upload Vehicle Photos
+                            {{ _t('createvehicle','step7_upload_photos_title') }}
                         </p>
 
-                        <span class="text-[0.75rem] text-customLightGrayColor font-medium">Upload at least 5 photos of
-                            your vehicle</span>
+                        <span class="text-[0.75rem] text-customLightGrayColor font-medium">{{ _t('createvehicle','step7_upload_photos_description') }}</span>
                     </div>
                     <!-- Image Upload Section -->
                     <div class="flex flex-col gap-2 justify-center items-center border-[2px] rounded-[0.5rem] border-customPrimaryColor border-dashed py-10 transition-colors duration-200"
                         @dragenter="onDragEnter" @dragleave="onDragLeave" @dragover="onDragOver" @drop="onDrop">
                         <img :src="uploadIcon" alt="" class="max-[768px]:w-[25px]" />
-                        <p class="max-[768px]:hidden">Drag & Drop to Upload Photos</p>
-                        <p class="text-customLightGrayColor font-medium max-[768px]:hidden">or</p>
+                        <p class="max-[768px]:hidden">{{ _t('createvehicle','step7_drag_drop_text') }}</p>
+                        <p class="text-customLightGrayColor font-medium max-[768px]:hidden">{{ _t('createvehicle','step7_or_text') }}</p>
                         <label for="images"
                             class="cursor-pointer bg-customPrimaryColor text-white px-4 py-2 rounded hover:bg-opacity-90 transition-colors">
-                            Browse Files
+                            {{ _t('createvehicle','step7_browse_files_button') }}
                         </label>
                         <input type="file" id="images" @change="handleFileUpload" multiple class="hidden"
                             accept="image/*" />
@@ -1431,10 +1376,10 @@
                                 <button v-if="form.primary_image_index !== index"
                                     @click.prevent="setPrimaryImage(index)"
                                     class="absolute bottom-1 left-1/2 transform -translate-x-1/2 bg-blue-500 text-white text-xs px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity">
-                                    Set as Primary
+                                    {{ _t('createvehicle','step7_set_primary_button') }}
                                 </button>
                                 <span v-if="form.primary_image_index === index" 
-                                      class="absolute top-1 left-1 bg-blue-500 text-white text-xs px-2 py-1 rounded">Primary</span>
+                                      class="absolute top-1 left-1 bg-blue-500 text-white text-xs px-2 py-1 rounded">{{ _t('createvehicle','step7_primary_badge') }}</span>
                             </div>
                         </div>
                         <p class="mt-2 text-sm" :class="form.images.length < 5 ? 'text-red-500' : 'text-green-500'">{{
@@ -1444,11 +1389,11 @@
                     <div
                         class="buttons flex justify-between mt-[2rem] pb-[4rem] max-[768px]:pb-0 max-[768px]:px-[1.5rem]">
                         <button class="button-secondary gap-[1.5rem] w-[15rem] max-[768px]:w-[10rem]" @click="prevStep">
-                            Back
+                            {{ _t('createvehicle','back_button') }}
                         </button>
                         <PrimaryButton class="w-[15rem] max-[768px]:w-[10rem] disabled:opacity-50" type="button"
                             @click="submit" :disabled="!isImageCountValid">
-                            Submit</PrimaryButton>
+                            {{ _t('createvehicle','submit_button') }}</PrimaryButton>
                     </div>
                 </div>
             </div>
@@ -1458,19 +1403,18 @@
                     <div
                         class="col text-customPrimaryColor-foreground w-[70%] max-[768px]:w-full p-[2rem] border-b-[2px]">
                         <img :src="warningSign" alt="" class="max-[768px]:w-[35px]" />
-                        <h4 class="text-[1.5rem] font-medium max-[768px]:text-[1.2rem] max-[768px]:py-2">Information
+                        <h4 class="text-[1.5rem] font-medium max-[768px]:text-[1.2rem] max-[768px]:py-2">{{ _t('createvehicle','information_title') }}
                         </h4>
                         <p class="max-[768px]:text-[0.875rem]">
-                            All this information is necessary so that we can
-                            secure your listing.
+                           {{ _t('createvehicle','step2_information_secure_listing') }}
                         </p>
                     </div>
                     <div class="col text-customPrimaryColor-foreground w-[70%] max-[768px]:w-full p-[2rem]">
                         <img :src="warningSign" alt="" class="max-[768px]:w-[35px]" />
                         <h4 class="text-[1.5rem] font-medium max-[768px]:text-[1.2rem] max-[768px]:py-2">
-                            Need some help?
+                            {{ _t('createvehicle','need_help_title') }}
                         </h4>
-                        <p class="max-[768px]:text-[0.875rem]">Contact us on: +91 524555552</p>
+                        <p class="max-[768px]:text-[0.875rem]">{{ _t('createvehicle','contact_us_on') }}</p>
                     </div>
                 </div>
                 <img :src="circleImg" alt="" class="absolute top-[-30%] right-[-15%]" />
@@ -1486,14 +1430,14 @@
             <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-red-500 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
             </svg>
-            <h3 class="text-lg font-medium">Invalid Upload</h3>
+            <h3 class="text-lg font-medium">{{ _t('createvehicle','invalid_upload_title') }}</h3>
         </div>
         <p class="mb-4">{{ errorMessage }}</p>
         <div class="flex justify-end">
             <button 
                 @click="closeErrorDialog"
                 class="bg-customPrimaryColor text-white px-4 py-2 rounded hover:bg-opacity-90 transition-colors">
-                OK
+                {{ _t('createvehicle','ok_button') }}
             </button>
         </div>
     </div>
@@ -2675,6 +2619,10 @@ select {
 
 :deep(.dp__menu) {
     border-radius: 0.5rem;
+}
+
+::-webkit-scrollbar{
+ display: none;
 }
 
 
