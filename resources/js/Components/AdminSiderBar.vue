@@ -44,7 +44,8 @@ import {
   User2Icon,
   Star,
   CameraIcon,
-  ShieldPlusIcon
+  ShieldPlusIcon,
+  Target // Added Target icon for SEO
 } from 'lucide-vue-next'
 import { onMounted, ref } from 'vue';
 
@@ -222,6 +223,17 @@ const data = {
         {
           title: 'All Blogs',
           url: '/blogs',
+        },
+      ],
+    },
+    {
+      title: 'SEO Management',
+      url: '#',
+      icon: Target,
+      items: [
+        {
+          title: 'SEO Meta Tags',
+          url: '/admin/seo-meta', // Route for SeoMeta index
         },
       ],
     },

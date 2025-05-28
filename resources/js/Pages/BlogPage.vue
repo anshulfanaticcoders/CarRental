@@ -1,5 +1,6 @@
 <template>
     <AuthenticatedHeaderLayout />
+    <Head title="Blog"/>
     <div class="h-[28rem] blog_header py-[2rem] bg-no-repeat bg-center relative flex justify-center items-center"
         :style="{ backgroundImage: `url(${blogbgimage})`, backgroundSize: 'cover' }">
         <div class="overlay absolute bg-[#0000002a] h-full w-full top-0"></div>
@@ -66,7 +67,7 @@
 
 
 <script setup>
-import { Link, usePage } from '@inertiajs/vue3'; // Added usePage
+import { Head, Link, usePage } from '@inertiajs/vue3'; // Added usePage
 import goIcon from "../../assets/goIcon.svg";
 import calendarIcon from '../../assets/CalendarBlank.svg';
 import AuthenticatedHeaderLayout from '@/Layouts/AuthenticatedHeaderLayout.vue';

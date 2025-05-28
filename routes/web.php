@@ -23,6 +23,7 @@ use App\Http\Controllers\Admin\UsersReportController;
 use App\Http\Controllers\Admin\VehicleAddonsController;
 use App\Http\Controllers\Admin\VehicleDashboardController;
 use App\Http\Controllers\Admin\DamageProtectionController as AdminDamageProtectionController; // Added for clarity
+use App\Http\Controllers\Admin\SeoMetaController;
 use App\Http\Controllers\Admin\VendorsReportController;
 use App\Http\Controllers\Auth\EmailValidationController;
 use App\Http\Controllers\Auth\VerifyEmailController;
@@ -278,6 +279,11 @@ Route::middleware(['auth', 'role:admin'])->group(function () {
 
     // Damage Protection Records for Admin
     Route::get('/damage-protection-records', [AdminDamageProtectionController::class, 'index'])->name('admin.damage-protection.index');
+
+    // SEO Meta Settings
+    Route::resource('admin/seo-meta', SeoMetaController::class)
+         ->parameters(['seo-meta' => 'seo_meta']) // Ensures parameter name is 'seo_meta' for route model binding
+         ->names('admin.seo-meta');
 });
 
 
