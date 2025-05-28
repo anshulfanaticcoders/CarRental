@@ -141,7 +141,8 @@
                                         leave-from-class="transform opacity-100 translate-y-0"
                                         leave-to-class="transform opacity-0 -translate-y-4">
                                         <div v-show="showLocationPicker"
-                                            class="location-picker-container border border-gray-200 rounded-lg shadow-sm overflow-hidden">
+                                            class="location-picker-container border border-gray-200 rounded-lg shadow-sm overflow-hidden"
+                                            @click.prevent>
                                             <LocationPicker :onLocationSelect="handleLocationSelect" />
                                         </div>
                                     </transition>
