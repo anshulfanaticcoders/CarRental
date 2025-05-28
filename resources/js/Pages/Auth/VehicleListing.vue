@@ -1519,11 +1519,12 @@
                                 <button
                                     class="remove-btn absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
                                     @click.prevent="removeImage(index)">✖</button>
-                                <button v-if="form.primary_image_index !== index"
-                                    @click.prevent="setPrimaryImage(index)"
-                                    class="absolute bottom-1 left-1/2 transform -translate-x-1/2 bg-blue-500 text-white text-xs px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity">
-                                    {{ _t('createvehicle', 'step7_set_primary_button') }}
-                                </button>
+                                                        <button v-if="form.primary_image_index !== index"
+                            @click.prevent="setPrimaryImage(index)"
+                            class="absolute bottom-1 left-1/2 transform -translate-x-1/2 bg-blue-500 text-white text-xs px-2 py-1 rounded transition-opacity md:opacity-0 group-hover:md:opacity-100 max-[767px]:opacity-100">
+                            {{ _t('createvehicle', 'step7_set_primary_button') }}
+                        </button>
+
                                 <span v-if="form.primary_image_index === index"
                                     class="absolute top-1 left-1 bg-blue-500 text-white text-xs px-2 py-1 rounded">{{
                                         _t('createvehicle','step7_primary_badge') }}</span>
@@ -2151,6 +2152,9 @@ const validateAndAddFiles = (files) => {
         showErrorDialog.value = true;
     } else if (validFiles.length > 0) {
         form.images = [...form.images, ...validFiles];
+        if (form.primary_image_index === null && form.images.length > 0) {
+        form.primary_image_index = 0;
+    }
     }
 };
 
