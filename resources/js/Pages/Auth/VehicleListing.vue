@@ -8,21 +8,24 @@
 
     <Head title="Vehicle Listing" />
     <div v-if="currentStep === 0" class="overflow-x-hidden vehicle-listing h-screen md:overflow-y-hidden relative">
-        <div class="absolute inset-0 flex justify-between max-[768px]:relative max-[768px]:flex-col max-[768px]:h-auto max-[768px]:gap-10">
+        <div
+            class="absolute inset-0 flex justify-between max-[768px]:relative max-[768px]:flex-col max-[768px]:h-auto max-[768px]:gap-10">
             <div class="column h-full w-[50%] flex items-center justify-center max-[768px]:w-full  max-[768px]:h-auto">
                 <div class="flex flex-col gap-5 w-[90%] max-[768px]:w-full">
                     <Link href="/" class="max-[768px]:hidden absolute top-[2rem]">
                     <ApplicationLogo />
                     </Link>
                     <AuthenticatedHeaderLayout class="hidden max-[768px]:block max-[768px]:border-b-0" />
-                    <span class="text-[3rem] font-medium max-[768px]:text-[1.2rem] max-[768px]:px-[1.5rem]">{{ _t('createvehicle','step0_create_listing_title') }}</span>
+                    <span class="text-[3rem] font-medium max-[768px]:text-[1.2rem] max-[768px]:px-[1.5rem]">{{
+                        _t('createvehicle','step0_create_listing_title') }}</span>
                     <p
                         class="text-customLightGrayColor text-[1.15rem] max-[768px]:text-[0.875rem] max-[768px]:px-[1.5rem] w-[70%] max-[768px]:w-full">
-                        {{ _t('createvehicle','step0_create_listing_description') }}
+                        {{ _t('createvehicle', 'step0_create_listing_description') }}
                     </p>
                     <div
                         class="buttons flex justify-between gap-[1.5rem] max-[768px]:text-[0.875rem] max-[768px]:px-[1.5rem] w-[30rem]">
-                        <PrimaryButton class="w-[40%] max-[768px]:w-fit" type="button" @click="nextStep">{{ _t('createvehicle','step0_create_a_listing_button') }}</PrimaryButton>
+                        <PrimaryButton class="w-[40%] max-[768px]:w-fit" type="button" @click="nextStep">{{
+                            _t('createvehicle','step0_create_a_listing_button') }}</PrimaryButton>
                     </div>
                 </div>
             </div>
@@ -32,18 +35,18 @@
                     <div class="col text-customPrimaryColor-foreground w-[70%] max-[768px]:w-full">
                         <img :src="warningSign" alt="" class="max-[768px]:w-[35px]" />
                         <h4 class="text-[1.5rem] font-medium max-[768px]:text-[1.2rem] max-[768px]:py-2">
-                            {{ _t('createvehicle','step0_temporary_documents_title') }}
+                            {{ _t('createvehicle', 'step0_temporary_documents_title') }}
                         </h4>
                         <p class="max-[768px]:text-[0.875rem]">
-                            {{ _t('createvehicle','step0_temporary_documents_description') }}
+                            {{ _t('createvehicle', 'step0_temporary_documents_description') }}
                         </p>
                     </div>
                     <div class="col text-customPrimaryColor-foreground w-[70%] max-[768px]:w-full">
                         <img :src="warningSign" alt="" class="max-[768px]:w-[35px]" />
                         <h4 class="text-[1.5rem] font-medium max-[768px]:text-[1.2rem] max-[768px]:py-2">
-                            {{ _t('createvehicle','need_help_title') }}
+                            {{ _t('createvehicle', 'need_help_title') }}
                         </h4>
-                        <p class="max-[768px]:text-[0.875rem]">{{ _t('createvehicle','contact_us_on') }}</p>
+                        <p class="max-[768px]:text-[0.875rem]">{{ _t('createvehicle', 'contact_us_on') }}</p>
                     </div>
                 </div>
                 <img :src="vendorBgimage" alt=""
@@ -64,10 +67,11 @@
                     </Link>
                     <AuthenticatedHeaderLayout class="hidden max-[768px]:block max-[768px]:border-b-0" />
                     <div class="mt-[3rem] max-[768px]:mt-0 max-[768px]:px-[1.5rem]">
-                        <span class="text-[3rem] font-medium max-[768px]:text-[1.2rem]">{{ _t('createvehicle','step1_vehicle_category_title') }}</span>
+                        <span class="text-[3rem] font-medium max-[768px]:text-[1.2rem]">{{
+                            _t('createvehicle','step1_vehicle_category_title') }}</span>
                         <p
                             class="text-customLightGrayColor text-[1.15rem] max-[768px]:text-[0.875rem] max-[768px]:mt-2">
-                            {{ _t('createvehicle','step1_vehicle_category_placeholder') }}
+                            {{ _t('createvehicle', 'step1_vehicle_category_placeholder') }}
                         </p>
                     </div>
                     <!-- Vehicle Category Dropdown -->
@@ -92,48 +96,65 @@
                     </div>
 
                     <div class="mt-[1rem] max-[768px]:px-[1.5rem]">
-                        <span class="text-[3rem] font-medium max-[768px]:text-[1.2rem]">{{ _t('createvehicle','step1_vehicle_details_title') }}</span>
+                        <span class="text-[3rem] font-medium max-[768px]:text-[1.2rem]">{{
+                            _t('createvehicle','step1_vehicle_details_title') }}</span>
                         <p
                             class="text-customLightGrayColor text-[1.15rem] max-[768px]:text-[0.875rem] max-[768px]:mt-2">
-                           {{ _t('createvehicle','step1_vehicle_details_placeholder') }}
+                            {{ _t('createvehicle', 'step1_vehicle_details_placeholder') }}
                         </p>
                     </div>
 
                     <div class="grid grid-cols-3 gap-5 max-[768px]:grid-cols-2 max-[768px]:px-[1.5rem]">
                         <!-- Brand -->
                         <div>
-                            <InputLabel for="brand">{{ _t('createvehicle','step1_brand_label') }}</InputLabel>
+                            <InputLabel for="brand">{{ _t('createvehicle', 'step1_brand_label') }}</InputLabel>
                             <input type="text" v-model="form.brand" id="brand" required
-                                :placeholder="_t('createvehicle','step1_brand_placeholder')" />
+                                :placeholder="_t('createvehicle', 'step1_brand_placeholder')" />
                             <span v-if="errors.brand" class="text-red-500 max-[768px]:text-[0.75rem] text-sm">{{
                                 errors.brand }}</span>
                         </div>
 
                         <!-- Model -->
                         <div>
-                            <InputLabel for="model">{{ _t('createvehicle','step1_model_label') }}</InputLabel>
+                            <InputLabel for="model">{{ _t('createvehicle', 'step1_model_label') }}</InputLabel>
                             <input type="text" v-model="form.model" id="model" required
-                                :placeholder="_t('createvehicle','step1_model_placeholder')" />
+                                :placeholder="_t('createvehicle', 'step1_model_placeholder')" />
                             <span v-if="errors.model" class="text-red-500 max-[768px]:text-[0.75rem] text-sm">{{
                                 errors.model }}</span>
                         </div>
 
                         <!-- Color -->
                         <div>
-                            <InputLabel for="color">{{ _t('createvehicle','step1_color_label') }}</InputLabel>
-                            <input type="text" v-model="form.color" id="color" required
-                                :placeholder="_t('createvehicle','step1_color_placeholder')" />
+                            <InputLabel for="color">{{ _t('createvehicle', 'step1_color_label') }}</InputLabel>
+                            <Select v-model="form.color" id="color" required>
+                                <SelectTrigger class="w-full p-[1.7rem] border-customLightGrayColor rounded-[12px]">
+                                    <SelectValue
+                                        :placeholder="form.color || _t('createvehicle', 'step1_color_placeholder')" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectGroup>
+                                        <SelectLabel>{{ _t('createvehicle', 'step1_color_label') }}</SelectLabel>
+                                        <!-- You might need a new translation key here -->
+                                        <SelectItem v-for="colorOption in vehicleColors" :key="colorOption.value"
+                                            :value="colorOption.value">
+                                            {{ colorOption.name }}
+                                        </SelectItem>
+                                    </SelectGroup>
+                                </SelectContent>
+                            </Select>
                             <span v-if="errors.color" class="text-red-500 max-[768px]:text-[0.75rem] text-sm">{{
                                 errors.color }}</span>
                         </div>
 
+
                         <!-- Mileage -->
                         <div>
-                            <InputLabel for="mileage">{{ _t('createvehicle','step1_mileage_label') }}</InputLabel>
+                            <InputLabel for="mileage">{{ _t('createvehicle', 'step1_mileage_label') }}</InputLabel>
                             <div class="relative">
                                 <input type="number" v-model="form.mileage" id="mileage" required />
                                 <span
-                                    class="absolute bg-white text-[0.875rem] top-[50%] right-3 translate-y-[-50%] text-customLightGrayColor font-medium">{{ _t('createvehicle','step1_mileage_unit') }}</span>
+                                    class="absolute bg-white text-[0.875rem] top-[50%] right-3 translate-y-[-50%] text-customLightGrayColor font-medium">{{
+                                        _t('createvehicle','step1_mileage_unit') }}</span>
                                 <span v-if="errors.mileage" class="text-red-500 max-[768px]:text-[0.75rem] text-sm">{{
                                     errors.mileage }}</span>
                             </div>
@@ -141,16 +162,20 @@
 
                         <!-- Transmission -->
                         <div>
-                            <InputLabel for="transmission">{{ _t('createvehicle','step1_transmission_label') }}</InputLabel>
+                            <InputLabel for="transmission">{{ _t('createvehicle', 'step1_transmission_label') }}
+                            </InputLabel>
                             <Select v-model="form.transmission">
                                 <SelectTrigger class="w-full p-[1.7rem] border-customLightGrayColor rounded-[12px]">
                                     <SelectValue :placeholder="form.transmission || 'Select transmission type'" />
                                 </SelectTrigger>
                                 <SelectContent>
                                     <SelectGroup>
-                                        <SelectLabel>{{ _t('createvehicle','step1_transmission_select_label') }}</SelectLabel>
-                                        <SelectItem value="manual">{{ _t('createvehicle','step1_transmission_manual') }}</SelectItem>
-                                        <SelectItem value="automatic">{{ _t('createvehicle','step1_transmission_automatic') }}</SelectItem>
+                                        <SelectLabel>{{ _t('createvehicle', 'step1_transmission_select_label') }}
+                                        </SelectLabel>
+                                        <SelectItem value="manual">{{ _t('createvehicle', 'step1_transmission_manual') }}
+                                        </SelectItem>
+                                        <SelectItem value="automatic">{{
+                                            _t('createvehicle','step1_transmission_automatic') }}</SelectItem>
                                     </SelectGroup>
                                 </SelectContent>
                             </Select>
@@ -159,18 +184,22 @@
 
                         <!-- Fuel -->
                         <div>
-                            <InputLabel for="fuel">{{ _t('createvehicle','step1_fuel_label') }}</InputLabel>
+                            <InputLabel for="fuel">{{ _t('createvehicle', 'step1_fuel_label') }}</InputLabel>
                             <Select v-model="form.fuel">
                                 <SelectTrigger class="w-full p-[1.7rem] border-customLightGrayColor rounded-[12px]">
                                     <SelectValue :placeholder="form.fuel || 'Select fuel type'" />
                                 </SelectTrigger>
                                 <SelectContent>
                                     <SelectGroup>
-                                        <SelectLabel>{{ _t('createvehicle','step1_fuel_select_label') }}</SelectLabel>
-                                        <SelectItem value="petrol">{{ _t('createvehicle','step1_fuel_petrol') }}</SelectItem>
-                                        <SelectItem value="diesel">{{ _t('createvehicle','step1_fuel_diesel') }}</SelectItem>
-                                        <SelectItem value="electric">{{ _t('createvehicle','step1_fuel_electric') }}</SelectItem>
-                                        <SelectItem value="hybrid">{{ _t('createvehicle','step1_fuel_hybrid') }}</SelectItem>
+                                        <SelectLabel>{{ _t('createvehicle', 'step1_fuel_select_label') }}</SelectLabel>
+                                        <SelectItem value="petrol">{{ _t('createvehicle', 'step1_fuel_petrol') }}
+                                        </SelectItem>
+                                        <SelectItem value="diesel">{{ _t('createvehicle', 'step1_fuel_diesel') }}
+                                        </SelectItem>
+                                        <SelectItem value="electric">{{ _t('createvehicle', 'step1_fuel_electric') }}
+                                        </SelectItem>
+                                        <SelectItem value="hybrid">{{ _t('createvehicle', 'step1_fuel_hybrid') }}
+                                        </SelectItem>
                                     </SelectGroup>
                                 </SelectContent>
                             </Select>
@@ -179,14 +208,16 @@
 
                         <!-- Seating Capacity -->
                         <div>
-                            <InputLabel for="seating_capacity">{{ _t('createvehicle','step1_seating_capacity_label') }}</InputLabel>
+                            <InputLabel for="seating_capacity">{{ _t('createvehicle', 'step1_seating_capacity_label') }}
+                            </InputLabel>
                             <Select v-model="form.seating_capacity">
                                 <SelectTrigger class="w-full p-[1.7rem] border-customLightGrayColor rounded-[12px]">
                                     <SelectValue :placeholder="form.seating_capacity || 'Select seating capacity'" />
                                 </SelectTrigger>
                                 <SelectContent>
                                     <SelectGroup>
-                                        <SelectLabel>{{ _t('createvehicle','step1_seating_capacity_select_label') }}</SelectLabel>
+                                        <SelectLabel>{{ _t('createvehicle', 'step1_seating_capacity_select_label') }}
+                                        </SelectLabel>
                                         <SelectItem v-for="capacity in [1, 2, 3, 4, 5, 6, 7, 8]" :key="capacity"
                                             :value="capacity">
                                             {{ capacity }}
@@ -199,14 +230,14 @@
 
                         <!-- Number of Doors -->
                         <div>
-                            <InputLabel for="number_of_doors">{{ _t('createvehicle','step1_doors_label') }}</InputLabel>
+                            <InputLabel for="number_of_doors">{{ _t('createvehicle', 'step1_doors_label') }}</InputLabel>
                             <Select v-model="form.number_of_doors">
                                 <SelectTrigger class="w-full p-[1.7rem] border-customLightGrayColor rounded-[12px]">
                                     <SelectValue :placeholder="form.number_of_doors || 'Select number of doors'" />
                                 </SelectTrigger>
                                 <SelectContent>
                                     <SelectGroup>
-                                        <SelectLabel>{{ _t('createvehicle','step1_doors_select_label') }}</SelectLabel>
+                                        <SelectLabel>{{ _t('createvehicle', 'step1_doors_select_label') }}</SelectLabel>
                                         <SelectItem v-for="doors in 8" :key="doors" :value="doors">
                                             {{ doors }}
                                         </SelectItem>
@@ -219,14 +250,16 @@
 
                         <!-- Luggage Capacity -->
                         <div>
-                            <InputLabel for="luggage_capacity">{{ _t('createvehicle','step1_luggage_label') }}</InputLabel>
+                            <InputLabel for="luggage_capacity">{{ _t('createvehicle', 'step1_luggage_label') }}
+                            </InputLabel>
                             <Select v-model="form.luggage_capacity">
                                 <SelectTrigger class="w-full p-[1.7rem] border-customLightGrayColor rounded-[12px]">
                                     <SelectValue placeholder="Select luggage capacity" />
                                 </SelectTrigger>
                                 <SelectContent>
                                     <SelectGroup>
-                                        <SelectLabel>{{ _t('createvehicle','step1_luggage_select_label') }}</SelectLabel>
+                                        <SelectLabel>{{ _t('createvehicle', 'step1_luggage_select_label') }}
+                                        </SelectLabel>
                                         <SelectItem v-for="capacity in [0, 1, 2, 3, 4, 5]" :key="capacity"
                                             :value="capacity">
                                             {{ capacity }}
@@ -241,7 +274,7 @@
 
                         <!-- Horsepower -->
                         <div>
-                            <InputLabel for="horsepower">{{ _t('createvehicle','step1_horsepower_label') }}</InputLabel>
+                            <InputLabel for="horsepower">{{ _t('createvehicle', 'step1_horsepower_label') }}</InputLabel>
                             <div class="relative">
                                 <input type="number" v-model="form.horsepower" id="horsepower" required min="0" />
                                 <span
@@ -253,7 +286,7 @@
 
                         <!-- CO2 Emissions -->
                         <div>
-                            <InputLabel for="co2">{{ _t('createvehicle','step1_co2_label') }}</InputLabel>
+                            <InputLabel for="co2">{{ _t('createvehicle', 'step1_co2_label') }}</InputLabel>
                             <div class="relative">
                                 <input type="text" v-model="form.co2" id="co2" required />
                                 <span
@@ -265,17 +298,20 @@
 
                         <!-- Status -->
                         <div>
-                            <InputLabel for="status">{{ _t('createvehicle','step1_status_label') }}</InputLabel>
+                            <InputLabel for="status">{{ _t('createvehicle', 'step1_status_label') }}</InputLabel>
                             <Select v-model="form.status">
                                 <SelectTrigger class="w-full p-[1.7rem] border-customLightGrayColor rounded-[12px]">
                                     <SelectValue placeholder="Select status" />
                                 </SelectTrigger>
                                 <SelectContent>
                                     <SelectGroup>
-                                        <SelectLabel>{{ _t('createvehicle','step1_status_select_label') }}</SelectLabel>
-                                        <SelectItem value="available">{{ _t('createvehicle','step1_status_available') }}</SelectItem>
-                                        <SelectItem value="rented">{{ _t('createvehicle','step1_status_rented') }}</SelectItem>
-                                        <SelectItem value="maintenance">{{ _t('createvehicle','step1_status_maintenance') }}</SelectItem>
+                                        <SelectLabel>{{ _t('createvehicle', 'step1_status_select_label') }}</SelectLabel>
+                                        <SelectItem value="available">{{ _t('createvehicle', 'step1_status_available') }}
+                                        </SelectItem>
+                                        <SelectItem value="rented">{{ _t('createvehicle', 'step1_status_rented') }}
+                                        </SelectItem>
+                                        <SelectItem value="maintenance">{{
+                                            _t('createvehicle','step1_status_maintenance') }}</SelectItem>
                                     </SelectGroup>
                                 </SelectContent>
                             </Select>
@@ -286,38 +322,43 @@
                     <!-- Car Features -->
                     <div class="max-[768px]:px-[1.5rem]">
                         <div class="mt-8">
-                            <span class="text-black mb-2 text-[3rem] font-medium max-[768px]:text-[1.2rem]">{{ _t('createvehicle','step1_features_title') }}</span>
+                            <span class="text-black mb-2 text-[3rem] font-medium max-[768px]:text-[1.2rem]">{{
+                                _t('createvehicle','step1_features_title') }}</span>
                             <p
                                 class="text-customLightGrayColor text-[1.15rem] mb-[2rem] max-[768px]:text-[0.875rem] max-[768px]:mt-2">
-                                {{ _t('createvehicle','step1_features_description') }}
+                                {{ _t('createvehicle', 'step1_features_description') }}
                             </p>
 
                             <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
                                 <div v-if="!form.category_id" class="col-span-2 md:col-span-4">
-                                     <p class="text-gray-500">{{ _t('createvehicle','step1_features_select_category_message') }}</p>
+                                    <p class="text-gray-500">{{
+                                        _t('createvehicle','step1_features_select_category_message') }}</p>
                                 </div>
-                                <div v-else-if="availableFeatures.length === 0 && form.category_id" class="col-span-2 md:col-span-4">
-                                    <p class="text-gray-500">{{ _t('createvehicle','step1_features_no_features_message') }}</p>
+                                <div v-else-if="availableFeatures.length === 0 && form.category_id"
+                                    class="col-span-2 md:col-span-4">
+                                    <p class="text-gray-500">{{ _t('createvehicle', 'step1_features_no_features_message')
+                                        }}</p>
                                 </div>
                                 <!-- Loop through features if category is selected and features are available -->
                                 <div v-else v-for="feature in availableFeatures" :key="feature.id"
                                     class="flex items-center space-x-2 max-[768px]:items-start">
-                                    <input type="checkbox" :id="'feature-' + feature.id" :value="feature.name" 
+                                    <input type="checkbox" :id="'feature-' + feature.id" :value="feature.name"
                                         v-model="form.features"
                                         class="rounded border-gray-300 text-customPrimaryColor focus:ring-customPrimaryColor" />
 
                                     <InputLabel :for="'feature-' + feature.id"
                                         class="mb-0 flex items-center cursor-pointer mt-[6px] max-[768px]:mt-0">
-                                        <img v-if="feature.icon_url" :src="feature.icon_url" :alt="feature.name" class="w-4 h-4 mr-1 inline-block object-contain"/>
+                                        <img v-if="feature.icon_url" :src="feature.icon_url" :alt="feature.name"
+                                            class="w-4 h-4 mr-1 inline-block object-contain" />
                                         {{ feature.name }}
                                     </InputLabel>
                                 </div>
                             </div>
 
                             <!-- Selected Features Display -->
-                             <div v-if="form.features.length > 0" class="mt-4">
+                            <div v-if="form.features.length > 0" class="mt-4">
                                 <p class="text-sm text-gray-600 mb-2">
-                                    {{ _t('createvehicle','step1_features_selected_title') }}
+                                    {{ _t('createvehicle', 'step1_features_selected_title') }}
                                 </p>
                                 <div class="flex flex-wrap gap-2">
                                     <span v-for="featureName in form.features" :key="featureName"
@@ -332,34 +373,39 @@
                     </div>
                     <div class="buttons flex justify-between gap-[1.5rem] pb-[4rem] max-[768px]:px-[1.5rem]">
                         <button class="button-secondary w-[15rem] max-[768px]:w-[10rem]" @click="prevStep">
-                            {{ _t('createvehicle','back_button') }}
+                            {{ _t('createvehicle', 'back_button') }}
                         </button>
-                        <PrimaryButton class="w-[15rem] max-[768px]:w-[10rem]" @click="nextStep">{{ _t('createvehicle','next_button') }}</PrimaryButton>
+                        <PrimaryButton class="w-[15rem] max-[768px]:w-[10rem]" @click="nextStep">{{
+                            _t('createvehicle','next_button') }}</PrimaryButton>
                     </div>
                 </div>
             </div>
-            <div class="column w-[50%] h-full bg-customPrimaryColor relative max-[768px]:w-full max-[768px]:h-auto overflow-hidden">
+            <div
+                class="column w-[50%] h-full bg-customPrimaryColor relative max-[768px]:w-full max-[768px]:h-auto overflow-hidden">
                 <div class="flex flex-col gap-10 items-center h-full justify-center max-[768px]:gap-0">
                     <div
                         class="col text-customPrimaryColor-foreground w-[70%] p-[2rem] border-b-[2px] max-[768px]:w-full">
                         <img :src="warningSign" alt="" class="max-[768px]:w-[35px]" />
-                        <h4 class="text-[1.5rem] font-medium max-[768px]:text-[1.2rem] max-[768px]:py-2">{{ _t('createvehicle','step1_welcome_message_title') }}</h4>
-                        <p class="max-[768px]:text-[0.875rem]">{{ _t('createvehicle','step1_welcome_message_content') }}</p>
+                        <h4 class="text-[1.5rem] font-medium max-[768px]:text-[1.2rem] max-[768px]:py-2">{{
+                            _t('createvehicle','step1_welcome_message_title') }}</h4>
+                        <p class="max-[768px]:text-[0.875rem]">{{ _t('createvehicle', 'step1_welcome_message_content') }}
+                        </p>
                     </div>
                     <div
                         class="col text-customPrimaryColor-foreground w-[70%] p-[2rem] border-b-[2px] max-[768px]:w-full">
                         <img :src="warningSign" alt="" class="max-[768px]:w-[35px]" />
-                        <h4 class="text-[1.5rem] font-medium max-[768px]:text-[1.2rem] max-[768px]:py-2">{{ _t('createvehicle','tip_title') }}</h4>
+                        <h4 class="text-[1.5rem] font-medium max-[768px]:text-[1.2rem] max-[768px]:py-2">{{
+                            _t('createvehicle','tip_title') }}</h4>
                         <p class="max-[768px]:text-[0.875rem]">
-                            {{ _t('createvehicle','step1_tip_registration_certificate') }}
+                            {{ _t('createvehicle', 'step1_tip_registration_certificate') }}
                         </p>
                     </div>
                     <div class="col text-customPrimaryColor-foreground w-[70%] p-[2rem] max-[768px]:w-full">
                         <img :src="warningSign" alt="" class="max-[768px]:w-[35px]" />
                         <h4 class="text-[1.5rem] font-medium max-[768px]:text-[1.2rem] max-[768px]:py-2">
-                            {{ _t('createvehicle','need_help_title') }}
+                            {{ _t('createvehicle', 'need_help_title') }}
                         </h4>
-                        <p class="max-[768px]:text-[0.875rem]">{{ _t('createvehicle','contact_us_on') }}</p>
+                        <p class="max-[768px]:text-[0.875rem]">{{ _t('createvehicle', 'contact_us_on') }}</p>
                     </div>
                     <img :src="circleImg" alt="" class="absolute top-[-30%] right-[-15%]" />
                 </div>
@@ -370,24 +416,29 @@
     <!-- Step-2 -->
     <div v-if="currentStep === 2" class="overflow-x-hidden vehicle-listing h-screen md:overflow-y-hidden relative">
         <div class="absolute inset-0 flex justify-between max-[768px]:relative max-[768px]:flex-col max-[768px]:h-auto">
-            <div class="column overflow-y-auto w-[50%] h-full flex justify-center pb-[4rem] max-[768px]:w-full max-[768px]:h-auto bg-white">
+            <div
+                class="column overflow-y-auto w-[50%] h-full flex justify-center pb-[4rem] max-[768px]:w-full max-[768px]:h-auto bg-white">
                 <div class="flex flex-col gap-5 w-[90%] max-[768px]:w-full">
                     <Link href="/" class="max-[768px]:hidden mt-[2rem]">
                     <ApplicationLogo />
                     </Link>
                     <AuthenticatedHeaderLayout class="hidden max-[768px]:block max-[768px]:border-b-0" />
                     <div class="mt-[5rem] mb-[2rem] max-[768px]:mt-0 max-[768px]:px-[1.5rem] max-[768px]:mb-[1rem]">
-                        <span class="text-[1.75rem] font-medium max-[768px]:text-[1.2rem]">{{ _t('createvehicle','step2_technical_specifications_title') }}</span>
-                        <p class="max-[768px]:text-[0.875rem] max-[768px]:mt-2">{{ _t('createvehicle','step2_technical_specifications_description') }}</p>
+                        <span class="text-[1.75rem] font-medium max-[768px]:text-[1.2rem]">{{
+                            _t('createvehicle','step2_technical_specifications_title') }}</span>
+                        <p class="max-[768px]:text-[0.875rem] max-[768px]:mt-2">{{
+                            _t('createvehicle','step2_technical_specifications_description') }}</p>
                     </div>
                     <div class="grid grid-cols-2 gap-8 max-[768px]:px-[1.5rem] max-[768px]:gap-3 max-[768px]:gap-y-8">
                         <div class="col-span-2">
-                            <InputLabel class="text-black mb-0" for="registration_number">{{ _t('createvehicle','step2_registration_number_label') }}
+                            <InputLabel class="text-black mb-0" for="registration_number">{{
+                                _t('createvehicle','step2_registration_number_label') }}
                             </InputLabel>
-                            <span class="text-[0.675rem] mb-[1rem] inline-block">{{ _t('createvehicle','step2_registration_number_tooltip') }}</span>
+                            <span class="text-[0.675rem] mb-[1rem] inline-block">{{
+                                _t('createvehicle','step2_registration_number_tooltip') }}</span>
                             <input class="w-full" type="text" v-model="form.registration_number"
                                 id="registration_number" required
-                                :placeholder="_t('createvehicle','step2_registration_number_placeholder')" />
+                                :placeholder="_t('createvehicle', 'step2_registration_number_placeholder')" />
                             <span v-if="errors.registration_number"
                                 class="text-red-500 max-[768px]:text-[0.75rem] text-sm">{{
                                     errors.registration_number }}</span>
@@ -395,16 +446,20 @@
 
                         <!-- Registration Country -->
                         <div class="relative w-full">
-                            <InputLabel class="text-black" for="registration_country">{{ _t('createvehicle','step2_registration_country_label') }}</InputLabel>
+                            <InputLabel class="text-black" for="registration_country">{{
+                                _t('createvehicle','step2_registration_country_label') }}</InputLabel>
 
                             <div class="relative">
                                 <Select v-model="form.registration_country">
                                     <SelectTrigger class="w-full p-[1.7rem] border-customLightGrayColor rounded-[12px]">
-                                        <SelectValue :placeholder="_t('createvehicle','step2_registration_country_placeholder')" />
+                                        <SelectValue
+                                            :placeholder="_t('createvehicle', 'step2_registration_country_placeholder')" />
                                     </SelectTrigger>
                                     <SelectContent>
                                         <SelectGroup>
-                                            <SelectLabel>{{ _t('createvehicle','step2_registration_country_select_label') }}</SelectLabel>
+                                            <SelectLabel>{{
+                                                _t('createvehicle','step2_registration_country_select_label') }}
+                                            </SelectLabel>
                                             <SelectItem v-for="country in countries" :key="country.code"
                                                 :value="country.code">
                                                 <div class="flex items-center gap-2">
@@ -432,9 +487,10 @@
 
                         <!-- Registration Date -->
                         <div>
-                            <InputLabel class="text-black" for="registration_date">{{ _t('createvehicle','step2_registration_date_label') }}</InputLabel>
+                            <InputLabel class="text-black" for="registration_date">{{
+                                _t('createvehicle','step2_registration_date_label') }}</InputLabel>
                             <VueDatePicker v-model="form.registration_date" :format="'yyyy-MM-dd'" auto-apply
-                                :placeholder="_t('createvehicle','step2_registration_date_placeholder')" class="w-full"
+                                :placeholder="_t('createvehicle', 'step2_registration_date_placeholder')" class="w-full"
                                 :class="{ 'dp__error': errors.registration_date }" :clearable="false"
                                 :max-date="new Date()"
                                 :input-class-name="'w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition duration-200 bg-white shadow-sm text-gray-700'"
@@ -447,29 +503,34 @@
 
                         <!-- Gross Vehicle Mass -->
                         <div>
-                            <InputLabel class="text-black" for="gross_vehicle_mass">{{ _t('createvehicle','step2_gross_vehicle_mass_label') }}</InputLabel>
+                            <InputLabel class="text-black" for="gross_vehicle_mass">{{
+                                _t('createvehicle','step2_gross_vehicle_mass_label') }}</InputLabel>
                             <div class="relative">
                                 <input class="w-full" type="number" v-model="form.gross_vehicle_mass"
                                     id="gross_vehicle_mass" />
                                 <span
-                                    class="absolute bg-white text-[0.875rem] top-[50%] right-3 translate-y-[-50%] text-customLightGrayColor font-medium">{{ _t('createvehicle','step2_gross_vehicle_mass_unit') }}</span>
+                                    class="absolute bg-white text-[0.875rem] top-[50%] right-3 translate-y-[-50%] text-customLightGrayColor font-medium">{{
+                                        _t('createvehicle','step2_gross_vehicle_mass_unit') }}</span>
                             </div>
                         </div>
 
                         <!-- Vehicle Height -->
                         <div>
-                            <InputLabel class="text-black" for="vehicle_height">{{ _t('createvehicle','step2_vehicle_height_label') }}</InputLabel>
+                            <InputLabel class="text-black" for="vehicle_height">{{
+                                _t('createvehicle','step2_vehicle_height_label') }}</InputLabel>
                             <div class="relative">
                                 <input class="w-full" type="number" v-model="form.vehicle_height" id="vehicle_height" />
                                 <span
-                                    class="absolute bg-white text-[0.875rem] top-[50%] right-3 translate-y-[-50%] text-customLightGrayColor font-medium">{{ _t('createvehicle','step2_vehicle_height_unit') }}</span>
+                                    class="absolute bg-white text-[0.875rem] top-[50%] right-3 translate-y-[-50%] text-customLightGrayColor font-medium">{{
+                                        _t('createvehicle','step2_vehicle_height_unit') }}</span>
                             </div>
 
                         </div>
 
                         <!-- Dealer Cost -->
                         <div class="col-span-2">
-                            <InputLabel class="text-black" for="dealer_cost">{{ _t('createvehicle','step2_dealer_cost_label') }}</InputLabel>
+                            <InputLabel class="text-black" for="dealer_cost">{{
+                                _t('createvehicle','step2_dealer_cost_label') }}</InputLabel>
                             <input class="" type="number" v-model="form.dealer_cost" id="dealer_cost" required />
                             <span v-if="errors.dealer_cost" class="text-red-500 max-[768px]:text-[0.75rem] text-sm">{{
                                 errors.dealer_cost }}</span>
@@ -477,21 +538,24 @@
 
                         <!-- Phone Number -->
                         <div class="col-span-2">
-                            <InputLabel class="text-black mb-0" for="phone_number">{{ _t('createvehicle','step2_phone_number_label') }}</InputLabel>
-                            <span class="text-[0.675rem] mb-[1rem] inline-block">{{ _t('createvehicle','step2_phone_number_tooltip') }}</span>
+                            <InputLabel class="text-black mb-0" for="phone_number">{{
+                                _t('createvehicle','step2_phone_number_label') }}</InputLabel>
+                            <span class="text-[0.675rem] mb-[1rem] inline-block">{{
+                                _t('createvehicle','step2_phone_number_tooltip') }}</span>
                             <input class="w-full" type="text" v-model="form.phone_number" id="phone_number" required
                                 placeholder="+91" />
                             <span v-if="errors.phone_number" class="text-red-500 max-[768px]:text-[0.75rem] text-sm">{{
                                 errors.phone_number
-                            }}</span>
+                                }}</span>
                         </div>
                     </div>
                     <div
                         class="buttons flex justify-between gap-[1.5rem] mt-[2rem] pb-[4rem] max-[768px]:px-[1.5rem] max-[768px]:pb-0">
                         <button class="button-secondary w-[15rem] max-[768px]:w-[10rem]" @click="prevStep">
-                            {{ _t('createvehicle','back_button') }}
+                            {{ _t('createvehicle', 'back_button') }}
                         </button>
-                        <PrimaryButton class="w-[15rem] max-[768px]:w-[10rem]" type="button" @click="nextStep">{{ _t('createvehicle','next_button') }}
+                        <PrimaryButton class="w-[15rem] max-[768px]:w-[10rem]" type="button" @click="nextStep">{{
+                            _t('createvehicle','next_button') }}
                         </PrimaryButton>
                     </div>
                 </div>
@@ -503,28 +567,29 @@
                         class="col text-customPrimaryColor-foreground w-[70%] max-[768px]:w-full max-[768px]:px-[1.5rem] p-[2rem] border-b-[2px]">
                         <img :src="warningSign" alt="" class="max-[768px]:w-[35px]" />
                         <h4 class="text-[1.5rem] font-medium max-[768px]:text-[1.2rem] max-[768px]:py-2">
-                            {{ _t('createvehicle','data_protection_title') }}
+                            {{ _t('createvehicle', 'data_protection_title') }}
                         </h4>
                         <p class="max-[768px]:text-[0.875rem]">
-                            {{ _t('createvehicle','step0_temporary_documents_description') }}
+                            {{ _t('createvehicle', 'step0_temporary_documents_description') }}
                         </p>
                     </div>
                     <div
                         class="col text-customPrimaryColor-foreground w-[70%] max-[768px]:w-full max-[768px]:px-[1.5rem] p-[2rem] border-b-[2px]">
                         <img :src="warningSign" alt="" class="max-[768px]:w-[35px]" />
-                        <h4 class="text-[1.5rem] font-medium max-[768px]:text-[1.2rem] max-[768px]:py-2"> {{ _t('createvehicle','information_title') }}
+                        <h4 class="text-[1.5rem] font-medium max-[768px]:text-[1.2rem] max-[768px]:py-2"> {{
+                            _t('createvehicle','information_title') }}
                         </h4>
                         <p class="max-[768px]:text-[0.875rem]">
-                            {{ _t('createvehicle','step2_information_secure_listing') }}
+                            {{ _t('createvehicle', 'step2_information_secure_listing') }}
                         </p>
                     </div>
                     <div
                         class="col text-customPrimaryColor-foreground w-[70%] max-[768px]:w-full max-[768px]:px-[1.5rem] p-[2rem]">
                         <img :src="warningSign" alt="" class="max-[768px]:w-[35px]" />
                         <h4 class="text-[1.5rem] font-medium max-[768px]:text-[1.2rem] max-[768px]:py-2">
-                            {{ _t('createvehicle','need_help_title') }}
+                            {{ _t('createvehicle', 'need_help_title') }}
                         </h4>
-                        <p class="max-[768px]:text-[0.875rem]">{{ _t('createvehicle','contact_us_on') }}</p>
+                        <p class="max-[768px]:text-[0.875rem]">{{ _t('createvehicle', 'contact_us_on') }}</p>
                     </div>
                 </div>
                 <img :src="circleImg" alt="" class="absolute top-[-30%] right-[-15%]" />
@@ -535,20 +600,24 @@
     <!-- Step-3 -->
     <div v-if="currentStep === 3" class="overflow-x-hidden vehicle-listing h-screen md:overflow-y-hidden relative">
         <div class="absolute inset-0 flex justify-between max-[768px]:relative max-[768px]:flex-col max-[768px]:h-auto">
-            <div class="column overflow-y-auto w-[50%] h-full flex justify-center pb-[4rem] max-[768px]:w-full max-[768px]:h-auto bg-white">
+            <div
+                class="column overflow-y-auto w-[50%] h-full flex justify-center pb-[4rem] max-[768px]:w-full max-[768px]:h-auto bg-white">
                 <div class="flex flex-col gap-5 w-[90%] max-[768px]:w-full">
                     <Link href="/" class="max-[768px]:hidden mt-[2rem]">
                     <ApplicationLogo />
                     </Link>
                     <AuthenticatedHeaderLayout class="hidden max-[768px]:block max-[768px]:border-b-0" />
                     <div class="mt-[5rem] max-[768px]:mt-0 max-[768px]:px-[1.5rem] max-[768px]:mb-1">
-                        <span class="text-[1.75rem] font-medium max-[768px]:text-[1.2rem]">{{ _t('createvehicle','step3_parking_address_title') }}</span>
-                        <p class="max-[768px]:text-[0.875rem] max-[768px]:mt-2">{{ _t('createvehicle','step3_parking_address_description') }}</p>
+                        <span class="text-[1.75rem] font-medium max-[768px]:text-[1.2rem]">{{
+                            _t('createvehicle','step3_parking_address_title') }}</span>
+                        <p class="max-[768px]:text-[0.875rem] max-[768px]:mt-2">{{
+                            _t('createvehicle','step3_parking_address_description') }}</p>
                     </div>
                     <div class="max-[768px]:px-[1.5rem]">
-                        <span class="text-[0.875rem] text-black font-medium">{{ _t('createvehicle','step3_search_address_label') }}</span>
+                        <span class="text-[0.875rem] text-black font-medium">{{
+                            _t('createvehicle','step3_search_address_label') }}</span>
                         <p class="text-[0.675rem] max-[768px]:mt-2">
-                            {{ _t('createvehicle','step3_search_address_tooltip') }}
+                            {{ _t('createvehicle', 'step3_search_address_tooltip') }}
                         </p>
                     </div>
                     <div class="search-container">
@@ -559,9 +628,10 @@
                     <div
                         class="buttons flex justify-between gap-[1.5rem] mt-[2rem] pb-[4rem] max-[768px]:pb-0 max-[768px]:px-[1.5rem]">
                         <button class="button-secondary w-[15rem] max-[768px]:w-[10rem]" @click="prevStep">
-                           {{ _t('createvehicle','back_button') }}
+                            {{ _t('createvehicle', 'back_button') }}
                         </button>
-                        <PrimaryButton class="w-[15rem] max-[768px]:w-[10rem]" type="button" @click="nextStep">{{ _t('createvehicle','next_button') }}
+                        <PrimaryButton class="w-[15rem] max-[768px]:w-[10rem]" type="button" @click="nextStep">{{
+                            _t('createvehicle','next_button') }}
                         </PrimaryButton>
                     </div>
                 </div>
@@ -573,19 +643,19 @@
                         class="col text-customPrimaryColor-foreground w-[70%] p-[2rem] border-b-[2px] max-[768px]:w-full">
                         <img :src="warningSign" alt="" class="max-[768px]:w-[35px]" />
                         <h4 class="text-[1.5rem] font-medium max-[768px]:text-[1.2rem] max-[768px]:py-2">
-                            {{ _t('createvehicle','data_protection_title') }}
+                            {{ _t('createvehicle', 'data_protection_title') }}
                         </h4>
                         <p class="max-[768px]:text-[0.875rem]">
-                           {{ _t('createvehicle','step3_data_protection_address_sharing') }}
+                            {{ _t('createvehicle', 'step3_data_protection_address_sharing') }}
                         </p>
                     </div>
 
                     <div class="col text-customPrimaryColor-foreground w-[70%] max-[768px]:w-full p-[2rem]">
                         <img :src="warningSign" alt="" class="max-[768px]:w-[35px]" />
                         <h4 class="text-[1.5rem] font-medium max-[768px]:text-[1.2rem] max-[768px]:py-2">
-                            {{ _t('createvehicle','need_help_title') }}
+                            {{ _t('createvehicle', 'need_help_title') }}
                         </h4>
-                        <p class="max-[768px]:text-[0.875rem]">{{ _t('createvehicle','contact_us_on') }}</p>
+                        <p class="max-[768px]:text-[0.875rem]">{{ _t('createvehicle', 'contact_us_on') }}</p>
                     </div>
                 </div>
                 <img :src="circleImg" alt="" class="absolute top-[-30%] right-[-15%]" />
@@ -596,41 +666,46 @@
     <!-- Step-4 -->
     <div v-if="currentStep === 4" class="overflow-x-hidden vehicle-listing h-screen md:overflow-y-hidden relative">
         <div class="absolute inset-0 flex justify-between max-[768px]:relative max-[768px]:flex-col max-[768px]:h-auto">
-            <div class="column overflow-y-auto w-[50%] h-full flex justify-center pb-[4rem] max-[768px]:w-full max-[768px]:h-auto bg-white">
+            <div
+                class="column overflow-y-auto w-[50%] h-full flex justify-center pb-[4rem] max-[768px]:w-full max-[768px]:h-auto bg-white">
                 <div class="flex flex-col gap-5 w-[90%] max-[768px]:w-full">
                     <Link href="/" class="max-[768px]:hidden mt-[2rem]">
                     <ApplicationLogo />
                     </Link>
                     <AuthenticatedHeaderLayout class="hidden max-[768px]:block max-[768px]:border-b-0" />
                     <div class="mt-[5rem] max-[768px]:mt-0 max-[768px]:px-[1.5rem]">
-                        <span class="text-[1.75rem] font-medium max-[768px]:text-[1.2rem]"> {{ _t('createvehicle','step4_hire_cost_title') }}</span>
+                        <span class="text-[1.75rem] font-medium max-[768px]:text-[1.2rem]"> {{
+                            _t('createvehicle','step4_hire_cost_title') }}</span>
                         <div class="mt-[2rem]">
-                            <span class="text-[0.875rem] text-black font-medium">{{ _t('createvehicle','step4_basic_daily_rate_label') }}</span>
+                            <span class="text-[0.875rem] text-black font-medium">{{
+                                _t('createvehicle','step4_basic_daily_rate_label') }}</span>
                             <p class="text-[0.75rem] font-medium mb-[1rem] text-customLightGrayColor">
-                                {{ _t('createvehicle','step4_basic_daily_rate_tooltip') }}
+                                {{ _t('createvehicle', 'step4_basic_daily_rate_tooltip') }}
                             </p>
                         </div>
                     </div>
                     <div class="">
                         <div class="border-[1px] p-8 flex flex-col gap-8 max-[768px]:p-0">
                             <div class="price-section">
-                                <h3 class="text-lg font-semibold mb-4">{{ _t('createvehicle','step4_pricing_options_title') }}</h3>
+                                <h3 class="text-lg font-semibold mb-4">{{
+                                    _t('createvehicle','step4_pricing_options_title') }}</h3>
 
                                 <!-- Price Type Selection -->
                                 <div class="mb-8 max-[768px]:mb-3">
-                                    <InputLabel class="text-black mb-2">{{ _t('createvehicle','step4_preferred_price_types_label') }}</InputLabel>
+                                    <InputLabel class="text-black mb-2">{{
+                                        _t('createvehicle','step4_preferred_price_types_label') }}</InputLabel>
                                     <div class="flex gap-4">
                                         <label class="flex items-center">
                                             <input type="checkbox" v-model="selectedTypes.day" class="mr-2" />
-                                            {{ _t('createvehicle','step4_price_type_daily') }}
+                                            {{ _t('createvehicle', 'step4_price_type_daily') }}
                                         </label>
                                         <label class="flex items-center">
                                             <input type="checkbox" v-model="selectedTypes.week" class="mr-2" />
-                                            {{ _t('createvehicle','step4_price_type_weekly') }}
+                                            {{ _t('createvehicle', 'step4_price_type_weekly') }}
                                         </label>
                                         <label class="flex items-center">
                                             <input type="checkbox" v-model="selectedTypes.month" class="mr-2" />
-                                          {{ _t('createvehicle','step4_price_type_monthly') }}
+                                            {{ _t('createvehicle', 'step4_price_type_monthly') }}
                                         </label>
                                     </div>
                                 </div>
@@ -638,28 +713,33 @@
                                 <div class="grid grid-cols-2 gap-10 max-[768px]:grid-cols-1 max-[768px]:gap-2">
                                     <!-- Daily Price Slider -->
                                     <div v-if="selectedTypes.day" class="price-slider  bg-gray-50 p-5 rounded-[12px]">
-                                        <label for="price_per_day" class="font-medium">{{ _t('createvehicle','step4_daily_rate_label') }}</label>
+                                        <label for="price_per_day" class="font-medium">{{
+                                            _t('createvehicle','step4_daily_rate_label') }}</label>
                                         <div class="slider-container">
                                             <input type="number" v-model="form.price_per_day" id="price_per_day"
                                                 class="mt-1 block w-32 rounded-md border-gray-300 shadow-sm px-2" />
                                         </div>
                                         <div class="mt-2 flex flex-col items-end gap-1">
-                                            <span class="text-sm text-gray-600">{{ _t('createvehicle','step4_daily_rate_recommended') }}</span>
+                                            <span class="text-sm text-gray-600">{{
+                                                _t('createvehicle','step4_daily_rate_recommended') }}</span>
                                         </div>
                                     </div>
 
                                     <!-- Weekly Price Slider -->
                                     <div v-if="selectedTypes.week" class="price-slider  bg-gray-50 p-5 rounded-[12px]">
-                                        <label for="price_per_week" class="font-medium">{{ _t('createvehicle','step4_weekly_rate_label') }}</label>
+                                        <label for="price_per_week" class="font-medium">{{
+                                            _t('createvehicle','step4_weekly_rate_label') }}</label>
                                         <div class="slider-container">
                                             <input type="number" v-model="form.price_per_week" id="price_per_week"
                                                 class="mt-1 block w-32 rounded-md border-gray-300 shadow-sm px-2" />
                                         </div>
                                         <div class="mt-2 flex flex-col items-end gap-1">
-                                            <span class="text-sm text-gray-600">{{ _t('createvehicle','step4_weekly_rate_recommended') }}</span>
+                                            <span class="text-sm text-gray-600">{{
+                                                _t('createvehicle','step4_weekly_rate_recommended') }}</span>
                                         </div>
                                         <div class="mt-2 flex flex-col">
-                                            <label for="weekly_discount" class="text-sm font-medium mb-0">{{ _t('createvehicle','step4_weekly_discount_label') }}
+                                            <label for="weekly_discount" class="text-sm font-medium mb-0">{{
+                                                _t('createvehicle','step4_weekly_discount_label') }}
                                             </label>
                                             <input type="number" v-model="form.weekly_discount" id="weekly_discount"
                                                 class="mt-1 block w-32 rounded-md border-gray-300 shadow-sm px-2" />
@@ -669,16 +749,19 @@
 
                                     <!-- Monthly Price Slider -->
                                     <div v-if="selectedTypes.month" class="price-slider  bg-gray-50 p-5 rounded-[12px]">
-                                        <label for="price_per_month" class="font-medium">{{ _t('createvehicle','step4_monthly_rate_label') }}</label>
+                                        <label for="price_per_month" class="font-medium">{{
+                                            _t('createvehicle','step4_monthly_rate_label') }}</label>
                                         <div class="slider-container">
                                             <input type="number" v-model="form.price_per_month" id="price_per_month"
                                                 class="mt-1 block w-32 rounded-md border-gray-300 shadow-sm px-2" />
                                         </div>
                                         <div class="mt-2 flex flex-col items-end gap-1">
-                                            <span class="text-sm text-gray-600">{{ _t('createvehicle','step4_monthly_rate_recommended') }}</span>
+                                            <span class="text-sm text-gray-600">{{
+                                                _t('createvehicle','step4_monthly_rate_recommended') }}</span>
                                         </div>
                                         <div class="mt-2 flex flex-col">
-                                            <label for="monthly_discount" class="text-sm font-medium mb-0">{{ _t('createvehicle','step4_monthly_discount_label') }}
+                                            <label for="monthly_discount" class="text-sm font-medium mb-0">{{
+                                                _t('createvehicle','step4_monthly_discount_label') }}
                                             </label>
                                             <input type="number" v-model="form.monthly_discount" id="monthly_discount"
                                                 class="mt-1 block w-32 rounded-md border-gray-300 shadow-sm px-2" />
@@ -689,34 +772,37 @@
                             </div>
                             <span v-if="errors.price_per_day" class="text-red-500 max-[768px]:text-[0.75rem] text-sm">{{
                                 errors.price_per_day
-                            }}</span>
+                                }}</span>
                         </div>
                         <!-- Security Deposit -->
                         <div class="mt-[2rem] max-[768px]:px-[1.5rem]">
-                            <InputLabel for="security_deposit" class="text-black mb-0">{{ _t('createvehicle','step4_security_deposit_label') }}</InputLabel>
-                            <span
-                                class="text-[0.75rem] font-medium mb-[1rem] inline-block text-customLightGrayColor">{{ _t('createvehicle','step4_security_deposit_tooltip') }}</span>
+                            <InputLabel for="security_deposit" class="text-black mb-0">{{
+                                _t('createvehicle','step4_security_deposit_label') }}</InputLabel>
+                            <span class="text-[0.75rem] font-medium mb-[1rem] inline-block text-customLightGrayColor">{{
+                                _t('createvehicle','step4_security_deposit_tooltip') }}</span>
                             <input type="number" v-model="form.security_deposit" id="security_deposit" required min="0"
                                 step="0.01" />
                         </div>
                         <span v-if="errors.security_deposit" class="text-red-500 max-[768px]:text-[0.75rem] text-sm">{{
                             errors.security_deposit
-                        }}</span>
+                            }}</span>
                     </div>
 
                     <!-- Guidelines -->
                     <div class="max-[768px]:px-[1.5rem]">
-                        <InputLabel for="brand">{{ _t('createvehicle','step4_guidelines_label') }}</InputLabel>
+                        <InputLabel for="brand">{{ _t('createvehicle', 'step4_guidelines_label') }}</InputLabel>
                         <textarea type="text" v-model="form.guidelines" id="guidelines" required
-                            :placeholder="_t('createvehicle','step4_guidelines_placeholder')" class="w-full min-h-[150px]" />
+                            :placeholder="_t('createvehicle', 'step4_guidelines_placeholder')"
+                            class="w-full min-h-[150px]" />
                     </div>
 
                     <div class="time-selector p-6 bg-gray-50 rounded-xl shadow-lg w-full">
-                        <p>{{ _t('createvehicle','step4_pickup_return_time_title') }}</p>
+                        <p>{{ _t('createvehicle', 'step4_pickup_return_time_title') }}</p>
                         <div class="grid grid-cols-2 gap-10 max-[768px]:gap-5">
                             <!-- Pickup Times Section -->
                             <div>
-                                <label class="block text-lg font-semibold text-gray-800 mb-2">{{ _t('createvehicle','step4_pickup_times_label') }}</label>
+                                <label class="block text-lg font-semibold text-gray-800 mb-2">{{
+                                    _t('createvehicle','step4_pickup_times_label') }}</label>
                                 <div v-for="(time, index) in form.pickup_times" :key="'pickup-' + index"
                                     class="time-input-group flex items-center mb-3">
                                     <input type="time" v-model="form.pickup_times[index]"
@@ -725,15 +811,15 @@
                                     <button type="button" @click="removePickupTime(index)" title="Remove"
                                         class=" ml-1 text-red-600 hover:bg-red-50">
                                         <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20"
-                                                viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-                                                stroke-linecap="round" stroke-linejoin="round"
-                                                class="lucide lucide-trash-2">
-                                                <path d="M3 6h18"></path>
-                                                <path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"></path>
-                                                <path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"></path>
-                                                <line x1="10" x2="10" y1="11" y2="17"></line>
-                                                <line x1="14" x2="14" y1="11" y2="17"></line>
-                                            </svg>
+                                            viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                                            stroke-linecap="round" stroke-linejoin="round"
+                                            class="lucide lucide-trash-2">
+                                            <path d="M3 6h18"></path>
+                                            <path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"></path>
+                                            <path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"></path>
+                                            <line x1="10" x2="10" y1="11" y2="17"></line>
+                                            <line x1="14" x2="14" y1="11" y2="17"></line>
+                                        </svg>
                                     </button>
                                 </div>
                                 <span v-if="errors.pickup_times" class="text-red-500 text-sm block mb-3 italic">
@@ -741,30 +827,31 @@
                                 </span>
                                 <button type="button" @click="addPickupTime"
                                     class="w-full py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition duration-200 font-medium shadow-md">
-                                    {{ _t('createvehicle','step4_add_pickup_time_button') }}
+                                    {{ _t('createvehicle', 'step4_add_pickup_time_button') }}
                                 </button>
                             </div>
 
                             <div>
                                 <!-- Return Times Section -->
-                                <label class="block text-lg font-semibold text-gray-800 mb-2">{{ _t('createvehicle','step4_return_times_label') }}</label>
+                                <label class="block text-lg font-semibold text-gray-800 mb-2">{{
+                                    _t('createvehicle','step4_return_times_label') }}</label>
                                 <div v-for="(time, index) in form.return_times" :key="'return-' + index"
                                     class="time-input-group flex items-center mb-3">
                                     <input type="time" v-model="form.return_times[index]"
                                         @input="normalizeTime('return_times', index)"
                                         class="time-input w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition duration-200 bg-white shadow-sm" />
                                     <button type="button" @click="removeReturnTime(index)" title="Remove"
-                                    class=" ml-1 text-red-600 hover:bg-red-50">
+                                        class=" ml-1 text-red-600 hover:bg-red-50">
                                         <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20"
-                                                viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-                                                stroke-linecap="round" stroke-linejoin="round"
-                                                class="lucide lucide-trash-2">
-                                                <path d="M3 6h18"></path>
-                                                <path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"></path>
-                                                <path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"></path>
-                                                <line x1="10" x2="10" y1="11" y2="17"></line>
-                                                <line x1="14" x2="14" y1="11" y2="17"></line>
-                                            </svg>
+                                            viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                                            stroke-linecap="round" stroke-linejoin="round"
+                                            class="lucide lucide-trash-2">
+                                            <path d="M3 6h18"></path>
+                                            <path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"></path>
+                                            <path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"></path>
+                                            <line x1="10" x2="10" y1="11" y2="17"></line>
+                                            <line x1="14" x2="14" y1="11" y2="17"></line>
+                                        </svg>
                                     </button>
                                 </div>
                                 <span v-if="errors.return_times" class="text-red-500 text-sm block mb-3 italic">
@@ -772,7 +859,7 @@
                                 </span>
                                 <button type="button" @click="addReturnTime"
                                     class="w-full py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition duration-200 font-medium shadow-md">
-                                    {{ _t('createvehicle','step4_add_return_time_button') }}
+                                    {{ _t('createvehicle', 'step4_add_return_time_button') }}
                                 </button>
                             </div>
                         </div>
@@ -782,55 +869,64 @@
 
                     <!-- Payment Method -->
                     <div class="mt-[2rem] max-[768px]:px-[1.5rem] max-[768px]:mt-[1rem]">
-                        <InputLabel class="text-black text-[1.15rem]">{{ _t('createvehicle','step4_payment_methods_title') }}
+                        <InputLabel class="text-black text-[1.15rem]">{{
+                            _t('createvehicle','step4_payment_methods_title') }}
                         </InputLabel>
                         <span class="text-[0.75rem] font-medium mb-[1rem] inline-block text-customLightGrayColor">
-                            {{ _t('createvehicle','step4_payment_methods_description') }}
+                            {{ _t('createvehicle', 'step4_payment_methods_description') }}
                         </span>
                         <div class="flex gap-[1rem] max-[768px]:flex-wrap">
                             <InputLabel>
                                 <input type="checkbox" v-model="form.payment_method" value="credit_card"
                                     id="credit_card" />
-                                <label class="ml-2" for="credit_card">{{ _t('createvehicle','step4_payment_method_credit_card') }}</label>
+                                <label class="ml-2" for="credit_card">{{
+                                    _t('createvehicle','step4_payment_method_credit_card') }}</label>
                             </InputLabel>
                             <InputLabel>
                                 <input type="checkbox" v-model="form.payment_method" value="cheque" id="cheque" />
-                                <label class="ml-2" for="cheque">{{ _t('createvehicle','step4_payment_method_cheque') }}</label>
+                                <label class="ml-2" for="cheque">{{ _t('createvehicle', 'step4_payment_method_cheque')
+                                    }}</label>
                             </InputLabel>
                             <InputLabel>
                                 <input type="checkbox" v-model="form.payment_method" value="bank_wire" id="bank_wire" />
-                                <label class="ml-2" for="bank_wire">{{ _t('createvehicle','step4_payment_method_bank_wire') }}</label>
+                                <label class="ml-2" for="bank_wire">{{
+                                    _t('createvehicle','step4_payment_method_bank_wire') }}</label>
                             </InputLabel>
                             <InputLabel>
                                 <input type="checkbox" v-model="form.payment_method" value="cryptocurrency"
                                     id="cryptocurrency" />
-                                <label class="ml-2" for="cryptocurrency">{{ _t('createvehicle','step4_payment_method_cryptocurrency') }}</label>
+                                <label class="ml-2" for="cryptocurrency">{{
+                                    _t('createvehicle','step4_payment_method_cryptocurrency') }}</label>
                             </InputLabel>
                             <InputLabel>
                                 <input type="checkbox" v-model="form.payment_method" value="cash" id="cash" />
-                                <label class="ml-2" for="cash">{{ _t('createvehicle','step4_payment_method_cash') }}</label>
+                                <label class="ml-2" for="cash">{{ _t('createvehicle', 'step4_payment_method_cash')
+                                    }}</label>
                             </InputLabel>
                         </div>
                         <span v-if="errors.payment_method" class="text-red-500 max-[768px]:text-[0.75rem] text-sm">{{
                             errors.payment_method
-                        }}</span>
+                            }}</span>
 
                         <div v-if="paymentMethodsArray.length > 0">
-                            <p class="text-[0.85rem] text-green-400">{{ _t('createvehicle','step4_selected_payment_methods_label') }}</p>
+                            <p class="text-[0.85rem] text-green-400">{{
+                                _t('createvehicle','step4_selected_payment_methods_label') }}</p>
                             <ul class="mt-2 flex items-center gap-3">
                                 <li class="bg-green-200 px-2 rounded-[12px]" v-for="method in paymentMethodsArray"
                                     :key="method">{{ method }}</li>
                             </ul>
                         </div>
                         <div v-else>
-                            <p class="text-[0.85rem] text-red-500 max-[768px]:text-[0.75rem]">{{ _t('createvehicle','step4_no_payment_methods_selected') }}</p>
+                            <p class="text-[0.85rem] text-red-500 max-[768px]:text-[0.75rem]">{{
+                                _t('createvehicle','step4_no_payment_methods_selected') }}</p>
                         </div>
                     </div>
 
                     <div class="max-[768px]:px-[1.5rem]">
                         <!-- Limited Kilometer Section -->
                         <div class="mb-6">
-                            <h3 class="font-medium text-lg mb-2">{{ _t('createvehicle','step4_kilometer_limitations_title') }}</h3>
+                            <h3 class="font-medium text-lg mb-2">{{
+                                _t('createvehicle','step4_kilometer_limitations_title') }}</h3>
 
                             <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
                                 <!-- Per Day Limitation -->
@@ -838,13 +934,15 @@
                                     <div class="flex gap-2 items-center mb-0">
                                         <input type="checkbox" v-model="form.limited_km_per_day"
                                             id="limited_km_per_day" />
-                                        <InputLabel for="limited_km_per_day" class="!mb-0">{{ _t('createvehicle','step4_limited_km_per_day_label') }}
+                                        <InputLabel for="limited_km_per_day" class="!mb-0">{{
+                                            _t('createvehicle','step4_limited_km_per_day_label') }}
                                         </InputLabel>
                                     </div>
 
                                     <div v-if="form.limited_km_per_day">
                                         <div class="mb-0">
-                                            <InputLabel for="limited_km_per_day_range">{{ _t('createvehicle','step4_km_limit_label') }}</InputLabel>
+                                            <InputLabel for="limited_km_per_day_range">{{
+                                                _t('createvehicle','step4_km_limit_label') }}</InputLabel>
                                             <input type="number" v-model="form.limited_km_per_day_range"
                                                 id="limited_km_per_day_range" step="0.01" class="w-full" />
                                             <span v-if="errors.limited_km_per_day_range" class="text-red-500 text-sm">
@@ -853,7 +951,8 @@
                                         </div>
 
                                         <div>
-                                            <InputLabel for="price_per_km_per_day">{{ _t('createvehicle','step4_price_per_extra_km_label') }}</InputLabel>
+                                            <InputLabel for="price_per_km_per_day">{{
+                                                _t('createvehicle','step4_price_per_extra_km_label') }}</InputLabel>
                                             <input type="number" v-model="form.price_per_km_per_day"
                                                 id="price_per_km_per_day" class="w-full" />
                                             <span v-if="errors.price_per_km_per_day" class="text-red-500 text-sm">
@@ -868,13 +967,15 @@
                                     <div class="flex gap-2 items-center mb-0">
                                         <input type="checkbox" v-model="form.limited_km_per_week"
                                             id="limited_km_per_week" />
-                                        <InputLabel for="limited_km_per_week" class="!mb-0">{{ _t('createvehicle','step4_limited_km_per_week_label') }}
+                                        <InputLabel for="limited_km_per_week" class="!mb-0">{{
+                                            _t('createvehicle','step4_limited_km_per_week_label') }}
                                         </InputLabel>
                                     </div>
 
                                     <div v-if="form.limited_km_per_week">
                                         <div class="mb-0">
-                                            <InputLabel for="limited_km_per_week_range">{{ _t('createvehicle','step4_km_limit_label') }}</InputLabel>
+                                            <InputLabel for="limited_km_per_week_range">{{
+                                                _t('createvehicle','step4_km_limit_label') }}</InputLabel>
                                             <input type="number" v-model="form.limited_km_per_week_range"
                                                 id="limited_km_per_week_range" step="0.01" class="w-full" />
                                             <span v-if="errors.limited_km_per_week_range" class="text-red-500 text-sm">
@@ -883,7 +984,8 @@
                                         </div>
 
                                         <div>
-                                            <InputLabel for="price_per_km_per_week">{{ _t('createvehicle','step4_price_per_extra_km_label') }}</InputLabel>
+                                            <InputLabel for="price_per_km_per_week">{{
+                                                _t('createvehicle','step4_price_per_extra_km_label') }}</InputLabel>
                                             <input type="number" v-model="form.price_per_km_per_week"
                                                 id="price_per_km_per_week" class="w-full" />
                                             <span v-if="errors.price_per_km_per_week" class="text-red-500 text-sm">
@@ -898,13 +1000,15 @@
                                     <div class="flex gap-2 items-center mb-0">
                                         <input type="checkbox" v-model="form.limited_km_per_month"
                                             id="limited_km_per_month" />
-                                        <InputLabel for="limited_km_per_month" class="!mb-0">{{ _t('createvehicle','step4_limited_km_per_month_label') }}
+                                        <InputLabel for="limited_km_per_month" class="!mb-0">{{
+                                            _t('createvehicle','step4_limited_km_per_month_label') }}
                                         </InputLabel>
                                     </div>
 
                                     <div v-if="form.limited_km_per_month">
                                         <div class="mb-0">
-                                            <InputLabel for="limited_km_per_month_range">{{ _t('createvehicle','step4_km_limit_label') }}</InputLabel>
+                                            <InputLabel for="limited_km_per_month_range">{{
+                                                _t('createvehicle','step4_km_limit_label') }}</InputLabel>
                                             <input type="number" v-model="form.limited_km_per_month_range"
                                                 id="limited_km_per_month_range" step="0.01" class="w-full" />
                                             <span v-if="errors.limited_km_per_month_range" class="text-red-500 text-sm">
@@ -913,7 +1017,8 @@
                                         </div>
 
                                         <div>
-                                            <InputLabel for="price_per_km_per_month">{{ _t('createvehicle','step4_price_per_extra_km_label') }}</InputLabel>
+                                            <InputLabel for="price_per_km_per_month">{{
+                                                _t('createvehicle','step4_price_per_extra_km_label') }}</InputLabel>
                                             <input type="number" v-model="form.price_per_km_per_month"
                                                 id="price_per_km_per_month" class="w-full" />
                                             <span v-if="errors.price_per_km_per_month" class="text-red-500 text-sm">
@@ -927,7 +1032,8 @@
 
                         <!-- Cancellation Policy Section -->
                         <div class="mb-6">
-                            <h3 class="font-medium text-lg mb-2">{{ _t('createvehicle','step4_cancellation_policy_title') }}</h3>
+                            <h3 class="font-medium text-lg mb-2">{{
+                                _t('createvehicle','step4_cancellation_policy_title') }}</h3>
 
                             <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
                                 <!-- Per Day Cancellation -->
@@ -935,11 +1041,14 @@
                                     <div class="flex gap-2 items-center mb-0">
                                         <input type="checkbox" v-model="form.cancellation_available_per_day"
                                             id="cancellation_available_per_day" />
-                                        <InputLabel for="cancellation_available_per_day" class="!mb-0">{{ _t('createvehicle','step4_cancellation_available_per_day_label') }}</InputLabel>
+                                        <InputLabel for="cancellation_available_per_day" class="!mb-0">{{
+                                            _t('createvehicle','step4_cancellation_available_per_day_label') }}
+                                        </InputLabel>
                                     </div>
 
                                     <div v-if="form.cancellation_available_per_day">
-                                        <InputLabel for="cancellation_available_per_day_date">{{ _t('createvehicle','step4_days_prior_notice_label') }}
+                                        <InputLabel for="cancellation_available_per_day_date">{{
+                                            _t('createvehicle','step4_days_prior_notice_label') }}
                                         </InputLabel>
                                         <input type="number" v-model="form.cancellation_available_per_day_date"
                                             id="cancellation_available_per_day_date" class="w-full" />
@@ -955,12 +1064,15 @@
                                     <div class="flex gap-2 items-center mb-0">
                                         <input type="checkbox" v-model="form.cancellation_available_per_week"
                                             id="cancellation_available_per_week" />
-                                        <InputLabel for="cancellation_available_per_week" class="!mb-0">{{ _t('createvehicle','step4_cancellation_available_per_week_label') }}</InputLabel>
+                                        <InputLabel for="cancellation_available_per_week" class="!mb-0">{{
+                                            _t('createvehicle','step4_cancellation_available_per_week_label') }}
+                                        </InputLabel>
                                     </div>
 
                                     <div v-if="form.cancellation_available_per_week">
-                                        <InputLabel for="cancellation_available_per_week_date">{{ _t('createvehicle','step4_days_prior_notice_label') }}
-                                            </InputLabel>
+                                        <InputLabel for="cancellation_available_per_week_date">{{
+                                            _t('createvehicle','step4_days_prior_notice_label') }}
+                                        </InputLabel>
                                         <input type="number" v-model="form.cancellation_available_per_week_date"
                                             id="cancellation_available_per_week_date" class="w-full" />
                                         <span v-if="errors.cancellation_available_per_week_date"
@@ -975,11 +1087,14 @@
                                     <div class="flex gap-2 items-center mb-0">
                                         <input type="checkbox" v-model="form.cancellation_available_per_month"
                                             id="cancellation_available_per_month" />
-                                        <InputLabel for="cancellation_available_per_month" class="!mb-0">{{ _t('createvehicle','step4_cancellation_available_per_month_label') }}</InputLabel>
+                                        <InputLabel for="cancellation_available_per_month" class="!mb-0">{{
+                                            _t('createvehicle','step4_cancellation_available_per_month_label') }}
+                                        </InputLabel>
                                     </div>
 
                                     <div v-if="form.cancellation_available_per_month">
-                                        <InputLabel for="cancellation_available_per_month_date">{{ _t('createvehicle','step4_days_prior_notice_label') }}</InputLabel>
+                                        <InputLabel for="cancellation_available_per_month_date">{{
+                                            _t('createvehicle','step4_days_prior_notice_label') }}</InputLabel>
                                         <input type="number" v-model="form.cancellation_available_per_month_date"
                                             id="cancellation_available_per_month_date" class="w-full" />
                                         <span v-if="errors.cancellation_available_per_month_date"
@@ -994,10 +1109,12 @@
 
                         <!-- Driver Requirements Section -->
                         <div>
-                            <h3 class="font-medium text-lg mb-2">{{ _t('createvehicle','step4_driver_requirements_title') }}</h3>
+                            <h3 class="font-medium text-lg mb-2">{{
+                                _t('createvehicle','step4_driver_requirements_title') }}</h3>
 
                             <div class="max-w-xs">
-                                <InputLabel for="minimum_driver_age">{{ _t('createvehicle','step4_minimum_driver_age_label') }}</InputLabel>
+                                <InputLabel for="minimum_driver_age">{{
+                                    _t('createvehicle','step4_minimum_driver_age_label') }}</InputLabel>
                                 <input type="number" v-model="form.minimum_driver_age" id="minimum_driver_age"
                                     class="w-full" />
                                 <span v-if="errors.minimum_driver_age" class="text-red-500 text-sm">
@@ -1013,9 +1130,10 @@
                     <div
                         class="buttons flex justify-between gap-[1.5rem] mt-[2rem] pb-[4rem] max-[768px]:pb-0 max-[768px]:px-[1.5rem]">
                         <button class="button-secondary w-[15rem] max-[768px]:w-[10rem]" @click="prevStep">
-                           {{ _t('createvehicle','back_button') }}
+                            {{ _t('createvehicle', 'back_button') }}
                         </button>
-                        <PrimaryButton class="w-[15rem] max-[768px]:w-[10rem]" type="button" @click="nextStep">{{ _t('createvehicle','next_button') }}
+                        <PrimaryButton class="w-[15rem] max-[768px]:w-[10rem]" type="button" @click="nextStep">{{
+                            _t('createvehicle','next_button') }}
                         </PrimaryButton>
                     </div>
                 </div>
@@ -1026,26 +1144,28 @@
                     <div
                         class="col text-customPrimaryColor-foreground w-[70%] p-[2rem] border-b-[2px] max-[768px]:w-full">
                         <img :src="warningSign" alt="" class="max-[768px]:w-[35px]" />
-                        <h4 class="text-[1.5rem] font-medium max-[768px]:text-[1.2rem] max-[768px]:py-2">{{ _t('createvehicle','tip_title') }}</h4>
+                        <h4 class="text-[1.5rem] font-medium max-[768px]:text-[1.2rem] max-[768px]:py-2">{{
+                            _t('createvehicle','tip_title') }}</h4>
                         <p class="max-[768px]:text-[0.875rem]">
-                            {{ _t('createvehicle','step4_tip_remuneration') }}
+                            {{ _t('createvehicle', 'step4_tip_remuneration') }}
                         </p>
                     </div>
                     <div
                         class="col text-customPrimaryColor-foreground w-[70%] max-[768px]:w-full p-[2rem] border-b-[2px]">
                         <img :src="warningSign" alt="" class="max-[768px]:w-[35px]" />
-                        <h4 class="text-[1.5rem] font-medium max-[768px]:text-[1.2rem] max-[768px]:py-2">{{ _t('createvehicle','information_title') }}
+                        <h4 class="text-[1.5rem] font-medium max-[768px]:text-[1.2rem] max-[768px]:py-2">{{
+                            _t('createvehicle','information_title') }}
                         </h4>
                         <p class="max-[768px]:text-[0.875rem]">
-                            {{ _t('createvehicle','step2_information_secure_listing') }}
+                            {{ _t('createvehicle', 'step2_information_secure_listing') }}
                         </p>
                     </div>
                     <div class="col text-customPrimaryColor-foreground w-[70%] max-[768px]:w-full p-[2rem]">
                         <img :src="warningSign" alt="" class="max-[768px]:w-[35px]" />
                         <h4 class="text-[1.5rem] font-medium max-[768px]:text-[1.2rem] max-[768px]:py-2">
-                            {{ _t('createvehicle','need_help_title') }}
+                            {{ _t('createvehicle', 'need_help_title') }}
                         </h4>
-                        <p class="max-[768px]:text-[0.875rem]">{{ _t('createvehicle','contact_us_on') }}</p>
+                        <p class="max-[768px]:text-[0.875rem]">{{ _t('createvehicle', 'contact_us_on') }}</p>
                     </div>
                 </div>
                 <img :src="circleImg" alt="" class="absolute top-[-30%] right-[-15%]" />
@@ -1057,7 +1177,8 @@
     <!-- Step-5 -->
     <div v-if="currentStep === 5" class="overflow-x-hidden vehicle-listing h-screen md:overflow-y-hidden relative">
         <div class="absolute inset-0 flex justify-between max-[768px]:relative max-[768px]:flex-col max-[768px]:h-auto">
-            <div class="column overflow-y-auto w-[50%] h-full flex justify-center pb-[4rem] max-[768px]:w-full max-[768px]:h-auto bg-white">
+            <div
+                class="column overflow-y-auto w-[50%] h-full flex justify-center pb-[4rem] max-[768px]:w-full max-[768px]:h-auto bg-white">
                 <div class="flex flex-col gap-5 w-[90%] max-[768px]:w-full">
                     <Link href="/" class="max-[768px]:hidden mt-[2rem]">
                     <ApplicationLogo />
@@ -1065,11 +1186,14 @@
                     <AuthenticatedHeaderLayout class="hidden max-[768px]:block max-[768px]:border-b-0" />
 
                     <div class="mt-10 max-[768px]:mt-0 max-[768px]:px-[1.5rem]">
-                        <span class="text-[1.7rem] font-medium text-gray-800 max-[768px]:text-[1.2rem]">{{ _t('createvehicle','step5_protection_plan_title') }}</span>
+                        <span class="text-[1.7rem] font-medium text-gray-800 max-[768px]:text-[1.2rem]">{{
+                            _t('createvehicle','step5_protection_plan_title') }}</span>
                         <p class="text-gray-600 mt-5 max-[768px]:text-[0.875rem]">
-                            {{ _t('createvehicle','step5_protection_plan_description') }} <strong>{{ _t('createvehicle','step5_protection_plan_description2') }}</strong>.
-                            {{ _t('createvehicle','step5_protection_plan_description3') }}
-                            <strong class="underline text-red-500 max-[768px]:text-[0.75rem]">{{ _t('createvehicle','step5_protection_plan_description4') }}</strong>
+                            {{ _t('createvehicle', 'step5_protection_plan_description') }} <strong>{{
+                                _t('createvehicle','step5_protection_plan_description2') }}</strong>.
+                            {{ _t('createvehicle', 'step5_protection_plan_description3') }}
+                            <strong class="underline text-red-500 max-[768px]:text-[0.75rem]">{{
+                                _t('createvehicle','step5_protection_plan_description4') }}</strong>
                         </p>
                     </div>
 
@@ -1112,7 +1236,9 @@
                                 @click.stop="togglePlanSelection(plan)" :class="{
                                     'bg-[#016501]': selectedPlans.some(p => p.id === plan.id),
                                 }">
-                                {{selectedPlans.some(p => p.id === plan.id) ? _t('createvehicle','step5_plan_selected_button') : _t('createvehicle','step5_plan_select_button')}}
+                                {{selectedPlans.some(p => p.id === plan.id) ?
+                                    _t('createvehicle', 'step5_plan_selected_button') :
+                                _t('createvehicle','step5_plan_select_button')}}
                             </button>
 
                             <div class="checklist features">
@@ -1131,45 +1257,53 @@
                     <Dialog :open="isEditDialogOpen" @update:open="isEditDialogOpen = $event">
                         <DialogContent class="max-h-[90vh] overflow-y-auto p-4">
                             <DialogHeader>
-                                <DialogTitle>{{ _t('createvehicle','step5_edit_plan_dialog_title') }}</DialogTitle>
+                                <DialogTitle>{{ _t('createvehicle', 'step5_edit_plan_dialog_title') }}</DialogTitle>
                                 <DialogDescription>
-                                    {{ _t('createvehicle','step5_edit_plan_dialog_description') }}
+                                    {{ _t('createvehicle', 'step5_edit_plan_dialog_description') }}
                                 </DialogDescription>
                             </DialogHeader>
 
                             <div class="grid gap-4 py-4">
                                 <div class="space-y-2">
-                                    <label for="plan-type" class="text-sm font-medium">{{ _t('createvehicle','step5_plan_type_label') }}</label>
+                                    <label for="plan-type" class="text-sm font-medium">{{
+                                        _t('createvehicle','step5_plan_type_label') }}</label>
                                     <input id="plan-type" v-model="editPlanData.plan_type"
-                                        class="w-full p-2 border rounded-md" :placeholder="_t('createvehicle','step5_plan_type_placeholder')" />
+                                        class="w-full p-2 border rounded-md"
+                                        :placeholder="_t('createvehicle', 'step5_plan_type_placeholder')" />
                                 </div>
 
                                 <div class="space-y-2">
-                                    <label for="plan-value" class="text-sm font-medium">{{ _t('createvehicle','step5_plan_value_label') }}</label>
+                                    <label for="plan-value" class="text-sm font-medium">{{
+                                        _t('createvehicle','step5_plan_value_label') }}</label>
                                     <input id="plan-value" v-model="editPlanData.plan_value" type="number"
-                                        class="w-full p-2 border rounded-md" :placeholder="_t('createvehicle','step5_plan_value_placeholder')" />
+                                        class="w-full p-2 border rounded-md"
+                                        :placeholder="_t('createvehicle', 'step5_plan_value_placeholder')" />
                                 </div>
 
                                 <div class="space-y-2">
-                                    <label for="plan-description" class="text-sm font-medium">{{ _t('createvehicle','step5_plan_description_label') }}</label>
+                                    <label for="plan-description" class="text-sm font-medium">{{
+                                        _t('createvehicle','step5_plan_description_label') }}</label>
                                     <textarea id="plan-description" v-model="editPlanData.plan_description"
-                                        class="w-full p-2 border rounded-md" :placeholder="_t('createvehicle','step5_plan_description_placeholder')"
+                                        class="w-full p-2 border rounded-md"
+                                        :placeholder="_t('createvehicle', 'step5_plan_description_placeholder')"
                                         rows="3"></textarea>
                                 </div>
 
                                 <div class="space-y-2">
                                     <div class="flex items-center justify-between">
-                                        <label class="text-sm font-medium">{{ _t('createvehicle','step5_plan_features_label') }}</label>
+                                        <label class="text-sm font-medium">{{
+                                            _t('createvehicle','step5_plan_features_label') }}</label>
                                         <button @click="addFeature"
                                             class="text-sm px-2 py-1 bg-blue-500 text-white rounded hover:bg-blue-600">
-                                            {{ _t('createvehicle','step5_add_feature_button') }}
+                                            {{ _t('createvehicle', 'step5_add_feature_button') }}
                                         </button>
                                     </div>
 
                                     <div v-for="(feature, index) in editPlanData.features" :key="index"
                                         class="flex gap-2">
                                         <input v-model="editPlanData.features[index]"
-                                            class="w-full p-2 border rounded-md" :placeholder="_t('createvehicle','step5_feature_placeholder')" />
+                                            class="w-full p-2 border rounded-md"
+                                            :placeholder="_t('createvehicle', 'step5_feature_placeholder')" />
                                         <button @click="removeFeature(index)"
                                             class="p-2 text-red-500 hover:bg-red-50 rounded-md">
                                             <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20"
@@ -1190,11 +1324,11 @@
                             <DialogFooter>
                                 <button @click="isEditDialogOpen = false"
                                     class="px-4 py-2 border rounded-md hover:bg-gray-100">
-                                    {{ _t('createvehicle','cancel_button') }}
+                                    {{ _t('createvehicle', 'cancel_button') }}
                                 </button>
                                 <button @click="saveEditedPlan"
                                     class="px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 ml-2">
-                                    {{ _t('createvehicle','save_changes_button') }}
+                                    {{ _t('createvehicle', 'save_changes_button') }}
                                 </button>
                             </DialogFooter>
                         </DialogContent>
@@ -1202,9 +1336,10 @@
                     <div
                         class="buttons flex justify-between gap-[1.5rem] mt-[2rem] pb-[4rem] max-[768px]:pb-0 max-[768px]:px-[1.5rem]">
                         <button class="button-secondary w-[15rem] max-[768px]:w-[10rem]" @click="prevStep">
-                            {{ _t('createvehicle','back_button') }}
+                            {{ _t('createvehicle', 'back_button') }}
                         </button>
-                        <PrimaryButton class="w-[15rem] max-[768px]:w-[10rem]" type="button" @click="nextStep">{{ _t('createvehicle','next_button') }}
+                        <PrimaryButton class="w-[15rem] max-[768px]:w-[10rem]" type="button" @click="nextStep">{{
+                            _t('createvehicle','next_button') }}
                         </PrimaryButton>
                     </div>
                 </div>
@@ -1216,26 +1351,28 @@
                     <div
                         class="col text-customPrimaryColor-foreground w-[70%] max-[768px]:w-full p-[2rem] border-b-[2px]">
                         <img :src="warningSign" alt="" class="max-[768px]:w-[35px]" />
-                        <h4 class="text-[1.5rem] font-medium max-[768px]:text-[1.2rem] max-[768px]:py-2">{{ _t('createvehicle','tip_title') }}</h4>
+                        <h4 class="text-[1.5rem] font-medium max-[768px]:text-[1.2rem] max-[768px]:py-2">{{
+                            _t('createvehicle','tip_title') }}</h4>
                         <p class="max-[768px]:text-[0.875rem]">
-                            {{ _t('createvehicle','step4_tip_remuneration') }}
+                            {{ _t('createvehicle', 'step4_tip_remuneration') }}
                         </p>
                     </div>
                     <div
                         class="col text-customPrimaryColor-foreground w-[70%] max-[768px]:w-full p-[2rem] border-b-[2px]">
                         <img :src="warningSign" alt="" class="max-[768px]:w-[35px]" />
-                        <h4 class="text-[1.5rem] font-medium max-[768px]:text-[1.2rem] max-[768px]:py-2">{{ _t('createvehicle','information_title') }}
+                        <h4 class="text-[1.5rem] font-medium max-[768px]:text-[1.2rem] max-[768px]:py-2">{{
+                            _t('createvehicle','information_title') }}
                         </h4>
                         <p class="max-[768px]:text-[0.875rem]">
-                            {{ _t('createvehicle','step2_information_secure_listing') }}
+                            {{ _t('createvehicle', 'step2_information_secure_listing') }}
                         </p>
                     </div>
                     <div class="col text-customPrimaryColor-foreground w-[70%] max-[768px]:w-full p-[2rem]">
                         <img :src="warningSign" alt="" class="max-[768px]:w-[35px]" />
                         <h4 class="text-[1.5rem] font-medium max-[768px]:text-[1.2rem] max-[768px]:py-2">
-                            {{ _t('createvehicle','need_help_title') }}
+                            {{ _t('createvehicle', 'need_help_title') }}
                         </h4>
-                        <p class="max-[768px]:text-[0.875rem]">{{ _t('createvehicle','contact_us_on') }}</p>
+                        <p class="max-[768px]:text-[0.875rem]">{{ _t('createvehicle', 'contact_us_on') }}</p>
                     </div>
                 </div>
                 <img :src="circleImg" alt="" class="absolute top-[-30%] right-[-15%]" />
@@ -1247,7 +1384,8 @@
     <!-- Step-6: Addon Selection -->
     <div v-if="currentStep === 6" class="overflow-x-hidden vehicle-listing h-screen md:overflow-y-hidden relative">
         <div class="absolute inset-0 flex justify-between max-[768px]:relative max-[768px]:flex-col max-[768px]:h-auto">
-            <div class="column overflow-y-auto w-[50%] h-full flex justify-center pb-[4rem] max-[768px]:w-full max-[768px]:h-auto bg-white">
+            <div
+                class="column overflow-y-auto w-[50%] h-full flex justify-center pb-[4rem] max-[768px]:w-full max-[768px]:h-auto bg-white">
                 <div class="flex flex-col gap-5 w-[90%] max-[768px]:w-full">
                     <Link href="/" class="max-[768px]:hidden mt-[2rem]">
                     <ApplicationLogo />
@@ -1255,9 +1393,10 @@
                     <AuthenticatedHeaderLayout class="hidden max-[768px]:block max-[768px]:border-b-0" />
                     <div class="mt-[5rem] mb-[2rem] max-[768px]:mt-0 max-[768px]:px-[1.5rem] max-[768px]:mb-0">
                         <p class="text-[1.75rem] font-medium max-[768px]:text-[1.2rem]">
-                            {{ _t('createvehicle','step6_addons_title') }}
+                            {{ _t('createvehicle', 'step6_addons_title') }}
                         </p>
-                        <span class="text-[0.75rem] text-customLightGrayColor font-medium">{{ _t('createvehicle','step6_addons_description') }}</span>
+                        <span class="text-[0.75rem] text-customLightGrayColor font-medium">{{
+                            _t('createvehicle','step6_addons_description') }}</span>
                     </div>
                     <div v-for="addon in addons" :key="addon.id"
                         class="flex justify-between gap-10 items-center border rounded-lg p-4 max-[768px]:mx-[1.5rem] max-[768px]:flex-col">
@@ -1273,17 +1412,19 @@
                         <!-- Right Section: Price & Quantity -->
                         <div class="flex  gap-4 items-end">
                             <div class="flex flex-col items-start">
-                                <label for="price" class="text-sm text-gray-500">{{ _t('createvehicle','step6_price_per_day_label') }}</label>
+                                <label for="price" class="text-sm text-gray-500">{{
+                                    _t('createvehicle','step6_price_per_day_label') }}</label>
                                 <input type="number" v-model="addonPrices[addon.id]"
                                     class="w-24 px-2 py-1 border rounded max-[768px]:!py-2" />
                             </div>
                             <div>
-                                <p class="text-sm text-gray-500 mb-2">{{ _t('createvehicle','step6_quantity_label') }}</p>
+                                <p class="text-sm text-gray-500 mb-2">{{ _t('createvehicle', 'step6_quantity_label') }}
+                                </p>
                                 <div class="flex items-center gap-2">
                                     <button @click="decrementQuantity(addon.id)"
                                         class="px-2 py-1 border rounded">-</button>
                                     <span class="px-3 py-1 bg-gray-100 rounded">{{ addonQuantities[addon.id] || '00'
-                                    }}</span>
+                                        }}</span>
                                     <button @click="incrementQuantity(addon.id)"
                                         class="px-2 py-1 border rounded">+</button>
                                 </div>
@@ -1295,9 +1436,10 @@
                     <div
                         class="buttons flex justify-between gap-[1.5rem] mt-[2rem] pb-[4rem] max-[768px]:pb-0 max-[768px]:px-[1.5rem]">
                         <button class="button-secondary w-[15rem] max-[768px]:w-[10rem]" @click="prevStep">
-                            {{ _t('createvehicle','back_button') }}
+                            {{ _t('createvehicle', 'back_button') }}
                         </button>
-                        <PrimaryButton class="w-[15rem] max-[768px]:w-[10rem]" type="button" @click="nextStep">{{ _t('createvehicle','next_button') }}
+                        <PrimaryButton class="w-[15rem] max-[768px]:w-[10rem]" type="button" @click="nextStep">{{
+                            _t('createvehicle','next_button') }}
                         </PrimaryButton>
                     </div>
                 </div>
@@ -1308,26 +1450,28 @@
                     <div
                         class="col text-customPrimaryColor-foreground w-[70%] max-[768px]:w-full p-[2rem] border-b-[2px]">
                         <img :src="warningSign" alt="" class="max-[768px]:w-[35px]" />
-                        <h4 class="text-[1.5rem] font-medium max-[768px]:text-[1.2rem] max-[768px]:py-2">{{ _t('createvehicle','tip_title') }}</h4>
+                        <h4 class="text-[1.5rem] font-medium max-[768px]:text-[1.2rem] max-[768px]:py-2">{{
+                            _t('createvehicle','tip_title') }}</h4>
                         <p class="max-[768px]:text-[0.875rem]">
-                            {{ _t('createvehicle','step4_tip_remuneration') }}
+                            {{ _t('createvehicle', 'step4_tip_remuneration') }}
                         </p>
                     </div>
                     <div
                         class="col text-customPrimaryColor-foreground w-[70%] max-[768px]:w-full p-[2rem] border-b-[2px]">
                         <img :src="warningSign" alt="" class="max-[768px]:w-[35px]" />
-                        <h4 class="text-[1.5rem] font-medium max-[768px]:text-[1.2rem] max-[768px]:py-2">{{ _t('createvehicle','information_title') }}
+                        <h4 class="text-[1.5rem] font-medium max-[768px]:text-[1.2rem] max-[768px]:py-2">{{
+                            _t('createvehicle','information_title') }}
                         </h4>
                         <p class="max-[768px]:text-[0.875rem]">
-                            {{ _t('createvehicle','step2_information_secure_listing') }}
+                            {{ _t('createvehicle', 'step2_information_secure_listing') }}
                         </p>
                     </div>
                     <div class="col text-customPrimaryColor-foreground w-[70%] max-[768px]:w-full p-[2rem]">
                         <img :src="warningSign" alt="" class="max-[768px]:w-[35px]" />
                         <h4 class="text-[1.5rem] font-medium max-[768px]:text-[1.2rem] max-[768px]:py-2">
-                            {{ _t('createvehicle','need_help_title') }}
+                            {{ _t('createvehicle', 'need_help_title') }}
                         </h4>
-                        <p class="max-[768px]:text-[0.875rem]">{{ _t('createvehicle','contact_us_on') }}</p>
+                        <p class="max-[768px]:text-[0.875rem]">{{ _t('createvehicle', 'contact_us_on') }}</p>
                     </div>
                 </div>
                 <img :src="circleImg" alt="" class="absolute top-[-30%] right-[-15%]" />
@@ -1338,7 +1482,8 @@
     <!-- Step-7 -->
     <div v-if="currentStep === 7" class="overflow-x-hidden vehicle-listing h-screen md:overflow-y-hidden relative ">
         <div class="absolute inset-0 flex justify-between max-[768px]:relative max-[768px]:flex-col max-[768px]:h-auto">
-            <div class="column overflow-y-auto w-[50%] h-full flex justify-center pb-[4rem] max-[768px]:w-full max-[768px]:h-auto bg-white">
+            <div
+                class="column overflow-y-auto w-[50%] h-full flex justify-center pb-[4rem] max-[768px]:w-full max-[768px]:h-auto bg-white">
                 <div class="flex flex-col gap-5 w-[90%] max-[768px]:w-full">
                     <Link href="/" class="max-[768px]:hidden mt-[2rem]">
                     <ApplicationLogo />
@@ -1346,28 +1491,29 @@
                     <AuthenticatedHeaderLayout class="hidden max-[768px]:block max-[768px]:border-b-0" />
                     <div class="mt-[5rem] mb-[2rem] max-[768px]:mt-0 max-[768px]:px-[1.5rem]">
                         <p class="text-[1.75rem] font-medium max-[768px]:text-[1.2rem]">
-                            {{ _t('createvehicle','step7_upload_photos_title') }}
+                            {{ _t('createvehicle', 'step7_upload_photos_title') }}
                         </p>
 
-                        <span class="text-[0.75rem] text-customLightGrayColor font-medium">{{ _t('createvehicle','step7_upload_photos_description') }}</span>
+                        <span class="text-[0.75rem] text-customLightGrayColor font-medium">{{
+                            _t('createvehicle','step7_upload_photos_description') }}</span>
                     </div>
                     <!-- Image Upload Section -->
                     <div class="flex flex-col gap-2 justify-center items-center border-[2px] rounded-[0.5rem] border-customPrimaryColor border-dashed py-10 transition-colors duration-200"
                         @dragenter="onDragEnter" @dragleave="onDragLeave" @dragover="onDragOver" @drop="onDrop">
                         <img :src="uploadIcon" alt="" class="max-[768px]:w-[25px]" />
-                        <p class="max-[768px]:hidden">{{ _t('createvehicle','step7_drag_drop_text') }}</p>
-                        <p class="text-customLightGrayColor font-medium max-[768px]:hidden">{{ _t('createvehicle','step7_or_text') }}</p>
+                        <p class="max-[768px]:hidden">{{ _t('createvehicle', 'step7_drag_drop_text') }}</p>
+                        <p class="text-customLightGrayColor font-medium max-[768px]:hidden">{{
+                            _t('createvehicle','step7_or_text') }}</p>
                         <label for="images"
                             class="cursor-pointer bg-customPrimaryColor text-white px-4 py-2 rounded hover:bg-opacity-90 transition-colors">
-                            {{ _t('createvehicle','step7_browse_files_button') }}
+                            {{ _t('createvehicle', 'step7_browse_files_button') }}
                         </label>
                         <input type="file" id="images" @change="handleFileUpload" multiple class="hidden"
                             accept="image/*" />
                         <div v-if="form.images.length"
                             class="image-preview-container mt-4 grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3 w-full px-4">
-                            <div v-for="(image, index) in form.images" :key="index" 
-                                 class="image-preview relative group"
-                                 :class="{ 'border-4 border-blue-500 p-1': form.primary_image_index === index }">
+                            <div v-for="(image, index) in form.images" :key="index" class="image-preview relative group"
+                                :class="{ 'border-4 border-blue-500 p-1': form.primary_image_index === index }">
                                 <img :src="getImageUrl(image)" alt="Vehicle Image"
                                     class="w-full h-24 object-cover rounded" />
                                 <button
@@ -1376,10 +1522,11 @@
                                 <button v-if="form.primary_image_index !== index"
                                     @click.prevent="setPrimaryImage(index)"
                                     class="absolute bottom-1 left-1/2 transform -translate-x-1/2 bg-blue-500 text-white text-xs px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity">
-                                    {{ _t('createvehicle','step7_set_primary_button') }}
+                                    {{ _t('createvehicle', 'step7_set_primary_button') }}
                                 </button>
-                                <span v-if="form.primary_image_index === index" 
-                                      class="absolute top-1 left-1 bg-blue-500 text-white text-xs px-2 py-1 rounded">{{ _t('createvehicle','step7_primary_badge') }}</span>
+                                <span v-if="form.primary_image_index === index"
+                                    class="absolute top-1 left-1 bg-blue-500 text-white text-xs px-2 py-1 rounded">{{
+                                        _t('createvehicle','step7_primary_badge') }}</span>
                             </div>
                         </div>
                         <p class="mt-2 text-sm" :class="form.images.length < 5 ? 'text-red-500' : 'text-green-500'">{{
@@ -1389,11 +1536,11 @@
                     <div
                         class="buttons flex justify-between mt-[2rem] pb-[4rem] max-[768px]:pb-0 max-[768px]:px-[1.5rem]">
                         <button class="button-secondary gap-[1.5rem] w-[15rem] max-[768px]:w-[10rem]" @click="prevStep">
-                            {{ _t('createvehicle','back_button') }}
+                            {{ _t('createvehicle', 'back_button') }}
                         </button>
                         <PrimaryButton class="w-[15rem] max-[768px]:w-[10rem] disabled:opacity-50" type="button"
                             @click="submit" :disabled="!isImageCountValid">
-                            {{ _t('createvehicle','submit_button') }}</PrimaryButton>
+                            {{ _t('createvehicle', 'submit_button') }}</PrimaryButton>
                     </div>
                 </div>
             </div>
@@ -1403,18 +1550,19 @@
                     <div
                         class="col text-customPrimaryColor-foreground w-[70%] max-[768px]:w-full p-[2rem] border-b-[2px]">
                         <img :src="warningSign" alt="" class="max-[768px]:w-[35px]" />
-                        <h4 class="text-[1.5rem] font-medium max-[768px]:text-[1.2rem] max-[768px]:py-2">{{ _t('createvehicle','information_title') }}
+                        <h4 class="text-[1.5rem] font-medium max-[768px]:text-[1.2rem] max-[768px]:py-2">{{
+                            _t('createvehicle','information_title') }}
                         </h4>
                         <p class="max-[768px]:text-[0.875rem]">
-                           {{ _t('createvehicle','step2_information_secure_listing') }}
+                            {{ _t('createvehicle', 'step2_information_secure_listing') }}
                         </p>
                     </div>
                     <div class="col text-customPrimaryColor-foreground w-[70%] max-[768px]:w-full p-[2rem]">
                         <img :src="warningSign" alt="" class="max-[768px]:w-[35px]" />
                         <h4 class="text-[1.5rem] font-medium max-[768px]:text-[1.2rem] max-[768px]:py-2">
-                            {{ _t('createvehicle','need_help_title') }}
+                            {{ _t('createvehicle', 'need_help_title') }}
                         </h4>
-                        <p class="max-[768px]:text-[0.875rem]">{{ _t('createvehicle','contact_us_on') }}</p>
+                        <p class="max-[768px]:text-[0.875rem]">{{ _t('createvehicle', 'contact_us_on') }}</p>
                     </div>
                 </div>
                 <img :src="circleImg" alt="" class="absolute top-[-30%] right-[-15%]" />
@@ -1422,26 +1570,27 @@
         </div>
     </div>
 
-    
-<!-- Add this right before the closing </div> of your main container -->
-<div v-if="showErrorDialog" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-    <div class="bg-white rounded-lg p-6 max-w-md mx-auto">
-        <div class="flex items-center mb-4">
-            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-red-500 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-            </svg>
-            <h3 class="text-lg font-medium">{{ _t('createvehicle','invalid_upload_title') }}</h3>
-        </div>
-        <p class="mb-4">{{ errorMessage }}</p>
-        <div class="flex justify-end">
-            <button 
-                @click="closeErrorDialog"
-                class="bg-customPrimaryColor text-white px-4 py-2 rounded hover:bg-opacity-90 transition-colors">
-                {{ _t('createvehicle','ok_button') }}
-            </button>
+
+    <!-- Add this right before the closing </div> of your main container -->
+    <div v-if="showErrorDialog" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+        <div class="bg-white rounded-lg p-6 max-w-md mx-auto">
+            <div class="flex items-center mb-4">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-red-500 mr-2" fill="none"
+                    viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                        d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                </svg>
+                <h3 class="text-lg font-medium">{{ _t('createvehicle', 'invalid_upload_title') }}</h3>
+            </div>
+            <p class="mb-4">{{ errorMessage }}</p>
+            <div class="flex justify-end">
+                <button @click="closeErrorDialog"
+                    class="bg-customPrimaryColor text-white px-4 py-2 rounded hover:bg-opacity-90 transition-colors">
+                    {{ _t('createvehicle', 'ok_button') }}
+                </button>
+            </div>
         </div>
     </div>
-</div>
 </template>
 
 <script setup>
@@ -1466,8 +1615,10 @@ import { SelectContent, SelectGroup, SelectLabel, SelectTrigger, SelectValue } f
 import loader from "../../../assets/loader.gif";
 import { usePage } from '@inertiajs/vue3';
 import AuthenticatedHeaderLayout from "@/Layouts/AuthenticatedHeaderLayout.vue";
-import VueDatePicker from '@vuepic/vue-datepicker'
-import '@vuepic/vue-datepicker/dist/main.css'
+import VueDatePicker from '@vuepic/vue-datepicker';
+import '@vuepic/vue-datepicker/dist/main.css';
+import vehicleColorsFromJson from '../../data/colors.json';
+
 import {
     Dialog,
     DialogContent,
@@ -1501,7 +1652,7 @@ const form = useForm({
     latitude: 'null',
     longitude: 'null',
     city: "",
-    state: "", 
+    state: "",
     country: "",
     status: "available",
     features: [],
@@ -1582,6 +1733,8 @@ const plans = ref([]);
 const selectedPlans = ref([]);
 const isEditDialogOpen = ref(false);
 const currentEditingPlan = ref(null);
+const vehicleColors = ref(vehicleColorsFromJson);
+
 
 // Temporary plan data for editing
 const editPlanData = ref({
@@ -1733,7 +1886,7 @@ const fetchAddons = async () => {
         // Prefill addon prices and quantities
         addons.value.forEach(addon => {
             addonPrices.value[addon.id] = addon.price || 0;
-            addonQuantities.value[addon.id] = 1; 
+            addonQuantities.value[addon.id] = 1;
         });
     } catch (error) {
         console.error('Error fetching addons:', error);
@@ -1895,7 +2048,7 @@ const fetchFeaturesForCategory = async (categoryId) => {
         availableFeatures.value = response.data.map(feature => ({
             id: feature.id, // Keep id if needed for keys or future use
             name: feature.feature_name, // Use 'name' to match existing template iteration (feature.name)
-            icon_url: feature.icon_url 
+            icon_url: feature.icon_url
         }));
         form.features = []; // Clear previously selected features when category changes
     } catch (error) {
@@ -1925,7 +2078,7 @@ onMounted(() => {
             form.features = props.vehicle.features.map(f => typeof f === 'string' ? f : f.name);
         }
     } else if (form.category_id) { // If form.category_id is set by other means on init
-         fetchFeaturesForCategory(form.category_id);
+        fetchFeaturesForCategory(form.category_id);
     }
 });
 
@@ -1975,7 +2128,7 @@ const onDrop = (e) => {
 const validateAndAddFiles = (files) => {
     const validFiles = [];
     let hasErrors = false;
-    
+
     for (const file of files) {
         // Check file format
         if (!VALID_FORMATS.includes(file.type)) {
@@ -1983,17 +2136,17 @@ const validateAndAddFiles = (files) => {
             hasErrors = true;
             break;
         }
-        
+
         // Check file size
         if (file.size > MAX_FILE_SIZE) {
             errorMessage.value = 'Image size should be less than 10MB.';
             hasErrors = true;
             break;
         }
-        
+
         validFiles.push(file);
     }
-    
+
     if (hasErrors) {
         showErrorDialog.value = true;
     } else if (validFiles.length > 0) {
@@ -2226,7 +2379,7 @@ const searchResults = ref([]);
 const handleSearchInput = async () => {
     // Ensure the location input is at least 3 characters long
     if (form.location.length < 3) {
-        searchResults.value = []; 
+        searchResults.value = [];
         return;
     }
 
@@ -2612,22 +2765,22 @@ select {
 
 :deep(.dp__input) {
     padding: 1rem 1rem 1rem 2.5rem;
-    border-radius: 12px; 
+    border-radius: 12px;
     border: 1px solid #2b2b2b99;
-    width: 100%; 
+    width: 100%;
 }
 
 :deep(.dp__menu) {
     border-radius: 0.5rem;
 }
 
-::-webkit-scrollbar{
- display: none;
+::-webkit-scrollbar {
+    display: none;
 }
 
 
 @media screen and (max-width:768px) {
-    :deep(.dp__input){
+    :deep(.dp__input) {
         font-size: 0.75rem;
     }
 }

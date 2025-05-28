@@ -598,7 +598,7 @@ const handleCategorySearchUpdate = (params) => {
                 <div class="relative w-48 filter-group">
                     <div class="text-xs font-medium text-gray-500 mb-1 ml-1">Car Brand</div>
                     <CustomDropdown v-model="form.brand" unique-id="brand"
-                        :options="[...$page.props.brands.map(brand => ({ value: brand, label: brand })), { value: '', label: 'Any Brand' }]"
+                        :options="$page.props.brands.map(brand => ({ value: brand, label: brand }))"
                         placeholder="Any Brand" :left-icon="brandIcon" :right-icon="CaretDown"
                         class="hover:border-customPrimaryColor transition-all duration-300" />
                 </div>
@@ -607,7 +607,7 @@ const handleCategorySearchUpdate = (params) => {
                 <div class="relative w-48 filter-group">
                     <div class="text-xs font-medium text-gray-500 mb-1 ml-1">Vehicle Type</div>
                 <CustomDropdown v-model="form.category_id" unique-id="category"
-                        :options="[...$page.props.categories.map(category => ({ value: category.id, label: category.name })), { value: '', label: 'All Categories' }]"
+                        :options="$page.props.categories.map(category => ({ value: category.id, label: category.name }))"
                         placeholder="All Categories" :left-icon="categoryIcon" :right-icon="CaretDown" />
                     </div>
 
@@ -615,7 +615,7 @@ const handleCategorySearchUpdate = (params) => {
                 <div class="relative w-48 filter-group">
                     <div class="text-xs font-medium text-gray-500 mb-1 ml-1">Transmission Type</div>
                     <CustomDropdown v-model="form.transmission" unique-id="transmission"
-                        :options="[{ value: '', label: 'Any Type' }, ...$page.props.transmissions.map(transmission => ({ value: transmission, label: transmission.charAt(0).toUpperCase() + transmission.slice(1) }))]"
+                        :options="$page.props.transmissions.map(transmission => ({ value: transmission, label: transmission.charAt(0).toUpperCase() + transmission.slice(1) }))"
                         placeholder="Any Type" :left-icon="transmissionIcon" :right-icon="CaretDown" 
                         class="hover:border-customPrimaryColor transition-all duration-300" />
                 </div>
@@ -624,7 +624,7 @@ const handleCategorySearchUpdate = (params) => {
                 <div class="relative w-48 filter-group">
                     <div class="text-xs font-medium text-gray-500 mb-1 ml-1">Fuel Type</div>
                     <CustomDropdown v-model="form.fuel" unique-id="fuel"
-                        :options="[{ value: '', label: 'Any Fuel' }, ...$page.props.fuels.map(fuel => ({ value: fuel, label: fuel.charAt(0).toUpperCase() + fuel.slice(1) }))]"
+                        :options="$page.props.fuels.map(fuel => ({ value: fuel, label: fuel.charAt(0).toUpperCase() + fuel.slice(1) }))"
                         placeholder="Any Fuel" :left-icon="fuelIcon" :right-icon="CaretDown"
                         class="hover:border-customPrimaryColor transition-all duration-300" />
                 </div>
@@ -687,7 +687,7 @@ const handleCategorySearchUpdate = (params) => {
                 <div class="relative w-48 filter-group">
                     <div class="text-xs font-medium text-gray-500 mb-1 ml-1">Car Color</div>
                     <CustomDropdown v-model="form.color" unique-id="color"
-                        :options="[...$page.props.colors.map(color => ({ value: color, label: color })), { value: '', label: 'Any Color' }]"
+                        :options="$page.props.colors.map(color => ({ value: color, label: color }))"
                         placeholder="Any Color" :left-icon="colorIcon" :right-icon="CaretDown"
                         class="hover:border-customPrimaryColor transition-all duration-300" />
                 </div>
@@ -696,7 +696,7 @@ const handleCategorySearchUpdate = (params) => {
                 <div class="relative w-48 filter-group">
                     <div class="text-xs font-medium text-gray-500 mb-1 ml-1">Fuel Efficiency</div>
                     <CustomDropdown v-model="form.mileage" unique-id="mileage"
-                        :options="[{ value: '', label: 'Any Mileage' }, ...$page.props.mileages.map(mileage => ({ value: mileage, label: `${mileage} km/liter` }))]"
+                        :options="$page.props.mileages.map(mileage => ({ value: mileage, label: `${mileage} km/liter` }))"
                         placeholder="Any Mileage" :left-icon="mileageIcon2" :right-icon="CaretDown"
                         class="hover:border-customPrimaryColor transition-all duration-300" />
                 </div>
@@ -743,15 +743,15 @@ const handleCategorySearchUpdate = (params) => {
                     <div class="filter-item">
                         <label class="text-sm font-medium text-gray-700 mb-1 block">Car Brand</label>
                         <CustomDropdown v-model="form.brand" unique-id="brand-mobile"
-                            :options="[...$page.props.brands.map(brand => ({ value: brand, label: brand })), { value: '', label: 'Any Brand' }]"
+                            :options="$page.props.brands.map(brand => ({ value: brand, label: brand }))"
                             placeholder="Any Brand" :left-icon="brandIcon" :right-icon="CaretDown" />
                     </div>
 
                     <!-- Category Filter -->
                     <div class="filter-item">
                     <label class="text-sm font-medium text-gray-700 mb-1 block">Vehicle Type</label>
-                    <CustomDropdown v-model="form.category_id" unique-id="category"
-                        :options="[...$page.props.categories.map(category => ({ value: category.id, label: category.name })), { value: '', label: 'All Categories' }]"
+                    <CustomDropdown v-model="form.category_id" unique-id="category-mobile"
+                        :options="$page.props.categories.map(category => ({ value: category.id, label: category.name }))"
                         placeholder="All Categories" :left-icon="categoryIcon" :right-icon="CaretDown" />
                     </div>
 
@@ -759,7 +759,7 @@ const handleCategorySearchUpdate = (params) => {
                     <div class="filter-item">
                         <label class="text-sm font-medium text-gray-700 mb-1 block">Transmission Type</label>
                         <CustomDropdown v-model="form.transmission" unique-id="transmission-mobile"
-                            :options="[{ value: '', label: 'Any Type' }, ...$page.props.transmissions.map(transmission => ({ value: transmission, label: transmission.charAt(0).toUpperCase() + transmission.slice(1) }))]"
+                            :options="$page.props.transmissions.map(transmission => ({ value: transmission, label: transmission.charAt(0).toUpperCase() + transmission.slice(1) }))"
                             placeholder="Any Type" :left-icon="transmissionIcon" :right-icon="CaretDown" />
                     </div>
 
@@ -767,7 +767,7 @@ const handleCategorySearchUpdate = (params) => {
                     <div class="filter-item">
                         <label class="text-sm font-medium text-gray-700 mb-1 block">Fuel Type</label>
                         <CustomDropdown v-model="form.fuel" unique-id="fuel-mobile"
-                            :options="[{ value: '', label: 'Any Fuel' }, ...$page.props.fuels.map(fuel => ({ value: fuel, label: fuel.charAt(0).toUpperCase() + fuel.slice(1) }))]"
+                            :options="$page.props.fuels.map(fuel => ({ value: fuel, label: fuel.charAt(0).toUpperCase() + fuel.slice(1) }))"
                             placeholder="Any Fuel" :left-icon="fuelIcon" :right-icon="CaretDown" />
                     </div>
 
@@ -829,7 +829,7 @@ const handleCategorySearchUpdate = (params) => {
                     <div class="filter-item">
                         <label class="text-sm font-medium text-gray-700 mb-1 block">Car Color</label>
                         <CustomDropdown v-model="form.color" unique-id="color-mobile"
-                            :options="[...$page.props.colors.map(color => ({ value: color, label: color })), { value: '', label: 'Any Color' }]"
+                            :options="$page.props.colors.map(color => ({ value: color, label: color }))"
                             placeholder="Any Color" :left-icon="colorIcon" :right-icon="CaretDown" />
                     </div>
 
@@ -837,7 +837,7 @@ const handleCategorySearchUpdate = (params) => {
                     <div class="filter-item">
                         <label class="text-sm font-medium text-gray-700 mb-1 block">Fuel Efficiency</label>
                         <CustomDropdown v-model="form.mileage" unique-id="mileage-mobile"
-                            :options="[{ value: '', label: 'Any Mileage' }, ...$page.props.mileages.map(mileage => ({ value: mileage, label: `${mileage} km/liter` }))]"
+                            :options="$page.props.mileages.map(mileage => ({ value: mileage, label: `${mileage} km/liter` }))"
                             placeholder="Any Mileage" :left-icon="mileageIcon2" :right-icon="CaretDown" />
                     </div>
 

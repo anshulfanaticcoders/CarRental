@@ -1,0 +1,16 @@
+[
+  { "name": "Black", "value": "black" },
+  { "name": "White", "value": "white" },
+  { "name": "Silver", "value": "silver" },
+  { "name": "Gray", "value": "gray" },
+  { "name": "Red", "value": "red" },
+  { "name": "Blue", "value": "blue" },
+  { "name": "Brown", "value": "brown" },
+  { "name": "Green", "value": "green" },
+  { "name": "Beige", "value": "beige" },
+  { "name": "Gold", "value": "gold" },
+  { "name": "Yellow", "value": "yellow" },
+  { "name": "Orange", "value": "orange" },
+  { "name": "Purple", "value": "purple" },
+  { "name": "Other", "value": "other" }
+]
