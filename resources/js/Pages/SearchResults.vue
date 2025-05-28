@@ -69,9 +69,20 @@ const form = useForm({
     radius: usePage().props.filters.radius || null,
     package_type: usePage().props.filters.package_type || "day",
     category_id: usePage().props.filters.category_id || "",
+    city: usePage().props.filters.city || "",
+    state: usePage().props.filters.state || "",
+    country: usePage().props.filters.country || "",
+    matched_field: usePage().props.filters.matched_field || null,
+    location: usePage().props.filters.location || "", // Add location field
 });
 
 const submitFilters = debounce(() => {
+    const dataToSend = { ...form.data() };
+    if (dataToSend.matched_field && (dataToSend.city || dataToSend.state || dataToSend.country)) {
+        delete dataToSend.radius;
+    }
+
+
     form.get('/s', {
         preserveState: true,
         preserveScroll: true,
@@ -191,7 +202,8 @@ const createCustomIcon = (price, currency) => {
 };
 
 const resetFilters = () => {
-    form.reset();
+    form.reset(); // This should reset all fields defined in useForm to their initial values or empty strings if not defined initially
+    // Explicitly ensure all filter-related fields are cleared
     form.seating_capacity = "";
     form.brand = "";
     form.transmission = "";
@@ -201,9 +213,23 @@ const resetFilters = () => {
     form.mileage = "";
     form.package_type = "day";
     form.category_id = "";
-    priceRangeValues.value = [0, 20000];
+    form.city = "";
+    form.state = "";
+    form.country = "";
+    form.matched_field = null;
+    form.location = ""; // Reset location field
+    form.where = "";
+    form.latitude = null;
+    form.longitude = null;
+    form.radius = null;
+    form.date_from = "";
+    form.date_to = "";
+    // price_range and package_type are also reset by form.reset() or should be explicitly set if needed
+    priceRangeValues.value = [0, 20000]; // Reset price slider UI
     tempPriceRangeValues.value = [0, 20000];
-    submitFilters();
+    form.price_range = ""; // Ensure price_range in form is also cleared
+
+    submitFilters(); // Submit with cleared filters
 };
 
 const addMarkers = () => {
@@ -482,8 +508,36 @@ const searchQuery = computed(() => {
         latitude: usePage().props.filters?.latitude || "",
         longitude: usePage().props.filters?.longitude || "",
         radius: usePage().props.filters?.radius || "",
+        // For prefill consistency with SearchBar
+        city: usePage().props.filters?.city || "",
+        state: usePage().props.filters?.state || "",
+        country: usePage().props.filters?.country || "",
+        matched_field: usePage().props.filters?.matched_field || null,
+        location: usePage().props.filters?.location || "",
     };
 });
+
+// Add this handler function to update the form with data from SearchBar
+const handleSearchUpdate = (params) => {
+    form.where = params.where || "";
+    form.latitude = params.latitude || null;
+    form.longitude = params.longitude || null;
+    form.radius = params.radius || null;
+    form.date_from = params.date_from || "";
+    form.date_to = params.date_to || "";
+    // Update missing location fields
+    form.city = params.city || "";
+    form.state = params.state || "";
+    form.country = params.country || "";
+    form.matched_field = params.matched_field || null;
+
+    if (params.matched_field === 'location') {
+        form.location = params.location_name || params.where || ""; // Use location_name if provided by SearchBar, else fallback
+    } else {
+        form.location = ""; // Clear if not a 'location' type match
+    }
+    // The watch on form.data() will automatically trigger submitFilters.
+};
 
 const showMobileFilters = ref(false);
 const applyFilters = () => {
@@ -563,7 +617,8 @@ provide('setActiveDropdown', setActiveDropdown);
     <section class="bg-customPrimaryColor py-customVerticalSpacing">
         <div class="">
             <SearchBar class="border-[2px] rounded-[20px] border-white mt-0 mb-0 max-[768px]:border-none"
-                :prefill="searchQuery" />
+                :prefill="searchQuery"
+                @update-search-params="handleSearchUpdate" />
         </div>
     </section>
 
@@ -609,7 +664,7 @@ provide('setActiveDropdown', setActiveDropdown);
                 <div class="relative w-48 filter-group">
                     <div class="text-xs font-medium text-gray-500 mb-1 ml-1">Car Brand</div>
                     <CustomDropdown v-model="form.brand" unique-id="brand"
-                        :options="[...$page.props.brands.map(brand => ({ value: brand, label: brand })), { value: '', label: 'Any Brand' }]"
+                        :options="$page.props.brands.map(brand => ({ value: brand, label: brand }))"
                         placeholder="Any Brand" :left-icon="brandIcon" :right-icon="CaretDown"
                         class="hover:border-customPrimaryColor transition-all duration-300" />
                 </div>
@@ -618,7 +673,7 @@ provide('setActiveDropdown', setActiveDropdown);
                 <div class="relative w-48 filter-group">
                     <div class="text-xs font-medium text-gray-500 mb-1 ml-1">Vehicle Type</div>
                 <CustomDropdown v-model="form.category_id" unique-id="category"
-                        :options="[...$page.props.categories.map(category => ({ value: category.id, label: category.name })), { value: '', label: 'All Categories' }]"
+                        :options="$page.props.categories.map(category => ({ value: category.id, label: category.name }))"
                         placeholder="All Categories" :left-icon="categoryIcon" :right-icon="CaretDown" />
                     </div>
 
@@ -626,7 +681,7 @@ provide('setActiveDropdown', setActiveDropdown);
                 <div class="relative w-48 filter-group">
                     <div class="text-xs font-medium text-gray-500 mb-1 ml-1">Transmission Type</div>
                     <CustomDropdown v-model="form.transmission" unique-id="transmission"
-                        :options="[{ value: '', label: 'Any Type' }, ...$page.props.transmissions.map(transmission => ({ value: transmission, label: transmission.charAt(0).toUpperCase() + transmission.slice(1) }))]"
+                        :options="$page.props.transmissions.map(transmission => ({ value: transmission, label: transmission.charAt(0).toUpperCase() + transmission.slice(1) }))"
                         placeholder="Any Type" :left-icon="transmissionIcon" :right-icon="CaretDown" 
                         class="hover:border-customPrimaryColor transition-all duration-300" />
                 </div>
@@ -635,7 +690,7 @@ provide('setActiveDropdown', setActiveDropdown);
                 <div class="relative w-48 filter-group">
                     <div class="text-xs font-medium text-gray-500 mb-1 ml-1">Fuel Type</div>
                     <CustomDropdown v-model="form.fuel" unique-id="fuel"
-                        :options="[{ value: '', label: 'Any Fuel' }, ...$page.props.fuels.map(fuel => ({ value: fuel, label: fuel.charAt(0).toUpperCase() + fuel.slice(1) }))]"
+                        :options="$page.props.fuels.map(fuel => ({ value: fuel, label: fuel.charAt(0).toUpperCase() + fuel.slice(1) }))"
                         placeholder="Any Fuel" :left-icon="fuelIcon" :right-icon="CaretDown"
                         class="hover:border-customPrimaryColor transition-all duration-300" />
                 </div>
@@ -699,7 +754,7 @@ provide('setActiveDropdown', setActiveDropdown);
                 <div class="relative w-48 filter-group">
                     <div class="text-xs font-medium text-gray-500 mb-1 ml-1">Car Color</div>
                     <CustomDropdown v-model="form.color" unique-id="color"
-                        :options="[...$page.props.colors.map(color => ({ value: color, label: color })), { value: '', label: 'Any Color' }]"
+                        :options="$page.props.colors.map(color => ({ value: color, label: color }))"
                         placeholder="Any Color" :left-icon="colorIcon" :right-icon="CaretDown"
                         class="hover:border-customPrimaryColor transition-all duration-300" />
                 </div>
@@ -708,7 +763,7 @@ provide('setActiveDropdown', setActiveDropdown);
                 <div class="relative w-48 filter-group">
                     <div class="text-xs font-medium text-gray-500 mb-1 ml-1">Fuel Efficiency</div>
                     <CustomDropdown v-model="form.mileage" unique-id="mileage"
-                        :options="[{ value: '', label: 'Any Mileage' }, ...$page.props.mileages.map(mileage => ({ value: mileage, label: `${mileage} km/liter` }))]"
+                        :options="$page.props.mileages.map(mileage => ({ value: mileage, label: `${mileage} km/liter` }))"
                         placeholder="Any Mileage" :left-icon="mileageIcon2" :right-icon="CaretDown"
                         class="hover:border-customPrimaryColor transition-all duration-300" />
                 </div>
@@ -756,15 +811,15 @@ provide('setActiveDropdown', setActiveDropdown);
                     <div class="filter-item">
                         <label class="text-sm font-medium text-gray-700 mb-1 block">Car Brand</label>
                         <CustomDropdown v-model="form.brand" unique-id="brand-mobile"
-                            :options="[...$page.props.brands.map(brand => ({ value: brand, label: brand })), { value: '', label: 'Any Brand' }]"
+                            :options="$page.props.brands.map(brand => ({ value: brand, label: brand }))"
                             placeholder="Any Brand" :left-icon="brandIcon" :right-icon="CaretDown" />
                     </div>
 
                     <!-- Category Filter -->
                     <div class="filter-item">
                     <label class="text-sm font-medium text-gray-700 mb-1 block">Vehicle Type</label>
-                    <CustomDropdown v-model="form.category_id" unique-id="category"
-                        :options="[...$page.props.categories.map(category => ({ value: category.id, label: category.name })), { value: '', label: 'All Categories' }]"
+                    <CustomDropdown v-model="form.category_id" unique-id="category-mobile" 
+                        :options="$page.props.categories.map(category => ({ value: category.id, label: category.name }))"
                         placeholder="All Categories" :left-icon="categoryIcon" :right-icon="CaretDown" />
                     </div>
 
@@ -772,7 +827,7 @@ provide('setActiveDropdown', setActiveDropdown);
                     <div class="filter-item">
                         <label class="text-sm font-medium text-gray-700 mb-1 block">Transmission Type</label>
                         <CustomDropdown v-model="form.transmission" unique-id="transmission-mobile"
-                            :options="[{ value: '', label: 'Any Type' }, ...$page.props.transmissions.map(transmission => ({ value: transmission, label: transmission.charAt(0).toUpperCase() + transmission.slice(1) }))]"
+                            :options="$page.props.transmissions.map(transmission => ({ value: transmission, label: transmission.charAt(0).toUpperCase() + transmission.slice(1) }))"
                             placeholder="Any Type" :left-icon="transmissionIcon" :right-icon="CaretDown" />
                     </div>
 
@@ -780,7 +835,7 @@ provide('setActiveDropdown', setActiveDropdown);
                     <div class="filter-item">
                         <label class="text-sm font-medium text-gray-700 mb-1 block">Fuel Type</label>
                         <CustomDropdown v-model="form.fuel" unique-id="fuel-mobile"
-                            :options="[{ value: '', label: 'Any Fuel' }, ...$page.props.fuels.map(fuel => ({ value: fuel, label: fuel.charAt(0).toUpperCase() + fuel.slice(1) }))]"
+                            :options="$page.props.fuels.map(fuel => ({ value: fuel, label: fuel.charAt(0).toUpperCase() + fuel.slice(1) }))"
                             placeholder="Any Fuel" :left-icon="fuelIcon" :right-icon="CaretDown" />
                     </div>
 
@@ -843,7 +898,7 @@ provide('setActiveDropdown', setActiveDropdown);
                     <div class="filter-item">
                         <label class="text-sm font-medium text-gray-700 mb-1 block">Car Color</label>
                         <CustomDropdown v-model="form.color" unique-id="color-mobile"
-                            :options="[...$page.props.colors.map(color => ({ value: color, label: color })), { value: '', label: 'Any Color' }]"
+                            :options="$page.props.colors.map(color => ({ value: color, label: color }))"
                             placeholder="Any Color" :left-icon="colorIcon" :right-icon="CaretDown" />
                     </div>
 
@@ -851,7 +906,7 @@ provide('setActiveDropdown', setActiveDropdown);
                     <div class="filter-item">
                         <label class="text-sm font-medium text-gray-700 mb-1 block">Fuel Efficiency</label>
                         <CustomDropdown v-model="form.mileage" unique-id="mileage-mobile"
-                            :options="[{ value: '', label: 'Any Mileage' }, ...$page.props.mileages.map(mileage => ({ value: mileage, label: `${mileage} km/liter` }))]"
+                            :options="$page.props.mileages.map(mileage => ({ value: mileage, label: `${mileage} km/liter` }))"
                             placeholder="Any Mileage" :left-icon="mileageIcon2" :right-icon="CaretDown" />
                     </div>
 

@@ -41,7 +41,7 @@ class SearchController extends Controller
     $query = Vehicle::query()->whereIn('status', ['available', 'rented'])
         ->with('images', 'bookings', 'vendorProfile', 'benefits');
 
-    // Exclude vehicles booked in the selected date range
+    // Apply date filters first
     if (!empty($validated['date_from']) && !empty($validated['date_to'])) {
         $query->whereDoesntHave('bookings', function ($q) use ($validated) {
             $q->where(function ($query) use ($validated) {
@@ -66,35 +66,7 @@ class SearchController extends Controller
         });
     }
 
-    // Apply non-location filters
-    if (!empty($validated['seating_capacity'])) {
-        $query->where('seating_capacity', $validated['seating_capacity']);
-    }
-    if (!empty($validated['brand'])) {
-        $query->where('brand', $validated['brand']);
-    }
-    if (!empty($validated['transmission'])) {
-        $query->where('transmission', $validated['transmission']);
-    }
-    if (!empty($validated['fuel'])) {
-        $query->where('fuel', $validated['fuel']);
-    }
-    if (!empty($validated['price_range'])) {
-        $range = explode('-', $validated['price_range']);
-        $query->whereBetween('price_per_day', [(int) $range[0], (int) $range[1]]);
-    }
-    if (!empty($validated['color'])) {
-        $query->where('color', $validated['color']);
-    }
-    if (!empty($validated['mileage'])) {
-        $range = explode('-', $validated['mileage']);
-        $query->whereBetween('mileage', [(int) $range[0], (int) $range[1]]);
-    }
-    if (!empty($validated['category_id'])) {
-        $query->where('category_id', $validated['category_id']);
-    }
-
-    // Location-based filtering based on matched_field
+    // Apply primary location filters
     if (!empty($validated['matched_field'])) {
         $fieldToQuery = null;
         $valueToQuery = null;
@@ -151,7 +123,55 @@ class SearchController extends Controller
         });
     }
 
-    // Package type filter
+    // --- At this point, primary date and location filters are applied to $query ---
+    // --- Clone for fetching broad filter options BEFORE specific attribute filters ---
+    $queryForOptions = clone $query;
+    $potentialVehiclesForOptions = $queryForOptions->get();
+
+    $brands = $potentialVehiclesForOptions->pluck('brand')->unique()->filter()->values()->all();
+    $colors = $potentialVehiclesForOptions->pluck('color')->unique()->filter()->values()->all();
+    $seatingCapacities = $potentialVehiclesForOptions->pluck('seating_capacity')->unique()->filter()->values()->all();
+    $transmissions = $potentialVehiclesForOptions->pluck('transmission')->unique()->filter()->values()->all();
+    $fuels = $potentialVehiclesForOptions->pluck('fuel')->unique()->filter()->values()->all();
+    $mileages = $potentialVehiclesForOptions->pluck('mileage')->unique()->filter()->map(function ($mileage) {
+        if ($mileage >= 0 && $mileage <= 10) return '0-10';
+        if ($mileage > 10 && $mileage <= 20) return '10-20';
+        if ($mileage > 20 && $mileage <= 30) return '20-30';
+        if ($mileage > 30 && $mileage <= 40) return '30-40';
+        return null;
+    })->filter()->unique()->values()->all();
+    // Ensure categories are also fetched based on this broader set
+    $categoriesFromOptions = VehicleCategory::whereIn('id', $potentialVehiclesForOptions->pluck('category_id')->unique()->filter())->select('id', 'name')->get()->toArray();
+
+    // --- Now apply secondary attribute filters to the main $query ---
+    if (!empty($validated['seating_capacity'])) {
+        $query->where('seating_capacity', $validated['seating_capacity']);
+    }
+    if (!empty($validated['brand'])) {
+        $query->where('brand', $validated['brand']);
+    }
+    if (!empty($validated['transmission'])) {
+        $query->where('transmission', $validated['transmission']);
+    }
+    if (!empty($validated['fuel'])) {
+        $query->where('fuel', $validated['fuel']);
+    }
+    if (!empty($validated['price_range'])) {
+        $range = explode('-', $validated['price_range']);
+        $query->whereBetween('price_per_day', [(int) $range[0], (int) $range[1]]);
+    }
+    if (!empty($validated['color'])) {
+        $query->where('color', $validated['color']);
+    }
+    if (!empty($validated['mileage'])) {
+        $range = explode('-', $validated['mileage']);
+        $query->whereBetween('mileage', [(int) $range[0], (int) $range[1]]);
+    }
+    if (!empty($validated['category_id'])) {
+        $query->where('category_id', $validated['category_id']);
+    }
+    
+    // Package type filter (applied to the main query for results)
     if (!empty($validated['package_type'])) {
         switch ($validated['package_type']) {
             case 'week':
@@ -166,10 +186,10 @@ class SearchController extends Controller
         }
     }
 
-    // Paginate results
+    // Paginate the main query to get the vehicles for display
     $vehicles = $query->paginate(20)->withQueryString();
 
-    // Transform the collection to include review data
+    // Transform the paginated collection to include review data
     $vehicles->getCollection()->transform(function ($vehicle) {
         $reviews = Review::where('vehicle_id', $vehicle->id)
             ->where('status', 'approved')
@@ -180,36 +200,18 @@ class SearchController extends Controller
         return $vehicle;
     });
 
-    // Fetch filter options only from the current paginated results and convert to arrays
-    $brands = $vehicles->pluck('brand')->unique()->values()->all();
-    $colors = $vehicles->pluck('color')->unique()->filter()->values()->all();
-    $seatingCapacities = $vehicles->pluck('seating_capacity')->unique()->filter()->values()->all();
-    $transmissions = $vehicles->pluck('transmission')->unique()->filter()->values()->all();
-    $fuels = $vehicles->pluck('fuel')->unique()->filter()->values()->all();
-
-    // For mileage, map to the range format used in the frontend
-    $mileages = $vehicles->pluck('mileage')->unique()->filter()->map(function ($mileage) {
-        if ($mileage >= 0 && $mileage <= 10) return '0-10';
-        if ($mileage > 10 && $mileage <= 20) return '10-20';
-        if ($mileage > 20 && $mileage <= 30) return '20-30';
-        if ($mileage > 30 && $mileage <= 40) return '30-40';
-        return null;
-    })->filter()->unique()->values()->all();
-
-    $categories = VehicleCategory::whereIn('id', $vehicles->pluck('category_id')->unique())->select('id', 'name')->get()->toArray();
-
     // Return Inertia response
     return Inertia::render('SearchResults', [
         'vehicles' => $vehicles,
         'filters' => $validated,
         'pagination_links' => $vehicles->links()->toHtml(),
-        'brands' => $brands,
-        'colors' => $colors,
-        'seatingCapacities' => $seatingCapacities,
-        'transmissions' => $transmissions,
-        'fuels' => $fuels,
-        'mileages' => $mileages,
-        'categories' => $categories,
+        'brands' => $brands, // Use options derived from $potentialVehiclesForOptions
+        'colors' => $colors, // Use options derived from $potentialVehiclesForOptions
+        'seatingCapacities' => $seatingCapacities, // Use options derived from $potentialVehiclesForOptions
+        'transmissions' => $transmissions, // Use options derived from $potentialVehiclesForOptions
+        'fuels' => $fuels, // Use options derived from $potentialVehiclesForOptions
+        'mileages' => $mileages, // Use options derived from $potentialVehiclesForOptions
+        'categories' => $categoriesFromOptions, // Use options derived from $potentialVehiclesForOptions
     ]);
 }
 
@@ -245,7 +247,7 @@ public function searchByCategory(Request $request, $category_id = null)
     $query->whereIn('status', ['available', 'rented'])
         ->with('images', 'bookings', 'vendorProfile', 'benefits');
 
-    // Exclude vehicles booked in the selected date range
+    // Apply date filters first
     if (!empty($validated['date_from']) && !empty($validated['date_to'])) {
         $query->whereDoesntHave('bookings', function ($q) use ($validated) {
             $q->where(function ($query) use ($validated) {
@@ -270,32 +272,7 @@ public function searchByCategory(Request $request, $category_id = null)
         });
     }
 
-    // Apply non-location filters
-    if (!empty($validated['seating_capacity'])) {
-        $query->where('seating_capacity', $validated['seating_capacity']);
-    }
-    if (!empty($validated['brand'])) {
-        $query->where('brand', $validated['brand']);
-    }
-    if (!empty($validated['transmission'])) {
-        $query->where('transmission', $validated['transmission']);
-    }
-    if (!empty($validated['fuel'])) {
-        $query->where('fuel', $validated['fuel']);
-    }
-    if (!empty($validated['price_range'])) {
-        $range = explode('-', $validated['price_range']);
-        $query->whereBetween('price_per_day', [(int) $range[0], (int) $range[1]]);
-    }
-    if (!empty($validated['color'])) {
-        $query->where('color', $validated['color']);
-    }
-    if (!empty($validated['mileage'])) {
-        $range = explode('-', $validated['mileage']);
-        $query->whereBetween('mileage', [(int) $range[0], (int) $range[1]]);
-    }
-
-    // Location-based filtering
+    // Apply primary location filters
     if (!empty($validated['city'])) {
         $query->where('city', 'LIKE', "%{$validated['city']}%");
     } elseif (!empty($validated['state'])) {
@@ -370,8 +347,58 @@ public function searchByCategory(Request $request, $category_id = null)
             ->orderBy('distance_in_km');
     }
 
+    // --- At this point, primary date and location filters are applied to $query ---
+    // --- Clone for fetching broad filter options BEFORE specific attribute filters ---
+    $queryForOptionsCategory = clone $query; // Use a different name to avoid conflict if in same scope
+    $potentialVehiclesForOptionsCategory = $queryForOptionsCategory->get();
 
-    // Package type filter
+    $brands = $potentialVehiclesForOptionsCategory->pluck('brand')->unique()->filter()->values()->all();
+    $colors = $potentialVehiclesForOptionsCategory->pluck('color')->unique()->filter()->values()->all();
+    $seatingCapacities = $potentialVehiclesForOptionsCategory->pluck('seating_capacity')->unique()->filter()->values()->all();
+    $transmissions = $potentialVehiclesForOptionsCategory->pluck('transmission')->unique()->filter()->values()->all();
+    $fuels = $potentialVehiclesForOptionsCategory->pluck('fuel')->unique()->filter()->values()->all();
+    $mileages = $potentialVehiclesForOptionsCategory->pluck('mileage')->unique()->filter()->map(function ($mileage) {
+        if ($mileage >= 0 && $mileage <= 10) return '0-10';
+        if ($mileage > 10 && $mileage <= 20) return '10-20';
+        if ($mileage > 20 && $mileage <= 30) return '20-30';
+        if ($mileage > 30 && $mileage <= 40) return '30-40';
+        return null;
+    })->filter()->unique()->values()->all();
+    // For CategorySearchResults, all categories are usually passed, or just the current one.
+    // If we want to show *other* categories available at this location/date, we'd use:
+    // $categoriesFromOptions = VehicleCategory::whereIn('id', $potentialVehiclesForOptionsCategory->pluck('category_id')->unique()->filter())->select('id', 'name')->get()->toArray();
+    // However, typically for a category search page, you might just pass all categories or the specific one.
+    // For consistency with the general search, let's fetch all categories available for the primary filters.
+    $allCategoriesForPage = VehicleCategory::select('id', 'name')->get()->toArray();
+
+
+    // --- Now apply secondary attribute filters to the main $query ---
+    if (!empty($validated['seating_capacity'])) {
+        $query->where('seating_capacity', $validated['seating_capacity']);
+    }
+    if (!empty($validated['brand'])) {
+        $query->where('brand', $validated['brand']);
+    }
+    if (!empty($validated['transmission'])) {
+        $query->where('transmission', $validated['transmission']);
+    }
+    if (!empty($validated['fuel'])) {
+        $query->where('fuel', $validated['fuel']);
+    }
+    if (!empty($validated['price_range'])) {
+        $range = explode('-', $validated['price_range']);
+        $query->whereBetween('price_per_day', [(int) $range[0], (int) $range[1]]);
+    }
+    if (!empty($validated['color'])) {
+        $query->where('color', $validated['color']);
+    }
+    if (!empty($validated['mileage'])) {
+        $range = explode('-', $validated['mileage']);
+        $query->whereBetween('mileage', [(int) $range[0], (int) $range[1]]);
+    }
+    // category_id is already applied at the top for this method.
+
+    // Package type filter (applied to the main query for results)
     if (!empty($validated['package_type'])) {
         switch ($validated['package_type']) {
             case 'week':
@@ -403,37 +430,19 @@ public function searchByCategory(Request $request, $category_id = null)
 
         return $vehicle;
     });
-
-    // Fetch filter options only from the current paginated results and convert to arrays
-    $brands = $vehicles->pluck('brand')->unique()->values()->all();
-    $colors = $vehicles->pluck('color')->unique()->filter()->values()->all();
-    $seatingCapacities = $vehicles->pluck('seating_capacity')->unique()->filter()->values()->all();
-    $transmissions = $vehicles->pluck('transmission')->unique()->filter()->values()->all();
-    $fuels = $vehicles->pluck('fuel')->unique()->filter()->values()->all();
-
-    // For mileage, map to the range format used in the frontend
-    $mileages = $vehicles->pluck('mileage')->unique()->filter()->map(function ($mileage) {
-        if ($mileage >= 0 && $mileage <= 10) return '0-10';
-        if ($mileage > 10 && $mileage <= 20) return '10-20';
-        if ($mileage > 20 && $mileage <= 30) return '20-30';
-        if ($mileage > 30 && $mileage <= 40) return '30-40';
-        return null;
-    })->filter()->unique()->values()->all();
-
-    $categories = VehicleCategory::whereIn('id', $vehicles->pluck('category_id')->unique())->select('id', 'name')->get()->toArray();
-
+    
     // Return Inertia response
     return Inertia::render('CategorySearchResults', [
         'vehicles' => $vehicles,
         'filters' => $validated,
         'pagination_links' => $vehicles->links()->toHtml(),
-        'brands' => $brands,
-        'colors' => $colors,
-        'seatingCapacities' => $seatingCapacities,
-        'transmissions' => $transmissions,
-        'fuels' => $fuels,
-        'mileages' => $mileages,
-        'categories' => $categories,
+        'brands' => $brands, // Use options derived from $potentialVehiclesForOptionsCategory
+        'colors' => $colors, // Use options derived from $potentialVehiclesForOptionsCategory
+        'seatingCapacities' => $seatingCapacities, // Use options derived from $potentialVehiclesForOptionsCategory
+        'transmissions' => $transmissions, // Use options derived from $potentialVehiclesForOptionsCategory
+        'fuels' => $fuels, // Use options derived from $potentialVehiclesForOptionsCategory
+        'mileages' => $mileages, // Use options derived from $potentialVehiclesForOptionsCategory
+        'categories' => $allCategoriesForPage, // Pass all categories for selection
     ]);
 }
 }
