@@ -14,6 +14,7 @@ use App\Http\Controllers\UserDocumentController;
 use App\Http\Controllers\VehicleController;
 use App\Http\Controllers\VehicleCategoryController;
 use App\Http\Controllers\PopularPlacesController;
+use App\Http\Controllers\Api\SeoMetaController; // Added for SEO Meta
 use Illuminate\Http\Request;
 use App\Models\User;
 use Illuminate\Support\Facades\Route;
@@ -80,3 +81,6 @@ Route::get('/vehicles/search-locations', [VehicleController::class, 'searchLocat
 Route::get('/testimonials/frontend', [App\Http\Controllers\Admin\TestimonialController::class, 'getFrontendTestimonials']);
 
 Route::get('/radius', [RadiusApiController::class, 'getRadius']);
+
+// SEO Meta Route
+Route::get('/seo-meta', [SeoMetaController::class, 'getMetaBySlug'])->name('api.seo-meta.get');

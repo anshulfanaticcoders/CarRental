@@ -41,7 +41,7 @@ class SeoMetaController extends Controller
     public function store(Request $request)
     {
         $validatedData = $request->validate([
-            'url_slug'        => 'nullable|string|max:255|regex:/^[a-z0-9]+(?:-[a-z0-9]+)*$/|unique:seo_metas,url_slug', // Assuming 'seo_metas' table
+            'url_slug'        => ['nullable', 'string', 'max:255', 'regex:/^(\/|\/?([a-z0-9]+(?:-[a-z0-9]+)*)(?:\/[a-z0-9]+(?:-[a-z0-9]+)*)*)$/', 'unique:seo_metas,url_slug'],
             'seo_title'       => 'required|string|max:60',
             'meta_description'=> 'nullable|string|max:160',
             'keywords'        => 'nullable|string|max:255',
@@ -94,7 +94,7 @@ class SeoMetaController extends Controller
     {
         // $seoMeta = SeoMeta::findOrFail($id);
         $validatedData = $request->validate([
-            'url_slug'        => 'nullable|string|max:255|regex:/^[a-z0-9]+(?:-[a-z0-9]+)*$/|unique:seo_metas,url_slug,' . $id,  // Assuming 'seo_metas' table
+            'url_slug'        => ['nullable', 'string', 'max:255', 'regex:/^(\/|\/?([a-z0-9]+(?:-[a-z0-9]+)*)(?:\/[a-z0-9]+(?:-[a-z0-9]+)*)*)$/', 'unique:seo_metas,url_slug,' . $id],
             'seo_title'       => 'required|string|max:60',
             'meta_description'=> 'nullable|string|max:160',
             'keywords'        => 'nullable|string|max:255',
