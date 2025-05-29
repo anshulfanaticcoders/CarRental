@@ -118,7 +118,7 @@ const LocationIcon = `
                   <a :href="`mailto:${contactPage.email}`" class="text-gray-700 hover:text-customPrimaryColor transition-colors">{{ contactPage.email }}</a>
                 </div>
 
-                <div v-if="contactPage.address" class="flex items-start group">
+                <div v-if="contactPage.address" class="flex items-center group">
                   <span class="flex-shrink-0 w-10 h-10 bg-customLightPrimaryColor rounded-full flex items-center justify-center mr-4 group-hover:bg-customPrimaryColor mt-1">
                     <span v-html="LocationIcon" class="text-customPrimaryColor group-hover:text-white"></span>
                   </span>
@@ -172,10 +172,10 @@ const LocationIcon = `
         <h2 class="text-3xl md:text-4xl font-semibold text-customPrimaryColor text-center mb-12">{{ _t('contactus','why_choose_vrooem') }}</h2>
         <div class="grid sm:grid-cols-2 lg:grid-cols-3 gap-8">
           <div v-for="(point, index) in contactPage.contact_points" :key="index" class="text-center p-6 bg-white shadow-xl rounded-lg transform hover:scale-105 transition-transform duration-300">
-            <div class="mb-5 flex justify-center items-center w-20 h-20 mx-auto bg-customPrimaryColor rounded-full">
+            <div class="mb-5 flex justify-center items-center w-40 h-40 max-[768px]:h-28 max-[768px]:w-28 mx-auto bg-customPrimaryColor rounded-full">
               <!-- Assuming point.icon is an SVG string or an image URL -->
-              <img v-if="point.icon && (point.icon.startsWith('http') || point.icon.startsWith('/'))" :src="point.icon" :alt="point.title" class="h-10 w-10 text-white" />
-              <div v-else-if="point.icon" v-html="point.icon" class="h-10 w-10 text-white"></div>
+              <img v-if="point.icon && (point.icon.startsWith('http') || point.icon.startsWith('/'))" :src="point.icon" :alt="point.title" class="h-32 w-32 max-[768px]:h-20 max-[768px]:w-20 rounded-[99px] text-white" />
+              <div v-else-if="point.icon" v-html="point.icon" class="h-30 w-30 text-white"></div>
               <!-- Fallback if no icon -->
               <span v-else class="text-3xl text-white">💡</span>
             </div>
