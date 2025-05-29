@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use App\Models\SeoMeta;
+use Illuminate\Support\Facades\Cache;
 
 class SeoMetaController extends Controller
 {
@@ -22,20 +23,19 @@ class SeoMetaController extends Controller
             return response()->json(['error' => 'Slug parameter is required.'], 400);
         }
 
-        // Normalize homepage slug
-        if ($slug === '/') {
-            // Assuming homepage slug in DB is '/' or 'home'
-            // If you use a different slug for homepage in DB, adjust here
-            // For example, if it's 'home', then:
-            // $seoMetaData = SeoMeta::where('url_slug', 'home')->first();
-            $seoMetaData = SeoMeta::where('url_slug', '/')->first();
-        } else {
-            // For other pages, remove leading/trailing slashes for consistency if needed
-            $normalizedSlug = trim($slug, '/');
-            $seoMetaData = SeoMeta::where('url_slug', $normalizedSlug)
-                                ->orWhere('url_slug', '/' . $normalizedSlug) // Check with leading slash
-                                ->first();
-        }
+        $cacheKey = 'seo_meta_' . md5($slug);
+        $seoMetaData = Cache::remember($cacheKey, 60 * 60, function () use ($slug) { // Cache for 60 minutes
+            // Normalize homepage slug
+            if ($slug === '/') {
+                return SeoMeta::where('url_slug', '/')->first();
+            } else {
+                // For other pages, remove leading/trailing slashes for consistency if needed
+                $normalizedSlug = trim($slug, '/');
+                return SeoMeta::where('url_slug', $normalizedSlug)
+                                    ->orWhere('url_slug', '/' . $normalizedSlug) // Check with leading slash
+                                    ->first();
+            }
+        });
 
         if ($seoMetaData) {
             return response()->json($seoMetaData);
