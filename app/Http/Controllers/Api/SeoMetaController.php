@@ -40,13 +40,9 @@ class SeoMetaController extends Controller
         if ($seoMetaData) {
             return response()->json($seoMetaData);
         } else {
-            // Return default values or a 404 if no specific meta found
-            // For now, let's return a 404, but you might want to return defaults
-            return response()->json([
-                'seo_title' => config('app.name', 'Default Application Title'),
-                'meta_description' => 'Default meta description for the application.',
-                // Add other default fields as needed
-            ], 200); // Returning 200 with defaults, or 404 if no defaults desired
+            // No specific SEO meta data found for this slug.
+            // Return 204 No Content, so app.js knows not to override existing tags.
+            return response()->noContent();
         }
     }
 }

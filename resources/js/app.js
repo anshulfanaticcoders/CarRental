@@ -53,13 +53,22 @@ async function updateSeoMeta(urlPath) {
 
     try {
         const response = await fetch(`/api/seo-meta?slug=${encodeURIComponent(slug)}`);
-        if (!response.ok) {
-            console.error('Failed to fetch SEO meta:', response.status, await response.text());
-            // Optionally set default titles on error
-            document.title = `Error Loading Page - ${appName}`;
+
+        if (response.status === 204) {
+            // No specific SEO content from API (204 No Content).
+            // Do nothing further; existing static tags or Inertia's default title handling will remain.
             return;
         }
-        const seoData = await response.json();
+
+        if (!response.ok) {
+            // Handle other errors (4xx, 5xx) that are not 204
+            console.error('Failed to fetch SEO meta:', response.status, await response.text().catch(() => ''));
+            // Optionally set default titles on error, or let Inertia's default title apply
+            // document.title = `Error Loading Page - ${appName}`; // Example: set error title
+            return;
+        }
+        
+        const seoData = await response.json(); // Only parse if response is OK and not 204
 
         if (seoData.seo_title) {
             document.title = seoData.seo_title;
