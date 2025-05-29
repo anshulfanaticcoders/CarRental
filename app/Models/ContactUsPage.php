@@ -2,26 +2,40 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory; // Corrected namespace
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
-class ContactUsPage extends Model
+class ContactUsPage extends Model // Renamed from NewContactUsPage
 {
     use HasFactory;
 
+    /**
+     * The table associated with the model.
+     *
+     * @var string
+     */
+    protected $table = 'contact_us_page'; // New singular table name
+
+    /**
+     * The attributes that are mass assignable.
+     *
+     * @var array<int, string>
+     */
     protected $fillable = [
-        'hero_title',
-        'hero_description',
         'hero_image_url',
-        'contact_points', // This might be kept for non-translated parts like icons
-        'intro_text',
+        'contact_point_icons', // Array of icon URLs or identifiers
         'phone_number',
         'email',
-        'address'
+        'address',
     ];
 
+    /**
+     * The attributes that should be cast.
+     *
+     * @var array<string, string>
+     */
     protected $casts = [
-        'contact_points' => 'array' // For original structure if needed
+        'contact_point_icons' => 'array',
     ];
 
     /**
@@ -29,6 +43,18 @@ class ContactUsPage extends Model
      */
     public function translations()
     {
-        return $this->hasMany(ContactUsPageTranslation::class);
+        // Ensure this points to the correctly named translation model
+        return $this->hasMany(ContactUsPageTranslation::class, 'contact_us_page_id');
+    }
+
+    /**
+     * Get the translation for a specific locale.
+     */
+    public function translation($locale = null)
+    {
+        if (is_null($locale)) {
+            $locale = app()->getLocale();
+        }
+        return $this->translations()->where('locale', $locale)->first();
     }
 }
