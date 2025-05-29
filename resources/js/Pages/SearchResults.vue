@@ -67,7 +67,7 @@ const form = useForm({
     latitude: usePage().props.filters.latitude || null,
     longitude: usePage().props.filters.longitude || null,
     radius: usePage().props.filters.radius || null,
-    package_type: usePage().props.filters.package_type || "day",
+    package_type: usePage().props.filters.package_type || "",
     category_id: usePage().props.filters.category_id || "",
     city: usePage().props.filters.city || "",
     state: usePage().props.filters.state || "",
@@ -186,17 +186,45 @@ const initMap = () => {
     }, 200); 
 };
 
-const createCustomIcon = (price, currency) => {
+const createCustomIcon = (vehicle, isHighlighted = false) => {
+    const currency = vehicle.vendor_profile?.currency || "₹";
+    let priceToDisplay = "N/A";
+    let priceValue = null;
+
+    if (form.package_type === 'day' && vehicle.price_per_day) {
+        priceValue = vehicle.price_per_day;
+    } else if (form.package_type === 'week' && vehicle.price_per_week) {
+        priceValue = vehicle.price_per_week;
+    } else if (form.package_type === 'month' && vehicle.price_per_month) {
+        priceValue = vehicle.price_per_month;
+    } else {
+        // Fallback if no package_type is selected or price for selected type is null
+        if (vehicle.price_per_day) {
+            priceValue = vehicle.price_per_day;
+        } else if (vehicle.price_per_week) {
+            priceValue = vehicle.price_per_week;
+        } else if (vehicle.price_per_month) {
+            priceValue = vehicle.price_per_month;
+        }
+    }
+
+    if (priceValue !== null) {
+        priceToDisplay = `${currency}${priceValue}`;
+    }
+
+    const bgColor = isHighlighted ? 'bg-black' : 'bg-white';
+    const textColor = isHighlighted ? 'text-white' : 'text-black';
+
     return L.divIcon({
         className: "custom-div-icon",
         html: `
-    <div class="marker-pin bg-white rounded-[99px] flex justify-center p-2 shadow-md w-fit">
-      <span class="font-bold">${currency || "₹"}${price}</span>
+    <div class="marker-pin ${bgColor} rounded-[99px] flex justify-center p-2 shadow-md">
+      <span class="font-bold ${textColor}">${priceToDisplay}</span>
     </div>
   `,
-        iconSize: [L.point(0,0)], 
-        iconAnchor: [25, 15], 
-        popupAnchor: [0, -15],
+        iconSize: [80, 30], // Fixed size, now that w-fit is removed from HTML
+        iconAnchor: [40, 30], // Bottom center of the icon (assuming 30px height)
+        popupAnchor: [0, -30], // Standard offset to place popup directly above the marker
         pane: "markers",
     });
 };
@@ -282,7 +310,7 @@ const addMarkers = () => {
         const primaryImage = vehicle.images?.find((image) => image.image_type === 'primary')?.image_url || '/default-image.png';
 
         const marker = L.marker([displayLat, displayLng], {
-            icon: createCustomIcon(vehicle.price_per_day, currency),
+            icon: createCustomIcon(vehicle),
             pane: "markers",
         }).bindPopup(`
             <div class="text-center popup-content">
@@ -337,6 +365,15 @@ watch(
     { deep: true }
 );
 
+watch(
+    () => form.package_type,
+    () => {
+        if (map) {
+            initMap();
+        }
+    }
+);
+
 onMounted(() => {
     initMap();
 });
@@ -349,10 +386,7 @@ const highlightVehicleOnMap = (vehicle) => {
     const marker = vehicleMarkers.value[vehicle.id];
     if (marker) {
         map.panTo([parseFloat(vehicle.latitude), parseFloat(vehicle.longitude)], { animate: true, duration: 0.5 });
-        // Check if map zoom is too far out, then zoom in
-        if (map.getZoom() < 13) {
-            map.setZoom(13, { animate: true });
-        }
+        marker.setIcon(createCustomIcon(vehicle, true)); // Highlight marker
         marker.openPopup();
     }
 };
@@ -362,6 +396,7 @@ const unhighlightVehicleOnMap = (vehicle) => {
 
     const marker = vehicleMarkers.value[vehicle.id];
     if (marker) {
+        marker.setIcon(createCustomIcon(vehicle, false)); // Revert marker to normal state
         // Closing the popup on mouseleave might be disruptive if the user wants to interact with it.
         // Consider if marker.closePopup() is desired here or only on a different event.
     }
@@ -1223,13 +1258,46 @@ provide('setActiveDropdown', setActiveDropdown);
                                 </div>
 
                                 <div class="mt-[2rem] flex justify-between items-center">
+                                    <!-- Conditional Price Display Block -->
                                     <div>
-                                        <span
-                                            class="text-customPrimaryColor text-[1.875rem] font-medium max-[768px]:text-[1.3rem] max-[768px]:font-bold">{{
-                                                vehicle.vendor_profile.currency
-                                            }}{{ vehicle[priceField] }}</span><span>/{{ priceUnit }}</span>
+                                        <!-- If a specific package_type filter is active (day, week, or month) -->
+                                        <div v-if="form.package_type === 'day' || form.package_type === 'week' || form.package_type === 'month'">
+                                            <div v-if="vehicle[priceField] && vehicle[priceField] > 0">
+                                                <span class="text-customPrimaryColor text-[1.875rem] font-medium max-[768px]:text-[1.3rem] max-[768px]:font-bold">
+                                                    {{ vehicle.vendor_profile?.currency || '$' }}{{ vehicle[priceField] }}
+                                                </span>
+                                                <span>/{{ priceUnit }}</span>
+                                            </div>
+                                            <div v-else>
+                                                <span class="text-sm text-gray-500">Price not available for {{ priceUnit }}</span>
+                                            </div>
+                                        </div>
+                                        <!-- Else (no package_type filter is active, form.package_type is '') -->
+                                        <div v-else class="flex flex-col">
+                                            <div v-if="vehicle.price_per_day && vehicle.price_per_day > 0" class="flex items-baseline">
+                                                <span class="text-customPrimaryColor text-lg font-semibold">
+                                                    {{ vehicle.vendor_profile?.currency || '$' }}{{ vehicle.price_per_day }}
+                                                </span>
+                                                <span class="text-xs text-gray-600 ml-1">/day</span>
+                                            </div>
+                                            <div v-if="vehicle.price_per_week && vehicle.price_per_week > 0" class="flex items-baseline mt-1">
+                                                <span class="text-customPrimaryColor text-lg font-semibold">
+                                                    {{ vehicle.vendor_profile?.currency || '$' }}{{ vehicle.price_per_week }}
+                                                </span>
+                                                <span class="text-xs text-gray-600 ml-1">/week</span>
+                                            </div>
+                                            <div v-if="vehicle.price_per_month && vehicle.price_per_month > 0" class="flex items-baseline mt-1">
+                                                <span class="text-customPrimaryColor text-lg font-semibold">
+                                                    {{ vehicle.vendor_profile?.currency || '$' }}{{ vehicle.price_per_month }}
+                                                </span>
+                                                <span class="text-xs text-gray-600 ml-1">/month</span>
+                                            </div>
+                                            <div v-if="!(vehicle.price_per_day && vehicle.price_per_day > 0) && !(vehicle.price_per_week && vehicle.price_per_week > 0) && !(vehicle.price_per_month && vehicle.price_per_month > 0)" class="mt-1">
+                                                <span class="text-sm text-gray-500">Price not available</span>
+                                            </div>
+                                        </div>
                                     </div>
-                                    <img :src="goIcon" alt="" class="max-[768px]:w-[35px]" />
+                                    <img :src="goIcon" alt="Go" class="max-[768px]:w-[35px]" />
                                 </div>
                             </div>
                         </a>
@@ -1256,21 +1324,19 @@ provide('setActiveDropdown', setActiveDropdown);
 @import "leaflet/dist/leaflet.css";
 
 .marker-pin {
-    width: auto;
-    min-width: fit-content;
+    width: 80px; /* Fixed width to ensure consistent iconSize */
     height: 30px;
-    background: white;
+    /* background color is now controlled by Tailwind classes in HTML */
     border: 2px solid #666;
     border-radius: 15px;
     display: flex;
     align-items: center;
     justify-content: center;
     box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
-    transform: translate3d(0, 0, 1000px);
 }
 
 .marker-pin span {
-    color: black;
+    /* text color is now controlled by Tailwind classes in HTML */
     font-weight: bold;
     font-size: 12px;
     padding: 0 8px;
@@ -1299,19 +1365,19 @@ provide('setActiveDropdown', setActiveDropdown);
 }
 
 .leaflet-marker-icon {
-    transform: translate3d(0, 0, 1000px);
+    /* Removed transform: translate3d(0, 0, 1000px); as it interferes with Leaflet's positioning */
 }
 
 .leaflet-popup {
     z-index: 1001 !important;
 }
 
-/* Hardware acceleration */
+/* Hardware acceleration - Removed explicit transforms as they might interfere with Leaflet's positioning */
 .leaflet-marker-icon,
 .leaflet-marker-shadow,
 .leaflet-popup {
-    will-change: transform;
-    transform: translate3d(0, 0, 0);
+    /* will-change: transform; */
+    /* transform: translate3d(0, 0, 0); */
 }
 
 /* Additional styles to ensure markers are always visible */
