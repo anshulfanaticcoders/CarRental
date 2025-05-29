@@ -15,13 +15,10 @@ const props = defineProps({
             phone_number: '',
             email: '',
             address: '',
-            // Original contact_points structure (e.g., icons) might come from here
-            // if we decide to keep non-translatable parts in the main model.
-            // For now, we assume contact_points in the form will handle its full structure per locale.
-            contact_points: [], 
+            contact_point_icons: [], // New: Array of icon URLs/strings
         })
     },
-    translations: { // Keyed by locale: { en: { hero_title: ... }, fr: { ... } }
+    translations: { // Keyed by locale: { en: { hero_title: ..., contact_points: [{title: 'text1'},...] }, fr: { ... } }
         type: Object,
         default: () => ({})
     },
@@ -34,89 +31,89 @@ const props = defineProps({
 const locales = ['en', 'fr', 'nl'];
 const activeLocale = ref(props.currentLocale);
 
-const form = useForm({
-    locale: props.currentLocale,
-    // Translatable fields
-    hero_title: '',
-    hero_description: '',
-    intro_text: '',
-    contact_points: [], // Each item: { icon: '', title: '' } - title is translatable
+// Store for all translations to allow editing across tabs before a single save
+const allTranslationsData = ref({});
 
+const form = useForm({
     // Non-translatable fields
-    hero_image: null, // For new image upload
+    contact_point_icons: JSON.parse(JSON.stringify(props.contactPage.contact_point_icons || [])),
+    hero_image: null,
     phone_number: props.contactPage.phone_number || '',
     email: props.contactPage.email || '',
     address: props.contactPage.address || '',
+    
+    // Translatable fields will be sent as a nested object
+    translations: {}, // This will be populated in onMounted and sent on submit
+});
+
+// Temporary form state for the currently active locale's translatable fields
+// This is what the input fields will bind to.
+const currentLocaleForm = ref({
+    hero_title: '',
+    hero_description: '',
+    intro_text: '',
+    contact_points: [], // textual parts for the current locale
 });
 
 const heroImagePreview = ref(props.contactPage.hero_image_url);
 
-// Computed property to get the translation data for the active locale
-const currentTranslationData = computed(() => {
-    return props.translations[activeLocale.value] || {};
-});
+// Function to load translatable data for a given locale into currentLocaleForm
+const loadLocaleData = (locale) => {
+    const translation = allTranslationsData.value[locale] || {};
+    currentLocaleForm.value.hero_title = translation.hero_title || '';
+    currentLocaleForm.value.hero_description = translation.hero_description || '';
+    currentLocaleForm.value.intro_text = translation.intro_text || '';
+    currentLocaleForm.value.contact_points = JSON.parse(JSON.stringify(translation.contact_points || []));
+};
 
-// Computed property to get base contact points structure (e.g., icons)
-// This assumes the main `contactPage.contact_points` holds the non-translatable parts like icons.
-// If `contact_points` are fully managed per locale in translations, this might not be needed or adjusted.
-const baseContactPoints = computed(() => {
-    // If props.contactPage.contact_points contains the base structure (e.g. icons)
-    // return props.contactPage.contact_points || [];
+// Function to save data from currentLocaleForm back to allTranslationsData
+const saveCurrentLocaleData = (locale) => {
+    if (!allTranslationsData.value[locale]) {
+        allTranslationsData.value[locale] = {};
+    }
+    allTranslationsData.value[locale].hero_title = currentLocaleForm.value.hero_title;
+    allTranslationsData.value[locale].hero_description = currentLocaleForm.value.hero_description;
+    allTranslationsData.value[locale].intro_text = currentLocaleForm.value.intro_text;
+    allTranslationsData.value[locale].contact_points = JSON.parse(JSON.stringify(currentLocaleForm.value.contact_points));
+};
 
-    // For now, let's assume the structure is driven by the translation or an empty array
-    // This part needs careful consideration based on how contact_points icons are managed.
-    // If icons are also part of the translation JSON, then this is simpler.
-    // If icons are fixed and only titles are translated, we need a base structure.
-    // Let's assume for now the `contact_points` in `currentTranslationData` is the source of truth for the active locale.
-    return currentTranslationData.value.contact_points || [];
-});
-
-
-const setActiveLocale = (locale, event) => {
+const setActiveLocale = (newLocale, event) => {
     if (event) {
         event.preventDefault();
         event.stopPropagation();
     }
-    activeLocale.value = locale;
-    form.locale = locale;
-
-    const translation = props.translations[locale] || {};
-    form.hero_title = translation.hero_title || '';
-    form.hero_description = translation.hero_description || '';
-    form.intro_text = translation.intro_text || '';
+    // Save current locale's data from currentLocaleForm before switching
+    saveCurrentLocaleData(activeLocale.value);
     
-    // For contact_points, we need to merge translated titles with a base structure if icons are separate.
-    // If contact_points in translation is self-contained (icon + title per locale):
-    form.contact_points = JSON.parse(JSON.stringify(translation.contact_points || [])); 
-    // Deep copy to avoid modifying props
-
-    // Non-translatable fields remain as they are (already initialized)
-    // form.phone_number = props.contactPage.phone_number || '';
-    // form.email = props.contactPage.email || '';
-    // form.address = props.contactPage.address || '';
+    activeLocale.value = newLocale;
+    
+    // Load new locale's data into currentLocaleForm
+    loadLocaleData(newLocale);
 };
 
 onMounted(() => {
-    activeLocale.value = props.currentLocale || 'en';
-    form.locale = activeLocale.value;
-    
-    const initialTranslation = props.translations[activeLocale.value] || {};
-    form.hero_title = initialTranslation.hero_title || '';
-    form.hero_description = initialTranslation.hero_description || '';
-    form.intro_text = initialTranslation.intro_text || '';
-    form.contact_points = JSON.parse(JSON.stringify(initialTranslation.contact_points || []));
+    // Initialize allTranslationsData from props
+    locales.forEach(locale => {
+        allTranslationsData.value[locale] = JSON.parse(JSON.stringify(props.translations[locale] || {
+            hero_title: '',
+            hero_description: '',
+            intro_text: '',
+            contact_points: [],
+        }));
+    });
 
-    // Initialize non-translatable fields from contactPage prop
-    form.phone_number = props.contactPage.phone_number || '';
-    form.email = props.contactPage.email || '';
-    form.address = props.contactPage.address || '';
+    // Set initial active locale and load its data
+    activeLocale.value = props.currentLocale || 'en';
+    loadLocaleData(activeLocale.value);
+
+    // Non-translatable fields are already initialized in useForm
     heroImagePreview.value = props.contactPage.hero_image_url;
 });
 
 const handleHeroImageUpload = (event) => {
   const file = event.target.files[0];
-  form.hero_image = file;
-  
+  form.hero_image = file; // Stored in the main form object
+
   if (file) {
     const reader = new FileReader();
     reader.onload = (e) => {
@@ -124,26 +121,33 @@ const handleHeroImageUpload = (event) => {
     };
     reader.readAsDataURL(file);
   } else {
-    heroImagePreview.value = props.contactPage.hero_image_url; // Revert to original if no file selected
+    heroImagePreview.value = props.contactPage.hero_image_url;
   }
 };
 
-const addContactPoint = () => {
-  form.contact_points.push({
-    icon: '', // Icon might be non-translatable or also part of this structure
-    title: ''  // This title will be for the activeLocale
-  });
+const addContactPointText = () => {
+  currentLocaleForm.value.contact_points.push({ title: '' });
 };
 
-const removeContactPoint = (index) => {
-  form.contact_points.splice(index, 1);
+const removeContactPointText = (index) => {
+  currentLocaleForm.value.contact_points.splice(index, 1);
+};
+
+const addContactPointIcon = () => {
+  form.contact_point_icons.push('');
+};
+
+const removeContactPointIcon = (index) => {
+  form.contact_point_icons.splice(index, 1);
 };
 
 const submit = () => {
-  // Ensure the ID is part of the route if it's an update
-  // The controller handles ContactUsPage as a singleton, so ID in route might not be strictly necessary
-  // but good practice if routes were resource-based.
-  // For now, route('admin.contact-us.update') doesn't take an ID.
+  // Save the currently active locale's data from currentLocaleForm to allTranslationsData
+  saveCurrentLocaleData(activeLocale.value);
+  
+  // Assign the collected translations to the main form object for submission
+  form.translations = JSON.parse(JSON.stringify(allTranslationsData.value));
+
   form.post(route('admin.contact-us.update'), {
     preserveScroll: true,
     onSuccess: () => {
@@ -192,75 +196,67 @@ const submit = () => {
         <div class="mb-4">
           <label class="block text-gray-700 text-sm font-bold mb-2">Hero Title ({{ activeLocale.toUpperCase() }})</label>
           <input 
-            v-model="form.hero_title" 
+            v-model="currentLocaleForm.hero_title" 
             type="text" 
             class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
           />
-           <p v-if="form.errors.hero_title" class="text-red-500 text-xs italic">{{ form.errors.hero_title }}</p>
+           <p v-if="form.errors[`translations.${activeLocale}.hero_title`]" class="text-red-500 text-xs italic">{{ form.errors[`translations.${activeLocale}.hero_title`] }}</p>
         </div>
 
         <div class="mb-4">
           <label class="block text-gray-700 text-sm font-bold mb-2">Hero Description ({{ activeLocale.toUpperCase() }})</label>
           <textarea 
-            v-model="form.hero_description" 
+            v-model="currentLocaleForm.hero_description" 
             class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
             rows="4"
           ></textarea>
-          <p v-if="form.errors.hero_description" class="text-red-500 text-xs italic">{{ form.errors.hero_description }}</p>
+          <p v-if="form.errors[`translations.${activeLocale}.hero_description`]" class="text-red-500 text-xs italic">{{ form.errors[`translations.${activeLocale}.hero_description`] }}</p>
         </div>
 
         <!-- Contact Points - Translatable Titles -->
         <div class="mb-4">
-          <h3 class="text-lg font-semibold mb-2">Contact Points ({{ activeLocale.toUpperCase() }})</h3>
+          <h3 class="text-lg font-semibold mb-2">Contact Points - Texts ({{ activeLocale.toUpperCase() }})</h3>
           <div 
-            v-for="(point, index) in form.contact_points" 
-            :key="index" 
+            v-for="(pointText, index) in currentLocaleForm.contact_points" 
+            :key="`text-${index}`" 
             class="flex items-center mb-2 p-2 border rounded"
           >
             <div class="flex-1 mr-2">
-                <label class="block text-gray-700 text-sm font-bold mb-1">Icon URL/SVG (Point {{index + 1}})</label>
+                <label class="block text-gray-700 text-sm font-bold mb-1">Title (Point {{index + 1}} Text - {{ activeLocale.toUpperCase() }})</label>
                 <input 
-                  v-model="point.icon" 
+                  v-model="pointText.title" 
                   type="text" 
-                  placeholder="Icon URL or SVG code" 
+                  placeholder="Point Title Text" 
                   class="mr-2 shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
                 />
-            </div>
-            <div class="flex-1 mr-2">
-                <label class="block text-gray-700 text-sm font-bold mb-1">Title (Point {{index + 1}} - {{ activeLocale.toUpperCase() }})</label>
-                <input 
-                  v-model="point.title" 
-                  type="text" 
-                  placeholder="Point Title" 
-                  class="mr-2 shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
-                />
+                <!-- Add other text fields here if your contact_points structure is {title: '', description: ''} -->
             </div>
             <button 
               type="button" 
-              @click="removeContactPoint(index)"
+              @click="removeContactPointText(index)"
               class="bg-red-500 text-white px-3 py-2 rounded hover:bg-red-600 self-end"
             >
-              Remove
+              Remove Text
             </button>
           </div>
           <button 
             type="button" 
-            @click="addContactPoint"
+            @click="addContactPointText"
             class="mt-2 bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600"
           >
-            Add Contact Point
+            Add Contact Point Text
           </button>
-           <p v-if="form.errors.contact_points" class="text-red-500 text-xs italic">{{ form.errors.contact_points }}</p>
+           <p v-if="form.errors[`translations.${activeLocale}.contact_points`]" class="text-red-500 text-xs italic">{{ form.errors[`translations.${activeLocale}.contact_points`] }}</p>
         </div>
         
         <div class="mb-6">
           <label class="block text-gray-700 text-sm font-bold mb-2">Company Intro ({{ activeLocale.toUpperCase() }})</label>
           <textarea 
-            v-model="form.intro_text" 
+            v-model="currentLocaleForm.intro_text" 
             class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
             rows="4"
           ></textarea>
-          <p v-if="form.errors.intro_text" class="text-red-500 text-xs italic">{{ form.errors.intro_text }}</p>
+          <p v-if="form.errors[`translations.${activeLocale}.intro_text`]" class="text-red-500 text-xs italic">{{ form.errors[`translations.${activeLocale}.intro_text`] }}</p>
         </div>
 
         <hr class="my-6">
@@ -284,56 +280,43 @@ const submit = () => {
               class="w-[50rem] h-[30rem] object-cover"
             />
           </div>
+           <p v-if="form.errors.hero_image" class="text-red-500 text-xs italic">{{ form.errors.hero_image }}</p>
         </div>
 
-        <!-- Contact Points -->
+        <!-- Contact Point Icons (Non-Translatable) -->
         <div class="mb-4">
-          <h2 class="text-xl font-semibold mb-2">Contact Points</h2>
+          <h3 class="text-lg font-semibold mb-2">Contact Point Icons (Shared across languages)</h3>
+          <p class="text-sm text-gray-600 mb-2">Manage the list of icons here. The translated texts above will be paired with these icons by order.</p>
           <div 
-            v-for="(point, index) in form.contact_points" 
-            :key="index" 
-            class="flex items-center mb-2"
+            v-for="(iconUrl, index) in form.contact_point_icons" 
+            :key="`icon-${index}`" 
+            class="flex items-center mb-2 p-2 border rounded"
           >
             <input 
-              v-model="point.icon" 
+              v-model="form.contact_point_icons[index]" 
               type="text" 
-              placeholder="Icon URL" 
-              class="mr-2 shadow appearance-none border rounded py-2 px-3 text-gray-700"
-            />
-            <input 
-              v-model="point.title" 
-              type="text" 
-              placeholder="Point Title" 
-              class="mr-2 shadow appearance-none border rounded py-2 px-3 text-gray-700"
+              :placeholder="`Icon URL/Class for Point ${index + 1}`"
+              class="flex-1 mr-2 shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
             />
             <button 
               type="button" 
-              @click="removeContactPoint(index)"
-              class="bg-red-500 text-white px-3 py-2 rounded hover:bg-red-600"
+              @click="removeContactPointIcon(index)"
+              class="bg-red-500 text-white px-3 py-2 rounded hover:bg-red-600 self-end"
             >
-              Remove
+              Remove Icon
             </button>
           </div>
           <button 
             type="button" 
-            @click="addContactPoint"
-            class="mt-2 bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600"
+            @click="addContactPointIcon"
+            class="mt-2 bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600"
           >
-            Add Contact Point
+            Add Icon URL
           </button>
+          <p v-if="form.errors.contact_point_icons" class="text-red-500 text-xs italic">{{ form.errors.contact_point_icons }}</p>
         </div>
-
-        <!-- Company Intro -->
-        <div class="mb-4">
-          <label class="block text-gray-700 text-sm font-bold mb-2">Company Intro</label>
-          <textarea 
-            v-model="form.intro_text" 
-            class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700"
-            rows="4"
-          ></textarea>
-        </div>
-
-        <!-- Contact Information -->
+        
+        <!-- Contact Information (Non-Translatable) -->
         <div class="mb-4">
           <label class="block text-gray-700 text-sm font-bold mb-2">Phone Number</label>
           <input 

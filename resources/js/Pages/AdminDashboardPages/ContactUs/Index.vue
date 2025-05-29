@@ -3,23 +3,24 @@ import AdminDashboardLayout from '@/Layouts/AdminDashboardLayout.vue';
 import { Head } from '@inertiajs/vue3';
 
 defineProps({
-    contactPage: { // Main model data: id, hero_image_url, phone_number, email, address
+    contactPage: { // Main model data: id, hero_image_url, phone_number, email, address, contact_point_icons
         type: Object,
         default: () => ({
             id: null,
             hero_image_url: '',
             phone_number: '',
             email: '',
-            address: ''
+            address: '',
+            contact_point_icons: [] // Array of icon URLs/strings
         })
     },
-    translation: { // Translated content: hero_title, hero_description, intro_text, contact_points
+    translation: { // Translated content: hero_title, hero_description, intro_text, contact_points (textual parts)
         type: Object,
         default: () => ({
             hero_title: '',
             hero_description: '',
             intro_text: '',
-            contact_points: []
+            contact_points: [] // Expected to be [{ title: '...' }, { title: '...' }, ...]
         })
     }
 });
@@ -60,21 +61,23 @@ defineProps({
           <h2 class="text-xl font-semibold">Contact Points</h2>
           <ul v-if="translation?.contact_points && translation.contact_points.length">
             <li 
-              v-for="(point, index) in translation.contact_points" 
+              v-for="(textPoint, index) in translation.contact_points" 
               :key="index"
               class="flex items-center mb-2 p-2 border rounded"
             >
+              <!-- Get icon from the main contactPage model using the same index -->
               <img 
-                v-if="point.icon"
-                :src="point.icon" 
+                v-if="contactPage.contact_point_icons && contactPage.contact_point_icons[index]"
+                :src="contactPage.contact_point_icons[index]" 
                 alt="Contact Point Icon"
                 class="w-6 h-6 mr-3 object-contain"
               />
               <span v-else class="w-6 h-6 mr-3 text-gray-400">[No Icon]</span>
-              <span>{{ point.title || 'N/A' }}</span>
+              <span>{{ textPoint.title || (textPoint || 'N/A') }}</span> 
+              <!-- Adjust if textPoint is just a string or an object with more fields -->
             </li>
           </ul>
-          <p v-else class="text-gray-500">No contact points available for this language.</p>
+          <p v-else class="text-gray-500">No contact points available for this language, or no icons defined.</p>
         </div>
 
         <div class="mb-4">

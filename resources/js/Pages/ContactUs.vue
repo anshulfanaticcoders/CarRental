@@ -60,7 +60,7 @@ watch(() => form.processing, (newVal) => {
 <template>
   <AuthenticatedHeaderLayout />
 
-  <Head title="Contact Us - Vrooem" />
+  <Head :title="_t('contactus','page_title')" />
 
   <div class="contact-us-container">
     <!-- Hero Section -->
@@ -85,7 +85,7 @@ watch(() => form.processing, (newVal) => {
         <div class="grid md:grid-cols-2 gap-8">
           <!-- Company Intro -->
           <div>
-            <h2 class="text-3xl font-semibold mb-6 max-[768px]:text-xl">About Vrooem</h2>
+            <h2 class="text-3xl font-semibold mb-6 max-[768px]:text-xl">{{ _t('contactus','about_vrooem') }}</h2>
             <p class="text-gray-700 leading-relaxed">
               {{ contactPage.intro_text }}
             </p>
@@ -93,7 +93,7 @@ watch(() => form.processing, (newVal) => {
 
           <!-- Contact Details -->
           <div>
-            <h2 class="text-3xl font-semibold mb-6 max-[768px]:text-xl">Get in Touch</h2>
+            <h2 class="text-3xl font-semibold mb-6 max-[768px]:text-xl">{{ _t('contactus','get_in_touch') }}</h2>
             <div class="space-y-4">
               <div v-if="contactPage.phone_number" class="flex items-center">
                 <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 mr-3 text-blue-600" fill="none"
@@ -132,7 +132,7 @@ watch(() => form.processing, (newVal) => {
     <!-- Contact Points Section -->
     <section v-if="contactPage.contact_points && contactPage.contact_points.length" class="contact-points py-16">
       <div class="container mx-auto px-4">
-        <h2 class="text-3xl font-semibold text-center mb-12">Why Choose Vrooem</h2>
+        <h2 class="text-3xl font-semibold text-center mb-12">{{ _t('contactus','why_choose_vrooem') }}</h2>
         <div class="grid md:grid-cols-3 gap-8">
           <div v-for="(point, index) in contactPage.contact_points" :key="index"
             class="text-center p-6 bg-white shadow-md rounded-lg">
@@ -174,7 +174,7 @@ watch(() => form.processing, (newVal) => {
     <!-- Contact Form (Optional) -->
     <section class="contact-form py-16 bg-gray-50">
       <div class="container mx-auto px-4 max-w-2xl">
-        <h2 class="text-3xl font-semibold text-center mb-8">Send us a Message</h2>
+        <h2 class="text-3xl font-semibold text-center mb-8">{{ _t('contactus','send_message') }}</h2>
 
         <!-- Display Global Success Message -->
         <div v-if="flashSuccess"
@@ -194,27 +194,27 @@ watch(() => form.processing, (newVal) => {
 
         <form @submit.prevent="submitForm" class="bg-white shadow-md rounded-lg p-8">
           <div class="mb-4">
-            <label class="block text-gray-700 text-sm font-bold mb-2">Name</label>
+            <label class="block text-gray-700 text-sm font-bold mb-2">{{ _t('contactus','name') }}</label>
             <input type="text" v-model="form.name"
-              class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700" placeholder="Your Name"
+              class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700" :placeholder="_t('contactus','your_name')"
               required />
           </div>
           <div class="mb-4">
-            <label class="block text-gray-700 text-sm font-bold mb-2">Email</label>
+            <label class="block text-gray-700 text-sm font-bold mb-2">{{ _t('contactus','email') }}</label>
             <input type="email" v-model="form.email"
-              class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700" placeholder="Your Email"
+              class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700" :placeholder="_t('contactus','your_email')"
               required />
           </div>
           <div class="mb-4">
-            <label class="block text-gray-700 text-sm font-bold mb-2">Message</label>
+            <label class="block text-gray-700 text-sm font-bold mb-2">{{ _t('contactus','message') }}</label>
             <textarea v-model="form.message"
               class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700" rows="4"
-              placeholder="Your Message" required></textarea>
+              :placeholder="_t('contactus','your_message')" required></textarea>
           </div>
           <div class="text-center">
             <button type="submit" :disabled="form.processing"
               class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded disabled:opacity-50">
-              {{ form.processing ? 'Sending...' : 'Send Message' }}
+              {{ form.processing ? _t('contactus','sending_message_button') : _t('contactus','send_message_button') }}
             </button>
           </div>
         </form>

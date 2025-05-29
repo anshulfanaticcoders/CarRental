@@ -34,7 +34,9 @@ class AdminMediaController extends Controller
             'created_at' => $item->created_at->toFormattedDateString(),
         ]);
 
-        if ($request->wantsJson() || $request->ajax()) {
+        // If it's an AJAX request but NOT an Inertia request, then return plain JSON.
+        // Inertia requests (which are also AJAX) should proceed to Inertia::render.
+        if (($request->wantsJson() || $request->ajax()) && !$request->header('X-Inertia')) {
             return response()->json(['mediaItems' => $mediaItems]);
         }
 
