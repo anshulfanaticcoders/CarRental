@@ -2,17 +2,18 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Factories\HasFactory; // Corrected namespace
 use Illuminate\Database\Eloquent\Model;
 
 class ContactUsPage extends Model
 {
-    protected $table = 'contact_us_pages';
+    use HasFactory;
 
     protected $fillable = [
         'hero_title',
         'hero_description',
         'hero_image_url',
-        'contact_points',
+        'contact_points', // This might be kept for non-translated parts like icons
         'intro_text',
         'phone_number',
         'email',
@@ -20,6 +21,14 @@ class ContactUsPage extends Model
     ];
 
     protected $casts = [
-        'contact_points' => 'array'
+        'contact_points' => 'array' // For original structure if needed
     ];
+
+    /**
+     * Get the translations for the contact us page.
+     */
+    public function translations()
+    {
+        return $this->hasMany(ContactUsPageTranslation::class);
+    }
 }
