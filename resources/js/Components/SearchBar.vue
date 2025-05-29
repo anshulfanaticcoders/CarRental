@@ -399,7 +399,7 @@ const submit = () => {
   const diffTime = Math.abs(returnDate - pickupDate);
   const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
 
-  let packageType = 'day';
+  let packageType = '';
   form.value.package_type = packageType;
 
   // Remove radius adjustment since we’re not using radius-based filtering
