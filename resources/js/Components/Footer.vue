@@ -65,7 +65,7 @@ onMounted(async () => {
                                 <Link :href="route('pages.show', 'about-us')">About Us</Link>
                             </li>
                             <li>
-                                <Link href="/blogs-page">Blogs</Link>
+                                <Link href="/blog">Blogs</Link>
                             </li>
                             <li>
                                 <Link href="/faq">FAQ</Link>
