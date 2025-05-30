@@ -862,9 +862,11 @@ const proceedToPayment = () => {
         showWarningModal.value = true;
         return;
     }
-    storeRentalData();
-    // Proceed to payment page with query parameters
-    router.get(`/booking/${vehicle.value.id}`, {
+    storeRentalData(); // Persists data to localStorage, potentially for other uses
+
+    // Prepare data for sessionStorage to pass to the booking page
+    const bookingDataForSession = {
+        vehicleId: vehicle.value.id,
         packageType: selectedPackage.value,
         dateFrom: form.value.date_from,
         dateTo: form.value.date_to,
@@ -872,8 +874,28 @@ const proceedToPayment = () => {
         timeTo: form.value.time_to,
         totalPrice: calculateTotalPrice.value,
         discountAmount: discountAmount.value,
-    });
+        duration: rentalDuration.value,
+        selectedPackageDetails: pricingPackages.value.find(pkg => pkg.id === selectedPackage.value),
+        vehicleDetails: {
+            id: vehicle.value.id,
+            brand: vehicle.value.brand,
+            model: vehicle.value.model,
+            category: vehicle.value.category?.name,
+            primaryImageUrl: primaryImage.value?.image_url,
+            full_vehicle_address: vehicle.value.full_vehicle_address,
+            price_per_day: vehicle.value.price_per_day,
+            price_per_week: vehicle.value.price_per_week,
+            price_per_month: vehicle.value.price_per_month
+        },
+        vendorDetails: {
+            company_name: vehicle.value.vendor_profile_data?.company_name,
+            currency: vehicle.value.vendor_profile?.currency
+        }
+    };
+    sessionStorage.setItem('bookingDetails', JSON.stringify(bookingDataForSession));
 
+    // Proceed to payment page without query parameters
+    router.get(`/booking/${vehicle.value.id}`);
 };
 
 

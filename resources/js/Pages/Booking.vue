@@ -88,6 +88,9 @@ const dateTo = ref(props.query?.dateTo || null);
 const timeFrom = ref(props.query?.timeFrom || null);
 const timeTo = ref(props.query?.timeTo || null);
 
+const sessionBookingDetails = ref(null); // To store parsed session data
+const isBookingDataReady = ref(false); // Flag to control rendering of StripeCheckout
+
 
 // Convert dates to Date objects and calculate the difference in days
 const totalDays = computed(() => {
@@ -261,8 +264,72 @@ const loadSavedDriverInfo = () => {
 };
 
 onMounted(() => {
-    loadSavedDriverInfo();
-    loadSelectionData();  // Load selection data when component mounts
+    // Load main booking details from 'bookingDetails' session item
+    const bookingDetailsString = sessionStorage.getItem('bookingDetails');
+    if (bookingDetailsString) {
+        const parsedData = JSON.parse(bookingDetailsString);
+
+        // Sanity check: Compare vehicle ID from session with props.vehicle.id if available
+        if (props.vehicle && parsedData.vehicleId && props.vehicle.id !== parsedData.vehicleId) {
+            console.warn('Booking.vue: Vehicle ID mismatch between session storage ("bookingDetails".vehicleId) and props.vehicle.id. This could indicate an issue if props.vehicle is not correctly loaded for the session vehicle.');
+        }
+        
+        // Update reactive refs with data from session storage,
+        // using existing values (from props.query or defaults) as fallbacks.
+        packageType.value = parsedData.packageType || packageType.value;
+        // Ensure totalPrice and discountAmount are treated as numbers
+        totalPrice.value = parsedData.totalPrice !== undefined ? Number(parsedData.totalPrice) : totalPrice.value;
+        discountAmount.value = parsedData.discountAmount !== undefined ? Number(parsedData.discountAmount) : discountAmount.value;
+        dateFrom.value = parsedData.dateFrom || dateFrom.value;
+        dateTo.value = parsedData.dateTo || dateTo.value;
+        timeFrom.value = parsedData.timeFrom || timeFrom.value;
+        timeTo.value = parsedData.timeTo || timeTo.value;
+
+        // Update specific vehicle properties from session data if available
+        if (vehicle.value) { // Ensure vehicle.value (from props.vehicle) exists
+            if (parsedData.vehicleDetails) {
+                if (parsedData.vehicleDetails.full_vehicle_address) {
+                    vehicle.value.full_vehicle_address = parsedData.vehicleDetails.full_vehicle_address;
+                }
+                // Optionally, update other display-related fields if they might differ or need to be sourced from session
+                // For example:
+                // if (parsedData.vehicleDetails.brand) vehicle.value.brand = parsedData.vehicleDetails.brand;
+                // if (parsedData.vehicleDetails.model) vehicle.value.model = parsedData.vehicleDetails.model;
+                // if (parsedData.vehicleDetails.category) {
+                //    if (!vehicle.value.category) vehicle.value.category = {};
+                //    vehicle.value.category.name = parsedData.vehicleDetails.category;
+                // }
+            }
+            
+            // Ensure currency is available for formatPrice, supplementing from session if props.vehicle didn't have it
+            if (parsedData.vendorDetails && parsedData.vendorDetails.currency) {
+                if (!vehicle.value.vendor_profile) {
+                    vehicle.value.vendor_profile = {}; 
+                }
+                // Only set from session if not already present on vehicle.value.vendor_profile from props
+                if (!vehicle.value.vendor_profile.currency) {
+                     vehicle.value.vendor_profile.currency = parsedData.vendorDetails.currency;
+                }
+            }
+        } else if (parsedData.vehicleDetails) {
+            // This case means props.vehicle was null/undefined.
+            // We might need to construct a minimal vehicle.value from session.
+            console.warn("Booking.vue: props.vehicle was not available. Initializing vehicle.value largely from session data. This might be incomplete for other template parts.");
+            let tempVehicle = { ...parsedData.vehicleDetails };
+            if (parsedData.vendorDetails && parsedData.vendorDetails.currency) {
+                tempVehicle.vendor_profile = { currency: parsedData.vendorDetails.currency };
+            }
+            // If category is just a name string in session's vehicleDetails
+            if (parsedData.vehicleDetails.category && typeof parsedData.vehicleDetails.category === 'string') {
+                tempVehicle.category = { name: parsedData.vehicleDetails.category };
+            }
+            vehicle.value = tempVehicle;
+        }
+    }
+
+    // Load other parts of the state from their respective session storage items
+    loadSavedDriverInfo(); // Loads 'driverInfo' into customer.value
+    loadSelectionData();   // Loads 'selectionData' for plans and extras into selectedPlan.value and bookingExtras.value
 });
 
 // stripe payment
@@ -273,47 +340,11 @@ let cardNumber;
 let cardExpiry;
 let cardCvc;
 
-const pickupDate = ref('');
-const returnDate = ref('');
-const pickupTime = ref('');
-const returnTime = ref('');
-const extras = ref([]);
+// const pickupDate, returnDate, pickupTime, returnTime, and extras refs are no longer needed here
+// as their data will be handled by dateFrom, dateTo, timeFrom, timeTo, and bookingExtras respectively,
+// and loaded from 'bookingDetails' or other specific session items.
 
-const loadSessionData = () => {
-    // Load driver info
-    const driverInfo = JSON.parse(sessionStorage.getItem('driverInfo'));
-    if (driverInfo) {
-        customer.value = driverInfo;
-    }
-
-    // Load rental dates
-    const rentalDates = JSON.parse(sessionStorage.getItem('rentalDates'));
-    if (rentalDates) {
-        pickupDate.value = rentalDates.date_from;
-        returnDate.value = rentalDates.date_to;
-        pickupTime.value = rentalDates.time_from;
-        returnTime.value = rentalDates.time_to;
-    }
-
-    // Load plan and extras
-    const selectionData = JSON.parse(sessionStorage.getItem('selectionData'));
-    if (selectionData) {
-        selectedPlan.value = selectionData.selectedPlan;
-        extras.value = selectionData.extras;
-
-        // Initialize extraCharges with the plan value
-        let extraCharges = Number(selectedPlan.value?.plan_value ?? 0);
-
-        // Add the extra charges from the selected extras
-        selectionData.extras.forEach((extra) => {
-            if (extra.quantity > 0) {
-                extraCharges += Number(extra.price) * extra.quantity;  // Add price * quantity for each selected extra
-            }
-        });
-
-        console.log("Total Extra Charges (including plan and extras): ", extraCharges);
-    }
-};
+// The loadSessionData function is removed as its logic is integrated into the main onMounted hook.
 
 const formatPrice = (price) => {
     const currencySymbol = vehicle.value.vendor_profile.currency;
@@ -561,8 +592,8 @@ const bookingData = computed(() => {
         customer: customer.value,
         pickup_date: dateFrom.value,
         return_date: dateTo.value,
-        pickup_location: vehicle.value.full_vehicle_address,
-        return_location: vehicle.value.full_vehicle_address,
+        pickup_location: sessionBookingDetails.value?.vehicleDetails?.full_vehicle_address || vehicle.value?.full_vehicle_address || null,
+        return_location: sessionBookingDetails.value?.vehicleDetails?.full_vehicle_address || vehicle.value?.full_vehicle_address || null,
         pickup_time: timeFrom.value,
         return_time: timeTo.value,
         total_days: totalDaysCalc,
