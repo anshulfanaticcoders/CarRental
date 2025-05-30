@@ -864,6 +864,10 @@ const proceedToPayment = () => {
     }
     storeRentalData(); // Persists data to localStorage, potentially for other uses
 
+    // Clear session storage items from any previous booking attempt
+    sessionStorage.removeItem('selectionData');
+    sessionStorage.removeItem('driverInfo');
+
     // Prepare data for sessionStorage to pass to the booking page
     const bookingDataForSession = {
         vehicleId: vehicle.value.id,
