@@ -91,6 +91,23 @@ const timeTo = ref(props.query?.timeTo || null);
 const sessionBookingDetails = ref(null); // To store parsed session data
 const isBookingDataReady = ref(false); // Flag to control rendering of StripeCheckout
 
+// Watch for changes in the vehicle prop to clear session data if the vehicle context changes
+watch(() => props.vehicle?.id, (newVehicleId, oldVehicleId) => {
+    if (newVehicleId && newVehicleId !== oldVehicleId) { // Ensure it's a meaningful change to a new vehicle
+        const vehicleIdInSession = sessionStorage.getItem('activeBookingVehicleId');
+        if (vehicleIdInSession && vehicleIdInSession !== String(newVehicleId)) {
+            console.log(`Booking.vue: Vehicle changed from ${vehicleIdInSession} to ${newVehicleId}. Clearing session data.`);
+            sessionStorage.removeItem('bookingDetails');
+            sessionStorage.removeItem('selectionData');
+            sessionStorage.removeItem('driverInfo');
+        }
+    }
+    // Always update or set the activeBookingVehicleId for the current vehicle context
+    if (newVehicleId) {
+        sessionStorage.setItem('activeBookingVehicleId', String(newVehicleId));
+    }
+}, { immediate: true }); // immediate: true to run on component mount as well
+
 
 // Convert dates to Date objects and calculate the difference in days
 const totalDays = computed(() => {
@@ -210,6 +227,9 @@ const storeSelectionData = () => {
         }))
     };
     sessionStorage.setItem("selectionData", JSON.stringify(selectionData));
+    if (vehicle.value?.id) {
+        sessionStorage.setItem('activeBookingVehicleId', String(vehicle.value.id));
+    }
 };
 
 // Load saved data from sessionStorage
@@ -253,6 +273,9 @@ const isFormSaved = ref(false);
 const storeFormData = () => {
     sessionStorage.setItem("driverInfo", JSON.stringify(customer.value));
     isFormSaved.value = true;
+    if (vehicle.value?.id) {
+        sessionStorage.setItem('activeBookingVehicleId', String(vehicle.value.id));
+    }
 };
 
 const loadSavedDriverInfo = () => {
