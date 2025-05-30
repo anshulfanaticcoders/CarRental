@@ -852,7 +852,7 @@ watch([
 });
 
 const showWarningModal = ref(false);
-const proceedToPayment = () => {
+const proceedToPayment = async () => { // Make the function async
     // Validate rental details before proceeding
     if (!validateRentalDetails()) {
         return; // Stop the function if validation fails
@@ -862,45 +862,61 @@ const proceedToPayment = () => {
         showWarningModal.value = true;
         return;
     }
-    storeRentalData(); // Persists data to localStorage, potentially for other uses
 
-    // Clear session storage items from any previous booking attempt
-    sessionStorage.removeItem('selectionData');
-    sessionStorage.removeItem('driverInfo');
+    try { // Add try block for the API call and navigation
+        // Call backend to set session variable allowing booking page access
+        await axios.post('/booking/allow-access'); 
+        console.log('Booking access permission set.'); // Optional: for debugging
 
-    // Prepare data for sessionStorage to pass to the booking page
-    const bookingDataForSession = {
-        vehicleId: vehicle.value.id,
-        packageType: selectedPackage.value,
-        dateFrom: form.value.date_from,
-        dateTo: form.value.date_to,
-        timeFrom: form.value.time_from,
-        timeTo: form.value.time_to,
-        totalPrice: calculateTotalPrice.value,
-        discountAmount: discountAmount.value,
-        duration: rentalDuration.value,
-        selectedPackageDetails: pricingPackages.value.find(pkg => pkg.id === selectedPackage.value),
-        vehicleDetails: {
-            id: vehicle.value.id,
-            brand: vehicle.value.brand,
-            model: vehicle.value.model,
-            category: vehicle.value.category?.name,
-            primaryImageUrl: primaryImage.value?.image_url,
-            full_vehicle_address: vehicle.value.full_vehicle_address,
-            price_per_day: vehicle.value.price_per_day,
-            price_per_week: vehicle.value.price_per_week,
-            price_per_month: vehicle.value.price_per_month
-        },
-        vendorDetails: {
-            company_name: vehicle.value.vendor_profile_data?.company_name,
-            currency: vehicle.value.vendor_profile?.currency
-        }
-    };
-    sessionStorage.setItem('bookingDetails', JSON.stringify(bookingDataForSession));
+        // Your existing logic for localStorage and sessionStorage:
+        storeRentalData(); // Persists data to localStorage, potentially for other uses
 
-    // Proceed to payment page without query parameters
-    router.get(`/booking/${vehicle.value.id}`);
+        // Clear session storage items from any previous booking attempt
+        sessionStorage.removeItem('selectionData');
+        sessionStorage.removeItem('driverInfo');
+
+        // Prepare data for sessionStorage to pass to the booking page
+        const bookingDataForSession = {
+            vehicleId: vehicle.value.id,
+            packageType: selectedPackage.value,
+            dateFrom: form.value.date_from,
+            dateTo: form.value.date_to,
+            timeFrom: form.value.time_from,
+            timeTo: form.value.time_to,
+            totalPrice: calculateTotalPrice.value,
+            discountAmount: discountAmount.value,
+            duration: rentalDuration.value,
+            selectedPackageDetails: pricingPackages.value.find(pkg => pkg.id === selectedPackage.value),
+            vehicleDetails: {
+                id: vehicle.value.id,
+                brand: vehicle.value.brand,
+                model: vehicle.value.model,
+                category: vehicle.value.category?.name,
+                primaryImageUrl: primaryImage.value?.image_url,
+                full_vehicle_address: vehicle.value.full_vehicle_address,
+                price_per_day: vehicle.value.price_per_day,
+                price_per_week: vehicle.value.price_per_week,
+                price_per_month: vehicle.value.price_per_month
+            },
+            vendorDetails: {
+                company_name: vehicle.value.vendor_profile_data?.company_name,
+                currency: vehicle.value.vendor_profile?.currency
+            }
+        };
+        sessionStorage.setItem('bookingDetails', JSON.stringify(bookingDataForSession));
+        console.log('Booking details stored in session storage:', bookingDataForSession); // Optional: for debugging
+
+        // Proceed to payment page without query parameters
+        router.get(`/booking/${vehicle.value.id}`);
+
+    } catch (error) {
+        console.error("Error setting booking access or navigating:", error);
+        // You might want to use your toast notification system here
+        // For example: toast.error('Could not proceed to booking. Please try again.');
+        alert('Could not proceed to booking. Please try again.'); // Simple alert as a placeholder
+    }
 };
+
 
 
 

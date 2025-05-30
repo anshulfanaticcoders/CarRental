@@ -23,8 +23,14 @@ use Stripe\PaymentIntent;
 use Stripe\Customer as StripeCustomer;
 use Inertia\Inertia;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Session;
 class BookingController extends Controller
 {
+    public function allowAccess(Request $request)
+    {
+        Session::put('can_access_booking_page', true);
+        return response()->json(['message' => 'Access to booking page granted.'], 200);
+    }
     public function create()
     {
         return Inertia::render('Booking/Create');

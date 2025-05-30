@@ -23,6 +23,8 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Facades\Storage;
 use Inertia\Inertia;
+use Illuminate\Support\Facades\Session; 
+use Illuminate\Support\Facades\Redirect; 
 
 class VehicleController extends Controller
 {
@@ -340,6 +342,12 @@ class VehicleController extends Controller
     //This is for getting particular vehicle information to the booking page 
     public function booking(Request $request, $id)
     {
+        if (!Session::get('can_access_booking_page')) {
+            // If access is not granted, redirect to the single vehicle page
+            return Redirect::route('vehicle.show', ['id' => $id])
+                           ->with('error', 'Please initiate the booking process from the vehicle page.');
+        }
+        
         $vehicle = Vehicle::with(['specifications', 'images', 'category', 'user', 'vendorProfile', 'benefits', 'vendorPlans', 'addons', 'vendorProfileData'])
             ->findOrFail($id);
 

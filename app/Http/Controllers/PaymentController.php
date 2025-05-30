@@ -21,6 +21,7 @@ use App\Models\Customer;
 use App\Models\BookingPayment;
 use App\Models\BookingExtra;
 use App\Models\Vehicle;
+use Illuminate\Support\Facades\Session as LaravelSession;
 
 class PaymentController extends Controller
 {
@@ -238,7 +239,8 @@ class PaymentController extends Controller
 
             // Clear session storage
             session()->forget(['pending_booking_id', 'driverInfo', 'rentalDates', 'selectionData']);
-            
+            LaravelSession::forget('can_access_booking_page'); 
+
             // Add JavaScript to clear browser sessionStorage
             $clearSessionScript = "
                 <script>
