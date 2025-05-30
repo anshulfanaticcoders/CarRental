@@ -284,6 +284,11 @@ Route::middleware(['auth', 'role:admin'])->group(function () {
     Route::resource('admin/seo-meta', SeoMetaController::class)
          ->parameters(['seo-meta' => 'seo_meta']) // Ensures parameter name is 'seo_meta' for route model binding
          ->names('admin.seo-meta');
+
+    // Header Footer Scripts Settings
+    Route::resource('admin/header-footer-scripts', \App\Http\Controllers\Admin\HeaderFooterScriptController::class)
+        ->parameters(['header-footer-scripts' => 'headerFooterScript'])
+        ->names('admin.header-footer-scripts');
 });
 
 

@@ -45,7 +45,7 @@ import {
   Star,
   CameraIcon,
   ShieldPlusIcon,
-  Target // Added Target icon for SEO
+  Target
 } from 'lucide-vue-next'
 import { onMounted, ref } from 'vue';
 
@@ -332,6 +332,10 @@ const data = {
         {
           title: 'Radius',
           url: '/radiuses',
+        },
+        {
+          title: 'Header/Footer Scripts',
+          url: '/admin/header-footer-scripts',
         },
       ],
     },

@@ -25,9 +25,20 @@
         <!-- Scripts -->
         @routes
         @vite(['resources/js/app.js', "resources/js/Pages/{$page['component']}.vue"])
+        
+        {{-- Injected Header Scripts --}}
+        @if(!empty($headerScript))
+            {!! $headerScript !!}
+        @endif
+
         @inertiaHead
     </head>
     <body class="antialiased">
         @inertia
+
+        {{-- Injected Footer Scripts --}}
+        @if(!empty($footerScript))
+            {!! $footerScript !!}
+        @endif
     </body>
 </html>
