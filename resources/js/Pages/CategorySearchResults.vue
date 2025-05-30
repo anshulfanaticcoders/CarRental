@@ -744,7 +744,7 @@ const handleCategorySearchUpdate = (params) => {
                         { value: 'day', label: 'Daily Rate' },
                         { value: 'week', label: 'Weekly Rate' },
                         { value: 'month', label: 'Monthly Rate' }
-                    ]" placeholder="Daily Rate" :left-icon="priceperdayicon" :right-icon="CaretDown"
+                    ]" placeholder="Any Rate" :left-icon="priceperdayicon" :right-icon="CaretDown"
                     class="hover:border-customPrimaryColor bg-customPrimaryColor/5 transition-all duration-300" />
                 </div>
             </div>
