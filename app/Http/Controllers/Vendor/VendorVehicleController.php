@@ -115,7 +115,7 @@ class VendorVehicleController extends Controller
             'registration_number' => 'required|string|max:50',
             'registration_country' => 'required|string|max:50',
             'registration_date' => 'required|date',
-            'gross_vehicle_mass' => 'integer|min:0',
+            'gross_vehicle_mass' => 'nullable|integer|min:0',
             'vehicle_height' => 'nullable|numeric|min:0',
             'dealer_cost' => 'nullable|numeric|min:0',
             'phone_number' => 'required|string|max:15',
