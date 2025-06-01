@@ -241,7 +241,7 @@
                                 <div>
                                     <InputLabel for="gross_vehicle_mass">{{ _t('vendorprofilepages', 'label_gross_vehicle_mass') }}</InputLabel>
                                     <Input type="number" v-model.number="form.gross_vehicle_mass"
-                                        id="gross_vehicle_mass" required />
+                                        id="gross_vehicle_mass" />
                                 </div>
                                 <div>
                                     <InputLabel for="vehicle_height">{{ _t('vendorprofilepages', 'label_vehicle_height') }}</InputLabel>
