@@ -111,12 +111,11 @@ class BlogController extends Controller
         
         // Only save if there's actual data, or if we want to ensure a record exists even if empty
         // For blogs, it's good to at least have the title.
-        // if (array_filter($seoMetaToSave) || !empty($seoMetaToSave['seo_title'])) { // Ensure we save if at least title is present
+        $seoUrlSlug = 'blog/' . $blog->slug; // SEO url_slug IS prefixed
         SeoMeta::updateOrCreate(
-            ['url_slug' => $blog->slug],
-            array_filter($seoMetaToSave, fn($value) => !is_null($value) && $value !== '') // Filter out empty/null values before saving
+            ['url_slug' => $seoUrlSlug],
+            array_filter($seoMetaToSave, fn($value) => !is_null($value) && $value !== '') 
         );
-        // }
 
 
         return redirect()->route('admin.blogs.index')->with('success', 'Blog created successfully.');
@@ -146,8 +145,11 @@ class BlogController extends Controller
         return Inertia::render('AdminDashboardPages/Blogs/Edit', [
             'blog' => $blogData,
             'available_locales' => $allLocales,
-            'current_locale' => App::getLocale(), // Can be used to set default active tab
-            'seoMeta' => SeoMeta::where('url_slug', $blog->slug)->first(),
+            'current_locale' => App::getLocale(), 
+            'seoMeta' => SeoMeta::where('url_slug', 'blog/' . $blog->slug)
+                                ->orWhere('url_slug', $blog->slug) // Check for old non-prefixed too
+                                ->orderByRaw("CASE WHEN url_slug = ? THEN 0 ELSE 1 END", ['blog/' . $blog->slug]) // Prioritize prefixed
+                                ->first(),
         ]);
     }
 
@@ -222,12 +224,27 @@ class BlogController extends Controller
         // If an old SEO record needs to be deleted, that logic would be more complex (store old slug before update).
         // For now, this handles creating/updating SEO for the current slug.
         
-        // if (array_filter($seoMetaToSave) || SeoMeta::where('url_slug', $blog->slug)->exists() || !empty($seoMetaToSave['seo_title'])) {
-        SeoMeta::updateOrCreate(
-            ['url_slug' => $blog->slug], // Use the current (potentially updated) blog slug
-             array_filter($seoMetaToSave, fn($value) => !is_null($value) && $value !== '')
-        );
-        // }
+        $newSlugFromRequest = $request->input('slug'); // This is the unprefixed blog slug from form
+        $newSeoUrlSlug = 'blog/' . $newSlugFromRequest;
+        $oldSeoUrlSlug = 'blog/' . $blog->getOriginal('slug'); // Prefixed version of the slug before potential update
+
+        // If the blog's own slug changed, delete the SeoMeta associated with the OLD prefixed slug
+        if ($newSlugFromRequest !== $blog->getOriginal('slug') && SeoMeta::where('url_slug', $oldSeoUrlSlug)->exists()) {
+            SeoMeta::where('url_slug', $oldSeoUrlSlug)->delete();
+        }
+        
+        // Also, ensure any SeoMeta with a non-prefixed slug (matching new or old blog slug) is removed
+        SeoMeta::where('url_slug', $newSlugFromRequest)->where('url_slug', '!=', $newSeoUrlSlug)->delete();
+        if ($newSlugFromRequest !== $blog->getOriginal('slug')) { // If slug changed, also check old non-prefixed
+             SeoMeta::where('url_slug', $blog->getOriginal('slug'))->where('url_slug', '!=', $newSeoUrlSlug)->delete();
+        }
+
+        if (array_filter($seoMetaToSave) || !empty($seoMetaToSave['seo_title']) || SeoMeta::where('url_slug', $newSeoUrlSlug)->exists()) {
+            SeoMeta::updateOrCreate(
+                ['url_slug' => $newSeoUrlSlug], 
+                array_filter($seoMetaToSave, fn($value) => !is_null($value) && $value !== '')
+            );
+        }
 
 
         return redirect()->route('admin.blogs.index')->with('success', 'Blog updated successfully.');
@@ -240,10 +257,11 @@ class BlogController extends Controller
             Storage::disk('upcloud')->delete($oldImagePath);
         }
         
-        // Delete associated SEO Meta first
-        SeoMeta::where('url_slug', $blog->slug)->delete();
+        // Delete associated SEO Meta (prefixed and non-prefixed versions)
+        $seoUrlSlug = 'blog/' . $blog->slug;
+        SeoMeta::where('url_slug', $seoUrlSlug)->delete();
+        SeoMeta::where('url_slug', $blog->slug)->delete(); // Non-prefixed, just in case
 
-        // Translations will be deleted by cascade constraint
         $blog->delete();
 
         return redirect()->route('admin.blogs.index')->with('success', 'Blog deleted successfully.');
