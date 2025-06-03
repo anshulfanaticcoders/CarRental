@@ -25,6 +25,10 @@ const props = defineProps({
     currentLocale: { // Default locale from backend
         type: String,
         default: 'en'
+    },
+    seoMeta: { // Accept seoMeta prop
+        type: Object,
+        default: null,
     }
 });
 
@@ -44,6 +48,13 @@ const form = useForm({
     
     // Translatable fields will be sent as a nested object
     translations: {}, // This will be populated in onMounted and sent on submit
+
+    // SEO Fields
+    seo_title: props.seoMeta?.seo_title || '',
+    meta_description: props.seoMeta?.meta_description || '',
+    keywords: props.seoMeta?.keywords || '',
+    canonical_url: props.seoMeta?.canonical_url || '',
+    seo_image_url: props.seoMeta?.seo_image_url || '',
 });
 
 // Temporary form state for the currently active locale's translatable fields
@@ -108,6 +119,15 @@ onMounted(() => {
 
     // Non-translatable fields are already initialized in useForm
     heroImagePreview.value = props.contactPage.hero_image_url;
+
+    // Initialize SEO fields if seoMeta is passed (also done in useForm for initial load)
+    if (props.seoMeta) {
+        form.seo_title = props.seoMeta.seo_title || '';
+        form.meta_description = props.seoMeta.meta_description || '';
+        form.keywords = props.seoMeta.keywords || '';
+        form.canonical_url = props.seoMeta.canonical_url || '';
+        form.seo_image_url = props.seoMeta.seo_image_url || '';
+    }
 });
 
 const handleHeroImageUpload = (event) => {
@@ -344,7 +364,49 @@ const submit = () => {
           ></textarea>
         </div>
 
-        <div class="flex items-center justify-between">
+        <hr class="my-6">
+
+        <!-- SEO Meta Fields -->
+        <h2 class="text-xl font-semibold mb-3">SEO Meta Information</h2>
+        <p class="text-sm text-gray-600 mb-4">URL Slug for Contact Us page is fixed to: <code>contact-us</code></p>
+        <div class="grid grid-cols-1 gap-6">
+            <!-- SEO Title -->
+            <div class="mb-4">
+                <label for="seo_title" class="block text-gray-700 text-sm font-bold mb-2">SEO Title (Max 60 chars)</label>
+                <input id="seo_title" v-model="form.seo_title" type="text" maxlength="60" class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"/>
+                <p v-if="form.errors.seo_title" class="text-red-500 text-xs italic">{{ form.errors.seo_title }}</p>
+            </div>
+
+            <!-- Meta Description -->
+            <div class="mb-4">
+                <label for="meta_description" class="block text-gray-700 text-sm font-bold mb-2">Meta Description (Max 160 chars)</label>
+                <textarea id="meta_description" v-model="form.meta_description" maxlength="160" rows="3" class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"></textarea>
+                <p v-if="form.errors.meta_description" class="text-red-500 text-xs italic">{{ form.errors.meta_description }}</p>
+            </div>
+
+            <!-- Keywords -->
+            <div class="mb-4">
+                <label for="keywords" class="block text-gray-700 text-sm font-bold mb-2">Keywords (comma-separated)</label>
+                <input id="keywords" v-model="form.keywords" type="text" class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" placeholder="keyword1, keyword2, keyword3..."/>
+                <p v-if="form.errors.keywords" class="text-red-500 text-xs italic">{{ form.errors.keywords }}</p>
+            </div>
+
+            <!-- Canonical URL -->
+            <div class="mb-4">
+                <label for="canonical_url" class="block text-gray-700 text-sm font-bold mb-2">Canonical URL</label>
+                <input id="canonical_url" v-model="form.canonical_url" type="url" class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" placeholder="https://yourdomain.com/preferred-url"/>
+                <p v-if="form.errors.canonical_url" class="text-red-500 text-xs italic">{{ form.errors.canonical_url }}</p>
+            </div>
+
+            <!-- SEO Image URL -->
+            <div class="mb-4">
+                <label for="seo_image_url" class="block text-gray-700 text-sm font-bold mb-2">SEO Image URL (Open Graph Image)</label>
+                <input id="seo_image_url" v-model="form.seo_image_url" type="url" class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" placeholder="https://yourdomain.com/path/to/image.jpg"/>
+                <p v-if="form.errors.seo_image_url" class="text-red-500 text-xs italic">{{ form.errors.seo_image_url }}</p>
+            </div>
+        </div>
+        
+        <div class="mt-8 flex items-center justify-between">
           <button 
             type="submit" 
             :disabled="form.processing"

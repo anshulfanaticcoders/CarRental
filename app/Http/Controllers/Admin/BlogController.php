@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\Blog;
+use App\Models\SeoMeta; // Added for SEO Meta
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Illuminate\Support\Facades\Storage;
@@ -50,6 +51,12 @@ class BlogController extends Controller
             'image' => 'nullable|image|mimes:jpg,jpeg,png|max:2048',
             'is_published' => 'sometimes|boolean',
             'translations' => 'required|array',
+            // SEO Meta Validation Rules
+            'seo_title'       => 'nullable|string|max:60',
+            'meta_description'=> 'nullable|string|max:160',
+            'keywords'        => 'nullable|string|max:255',
+            'canonical_url'   => 'nullable|url|max:255',
+            'seo_image_url'   => 'nullable|url|max:255',
         ];
 
         foreach ($available_locales as $locale) {
@@ -90,6 +97,28 @@ class BlogController extends Controller
             }
         }
 
+        // Create or Update SEO Meta
+        $seoTitleInput = $request->input('seo_title');
+        $primaryTitleForSeo = $translationsData['en']['title'] ?? $translationsData[array_key_first($translationsData)]['title'];
+
+        $seoMetaToSave = [
+            'seo_title' => !empty($seoTitleInput) ? $seoTitleInput : $primaryTitleForSeo, // Default to blog title if seo_title not provided
+            'meta_description' => $request->input('meta_description'),
+            'keywords' => $request->input('keywords'),
+            'canonical_url' => $request->input('canonical_url'),
+            'seo_image_url' => $request->input('seo_image_url'),
+        ];
+        
+        // Only save if there's actual data, or if we want to ensure a record exists even if empty
+        // For blogs, it's good to at least have the title.
+        // if (array_filter($seoMetaToSave) || !empty($seoMetaToSave['seo_title'])) { // Ensure we save if at least title is present
+        SeoMeta::updateOrCreate(
+            ['url_slug' => $blog->slug],
+            array_filter($seoMetaToSave, fn($value) => !is_null($value) && $value !== '') // Filter out empty/null values before saving
+        );
+        // }
+
+
         return redirect()->route('admin.blogs.index')->with('success', 'Blog created successfully.');
     }
 
@@ -118,6 +147,7 @@ class BlogController extends Controller
             'blog' => $blogData,
             'available_locales' => $allLocales,
             'current_locale' => App::getLocale(), // Can be used to set default active tab
+            'seoMeta' => SeoMeta::where('url_slug', $blog->slug)->first(),
         ]);
     }
 
@@ -129,6 +159,12 @@ class BlogController extends Controller
             'image' => 'nullable|image|mimes:jpg,jpeg,png|max:2048',
             'is_published' => 'sometimes|boolean',
             'translations' => 'required|array',
+            // SEO Meta Validation Rules
+            'seo_title'       => 'nullable|string|max:60',
+            'meta_description'=> 'nullable|string|max:160',
+            'keywords'        => 'nullable|string|max:255',
+            'canonical_url'   => 'nullable|url|max:255',
+            'seo_image_url'   => 'nullable|url|max:255',
         ];
         foreach ($available_locales as $locale) {
             $validationRules["translations.{$locale}.title"] = 'required|string|max:255';
@@ -137,7 +173,7 @@ class BlogController extends Controller
         $request->validate($validationRules);
 
         $blogData = [
-            'slug' => $request->input('slug'),
+            'slug' => $request->input('slug'), // Slug can be edited here, ensure it's unique
             'is_published' => $request->input('is_published', $blog->is_published),
         ];
 
@@ -166,6 +202,34 @@ class BlogController extends Controller
                 );
             }
         }
+
+        // Update or Create SEO Meta
+        $seoTitleInput = $request->input('seo_title');
+        // Use the 'en' title from the submitted translations for default SEO title, or the first available.
+        $primaryTitleForSeo = $translationsData['en']['title'] ?? $translationsData[array_key_first($translationsData)]['title'];
+        
+        $seoMetaToSave = [
+            'seo_title' => !empty($seoTitleInput) ? $seoTitleInput : $primaryTitleForSeo,
+            'meta_description' => $request->input('meta_description'),
+            'keywords' => $request->input('keywords'),
+            'canonical_url' => $request->input('canonical_url'),
+            'seo_image_url' => $request->input('seo_image_url'),
+        ];
+
+        // If the slug was changed, we might need to delete the old SEO meta record if it existed under the old slug.
+        // However, the current logic uses $blog->slug which is the *new* slug if it was updated.
+        // This means updateOrCreate will correctly target the new slug.
+        // If an old SEO record needs to be deleted, that logic would be more complex (store old slug before update).
+        // For now, this handles creating/updating SEO for the current slug.
+        
+        // if (array_filter($seoMetaToSave) || SeoMeta::where('url_slug', $blog->slug)->exists() || !empty($seoMetaToSave['seo_title'])) {
+        SeoMeta::updateOrCreate(
+            ['url_slug' => $blog->slug], // Use the current (potentially updated) blog slug
+             array_filter($seoMetaToSave, fn($value) => !is_null($value) && $value !== '')
+        );
+        // }
+
+
         return redirect()->route('admin.blogs.index')->with('success', 'Blog updated successfully.');
     }
 
@@ -175,6 +239,10 @@ class BlogController extends Controller
             $oldImagePath = str_replace(Storage::disk('upcloud')->url(''), '', $blog->image);
             Storage::disk('upcloud')->delete($oldImagePath);
         }
+        
+        // Delete associated SEO Meta first
+        SeoMeta::where('url_slug', $blog->slug)->delete();
+
         // Translations will be deleted by cascade constraint
         $blog->delete();
 

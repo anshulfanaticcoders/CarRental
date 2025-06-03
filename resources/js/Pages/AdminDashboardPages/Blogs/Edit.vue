@@ -82,6 +82,50 @@
                             <p v-if="form.errors.is_published" class="text-red-500 text-sm">{{ form.errors.is_published }}</p>
                         </div>
 
+                        <!-- SEO Meta Fields -->
+                        <div class="col-span-1 mt-6 pt-6 border-t border-gray-300">
+                            <h3 class="text-lg font-medium leading-6 text-gray-900 mb-4">SEO Meta Information</h3>
+                            <p class="text-sm text-gray-600 mb-1">Blog Slug (<code>{{ form.slug }}</code>) is used as the 'URL Slug' for SEO meta.</p>
+                            <p class="text-xs text-gray-500 mb-4">SEO Title below will default to the 'EN' blog title if left empty.</p>
+
+                            <div class="grid grid-cols-1 gap-6">
+                                <!-- SEO Title -->
+                                <div class="space-y-2">
+                                    <label for="seo_title" class="text-sm font-medium">SEO Title (Max 60 chars)</label>
+                                    <Input id="seo_title" v-model="form.seo_title" type="text" class="w-full" maxlength="60" />
+                                    <p v-if="form.errors.seo_title" class="text-red-500 text-sm">{{ form.errors.seo_title }}</p>
+                                </div>
+
+                                <!-- Meta Description -->
+                                <div class="space-y-2">
+                                    <label for="meta_description" class="text-sm font-medium">Meta Description (Max 160 chars)</label>
+                                    <textarea id="meta_description" v-model="form.meta_description" maxlength="160" rows="3" class="w-full mt-1 p-2 border-2 shadow-sm sm:text-sm border-gray-300 rounded-md"></textarea>
+                                    <p v-if="form.errors.meta_description" class="text-red-500 text-sm">{{ form.errors.meta_description }}</p>
+                                </div>
+
+                                <!-- Keywords -->
+                                <div class="space-y-2">
+                                    <label for="keywords" class="text-sm font-medium">Keywords (comma-separated)</label>
+                                    <Input id="keywords" v-model="form.keywords" type="text" class="w-full" placeholder="keyword1, keyword2, keyword3..." />
+                                    <p v-if="form.errors.keywords" class="text-red-500 text-sm">{{ form.errors.keywords }}</p>
+                                </div>
+
+                                <!-- Canonical URL -->
+                                <div class="space-y-2">
+                                    <label for="canonical_url" class="text-sm font-medium">Canonical URL</label>
+                                    <Input id="canonical_url" v-model="form.canonical_url" type="url" class="w-full" placeholder="https://yourdomain.com/preferred-url" />
+                                    <p v-if="form.errors.canonical_url" class="text-red-500 text-sm">{{ form.errors.canonical_url }}</p>
+                                </div>
+
+                                <!-- SEO Image URL -->
+                                <div class="space-y-2">
+                                    <label for="seo_image_url" class="text-sm font-medium">SEO Image URL (Open Graph Image)</label>
+                                    <Input id="seo_image_url" v-model="form.seo_image_url" type="url" class="w-full" placeholder="https://yourdomain.com/path/to/image.jpg" />
+                                    <p v-if="form.errors.seo_image_url" class="text-red-500 text-sm">{{ form.errors.seo_image_url }}</p>
+                                </div>
+                            </div>
+                        </div>
+
                         <!-- Submit Button -->
                         <div class="flex justify-end">
                             <Button type="submit" class="px-4 py-2" :disabled="form.processing">
@@ -102,7 +146,7 @@ import { Button } from '@/Components/ui/button';
 import { Input } from '@/Components/ui/input';
 import { Switch } from '@/Components/ui/switch';
 import Editor from '@tinymce/tinymce-vue';
-import { ref, watch, onMounted } from 'vue';
+import { ref, watch, onMounted, computed } from 'vue'; // Added computed
 import { useToast } from 'vue-toastification';
 
 const toast = useToast();
@@ -112,6 +156,10 @@ const props = defineProps({
     available_locales: Array,
     current_locale: String,
     errors: Object,
+    seoMeta: { // Added seoMeta prop
+        type: Object,
+        default: null,
+    },
 });
 
 const activeLocale = ref(props.current_locale || props.available_locales[0]);
@@ -132,6 +180,12 @@ const form = useForm({
     slug: props.blog.slug,
     image: null,
     is_published: props.blog.is_published,
+    // SEO Fields
+    seo_title: props.seoMeta?.seo_title || (initialFormTranslations.en?.title || ''), // Default to EN title
+    meta_description: props.seoMeta?.meta_description || '',
+    keywords: props.seoMeta?.keywords || '',
+    canonical_url: props.seoMeta?.canonical_url || '',
+    seo_image_url: props.seoMeta?.seo_image_url || '',
 });
 
 const setActiveLocale = (locale) => {
@@ -143,7 +197,29 @@ const setActiveLocale = (locale) => {
 
 onMounted(() => {
     // activeLocale is already set based on current_locale or first available
+    // SEO fields are initialized in useForm. If props.seoMeta is null, seo_title defaults to blog's 'en' title.
+    // If props.seoMeta exists but seo_title is empty, it also defaults to blog's 'en' title.
+    // This ensures that if an SEO record exists but has an empty title, it still gets pre-filled from blog title.
+    if (props.seoMeta && props.seoMeta.seo_title === '') {
+        form.seo_title = initialFormTranslations.en?.title || '';
+    }
+    // If no seoMeta record at all, it's already defaulted by useForm.
 });
+
+// Watch the 'en' title to auto-fill seo_title if it's empty or was matching the old 'en' title
+watch(() => form.translations.en?.title, (newEnTitle, oldEnTitle) => {
+    if (newEnTitle) {
+        // If seo_title is currently empty OR it was the same as the old blog title, update it.
+        // This allows users to set a custom seo_title. If they then change the blog title,
+        // their custom seo_title is preserved. If they clear seo_title, it will re-sync.
+        if (!form.seo_title || form.seo_title === oldEnTitle) {
+            form.seo_title = newEnTitle;
+        }
+    } else if (form.seo_title === oldEnTitle) { // If new 'en' title is cleared and seo_title was matching
+        form.seo_title = ''; // Clear seo_title as well
+    }
+});
+
 
 const submitForm = () => {
     // The form.translations object already holds all the data

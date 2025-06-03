@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\NewContactUsPage as ContactUsPage; // Use the new model
 use App\Models\NewContactUsPageTranslation as ContactUsPageTranslation; // Use the new translation model
+use App\Models\SeoMeta; // Added for SEO Meta
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Illuminate\Support\Facades\Storage;
@@ -50,11 +51,13 @@ class ContactUsPageController extends Controller
         $contactPage = ContactUsPage::first() ?? new ContactUsPage();
         $translations = $contactPage->translations->keyBy('locale');
         $locale = app()->getLocale();
+        $seoMeta = SeoMeta::where('url_slug', 'contact-us')->first();
         
         return Inertia::render('AdminDashboardPages/ContactUs/Edit', [
             'contactPage' => $contactPage,
             'translations' => $translations,
             'currentLocale' => $locale, // Renamed to avoid conflict with form's locale
+            'seoMeta' => $seoMeta,
         ]);
     }
 
@@ -63,6 +66,8 @@ class ContactUsPageController extends Controller
      */
     public function update(Request $request)
     {
+        $fixedSlug = 'contact-us'; // Define the fixed slug
+
         $request->validate([
             // Non-translatable fields validation
             'contact_point_icons' => 'nullable|array',
@@ -80,6 +85,13 @@ class ContactUsPageController extends Controller
             'translations.*.contact_points' => 'nullable|array',
             'translations.*.contact_points.*.title' => 'nullable|string|max:255', // If contact_points is an array of objects
             // Add validation for other fields within contact_points if necessary
+
+            // SEO Meta Validation Rules
+            'seo_title'       => 'nullable|string|max:60',
+            'meta_description'=> 'nullable|string|max:160',
+            'keywords'        => 'nullable|string|max:255',
+            'canonical_url'   => 'nullable|url|max:255',
+            'seo_image_url'   => 'nullable|url|max:255',
         ]);
 
         // Find or create the main ContactUsPage record
@@ -140,6 +152,17 @@ class ContactUsPageController extends Controller
             );
         }
 
+        // Update or Create SEO Meta for Contact Us page
+        $seoData = $request->only(['seo_title', 'meta_description', 'keywords', 'canonical_url', 'seo_image_url']);
+        
+        if (array_filter($seoData) || SeoMeta::where('url_slug', $fixedSlug)->exists()) {
+            // Update if SEO data is provided OR if an SEO record already exists (to allow clearing fields)
+            SeoMeta::updateOrCreate(
+                ['url_slug' => $fixedSlug],
+                $seoData
+            );
+        }
+
         return redirect()->route('admin.contact-us.index')
             ->with('success', 'Contact Us page updated successfully.');
     }
@@ -159,11 +182,14 @@ class ContactUsPageController extends Controller
                 );
             }
 
-            $contactPage->delete();
+            $contactPage->delete(); // This will also trigger deletion of translations via model events if set up, or handle manually.
+            
+            // Delete associated SEO Meta
+            SeoMeta::where('url_slug', 'contact-us')->delete();
         }
 
         return redirect()->route('admin.contact-us.index')
-            ->with('success', 'Contact Us page content removed');
+            ->with('success', 'Contact Us page content and SEO Meta removed');
     }
 
 
