@@ -34,6 +34,9 @@ const tempCity = ref('');
 const tempState = ref('');
 const tempCountry = ref('');
 
+// Checkbox state
+const isStateSameAsCity = ref(false); // Default to UNCHECKED
+
 // API Keys - User needs to ensure VITE_GOOGLE_MAPS_API_KEY is in .env
 const GOOGLE_MAPS_API_KEY = import.meta.env.VITE_GOOGLE_MAPS_API_KEY;
 const STADIA_API_KEY = import.meta.env.VITE_STADIA_API_KEY; // Assuming this is already set
@@ -130,12 +133,15 @@ onMounted(async () => {
         
         tempAddress.value = `${streetNumber} ${route}`.trim() || place.name || '';
         tempCity.value = locality;
-        tempState.value = administrative_area_level_1;
+        // tempState.value = administrative_area_level_1; // Do not prefill state from suggestion
+        tempState.value = ''; // Initialize state as empty
+        isStateSameAsCity.value = false; // Default to different state
         tempCountry.value = countryName;
         
         address.value = tempAddress.value;
         city.value = tempCity.value;
-        state.value = tempState.value;
+        // state.value = tempState.value; // State will be set on save based on logic
+        state.value = ''; // Initialize main state as empty
         country.value = tempCountry.value;
         fullAddress.value = place.formatted_address || `${tempAddress.value}, ${tempCity.value}, ${tempState.value}, ${tempCountry.value}`;
 
@@ -222,12 +228,15 @@ const reverseGeocodeAndPrefill = async (lat, lng) => {
         tempAddress.value = props.name || props.housenumber && props.street ? `${props.housenumber || ''} ${props.street || ''}`.trim() : '';
     }
     tempCity.value = props.locality || props.county || '';
-    tempState.value = props.region || '';
+    // tempState.value = props.region || ''; // Do not prefill state from reverse geocode
+    tempState.value = ''; // Initialize state as empty
+    isStateSameAsCity.value = false; // Default to different state
     tempCountry.value = props.country || '';
     
     // Update main fields for display (address.value will be updated from tempAddress on final save)
     city.value = tempCity.value;
-    state.value = tempState.value;
+    // state.value = tempState.value; // State will be set on save based on logic
+    state.value = ''; // Initialize main state as empty
     country.value = tempCountry.value;
     fullAddress.value = feature?.properties?.label || `${tempAddress.value}, ${tempCity.value}, ${tempState.value}, ${tempCountry.value}`;
 
@@ -267,6 +276,7 @@ const openLocationDetailsPopupWithCoords = (lat, lng, initialSearchText = '') =>
   tempCity.value = '';
   tempState.value = '';
   tempCountry.value = '';
+  isStateSameAsCity.value = false; // Reset checkbox
   
   currentPopupStep.value = 1;
   showLocationPickerPopup.value = true;
@@ -345,11 +355,23 @@ const finalSaveLocation = () => {
   // Final values are taken from temp fields, potentially updated by map interaction
   address.value = tempAddress.value;
   city.value = tempCity.value;
-  state.value = tempState.value;
+  // Determine the state value to save/emit
+  let stateToSave = tempState.value;
+  if (isStateSameAsCity.value) {
+    stateToSave = null; // If state is same as city, send null for state
+  }
+  state.value = stateToSave; // Update the main state ref for display if needed, though it might be null
+
   country.value = tempCountry.value;
   // latitude and longitude are already updated by map interactions or initial selection
 
-  fullAddress.value = `${tempAddress.value}, ${tempCity.value}, ${tempState.value}, ${tempCountry.value}`.replace(/, ,/g, ',').replace(/^,|,$/g, '');
+  // Adjust fullAddress computation to handle null state gracefully
+  const addressParts = [tempAddress.value, tempCity.value];
+  if (stateToSave) { // Only add state to fullAddress if it's not null (i.e., different from city)
+      addressParts.push(stateToSave);
+  }
+  addressParts.push(tempCountry.value);
+  fullAddress.value = addressParts.filter(Boolean).join(', ').replace(/, ,/g, ',').replace(/^,|,$/g, '');
   
   showLocationPickerPopup.value = false; // Close the popup
   currentPopupStep.value = 1; // Reset step for next time
@@ -358,7 +380,7 @@ const finalSaveLocation = () => {
     props.onLocationSelect({ 
       address: address.value,
       city: city.value,
-      state: state.value,
+      state: stateToSave, // Emit null if state is same as city
       country: country.value,
       latitude: parseFloat(latitude.value),
       longitude: parseFloat(longitude.value),
@@ -406,12 +428,28 @@ const openLocationDialog = () => {
     tempCity.value = '';
     tempState.value = '';
     tempCountry.value = '';
+    isStateSameAsCity.value = false; // Reset checkbox
     latitude.value = '';
     longitude.value = '';
     // searchQuery.value = ''; // searchQuery no longer exists
     currentPopupStep.value = 1;
     showLocationPickerPopup.value = true;
 };
+
+watch(isStateSameAsCity, (newValue) => {
+  if (newValue) { // State is SAME as City
+    tempState.value = tempCity.value; // Set data value, field will be hidden
+  } else { // State is DIFFERENT from City
+    tempState.value = ''; // Clear for manual input, field will be shown
+  }
+});
+
+watch(tempCity, (newCityValue) => {
+  if (isStateSameAsCity.value) { // If checkbox is checked (state is same as city)
+    tempState.value = newCityValue; // Update state to match new city value
+  }
+  // If checkbox is not checked, tempState is independent for manual input.
+});
 
 // Expose method to parent if needed via defineExpose
 defineExpose({ openLocationDialog });
@@ -470,9 +508,20 @@ defineExpose({ openLocationDialog });
               <label class="block text-sm font-medium text-gray-700 mb-1">City</label>
               <input type="text" v-model="tempCity" class="w-full p-2 border rounded-lg" placeholder="City"/>
             </div>
-            <div>
-              <label class="block text-sm font-medium text-gray-700 mb-1">State / Province</label>
-              <input type="text" v-model="tempState" class="w-full p-2 border rounded-lg" placeholder="State or Province"/>
+            <div class="mt-3">
+              <label class="flex items-center">
+                <input type="checkbox" v-model="isStateSameAsCity" class="h-4 w-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"/>
+                <span class="ml-2 text-sm text-gray-700">State is the same as City</span>
+              </label>
+            </div>
+            <div v-if="!isStateSameAsCity">
+              <label class="block text-sm font-medium text-gray-700 mb-1">State / Province (if different from city)</label>
+              <input 
+                type="text" 
+                v-model="tempState" 
+                class="w-full p-2 border rounded-lg" 
+                placeholder="Enter state manually"
+              />
             </div>
             <div>
               <label class="block text-sm font-medium text-gray-700 mb-1">Country</label>
