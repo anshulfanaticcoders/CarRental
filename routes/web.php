@@ -161,7 +161,13 @@ Route::middleware(['auth', 'role:admin'])->group(function () {
     Route::put('/vendors/{vendorProfile}/status', [VendorsDashboardController::class, 'updateStatus'])->name('vendors.updateStatus');
 
     Route::resource('users', UsersController::class)->except(['create', 'edit', 'show']);
-    Route::resource('vendor-vehicles', VehicleDashboardController::class)->except(['create', 'edit', 'show']);
+    Route::resource('vendor-vehicles', VehicleDashboardController::class)->except(['create', 'show'])->names([
+        'edit' => 'admin.vehicles.edit',
+        'update' => 'admin.vehicles.update',
+        'index' => 'admin.vehicles.index', // ensure other names are also present if needed
+        'store' => 'admin.vehicles.store',
+        'destroy' => 'admin.vehicles.destroy',
+    ]);
     // Route::inertia('vendors', 'AdminDashboardPages/Vendors/Index');
     Route::resource('customer-bookings', BookingDashboardController::class)->except(['create', 'edit', 'show']);
     Route::get('/customer-bookings/pending', [BookingDashboardController::class, 'pending'])->name('customer-bookings.pending');

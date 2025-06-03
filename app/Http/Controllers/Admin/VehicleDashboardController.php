@@ -37,4 +37,31 @@ class VehicleDashboardController extends Controller
             'filters' => $request->only(['search']),
         ]);
     }
+
+    /**
+     * Show the form for editing the specified resource.
+     */
+    public function edit(Vehicle $vehicle)
+    {
+        return Inertia::render('AdminDashboardPages/Vehicles/Edit', [
+            'vehicle' => $vehicle,
+        ]);
+    }
+
+    /**
+     * Update the specified resource in storage.
+     */
+    public function update(Request $request, Vehicle $vendor_vehicle)
+    {
+        $validatedData = $request->validate([
+            'city' => 'nullable|string|max:255',
+            'state' => 'nullable|string|max:255',
+            'country' => 'nullable|string|max:255',
+            // Add other fields that can be updated here
+        ]);
+
+        $vendor_vehicle->update($validatedData);
+
+        return redirect()->route('admin.vehicles.index')->with('success', 'Vehicle updated successfully.');
+    }
 }

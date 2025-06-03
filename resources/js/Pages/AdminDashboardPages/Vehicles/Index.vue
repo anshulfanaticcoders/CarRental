@@ -8,8 +8,8 @@
                 </div>
             </div>
 
-            <Dialog v-model:open="isEditDialogOpen">
-                <EditUser :user="editForm" @close="isEditDialogOpen = false" />
+            <Dialog v-model:open="isEditVehicleDialogOpen">
+                <EditVehicleDialog :vehicle="editVehicleForm" @close="isEditVehicleDialogOpen = false" />
             </Dialog>
 
             <Dialog v-model:open="isViewDialogOpen">
@@ -73,7 +73,9 @@
                                     <Button size="sm" variant="outline" @click="openViewDialog(user)">
                                         View
                                     </Button>
-
+                                    <Button size="sm" variant="outline" @click="openEditVehicleDialog(user)">
+                                        Edit
+                                    </Button>
                                     <Button size="sm" variant="destructive" @click="openDeleteDialog(user.id)">Delete</Button>
                                 </div>
                             </TableCell>
@@ -108,7 +110,7 @@
 
 <script setup>
 import { ref } from "vue";
-import { router } from "@inertiajs/vue3";
+import { router, Link } from "@inertiajs/vue3";
 import Table from "@/Components/ui/table/Table.vue";
 import TableHeader from "@/Components/ui/table/TableHeader.vue";
 import TableRow from "@/Components/ui/table/TableRow.vue";
@@ -121,6 +123,7 @@ import { Input } from "@/Components/ui/input";
 import { Dialog, DialogTrigger } from "@/Components/ui/dialog";
 import AdminDashboardLayout from "@/Layouts/AdminDashboardLayout.vue";
 import ViewUser from "@/Pages/AdminDashboardPages/Vehicles/ViewUser.vue";
+import EditVehicleDialog from "@/Pages/AdminDashboardPages/Vehicles/EditVehicleDialog.vue"; // Import the new dialog
 import Pagination from "@/Pages/AdminDashboardPages/Vehicles/Pagination.vue";
 import {
   AlertDialog,
@@ -150,8 +153,10 @@ const formatDate = (date) => {
 
 const search = ref(props.filters.search || ''); // Initialize search with the filter value
 const isViewDialogOpen = ref(false);
+const isEditVehicleDialogOpen = ref(false); // State for the new edit dialog
 const isDeleteDialogOpen = ref(false);
 const viewForm = ref({});
+const editVehicleForm = ref({}); // State for the vehicle being edited
 const deleteUserId = ref(null);
 
 // Handle search input
@@ -165,6 +170,11 @@ const handleSearch = () => {
 const openViewDialog = (user) => {
     viewForm.value = { ...user };
     isViewDialogOpen.value = true;
+};
+
+const openEditVehicleDialog = (vehicle) => {
+    editVehicleForm.value = { ...vehicle }; // Use a deep copy if vehicle object is complex
+    isEditVehicleDialogOpen.value = true;
 };
 
 const openDeleteDialog = (id) => {
