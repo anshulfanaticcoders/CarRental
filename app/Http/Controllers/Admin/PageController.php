@@ -85,18 +85,17 @@ class PageController extends Controller
 
         $title = $request->input('title');
         $content = $request->input('content');
-        $baseSlug = Str::slug($title); 
-        $prefixedSlug = 'page/' . $baseSlug;
+        $slug = Str::slug($title); // Generate page slug WITHOUT prefix
 
-        // Check if prefixed slug already exists
-        $existingPage = Page::where('slug', $prefixedSlug)->first();
+        // Check if page slug already exists
+        $existingPage = Page::where('slug', $slug)->first();
         if ($existingPage) {
             // Append a unique identifier if slug exists
-            $prefixedSlug = 'page/' . $baseSlug . '-' . uniqid();
+            $slug = $slug . '-' . uniqid();
         }
 
         $page = Page::create([
-            'slug' => $prefixedSlug, // Slug is based on the first title provided, with prefix
+            'slug' => $slug, // Save page with non-prefixed slug
         ]);
 
         $page->translations()->create([
@@ -105,17 +104,17 @@ class PageController extends Controller
             'content' => $content,
         ]);
 
-        // Create or Update SEO Meta
+        // Create or Update SEO Meta with prefixed url_slug
         $seoData = $request->only(['seo_title', 'meta_description', 'keywords', 'canonical_url', 'seo_image_url']);
-        // Ensure url_slug is not mass-assignable or is handled correctly if present in $seoData
-        // SeoMeta model's $fillable should not include url_slug if we set it manually here.
-        // Or, ensure it's unique. The SeoMetaController handles uniqueness for its own form.
-        // Here, the slug is derived from the page.
+        $seoUrlSlug = 'page/' . $page->slug; // SEO url_slug IS prefixed
 
-        if (array_filter($seoData)) { // Check if there's any SEO data provided
+        if (array_filter($seoData) || !empty($request->input('seo_title'))) { // Save if any SEO data or at least a title
+            if (empty($seoData['seo_title']) && !empty($title)) { // Default seo_title from page title
+                $seoData['seo_title'] = Str::limit($title, 60);
+            }
             SeoMeta::updateOrCreate(
-                ['url_slug' => $prefixedSlug], // Use the prefixed slug for SEO
-                $seoData
+                ['url_slug' => $seoUrlSlug], 
+                array_filter($seoData, fn($value) => !is_null($value))
             );
         }
 
@@ -141,16 +140,29 @@ class PageController extends Controller
     {
         $translations = $page->translations->keyBy('locale');
         $locale = app()->getLocale();
-        $seoMeta = SeoMeta::where('url_slug', $page->slug)->first();
+        $seoUrlSlug = 'page/' . $page->slug; // SEO url_slug IS prefixed
+        $seoMeta = SeoMeta::where('url_slug', $seoUrlSlug)->first();
+
+        // If not found with prefix, check without prefix (for migration of old data)
+        if (!$seoMeta) {
+            $seoMetaOld = SeoMeta::where('url_slug', $page->slug)->first();
+            if ($seoMetaOld) {
+                // Found an old one, we'll update its slug to be prefixed in the update method
+                // For now, pass it so the form can be populated.
+                // Or, we could update it here and then re-fetch, but update method is better place.
+                $seoMeta = $seoMetaOld; 
+            }
+        }
+
 
         return Inertia::render('AdminDashboardPages/Pages/Edit', [
-            'page' => [
+            'page' => [ // Page data uses non-prefixed slug
                 'id' => $page->id,
                 'slug' => $page->slug,
                 'translations' => $translations,
-                'locale' => $locale, // Current app locale
+                'locale' => $locale, 
             ],
-            'seoMeta' => $seoMeta,
+            'seoMeta' => $seoMeta, // seoMeta (if found) might have prefixed or non-prefixed slug from DB
         ]);
     }
 
@@ -174,10 +186,8 @@ class PageController extends Controller
         $locale = $request->input('locale');
         $title = $request->input('title');
         $content = $request->input('content');
-
-        // Note: Slug update logic is not present. If title changes, slug currently does not.
-        // If slug could change, SEO meta association would need to track old slug or use page_id.
-        // For now, assuming slug is fixed after creation.
+        // Page slug ($page->slug) DOES NOT change and is NOT prefixed.
+        // SEO Meta url_slug WILL BE prefixed.
 
         $translation = $page->translations()->where('locale', $locale)->first();
 
@@ -193,14 +203,25 @@ class PageController extends Controller
             ]);
         }
 
+        // Page model is saved if translations are updated.
+        // No direct save of $page needed here unless other $page attributes were changed.
+
         // Update or Create SEO Meta
         $seoData = $request->only(['seo_title', 'meta_description', 'keywords', 'canonical_url', 'seo_image_url']);
+        $seoUrlSlug = 'page/' . $page->slug; // SEO url_slug IS prefixed
+
+        // Delete any old SeoMeta that might exist with the non-prefixed slug
+        SeoMeta::where('url_slug', $page->slug)->where('url_slug', '!=', $seoUrlSlug)->delete();
         
-        if (array_filter($seoData) || SeoMeta::where('url_slug', $page->slug)->exists()) {
-            // Update if SEO data is provided OR if an SEO record already exists (to allow clearing fields)
+        if (array_filter($seoData) || !empty($request->input('seo_title')) || SeoMeta::where('url_slug', $seoUrlSlug)->exists()) {
+            $primaryTitleForSeo = $request->input("translations.en.title", $page->translations()->where('locale', 'en')->first()?->title);
+            if (empty($seoData['seo_title']) && !empty($primaryTitleForSeo)) {
+                $seoData['seo_title'] = Str::limit($primaryTitleForSeo, 60);
+            }
+            
             SeoMeta::updateOrCreate(
-                ['url_slug' => $page->slug],
-                $seoData
+                ['url_slug' => $seoUrlSlug], // Use the prefixed slug for SEO
+                array_filter($seoData, fn($value) => !is_null($value)) 
             );
         }
 
@@ -214,10 +235,12 @@ class PageController extends Controller
      */
     public function destroy(Page $page)
     {
-        // Delete associated SEO Meta first
-        SeoMeta::where('url_slug', $page->slug)->delete();
+        // Delete associated SEO Meta first (using prefixed slug)
+        $seoUrlSlug = 'page/' . $page->slug;
+        SeoMeta::where('url_slug', $seoUrlSlug)->delete();
+        // Also delete any potential old non-prefixed one, just in case
+        SeoMeta::where('url_slug', $page->slug)->delete(); 
         
-        // Then delete the page and its translations (translations should cascade or be handled by model events)
         $page->delete();
 
         return redirect()->route('admin.pages.index')
