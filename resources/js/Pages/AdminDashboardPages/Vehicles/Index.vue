@@ -22,10 +22,10 @@
                         <TableRow>
                             <TableHead>ID</TableHead>
                             <TableHead>User Name</TableHead>
-                            <TableHead>Model</TableHead>
-                            <TableHead>Brand</TableHead>
-                            <TableHead>Color</TableHead>
+                            <TableHead>Vehicle Name</TableHead>
                             <TableHead>Location</TableHead>
+                            <TableHead>City</TableHead>
+                            <TableHead>State</TableHead>
                             <TableHead>Country</TableHead>
                             <TableHead>Price</TableHead>
                             <TableHead>Date Added</TableHead>
@@ -37,11 +37,11 @@
                         <TableRow v-for="(user, index) in users.data" :key="user.id">
                             <TableCell>{{ (users.current_page - 1) * users.per_page + index + 1 }}</TableCell>
                             <TableCell>{{ user.user.first_name }} {{ user.user.last_name }}</TableCell>
-                            <TableCell>{{ user.model }}</TableCell>
-                            <TableCell>{{ user.brand }}</TableCell>
-                            <TableCell>{{ user.color }}</TableCell>
+                            <TableCell>{{ user.brand }} {{ user.model }}</TableCell>
                             <TableCell>{{ user.full_vehicle_address }}</TableCell>
-                            <TableCell>{{ user.vendor_profile.country }}</TableCell>
+                            <TableCell>{{ user.city }}</TableCell>
+                            <TableCell>{{ user.state }}</TableCell>
+                            <TableCell>{{ user.country }}</TableCell>
                             <TableCell>
                                 <template v-if="user.price_per_day || user.price_per_week || user.price_per_month">
                                     <span v-if="user.price_per_day">
