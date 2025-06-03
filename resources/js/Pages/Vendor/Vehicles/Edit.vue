@@ -112,11 +112,9 @@
                                     <div v-if="form.location"
                                         class="p-4 bg-gray-50 rounded-lg border border-gray-200 shadow-sm">
                                         <div class="grid grid-cols-2 gap-2 text-[1rem]">
-                                            <div class="col-span-2 font-medium text-gray-700">{{ _t('vendorprofilepages', 'current_location_label') }} {{
-                                                form.location }}, {{ form.city }}, {{ form.state }}, {{ form.country }}
-                                            </div>
+                                            <div class="col-span-2 font-medium text-gray-700">{{ _t('vendorprofilepages', 'current_location_label') }} {{ displayedFullAddress }}</div>
                                             <div><span class="text-gray-500">{{ _t('vendorprofilepages', 'label_city') }}</span> {{ form.city }}</div>
-                                            <div><span class="text-gray-500">{{ _t('vendorprofilepages', 'label_state') }}</span> {{ form.state }}</div>
+                                            <div><span class="text-gray-500">{{ _t('vendorprofilepages', 'label_state') }}</span> {{ form.state || 'N/A' }}</div> <!-- Still show individual state here for clarity if needed -->
                                             <div><span class="text-gray-500">{{ _t('vendorprofilepages', 'label_country') }}</span> {{ form.country }}</div>
                                             <div class=""><span class="text-gray-500">{{ _t('vendorprofilepages', 'label_coordinates') }}</span> {{
                                                 form.latitude }}, {{ form.longitude }}</div>
@@ -141,8 +139,8 @@
                                         leave-from-class="transform opacity-100 translate-y-0"
                                         leave-to-class="transform opacity-0 -translate-y-4">
                                         <div v-show="showLocationPicker"
-                                            class="location-picker-container border border-gray-200 rounded-lg shadow-sm overflow-hidden"
-                                            @click.prevent>
+                                            class="location-picker-container border border-gray-200 rounded-lg shadow-sm overflow-hidden">
+                                            {/* @click.prevent removed */}
                                             <LocationPicker :onLocationSelect="handleLocationSelect" />
                                         </div>
                                     </transition>
@@ -674,6 +672,7 @@ const fileInput = ref(null);
 const selectedFiles = ref([]);
 const maxImages = 20;
 const isLoading = ref(false);
+const allowFormSubmit = ref(true); // Flag to control form submission
 
 const formatDate = (value) => {
     if (!value) {
@@ -875,10 +874,13 @@ const deleteImage = async (vehicleId, imageId) => {
 const handleLocationSelect = (locationData) => {
     form.location = locationData.address || '';
     form.city = locationData.city || '';
-    form.state = locationData.state || '';
+    form.state = locationData.state; // Correctly assign null if locationData.state is null
     form.country = locationData.country || '';
     form.latitude = parseFloat(locationData.latitude) || 0;
     form.longitude = parseFloat(locationData.longitude) || 0;
+
+    showLocationPicker.value = false; // Hide the picker component instance
+    allowFormSubmit.value = true;    // Re-allow form submission
 };
 
 
@@ -923,7 +925,7 @@ onMounted(() => {
         form.co2 = props.vehicle.co2
         form.location = props.vehicle.location || '';
         form.city = props.vehicle.city || '';
-        form.state = props.vehicle.state || '';
+        form.state = props.vehicle.state; // Correctly assign null if props.vehicle.state is null
         form.country = props.vehicle.country || '';
         form.latitude = props.vehicle.latitude ? parseFloat(props.vehicle.latitude) : 0;
         form.longitude = props.vehicle.longitude ? parseFloat(props.vehicle.longitude) : 0;
@@ -1022,7 +1024,16 @@ onMounted(() => {
     console.log('Form Data:', form);
 })
 
+const displayedFullAddress = computed(() => {
+    const parts = [form.location, form.city, form.state, form.country];
+    return parts.filter(part => part !== null && part !== '').join(', ');
+});
+
 const updateVehicle = () => {
+    if (!allowFormSubmit.value) {
+        // console.warn('Form submission blocked because LocationPicker is active or was just interacted with.');
+        return; 
+    }
     isLoading.value = true;
 
     // Construct full_vehicle_address before getting form.data()
@@ -1212,9 +1223,12 @@ watch(() => form.category_id, (newCategoryId, oldCategoryId) => {
 });
 
 const toggleLocationPicker = () => {
-    showLocationPicker.value = !showLocationPicker.value
+    showLocationPicker.value = !showLocationPicker.value;
     if (showLocationPicker.value) {
-        forceMapResize()
+        allowFormSubmit.value = false; // Disallow form submission when picker is shown
+        forceMapResize();
+    } else {
+        allowFormSubmit.value = true; // Re-allow when picker is hidden by this toggle
     }
 }
 
