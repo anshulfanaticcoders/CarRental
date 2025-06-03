@@ -6,7 +6,7 @@
         <meta name="robots" content="noindex, nofollow">
 
         <title inertia>{{ config('app.name', 'Laravel') }}</title>
-        <link rel="icon" type="image/x-icon" href="{{ asset('letter-v.svg') }}">
+        <link rel="icon" type="image/x-icon" href="{{ asset('favicon.ico') }}">
 
        <!-- Fonts -->
        <link rel="preconnect" href="https://fonts.googleapis.com">
