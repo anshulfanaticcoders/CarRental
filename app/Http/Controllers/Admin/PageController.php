@@ -85,17 +85,18 @@ class PageController extends Controller
 
         $title = $request->input('title');
         $content = $request->input('content');
-        $slug = Str::slug($title); // Generate slug from the title of the current locale being saved
+        $baseSlug = Str::slug($title); 
+        $prefixedSlug = 'page/' . $baseSlug;
 
-        // Check if slug already exists
-        $existingPage = Page::where('slug', $slug)->first();
+        // Check if prefixed slug already exists
+        $existingPage = Page::where('slug', $prefixedSlug)->first();
         if ($existingPage) {
             // Append a unique identifier if slug exists
-            $slug = $slug . '-' . uniqid();
+            $prefixedSlug = 'page/' . $baseSlug . '-' . uniqid();
         }
 
         $page = Page::create([
-            'slug' => $slug, // Slug is based on the first title provided
+            'slug' => $prefixedSlug, // Slug is based on the first title provided, with prefix
         ]);
 
         $page->translations()->create([
@@ -113,7 +114,7 @@ class PageController extends Controller
 
         if (array_filter($seoData)) { // Check if there's any SEO data provided
             SeoMeta::updateOrCreate(
-                ['url_slug' => $slug], // Use the original slug for SEO
+                ['url_slug' => $prefixedSlug], // Use the prefixed slug for SEO
                 $seoData
             );
         }
