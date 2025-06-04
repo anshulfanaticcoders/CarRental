@@ -126,7 +126,7 @@ import { Link, usePage, router } from '@inertiajs/vue3';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/Components/ui/dialog";
 import FormReview from '@/Components/ReviewForm.vue';
 import { CheckCircle } from 'lucide-vue-next';
-import Pagination from './Pagination.vue';
+ import Pagination from '@/Components/ReusableComponents/Pagination.vue';
 
 const { appContext } = getCurrentInstance();
 const _t = appContext.config.globalProperties._t;

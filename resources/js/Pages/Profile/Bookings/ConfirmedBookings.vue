@@ -171,7 +171,7 @@ import bookingstatusIcon from '../../../../assets/bookingstatusIcon.svg';
 import carIcon from '../../../../assets/carIcon.svg'; // Import car icon
 import { defineProps, ref, getCurrentInstance } from 'vue';
 import { Link,router } from '@inertiajs/vue3';
-import Pagination from './Pagination.vue';
+ import Pagination from '@/Components/ReusableComponents/Pagination.vue';
 
 const { appContext } = getCurrentInstance();
 const _t = appContext.config.globalProperties._t;

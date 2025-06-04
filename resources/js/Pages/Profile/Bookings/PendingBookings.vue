@@ -106,7 +106,7 @@
   import bookingstatusIcon from '../../../../assets/bookingstatusIcon.svg';
   import carIcon from '../../../../assets/carIcon.svg';
   import { Link, usePage, router } from '@inertiajs/vue3';
-  import Pagination from './Pagination.vue';
+   import Pagination from '@/Components/ReusableComponents/Pagination.vue';
   import { ref, getCurrentInstance } from 'vue';
 
 const { appContext } = getCurrentInstance();
