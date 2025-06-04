@@ -38,7 +38,7 @@
                   </tr>
                 </thead>
                 <tbody class="bg-white divide-y divide-gray-200">
-                  <tr v-if="seoMetas.data.length === 0">
+                  <tr v-if="!seoMetas || !seoMetas.data || seoMetas.data.length === 0">
                     <td colspan="4" class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 text-center">
                       No SEO meta tags found.
                     </td>
@@ -63,13 +63,12 @@
             </div>
 
             <!-- Pagination -->
-            <div v-if="seoMetas.links.length > 3" class="mt-6 flex justify-center">
-              <div class="flex flex-wrap -mb-1">
-                <template v-for="(link, key) in seoMetas.links" :key="key">
-                  <div v-if="link.url === null" class="mr-1 mb-1 px-4 py-3 text-sm leading-4 text-gray-400 border rounded" v-html="link.label" />
-                  <Link v-else class="mr-1 mb-1 px-4 py-3 text-sm leading-4 border rounded hover:bg-white focus:border-indigo-500 focus:text-indigo-500" :class="{ 'bg-blue-700 text-white': link.active }" :href="link.url" v-html="link.label" />
-                </template>
-              </div>
+            <div v-if="seoMetas && seoMetas.last_page && seoMetas.last_page > 1" class="mt-6 flex justify-end">
+              <Pagination
+                :currentPage="seoMetas.current_page"
+                :totalPages="seoMetas.last_page"
+                @page-change="handlePageChange"
+              />
             </div>
 
           </div>
@@ -83,6 +82,7 @@
 import AdminDashboardLayout from '@/Layouts/AdminDashboardLayout.vue';
 import { Link, router } from '@inertiajs/vue3'; // Assuming Vue 3, use '@inertiajs/inertia-vue3' for Vue 2
 import { defineProps } from 'vue';
+import Pagination from '@/Components/ReusableComponents/Pagination.vue';
 
 const props = defineProps({
   seoMetas: Object, // Contains data and links for pagination
@@ -102,6 +102,14 @@ const confirmDelete = (id) => {
       }
     });
   }
+};
+
+const handlePageChange = (page) => {
+  router.get(route('admin.seo-meta.index', { page: page }), {}, {
+    preserveState: true,
+    preserveScroll: true, 
+    replace: true, 
+  });
 };
 </script>
 

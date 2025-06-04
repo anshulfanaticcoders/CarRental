@@ -72,7 +72,7 @@
                     </TableHeader>
                     <TableBody>
                         <TableRow v-for="(review, index) in reviews.data" :key="review.id">
-                            <TableCell>{{ index + 1 }}</TableCell>
+                            <TableCell>{{ (reviews.current_page - 1) * reviews.per_page + index + 1 }}</TableCell>
                             <TableCell>
                                 {{ review.user?.first_name }} {{ review.user?.last_name }}
                             </TableCell>
@@ -249,7 +249,7 @@ import {
     DialogFooter,
 } from "@/Components/ui/dialog";
 import { useToast } from 'vue-toastification';
-import Pagination from '../Users/Pagination.vue';
+import Pagination from '@/Components/ReusableComponents/Pagination.vue';
 
 const toast = useToast();
 

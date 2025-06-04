@@ -106,7 +106,7 @@
 <script setup>
 import { ref } from 'vue'
 import { router } from '@inertiajs/vue3'
-import Pagination from "@/Pages/AdminDashboardPages/Payments/Pagination.vue";
+import Pagination from '@/Components/ReusableComponents/Pagination.vue';
 import AdminDashboardLayout from '@/Layouts/AdminDashboardLayout.vue';
 
 // Custom debounce function

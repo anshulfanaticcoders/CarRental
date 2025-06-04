@@ -451,7 +451,7 @@ const page = usePage();
                         class="relative rounded-lg h-[175px] flex justify-between gap-5 items-center">
                         <div v-if="!isLoading && blogs.length > index"
                             class="w-[30%] h-full blog-container max-[768px]:w-[40%] max-[768px]:h-[120px]">
-                            <Link :href="route('blog.show', blogs[index].id)">
+                            <Link :href="route('blog.show', blogs[index].slug)">
                             <img :src="blogs[index].image" :alt="blogs[index].title"
                                 class="w-full h-full object-cover rounded-lg transform transition-transform duration-300 ease-in-out hover:scale-105">
                             </Link>

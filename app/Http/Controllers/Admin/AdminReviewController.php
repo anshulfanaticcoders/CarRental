@@ -46,7 +46,7 @@ class AdminReviewController extends Controller
                 $query->where('status', $statusFilter);
             })
             ->orderByDesc('created_at')
-            ->paginate(8);
+            ->paginate(5);
 
         // Calculate statistics
         $totalReviews = Review::count();

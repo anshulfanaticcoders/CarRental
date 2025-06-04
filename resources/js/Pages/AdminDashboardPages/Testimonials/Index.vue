@@ -83,8 +83,11 @@
               </TableRow>
             </TableHeader>
             <TableBody>
-              <TableRow v-for="(testimonial, index) in testimonials" :key="testimonial.id">
-                  <TableCell>{{ index+1 }}</TableCell>
+              <TableRow v-if="!testimonials || !testimonials.data || testimonials.data.length === 0">
+                <TableCell colspan="7" class="text-center py-4">No testimonials found.</TableCell>
+              </TableRow>
+              <TableRow v-for="(testimonial, index) in testimonials.data" :key="testimonial.id">
+                <TableCell>{{ (testimonials.current_page - 1) * testimonials.per_page + index + 1 }}</TableCell>
                 <TableCell>
                   <img v-if="testimonial.avatar" :src="testimonial.avatar" alt="Avatar" class="h-12 w-12 object-cover rounded-full" />
                 </TableCell>
@@ -101,6 +104,14 @@
               </TableRow>
             </TableBody>
           </Table>
+          <!-- Pagination -->
+          <div v-if="testimonials && testimonials.last_page && testimonials.last_page > 1" class="mt-4 flex justify-end">
+            <Pagination
+              :currentPage="testimonials.current_page"
+              :totalPages="testimonials.last_page"
+              @page-change="handlePageChange"
+            />
+          </div>
         </div>
       </div>
     </AdminDashboardLayout>
@@ -108,7 +119,9 @@
   
   <script setup>
   import { ref, reactive, defineProps } from 'vue';
+  import { router } from '@inertiajs/vue3'; // Added router
   import axios from 'axios';
+  import { useToast } from 'vue-toastification'; // Added useToast
   import {
     Dialog,
     DialogContent,
@@ -128,10 +141,13 @@
   import TableBody from '@/Components/ui/table/TableBody.vue';
   import TableCell from '@/Components/ui/table/TableCell.vue';
   import AdminDashboardLayout from '@/Layouts/AdminDashboardLayout.vue';
+  import Pagination from '@/Components/ReusableComponents/Pagination.vue'; // Added Pagination
   
+  const toast = useToast(); // Initialize toast
+
   // Props from Inertia
   const props = defineProps({
-    testimonials: Array,
+    testimonials: Object, // Changed from Array to Object
   });
   
   // State
@@ -199,7 +215,7 @@
   };
   
   const saveTestimonial = async () => {
-    await getCsrfToken(); // Fetch CSRF token before POST
+    await getCsrfToken(); 
   
     const formData = new FormData();
     if (form.avatar) {
@@ -210,23 +226,35 @@
     formData.append('ratings', form.ratings);
     formData.append('designation', form.designation);
   
-    try {
-      if (isEditing.value) {
-        formData.append('_method', 'POST'); // Laravel method spoofing
-        await axios.post(`/testimonials/${currentTestimonialId.value}`, formData, {
-          headers: { 'Content-Type': 'multipart/form-data' },
-        });
-      } else {
-        await axios.post('/testimonials', formData, {
-          headers: { 'Content-Type': 'multipart/form-data' },
-        });
-      }
-      isDialogOpen.value = false;
-      resetForm();
-      // Refresh the page to reload data from the server
-      window.location.reload();
-    } catch (error) {
-      console.error('Error saving testimonial:', error);
+    if (isEditing.value) {
+      // Your route for update is POST, so we use router.post.
+      // Laravel handles method spoofing if _method is present in FormData.
+      formData.append('_method', 'POST'); // This might be redundant if your route is already POST for updates.
+                                        // If it were PUT/PATCH, Inertia's router.put/patch would handle it.
+      router.post(route('testimonials.update', currentTestimonialId.value), formData, {
+        onSuccess: () => {
+          isDialogOpen.value = false;
+          resetForm();
+          toast.success('Testimonial updated successfully!');
+          // Data should refresh if controller redirects or returns updated Inertia response.
+        },
+        onError: (errors) => {
+          console.error('Error updating testimonial:', errors);
+          // Consider adding user-facing error messages here
+        },
+      });
+    } else { // Creating new
+      router.post(route('testimonials.store'), formData, {
+        onSuccess: () => {
+          isDialogOpen.value = false;
+          resetForm();
+          toast.success('Testimonial created successfully!');
+        },
+        onError: (errors) => {
+          console.error('Error creating testimonial:', errors);
+          // Consider adding user-facing error messages here
+        },
+      });
     }
   };
   
@@ -237,18 +265,28 @@
   
   const confirmDelete = async () => {
     if (!testimonialToDelete.value) return;
-  
-    await getCsrfToken(); // Fetch CSRF token before DELETE
-    try {
-      await axios.delete(`/testimonials/${testimonialToDelete.value}`);
-      // Refresh the page to reload data from the server
-      window.location.reload();
-    } catch (error) {
-      console.error('Error deleting testimonial:', error);
-    } finally {
-      isDeleteDialogOpen.value = false;
-      testimonialToDelete.value = null;
-    }
+    // Using Inertia router for delete with correct named route
+    router.delete(route('testimonials.destroy', testimonialToDelete.value), {
+        preserveScroll: true,
+        onSuccess: () => {
+            isDeleteDialogOpen.value = false;
+            testimonialToDelete.value = null;
+            toast.success('Testimonial deleted successfully!');
+            // Data should refresh via Inertia
+        },
+        onError: (errors) => {
+            console.error('Error deleting testimonial:', errors);
+            // Handle error display
+        }
+    });
+  };
+
+  const handlePageChange = (page) => {
+    router.get(route('testimonials.index', { page: page }), {}, {
+        preserveState: true,
+        preserveScroll: true,
+        replace: true,
+    });
   };
   </script>
   

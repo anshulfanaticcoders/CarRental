@@ -11,11 +11,15 @@ use Inertia\Inertia;
 
 class TestimonialController extends Controller
 {
-    public function index()
+    public function index(Request $request) // Added Request $request
     {
-        $testimonials = Testimonial::all();
+        // Paginate testimonials, 10 per page, ordered by latest.
+        $testimonials = Testimonial::latest()->paginate(7)->withQueryString();
+        
         return Inertia::render('AdminDashboardPages/Testimonials/Index', [
             'testimonials' => $testimonials,
+            // If you add filters later, pass them here:
+            // 'filters' => $request->only(['search']), 
         ]);
     }
 
@@ -43,7 +47,8 @@ class TestimonialController extends Controller
         }
 
         $testimonial = Testimonial::create($data);
-        return response()->json($testimonial, 201);
+        // return response()->json($testimonial, 201);
+        return redirect()->route('testimonials.index')->with('success', 'Testimonial created successfully.');
     }
 
     public function show($id)
@@ -82,7 +87,8 @@ class TestimonialController extends Controller
         }
 
         $testimonial->update($data);
-        return response()->json($testimonial);
+        // return response()->json($testimonial);
+        return redirect()->route('testimonials.index')->with('success', 'Testimonial updated successfully.');
     }
 
     public function destroy($id)
@@ -93,7 +99,8 @@ class TestimonialController extends Controller
             Storage::disk('upcloud')->delete($path);
         }
         $testimonial->delete();
-        return response()->json(['message' => 'Testimonial deleted']);
+        // return response()->json(['message' => 'Testimonial deleted']);
+        return redirect()->route('testimonials.index')->with('success', 'Testimonial deleted successfully.');
     }
 
     /**

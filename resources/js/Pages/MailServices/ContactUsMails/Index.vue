@@ -10,7 +10,7 @@
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead>#</TableHead>
+              <TableHead>ID</TableHead>
               <TableHead>Name</TableHead>
               <TableHead>Email</TableHead>
               <TableHead>Message</TableHead>
@@ -57,7 +57,7 @@ import TableHead from "@/Components/ui/table/TableHead.vue";
 import TableBody from "@/Components/ui/table/TableBody.vue";
 import TableCell from "@/Components/ui/table/TableCell.vue";
 import Badge from "@/Components/ui/badge/Badge.vue";
-import Pagination from "@/Pages/AdminDashboardPages/Vendors/Pagination.vue"; // Reusing Pagination component
+import Pagination from '@/Components/ReusableComponents/Pagination.vue';
 import { router } from "@inertiajs/vue3";
 
 const props = defineProps({

@@ -26,7 +26,7 @@ class ActivityLogsController extends Controller
                 });
             })
             ->orderBy('created_at', 'desc')
-            ->paginate(10);
+            ->paginate(8);
 
         return Inertia::render('AdminDashboardPages/ActivityLogs/Index', [
             'logs' => $logs,
