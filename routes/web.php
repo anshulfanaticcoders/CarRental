@@ -406,7 +406,7 @@ Route::middleware(['auth', 'role:customer'])->group(function () {
     Route::inertia('pending-bookings', 'Profile/PendingBookings');
     Route::get('/profile/payments', [BookingController::class, 'getCustomerPaymentHistory'])->name('profile.payments');
     Route::inertia('review', 'Profile/Review');
-    Route::inertia('favourites', 'Profile/Favourites');
+   Route::get('/favourites', [FavoriteController::class, 'getFavorites'])->name('profile.favourites');
     Route::inertia('inbox', 'Profile/Inbox');
     Route::post('/reviews', [ReviewController::class, 'store'])->name('reviews.store');
     Route::get('/profile/reviews', [ReviewController::class, 'userReviews'])->name('profile.reviews');

@@ -83,7 +83,7 @@
 import { ref, computed, onMounted, watch, getCurrentInstance } from 'vue';
 import MyProfileLayout from '@/Layouts/MyProfileLayout.vue';
 import { router } from '@inertiajs/vue3';
-import Pagination from './Bookings/Pagination.vue';
+import Pagination from '@/Components/ReusableComponents/Pagination.vue';
 
 const props = defineProps({
     payments: {

@@ -1,8 +1,9 @@
 <script setup>
-import { ref, onMounted } from "vue";
-import axios from "axios";
-import { Link } from "@inertiajs/vue3";
+import { ref, onMounted } from "vue"; // onMounted might be removed if fetchFavorites is removed
+import axios from "axios"; // Keep for toggleFavourite if it remains axios-based
+import { Link, router } from "@inertiajs/vue3"; // Added router
 import MyProfileLayout from "@/Layouts/MyProfileLayout.vue";
+import Pagination from '@/Components/ReusableComponents/Pagination.vue'; // Added Pagination
 import Heart from "../../../assets/Heart.svg";
 import FilledHeart from "../../../assets/FilledHeart.svg";
 import goIcon from "../../../assets/goIcon.svg";
@@ -10,21 +11,12 @@ import carIcon from "../../../assets/carIcon.svg";
 import walkIcon from "../../../assets/walking.svg";
 import mileageIcon from "../../../assets/mileageIcon.svg";
 
-const favoriteVehicles = ref([]);
+// Props will now come from Inertia controller
+const props = defineProps({
+    favoriteVehicles: Object, // Expects a paginated object
+});
 
-const fetchFavorites = async () => {
-    try {
-        const response = await axios.get("/favorites");
-        favoriteVehicles.value = response.data.map(vehicle => ({
-            ...vehicle,
-            is_favourite: true
-        }));
-    } catch (error) {
-        console.error("Error fetching favorite vehicles:", error);
-    }
-};
-
-import { useToast } from 'vue-toastification'; // Reuse your existing import
+import { useToast } from 'vue-toastification';
 const toast = useToast(); // Initialize toast
 const toggleFavourite = async (vehicle) => {
     const action = vehicle.is_favourite ? 'removed from' : 'added to';
@@ -58,13 +50,23 @@ const toggleFavourite = async (vehicle) => {
     }
 };
 
-onMounted(fetchFavorites);
+// onMounted(fetchFavorites); // Removed as data comes from props
 
 const formatPrice = (price, vehicle) => {
     const currencySymbol = vehicle?.vendor_profile?.currency ?? '€'; // Default to '€' if missing
     return `${currencySymbol}${price}`;
 };
 
+const handlePageChange = (page) => {
+  // Assuming the route that calls FavoriteController@getFavorites is '/favorites'
+  // and it's named 'favorites.index' or similar if using named routes in JS.
+  // Using hardcoded path for now as route name is not confirmed for this page.
+  router.get(`/favorites?page=${page}`, {}, {
+    preserveState: true, // Preserves component state (e.g., scroll position if not for preserveScroll)
+    preserveScroll: true, // Preserves scroll position
+    // replace: true, // Optional: if you don't want pagination clicks in browser history
+  });
+};
 </script>
 
 <template>
@@ -72,11 +74,11 @@ const formatPrice = (price, vehicle) => {
         <p class="text-[1.5rem] max-[768px]:text-[1.2rem] text-customPrimaryColor font-bold mb-[2rem] bg-[#154D6A0D] rounded-[12px] px-[1rem] py-[1rem]">
             {{ _t('common','favorite_title') }}
         </p>
-        <div v-if="favoriteVehicles.length === 0" class="text-gray-500">
+        <div v-if="!props.favoriteVehicles || !props.favoriteVehicles.data || props.favoriteVehicles.data.length === 0" class="text-gray-500">
             No favorite vehicles yet.
         </div>
         <div v-else class="grid grid-cols-3 gap-6 max-[768px]:grid-cols-1">
-            <div v-for="vehicle in favoriteVehicles" :key="vehicle.id"
+            <div v-for="vehicle in props.favoriteVehicles.data" :key="vehicle.id"
                 class="p-[1rem] rounded-[12px] border-[1px] border-[#E7E7E7]">
                 <div class="column flex justify-end">
                     <button @click.stop="toggleFavourite(vehicle)" class="heart-icon"
@@ -129,6 +131,14 @@ const formatPrice = (price, vehicle) => {
                     </div>
                 </Link>
             </div>
+        </div>
+        <!-- Pagination -->
+        <div v-if="props.favoriteVehicles && props.favoriteVehicles.last_page > 1" class="mt-6 flex justify-center">
+            <Pagination
+                :currentPage="props.favoriteVehicles.current_page"
+                :totalPages="props.favoriteVehicles.last_page"
+                @page-change="handlePageChange"
+            />
         </div>
     </MyProfileLayout>
 </template>
