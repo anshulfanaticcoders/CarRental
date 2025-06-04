@@ -19,6 +19,7 @@ const { toggleSidebar } = useSidebar()
     size="icon"
     :class="cn('h-7 w-7', props.class)"
     @click="toggleSidebar"
+    class="text-white"
   >
     <PanelLeft />
     <span class="sr-only">Toggle Sidebar</span>
