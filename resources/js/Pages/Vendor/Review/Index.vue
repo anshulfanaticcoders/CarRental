@@ -3,7 +3,7 @@
 import { computed, ref, watch, getCurrentInstance } from 'vue'
 import { Head, useForm } from '@inertiajs/vue3'
 import MyProfileLayout from '@/Layouts/MyProfileLayout.vue'
-import Pagination from './Pagination.vue'
+ import Pagination from '@/Components/ReusableComponents/Pagination.vue';
 import { router } from '@inertiajs/vue3'
 
 const { appContext } = getCurrentInstance();

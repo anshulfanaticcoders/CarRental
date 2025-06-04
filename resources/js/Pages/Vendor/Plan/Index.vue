@@ -216,7 +216,7 @@ import { Button } from '@/Components/ui/button';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/Components/ui/dialog';
 import MyProfileLayout from '@/Layouts/MyProfileLayout.vue';
 import { router, useForm } from '@inertiajs/vue3';
-import Pagination from './Pagination.vue';
+ import Pagination from '@/Components/ReusableComponents/Pagination.vue';
 import { useToast } from 'vue-toastification';
 
 // Define props

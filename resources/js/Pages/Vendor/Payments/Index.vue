@@ -98,7 +98,7 @@
 import { ref, computed, getCurrentInstance } from 'vue';
 import MyProfileLayout from '@/Layouts/MyProfileLayout.vue';
 import { defineProps } from 'vue'
-import Pagination from './Pagination.vue';
+ import Pagination from '@/Components/ReusableComponents/Pagination.vue';
 import { Link, router } from '@inertiajs/vue3';
 
 const { appContext } = getCurrentInstance();

@@ -168,7 +168,7 @@ import { Link } from '@inertiajs/vue3'
 import { router } from '@inertiajs/vue3'
 import Modal from '@/Components/Modal.vue'
 import MyProfileLayout from '@/Layouts/MyProfileLayout.vue'
-import Pagination from './Pagination.vue'
+ import Pagination from '@/Components/ReusableComponents/Pagination.vue';
 
 const { appContext } = getCurrentInstance();
 const _t = appContext.config.globalProperties._t;

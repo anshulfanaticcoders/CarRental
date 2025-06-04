@@ -192,7 +192,7 @@ import { ref, computed, watch, getCurrentInstance } from 'vue';
 import MyProfileLayout from '@/Layouts/MyProfileLayout.vue';
 import { router } from '@inertiajs/vue3';
 import axios from 'axios';
-import Pagination from './Pagination.vue';
+ import Pagination from '@/Components/ReusableComponents/Pagination.vue';
 import { useToast } from 'vue-toastification';
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/Components/ui/dialog';
 
