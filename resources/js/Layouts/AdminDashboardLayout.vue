@@ -1,13 +1,9 @@
 <script setup>
 import AdminSiderBar from '@/Components/AdminSiderBar.vue';
 import { Head } from '@inertiajs/vue3';
-import { Bell } from 'lucide-vue-next';
-import { computed, onMounted, ref } from 'vue';
-import axios from 'axios';
+import { computed} from 'vue';
 
-const unreadCount = ref(0);
-const notifications = ref([]);
-const showDropdown = ref(false);
+
 
 // Define route to title mapping
 const routeTitles = {
@@ -20,14 +16,18 @@ const routeTitles = {
   '/booking-addons': 'Addons',
   '/admin/plans': 'Plans',
   '/popular-places': 'All Locations',
+  '/popular-places/create':'Create Popular Place',
   '/customer-bookings': 'All Bookings',
   '/customer-bookings/pending': 'Pending Bookings',
   '/customer-bookings/confirmed': 'Active Bookings',
   '/customer-bookings/completed': 'Completed Bookings',
   '/customer-bookings/cancelled': 'Cancelled Bookings',
   '/pages': 'All Pages',
+  '/pages/create': 'Create a Page',
   '/admin/contact-us': 'Contact Us',
+  '/admin/contact-us/edit': 'Edit Contact Us',
   '/blogs': 'All Blogs',
+  '/blogs/create': 'Create a Blog',
   '/admin/payments': 'All Payments',
   '/users-report': 'Users Report',
   '/vendors-report': 'Vendors Report',
@@ -37,6 +37,12 @@ const routeTitles = {
   '/admin/settings/footer': 'Footer Location',
   '/admin/settings/footer-categories': 'Footer Category',
   '/admin/settings/faq': 'FAQ',
+  '/media':'Media',
+  '/admin/seo-meta':'SEO Management',
+  '/admin/seo-meta/create':'Create SEO Metas\'s',
+  '/radiuses':'Radius Management',
+  '/admin/header-footer-scripts':'Header and Footer Scripts',
+  
 }
 
 

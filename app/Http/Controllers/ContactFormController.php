@@ -62,7 +62,7 @@ class ContactFormController extends Controller
 
     public function fetchSubmissions(): Response
     {
-        $submissions = ContactSubmission::latest()->paginate(10); // Changed to paginate
+        $submissions = ContactSubmission::latest()->paginate(9); // Changed to paginate
 
         return Inertia::render('MailServices/ContactUsMails/Index', [
             'submissions' => $submissions // This will now be a paginator instance

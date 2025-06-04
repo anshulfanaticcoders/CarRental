@@ -18,160 +18,86 @@
                 </Link>
             </div>
 
-            <div class="rounded-md border p-5 mt-[1rem] bg-white form-container">
-                <form @submit.prevent="submit" class="space-y-4">
-                    <!-- Search Location -->
+            <div class="rounded-md border p-5 mt-[1rem] bg-white">
+                <form @submit.prevent="submit" class="space-y-6">
                     <div>
-                        <InputLabel for="location" value="Search Location" />
-                        <div class="relative">
-                            <Input v-model="mapform.location" @input="handleSearchInput" @blur="handleBlur"
-                                placeholder="Search for a location" />
-                            <div v-if="searchResults.length"
-                                class="absolute z-10 bg-white border rounded mt-1 max-h-60 overflow-y-auto">
-                                <div v-for="result in searchResults" :key="result.properties.id"
-                                    @click="selectLocation(result)" class="p-2 hover:bg-gray-100 cursor-pointer">
-                                    {{ result.properties.label }}
-                                </div>
-                            </div>
-                        </div>
+                        <InputLabel for="locationSearchEdit" value="Search New Location to Update Details" />
+                        <Input
+                            id="locationSearchEdit"
+                            ref="autocompleteInputRefEdit"
+                            type="text"
+                            class="mt-1 block w-full"
+                            :placeholder="`Current: ${form.place_name}`"
+                        />
+                        <p class="text-sm text-gray-600 mt-1">Selecting a new location will auto-fill the fields below. You can then edit them.</p>
                     </div>
 
                     <!-- Place Name -->
                     <div>
-                        <InputLabel for="place_name" value="Place Name" />
-                        <Input id="place_name" type="text" v-model="form.place_name" class="mt-1 block w-full" required
-                            :class="{ 'input-unknown': isUnknownLocation }" />
+                        <InputLabel for="place_name" value="Place Name *" />
+                        <Input id="place_name" type="text" v-model="form.place_name" class="mt-1 block w-full" required />
+                        <p v-if="form.errors.place_name" class="text-red-500 text-sm mt-1">{{ form.errors.place_name }}</p>
                     </div>
 
                     <!-- City, State, Country -->
-                    <div class="grid grid-cols-3 gap-4">
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
                         <div>
-                            <InputLabel for="city" value="City" />
-                            <Input id="city" type="text" v-model="form.city" class="mt-1 block w-full" required
-                                :class="{ 'input-unknown': isUnknownLocation }" />
+                            <InputLabel for="city" value="City *" />
+                            <Input id="city" type="text" v-model="form.city" class="mt-1 block w-full" required />
+                            <p v-if="form.errors.city" class="text-red-500 text-sm mt-1">{{ form.errors.city }}</p>
                         </div>
                         <div>
                             <InputLabel for="state" value="State" />
-                            <Input id="state" type="text" v-model="form.state" class="mt-1 block w-full" required
-                                :class="{ 'input-unknown': isUnknownLocation }" />
+                            <Input id="state" type="text" v-model="form.state" class="mt-1 block w-full" />
+                            <p v-if="form.errors.state" class="text-red-500 text-sm mt-1">{{ form.errors.state }}</p>
                         </div>
                         <div>
-                            <InputLabel for="country" value="Country" />
-                            <Input id="country" type="text" v-model="form.country" class="mt-1 block w-full" required
-                                :class="{ 'input-unknown': isUnknownLocation }" />
+                            <InputLabel for="country" value="Country *" />
+                            <Input id="country" type="text" v-model="form.country" class="mt-1 block w-full" required />
+                            <p v-if="form.errors.country" class="text-red-500 text-sm mt-1">{{ form.errors.country }}</p>
                         </div>
                     </div>
 
                     <!-- Latitude & Longitude -->
-                    <div class="grid grid-cols-2 gap-4">
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div>
-                            <InputLabel for="latitude" value="Latitude" />
+                            <InputLabel for="latitude" value="Latitude *" />
                             <Input id="latitude" type="number" step="any" v-model="form.latitude"
-                                class="mt-1 block w-full" required readonly />
+                                class="mt-1 block w-full" required />
+                            <p v-if="form.errors.latitude" class="text-red-500 text-sm mt-1">{{ form.errors.latitude }}</p>
                         </div>
                         <div>
-                            <InputLabel for="longitude" value="Longitude" />
+                            <InputLabel for="longitude" value="Longitude *" />
                             <Input id="longitude" type="number" step="any" v-model="form.longitude"
-                                class="mt-1 block w-full" required readonly />
+                                class="mt-1 block w-full" required />
+                            <p v-if="form.errors.longitude" class="text-red-500 text-sm mt-1">{{ form.errors.longitude }}</p>
                         </div>
                     </div>
 
                     <!-- Image -->
                     <div>
-                        <InputLabel for="image" value="Place Image" />
-                        <div v-if="place.image" class="mt-2 mb-4">
-                            <img :src="`${place.image}`" class="w-32 h-32 object-cover rounded"
-                                :alt="place.place_name" />
+                        <InputLabel for="image" value="New Place Image (Optional)" />
+                        <div v-if="props.place.image && !form.image" class="mt-2 mb-4">
+                            <p class="text-sm text-gray-500 mb-1">Current Image:</p>
+                            <img :src="`${props.place.image}`" class="w-32 h-32 object-cover rounded"
+                                :alt="props.place.place_name" />
                         </div>
-                        <Input id="image" type="file" @input="form.image = $event.target.files[0]"
+                         <div v-if="form.image && typeof form.image === 'object'" class="mt-2 mb-4">
+                            <p class="text-sm text-gray-500 mb-1">New Image Preview:</p>
+                            <img :src="previewImageUrl" class="w-32 h-32 object-cover rounded" alt="New image preview" />
+                        </div>
+                        <Input id="image" type="file" @input="handleFileChange"
                             class="mt-1 block w-full" accept="image/*" />
+                        <p v-if="form.errors.image" class="text-red-500 text-sm mt-1">{{ form.errors.image }}</p>
                     </div>
-
-                    <!-- Map and Controls -->
-                    <div class="relative hidden">
-                        <div id="map" class="h-[400px] w-full rounded-lg"></div>
-                        <div
-                            class="map-hint absolute top-2 right-2 bg-white p-2 rounded shadow-md text-sm text-gray-600">
-                            Drag the marker to set the location
-                        </div>
-                        <Button @click="locateMe"
-                            class="locate-button absolute bottom-2 right-2 bg-blue-500 text-white p-2 rounded-full flex items-center gap-1"
-                            :disabled="isLocating">
-                            <svg class="h-5 w-5" :class="{ 'text-gray-400': isLocating }" fill="currentColor"
-                                viewBox="0 0 24 24">
-                                <path
-                                    d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5 0 1.38 1.12 2.5 2.5 2.5z" />
-                            </svg>
-                            <span>{{ isLocating ? 'Locating...' : 'Locate Me' }}</span>
-                        </Button>
-                    </div>
-
-                    <!-- Warning Message -->
-                    <div v-if="isUnknownLocation && !showManualDialog"
-                        class="p-3 bg-yellow-100 border border-yellow-400 text-yellow-700 rounded-lg flex items-center">
-                        <svg class="w-5 h-5 mr-2" fill="currentColor" viewBox="0 0 20 20">
-                            <path fill-rule="evenodd"
-                                d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.908 10.498c.762 1.356-.189 2.903-1.743 2.903H4.092c-1.554 0-2.505-1.547-1.743-2.903L8.257 3.099zM11 14a1 1 0 11-2 0 1 1 0 012 0zm-1-2a1 1 0 01-1-1V7a1 1 0 112 0v4a1 1 0 01-1 1z"
-                                clip-rule="evenodd" />
-                        </svg>
-                        <span>Please verify or enter address details manually.</span>
-                        <Button @click="showManualDialog = true"
-                            class="ml-2 px-2 py-1 bg-yellow-500 text-white rounded text-sm">
-                            Enter Address
-                        </Button>
-                    </div>
-
-                    <!-- Manual Address Dialog -->
-                    <div v-if="showManualDialog"
-                        class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-                        <div class="dialog-container">
-                            <div class="dialog-content">
-                                <div class="flex justify-between items-center mb-4">
-                                    <h3 class="text-lg font-medium">Enter Place Details</h3>
-                                    <button @click="showManualDialog = false" class="text-gray-500 hover:text-gray-700">
-                                        <svg class="h-5 w-5" fill="currentColor" viewBox="0 0 24 24">
-                                            <path d="M18 6L6 18M6 6l12 12" stroke="currentColor" stroke-width="2"
-                                                stroke-linecap="round" />
-                                        </svg>
-                                    </button>
-                                </div>
-                                <div class="space-y-4">
-                                    <div>
-                                        <InputLabel for="place_name" value="Place Name" />
-                                        <Input v-model="temp_place_name" placeholder="Place name" />
-                                        <p v-if="placeNameError" class="text-red-500 text-sm mt-1">
-                                            {{ placeNameError }}
-                                        </p>
-                                    </div>
-                                    <div>
-                                        <InputLabel for="city" value="City" />
-                                        <Input v-model="temp_city" placeholder="City" />
-                                    </div>
-                                    <div>
-                                        <InputLabel for="state" value="State" />
-                                        <Input v-model="temp_state" placeholder="State" />
-                                    </div>
-                                    <div>
-                                        <InputLabel for="country" value="Country" />
-                                        <Input v-model="temp_country" placeholder="Country" />
-                                    </div>
-                                </div>
-                                <div class="mt-6 flex justify-end space-x-3">
-                                    <Button @click="saveManualAddress" class="bg-blue-500 text-white">
-                                        Save
-                                    </Button>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="flex justify-end gap-2">
+                   
+                    <div class="flex justify-end gap-4 pt-4">
                         <Link :href="route('popular-places.index')"
-                            class="px-4 py-2 bg-gray-500 text-white rounded hover:bg-gray-600">
+                            class="px-4 py-2 bg-gray-300 text-gray-800 rounded hover:bg-gray-400">
                         Cancel
                         </Link>
-                        <Button type="submit" class="bg-primary">
-                            Update Place
+                        <Button type="submit" class="bg-primary" :disabled="form.processing">
+                            {{ form.processing ? 'Updating...' : 'Update Place' }}
                         </Button>
                     </div>
                 </form>
@@ -181,23 +107,19 @@
 </template>
 
 <script setup>
-import { onMounted, onUnmounted, ref, nextTick, watch } from 'vue';
-import { Link, router } from '@inertiajs/vue3';
+import { ref, onMounted, computed } from 'vue';
+import { Link, useForm } from '@inertiajs/vue3';
 import AdminDashboardLayout from '@/Layouts/AdminDashboardLayout.vue';
 import InputLabel from '@/Components/InputLabel.vue';
-import { Input } from '@/Components/ui/input';
+import { Input } from '@/Components/ui/input'; // Assuming this is your custom Input component
 import { Button } from '@/Components/ui/button';
 import { useToast } from 'vue-toastification';
-import loader from '../../../../assets/loader.gif';
-import L from 'leaflet';
-import axios from 'axios';
+import loader from '../../../../assets/loader.gif'; // Ensure this path is correct
 
 const toast = useToast();
-const isLoading = ref(false);
-const isUnknownLocation = ref(false);
-const showManualDialog = ref(false);
-const isLocating = ref(false);
-const placeNameError = ref('');
+const isLoading = ref(false); // For general page loading/submission visual feedback
+const autocompleteInputRefEdit = ref(null);
+let googleAutocompleteInstanceEdit = null;
 
 const props = defineProps({
     place: {
@@ -206,294 +128,149 @@ const props = defineProps({
     },
 });
 
-const form = ref({
+const form = useForm({
     place_name: props.place.place_name,
     city: props.place.city,
-    state: props.place.state,
+    state: props.place.state || '', // Ensure state is at least an empty string
     country: props.place.country,
     latitude: props.place.latitude,
     longitude: props.place.longitude,
-    image: null,
-    _method: 'PUT',
+    image: null, // Will hold the new image file if selected, otherwise backend keeps old one
+    _method: 'PUT', // For Laravel to recognize it as an update
 });
-const mapform = ref({
-    location: props.place.place_name || '',
+
+const previewImageUrl = computed(() => {
+    if (form.image && typeof form.image === 'object') {
+        return URL.createObjectURL(form.image);
+    }
+    return null;
 });
-const searchResults = ref([]);
-const temp_place_name = ref(props.place.place_name || '');
-const temp_city = ref(props.place.city || '');
-const temp_state = ref(props.place.state || '');
-const temp_country = ref(props.place.country || '');
 
-let map = null;
-let marker = null;
 
-onMounted(() => {
-    // Initialize map
-    map = L.map('map', {
-        scrollWheelZoom: true,
-        zoomControl: true,
-    }).setView([props.place.latitude || 20, props.place.longitude || 78], 5);
-
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-        attribution:
-            '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
-        maxZoom: 20,
-    }).addTo(map);
-
-    // Add click event
-    map.on('click', async (e) => {
-        const { lat, lng } = e.latlng;
-        await reverseGeocode(lat, lng);
-    });
-
-    // Initialize marker with existing location
-    if (props.place.latitude && props.place.longitude) {
-        updateMarker(props.place.latitude, props.place.longitude);
+const initAutocompleteEdit = async (inputElement) => {
+    if (!(inputElement instanceof HTMLInputElement)) {
+        console.error("Edit: Provided element is not an HTMLInputElement:", inputElement);
+        toast.error("Edit: Could not initialize location search: Invalid input element.");
+        return;
+    }
+     if (typeof window.google === 'undefined' || typeof window.google.maps === 'undefined') {
+        console.error("Edit: Google Maps API script not loaded.");
+        toast.error("Edit: Mapping service not available.");
+        return;
     }
 
-    // Watch for isLoading to invalidate size after loader disappears
-    watch(isLoading, (newVal) => {
-        if (!newVal) {
-            nextTick(() => {
-                map.invalidateSize();
-            });
+    try {
+        const placesLibrary = await google.maps.importLibrary("places");
+        if (!placesLibrary || !placesLibrary.Autocomplete) {
+            console.error("Edit: Failed to import Google Maps Places Autocomplete.");
+            toast.error("Edit: Could not initialize location search (Places library missing).");
+            return;
         }
-    });
-
-    // Initial invalidate to handle any layout shifts
-    nextTick(() => {
-        map.invalidateSize();
-    });
-});
-
-onUnmounted(() => {
-    if (map) {
-        map.remove();
-        map = null;
-    }
-});
-
-const handleSearchInput = async () => {
-    if (mapform.value.location.length < 3) {
-        searchResults.value = [];
-        return;
-    }
-    try {
-        const response = await axios.get(
-            `/api/geocoding/autocomplete?text=${encodeURIComponent(mapform.value.location)}`
-        );
-        searchResults.value = response.data.features || [];
-    } catch (error) {
-        console.error('Error fetching locations:', error);
-        searchResults.value = [];
-    }
-};
-
-const handleBlur = () => {
-    setTimeout(() => {
-        searchResults.value = [];
-    }, 200);
-};
-
-const selectLocation = async (result) => {
-    const [lng, lat] = result.geometry.coordinates;
-    mapform.value.location = result.properties?.label || '';
-    temp_place_name.value = result.properties?.name || result.properties?.label || '';
-    temp_city.value = result.properties?.city || result.properties?.municipality || '';
-    temp_state.value = result.properties?.state || result.properties?.region || '';
-    temp_country.value = result.properties?.country || '';
-    form.value.latitude = lat.toFixed(6);
-    form.value.longitude = lng.toFixed(6);
-    isUnknownLocation.value = true;
-    showManualDialog.value = true;
-    searchResults.value = [];
-    updateMarker(lat, lng);
-};
-
-const reverseGeocode = async (lat, lng) => {
-    try {
-        const response = await axios.get(`/api/geocoding/reverse?lat=${lat}&lon=${lng}`);
-        const feature = response.data.features?.[0];
-        const props = feature?.properties || {};
-
-        temp_place_name.value = props.name || props.label || '';
-        temp_city.value = props.city || props.municipality || '';
-        temp_state.value = props.state || props.region || '';
-        temp_country.value = props.country || '';
-        form.value.latitude = lat.toFixed(6);
-        form.value.longitude = lng.toFixed(6);
-        isUnknownLocation.value = true;
-        showManualDialog.value = true;
-        updateMarker(lat, lng);
-    } catch (error) {
-        console.error('Reverse geocoding error:', error);
-        temp_place_name.value = '';
-        temp_city.value = '';
-        temp_state.value = '';
-        temp_country.value = '';
-        form.value.latitude = lat.toFixed(6);
-        form.value.longitude = lng.toFixed(6);
-        isUnknownLocation.value = true;
-        showManualDialog.value = true;
-        updateMarker(lat, lng);
-    }
-};
-
-const updateMarker = (lat, lng) => {
-    const latLng = [lat, lng];
-    map.setView(latLng, 13);
-
-    if (marker) {
-        marker.setLatLng(latLng);
-    } else {
-        marker = L.marker(latLng, { draggable: true }).addTo(map);
-        marker.on('dragend', async (e) => {
-            const { lat, lng } = e.target.getLatLng();
-            await reverseGeocode(lat, lng);
-        });
-    }
-};
-
-const saveManualAddress = () => {
-    placeNameError.value = '';
-    if (!temp_place_name.value.trim()) {
-        placeNameError.value = 'Place name is required';
-        return;
-    }
-
-    form.value.place_name = temp_place_name.value;
-    form.value.city = temp_city.value;
-    form.value.state = temp_state.value;
-    form.value.country = temp_country.value;
-    isUnknownLocation.value = false;
-    showManualDialog.value = false;
-    mapform.value.location = `${temp_place_name.value}, ${temp_city.value}, ${temp_state.value}, ${temp_country.value}`;
-};
-
-const locateMe = () => {
-    if (!navigator.geolocation) {
-        toast.error('Geolocation is not supported by your browser');
-        return;
-    }
-
-    isLocating.value = true;
-
-    navigator.geolocation.getCurrentPosition(
-        async (position) => {
-            const { latitude, longitude } = position.coords;
-            await reverseGeocode(latitude, longitude);
-            isLocating.value = false;
-        },
-        (error) => {
-            isLocating.value = false;
-            let message = 'Unknown error';
-            switch (error.code) {
-                case error.PERMISSION_DENIED:
-                    message = 'Location permission denied';
-                    break;
-                case error.POSITION_UNAVAILABLE:
-                    message = 'Location information unavailable';
-                    break;
-                case error.TIMEOUT:
-                    message = 'Location request timed out';
-                    break;
+        
+        googleAutocompleteInstanceEdit = new placesLibrary.Autocomplete(
+            inputElement,
+            {
+                fields: ["address_components", "geometry", "name", "formatted_address"],
+                types: ["geocode", "establishment"],
             }
-            toast.error(`Error getting location: ${message}`);
-        },
-        { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
-    );
+        );
+        googleAutocompleteInstanceEdit.addListener("place_changed", fillInAddressEdit);
+        console.log("Edit: Google Places Autocomplete initialized.");
+
+    } catch (error) {
+        console.error("Edit: Error initializing Google Places Autocomplete:", error);
+        toast.error("Edit: Could not initialize location search. See console.");
+    }
+};
+
+const fillInAddressEdit = () => {
+    if (!googleAutocompleteInstanceEdit) return;
+    const place = googleAutocompleteInstanceEdit.getPlace();
+
+    if (!place || !place.geometry || !place.geometry.location) {
+        toast.warning("Edit: Could not get details for the selected location.");
+        // Optionally, you might not want to reset fields here if user is just trying out search
+        return;
+    }
+
+    let placeName = place.name || '';
+    let city = '';
+    let state = '';
+    let country = '';
+
+    if (place.address_components) {
+        for (const component of place.address_components) {
+            const componentType = component.types && component.types[0];
+            const longName = component.long_name;
+            if (!componentType || !longName) continue;
+
+            switch (componentType) {
+                case "locality": city = longName; break;
+                case "administrative_area_level_1": state = longName; break;
+                case "country": country = longName; break;
+                case "postal_town": if (!city) city = longName; break;
+            }
+        }
+    }
+    
+    if (placeName === city && place.formatted_address) {
+        const firstPartOfAddress = place.formatted_address.split(',')[0];
+        if (firstPartOfAddress && firstPartOfAddress.toLowerCase() !== city.toLowerCase()) {
+            placeName = firstPartOfAddress;
+        }
+    }
+     if (!placeName && place.formatted_address) {
+         placeName = place.formatted_address.split(',')[0];
+    }
+
+    form.place_name = placeName;
+    form.city = city;
+    form.state = state;
+    form.country = country;
+    form.latitude = place.geometry.location.lat();
+    form.longitude = place.geometry.location.lng();
+};
+
+onMounted(async () => {
+    if (autocompleteInputRefEdit.value) {
+        const actualInputElement = autocompleteInputRefEdit.value.$el || (autocompleteInputRefEdit.value instanceof HTMLInputElement ? autocompleteInputRefEdit.value : null);
+        if (actualInputElement && actualInputElement instanceof HTMLInputElement) {
+            await initAutocompleteEdit(actualInputElement);
+        } else if (autocompleteInputRefEdit.value && typeof autocompleteInputRefEdit.value.focus === 'function' && autocompleteInputRefEdit.value.$refs && autocompleteInputRefEdit.value.$refs.input) {
+            await initAutocompleteEdit(autocompleteInputRefEdit.value.$refs.input);
+        } else {
+            console.error("Edit: Could not get HTMLInputElement from ref 'autocompleteInputRefEdit'. Value:", autocompleteInputRefEdit.value);
+        }
+    } else {
+         console.error("Edit: autocompleteInputRefEdit is null in onMounted.");
+    }
+});
+
+const handleFileChange = (event) => {
+    form.image = event.target.files[0];
 };
 
 const submit = () => {
-    isLoading.value = true;
-    if (!form.value.place_name || !form.value.city || !form.value.state || !form.value.country) {
-        toast.error('Please fill in all required address fields.');
-        isLoading.value = false;
-        return;
-    }
-
-    router.post(route('popular-places.update', props.place.id), form.value, {
-        forceFormData: true,
+    isLoading.value = true; // Show loader
+    // For 'PUT' with FormData, Inertia requires you to use router.post and include _method: 'PUT'
+    form.post(route('popular-places.update', props.place.id), {
+        forceFormData: true, // Important for file uploads with PUT/PATCH
+        preserveScroll: true,
         onSuccess: () => {
-            toast.success('Popular place updated successfully!', {
-                position: 'top-right',
-                timeout: 3000,
-                closeOnClick: true,
-                pauseOnHover: true,
-                draggable: true,
-            });
-        },
-        onFinish: () => {
-            isLoading.value = false;
+            toast.success('Popular place updated successfully!');
+            // form.image = null; // Clear the file input after successful upload
         },
         onError: (errors) => {
-            toast.error('Error updating popular place. Please check your inputs.', {
-                position: 'top-right',
-                timeout: 3000,
-                closeOnClick: true,
-                pauseOnHover: true,
-                draggable: true,
-            });
+            toast.error('Error updating popular place. Please check your inputs.');
+            console.error("Update errors:", errors);
         },
+        onFinish: () => {
+            isLoading.value = false; // Hide loader
+        }
     });
 };
 </script>
 
 <style scoped>
-#map {
-    cursor: pointer;
-    z-index: 0;
-    width: 100%;
-    height: 400px;
-}
-
-.fixed {
-    position: fixed;
-    inset: 0;
-}
-
-.dialog-container {
-    z-index: 50;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    width: 500px;
-}
-
-.dialog-content {
-    background: white;
-    border-radius: 0.5rem;
-    padding: 1.5rem;
-    width: 100%;
-    max-width: 28rem;
-    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-}
-
-.map-hint,
-.locate-button {
-    z-index: 1000;
-}
-
-.input-unknown {
-    @apply border-yellow-400 bg-yellow-50;
-    transition: all 0.3s ease;
-}
-
-.form-container {
-    position: relative;
-    z-index: 10;
-}
-
-@media (max-width: 640px) {
-
-    .grid-cols-3,
-    .grid-cols-2 {
-        grid-template-columns: 1fr;
-    }
-
-    .dialog-content {
-        max-width: 90%;
-    }
-}
+/* Add any specific styles if needed */
 </style>
