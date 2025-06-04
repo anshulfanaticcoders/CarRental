@@ -103,7 +103,7 @@ onBeforeUnmount(() => {
 <style>
 .sidebar {
   position: sticky;
-  top: 2rem;
+  top: 0rem;
   height: 100vh;
   overflow-y: auto;
   background-color: #154D6A0D;
