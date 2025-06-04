@@ -20,14 +20,14 @@ class BlogController extends Controller
         $query = Blog::query();
 
         if ($search) {
-            // Search in translations
+            // Search in translation
             $query->whereHas('translations', function ($q) use ($search) {
                 $q->where('title', 'like', "%{$search}%")
                   ->orWhere('content', 'like', "%{$search}%");
             })->orWhere('slug', 'like', "%{$search}%");
         }
         
-        $blogs = $query->latest()->paginate(1)->withQueryString();
+        $blogs = $query->latest()->paginate(6)->withQueryString();
 
         // The $blogs collection will automatically use the title accessor for the current locale
         return Inertia::render('AdminDashboardPages/Blogs/Index', [
@@ -265,6 +265,22 @@ class BlogController extends Controller
         $blog->delete();
 
         return redirect()->route('admin.blogs.index')->with('success', 'Blog deleted successfully.');
+    }
+
+    public function togglePublish(Request $request, Blog $blog)
+    {
+        $blog->is_published = !$blog->is_published;
+        // If you have a 'published_at' timestamp, you might want to update it here:
+        // if ($blog->is_published && is_null($blog->published_at)) {
+        //     $blog->published_at = now();
+        // } elseif (!$blog->is_published) {
+        //     // Option 1: Clear published_at when unpublishing
+        //     // $blog->published_at = null; 
+        //     // Option 2: Keep published_at as the date it was first published (do nothing here)
+        // }
+        $blog->save();
+
+        return redirect()->back()->with('success', 'Blog publish status updated successfully.');
     }
 
     public function homeBlogs()

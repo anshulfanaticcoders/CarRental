@@ -12,9 +12,10 @@
             <!-- Edit Blog Form -->
             <div class="rounded-md border p-5 mt-[1rem] bg-[#153B4F0D]">
                 <form @submit.prevent="submitForm">
-                    <div class="grid grid-cols-1 gap-6">
+                    <!-- Form Header: Locales Tabs and Publish Switch -->
+                    <div class="flex justify-between items-center border-b border-gray-200 mb-6 pb-2">
                         <!-- Tabs for Locales -->
-                        <div class="flex border-b border-gray-200">
+                        <div class="flex">
                             <button
                                 v-for="lang in available_locales"
                                 :key="lang"
@@ -29,6 +30,15 @@
                             </button>
                         </div>
 
+                        <!-- Is Published Toggle (Moved to Top) -->
+                        <div class="flex items-center space-x-2">
+                            <label for="is_published_top" class="text-sm font-medium">Publish Post</label>
+                            <Switch id="is_published_top" v-model:checked="form.is_published" />
+                            <!-- Error for is_published can be handled globally or near submit if needed -->
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-1 gap-6">
                         <!-- Title Field -->
                         <div class="space-y-2">
                             <label :for="'title-' + activeLocale" class="text-sm font-medium">Title ({{ activeLocale.toUpperCase() }})</label>
@@ -73,13 +83,6 @@
                             <Input id="image" type="file" @input="form.image = $event.target.files[0]" accept="image/*" class="w-full" />
                             <p v-if="form.errors.image" class="text-red-500 text-sm">{{ form.errors.image }}</p>
                             <img v-if="blog.image && !form.image" :src="blog.image" alt="Current blog image" class="mt-2 h-32 object-cover" />
-                        </div>
-
-                        <!-- Is Published Toggle -->
-                         <div class="flex items-center space-x-2">
-                             <label for="is_published" class="text-sm font-medium">Publish Post</label>
-                            <Switch id="is_published" v-model:checked="form.is_published" />
-                            <p v-if="form.errors.is_published" class="text-red-500 text-sm">{{ form.errors.is_published }}</p>
                         </div>
 
                         <!-- SEO Meta Fields -->

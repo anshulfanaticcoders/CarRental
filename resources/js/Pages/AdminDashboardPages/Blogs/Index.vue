@@ -32,7 +32,17 @@
                             <TableCell>{{ (blogs.current_page - 1) * blogs.per_page + index + 1 }}</TableCell>
                             <TableCell>{{ blog.title }}</TableCell>
                             <TableCell>{{ blog.slug }}</TableCell>
-                            <TableCell>{{ blog.is_published ? 'Yes' : 'No' }}</TableCell>
+                            <TableCell>
+                                <Button
+                                    @click="togglePublishStatus(blog)"
+                                    :class="[
+                                        'px-3 py-1 text-xs rounded-full transition-colors duration-150 ease-in-out',
+                                        blog.is_published ? 'bg-green-500 hover:bg-green-600 text-white' : 'bg-red-500 hover:bg-red-600 text-white'
+                                    ]"
+                                >
+                                    {{ blog.is_published ? 'Published' : 'Unpublished' }}
+                                </Button>
+                            </TableCell>
                             <TableCell>{{ new Date(blog.created_at).toLocaleDateString() }}</TableCell>
                             <TableCell class="text-right">
                                 <div class="flex justify-end gap-2">
@@ -120,6 +130,20 @@ const handleSearch = () => {
         preserveState: true,
         replace: true,
     });
+};
+
+const togglePublishStatus = (blogItem) => {
+  router.patch(route('admin.blogs.togglePublish', blogItem.id), {}, {
+    preserveScroll: true,
+    onSuccess: () => {
+      toast.success('Blog publish status updated!');
+      // The redirect()->back() from controller should refresh props.
+    },
+    onError: (errors) => {
+      toast.error('Failed to update blog status.');
+      console.error('Error updating blog status:', errors);
+    }
+  });
 };
 
 const handlePageChange = (page) => { // Changed to accept page number
