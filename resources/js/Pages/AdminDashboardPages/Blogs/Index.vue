@@ -59,11 +59,10 @@
                 
                 <!-- Pagination -->
                 <div v-if="blogs.data.length > 0" class="mt-4 flex justify-end">
-                    <Pagination 
-                        :currentPage="blogs.current_page" 
-                        :totalPages="blogs.last_page" 
-                        :links="blogs.links"
-                        @page-change="handlePageChange" 
+                    <Pagination
+                        :currentPage="blogs.current_page"
+                        :totalPages="blogs.last_page"
+                        @page-change="handlePageChange"
                     />
                 </div>
             </div>
@@ -77,7 +76,7 @@ import { Link, router } from '@inertiajs/vue3'; // Added Link
 import AdminDashboardLayout from '@/Layouts/AdminDashboardLayout.vue';
 import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from '@/Components/ui/table';
 import { Button } from '@/Components/ui/button';
-import Pagination from "@/Pages/AdminDashboardPages/Shared/Pagination.vue"; // Assuming shared pagination
+import Pagination from '@/Components/ReusableComponents/Pagination.vue';
 import { Input } from '@/Components/ui/input'; // Added Input
 import { useToast } from 'vue-toastification';
 
@@ -123,13 +122,11 @@ const handleSearch = () => {
     });
 };
 
-const handlePageChange = (url) => { // Changed to accept URL from pagination component
-    if (url) {
-        router.get(url, {}, {
-            preserveState: true,
-            replace: true,
-        });
-    }
+const handlePageChange = (page) => { // Changed to accept page number
+    router.get(route('admin.blogs.index', { page: page }), { search: search.value }, {
+        preserveState: true,
+        replace: true,
+    });
 };
 </script>
 

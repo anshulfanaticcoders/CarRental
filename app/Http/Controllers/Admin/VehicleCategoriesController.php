@@ -25,7 +25,7 @@ class VehicleCategoriesController extends Controller
                     ->orWhere('status', 'like', "%{$search}%");
             });
         })
-            ->paginate(10); // Add pagination
+            ->paginate(5); // Add pagination
 
         return Inertia::render('AdminDashboardPages/VehicleCategories/Index', [
             'users' => $categories,

@@ -112,7 +112,7 @@ import AdminDashboardLayout from "@/Layouts/AdminDashboardLayout.vue";
 import CreateUser from "@/Pages/AdminDashboardPages/Plans/CreateUser.vue";
 import EditUser from "@/Pages/AdminDashboardPages/Plans/EditUser.vue";
 import ViewUser from "@/Pages/AdminDashboardPages/Plans/ViewUser.vue";
-import Pagination from "@/Pages/AdminDashboardPages/Plans/Pagination.vue";
+import Pagination from '@/Components/ReusableComponents/Pagination.vue';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -174,7 +174,10 @@ const confirmDelete = () => {
 };
 
 const handlePageChange = (page) => {
-    router.get(`/plans?page=${page}`);
+    router.get(`/admin/plans?page=${page}`, { search: search.value }, {
+        preserveState: true,
+        replace: true,
+    });
 };
 
 </script>

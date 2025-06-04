@@ -2,7 +2,8 @@
 import { Head, Link, useForm, usePage, router } from '@inertiajs/vue3';
 import AdminDashboardLayout from '@/Layouts/AdminDashboardLayout.vue'; // Assuming an AdminDashboardLayout exists
 import { defineProps, ref, computed } from 'vue';
-import Pagination from './Pagination.vue'; // Assuming a shared Pagination component
+import Pagination from '@/Components/ReusableComponents/Pagination.vue';
+import { Dialog, DialogContent, DialogFooter } from '@/Components/ui/dialog';
 
 const props = defineProps({
   mediaItems: Object, // Paginated media items
@@ -66,6 +67,37 @@ const getThumbnail = (media) => {
   return 'https://via.placeholder.com/100?text=No+Preview'; // Placeholder
 };
 
+const handlePageChange = (page) => {
+  router.get(route('admin.media.index', { page }), {}, { // Assumes 'admin.media.index' named route
+    preserveState: true,
+    preserveScroll: true,
+    replace: true,
+  });
+};
+
+const isLightboxOpen = ref(false);
+const currentLightboxImage = ref({ src: '', alt: '' });
+
+const openLightbox = (item) => {
+  // Ensure we only try to lightbox images and that item.url is present
+  if (item.mime_type && item.mime_type.startsWith('image/') && item.url) {
+    currentLightboxImage.value = { src: item.url, alt: item.title || item.filename };
+    isLightboxOpen.value = true;
+  }
+  // Optionally, you could add an alert here if a non-image or item without URL is clicked
+  // else { alert('This item cannot be previewed in a lightbox.'); }
+};
+
+const cancelUploadSelection = () => {
+  uploadForm.reset('files');
+  if (fileInput.value) {
+    fileInput.value.value = '';
+  }
+  // Optionally clear errors if you have specific file validation errors shown
+  // if (uploadForm.errors.files) {
+  //   uploadForm.clearErrors('files');
+  // }
+};
 </script>
 
 <template>
@@ -76,8 +108,8 @@ const getThumbnail = (media) => {
       <h2 class="font-semibold text-xl text-gray-800 leading-tight">Media Library</h2>
     </template>
 
-    <div class="py-12">
-      <div class="max-w-7xl mx-auto sm:px-6 lg:px-8">
+    <div class="py-8">
+      <div class="mx-auto">
         <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg">
           <div class="p-6 bg-white border-b border-gray-200">
 
@@ -98,25 +130,24 @@ const getThumbnail = (media) => {
             <!-- Upload Form -->
             <form @submit.prevent="submitUpload" class="mb-8 p-4 border rounded-lg">
               <h3 class="text-lg font-medium leading-6 text-gray-900 mb-4">Upload New Media</h3>
-              <div class="grid grid-cols-1 gap-6">
-                <div>
-                  <label for="file-upload" class="block text-sm font-medium text-gray-700">Files</label>
+              <div>
+                <div class="flex items-center gap-2">
                   <input type="file" @change="handleFileChange" ref="fileInput" id="file-upload"
                          class="mt-1 block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
-                         multiple  required />
+                         multiple required />
+                  <button type="submit"
+                          :disabled="uploadForm.processing || uploadForm.files.length === 0"
+                          class="px-4 py-2 bg-customPrimaryColor text-white rounded-md hover:bg-customPrimaryColor disabled:opacity-50 whitespace-nowrap">
+                    Upload
+                  </button>
+                  <button type="button" @click="cancelUploadSelection"
+                          v-if="uploadForm.files.length > 0"
+                          class="px-4 py-2 bg-gray-300 text-gray-800 rounded-md hover:bg-gray-400 whitespace-nowrap">
+                    Cancel
+                  </button>
                 </div>
                 <!-- Title input removed for multiple uploads; backend handles titles from filenames -->
               </div>
-              <div class="mt-6">
-                <button type="submit"
-                        :disabled="uploadForm.processing"
-                        class="px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-700 disabled:opacity-50">
-                  Upload
-                </button>
-              </div>
-               <p class="mt-2 text-xs text-gray-500">
-                Upload to: {{ uploadDisk }} / {{ uploadDirectory }}
-              </p>
             </form>
 
             <!-- Media Grid -->
@@ -125,7 +156,8 @@ const getThumbnail = (media) => {
                  class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
               <div v-for="item in mediaItems.data" :key="item.id" class="border rounded-lg overflow-hidden shadow">
                 <img :src="getThumbnail(item)" :alt="item.title || item.filename"
-                     class="w-full h-32 object-cover bg-gray-100">
+                     class="w-full h-32 object-cover bg-gray-100 cursor-pointer hover:opacity-80 transition-opacity"
+                     @click="openLightbox(item)">
                 <div class="p-2">
                   <p class="text-sm font-medium text-gray-900 truncate" :title="item.title || item.filename">
                     {{ item.title || item.filename }}
@@ -149,9 +181,40 @@ const getThumbnail = (media) => {
             </div>
 
             <!-- Pagination -->
-            <div v-if="mediaItems && mediaItems.data && mediaItems.data.length > 0" class="mt-6">
-              <Pagination :links="mediaItems.links" />
+            <div v-if="mediaItems && mediaItems.last_page > 1" class="mt-6">
+              <Pagination
+                :current-page="mediaItems.current_page"
+                :total-pages="mediaItems.last_page"
+                @page-change="handlePageChange"
+              />
             </div>
+
+            <!-- Lightbox Dialog -->
+            <Dialog v-model:open="isLightboxOpen">
+              <DialogContent 
+                class="sm:max-w-[90vw] md:max-w-[80vw] lg:max-w-[70vw] xl:max-w-[60vw] p-0 bg-transparent border-none shadow-xl"
+                @escapeKeyDown="isLightboxOpen = false"
+                @pointerDownOutside="isLightboxOpen = false"
+              >
+                <img 
+                  v-if="currentLightboxImage.src"
+                  :src="currentLightboxImage.src" 
+                  :alt="currentLightboxImage.alt" 
+                  class="w-full h-auto max-h-[85vh] object-contain block rounded-md" 
+                />
+                <!-- Simple close button positioned absolutely -->
+                <button 
+                  @click="isLightboxOpen = false" 
+                  class="absolute top-2 right-2 p-2 bg-black/40 text-white rounded-full hover:bg-black/60 focus:outline-none focus:ring-2 focus:ring-white focus:ring-opacity-50 transition-colors"
+                  aria-label="Close lightbox"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </DialogContent>
+            </Dialog>
+
           </div>
         </div>
       </div>

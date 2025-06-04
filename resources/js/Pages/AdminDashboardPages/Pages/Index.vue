@@ -71,7 +71,7 @@ import { Link, router } from '@inertiajs/vue3';
 import AdminDashboardLayout from '@/Layouts/AdminDashboardLayout.vue';
 import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from '@/Components/ui/table';
 import { Button } from '@/Components/ui/button';
-import Pagination from "@/Pages/AdminDashboardPages/PopularPlaces/Pagination.vue";
+import Pagination from '@/Components/ReusableComponents/Pagination.vue';
 import { ref } from 'vue';
 import { Input } from '@/Components/ui/input';
 

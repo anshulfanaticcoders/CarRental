@@ -126,7 +126,7 @@ import { Dialog, DialogContent, DialogFooter, DialogTrigger } from "@/Components
 import AdminDashboardLayout from "@/Layouts/AdminDashboardLayout.vue";
 import EditUser from "@/Pages/AdminDashboardPages/Vendors/EditUser.vue";
 import ViewUser from "@/Pages/AdminDashboardPages/Vendors/ViewUser.vue";
-import Pagination from "@/Pages/AdminDashboardPages/Vendors/Pagination.vue";
+import Pagination from '@/Components/ReusableComponents/Pagination.vue';
 import {
   AlertDialog,
   AlertDialogAction,

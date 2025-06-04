@@ -28,9 +28,8 @@ class AdminUserDocumentController extends Controller
                 $q->where('first_name', 'like', "%{$search}%")
                   ->orWhere('last_name', 'like', "%{$search}%")
                   ->orWhere('email', 'like', "%{$search}%");
-            })
-            ->orWhere('document_number', 'like', "%{$search}%")
-            ->orWhere('document_type', 'like', "%{$search}%");
+            });
+            // Removed: ->orWhere('document_type', 'like', "%{$search}%");
         }
 
         // Filter by status if provided
@@ -40,7 +39,7 @@ class AdminUserDocumentController extends Controller
 
         // Get paginated results
         $documents = $query->orderBy('created_at', 'desc')
-            ->paginate(6)
+            ->paginate(1)
             ->withQueryString();
 
         return Inertia::render('AdminDashboardPages/UserDocument/Index', [

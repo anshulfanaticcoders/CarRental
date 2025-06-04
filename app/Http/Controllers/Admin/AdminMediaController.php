@@ -24,7 +24,7 @@ class AdminMediaController extends Controller
                       ->latest();
 
         // Paginate and transform for both Inertia and JSON responses
-        $mediaItems = $query->paginate(15)->through(fn ($item) => [
+        $mediaItems = $query->paginate(10)->through(fn ($item) => [
             'id' => $item->id,
             'filename' => $item->filename,
             'title' => $item->title,

@@ -22,7 +22,7 @@ class PopularPlacesController extends Controller
                     ->orWhere('country', 'like', "%{$search}%");
             });
         })
-            ->paginate(10); // Add pagination
+            ->paginate(6); // Add pagination
 
         return Inertia::render('AdminDashboardPages/PopularPlaces/Index', [
             'places' => $places,

@@ -143,7 +143,7 @@
   import AdminDashboardLayout from '@/Layouts/AdminDashboardLayout.vue';
   import EditDocument from '@/Pages/AdminDashboardPages/UserDocument/Edit.vue';
   import ViewDocument from '@/Pages/AdminDashboardPages/UserDocument/View.vue';
-  import Pagination from '@/Pages/AdminDashboardPages/Vendors/Pagination.vue';
+  import Pagination from '@/Components/ReusableComponents/Pagination.vue';
   
   const props = defineProps({
     documents: Object,

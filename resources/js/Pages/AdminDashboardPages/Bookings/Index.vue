@@ -121,7 +121,7 @@ import { Input } from "@/Components/ui/input";
 import { Dialog } from "@/Components/ui/dialog";
 import AdminDashboardLayout from "@/Layouts/AdminDashboardLayout.vue";
 import ViewUser from "@/Pages/AdminDashboardPages/Bookings/ViewUser.vue";
-import Pagination from "@/Pages/AdminDashboardPages/Bookings/Pagination.vue";
+import Pagination from '@/Components/ReusableComponents/Pagination.vue';
 
 
 const props = defineProps({

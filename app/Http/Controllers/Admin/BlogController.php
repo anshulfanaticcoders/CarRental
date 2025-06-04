@@ -27,7 +27,7 @@ class BlogController extends Controller
             })->orWhere('slug', 'like', "%{$search}%");
         }
         
-        $blogs = $query->latest()->paginate(8)->withQueryString();
+        $blogs = $query->latest()->paginate(1)->withQueryString();
 
         // The $blogs collection will automatically use the title accessor for the current locale
         return Inertia::render('AdminDashboardPages/Blogs/Index', [

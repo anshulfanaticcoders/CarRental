@@ -15,7 +15,7 @@ class PlansController extends Controller
     
     $plans = Plan::when($search, function ($query, $search) {
         return $query->where('plan_type', 'LIKE', "%{$search}%");
-    })->paginate(10);
+    })->paginate(4);
 
     return Inertia::render('AdminDashboardPages/Plans/Index', [
         'plans' => $plans,

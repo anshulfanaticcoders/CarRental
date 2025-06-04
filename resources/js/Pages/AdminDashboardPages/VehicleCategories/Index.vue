@@ -111,7 +111,7 @@ import AdminDashboardLayout from "@/Layouts/AdminDashboardLayout.vue";
 import CreateUser from "@/Pages/AdminDashboardPages/VehicleCategories/CreateUser.vue";
 import EditUser from "@/Pages/AdminDashboardPages/VehicleCategories/EditUser.vue";
 import ViewUser from "@/Pages/AdminDashboardPages/VehicleCategories/ViewUser.vue";
-import Pagination from "@/Pages/AdminDashboardPages/VehicleCategories/Pagination.vue";
+import Pagination from '@/Components/ReusableComponents/Pagination.vue';
 import {
   AlertDialog,
   AlertDialogAction,
