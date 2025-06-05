@@ -1,5 +1,6 @@
 <script setup>
 import { Head, Link } from "@inertiajs/vue3";
+import SchemaInjector from '@/Components/SchemaInjector.vue'; // Import SchemaInjector
 import heroImg from "../../assets/heroImage.jpeg";
 import Footer from '@/Components/Footer.vue'
 import locationMapIcon from "../../assets/location.svg";
@@ -39,7 +40,8 @@ defineProps({
         type: Array,
         default: () => []
     },
-    blogs: Array
+    blogs: Array,
+    schema: Object // Add schema prop
 });
 
 
@@ -170,6 +172,7 @@ const page = usePage();
 <template>
 
     <Head title="Welcome" />
+    <SchemaInjector v-if="schema" :schema="schema" />
 
     <AuthenticatedHeaderLayout />
 

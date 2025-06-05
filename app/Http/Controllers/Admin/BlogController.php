@@ -7,9 +7,12 @@ use App\Models\Blog;
 use App\Models\SeoMeta; // Added for SEO Meta
 use Illuminate\Http\Request;
 use Inertia\Inertia;
+use App\Helpers\SchemaBuilder; // Added for Schema
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str; // Added for slug generation
 use Illuminate\Support\Facades\App; // Added for locale access
+use Illuminate\Support\Facades\Route; // For Route::has()
+use Illuminate\Foundation\Application; // For Application::VERSION
 
 class BlogController extends Controller
 {
@@ -286,8 +289,17 @@ class BlogController extends Controller
     public function homeBlogs()
     {
         $blogs = Blog::with('translations')->where('is_published', true)->latest()->take(4)->get();
+        
+        // Generate ItemList schema for the blogs
+        $blogListSchema = SchemaBuilder::blogList($blogs, 'Latest Blog Posts');
+
         return Inertia::render('Welcome', [
-            'blogs' => $blogs
+            'canLogin' => Route::has('login'),
+            'canRegister' => Route::has('register'),
+            'laravelVersion' => Application::VERSION,
+            'phpVersion' => PHP_VERSION,
+            'blogs' => $blogs,
+            'schema' => $blogListSchema, // Pass schema to the Welcome page
         ]);
     }
 
@@ -297,8 +309,13 @@ class BlogController extends Controller
              abort(404);
         }
         $blog->load('translations'); // Eager load translations for the single blog
+
+        // Generate BlogPosting schema
+        $blogSchema = SchemaBuilder::blog($blog);
+
         return Inertia::render('SingleBlog', [
-            'blog' => $blog
+            'blog' => $blog,
+            'schema' => $blogSchema, // Pass schema to the Vue component
         ]);
     }
 

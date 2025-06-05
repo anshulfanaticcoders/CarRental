@@ -1,5 +1,6 @@
 <template>
     <AuthenticatedHeaderLayout/>
+    <SchemaInjector v-if="props.schema" :schema="props.schema" />
     <section class="blog-single min-h-screen flex flex-col gap-8 items-center pb-16 py-10 max-[768px]:py-0 max-[768px]:pb-8">
         <!-- Breadcrumb -->
         <nav class="w-full full-w-container max-[768px]:px-0 py-4 max-[768px]:pb-0">
@@ -34,11 +35,13 @@
 <script setup>
 import Footer from '@/Components/Footer.vue';
 import AuthenticatedHeaderLayout from '@/Layouts/AuthenticatedHeaderLayout.vue';
+import SchemaInjector from '@/Components/SchemaInjector.vue'; // Import SchemaInjector
 import { Head, Link } from '@inertiajs/vue3';
 import { defineProps } from 'vue';
 
 const props = defineProps({
-    blog: Object
+    blog: Object,
+    schema: Object // Add schema prop
 });
 
 const formatDate = (date) => {
