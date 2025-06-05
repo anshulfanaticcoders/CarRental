@@ -22,7 +22,7 @@
             <p class="text-gray-500 mt-2 max-[768px]:text-[0.95rem]">Published on {{ formatDate(blog.created_at) }}</p>
 
             <div class="mt-6 text-lg leading-relaxed text-gray-700">
-                <p v-html="blog.content" class="max-[768px]:text-[0.875rem] whitespace-break-spaces"></p>
+                <div v-html="blog.content" class="blog-content-styles max-[768px]:text-[0.875rem] whitespace-break-spaces"></div>
             </div>
             </div>
         </div>
@@ -51,8 +51,23 @@ const formatDate = (date) => {
 </script>
 
 <style scoped>
-li{
-    list-style: inherit;
-    line-height: 1;
+.blog-content-styles :deep(ul),
+.blog-content-styles :deep(ol) {
+    list-style: revert;
+    padding-left: 1.5rem; /* Reduced padding for less space before bullet */
+    margin-top: 0.5rem; /* Reduced space before the list */
+    margin-bottom: 0.5rem; /* Reduced space after the list */
+}
+
+.blog-content-styles :deep(li) {
+    list-style: revert; /* Ensures list items get their default markers like bullets or numbers */
+    line-height: 0;   /* Slightly reduced line height */
+    margin-bottom: 0.25rem; /* Reduced space between list items */
+    padding-left: 0.25rem; /* Reduced padding to bring text closer to bullet */
+}
+
+/* Optional: Style paragraphs within the v-html content if needed */
+.blog-content-styles :deep(p) {
+    margin-bottom: 0rem; /* Ensure paragraphs also have some bottom margin */
 }
 </style>
