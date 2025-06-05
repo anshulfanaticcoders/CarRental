@@ -49,3 +49,10 @@ const formatDate = (date) => {
     });
 };
 </script>
+
+<style scoped>
+li{
+    list-style: inherit;
+    line-height: 1;
+}
+</style>

@@ -16,6 +16,7 @@ use App\Http\Controllers\Admin\PaymentDashboardController;
 use App\Http\Controllers\Admin\PlansController;
 use App\Http\Controllers\Admin\PopularPlacesController;
 use App\Http\Controllers\Admin\RadiusController;
+use App\Http\Controllers\Admin\SchemaController;
 use App\Http\Controllers\Admin\TestimonialController;
 use App\Http\Controllers\Admin\UserReportDownloadController;
 use App\Http\Controllers\Admin\UsersController;
@@ -295,6 +296,10 @@ Route::middleware(['auth', 'role:admin'])->group(function () {
     Route::resource('admin/header-footer-scripts', \App\Http\Controllers\Admin\HeaderFooterScriptController::class)
         ->parameters(['header-footer-scripts' => 'headerFooterScript'])
         ->names('admin.header-footer-scripts');
+
+
+        // Schema Management Routes
+    Route::resource('admin/schemas', SchemaController::class)->names('admin.schemas');
 });
 
 
