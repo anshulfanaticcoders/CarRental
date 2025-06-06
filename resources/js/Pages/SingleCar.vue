@@ -13,7 +13,7 @@ import halfStar from "../../assets/halfstar.svg";
 import blankStar from "../../assets/blankstar.svg";
 import carguaranteeIcon from "../../assets/carguarantee.png";
 import locationPinIcon from "../../assets/locationPin.svg";
-
+import SchemaInjector from '@/Components/SchemaInjector.vue';
 import ShareIcon from "../../assets/ShareNetwork.svg";
 import Heart from "../../assets/Heart.svg";
 import FilledHeart from "../../assets/FilledHeart.svg";
@@ -49,6 +49,10 @@ const vehicle = ref(props.vehicle);
 const user = ref(null);
 const reviews = ref([]);
 const isLoading = ref(true);
+
+defineProps({
+    schema: Object,
+});
 
 // Reference to the reviews section
 const reviewsSection = ref(null);
@@ -966,6 +970,8 @@ const openLightbox = (index) => {
 <template>
 
     <Head title="Single Car" />
+    <SchemaInjector v-if="schema" :schema="schema" />
+    <SchemaInjector v-if="$page.props.organizationSchema" :schema="$page.props.organizationSchema" />
     <AuthenticatedHeaderLayout />
     <main>
         <section>

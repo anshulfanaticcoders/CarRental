@@ -1,6 +1,7 @@
 <script setup>
 import { Link, useForm, usePage } from "@inertiajs/vue3";
 import { computed, onMounted, provide, ref, watch } from "vue";
+import SchemaInjector from '@/Components/SchemaInjector.vue';
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import AuthenticatedHeaderLayout from "@/Layouts/AuthenticatedHeaderLayout.vue";
@@ -43,7 +44,8 @@ const props = defineProps({
     seatingCapacities: Array,
     transmissions: Array, 
     fuels: Array,         
-    mileages: Array,      
+    mileages: Array,
+    schema: Object,      
 });
 
 const debounce = (fn, delay) => {
@@ -576,13 +578,7 @@ const handleCategorySearchUpdate = (params) => {
 
 <template>
     <AuthenticatedHeaderLayout />
-    <!-- Removed the top SearchBar component as per user request for a single search bar -->
-    <!-- <section class="bg-customPrimaryColor py-customVerticalSpacing">
-        <div class="">
-            <SearchBar class="border-[2px] rounded-[20px] border-white mt-0 mb-0 max-[768px]:border-none"
-                :prefill="searchQuery" />
-        </div>
-    </section> -->
+    <SchemaInjector v-if="schema" :schema="schema" />
 
     <section>
     <div class="full-w-container py-8">
@@ -592,6 +588,7 @@ const handleCategorySearchUpdate = (params) => {
                 :prefill="searchQuery"
                 @update-search-params="handleCategorySearchUpdate" 
             />
+            <SchemaInjector v-if="$page.props.organizationSchema" :schema="$page.props.organizationSchema" />
         </div>
 
         <!-- Mobile filter button (visible only on mobile for additional filters) -->

@@ -4,7 +4,11 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\Blog;
-use App\Models\SeoMeta; // Added for SEO Meta
+use App\Models\Testimonial;
+use App\Models\VehicleCategory;
+use App\Models\PopularPlace;
+use App\Models\Faq; // Added Faq model
+use App\Models\SeoMeta;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use App\Helpers\SchemaBuilder; // Added for Schema
@@ -289,9 +293,65 @@ class BlogController extends Controller
     public function homeBlogs()
     {
         $blogs = Blog::with('translations')->where('is_published', true)->latest()->take(4)->get();
+        $blogListSchema = [];
+        if ($blogs->isNotEmpty()) {
+            $blogListSchema = SchemaBuilder::blogList($blogs, 'Latest Blog Posts');
+        }
+
+        // Fetch latest 5 testimonials
+        $testimonials = Testimonial::latest()->take(5)->get();
+        $testimonialListSchema = [];
+        if ($testimonials->isNotEmpty()) {
+            $testimonialListSchema = SchemaBuilder::testimonialList($testimonials, 'Customer Testimonials');
+        }
+
+        // Combine schemas into an array
+        // The Welcome.vue component will need to handle an array of schemas
+        $pageSchemas = [];
+        if (!empty($blogListSchema)) {
+            $pageSchemas[] = $blogListSchema;
+        }
+        if (!empty($testimonialListSchema)) {
+            $pageSchemas[] = $testimonialListSchema;
+        }
+
+        // Fetch vehicle categories (e.g., all active ones, or a specific number)
+        $categories = VehicleCategory::where('status', true)->get(); // Assuming 'status' field indicates active
+        $categoryListSchema = [];
+        if ($categories->isNotEmpty()) {
+            $categoryListSchema = SchemaBuilder::vehicleCategoryList($categories, 'Our Vehicle Categories');
+            if (!empty($categoryListSchema)) {
+                $pageSchemas[] = $categoryListSchema;
+            }
+        }
         
-        // Generate ItemList schema for the blogs
-        $blogListSchema = SchemaBuilder::blogList($blogs, 'Latest Blog Posts');
+        // Fetch popular places (e.g., all of them, or a specific number)
+        $popularPlaces = PopularPlace::all(); // You might want to limit this, e.g., ->take(10)->get()
+        $popularPlaceListSchema = [];
+        if ($popularPlaces->isNotEmpty()) {
+            $popularPlaceListSchema = SchemaBuilder::popularPlaceList($popularPlaces, 'Popular Destinations');
+            if (!empty($popularPlaceListSchema)) {
+                $pageSchemas[] = $popularPlaceListSchema;
+            }
+        }
+
+        // Fetch FAQs (e.g., all of them, or a limited number for the homepage)
+        $faqs = Faq::with('translations')->get(); // Fetches all FAQs with their translations
+                                                 // The accessors 'question' and 'answer' will provide localized values.
+                                                 // SchemaBuilder::faqPage expects an array of ['question' => ..., 'answer' => ...]
+        $faqPageSchema = [];
+        if ($faqs->isNotEmpty()) {
+            // The Faq model's accessors should provide the correct 'question' and 'answer' attributes
+            // in the current locale, so we can pass the collection directly if SchemaBuilder::faqPage can handle it,
+            // or convert to a simple array if needed. SchemaBuilder::faqPage expects an array.
+            $faqItems = $faqs->map(function ($faq) {
+                return ['question' => $faq->question, 'answer' => $faq->answer];
+            })->all();
+            $faqPageSchema = SchemaBuilder::faqPage($faqItems);
+            if (!empty($faqPageSchema)) {
+                $pageSchemas[] = $faqPageSchema;
+            }
+        }
 
         return Inertia::render('Welcome', [
             'canLogin' => Route::has('login'),
@@ -299,7 +359,11 @@ class BlogController extends Controller
             'laravelVersion' => Application::VERSION,
             'phpVersion' => PHP_VERSION,
             'blogs' => $blogs,
-            'schema' => $blogListSchema, // Pass schema to the Welcome page
+            'testimonials' => $testimonials,
+            'categories' => $categories,
+            'popularPlaces' => $popularPlaces,
+            'faqs' => $faqs, // Pass FAQ data
+            'schema' => $pageSchemas,
         ]);
     }
 

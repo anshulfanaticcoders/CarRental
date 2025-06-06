@@ -8,6 +8,7 @@ use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Inertia\Response;
 use Illuminate\Support\Facades\App; // Added for locale access
+use App\Helpers\SchemaBuilder; // Import SchemaBuilder
 
 class FaqController extends Controller
 {
@@ -109,5 +110,29 @@ class FaqController extends Controller
         return response()->json($faqs);
     }
 
+    public function showPublicFaqPage(Request $request)
+    {
+        $currentLocale = App::getLocale();
+        
+        // Fetch FAQs. The Faq model's accessors for 'question' and 'answer'
+        // should handle returning the translated version based on the current locale.
+        $faqsData = Faq::with('translations')->orderBy('created_at', 'asc')->get();
+        
+        $faqsForSchema = $faqsData->map(function ($faq) {
+            // Assuming $faq->question and $faq->answer give the correctly translated attributes
+            return [
+                'question' => $faq->question, 
+                'answer' => $faq->answer,
+            ];
+        })->all();
 
+        $faqSchema = SchemaBuilder::faqPage($faqsForSchema);
+
+        return Inertia::render('Faq', [
+            'schema' => $faqSchema,
+            // The Faq.vue page uses the Faq.vue component, 
+            // which fetches its own data for display via the getFaqs API.
+            // So, we don't need to pass 'faqs' data here for the component itself.
+        ]);
+    }
 }

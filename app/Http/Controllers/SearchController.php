@@ -9,6 +9,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
 use Illuminate\Support\Facades\Http;
+use App\Helpers\SchemaBuilder; // Import SchemaBuilder
 
 class SearchController extends Controller
 {
@@ -201,21 +202,25 @@ class SearchController extends Controller
     });
 
     // Return Inertia response
-    return Inertia::render('SearchResults', [
-        'vehicles' => $vehicles,
-        'filters' => $validated,
-        'pagination_links' => $vehicles->links()->toHtml(),
-        'brands' => $brands, // Use options derived from $potentialVehiclesForOptions
-        'colors' => $colors, // Use options derived from $potentialVehiclesForOptions
-        'seatingCapacities' => $seatingCapacities, // Use options derived from $potentialVehiclesForOptions
-        'transmissions' => $transmissions, // Use options derived from $potentialVehiclesForOptions
-        'fuels' => $fuels, // Use options derived from $potentialVehiclesForOptions
-        'mileages' => $mileages, // Use options derived from $potentialVehiclesForOptions
-        'categories' => $categoriesFromOptions, // Use options derived from $potentialVehiclesForOptions
-    ]);
-}
+        // Generate ItemList schema for the vehicles
+        $vehicleListSchema = SchemaBuilder::vehicleList($vehicles->getCollection(), 'Vehicle Search Results', $validated);
 
-public function searchByCategory(Request $request, $category_id = null)
+        return Inertia::render('SearchResults', [
+            'vehicles' => $vehicles,
+            'filters' => $validated,
+            'pagination_links' => $vehicles->links()->toHtml(),
+            'brands' => $brands, // Use options derived from $potentialVehiclesForOptions
+            'colors' => $colors, // Use options derived from $potentialVehiclesForOptions
+            'seatingCapacities' => $seatingCapacities, // Use options derived from $potentialVehiclesForOptions
+            'transmissions' => $transmissions, // Use options derived from $potentialVehiclesForOptions
+            'fuels' => $fuels, // Use options derived from $potentialVehiclesForOptions
+            'mileages' => $mileages, // Use options derived from $potentialVehiclesForOptions
+            'categories' => $categoriesFromOptions, // Use options derived from $potentialVehiclesForOptions
+            'schema' => $vehicleListSchema, // Pass schema to the Vue component
+        ]);
+    }
+
+    public function searchByCategory(Request $request, $category_id = null)
 {
     $validated = $request->validate([
         'seating_capacity' => 'nullable|integer',
@@ -431,6 +436,8 @@ public function searchByCategory(Request $request, $category_id = null)
         return $vehicle;
     });
     
+    // Generate ItemList schema for the vehicles
+        $vehicleListSchema = SchemaBuilder::vehicleList($vehicles->getCollection(), 'Vehicle Search Results', $validated);
     // Return Inertia response
     return Inertia::render('CategorySearchResults', [
         'vehicles' => $vehicles,
@@ -443,6 +450,7 @@ public function searchByCategory(Request $request, $category_id = null)
         'fuels' => $fuels, // Use options derived from $potentialVehiclesForOptionsCategory
         'mileages' => $mileages, // Use options derived from $potentialVehiclesForOptionsCategory
         'categories' => $allCategoriesForPage, // Pass all categories for selection
+        'schema' => $vehicleListSchema, 
     ]);
 }
 }

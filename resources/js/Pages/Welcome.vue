@@ -29,7 +29,7 @@ const categoryAutoplay = Autoplay({
     stopOnInteraction: false,
 });
 
-defineProps({
+const props = defineProps({
     canLogin: {
         type: Boolean,
     },
@@ -41,7 +41,10 @@ defineProps({
         default: () => []
     },
     blogs: Array,
-    schema: Object // Add schema prop
+    testimonials: Array,
+    popularPlaces: Array,
+    faqs: Array, // Added faqs prop
+    schema: Array
 });
 
 
@@ -67,38 +70,26 @@ import Faq from "@/Components/Faq.vue";
 
 
 // Category Carousel
-const categories = ref([]);
-const isLoading = ref(true);
-const fetchCategories = async () => {
-    try {
-        const response = await axios.get("/api/vehicle-categories");
-        categories.value = response.data; // Store the fetched categories
-    } catch (error) {
-        console.error("Error fetching vehicle categories:", error);
-    } finally {
+// Categories are now passed as a prop from the server.
+// isLoading can be set based on the presence of props.categories.
+const isLoading = ref(!props.categories || props.categories.length === 0);
+
+onMounted(() => {
+    // If categories are passed via props, isLoading should be false.
+    if (props.categories && props.categories.length > 0) {
         isLoading.value = false;
     }
-};
-// Fetch categories on component mount
-onMounted(() => {
-    fetchCategories();
+    // If categories were not passed or are empty, and you still wanted a client-side fallback,
+    // you could add it here. For now, we assume server-side props are the source.
 });
 
 
-// Popular Places data fetch
-const popularPlaces = ref([]);
-const fetchPopularPlaces = async () => {
-    try {
-        const response = await axios.get("/api/popular-places"); // Adjust the API route as needed
-        popularPlaces.value = response.data;
-    } catch (error) {
-        console.error("Error fetching popular places:", error);
-    }
-};
+// Popular Places data is now passed as a prop from the server.
+// The client-side fetch logic for popularPlaces has been removed.
 
-onMounted(() => {
-    fetchPopularPlaces();
-});
+// FAQs are now passed as a prop from the server.
+// The Faq.vue component might need to be updated to accept `faqs` as a prop
+// if it currently fetches its own data.
 
 const _t = (key) => {
     const { props } = usePage();
@@ -172,7 +163,13 @@ const page = usePage();
 <template>
 
     <Head title="Welcome" />
-    <SchemaInjector v-if="schema" :schema="schema" />
+    <!-- Inject all schemas passed in the 'schema' array prop -->
+    <template v-if="schema && schema.length">
+        <SchemaInjector v-for="(individualSchema, index) in schema" :key="`schema-${index}`" :schema="individualSchema" />
+    </template>
+    
+    <!-- Schema for Organization (globally shared, if it exists) -->
+    <SchemaInjector v-if="$page.props.organizationSchema" :schema="$page.props.organizationSchema" />
 
     <AuthenticatedHeaderLayout />
 
@@ -221,9 +218,9 @@ const page = usePage();
                         :plugins="[categoryAutoplay]" @mouseenter="categoryAutoplay.stop"
                         @mouseleave="[categoryAutoplay.reset(), categoryAutoplay.play()]">
                         <CarouselContent class="max-[768px]:pr-10 max-[768px]:pl-3">
-                            <!-- If data is loaded, show categories -->
-                            <template v-if="!isLoading">
-                                <CarouselItem v-for="category in categories" :key="category.id"
+                            <!-- If data is loaded, show categories from props -->
+                            <template v-if="!isLoading && props.categories && props.categories.length > 0">
+                                <CarouselItem v-for="category in props.categories" :key="category.id"
                                     class="md:basis-1/2 lg:basis-1/3">
                                     <div class="p-1">
                                         <Link :href="`/search/category/${category.id}`">
@@ -280,9 +277,9 @@ const page = usePage();
                 <Carousel class="relative w-full" :plugins="[plugin]" @mouseenter="plugin.stop"
                     @mouseleave="[plugin.reset(), plugin.play(), console.log('Running')]">
                     <CarouselContent class="pl-10 pt-[2rem] max-[768px]:pr-10 max-[768px]:pl-2 max-[768px]:pt-0">
-                        <!-- Show actual places when data is loaded -->
-                        <template v-if="!isLoading">
-                            <CarouselItem v-for="place in popularPlaces" :key="place.id"
+                        <!-- Show actual places when data is loaded from props -->
+                        <template v-if="props.popularPlaces && props.popularPlaces.length > 0">
+                            <CarouselItem v-for="place in props.popularPlaces" :key="place.id"
                                 class="pl-1 md:basis-1/2 lg:basis-1/5">
                                 <div class="p-1">
                                     <Link
@@ -496,7 +493,8 @@ const page = usePage();
         <!-- ------------------------FAQ Section-------------------------------- -->
         <!------------------------------ <Start>  -------------------------------------------------->
         <section class="my-customVerticalSpacing">
-            <Faq />
+            <!-- Pass the faqs prop to the Faq component -->
+            <Faq :faqs="props.faqs" />
         </section>
         <!-- ---------------------------<End>---------------------------------------------------->
     </main>

@@ -8,6 +8,7 @@ use Inertia\Inertia;
 use Illuminate\Support\Facades\View;
 use App\Models\HeaderFooterScript;
 use Illuminate\Support\Facades\Schema;
+use App\Http\Controllers\FrontendPageController; // Import FrontendPageController
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -45,5 +46,15 @@ class AppServiceProvider extends ServiceProvider
             View::share('headerScript', '');
             View::share('footerScript', '');
         }
+
+        // Share Organization Schema globally with Inertia and Blade
+        $organizationSchema = FrontendPageController::getOrganizationSchema();
+
+        Inertia::share('organizationSchema', function () use ($organizationSchema) {
+            return $organizationSchema;
+        });
+
+        // Share with Blade views as well
+        View::share('organizationSchemaForBlade', $organizationSchema);
     }
 }

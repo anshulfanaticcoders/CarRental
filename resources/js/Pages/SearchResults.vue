@@ -1,6 +1,7 @@
 <script setup>
 import { Link, useForm, usePage } from "@inertiajs/vue3";
 import { computed, onMounted, provide, ref, watch } from "vue";
+import SchemaInjector from '@/Components/SchemaInjector.vue'; // Import SchemaInjector
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import AuthenticatedHeaderLayout from "@/Layouts/AuthenticatedHeaderLayout.vue";
@@ -42,7 +43,8 @@ const props = defineProps({
     seatingCapacities: Array,
     transmissions: Array, 
     fuels: Array,         
-    mileages: Array,      
+    mileages: Array,
+    schema: Object, // Add schema prop
 });
 
 const debounce = (fn, delay) => {
@@ -649,11 +651,13 @@ provide('setActiveDropdown', setActiveDropdown);
 
 <template>
     <AuthenticatedHeaderLayout />
+    <SchemaInjector v-if="schema" :schema="schema" />
     <section class="bg-customPrimaryColor py-customVerticalSpacing">
         <div class="">
             <SearchBar class="border-[2px] rounded-[20px] border-white mt-0 mb-0 max-[768px]:border-none"
                 :prefill="searchQuery"
                 @update-search-params="handleSearchUpdate" />
+                <SchemaInjector v-if="$page.props.organizationSchema" :schema="$page.props.organizationSchema" />
         </div>
     </section>
 

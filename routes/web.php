@@ -132,7 +132,7 @@ Route::get('/api/geocoding/autocomplete', [GeocodingController::class, 'autocomp
 Route::get('/api/geocoding/reverse', [GeocodingController::class, 'reverse']);
 Route::get('/blog', [BlogController::class, 'showBlogPage'])->name('blog');
 Route::get('/page/{slug}', [PageController::class, 'showPublic'])->name('pages.show');
-Route::inertia('/faq', 'Faq');
+Route::get('/faq', [App\Http\Controllers\Admin\FaqController::class, 'showPublicFaqPage'])->name('faq.show'); // Updated FAQ route
 Route::post('/validate-email', [EmailValidationController::class, 'validateEmail'])->name('validate-email');
 Route::post('/validate-contact', [EmailValidationController::class, 'validateContact'])->name('validate-contact');
 Route::get('/api/footer-places', [PopularPlacesController::class, 'getFooterPlaces']);
@@ -147,6 +147,7 @@ Route::post('/language/change', [LanguageController::class, 'change'])->name('la
 // Route::get('/', [BlogController::class, 'show'])->name('welcome');
 Route::get('/', [BlogController::class, 'homeBlogs'])->name('welcome');
 Route::get('/blog/{blog:slug}', [BlogController::class, 'show'])->name('blog.show');
+
 
 
 // Stripe Routes

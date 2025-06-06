@@ -32,6 +32,13 @@
             {!! $headerScript !!}
         @endif
 
+        {{-- Organization Schema --}}
+        @if(!empty($organizationSchemaForBlade))
+            <script type="application/ld+json">
+                {!! json_encode($organizationSchemaForBlade, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE) !!}
+            </script>
+        @endif
+
         @inertiaHead
     </head>
     <body class="antialiased">

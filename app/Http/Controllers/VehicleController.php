@@ -25,6 +25,7 @@ use Illuminate\Support\Facades\Storage;
 use Inertia\Inertia;
 use Illuminate\Support\Facades\Session; 
 use Illuminate\Support\Facades\Redirect; 
+use App\Helpers\SchemaBuilder; // Import SchemaBuilder
 
 class VehicleController extends Controller
 {
@@ -335,7 +336,8 @@ class VehicleController extends Controller
                     'blocking_start_date' => $blocking->blocking_start_date->format('Y-m-d'),
                     'blocking_end_date' => $blocking->blocking_end_date->format('Y-m-d'),
                 ];
-            })
+            }),
+            'schema' => SchemaBuilder::singleVehicle($vehicle), // Add vehicle schema
         ]);
     }
 
