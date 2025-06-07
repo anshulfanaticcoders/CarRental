@@ -31,15 +31,12 @@
                 </div>
             </div>
 
-            <div v-if="blogs.links.length > 3" class="mt-8">
-                <div class="flex justify-center">
-                    <template v-for="(link, key) in blogs.links" :key="key">
-                        <Link v-if="link.url" :href="link.url" class="px-3 py-2 rounded mx-1"
-                            :class="link.active ? 'bg-blue-500 text-white hover:bg-blue-700' : 'text-gray-700 hover:bg-gray-200'">
-                        <span v-html="link.label"></span>
-                        </Link>
-                    </template>
-                </div>
+            <div class="mt-8 flex justify-center">
+                <Pagination
+                    :currentPage="blogs.current_page"
+                    :totalPages="blogs.last_page"
+                    @page-change="handlePageChange"
+                />
             </div>
         </div>
         <aside class="w-1/3 max-[768px]:w-full max-[768px]:mt-10">
@@ -67,13 +64,14 @@
 
 
 <script setup>
-import { Head, Link, usePage } from '@inertiajs/vue3'; // Added usePage
+import { Head, Link, usePage, router } from '@inertiajs/vue3'; // Added usePage and router
 import goIcon from "../../assets/goIcon.svg";
 import calendarIcon from '../../assets/CalendarBlank.svg';
 import AuthenticatedHeaderLayout from '@/Layouts/AuthenticatedHeaderLayout.vue';
 import blogbgimage from '../../assets/blogpagebgimage.jpg'
 import { ref, onMounted } from 'vue';
 import Footer from '@/Components/Footer.vue';
+import Pagination from '@/Components/ReusableComponents/Pagination.vue'; // Import the new component
 
 const props = defineProps({
     blogs: Object
@@ -101,5 +99,9 @@ const formatDate = (date) => {
     });
 };
 
-
+const handlePageChange = (page) => {
+    router.visit(route('blog', { page: page }), {
+        preserveScroll: true,
+    });
+};
 </script>

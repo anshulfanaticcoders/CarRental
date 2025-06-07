@@ -444,7 +444,7 @@ class BlogController extends Controller
             'schema' => $blogSchema, // Pass schema to the Vue component
         ]);
     }
-
+    
     public function showBlogPage(Request $request)
     {
         $blogs = Blog::with('translations')->where('is_published', true)->latest()->paginate(9);
