@@ -239,17 +239,6 @@ const data = {
       ],
     },
     {
-      title: 'Schema Management',
-      url: '#',
-      icon: Target,
-      items: [
-        {
-          title: 'Schemas',
-          url: '/admin/schemas', // Route for SeoMeta index
-        },
-      ],
-    },
-    {
       title: 'Reviews',
       url: '#',
       icon: Star,
