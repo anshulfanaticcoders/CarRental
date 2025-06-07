@@ -55,16 +55,7 @@
                                 api-key="l37l3e84opgzd4x6rdhlugh30o2l5mh5f5vvq3mieu4yn1j1"
                                 :init="{
                                     height: 500,
-                                    menubar: false,
-                                    plugins: [
-                                        'advlist autolink lists link image charmap print preview anchor',
-                                        'searchreplace visualblocks code fullscreen',
-                                        'insertdatetime media table paste code help wordcount'
-                                    ],
-                                    toolbar:
-                                        'undo redo | formatselect | bold italic backcolor | \
-                                        alignleft aligncenter alignright alignjustify | \
-                                        bullist numlist outdent indent | removeformat | help'
+                                    menubar: true
                                 }"
                             />
                             <p v-if="form.errors.content" class="text-red-500 text-sm">{{ form.errors.content }}</p>

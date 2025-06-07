@@ -20,7 +20,7 @@
                             <img :src=calendarIcon alt=""> {{ formatDate(blog.created_at) }}
                         </p>
                         <h4 class="font-semibold text-xl text-gray-800 max-[768px]:text-[1rem]">{{ blog.title }}</h4>
-                        <p class="text-gray-600 mt-2 line-clamp-3 max-[768px]:text-[0.875rem]" v-html="blog.content"></p>
+                        <p class="text-gray-600 text-[1rem] mt-2 line-clamp-3 max-[768px]:text-[0.875rem]" v-html="blog.content"></p>
                         <Link :href="route('blog.show', blog.slug)" class="inline-flex items-center mt-4 text-customPrimaryColor hover:underline
                             max-[768px]:text-[0.875rem]">
                         Read More

@@ -73,4 +73,22 @@ const formatDate = (date) => {
 .blog-content-styles :deep(p) {
     margin-bottom: 0rem; /* Ensure paragraphs also have some bottom margin */
 }
+
+.prose ::v-deep h4 {
+    font-size: 1.5rem !important;
+}
+.prose ::v-deep h5 {
+    font-weight: bold !important;
+}
+
+@media screen and (max-width:768px) {
+    .prose ::v-deep p{
+        font-size: 0.875rem;
+    } 
+    .prose ::v-deep h4 {
+    font-size: 1.25rem !important;
+}
+
+
+}
 </style>

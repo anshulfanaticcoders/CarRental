@@ -39,7 +39,10 @@ onMounted(async () => {
                     </Link>
                     <div class="socialIcons flex gap-6">
                         <Link href=""><img :src="facebookLogo" alt="" /></Link>
-                        <Link href=""><img :src="instagramLogo" alt="" /></Link>
+                        <a href="https://www.instagram.com/vrooemofficial?igsh=ZXZkMTdycmN6Mmhz" target="_blank" rel="noopener noreferrer">
+  <img :src="instagramLogo" alt="" />
+</a>
+
                         <Link href=""><img :src="twitterLogo" alt="" /></Link>
                     </div>
                     <div class="column flex flex-col gap-4 mt-[1rem]">
