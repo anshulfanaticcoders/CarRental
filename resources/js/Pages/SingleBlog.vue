@@ -23,7 +23,8 @@
             <p class="text-gray-500 mt-2 max-[768px]:text-[0.95rem]">Published on {{ formatDate(blog.created_at) }}</p>
 
             <div class="mt-6 text-lg leading-relaxed text-gray-700">
-                <div v-html="blog.content" class="blog-content-styles max-[768px]:text-[0.875rem] whitespace-break-spaces"></div>
+                <!-- <div v-html="blog.content" class="blog-content-styles max-[768px]:text-[0.875rem] whitespace-break-spaces"></div> -->
+                <div class="prose max-w-none" v-html="blog.content"></div>
             </div>
             </div>
         </div>
@@ -74,6 +75,15 @@ const formatDate = (date) => {
     margin-bottom: 0rem; /* Ensure paragraphs also have some bottom margin */
 }
 
+.prose ::v-deep h1 {
+    font-size: 3rem !important;
+}
+.prose ::v-deep h2 {
+    font-size: 2.5rem !important;
+}
+.prose ::v-deep h3 {
+    font-size: 2rem !important;
+}
 .prose ::v-deep h4 {
     font-size: 1.5rem !important;
 }
