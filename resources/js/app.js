@@ -50,9 +50,11 @@ async function updateSeoMeta(urlPath) {
     if (!slug || slug === '') slug = '/'; // Default to homepage
     if (slug !== '/' && !slug.startsWith('/')) slug = '/' + slug;
 
+    // Get current locale from HTML lang attribute or a global variable
+    const currentLocale = document.documentElement.lang || 'en'; // Fallback to 'en' if not set
 
     try {
-        const response = await fetch(`/api/seo-meta?slug=${encodeURIComponent(slug)}`);
+        const response = await fetch(`/api/seo-meta?slug=${encodeURIComponent(slug)}&locale=${encodeURIComponent(currentLocale)}`);
 
         if (response.status === 204) {
             // No specific SEO content from API (204 No Content).

@@ -18,31 +18,51 @@ class SeoMetaController extends Controller
     public function getMetaBySlug(Request $request)
     {
         $slug = $request->query('slug');
+        // Prioritize locale from request, fallback to app locale
+        $locale = $request->input('locale', app()->getLocale());
 
         if (empty($slug)) {
             return response()->json(['error' => 'Slug parameter is required.'], 400);
         }
 
-        $cacheKey = 'seo_meta_' . md5($slug);
-        $seoMetaData = Cache::remember($cacheKey, 60 * 60, function () use ($slug) { // Cache for 60 minutes
+        $cacheKey = 'seo_meta_' . md5($slug) . '_' . $locale;
+        
+        $seoData = Cache::remember($cacheKey, 60 * 60, function () use ($slug, $locale) { // Cache for 60 minutes
+            $query = SeoMeta::with('translations');
+
             // Normalize homepage slug
             if ($slug === '/') {
-                return SeoMeta::where('url_slug', '/')->first();
+                $seoMeta = $query->where('url_slug', '/')->first();
             } else {
-                // For other pages, remove leading/trailing slashes for consistency if needed
+                // For other pages, remove leading/trailing slashes for consistency
                 $normalizedSlug = trim($slug, '/');
-                return SeoMeta::where('url_slug', $normalizedSlug)
-                                    ->orWhere('url_slug', '/' . $normalizedSlug) // Check with leading slash
-                                    ->first();
+                $seoMeta = $query->where('url_slug', $normalizedSlug)
+                                  ->orWhere('url_slug', '/' . $normalizedSlug) // Check with leading slash
+                                  ->first();
             }
+
+            if (!$seoMeta) {
+                return null;
+            }
+
+            // Get translation for the current locale
+            $translation = $seoMeta->translations->firstWhere('locale', $locale);
+
+            return [
+                'url_slug'         => $seoMeta->url_slug,
+                'seo_title'        => $translation->seo_title ?? $seoMeta->seo_title,
+                'meta_description' => $translation->meta_description ?? $seoMeta->meta_description,
+                'keywords'         => $translation->keywords ?? $seoMeta->keywords,
+                'canonical_url'    => $seoMeta->canonical_url,
+                'seo_image_url'    => $seoMeta->seo_image_url,
+            ];
         });
 
-        if ($seoMetaData) {
-            return response()->json($seoMetaData);
+        if ($seoData) {
+            return response()->json($seoData);
         } else {
             // No specific SEO meta data found for this slug.
-            // Return 204 No Content, so app.js knows not to override existing tags.
-            return response()->noContent();
+            return response()->noContent(); // 204 No Content
         }
     }
 }

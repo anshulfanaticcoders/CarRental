@@ -50,7 +50,31 @@ class SeoMetaController extends Controller
             // Add any other fields like 'page_id' or 'entity_type' if these SEO tags are for specific items
         ]);
 
-        SeoMeta::create($validatedData);
+        // Separate translations from the main data
+        $translationsData = $request->input('translations', []);
+
+        $seoMeta = SeoMeta::create($validatedData);
+
+        foreach (['en', 'fr', 'nl'] as $locale) {
+            if (isset($translationsData[$locale])) {
+                $translationInput = $translationsData[$locale];
+                // Validate translation fields
+                $request->validate([
+                    "translations.{$locale}.seo_title" => 'nullable|string|max:60',
+                    "translations.{$locale}.meta_description" => 'nullable|string|max:160',
+                    "translations.{$locale}.keywords" => 'nullable|string|max:255',
+                ]);
+
+                $seoMeta->translations()->updateOrCreate(
+                    ['locale' => $locale],
+                    [
+                        'seo_title'        => $translationInput['seo_title'] ?? null,
+                        'meta_description' => $translationInput['meta_description'] ?? null,
+                        'keywords'         => $translationInput['keywords'] ?? null,
+                    ]
+                );
+            }
+        }
 
         return redirect()->route('admin.seo-meta.index')->with('success', 'SEO Meta created successfully!');
     }
@@ -77,9 +101,22 @@ class SeoMetaController extends Controller
      */
     public function edit($id)
     {
-        $seoMeta = SeoMeta::findOrFail($id);
+        $seoMeta = SeoMeta::with('translations')->findOrFail($id);
+
+        // Prepare translations for the form
+        $translations = [];
+        foreach (['en', 'fr', 'nl'] as $locale) {
+            $translation = $seoMeta->translations->firstWhere('locale', $locale);
+            $translations[$locale] = [
+                'seo_title'        => $translation->seo_title ?? null,
+                'meta_description' => $translation->meta_description ?? null,
+                'keywords'         => $translation->keywords ?? null,
+            ];
+        }
+
         return Inertia::render('AdminDashboardPages/SEO/Edit', [
             'seoMeta' => $seoMeta,
+            'translations' => $translations, // Pass prepared translations
         ]); // Or a shared Form component for Create/Edit
     }
 
@@ -104,6 +141,32 @@ class SeoMetaController extends Controller
 
         $seoMeta = SeoMeta::findOrFail($id);
         $seoMeta->update($validatedData);
+
+        // Handle translations
+        $translationsData = $request->input('translations', []);
+        foreach (['en', 'fr', 'nl'] as $locale) {
+            if (isset($translationsData[$locale])) {
+                $translationInput = $translationsData[$locale];
+                // Validate translation fields
+                 $request->validate([
+                    "translations.{$locale}.seo_title" => 'nullable|string|max:60',
+                    "translations.{$locale}.meta_description" => 'nullable|string|max:160',
+                    "translations.{$locale}.keywords" => 'nullable|string|max:255',
+                ]);
+
+                $seoMeta->translations()->updateOrCreate(
+                    ['locale' => $locale],
+                    [
+                        'seo_title'        => $translationInput['seo_title'] ?? null,
+                        'meta_description' => $translationInput['meta_description'] ?? null,
+                        'keywords'         => $translationInput['keywords'] ?? null,
+                    ]
+                );
+            } else {
+                // Optionally, delete translation if all its fields are empty or if locale is not present
+                // $seoMeta->translations()->where('locale', $locale)->delete();
+            }
+        }
 
         return redirect()->route('admin.seo-meta.index')->with('success', 'SEO Meta updated successfully!');
     }

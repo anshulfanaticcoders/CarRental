@@ -39,4 +39,36 @@ class SeoMeta extends Model
         // Add casts if needed, e.g., for keywords if you store them as JSON
         // 'keywords' => 'array',
     ];
+
+    /**
+     * Get all translations for the SEO meta.
+     */
+    public function translations()
+    {
+        return $this->hasMany(SeoMetaTranslation::class);
+    }
+
+    /**
+     * Get a specific translation.
+     *
+     * @param string $locale
+     * @return SeoMetaTranslation|null
+     */
+    public function getTranslation(string $locale)
+    {
+        return $this->translations()->where('locale', $locale)->first();
+    }
+
+    /**
+     * Boot the model.
+     */
+    protected static function boot()
+    {
+        parent::boot();
+
+        static::deleting(function ($seoMeta) {
+            // Delete all related translations when a SeoMeta record is deleted
+            $seoMeta->translations()->delete();
+        });
+    }
 }
