@@ -130,6 +130,13 @@ const formatDate = (dateStr) => {
 </script>
 
 <template>
+  <Head>
+    <title>Booking Successful</title>
+    <!-- Event snippet for Book appointment conversion page -->
+    <script>
+      gtag('event', 'conversion', {'send_to': 'AW-16944650756/gSgaCLXb-skaEIS0648_'});
+    </script>
+  </Head>
   <AuthenticatedHeaderLayout />
   <div class="full-w-container py-customVerticalSpacing max-[768px]:pt-5">
     <div class="flex gap-8 max-[768px]:flex-col">
