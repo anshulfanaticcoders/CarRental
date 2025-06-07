@@ -51,13 +51,29 @@ class ContactUsPageController extends Controller
         $contactPage = ContactUsPage::first() ?? new ContactUsPage();
         $translations = $contactPage->translations->keyBy('locale');
         $locale = app()->getLocale();
-        $seoMeta = SeoMeta::where('url_slug', 'contact-us')->first();
+        $allLocales = ['en', 'fr', 'nl']; // Or from config
+        
+        $seoMeta = SeoMeta::with('translations')->where('url_slug', 'contact-us')->first();
+
+        $seoTranslations = [];
+        if ($seoMeta) {
+            foreach ($allLocales as $l) {
+                $translation = $seoMeta->translations->firstWhere('locale', $l);
+                $seoTranslations[$l] = [
+                    'seo_title'        => $translation->seo_title ?? null,
+                    'meta_description' => $translation->meta_description ?? null,
+                    'keywords'         => $translation->keywords ?? null,
+                ];
+            }
+        }
         
         return Inertia::render('AdminDashboardPages/ContactUs/Edit', [
             'contactPage' => $contactPage,
             'translations' => $translations,
-            'currentLocale' => $locale, // Renamed to avoid conflict with form's locale
+            'available_locales' => $allLocales,
+            'currentLocale' => $locale,
             'seoMeta' => $seoMeta,
+            'seoTranslations' => $seoTranslations,
         ]);
     }
 
@@ -157,10 +173,33 @@ class ContactUsPageController extends Controller
         
         if (array_filter($seoData) || SeoMeta::where('url_slug', $fixedSlug)->exists()) {
             // Update if SEO data is provided OR if an SEO record already exists (to allow clearing fields)
-            SeoMeta::updateOrCreate(
+            $seoMeta = SeoMeta::updateOrCreate(
                 ['url_slug' => $fixedSlug],
                 $seoData
             );
+
+            // Handle SEO translations
+            $seoTranslationsData = $request->input('seo_translations', []);
+            $available_locales = ['en', 'fr', 'nl']; // Or from config
+            foreach ($available_locales as $locale) {
+                if (isset($seoTranslationsData[$locale])) {
+                    $translationInput = $seoTranslationsData[$locale];
+                    $request->validate([
+                        "seo_translations.{$locale}.seo_title" => 'nullable|string|max:60',
+                        "seo_translations.{$locale}.meta_description" => 'nullable|string|max:160',
+                        "seo_translations.{$locale}.keywords" => 'nullable|string|max:255',
+                    ]);
+
+                    $seoMeta->translations()->updateOrCreate(
+                        ['locale' => $locale],
+                        [
+                            'seo_title'        => $translationInput['seo_title'] ?? null,
+                            'meta_description' => $translationInput['meta_description'] ?? null,
+                            'keywords'         => $translationInput['keywords'] ?? null,
+                        ]
+                    );
+                }
+            }
         }
 
         return redirect()->route('admin.contact-us.index')

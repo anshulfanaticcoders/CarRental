@@ -112,10 +112,33 @@ class PageController extends Controller
             if (empty($seoData['seo_title']) && !empty($title)) { // Default seo_title from page title
                 $seoData['seo_title'] = Str::limit($title, 60);
             }
-            SeoMeta::updateOrCreate(
+            $seoMeta = SeoMeta::updateOrCreate(
                 ['url_slug' => $seoUrlSlug], 
                 array_filter($seoData, fn($value) => !is_null($value))
             );
+
+            // Handle SEO translations
+            $seoTranslationsData = $request->input('seo_translations', []);
+            $available_locales = ['en', 'fr', 'nl']; // Or from config
+            foreach ($available_locales as $l) {
+                if (isset($seoTranslationsData[$l])) {
+                    $translationInput = $seoTranslationsData[$l];
+                    $request->validate([
+                        "seo_translations.{$l}.seo_title" => 'nullable|string|max:60',
+                        "seo_translations.{$l}.meta_description" => 'nullable|string|max:160',
+                        "seo_translations.{$l}.keywords" => 'nullable|string|max:255',
+                    ]);
+
+                    $seoMeta->translations()->updateOrCreate(
+                        ['locale' => $l],
+                        [
+                            'seo_title'        => $translationInput['seo_title'] ?? null,
+                            'meta_description' => $translationInput['meta_description'] ?? null,
+                            'keywords'         => $translationInput['keywords'] ?? null,
+                        ]
+                    );
+                }
+            }
         }
 
 
@@ -140,29 +163,37 @@ class PageController extends Controller
     {
         $translations = $page->translations->keyBy('locale');
         $locale = app()->getLocale();
+        $allLocales = ['en', 'fr', 'nl']; // Or from config
         $seoUrlSlug = 'page/' . $page->slug; // SEO url_slug IS prefixed
-        $seoMeta = SeoMeta::where('url_slug', $seoUrlSlug)->first();
+        
+        $seoMeta = SeoMeta::with('translations') // Eager load translations
+                            ->where('url_slug', $seoUrlSlug)
+                            ->orWhere('url_slug', $page->slug) // Check for old non-prefixed too
+                            ->orderByRaw("CASE WHEN url_slug = ? THEN 0 ELSE 1 END", [$seoUrlSlug]) // Prioritize prefixed
+                            ->first();
 
-        // If not found with prefix, check without prefix (for migration of old data)
-        if (!$seoMeta) {
-            $seoMetaOld = SeoMeta::where('url_slug', $page->slug)->first();
-            if ($seoMetaOld) {
-                // Found an old one, we'll update its slug to be prefixed in the update method
-                // For now, pass it so the form can be populated.
-                // Or, we could update it here and then re-fetch, but update method is better place.
-                $seoMeta = $seoMetaOld; 
+        $seoTranslations = [];
+        if ($seoMeta) {
+            foreach ($allLocales as $l) {
+                $translation = $seoMeta->translations->firstWhere('locale', $l);
+                $seoTranslations[$l] = [
+                    'seo_title'        => $translation->seo_title ?? null,
+                    'meta_description' => $translation->meta_description ?? null,
+                    'keywords'         => $translation->keywords ?? null,
+                ];
             }
         }
 
-
         return Inertia::render('AdminDashboardPages/Pages/Edit', [
-            'page' => [ // Page data uses non-prefixed slug
+            'page' => [
                 'id' => $page->id,
                 'slug' => $page->slug,
                 'translations' => $translations,
                 'locale' => $locale, 
             ],
-            'seoMeta' => $seoMeta, // seoMeta (if found) might have prefixed or non-prefixed slug from DB
+            'available_locales' => $allLocales,
+            'seoMeta' => $seoMeta,
+            'seoTranslations' => $seoTranslations,
         ]);
     }
 
@@ -219,10 +250,33 @@ class PageController extends Controller
                 $seoData['seo_title'] = Str::limit($primaryTitleForSeo, 60);
             }
             
-            SeoMeta::updateOrCreate(
+            $seoMeta = SeoMeta::updateOrCreate(
                 ['url_slug' => $seoUrlSlug], // Use the prefixed slug for SEO
                 array_filter($seoData, fn($value) => !is_null($value)) 
             );
+
+            // Handle SEO translations
+            $seoTranslationsData = $request->input('seo_translations', []);
+            $available_locales = ['en', 'fr', 'nl']; // Or from config
+            foreach ($available_locales as $l) {
+                if (isset($seoTranslationsData[$l])) {
+                    $translationInput = $seoTranslationsData[$l];
+                    $request->validate([
+                        "seo_translations.{$l}.seo_title" => 'nullable|string|max:60',
+                        "seo_translations.{$l}.meta_description" => 'nullable|string|max:160',
+                        "seo_translations.{$l}.keywords" => 'nullable|string|max:255',
+                    ]);
+
+                    $seoMeta->translations()->updateOrCreate(
+                        ['locale' => $l],
+                        [
+                            'seo_title'        => $translationInput['seo_title'] ?? null,
+                            'meta_description' => $translationInput['meta_description'] ?? null,
+                            'keywords'         => $translationInput['keywords'] ?? null,
+                        ]
+                    );
+                }
+            }
         }
 
 

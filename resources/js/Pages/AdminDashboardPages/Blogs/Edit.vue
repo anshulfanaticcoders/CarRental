@@ -88,45 +88,48 @@
                         <!-- SEO Meta Fields -->
                         <div class="col-span-1 mt-6 pt-6 border-t border-gray-300">
                             <h3 class="text-lg font-medium leading-6 text-gray-900 mb-4">SEO Meta Information</h3>
-                            <p class="text-sm text-gray-600 mb-1">Blog Slug (<code>{{ form.slug }}</code>) is used as the 'URL Slug' for SEO meta.</p>
-                            <p class="text-xs text-gray-500 mb-4">SEO Title below will default to the 'EN' blog title if left empty.</p>
-
-                            <div class="grid grid-cols-1 gap-6">
-                                <!-- SEO Title -->
+                            <p class="text-sm text-gray-600 mb-4">Blog Slug (<code>{{ form.slug }}</code>) is used as the 'URL Slug' for SEO meta (e.g., 'blog/{{ form.slug }}').</p>
+                            
+                            <!-- Non-translatable SEO fields -->
+                            <div class="grid grid-cols-1 gap-6 mb-6">
                                 <div class="space-y-2">
-                                    <label for="seo_title" class="text-sm font-medium">SEO Title (Max 60 chars)</label>
+                                    <label for="seo_title" class="text-sm font-medium">Default SEO Title (Required Fallback)</label>
                                     <Input id="seo_title" v-model="form.seo_title" type="text" class="w-full" maxlength="60" />
                                     <p v-if="form.errors.seo_title" class="text-red-500 text-sm">{{ form.errors.seo_title }}</p>
                                 </div>
-
-                                <!-- Meta Description -->
-                                <div class="space-y-2">
-                                    <label for="meta_description" class="text-sm font-medium">Meta Description (Max 160 chars)</label>
-                                    <textarea id="meta_description" v-model="form.meta_description" maxlength="160" rows="3" class="w-full mt-1 p-2 border-2 shadow-sm sm:text-sm border-gray-300 rounded-md"></textarea>
-                                    <p v-if="form.errors.meta_description" class="text-red-500 text-sm">{{ form.errors.meta_description }}</p>
-                                </div>
-
-                                <!-- Keywords -->
-                                <div class="space-y-2">
-                                    <label for="keywords" class="text-sm font-medium">Keywords (comma-separated)</label>
-                                    <Input id="keywords" v-model="form.keywords" type="text" class="w-full" placeholder="keyword1, keyword2, keyword3..." />
-                                    <p v-if="form.errors.keywords" class="text-red-500 text-sm">{{ form.errors.keywords }}</p>
-                                </div>
-
-                                <!-- Canonical URL -->
                                 <div class="space-y-2">
                                     <label for="canonical_url" class="text-sm font-medium">Canonical URL</label>
                                     <Input id="canonical_url" v-model="form.canonical_url" type="url" class="w-full" placeholder="https://yourdomain.com/preferred-url" />
                                     <p v-if="form.errors.canonical_url" class="text-red-500 text-sm">{{ form.errors.canonical_url }}</p>
                                 </div>
-
-                                <!-- SEO Image URL -->
                                 <div class="space-y-2">
                                     <label for="seo_image_url" class="text-sm font-medium">SEO Image URL (Open Graph Image)</label>
                                     <Input id="seo_image_url" v-model="form.seo_image_url" type="url" class="w-full" placeholder="https://yourdomain.com/path/to/image.jpg" />
                                     <p v-if="form.errors.seo_image_url" class="text-red-500 text-sm">{{ form.errors.seo_image_url }}</p>
                                 </div>
                             </div>
+
+                            <!-- Translatable SEO Fields - Now controlled by the main `activeLocale` tab -->
+                            <template v-for="locale in available_locales" :key="`seo-fields-${locale}`">
+                                <div v-if="activeLocale === locale" class="grid grid-cols-1 gap-6 mt-4 pt-4 border-t">
+                                    <h4 class="text-md font-semibold text-gray-800">Localized SEO Fields ({{ locale.toUpperCase() }})</h4>
+                                    <div class="space-y-2">
+                                        <label :for="`seo_title_${locale}`" class="text-sm font-medium">SEO Title</label>
+                                        <Input :id="`seo_title_${locale}`" v-model="form.seo_translations[locale].seo_title" type="text" class="w-full" maxlength="60" />
+                                        <p v-if="form.errors[`seo_translations.${locale}.seo_title`]" class="text-red-500 text-sm">{{ form.errors[`seo_translations.${locale}.seo_title`] }}</p>
+                                    </div>
+                                    <div class="space-y-2">
+                                        <label :for="`meta_description_${locale}`" class="text-sm font-medium">Meta Description</label>
+                                        <textarea :id="`meta_description_${locale}`" v-model="form.seo_translations[locale].meta_description" maxlength="160" rows="3" class="w-full mt-1 p-2 border-2 shadow-sm sm:text-sm border-gray-300 rounded-md"></textarea>
+                                        <p v-if="form.errors[`seo_translations.${locale}.meta_description`]" class="text-red-500 text-sm">{{ form.errors[`seo_translations.${locale}.meta_description`] }}</p>
+                                    </div>
+                                    <div class="space-y-2">
+                                        <label :for="`keywords_${locale}`" class="text-sm font-medium">Keywords</label>
+                                        <Input :id="`keywords_${locale}`" v-model="form.seo_translations[locale].keywords" type="text" class="w-full" placeholder="keyword1, keyword2..." />
+                                        <p v-if="form.errors[`seo_translations.${locale}.keywords`]" class="text-red-500 text-sm">{{ form.errors[`seo_translations.${locale}.keywords`] }}</p>
+                                    </div>
+                                </div>
+                            </template>
                         </div>
 
                         <!-- Submit Button -->
@@ -159,21 +162,37 @@ const props = defineProps({
     available_locales: Array,
     current_locale: String,
     errors: Object,
-    seoMeta: { // Added seoMeta prop
+    seoMeta: {
         type: Object,
         default: null,
+    },
+    seoTranslations: { // Added seoTranslations prop
+        type: Object,
+        default: () => ({ en: {}, fr: {}, nl: {} }),
     },
 });
 
 const activeLocale = ref(props.current_locale || props.available_locales[0]);
+// const activeSeoLocaleTab = ref('en'); // No longer needed, using single activeLocale
 
-// Initialize form.translations directly from props.blog.translations
+// Initialize form.translations for blog content
 const initialFormTranslations = {};
 props.available_locales.forEach(locale => {
     const existing = props.blog.translations[locale];
     initialFormTranslations[locale] = {
         title: existing ? existing.title : '',
         content: existing ? existing.content : '',
+    };
+});
+
+// Initialize seo_translations for SEO content
+const initialSeoTranslations = {};
+props.available_locales.forEach(locale => {
+    const existing = props.seoTranslations[locale];
+    initialSeoTranslations[locale] = {
+        seo_title: existing?.seo_title || '',
+        meta_description: existing?.meta_description || '',
+        keywords: existing?.keywords || '',
     };
 });
 
@@ -184,15 +203,19 @@ const form = useForm({
     image: null,
     is_published: props.blog.is_published,
     // SEO Fields
-    seo_title: props.seoMeta?.seo_title || (initialFormTranslations.en?.title || ''), // Default to EN title
+    // Main fields on SeoMeta model
+    seo_title: props.seoMeta?.seo_title || (initialFormTranslations.en?.title || ''),
     meta_description: props.seoMeta?.meta_description || '',
     keywords: props.seoMeta?.keywords || '',
     canonical_url: props.seoMeta?.canonical_url || '',
     seo_image_url: props.seoMeta?.seo_image_url || '',
+    // Translated SEO fields
+    seo_translations: initialSeoTranslations,
 });
 
 const setActiveLocale = (locale) => {
     activeLocale.value = locale;
+    // activeSeoLocaleTab.value = locale; // No longer needed
 };
 
 // No need for a watcher if activeLocale only controls the view

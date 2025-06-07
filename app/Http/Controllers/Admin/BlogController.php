@@ -119,10 +119,33 @@ class BlogController extends Controller
         // Only save if there's actual data, or if we want to ensure a record exists even if empty
         // For blogs, it's good to at least have the title.
         $seoUrlSlug = 'blog/' . $blog->slug; // SEO url_slug IS prefixed
-        SeoMeta::updateOrCreate(
+        $seoMeta = SeoMeta::updateOrCreate(
             ['url_slug' => $seoUrlSlug],
             array_filter($seoMetaToSave, fn($value) => !is_null($value) && $value !== '') 
         );
+
+        // Handle SEO translations
+        $seoTranslationsData = $request->input('seo_translations', []);
+        foreach ($available_locales as $locale) {
+            if (isset($seoTranslationsData[$locale])) {
+                $translationInput = $seoTranslationsData[$locale];
+                // Basic validation for translation fields
+                $request->validate([
+                    "seo_translations.{$locale}.seo_title" => 'nullable|string|max:60',
+                    "seo_translations.{$locale}.meta_description" => 'nullable|string|max:160',
+                    "seo_translations.{$locale}.keywords" => 'nullable|string|max:255',
+                ]);
+
+                $seoMeta->translations()->updateOrCreate(
+                    ['locale' => $locale],
+                    [
+                        'seo_title'        => $translationInput['seo_title'] ?? null,
+                        'meta_description' => $translationInput['meta_description'] ?? null,
+                        'keywords'         => $translationInput['keywords'] ?? null,
+                    ]
+                );
+            }
+        }
 
 
         return redirect()->route('admin.blogs.index')->with('success', 'Blog created successfully.');
@@ -149,14 +172,30 @@ class BlogController extends Controller
             ];
         }
         
+        $seoMeta = SeoMeta::with('translations') // Eager load translations
+                            ->where('url_slug', 'blog/' . $blog->slug)
+                            ->orWhere('url_slug', $blog->slug)
+                            ->orderByRaw("CASE WHEN url_slug = ? THEN 0 ELSE 1 END", ['blog/' . $blog->slug])
+                            ->first();
+
+        $seoTranslations = [];
+        if ($seoMeta) {
+            foreach ($allLocales as $locale) {
+                $translation = $seoMeta->translations->firstWhere('locale', $locale);
+                $seoTranslations[$locale] = [
+                    'seo_title'        => $translation->seo_title ?? null,
+                    'meta_description' => $translation->meta_description ?? null,
+                    'keywords'         => $translation->keywords ?? null,
+                ];
+            }
+        }
+
         return Inertia::render('AdminDashboardPages/Blogs/Edit', [
             'blog' => $blogData,
             'available_locales' => $allLocales,
             'current_locale' => App::getLocale(), 
-            'seoMeta' => SeoMeta::where('url_slug', 'blog/' . $blog->slug)
-                                ->orWhere('url_slug', $blog->slug) // Check for old non-prefixed too
-                                ->orderByRaw("CASE WHEN url_slug = ? THEN 0 ELSE 1 END", ['blog/' . $blog->slug]) // Prioritize prefixed
-                                ->first(),
+            'seoMeta' => $seoMeta,
+            'seoTranslations' => $seoTranslations, // Pass SEO translations to the component
         ]);
     }
 
@@ -247,10 +286,33 @@ class BlogController extends Controller
         }
 
         if (array_filter($seoMetaToSave) || !empty($seoMetaToSave['seo_title']) || SeoMeta::where('url_slug', $newSeoUrlSlug)->exists()) {
-            SeoMeta::updateOrCreate(
+            $seoMeta = SeoMeta::updateOrCreate(
                 ['url_slug' => $newSeoUrlSlug], 
                 array_filter($seoMetaToSave, fn($value) => !is_null($value) && $value !== '')
             );
+
+            // Handle SEO translations
+            $seoTranslationsData = $request->input('seo_translations', []);
+            foreach ($available_locales as $locale) {
+                if (isset($seoTranslationsData[$locale])) {
+                    $translationInput = $seoTranslationsData[$locale];
+                    // Basic validation for translation fields
+                    $request->validate([
+                        "seo_translations.{$locale}.seo_title" => 'nullable|string|max:60',
+                        "seo_translations.{$locale}.meta_description" => 'nullable|string|max:160',
+                        "seo_translations.{$locale}.keywords" => 'nullable|string|max:255',
+                    ]);
+
+                    $seoMeta->translations()->updateOrCreate(
+                        ['locale' => $locale],
+                        [
+                            'seo_title'        => $translationInput['seo_title'] ?? null,
+                            'meta_description' => $translationInput['meta_description'] ?? null,
+                            'keywords'         => $translationInput['keywords'] ?? null,
+                        ]
+                    );
+                }
+            }
         }
 
 
