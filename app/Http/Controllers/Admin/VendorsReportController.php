@@ -12,160 +12,187 @@ use Inertia\Inertia;
 
 class VendorsReportController extends Controller
 {
-    public function index()
+    public function index(Request $request)
     {
+        $request->validate([
+            'start_date' => 'nullable|date',
+            'end_date' => 'nullable|date|after_or_equal:start_date',
+            'period' => 'nullable|string|in:week,month,year',
+        ]);
+
+        $period = $request->input('period', 'year');
+        $startDate = $request->input('start_date') ? Carbon::parse($request->input('start_date')) : null;
+        $endDate = $request->input('end_date') ? Carbon::parse($request->input('end_date')) : null;
+
+        if (!$startDate || !$endDate) {
+            switch ($period) {
+                case 'week':
+                    $startDate = now()->startOfWeek();
+                    $endDate = now()->endOfWeek();
+                    break;
+                case 'month':
+                    $startDate = now()->startOfMonth();
+                    $endDate = now()->endOfMonth();
+                    break;
+                case 'year':
+                default:
+                    $startDate = now()->startOfYear();
+                    $endDate = now()->endOfYear();
+                    break;
+            }
+        }
+
+        $dateRange = ['start' => $startDate->format('Y-m-d'), 'end' => $endDate->format('Y-m-d')];
+
         // Basic metrics calculations
-        $totalVendors = User::where('role', 'vendor')->count();
-        $previousMonthVendors = User::where('role', 'vendor')
-            ->whereBetween('created_at', [Carbon::now()->subMonth()->startOfMonth(), Carbon::now()->subMonth()->endOfMonth()])
+        $totalVendors = User::where('role', 'vendor')->whereBetween('created_at', [$startDate, $endDate])->count();
+        $previousStartDate = $startDate->copy()->sub(1, $period);
+        $previousEndDate = $endDate->copy()->sub(1, $period);
+        $previousPeriodVendors = User::where('role', 'vendor')
+            ->whereBetween('created_at', [$previousStartDate, $previousEndDate])
             ->count();
-        $totalVendorsGrowth = $this->calculateGrowthPercentage($totalVendors, $previousMonthVendors);
+        $totalVendorsGrowth = $this->calculateGrowthPercentage($totalVendors, $previousPeriodVendors);
 
         // Active vendors metrics
         $activeVendors = User::where('role', 'vendor')
-            ->where('last_login_at', '>=', Carbon::now()->subDays(30))
+            ->whereBetween('last_login_at', [$startDate, $endDate])
             ->count();
         $previousMonthActiveVendors = User::where('role', 'vendor')
-            ->whereBetween('last_login_at', [Carbon::now()->subMonth()->startOfMonth(), Carbon::now()->subMonth()->endOfMonth()])
+            ->whereBetween('last_login_at', [$previousStartDate, $previousEndDate])
             ->count();
         $activeVendorsGrowth = $this->calculateGrowthPercentage($activeVendors, $previousMonthActiveVendors);
 
         // New vendors metrics
-        $currentWeekVendors = User::where('role', 'vendor')
-            ->whereBetween('created_at', [Carbon::now()->startOfWeek(), Carbon::now()->endOfWeek()])
+        $newVendors = User::where('role', 'vendor')
+            ->whereBetween('created_at', [$startDate, $endDate])
             ->count();
-        $previousWeekVendors = User::where('role', 'vendor')
-            ->whereBetween('created_at', [Carbon::now()->subWeek()->startOfWeek(), Carbon::now()->subWeek()->endOfWeek()])
+        $previousPeriodNewVendors = User::where('role', 'vendor')
+            ->whereBetween('created_at', [$previousStartDate, $previousEndDate])
             ->count();
-        $newVendorsGrowthPercentage = $this->calculateGrowthPercentage($currentWeekVendors, $previousWeekVendors);
+        $newVendorsGrowthPercentage = $this->calculateGrowthPercentage($newVendors, $previousPeriodNewVendors);
 
-        // Vehicle status metrics
-        $vehicleStatusData = $this->getVehicleStatusData();
-        
-        // Monthly data for charts
-        $monthlyData = $this->getMonthlyData();
+        // Get data for charts
+        $monthlyData = $this->getMonthlyData($startDate, $endDate);
+        $weeklyData = $this->getWeeklyData($startDate, $endDate);
+        $dailyData = $this->getDailyData($startDate, $endDate);
         
         // Recent activities
-        $recentActivities = ActivityLog::with('user')
+        $recentActivities = ActivityLog::with('user:id,first_name,last_name,email')
             ->whereHas('user', function ($query) { 
                 $query->where('role', 'vendor');
             })
+            ->whereBetween('created_at', [$startDate, $endDate])
             ->orderBy('created_at', 'desc')
             ->take(5)
-            ->get();
+            ->get()
+            ->map(function ($activity) {
+                return [
+                    'id' => $activity->id,
+                    'user' => $activity->user,
+                    'activity_description' => $activity->activity_description,
+                    'created_at_formatted' => $activity->created_at->diffForHumans(),
+                ];
+            });
+
+        $vendorReportTableData = $this->getVendorReportTableData($request, $startDate, $endDate);
 
         return Inertia::render('AdminDashboardPages/VendorsReports/Index', [
             'totalVendors' => $totalVendors,
             'totalVendorsGrowth' => $totalVendorsGrowth,
             'activeVendors' => $activeVendors,
             'activeVendorsGrowth' => $activeVendorsGrowth,
-            'newVendors' => $currentWeekVendors,
+            'newVendors' => $newVendors,
             'newVendorsGrowth' => $newVendorsGrowthPercentage,
             'monthlyData' => $monthlyData,
+            'weeklyData' => $weeklyData,
+            'dailyData' => $dailyData,
             'recentActivities' => $recentActivities,
-            'vehicleStatusData' => $vehicleStatusData
+            'vendorReportTableData' => $vendorReportTableData,
+            'dateRange' => $dateRange,
         ]);
     }
 
-    private function getVehicleStatusData()
+    private function getMonthlyData(Carbon $startDate, Carbon $endDate)
     {
-        $totalVehicles = Vehicle::count();
-        
-        // Get vehicles by status
-        $activeVehicles = Vehicle::where('status', 'available')
-            ->with(['category', 'user', 'images'])
-            ->get();
-            
-        $rentedVehicles = Vehicle::where('status', 'rented')
-            ->with(['category', 'user', 'images'])
-            ->get();
-            
-        $maintenanceVehicles = Vehicle::where('status', 'maintenance')
-            ->with(['category', 'user', 'images'])
-            ->get();
+        $data = [];
+        $currentDate = $startDate->copy();
 
-        // Calculate percentages
-        $activePercentage = $totalVehicles > 0 ? ($activeVehicles->count() / $totalVehicles) * 100 : 0;
-        $rentedPercentage = $totalVehicles > 0 ? ($rentedVehicles->count() / $totalVehicles) * 100 : 0;
-        $maintenancePercentage = $totalVehicles > 0 ? ($maintenanceVehicles->count() / $totalVehicles) * 100 : 0;
+        while ($currentDate <= $endDate) {
+            $monthEndDate = $currentDate->copy()->endOfMonth();
+            $totalUsers = User::where('role', 'vendor')->where('created_at', '<=', $monthEndDate)->count();
+            $activeUsers = User::where('role', 'vendor')->whereBetween('last_login_at', [$currentDate->copy()->startOfMonth(), $monthEndDate])->count();
+            $newUsers = User::where('role', 'vendor')->whereBetween('created_at', [$currentDate->copy()->startOfMonth(), $monthEndDate])->count();
 
-        // Get monthly vehicle status data
-        $monthlyVehicleData = $this->getMonthlyVehicleData();
-
-        return [
-            'total' => $totalVehicles,
-            'active' => [
-                'count' => $activeVehicles->count(),
-                'percentage' => round($activePercentage, 1),
-                'vehicles' => $activeVehicles
-            ],
-            'rented' => [
-                'count' => $rentedVehicles->count(),
-                'percentage' => round($rentedPercentage, 1),
-                'vehicles' => $rentedVehicles
-            ],
-            'maintenance' => [
-                'count' => $maintenanceVehicles->count(),
-                'percentage' => round($maintenancePercentage, 1),
-                'vehicles' => $maintenanceVehicles
-            ],
-            'monthlyData' => $monthlyVehicleData
-        ];
-    }
-
-    private function getMonthlyVehicleData()
-    {
-        return collect(range(0, 11))->map(function($month) {
-            $date = Carbon::now()->subMonths($month);
-            
-            $activeCount = Vehicle::where('status', 'available')
-                ->whereYear('created_at', $date->year)
-                ->whereMonth('created_at', $date->month)
-                ->count();
-                
-            $rentedCount = Vehicle::where('status', 'rented')
-                ->whereYear('created_at', $date->year)
-                ->whereMonth('created_at', $date->month)
-                ->count();
-                
-            $maintenanceCount = Vehicle::where('status', 'maintenance')
-                ->whereYear('created_at', $date->year)
-                ->whereMonth('created_at', $date->month)
-                ->count();
-
-            return [
-                'name' => $date->format('M Y'),
-                'active' => $activeCount,
-                'rented' => $rentedCount,
-                'maintenance' => $maintenanceCount
-            ];
-        })->reverse()->values();
-    }
-
-    private function getMonthlyData()
-    {
-        $months = collect(range(0, 11))->map(function($month) {
-            $date = Carbon::now()->subMonths($month);
-            
-            $totalUsers = User::where('role', 'vendor')
-                ->whereYear('created_at', $date->year)
-                ->whereMonth('created_at', $date->month)
-                ->count();
-                
-            $activeUsers = User::where('role', 'vendor')
-                ->whereYear('last_login_at', $date->year)
-                ->whereMonth('last_login_at', $date->month)
-                ->whereDay('last_login_at', $date->day)
-                ->count();
-
-            return [
-                'name' => $date->format('M Y'),
+            $data[] = [
+                'name' => $currentDate->format('M Y'),
                 'total' => $totalUsers,
-                'active' => $activeUsers
+                'active' => $activeUsers,
+                'new' => $newUsers,
             ];
-        })->reverse()->values();
+            $currentDate->addMonth();
+        }
+        return $data;
+    }
+    
+    private function getWeeklyData(Carbon $startDate, Carbon $endDate)
+    {
+        $data = [];
+        $currentDate = $startDate->copy();
 
-        return $months;
+        while ($currentDate <= $endDate) {
+            $weekEndDate = $currentDate->copy()->endOfWeek();
+            $totalUsers = User::where('role', 'vendor')->where('created_at', '<=', $weekEndDate)->count();
+            $activeUsers = User::where('role', 'vendor')->whereBetween('last_login_at', [$currentDate->copy()->startOfWeek(), $weekEndDate])->count();
+            $newUsers = User::where('role', 'vendor')->whereBetween('created_at', [$currentDate->copy()->startOfWeek(), $weekEndDate])->count();
+
+            $data[] = [
+                'name' => 'Week ' . $currentDate->weekOfYear,
+                'total' => $totalUsers,
+                'active' => $activeUsers,
+                'new' => $newUsers,
+            ];
+            $currentDate->addWeek();
+        }
+        return $data;
+    }
+    
+    private function getDailyData(Carbon $startDate, Carbon $endDate)
+    {
+        $data = [];
+        $currentDate = $startDate->copy();
+
+        while ($currentDate <= $endDate) {
+            $totalUsers = User::where('role', 'vendor')->whereDate('created_at', '<=', $currentDate)->count();
+            $activeUsers = User::where('role', 'vendor')->whereDate('last_login_at', $currentDate)->count();
+            $newUsers = User::where('role', 'vendor')->whereDate('created_at', $currentDate)->count();
+
+            $data[] = [
+                'name' => $currentDate->format('M d, Y'),
+                'total' => $totalUsers,
+                'active' => $activeUsers,
+                'new' => $newUsers,
+            ];
+            $currentDate->addDay();
+        }
+        return $data;
+    }
+
+    private function getVendorReportTableData(Request $request, Carbon $startDate, Carbon $endDate)
+    {
+        return User::where('role', 'vendor')
+            ->whereBetween('created_at', [$startDate, $endDate])
+            ->with('vendorProfile')
+            ->paginate(10, ['*'], 'page')
+            ->through(function ($user) {
+                return [
+                    'id' => $user->id,
+                    'name' => trim($user->first_name . ' ' . $user->last_name),
+                    'email' => $user->email,
+                    'company_name' => optional($user->vendorProfile)->company_name ?? 'N/A',
+                    'status' => $user->status,
+                    'joined_at' => $user->created_at->format('Y-m-d H:i:s'),
+                ];
+            });
     }
 
     private function calculateGrowthPercentage($current, $previous)

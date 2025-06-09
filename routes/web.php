@@ -190,9 +190,9 @@ Route::middleware(['auth', 'role:admin'])->group(function () {
         ->name('admin.payments.index');
 
     // User reports
-    Route::get('/users-report', [UsersReportController::class, 'index']);
-    Route::get('/vendors-report', [VendorsReportController::class, 'index']);
-    Route::get('/business-report', [BusinessReportsController::class, 'index']);
+    Route::get('/users-report', [UsersReportController::class, 'index'])->name('admin.users.reports');
+    Route::get('/vendors-report', [VendorsReportController::class, 'index'])->name('admin.vendors.reports');
+    Route::get('/business-report', [BusinessReportsController::class, 'index'])->name('admin.business.reports');
 
     Route::get('/admin/reports/users/download', [UserReportDownloadController::class, 'downloadXML']);
 
