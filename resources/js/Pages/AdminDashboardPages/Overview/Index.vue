@@ -46,9 +46,9 @@
                                     </Button>
                                 </DropdownMenuTrigger>
                                 <DropdownMenuContent>
-                                    <DropdownMenuItem @click="exportRevenueData('pdf')">PDF</DropdownMenuItem>
-                                    <DropdownMenuItem @click="exportRevenueData('excel')">Excel</DropdownMenuItem>
-                                    <DropdownMenuItem @click="exportRevenueData('xml')">XML</DropdownMenuItem>
+                                    <DropdownMenuItem @click="exportData('pdf')">PDF</DropdownMenuItem>
+                                    <DropdownMenuItem @click="exportData('excel')">Excel</DropdownMenuItem>
+                                    <DropdownMenuItem @click="exportData('xml')">XML</DropdownMenuItem>
                                 </DropdownMenuContent>
                             </DropdownMenu>
                         </div>
