@@ -13,71 +13,142 @@ use Carbon\Carbon;
 
 class DashboardController extends Controller
 {
-    public function index()
+    public function index(Request $request)
     {
-        // Current and previous month
-        $currentYear = Carbon::now()->year;
-        $currentMonth = Carbon::now()->month;
-        $previousYear = Carbon::now()->subMonth()->year;
-        $previousMonth = Carbon::now()->subMonth()->month;
+        $request->validate([
+            'start_date' => 'nullable|date',
+            'end_date' => 'nullable|date|after_or_equal:start_date',
+            'period' => 'nullable|string|in:week,month,year',
+        ]);
+
+        $period = $request->input('period', 'year');
+        $startDate = $request->input('start_date') ? Carbon::parse($request->input('start_date')) : null;
+        $endDate = $request->input('end_date') ? Carbon::parse($request->input('end_date')) : null;
+
+        if (!$startDate || !$endDate) {
+            switch ($period) {
+                case 'week':
+                    $startDate = now()->startOfWeek();
+                    $endDate = now()->endOfWeek();
+                    break;
+                case 'month':
+                    $startDate = now()->startOfMonth();
+                    $endDate = now()->endOfMonth();
+                    break;
+                case 'year':
+                default:
+                    $startDate = now()->startOfYear();
+                    $endDate = now()->endOfYear();
+                    break;
+            }
+        }
+
+        $dateRange = ['start' => $startDate->format('Y-m-d'), 'end' => $endDate->format('Y-m-d')];
 
         // Get counts for Customers
-        $currentMonthCustomers = User::where('role', 'customer')->whereYear('created_at', $currentYear)->whereMonth('created_at', $currentMonth)->count();
-        $previousMonthCustomers = User::where('role', 'customer')->whereYear('created_at', $previousYear)->whereMonth('created_at', $previousMonth)->count();
-        $customerGrowthPercentage = $this->calculateGrowthPercentage($currentMonthCustomers, $previousMonthCustomers);
+        $totalCustomers = User::where('role', 'customer')->count();
+        $activeCustomers = User::where('role', 'customer')->where('status', 'active')->count();
+        $inactiveCustomers = User::where('role', 'customer')->where('status', 'inactive')->count();
+        $suspendedCustomers = User::where('role', 'customer')->where('status', 'suspended')->count();
+        $userStatusOverview = $this->getUserStatusOverview();
+        $customerGrowthPercentage = $this->calculateGrowthPercentage(
+            User::where('role', 'customer')->whereBetween('created_at', [$startDate, $endDate])->count(),
+            User::where('role', 'customer')->where('created_at', '<', $startDate)->count()
+        );
 
         // Get counts for Vendors
-        $currentMonthVendors = User::where('role', 'vendor')->whereYear('created_at', $currentYear)->whereMonth('created_at', $currentMonth)->count();
-        $previousMonthVendors = User::where('role', 'vendor')->whereYear('created_at', $previousYear)->whereMonth('created_at', $previousMonth)->count();
-        $vendorGrowthPercentage = $this->calculateGrowthPercentage($currentMonthVendors, $previousMonthVendors);
+        $totalVendors = User::where('role', 'vendor')->count();
+        $activeVendors = User::where('role', 'vendor')->where('status', 'active')->count();
+        $inactiveVendors = User::where('role', 'vendor')->where('status', 'inactive')->count();
+        $suspendedVendors = User::where('role', 'vendor')->where('status', 'suspended')->count();
+        $vendorStatusOverview = $this->getVendorStatusOverview();
+        $vendorGrowthPercentage = $this->calculateGrowthPercentage(
+            User::where('role', 'vendor')->whereBetween('created_at', [$startDate, $endDate])->count(),
+            User::where('role', 'vendor')->where('created_at', '<', $startDate)->count()
+        );
 
         // Get counts for Vehicles
-        $currentMonthVehicles = Vehicle::whereYear('created_at', $currentYear)->whereMonth('created_at', $currentMonth)->count();
-        $previousMonthVehicles = Vehicle::whereYear('created_at', $previousYear)->whereMonth('created_at', $previousMonth)->count();
-        $vehicleGrowthPercentage = $this->calculateGrowthPercentage($currentMonthVehicles, $previousMonthVehicles);
+        $totalVehicles = Vehicle::count();
+        $vehicleGrowthPercentage = $this->calculateGrowthPercentage(
+            Vehicle::whereBetween('created_at', [$startDate, $endDate])->count(),
+            Vehicle::where('created_at', '<', $startDate)->count()
+        );
+        $activeVehicles = Vehicle::where('status', 'available')->count();
+        $rentedVehicles = Vehicle::where('status', 'rented')->count();
+        $maintenanceVehicles = Vehicle::where('status', 'maintenance')->count();
+        $vehicleStatusOverview = $this->getVehicleStatusOverview();
 
         // Get counts for Bookings
-        $currentMonthBookings = Booking::whereYear('created_at', $currentYear)->whereMonth('created_at', $currentMonth)->count();
-        $previousMonthBookings = Booking::whereYear('created_at', $previousYear)->whereMonth('created_at', $previousMonth)->count();
-        $bookingGrowthPercentage = $this->calculateGrowthPercentage($currentMonthBookings, $previousMonthBookings);
+        $totalBookings = Booking::count();
+        $activeBookings = Booking::where('booking_status', 'confirmed')->count();
+        $bookingGrowthPercentage = $this->calculateGrowthPercentage(
+            Booking::where('booking_status', 'confirmed')->whereBetween('created_at', [$startDate, $endDate])->count(),
+            Booking::where('booking_status', 'confirmed')->where('created_at', '<', $startDate)->count()
+        );
+        $pendingBookings = Booking::where('booking_status', 'pending')->count();
+        $completedBookings = Booking::where('booking_status', 'completed')->count();
+        $cancelledBookings = Booking::where('booking_status', 'cancelled')->count();
 
-        // Total counts
-        $totalCustomers = User::where('role', 'customer')->count();
-        $totalVendors = User::where('role', 'vendor')->count();
-        $totalVehicles = Vehicle::count();
-        $activeBookings = Booking::count();
+        // Total Revenue
         $totalRevenue = BookingPayment::sum('amount');
+        $revenueGrowth = $this->calculateGrowthPercentage(
+            BookingPayment::whereBetween('created_at', [$startDate, $endDate])->sum('amount'),
+            BookingPayment::where('created_at', '<', $startDate)->sum('amount')
+        );
 
-        // Revenue in the last hour
-        $lastHourRevenue = BookingPayment::where('created_at', '>=', Carbon::now()->subHour())->sum('amount');
-        $previousHourRevenue = BookingPayment::whereBetween('created_at', [Carbon::now()->subHours(2), Carbon::now()->subHour()])->sum('amount');
+        $bookingOverview = $this->getBookingOverview($startDate, $endDate);
+        $revenueData = $this->getRevenueData($startDate, $endDate);
+        $recentSalesData = $this->getRecentSales($startDate, $endDate);
+        $paymentOverview = $this->getPaymentOverview($startDate, $endDate);
+        $totalCompletedPayments = $this->getTotalPayments(BookingPayment::STATUS_SUCCEEDED, $startDate, $endDate);
+        $totalCancelledPayments = $this->getTotalPayments(BookingPayment::STATUS_FAILED, $startDate, $endDate);
+        $paymentGrowthPercentage = $this->calculatePaymentGrowth($startDate, $endDate);
 
-        // Calculate revenue growth since the last hour
-        $revenueGrowth = $this->calculateGrowthPercentage($lastHourRevenue, $previousHourRevenue);
-
-        $bookingOverview = $this->getBookingOverview();
-        $revenueData = $this->getRevenueData();
-        $recentSalesData = $this->getRecentSales();
+        $tableData = $this->getTableData($startDate, $endDate);
+        $vehicleTableData = $this->getVehicleTableData($request);
+        $userTableData = $this->getUserTableData($request);
+        $vendorTableData = $this->getVendorTableData($request);
 
         return Inertia::render('AdminDashboardPages/Overview/Index', [
             'totalCustomers' => $totalCustomers,
+            'activeCustomers' => $activeCustomers,
+            'inactiveCustomers' => $inactiveCustomers,
+            'suspendedCustomers' => $suspendedCustomers,
+            'userStatusOverview' => $userStatusOverview,
             'customerGrowthPercentage' => $customerGrowthPercentage,
             'totalVendors' => $totalVendors,
+            'activeVendors' => $activeVendors,
+            'inactiveVendors' => $inactiveVendors,
+            'suspendedVendors' => $suspendedVendors,
+            'vendorStatusOverview' => $vendorStatusOverview,
             'vendorGrowthPercentage' => $vendorGrowthPercentage,
             'totalVehicles' => $totalVehicles,
             'vehicleGrowthPercentage' => $vehicleGrowthPercentage,
+            'activeVehicles' => $activeVehicles,
+            'rentedVehicles' => $rentedVehicles,
+            'maintenanceVehicles' => $maintenanceVehicles,
+            'vehicleStatusOverview' => $vehicleStatusOverview,
+            'totalBookings' => $totalBookings,
             'activeBookings' => $activeBookings,
             'bookingGrowthPercentage' => $bookingGrowthPercentage,
+            'pendingBookings' => $pendingBookings,
+            'completedBookings' => $completedBookings,
+            'cancelledBookings' => $cancelledBookings,
             'totalRevenue' => $totalRevenue,
             'revenueGrowth' => $revenueGrowth,
             'bookingOverview' => $bookingOverview,
             'revenueData' => $revenueData,
             'recentSales' => $recentSalesData['recentSales'],
             'currentMonthSales' => $recentSalesData['currentMonthSales'],
-            'paymentOverview' => $this->getPaymentOverview(),
-            'totalCompletedPayments' => $this->getTotalPayments(BookingPayment::STATUS_SUCCEEDED),
-            'totalCancelledPayments' => $this->getTotalPayments(BookingPayment::STATUS_FAILED),
-            'paymentGrowthPercentage' => $this->calculatePaymentGrowth(),
+            'paymentOverview' => $paymentOverview,
+            'totalCompletedPayments' => $totalCompletedPayments,
+            'totalCancelledPayments' => $totalCancelledPayments,
+            'paymentGrowthPercentage' => $paymentGrowthPercentage,
+            'tableData' => $tableData,
+            'vehicleTableData' => $vehicleTableData,
+            'userTableData' => $userTableData,
+            'vendorTableData' => $vendorTableData,
+            'dateRange' => $dateRange,
         ]);
     }
 
@@ -89,44 +160,43 @@ class DashboardController extends Controller
         return $current > 0 ? 100 : 0;
     }
 
-    protected function getBookingOverview()
+    protected function getBookingOverview(Carbon $startDate, Carbon $endDate)
     {
-        return collect(range(1, 12))->map(function ($month) {
-            $date = Carbon::create()->month($month);
+        return collect(range(0, $startDate->diffInMonths($endDate)))->map(function ($month) use ($startDate) {
+            $date = $startDate->copy()->addMonths($month);
 
             return [
                 'name' => $date->format('M'),
-                'completed' => Booking::where('booking_status', 'completed')->whereYear('created_at', now()->year)->whereMonth('created_at', $month)->count(),
-                'confirmed' => Booking::where('booking_status', 'confirmed')->whereYear('created_at', now()->year)->whereMonth('created_at', $month)->count(),
-                'pending' => Booking::where('booking_status', 'pending')->whereYear('created_at', now()->year)->whereMonth('created_at', $month)->count(),
-                'cancelled' => Booking::where('booking_status', 'cancelled')->whereYear('created_at', now()->year)->whereMonth('created_at', $month)->count(),
+                'completed' => Booking::where('booking_status', 'completed')->whereYear('created_at', $date->year)->whereMonth('created_at', $date->month)->count(),
+                'confirmed' => Booking::where('booking_status', 'confirmed')->whereYear('created_at', $date->year)->whereMonth('created_at', $date->month)->count(),
+                'pending' => Booking::where('booking_status', 'pending')->whereYear('created_at', $date->year)->whereMonth('created_at', $date->month)->count(),
+                'cancelled' => Booking::where('booking_status', 'cancelled')->whereYear('created_at', $date->year)->whereMonth('created_at', $date->month)->count(),
             ];
         })->values()->all();
     }
 
-    protected function getRevenueData()
+    protected function getRevenueData(Carbon $startDate, Carbon $endDate)
     {
-        return collect(range(0, 11))->map(function ($monthsAgo) {
-            $date = now()->subMonths($monthsAgo);
+        return collect(range(0, $startDate->diffInMonths($endDate)))->map(function ($monthsAgo) use ($startDate) {
+            $date = $startDate->copy()->addMonths($monthsAgo);
 
             return [
                 'name' => $date->format('M'),
                 'total' => BookingPayment::whereYear('created_at', $date->year)->whereMonth('created_at', $date->month)->sum('amount'),
                 'bookings' => Booking::where('booking_status', 'completed')->whereYear('created_at', $date->year)->whereMonth('created_at', $date->month)->count(),
             ];
-        })->reverse()->values()->all();
+        })->values()->all();
     }
 
-    protected function getRecentSales()
+    protected function getRecentSales(Carbon $startDate, Carbon $endDate)
     {
         $recentSales = Booking::with(['customer', 'vehicle'])
+            ->whereBetween('created_at', [$startDate, $endDate])
             ->orderBy('created_at', 'desc')
             ->take(10)
             ->get();
 
-        $currentMonthSales = Booking::whereYear('created_at', Carbon::now()->year)
-            ->whereMonth('created_at', Carbon::now()->month)
-            ->count();
+        $currentMonthSales = Booking::whereBetween('created_at', [$startDate, $endDate])->count();
 
         $formattedSales = $recentSales->map(function ($booking) {
             return [
@@ -146,45 +216,43 @@ class DashboardController extends Controller
     }
 
 
-    protected function getPaymentOverview()
+    protected function getPaymentOverview(Carbon $startDate, Carbon $endDate)
     {
-        return collect(range(1, 12))->map(function ($month) {
-            $date = Carbon::create()->month($month);
+        return collect(range(0, $startDate->diffInMonths($endDate)))->map(function ($month) use ($startDate) {
+            $date = $startDate->copy()->addMonths($month);
 
             return [
                 'name' => $date->format('M'),
                 'completed' => BookingPayment::where('payment_status', BookingPayment::STATUS_SUCCEEDED)
-                    ->whereYear('created_at', now()->year)
-                    ->whereMonth('created_at', $month)
+                    ->whereYear('created_at', $date->year)
+                    ->whereMonth('created_at', $date->month)
                     ->sum('amount'),
                 'pending' => BookingPayment::where('payment_status', BookingPayment::STATUS_PENDING)
-                    ->whereYear('created_at', now()->year)
-                    ->whereMonth('created_at', $month)
+                    ->whereYear('created_at', $date->year)
+                    ->whereMonth('created_at', $date->month)
                     ->sum('amount'),
                 'failed' => BookingPayment::where('payment_status', BookingPayment::STATUS_FAILED)
-                    ->whereYear('created_at', now()->year)
-                    ->whereMonth('created_at', $month)
+                    ->whereYear('created_at', $date->year)
+                    ->whereMonth('created_at', $date->month)
                     ->sum('amount'),
             ];
         })->values()->all();
     }
 
 
-    protected function getTotalPayments($status)
+    protected function getTotalPayments($status, Carbon $startDate, Carbon $endDate)
     {
         return BookingPayment::where('payment_status', $status)
-            ->whereYear('created_at', now()->year)
+            ->whereBetween('created_at', [$startDate, $endDate])
             ->sum('amount');
     }
 
-    protected function calculatePaymentGrowth()
+    protected function calculatePaymentGrowth(Carbon $startDate, Carbon $endDate)
     {
-        $currentMonthPayments = BookingPayment::whereYear('created_at', now()->year)
-            ->whereMonth('created_at', now()->month)
+        $currentMonthPayments = BookingPayment::whereBetween('created_at', [$startDate, $endDate])
             ->sum('amount');
 
-        $previousMonthPayments = BookingPayment::whereYear('created_at', now()->year)
-            ->whereMonth('created_at', now()->subMonth()->month)
+        $previousMonthPayments = BookingPayment::where('created_at', '<', $startDate)
             ->sum('amount');
 
         if ($previousMonthPayments == 0) {
@@ -194,4 +262,121 @@ class DashboardController extends Controller
         return round((($currentMonthPayments - $previousMonthPayments) / $previousMonthPayments) * 100, 2);
     }
 
+    public function getTableData(Carbon $startDate, Carbon $endDate)
+    {
+        return Booking::with(['customer', 'vehicle.vendor'])
+            ->whereBetween('created_at', [$startDate, $endDate])
+            ->paginate(10)
+            ->through(function ($booking) {
+                $vehicle = $booking->vehicle;
+                $vendor = optional($vehicle)->vendor;
+                $customer = $booking->customer;
+
+                return [
+                    'booking_id' => $booking->id,
+                    'customer_name' => optional($customer)->first_name . ' ' . optional($customer)->last_name,
+                    'vendor_name' => $vendor ? trim($vendor->first_name . ' ' . $vendor->last_name) : 'N/A',
+                    'vehicle' => optional($vehicle)->brand . ' ' . optional($vehicle)->model,
+                    'start_date' => $booking->pickup_date,
+                    'end_date' => $booking->return_date,
+                    'total_amount' => $booking->total_amount,
+                    'status' => $booking->booking_status,
+                ];
+            });
+    }
+
+    public function getVehicleTableData(Request $request)
+    {
+        return Vehicle::with('vendor')
+            ->paginate(10, ['*'], 'vehicle_page')
+            ->through(function ($vehicle) {
+                return [
+                    'id' => $vehicle->id,
+                    'vendor_name' => $vehicle->vendor ? trim($vehicle->vendor->first_name . ' ' . $vehicle->vendor->last_name) : 'N/A',
+                    'location' => $vehicle->location,
+                    'country' => $vehicle->country,
+                    'company_name' => optional($vehicle->vendorProfileData)->company_name,
+                    'status' => $vehicle->status,
+                ];
+            });
+    }
+
+    public function getVehicleStatusOverview()
+    {
+        return [
+            [
+                'name' => 'Status',
+                'available' => Vehicle::where('status', 'available')->count(),
+                'rented' => Vehicle::where('status', 'rented')->count(),
+                'maintenance' => Vehicle::where('status', 'maintenance')->count(),
+            ]
+        ];
+    }
+
+    public function getUserTableData(Request $request)
+    {
+        return User::where('role', 'customer')
+            ->with('profile')
+            ->paginate(10, ['*'], 'user_page')
+            ->through(function ($user) {
+                $profile = $user->profile;
+                $locationParts = [];
+                if ($profile) {
+                    if ($profile->city) $locationParts[] = $profile->city;
+                    if ($profile->country) $locationParts[] = $profile->country;
+                }
+                $location = !empty($locationParts) ? implode(', ', $locationParts) : 'N/A';
+
+                return [
+                    'id' => $user->id,
+                    'name' => trim($user->first_name . ' ' . $user->last_name),
+                    'email' => $user->email,
+                    'phone' => $user->phone,
+                    'location' => $location,
+                    'status' => $user->status,
+                    'joined_at' => $user->created_at->format('Y-m-d'),
+                ];
+            });
+    }
+
+    protected function getUserStatusOverview()
+    {
+        return [
+            [
+                'name' => 'Status',
+                'active' => User::where('role', 'customer')->where('status', 'active')->count(),
+                'inactive' => User::where('role', 'customer')->where('status', 'inactive')->count(),
+                'suspended' => User::where('role', 'customer')->where('status', 'suspended')->count(),
+            ]
+        ];
+    }
+
+    protected function getVendorStatusOverview()
+    {
+        return [
+            [
+                'name' => 'Status',
+                'active' => User::where('role', 'vendor')->where('status', 'active')->count(),
+                'inactive' => User::where('role', 'vendor')->where('status', 'inactive')->count(),
+                'suspended' => User::where('role', 'vendor')->where('status', 'suspended')->count(),
+            ]
+        ];
+    }
+
+    public function getVendorTableData(Request $request)
+    {
+        return User::where('role', 'vendor')
+            ->with('vendorProfile')
+            ->paginate(10, ['*'], 'vendor_page')
+            ->through(function ($vendor) {
+                return [
+                    'id' => $vendor->id,
+                    'name' => trim($vendor->first_name . ' ' . $vendor->last_name),
+                    'email' => $vendor->email,
+                    'company_name' => optional($vendor->vendorProfile)->company_name ?? 'N/A',
+                    'status' => $vendor->status,
+                    'joined_at' => $vendor->created_at->format('Y-m-d'),
+                ];
+            });
+    }
 }
