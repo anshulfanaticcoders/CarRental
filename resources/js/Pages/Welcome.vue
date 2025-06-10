@@ -19,12 +19,12 @@ import calendarWhiteIcon from '../../assets/CalendarWhite.svg';
 import { Skeleton } from '@/Components/ui/skeleton';
 
 const plugin = Autoplay({
-    delay: 3000,
+    delay: 4000,
     stopOnMouseEnter: true,
     stopOnInteraction: false,
 });
 const categoryAutoplay = Autoplay({
-    delay: 3000,
+    delay: 4000,
     stopOnMouseEnter: true,
     stopOnInteraction: false,
 });
@@ -62,11 +62,12 @@ import {
     CarouselNext,
     CarouselPrevious,
 } from "@/Components/ui/carousel";
-import { computed, onBeforeUnmount, onMounted, ref } from "vue";
+import { computed, onBeforeUnmount, onMounted, ref, defineAsyncComponent } from "vue";
 import Card from "@/Components/ui/card/Card.vue";
 import CardContent from "@/Components/ui/card/CardContent.vue";
-import Testimonials from "@/Components/Testimonials.vue";
-import Faq from "@/Components/Faq.vue";
+
+const Testimonials = defineAsyncComponent(() => import('@/Components/Testimonials.vue'));
+const Faq = defineAsyncComponent(() => import('@/Components/Faq.vue'));
 
 
 // Category Carousel
@@ -193,7 +194,7 @@ const page = usePage();
                 <div
                     class="column h-[46rem] w-full relative max-[768px]:h-auto max-[768px]:pb-[2rem] max-[768px]:px-[1.5rem]">
                     <img class="rounded-bl-[20px] h-full w-full object-cover max-[768px]:rounded-[20px]" :src="heroImg"
-                        alt="" />
+                        alt="" loading="lazy" />
                     <div class="bg-customOverlayColor absolute top-0 w-full h-full rounded-bl-[20px]"></div>
                 </div>
             </div>
@@ -228,13 +229,13 @@ const page = usePage();
                                             <CardContent
                                                 class="cardContent flex h-[515px] max-[768px]:h-[17rem] items-center justify-center p-6 relative">
                                                 <img class="rounded-[20px] h-full w-full object-cover"
-                                                    :src="`${category.image}`" alt="" />
+                                                    :src="`${category.image}`" alt="" loading="lazy" />
                                                 <div
                                                     class="category_name absolute bottom-10 left-0 flex justify-between w-full px-8">
                                                     <span class="text-white text-[2rem] font-semibold">
                                                         {{ category.name }}
                                                     </span>
-                                                    <img :src="goIcon" alt="" />
+                                                    <img :src="goIcon" alt="" loading="lazy" />
                                                 </div>
                                             </CardContent>
                                         </Card>
@@ -288,7 +289,7 @@ const page = usePage();
                                         class="h-[18rem] border-0 rounded-[0.75rem] transition-all duration-300 hover:mt-[-1rem] max-[768px]:hover:mt-0">
                                         <CardContent class="flex flex-col gap-2 justify-center px-1 h-full">
                                             <img :src="`${place.image}`" alt=""
-                                                class="rounded-[0.75rem] h-[12rem] w-full object-cover mb-2" />
+                                                class="rounded-[0.75rem] h-[12rem] w-full object-cover mb-2" loading="lazy" />
                                             <div class="px-3">
                                                 <h3 class="text-lg font-medium">{{ place.place_name }}</h3>
                                                 <p class="text-sm text-customDarkBlackColor">{{ place.city }}, {{ place.country }}</p>
@@ -344,7 +345,7 @@ const page = usePage();
                 max-[768px]:grid-cols-1">
                     <div class="col flex flex-col gap-10">
                         <div class="info-card flex gap-5 items-start">
-                            <img :src="locationMapIcon" alt="" />
+                            <img :src="locationMapIcon" alt="" loading="lazy" />
                             <div class="flex flex-col gap-3">
                                 <span
                                     class="text-[1.5rem] text-customDarkBlackColor font-medium  max-[768px]:text-[1.25rem]">{{ _p('convenient_locations') }}</span>
@@ -354,7 +355,7 @@ const page = usePage();
                             </div>
                         </div>
                         <div class="info-card flex gap-5 items-start">
-                            <img :src="phoneIcon" alt="" />
+                            <img :src="phoneIcon" alt="" loading="lazy" />
                             <div class=" flex flex-col gap-3">
                                 <span
                                     class="text-[1.5rem] text-customDarkBlackColor font-medium  max-[768px]:text-[1.25rem]">{{ _p('fast_booking') }}</span>
@@ -366,11 +367,11 @@ const page = usePage();
                     </div>
                     <div class="col flex justify-center">
                         <img class="rounded-[20px] h-full object-cover" :src="carImage" alt=""
-                            style="clip-path: polygon(30% 0%, 70% 0%, 100% 30%, 100% 70%, 70% 100%, 30% 100%, 0% 70%, 0% 30%);" />
+                            style="clip-path: polygon(30% 0%, 70% 0%, 100% 30%, 100% 70%, 70% 100%, 30% 100%, 0% 70%, 0% 30%);" loading="lazy" />
                     </div>
                     <div class="col flex flex-col gap-10">
                         <div class="info-card flex gap-5 items-start">
-                            <img :src="chipIcon" alt="" />
+                            <img :src="chipIcon" alt="" loading="lazy" />
                             <div class=" flex flex-col gap-3">
                                 <span
                                     class="text-[1.5rem] text-customDarkBlackColor font-medium  max-[768px]:text-[1.25rem]">{{ _p('modern_fleet') }}</span>
@@ -380,7 +381,7 @@ const page = usePage();
                             </div>
                         </div>
                         <div class="info-card flex gap-5 items-start">
-                            <img :src="userCoverageIcon" alt="" />
+                            <img :src="userCoverageIcon" alt="" loading="lazy" />
                             <div class="flex flex-col gap-3 ">
                                 <span
                                     class="text-[1.5rem] text-customDarkBlackColor font-medium  max-[768px]:text-[1.25rem]">{{ _p('insurance_coverage') }}</span>
@@ -427,15 +428,15 @@ const page = usePage();
                 <!-- First Blog (Large Left) -->
                 <Link :href="route('blog.show', blogs[0].slug)" v-if="!isLoading && blogs.length > 0"
                     class="w-1/2 h-[574px] relative rounded-lg overflow-hidden shadow-md blog-container max-[768px]:w-full max-[768px]:h-[380px]">
-                <img :src="blogs[0].image" :alt="blogs[0].title" class="w-full h-full object-cover rounded-lg">
+                <img :src="blogs[0].image" :alt="blogs[0].title" class="w-full h-full object-cover rounded-lg" loading="lazy">
 
                 <div class="absolute bottom-0 bg-gradient-to-t from-black/70 to-transparent p-4 text-white">
                     <p class="text-[1.25rem] flex items-center gap-1">
-                        <img :src=calendarWhiteIcon alt=""> {{ formatDate(blogs[0].created_at) }}
+                        <img :src=calendarWhiteIcon alt="" loading="lazy"> {{ formatDate(blogs[0].created_at) }}
                     </p>
                     <h4 class="font-semibold text-[2rem] max-[768px]:text-[1.25rem]">{{ blogs[0].title }}</h4>
                     <Link :href="route('blog.show', blogs[0].slug)" class="inline-flex items-center mt-2 text-blue-400">
-                    <img :src=whiteGoIcon alt="">
+                    <img :src=whiteGoIcon alt="" loading="lazy">
                     </Link>
                 </div>
                 </Link>
@@ -453,7 +454,7 @@ const page = usePage();
                             class="w-[30%] h-full blog-container max-[768px]:w-[40%] max-[768px]:h-[120px]">
                             <Link :href="route('blog.show', blogs[index].slug)">
                             <img :src="blogs[index].image" :alt="blogs[index].title"
-                                class="w-full h-full object-cover rounded-lg transform transition-transform duration-300 ease-in-out hover:scale-105">
+                                class="w-full h-full object-cover rounded-lg transform transition-transform duration-300 ease-in-out hover:scale-105" loading="lazy">
                             </Link>
                         </div>
                         <div v-else class="w-[30%] h-full blog-container max-[768px]:w-[40%] max-[768px]:h-[120px]">
@@ -463,7 +464,7 @@ const page = usePage();
                         <div class="w-[70%]">
                             <p v-if="!isLoading && blogs.length > index"
                                 class="text-sm flex items-center gap-1 text-customLightGrayColor">
-                                <img :src=calendarIcon alt=""> {{ formatDate(blogs[index].created_at) }}
+                                <img :src=calendarIcon alt="" loading="lazy"> {{ formatDate(blogs[index].created_at) }}
                             </p>
                             <h4 v-if="!isLoading && blogs.length > index"
                                 class="font-semibold text-[1.5rem] text-customDarkBlackColor max-[768px]:text-[1rem]">{{
@@ -471,7 +472,7 @@ const page = usePage();
                             <Link v-if="!isLoading && blogs.length > index" :href="route('blog.show', blogs[index].slug)"
                                 class="inline-flex items-center mt-2 text-customPrimaryColor read-story">
                             Read Story
-                            <img :src=goIcon alt="" class="w-[1.5rem]">
+                            <img :src=goIcon alt="" class="w-[1.5rem]" loading="lazy">
                             </Link>
                             <div v-else class="space-y-2">
                                 <Skeleton class="h-4 w-[70%]" />

@@ -63,7 +63,7 @@ onMounted(() => {
 });
 
 const plugin = Autoplay({
-    delay: 2000,
+    delay: 6000,
     stopOnMouseEnter: true,
     stopOnInteraction: false,
 });
