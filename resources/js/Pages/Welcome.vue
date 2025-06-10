@@ -468,7 +468,7 @@ const page = usePage();
                             <h4 v-if="!isLoading && blogs.length > index"
                                 class="font-semibold text-[1.5rem] text-customDarkBlackColor max-[768px]:text-[1rem]">{{
                                     blogs[index].title }}</h4>
-                            <Link v-if="!isLoading && blogs.length > index" :href="route('blog.show', blogs[index].id)"
+                            <Link v-if="!isLoading && blogs.length > index" :href="route('blog.show', blogs[index].slug)"
                                 class="inline-flex items-center mt-2 text-customPrimaryColor read-story">
                             Read Story
                             <img :src=goIcon alt="" class="w-[1.5rem]">
