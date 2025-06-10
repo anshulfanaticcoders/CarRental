@@ -2358,8 +2358,18 @@ const nextStep = () => {
     if (isValid) {
         if (currentStep.value < 7) {
             currentStep.value++;
+            window.scrollTo(0, 0);
             if (currentStep.value === 3) {
                 initializeMap();
+            }
+        }
+    } else {
+        // If validation fails, find the first error and scroll to it
+        const firstErrorField = Object.keys(errors).find(key => errors[key]);
+        if (firstErrorField) {
+            const errorElement = document.getElementById(firstErrorField);
+            if (errorElement) {
+                errorElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
             }
         }
     }
@@ -2510,6 +2520,16 @@ watch(
         }
     }
 );
+
+
+// Watch for changes in form fields and clear errors
+Object.keys(form).forEach(key => {
+    watch(() => form[key], () => {
+        if (errors[key]) {
+            errors[key] = '';
+        }
+    });
+});
 
 </script>
 

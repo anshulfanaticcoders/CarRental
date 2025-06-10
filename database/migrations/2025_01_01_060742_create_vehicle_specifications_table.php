@@ -14,7 +14,7 @@ class CreateVehicleSpecificationsTable extends Migration
             $table->string('registration_number');
             $table->string('registration_country');
             $table->date('registration_date');
-            $table->integer('gross_vehicle_mass');
+            $table->integer('gross_vehicle_mass')->nullable();
             $table->decimal('vehicle_height', 8, 2)->nullable();
             $table->decimal('dealer_cost', 10, 2)->nullable();
             $table->string('phone_number');
