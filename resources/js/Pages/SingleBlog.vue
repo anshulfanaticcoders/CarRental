@@ -20,8 +20,13 @@
             </ul>
         </nav>
         <div class="w-full full-w-container max-[768px]:w-full">
-            <img :src="blog.image" :alt="blog.title"
-                class="w-full h-[500px] max-[768px]:h-[350px] object-cover rounded-lg shadow-lg max-[768px]:rounded-none">
+            <div
+                class="relative w-full h-[500px] max-[768px]:h-[350px] rounded-lg shadow-lg max-[768px]:rounded-none overflow-hidden">
+                <div :style="{ backgroundImage: `url(${blog.image})` }"
+                    class="absolute inset-0 w-full h-full bg-cover bg-center filter blur-lg scale-110"></div>
+                <div class="absolute inset-0 bg-black bg-opacity-25"></div>
+                <img :src="blog.image" :alt="blog.title" class="relative w-full h-full object-contain">
+            </div>
             <div class="max-[768px]:px-[1.5rem]">
                 <h1
                     class="text-4xl font-bold text-customDarkBlackColor mt-6 max-[768px]:text-[1.2rem] max-[768px]:leading-7">
