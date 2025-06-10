@@ -188,7 +188,7 @@ const initMap = () => {
         html: `
             <div class="marker-pin">
                 
-                <img src="${MapPin}" alt="Vehicle Location" />
+                <img src="${MapPin}" alt="Vehicle Location" loading="lazy" />
             </div>
         `,
         iconSize: [50, 30],
@@ -994,7 +994,7 @@ const openLightbox = (index) => {
                         @click="scrollToReviews">
                         <div class="flex items-center gap-1">
                             <img v-for="n in 5" :key="n" :src="getStarIcon(averageRating, n)"
-                                :alt="getStarAltText(averageRating, n)" class="w-[20px] h-[20px]" />
+                                :alt="getStarAltText(averageRating, n)" class="w-[20px] h-[20px]" loading="lazy" />
                         </div>
                         <span>{{ averageRating }} ({{ reviews.length }})</span>
                     </div>
@@ -1011,7 +1011,7 @@ const openLightbox = (index) => {
                     <div class="primary-image w-[60%] max-h-[500px] aspect-video max-[768px]:w-full max-[768px]:aspect-[4/3] cursor-pointer"
                         @click="openLightbox(0)">
                         <img v-if="!isLoading && vehicle?.images" :src="primaryImage?.image_url" alt="Primary Image"
-                            class="w-full h-full object-cover rounded-lg transition-all duration-300 hover:brightness-90" />
+                            class="w-full h-full object-cover rounded-lg transition-all duration-300 hover:brightness-90" loading="lazy" />
                             <Skeleton v-else
                                 class="w-full h-[500px] object-cover rounded-lg max-[768px]:w-full max-[768px]:max-h-[200px]" />
                         </div>
@@ -1025,7 +1025,7 @@ const openLightbox = (index) => {
                                     @click="openLightbox(index + 1)">
                                     <img v-if="!isLoading && vehicle" :src="image.image_url"
                                         :alt="`Gallery Image ${index + 1}`"
-                                        class="w-full h-[245px] object-cover rounded-lg max-[768px]:h-full transition-all duration-300 hover:brightness-90" />
+                                        class="w-full h-[245px] object-cover rounded-lg max-[768px]:h-full transition-all duration-300 hover:brightness-90" loading="lazy" />
                                     <Skeleton v-else
                                         class="w-full h-[245px] object-cover rounded-lg max-[768px]:h-full" />
                                 </div>
@@ -1041,7 +1041,7 @@ const openLightbox = (index) => {
                                     </div>
                                     <img v-if="!isLoading && vehicle" :src="galleryImages[3].image_url"
                                         alt="View All Images"
-                                        class="w-full h-[245px] object-cover rounded-lg max-[768px]:h-full opacity-50" />
+                                        class="w-full h-[245px] object-cover rounded-lg max-[768px]:h-full opacity-50" loading="lazy" />
                                     <Skeleton v-else
                                         class="w-full h-[245px] object-cover rounded-lg max-[768px]:h-full" />
                                 </div>
@@ -1052,7 +1052,7 @@ const openLightbox = (index) => {
                                 class="gallery-item max-[768px]:flex-1 max-[768px]:aspect-square cursor-pointer" @click="openLightbox(index + 1)">
                                 <img v-if="!isLoading && vehicle" :src="image.image_url"
                                     :alt="`Gallery Image ${index + 1}`"
-                                    class="w-full h-[245px] object-cover rounded-lg max-[768px]:h-full transition-all duration-300 hover:brightness-90" />
+                                    class="w-full h-[245px] object-cover rounded-lg max-[768px]:h-full transition-all duration-300 hover:brightness-90" loading="lazy" />
                                 <Skeleton v-else class="w-full h-[245px] object-cover rounded-lg max-[768px]:h-full" />
                             </div>
                         </div>
@@ -1074,7 +1074,7 @@ const openLightbox = (index) => {
                             @click="scrollToReviews">
                             <div class="flex items-center gap-1">
                                 <img v-for="n in 5" :key="n" :src="getStarIcon(averageRating, n)"
-                                    :alt="getStarAltText(averageRating, n)" class="w-[20px] h-[20px]" />
+                                    :alt="getStarAltText(averageRating, n)" class="w-[20px] h-[20px]" loading="lazy" />
                             </div>
                             <span class="max-[768px]:text-[0.875rem]">{{ averageRating }} ({{ reviews.length }})</span>
                         </div>
@@ -1094,7 +1094,7 @@ const openLightbox = (index) => {
                             <div class="features grid grid-cols-4 gap-x-[2rem] gap-y-[2rem] max-[768px]:grid-cols-3">
                                 <div class="feature-item items-center flex gap-3">
                                     <img :src="peopleIcon" alt=""
-                                        class='w-[30px] h-[30px] max-[768px]:w-[24px] max-[768px]:h-[24px]' />
+                                        class='w-[30px] h-[30px] max-[768px]:w-[24px] max-[768px]:h-[24px]' loading="lazy" />
                                     <div class="flex flex-col">
                                         <span
                                             class="text-customLightGrayColor text-[1rem] max-[768px]:text-[0.75rem]">People</span>
@@ -1105,7 +1105,7 @@ const openLightbox = (index) => {
                                 </div>
                                 <div class="feature-item items-center flex gap-3">
                                     <img :src="doorIcon" alt=""
-                                        class='w-[30px] h-[30px] max-[768px]:w-[24px] max-[768px]:h-[24px]' />
+                                        class='w-[30px] h-[30px] max-[768px]:w-[24px] max-[768px]:h-[24px]' loading="lazy" />
                                     <div class="flex flex-col">
                                         <span
                                             class="text-customLightGrayColor text-[1rem] max-[768px]:text-[0.75rem]">Doors</span>
@@ -1116,7 +1116,7 @@ const openLightbox = (index) => {
                                 </div>
                                 <div class="feature-item items-center flex gap-3">
                                     <img :src="luggageIcon" alt=""
-                                        class='w-[30px] h-[30px] max-[768px]:w-[24px] max-[768px]:h-[24px]' />
+                                        class='w-[30px] h-[30px] max-[768px]:w-[24px] max-[768px]:h-[24px]' loading="lazy" />
                                     <div class="flex flex-col">
                                         <span
                                             class="text-customLightGrayColor text-[1rem] max-[768px]:text-[0.75rem]">Luggage</span>
@@ -1127,7 +1127,7 @@ const openLightbox = (index) => {
                                 </div>
                                 <div class="feature-item items-center flex gap-3">
                                     <img :src="transmisionIcon" alt=""
-                                        class='w-[30px] h-[30px] max-[768px]:w-[24px] max-[768px]:h-[24px]' />
+                                        class='w-[30px] h-[30px] max-[768px]:w-[24px] max-[768px]:h-[24px]' loading="lazy" />
                                     <div class="flex flex-col">
                                         <span
                                             class="text-customLightGrayColor text-[1rem] max-[768px]:text-[0.75rem]">Transmission</span>
@@ -1138,7 +1138,7 @@ const openLightbox = (index) => {
                                 </div>
                                 <div class="feature-item items-center flex gap-3">
                                     <img :src="fuelIcon" alt=""
-                                        class='w-[30px] h-[30px] max-[768px]:w-[24px] max-[768px]:h-[24px]' />
+                                        class='w-[30px] h-[30px] max-[768px]:w-[24px] max-[768px]:h-[24px]' loading="lazy" />
                                     <div class="flex flex-col">
                                         <span
                                             class="text-customLightGrayColor text-[1rem] max-[768px]:text-[0.75rem]">Fuel
@@ -1150,7 +1150,7 @@ const openLightbox = (index) => {
                                 </div>
                                 <div class="feature-item items-center flex gap-3">
                                     <img :src="enginepowerIcon" alt=""
-                                        class='w-[30px] h-[30px] max-[768px]:w-[24px] max-[768px]:h-[24px]' />
+                                        class='w-[30px] h-[30px] max-[768px]:w-[24px] max-[768px]:h-[24px]' loading="lazy" />
                                     <div class="flex flex-col">
                                         <span
                                             class="text-customLightGrayColor text-[1rem] max-[768px]:text-[0.75rem]">Horsepower</span>
@@ -1160,7 +1160,7 @@ const openLightbox = (index) => {
                                 </div>
                                 <div class="feature-item items-center flex gap-3">
                                     <img :src="carbonIcon" alt=""
-                                        class='w-[30px] h-[30px] max-[768px]:w-[24px] max-[768px]:h-[24px]' />
+                                        class='w-[30px] h-[30px] max-[768px]:w-[24px] max-[768px]:h-[24px]' loading="lazy" />
                                     <div class="flex flex-col">
                                         <span
                                             class="text-customLightGrayColor text-[1rem] max-[768px]:text-[0.75rem]">Co2
@@ -1171,7 +1171,7 @@ const openLightbox = (index) => {
                                 </div>
                                 <div class="feature-item items-center flex gap-3">
                                     <img :src="mileageIcon" alt=""
-                                        class='w-[30px] h-[30px] max-[768px]:w-[24px] max-[768px]:h-[24px]' />
+                                        class='w-[30px] h-[30px] max-[768px]:w-[24px] max-[768px]:h-[24px]' loading="lazy" />
                                     <div class="flex flex-col">
                                         <span
                                             class="text-customLightGrayColor text-[1rem] max-[768px]:text-[0.75rem]">Mileage</span>
@@ -1191,7 +1191,7 @@ const openLightbox = (index) => {
                                 <div v-for="(featureName, index) in JSON.parse(vehicle.features)" :key="index"
                                     class="flex items-center gap-3 max-[768px]:text-[0.65rem] whitespace-nowrap">
                                     <img v-if="allFeaturesMap[featureName]" :src="allFeaturesMap[featureName]" :alt="featureName"
-                                        class="feature-icon w-[30px] h-[30px] max-[768px]:w-[24px] max-[768px]:h-[24px] object-contain" />
+                                        class="feature-icon w-[30px] h-[30px] max-[768px]:w-[24px] max-[768px]:h-[24px] object-contain" loading="lazy" />
                                     <span v-else class="feature-icon w-[30px] h-[30px] max-[768px]:w-[24px] max-[768px]:h-[24px] inline-flex items-center justify-center text-gray-400 text-xs border rounded">?</span> <!-- Placeholder for no icon -->
                                     {{ featureName }}
                                 </div>
@@ -1205,7 +1205,7 @@ const openLightbox = (index) => {
                             <span class="text-[2rem] font-medium max-[768px]:text-[1rem]">Car Location</span>
                             <div
                                 class="gap-y-[2rem] max-[768px]:mt-[0.5rem] flex items-end mt-[1rem] gap-2 max-[768px]:gap-1 max-[768px]:items-center">
-                                <img :src=locationPinIcon alt="" class="w-8 h-8 max-[768px]:w-6"> <span
+                                <img :src=locationPinIcon alt="" class="w-8 h-8 max-[768px]:w-6" loading="lazy"> <span
                                     class="text-[1.2rem] max-[768px]:text-[0.95rem]">{{ vehicle?.full_vehicle_address }}</span>
                             </div>
                             <div id="map" class="h-full rounded-lg mt-4"></div>
@@ -1352,7 +1352,7 @@ const openLightbox = (index) => {
                                     ? `${vehicle.vendor_profile.avatar}`
                                     : '/storage/avatars/default-avatar.svg'" alt="User Avatar"
                                     class="w-[100px] h-[100px] max-[768px]:w-[60px] max-[768px]:h-[60px] rounded-full object-cover"
-                                    v-if="!isLoading" />
+                                    v-if="!isLoading" loading="lazy" />
                                 <Skeleton v-else
                                     class="w-[100px] h-[100px] max-[768px]:w-[60px] max-[768px]:h-[60px] rounded-full object-cover" />
                                 <div>
@@ -1380,12 +1380,12 @@ const openLightbox = (index) => {
                                     </span>
                                 </div>
                                 <div class="icons flex items-center gap-3">
-                                    <Link href="" class="max-[768px]:w-[1.5rem]"><img :src="ShareIcon" alt="" /></Link>
+                                    <Link href="" class="max-[768px]:w-[1.5rem]"><img :src="ShareIcon" alt="" loading="lazy" /></Link>
                                     <button @click.stop="toggleFavourite(vehicle)" class="heart-icon"
                                         :class="{ 'filled-heart': vehicle.is_favourite, 'pop-animation': popEffect }"
                                         @animationend="popEffect = false">
                                         <img :src="vehicle.is_favourite ? FilledHeart : Heart" alt="Favorite"
-                                            class="w-[2rem] max-[768px]:w-[1.5rem] transition-colors duration-300" />
+                                            class="w-[2rem] max-[768px]:w-[1.5rem] transition-colors duration-300" loading="lazy" />
                                     </button>
 
                                 </div>
@@ -1398,7 +1398,7 @@ const openLightbox = (index) => {
                                 </span>
                             </div>
                             <div class="car_short_info mt-[1rem] flex gap-3">
-                                <img :src="carIcon" alt="" class="max-[768px]:w-[24px]" />
+                                <img :src="carIcon" alt="" class="max-[768px]:w-[24px]" loading="lazy" />
                                 <div class="features">
                                     <span class="text-[1.15rem] capitalize max-[768px]:text-[0.85rem]">
                                         {{ vehicle?.transmission }} .
@@ -1410,7 +1410,7 @@ const openLightbox = (index) => {
                             <div class="extra_details flex gap-5 mt-[1rem]">
 
                                 <div class="col flex gap-3">
-                                    <img :src="mileageIcon" alt="" class="max-[768px]:w-[24px]" />
+                                    <img :src="mileageIcon" alt="" class="max-[768px]:w-[24px]" loading="lazy" />
                                     <span class="text-[1.15rem] max-[768px]:text-[0.85rem]">{{ vehicle?.mileage }}
                                         km/d</span>
                                 </div>
@@ -1418,11 +1418,11 @@ const openLightbox = (index) => {
 
                             <div class="ratings"></div>
 
-                            <div class="location mt-[2rem]">
+                                <div class="location mt-[2rem]">
                                 <span
                                     class="text-[1.5rem] font-medium mb-[1rem] inline-block max-[768px]:text-[1.2rem]">Location</span>
                                 <div class="col flex items-start gap-4">
-                                    <img :src="pickupLocationIcon" alt="" class="max-[768px]:w-[24px]" />
+                                    <img :src="pickupLocationIcon" alt="" class="max-[768px]:w-[24px]" loading="lazy" />
                                     <div class="flex flex-col gap-1">
                                         <span>Pickup Location</span>
                                         <span class="text-[1.25rem] text-medium max-[768px]:text-[1rem]">{{ vehicle?.full_vehicle_address }}</span>
@@ -1430,7 +1430,7 @@ const openLightbox = (index) => {
                                     </div>
                                 </div>
                                 <div class="col flex items-start gap-4 mt-10">
-                                    <img :src="returnLocationIcon" alt="" class="max-[768px]:w-[24px]" />
+                                    <img :src="returnLocationIcon" alt="" class="max-[768px]:w-[24px]" loading="lazy" />
                                     <div class="flex flex-col gap-1">
                                         <span>Return Location</span>
                                         <span class="text-[1.25rem] text-medium max-[768px]:text-[1rem]">{{ vehicle?.full_vehicle_address }}</span>
@@ -1466,7 +1466,7 @@ const openLightbox = (index) => {
                                                                 class="marquee-content flex absolute whitespace-nowrap animate-marquee">
                                                                 <div class="flex items-center gap-3 px-4">
                                                                     <img :src="carguaranteeIcon" alt="Guarantee Icon"
-                                                                        class="w-5 h-5 object-contain" />
+                                                                        class="w-5 h-5 object-contain" loading="lazy" />
                                                                     <p
                                                                         class="text-sm text-gray-800 font-medium tracking-wide">
                                                                         No car on arrival? <span
@@ -1479,7 +1479,7 @@ const openLightbox = (index) => {
                                                                 <!-- Duplicate for seamless loop -->
                                                                 <div class="flex items-center gap-3 px-4">
                                                                     <img :src="carguaranteeIcon" alt="Guarantee Icon"
-                                                                        class="w-5 h-5 object-contain" />
+                                                                        class="w-5 h-5 object-contain" loading="lazy" />
                                                                     <p
                                                                         class="text-sm text-gray-800 font-medium tracking-wide">
                                                                         No car on arrival? <span
@@ -1640,7 +1640,7 @@ const openLightbox = (index) => {
                                     <div
                                         class="column text-center mt-[2rem] flex flex-col justify-center items-center gap-5">
                                         <p>Guaranteed safe & secure checkout</p>
-                                        <img :src="partnersIcon" alt="" />
+                                        <img :src="partnersIcon" alt="" loading="lazy" />
                                     </div>
                                 </div>
                             </div>
@@ -1676,7 +1676,7 @@ const openLightbox = (index) => {
                                             <div class="flex items-center gap-3">
                                                 <img :src="review.user.profile?.avatar ? `${review.user.profile?.avatar}` : '/storage/avatars/default-avatar.svg'"
                                                     alt="User Avatar"
-                                                    class="w-[50px] h-[50px] rounded-full object-cover" />
+                                                    class="w-[50px] h-[50px] rounded-full object-cover" loading="lazy" />
                                                 <div>
                                                     <h4
                                                         class="text-customPrimaryColor font-medium max-[768px]:text-[1.1rem]">
@@ -1687,7 +1687,7 @@ const openLightbox = (index) => {
                                                             <img v-for="n in 5" :key="n"
                                                                 :src="getStarIcon(review.rating, n)"
                                                                 :alt="getStarAltText(review.rating, n)"
-                                                                class="w-[20px] h-[20px]" />
+                                                                class="w-[20px] h-[20px]" loading="lazy" />
                                                         </div>
                                                         <span>{{ review.rating }}</span>
                                                     </div>
@@ -1727,7 +1727,7 @@ const openLightbox = (index) => {
                         ? `${vehicle.vendor_profile.avatar}`
                         : '/storage/avatars/default-avatar.svg'" alt="User Avatar"
                         class="w-[100px] h-[100px] max-[768px]:w-[60px] max-[768px]:h-[60px] rounded-full object-cover"
-                        v-if="!isLoading" />
+                        v-if="!isLoading" loading="lazy" />
                     <Skeleton v-else
                         class="w-[100px] h-[100px] max-[768px]:w-[60px] max-[768px]:h-[60px] rounded-full object-cover" />
 
