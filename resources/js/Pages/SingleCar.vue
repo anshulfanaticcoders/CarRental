@@ -105,8 +105,7 @@ onMounted(async () => {
 const fetchReviews = async () => {
     isLoading.value = true;
     try {
-        const vendorProfileId = vehicle.value.vendor_profile_data?.id; // Fix: Correct path
-        console.log("🚀 Fetching reviews for Vendor Profile ID:", vendorProfileId);
+        const vendorProfileId = vehicle.value.vendor_profile_data?.id;
 
         if (!vendorProfileId) {
             throw new Error("❌ Vendor profile ID is missing");
@@ -141,9 +140,9 @@ const fetchAllVehicleFeatures = async () => {
             response.data.forEach(feature => {
                 allFeaturesMap.value[feature.feature_name] = feature.icon_url;
             });
-            console.log('All Features Map Populated (SingleCar.vue):', JSON.parse(JSON.stringify(allFeaturesMap.value)));
+            // console.log('All Features Map Populated (SingleCar.vue):', JSON.parse(JSON.stringify(allFeaturesMap.value)));
             if (vehicle.value && vehicle.value.features && isValidJSON(vehicle.value.features)) {
-                console.log('Vehicle Specific Feature Names (SingleCar.vue):', JSON.parse(vehicle.value.features));
+                // console.log('Vehicle Specific Feature Names (SingleCar.vue):', JSON.parse(vehicle.value.features));
             } else {
                 console.log('Vehicle features data (SingleCar.vue):', vehicle.value?.features);
             }
@@ -330,12 +329,16 @@ const validateRentalDetails = () => {
 import { useToast } from 'vue-toastification';
 const toast = useToast();
 const fetchFavoriteStatus = async () => {
+    if (!props.auth?.user) {
+        return;
+    }
     try {
-        const response = await axios.get("/favorites");
-        const favoriteIds = response.data.map(v => v.id);
+        const response = await axios.get("/favorites/status");
+        const favoriteIds = response.data; // The endpoint now returns an array of IDs
+        const isFav = Array.isArray(favoriteIds) && favoriteIds.includes(vehicle.value.id);
 
-        // ✅ Check if this vehicle is in favorites
-        vehicle.value.is_favourite = favoriteIds.includes(vehicle.value.id);
+        // Replace the object to ensure reactivity is triggered
+        vehicle.value = { ...vehicle.value, is_favourite: isFav };
     } catch (error) {
         console.error("Error fetching favorite status:", error);
     }
@@ -344,29 +347,29 @@ const fetchFavoriteStatus = async () => {
 // ✅ Toggle Favorite Status
 const popEffect = ref(false);
 
-const toggleFavourite = async () => {
+const toggleFavourite = async (vehicle) => {
     if (!props.auth?.user) {
         return Inertia.visit('/login'); // Redirect if not logged in
     }
 
-    const endpoint = vehicle.value.is_favourite
-        ? `/vehicles/${vehicle.value.id}/unfavourite`
-        : `/vehicles/${vehicle.value.id}/favourite`;
+    const endpoint = vehicle.is_favourite
+        ? `/vehicles/${vehicle.id}/unfavourite`
+        : `/vehicles/${vehicle.id}/favourite`;
 
     try {
         await axios.post(endpoint);
-        vehicle.value.is_favourite = !vehicle.value.is_favourite;
+        vehicle.is_favourite = !vehicle.is_favourite;
 
         // Trigger animation
         popEffect.value = true;
 
-        toast.success(`Vehicle ${vehicle.value.is_favourite ? 'added to' : 'removed from'} favorites!`, {
+        toast.success(`Vehicle ${vehicle.is_favourite ? 'added to' : 'removed from'} favorites!`, {
             position: 'top-right',
             timeout: 3000,
             closeOnClick: true,
             pauseOnHover: true,
             draggable: true,
-            icon: vehicle.value.is_favourite ? '❤️' : '💔',
+            icon: vehicle.is_favourite ? '❤️' : '💔',
         });
 
     } catch (error) {

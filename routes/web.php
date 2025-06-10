@@ -458,6 +458,7 @@ Route::middleware(['auth', 'role:customer'])->group(function () {
     Route::post('/vehicles/{vehicle}/favourite', [FavoriteController::class, 'favourite'])->name('vehicles.favourite');
     Route::post('/vehicles/{vehicle}/unfavourite', [FavoriteController::class, 'unfavourite'])->name('vehicles.unfavourite');
     Route::get('/favorites', [FavoriteController::class, 'getFavorites']);
+    Route::get('/favorites/status', [FavoriteController::class, 'getFavoriteStatus'])->name('favorites.status');
 });
 
 // this route is for user, not create lsiting/or access until status is not confirmed 

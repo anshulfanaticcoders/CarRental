@@ -439,13 +439,16 @@ const toast = useToast();
 const favoriteStatus = ref({}); 
 
 const fetchFavoriteStatus = async () => {
+    if (!page.props.auth?.user) return;
     try {
         if (!props.vehicles.data || props.vehicles.data.length === 0) return;
-        const response = await axios.get("/favorites");
-        const favoriteIds = response.data.map((v) => v.id);
+        const response = await axios.get("/favorites/status");
+        const favoriteIds = response.data; // Now an array of IDs
+        const newStatus = {};
         props.vehicles.data.forEach((vehicle) => {
-            favoriteStatus.value[vehicle.id] = favoriteIds.includes(vehicle.id);
+            newStatus[vehicle.id] = favoriteIds.includes(vehicle.id);
         });
+        favoriteStatus.value = newStatus;
     } catch (error) {
         console.error("Error fetching favorite status:", error);
     }

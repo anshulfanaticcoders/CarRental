@@ -418,13 +418,16 @@ const toast = useToast();
 const favoriteStatus = ref({}); 
 
 const fetchFavoriteStatus = async () => {
+    if (!page.props.auth?.user) return;
     try {
         if (!props.vehicles.data || props.vehicles.data.length === 0) return;
-        const response = await axios.get("/favorites");
-        const favoriteIds = response.data.map((v) => v.id);
+        const response = await axios.get("/favorites/status");
+        const favoriteIds = response.data; // Now an array of IDs
+        const newStatus = {};
         props.vehicles.data.forEach((vehicle) => {
-            favoriteStatus.value[vehicle.id] = favoriteIds.includes(vehicle.id);
+            newStatus[vehicle.id] = favoriteIds.includes(vehicle.id);
         });
+        favoriteStatus.value = newStatus;
     } catch (error) {
         console.error("Error fetching favorite status:", error);
     }
@@ -580,16 +583,19 @@ const handleCategorySearchUpdate = (params) => {
     <AuthenticatedHeaderLayout />
     <SchemaInjector v-if="schema" :schema="schema" />
 
+    <!-- New CategorySearchBar integrated here for location/date filters -->
+     <section class="bg-customPrimaryColor py-customVerticalSpacing">
+    <div class="">
+         <CategorySearchBar 
+            :prefill="searchQuery"
+            @update-search-params="handleCategorySearchUpdate" 
+            class="border-[2px] rounded-[20px] border-white mt-0 mb-0 max-[768px]:border-none"
+        />
+        <SchemaInjector v-if="$page.props.organizationSchema" :schema="$page.props.organizationSchema" />
+    </div>
+    </section>
     <section>
     <div class="full-w-container py-8">
-        <!-- New CategorySearchBar integrated here for location/date filters -->
-        <div class="mb-6">
-             <CategorySearchBar 
-                :prefill="searchQuery"
-                @update-search-params="handleCategorySearchUpdate" 
-            />
-            <SchemaInjector v-if="$page.props.organizationSchema" :schema="$page.props.organizationSchema" />
-        </div>
 
         <!-- Mobile filter button (visible only on mobile for additional filters) -->
         <div class="md:hidden mb-4">

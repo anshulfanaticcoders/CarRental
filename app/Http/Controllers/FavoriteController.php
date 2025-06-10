@@ -57,4 +57,15 @@ class FavoriteController extends Controller
         ]);
     }
 
+    // Get favorite status for the current user
+    public function getFavoriteStatus()
+    {
+        if (!Auth::check()) {
+            return response()->json([]); // Return empty array if not logged in
+        }
+        $user = Auth::user();
+        $favoriteIds = $user->favorites()->pluck('vehicles.id');
+
+        return response()->json($favoriteIds);
+    }
 }
