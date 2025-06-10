@@ -20,12 +20,8 @@
             </ul>
         </nav>
         <div class="w-full full-w-container max-[768px]:w-full">
-            <div
-                class="relative w-full h-[500px] max-[768px]:h-[350px] rounded-lg shadow-lg max-[768px]:rounded-none overflow-hidden">
-                <div :style="{ backgroundImage: `url(${blog.image})` }"
-                    class="absolute inset-0 w-full h-full bg-cover bg-center filter blur-lg scale-110"></div>
-                <div class="absolute inset-0 bg-black bg-opacity-25"></div>
-                <img :src="blog.image" :alt="blog.title" class="relative w-full h-full object-contain">
+            <div :style="{ backgroundImage: `url(${blog.image})` }"
+                class="w-full h-[500px] max-[768px]:h-[350px] aspect-video bg-cover bg-center rounded-lg shadow-lg max-[768px]:rounded-none">
             </div>
             <div class="max-[768px]:px-[1.5rem]">
                 <h1
