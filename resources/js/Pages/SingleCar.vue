@@ -860,6 +860,9 @@ watch([
 
 const showWarningModal = ref(false);
 const proceedToPayment = async () => { // Make the function async
+    if (!props.auth?.user) {
+        return router.get('/login');
+    }
     // Validate rental details before proceeding
     if (!validateRentalDetails()) {
         return; // Stop the function if validation fails
@@ -869,6 +872,7 @@ const proceedToPayment = async () => { // Make the function async
         showWarningModal.value = true;
         return;
     }
+
 
     try { // Add try block for the API call and navigation
         // Call backend to set session variable allowing booking page access

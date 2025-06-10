@@ -20,6 +20,12 @@ class AuthenticatedSessionController extends Controller
      */
     public function create(): Response
     {
+        // Store the previous URL as the intended destination, but only if it's not an auth route.
+        $previousUrl = url()->previous();
+        if ($previousUrl && !str_contains($previousUrl, '/login') && !str_contains($previousUrl, '/register')) {
+            session(['url.intended' => $previousUrl]);
+        }
+
         return Inertia::render('Auth/Login', [
             'canResetPassword' => Route::has('password.request'),
             'status' => session('status'),
@@ -47,7 +53,8 @@ class AuthenticatedSessionController extends Controller
         return redirect('/admin-dashboard');
     }
 
-    return redirect()->intended('/profile');
+    // Use the intended URL, falling back to the HOME constant.
+    return redirect()->intended(RouteServiceProvider::HOME);
 }
 
     /**
