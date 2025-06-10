@@ -601,7 +601,7 @@ const handleCategorySearchUpdate = (params) => {
         <div class="md:hidden mb-4">
             <button @click="showMobileFilters = true"
                 class="flex items-center justify-center gap-3 p-3 w-full bg-white rounded-lg shadow-md hover:shadow-lg transition-all duration-300">
-                <img :src="filterIcon" alt="Filter" class="w-5 h-5" />
+                <img :src="filterIcon" alt="Filter" class="w-5 h-5" loading="lazy" />
                 <span class="text-lg font-medium">Additional Filters</span>
             </button>
         </div>
@@ -609,7 +609,7 @@ const handleCategorySearchUpdate = (params) => {
         <!-- Desktop filter header (hidden on mobile) -->
         <div class="hidden md:flex items-center justify-between gap-3 mb-6">
             <div class="flex items-center gap-3">
-                <img :src="filterIcon" alt="" class="w-6 h-6" />
+                <img :src="filterIcon" alt="" class="w-6 h-6" loading="lazy" />
                 <span class="text-xl font-semibold">Customize Your Search</span>
             </div>
             <button @click="resetFilters"
@@ -673,7 +673,7 @@ const handleCategorySearchUpdate = (params) => {
                     <div class="text-xs font-medium text-gray-500 mb-1 ml-1">Budget</div>
                     <div class="relative w-full">
                         <img :src="priceIcon" alt="Price Icon"
-                            class="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 pointer-events-none text-gray-500" />
+                            class="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 pointer-events-none text-gray-500" loading="lazy" />
                         <button type="button" @click="showPriceSlider = !showPriceSlider"
                             class="pl-10 pr-4 py-2 w-full text-left flex gap-4 items-center justify-between bg-white border border-gray-200 rounded-lg shadow-sm hover:border-customPrimaryColor transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-customPrimaryColor/20">
                             <span class="text-gray-700 font-medium">
@@ -682,7 +682,7 @@ const handleCategorySearchUpdate = (params) => {
                             </span>
                             <img :src="CaretDown" alt="Caret Down"
                                 class="w-5 h-5 text-gray-500 transition-transform duration-300 ease-in-out pointer-events-none"
-                                :class="{ 'rotate-180': showPriceSlider }" />
+                                :class="{ 'rotate-180': showPriceSlider }" loading="lazy" />
                         </button>
                         <div v-if="showPriceSlider"
                             class="absolute z-20 mt-2 w-[20rem] h-[12rem] bg-white shadow-xl rounded-lg p-5 border border-gray-100 animate-fade-in">
@@ -759,7 +759,7 @@ const handleCategorySearchUpdate = (params) => {
             <div class="fixed inset-x-0 bottom-0 max-h-[85%] bg-white rounded-t-xl overflow-y-auto p-5 pt-0" @click.stop>
                 <div class="flex justify-between items-center mb-4 sticky z-50 top-0 bg-white pb-3 border-b border-gray-100 py-4">
                     <div class="flex items-center gap-2">
-                        <img :src="filterIcon" alt="" class="w-5 h-5" />
+                        <img :src="filterIcon" alt="" class="w-5 h-5" loading="lazy" />
                         <h2 class="text-xl font-medium">Search Options</h2>
                     </div>
                     <button @click="showMobileFilters = false" class="p-2 bg-gray-100 rounded-full">
@@ -815,7 +815,7 @@ const handleCategorySearchUpdate = (params) => {
                         <label class="text-sm font-medium text-gray-700 mb-1 block">Budget</label>
                         <div class="relative w-full">
                         <img :src="priceIcon" alt="Price Icon"
-                            class="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 pointer-events-none text-gray-500" />
+                            class="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 pointer-events-none text-gray-500" loading="lazy" />
                         <button type="button" @click="showPriceSlider = !showPriceSlider"
                             class="pl-10 pr-4 py-2 w-full text-left flex gap-4 items-center justify-between bg-white border border-gray-200 rounded-lg shadow-sm hover:border-customPrimaryColor transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-customPrimaryColor/20">
                             <span class="text-gray-700 font-medium">
@@ -824,7 +824,7 @@ const handleCategorySearchUpdate = (params) => {
                             </span>
                             <img :src="CaretDown" alt="Caret Down"
                                 class="w-5 h-5 text-gray-500 transition-transform duration-300 ease-in-out pointer-events-none"
-                                :class="{ 'rotate-180': showPriceSlider }" />
+                                :class="{ 'rotate-180': showPriceSlider }" loading="lazy" />
                         </button>
                         <div v-if="showPriceSlider"
                             class="absolute z-20 mt-2 w-full h-[12rem] bg-white shadow-xl rounded-lg p-5 border border-gray-100 animate-fade-in">
@@ -932,7 +932,7 @@ const handleCategorySearchUpdate = (params) => {
                 ]" class="max-[768px]:grid-cols-1">
                     <div v-if="!vehicles.data || vehicles.data.length === 0"
                         class="text-center text-gray-500 col-span-2 flex flex-col justify-center items-center gap-4">
-                        <img :src=noVehicleIcon alt="" class="w-[25rem] max-[768px]:w-full">
+                        <img :src=noVehicleIcon alt="" class="w-[25rem] max-[768px]:w-full" loading="lazy">
                         <p class="text-lg font-medium text-customPrimaryColor">No vehicles available at the moment</p>
                         <span>Search for another location</span>
                         <strong>Or</strong>
@@ -957,7 +957,7 @@ const handleCategorySearchUpdate = (params) => {
                                     <img :src="favoriteStatus[vehicle.id]
                                         ? FilledHeart
                                         : Heart
-                                        " alt="Favorite" class="w-[1.5rem] transition-colors duration-300" />
+                                        " alt="Favorite" class="w-[1.5rem] transition-colors duration-300" loading="lazy" />
                                 </button>
                             </div>
                         </div>
@@ -969,7 +969,7 @@ const handleCategorySearchUpdate = (params) => {
                                         image.image_type === 'primary'
                                 )?.image_url
                                     }`" alt="Primary Image"
-                                    class="w-full h-[250px] object-cover rounded-tl-lg rounded-tr-lg max-[768px]:h-[200px]" />
+                                    class="w-full h-[250px] object-cover rounded-tl-lg rounded-tr-lg max-[768px]:h-[200px]" loading="lazy" />
                                 <span
                                     class="bg-[#f5f5f5] ml-[1rem] inline-block px-8 py-2 text-center rounded-[40px] max-[768px]:text-[0.95rem]">
                                     {{ vehicle.model }}
@@ -996,7 +996,7 @@ const handleCategorySearchUpdate = (params) => {
                                                     : 0,
                                                 n
                                             )
-                                                " class="w-[16px] h-[16px]" />
+                                                " class="w-[16px] h-[16px]" loading="lazy" />
                                     </div>
                                     <span class="text-[1rem]" v-if="vehicle.review_count > 0">
                                         {{
@@ -1012,7 +1012,7 @@ const handleCategorySearchUpdate = (params) => {
                                  </div>
 
                                 <div class="car_short_info mt-[1rem] flex gap-3">
-                                    <img :src="carIcon" alt="" />
+                                    <img :src="carIcon" alt="" loading="lazy" />
                                     <div class="features">
                                         <span class="capitalize text-[1.15rem] max-[768px]:text-[1rem]">{{
                                             vehicle.transmission }} .
@@ -1023,7 +1023,7 @@ const handleCategorySearchUpdate = (params) => {
                                 </div>
                                 <div class="extra_details flex gap-5 mt-[1rem] items-center">
                                     <div class="col flex gap-3">
-                                        <img :src="mileageIcon" alt="" /><span
+                                        <img :src="mileageIcon" alt="" loading="lazy" /><span
                                             class="text-[1.15rem] max-[768px]:text-[0.95rem]">
                                             {{ vehicle.mileage }}km/d</span>
                                     </div>
@@ -1037,7 +1037,7 @@ const handleCategorySearchUpdate = (params) => {
                                         vehicle.benefits
                                             .cancellation_available_per_day
                                     " class="flex gap-3 items-center text-[12px]">
-                                        <img :src="check" alt="" />Free
+                                        <img :src="check" alt="" loading="lazy" />Free
                                         Cancellation ({{
                                             vehicle.benefits
                                                 .cancellation_available_per_day_date
@@ -1050,7 +1050,7 @@ const handleCategorySearchUpdate = (params) => {
                                         vehicle.benefits
                                             .cancellation_available_per_week
                                     " class="flex gap-3 items-center text-[12px]">
-                                        <img :src="check" alt="" />Free
+                                        <img :src="check" alt="" loading="lazy" />Free
                                         Cancellation ({{
                                             vehicle.benefits
                                                 .cancellation_available_per_week_date
@@ -1063,7 +1063,7 @@ const handleCategorySearchUpdate = (params) => {
                                         vehicle.benefits
                                             .cancellation_available_per_month
                                     " class="flex gap-3 items-center text-[12px]">
-                                        <img :src="check" alt="" />Free
+                                        <img :src="check" alt="" loading="lazy" />Free
                                         Cancellation ({{
                                             vehicle.benefits
                                                 .cancellation_available_per_month_date
@@ -1076,7 +1076,7 @@ const handleCategorySearchUpdate = (params) => {
                                         filters.package_type === 'day' &&
                                         !vehicle.benefits.limited_km_per_day
                                     " class="flex gap-3 items-center text-[12px]">
-                                        <img :src="check" alt="" />Unlimited
+                                        <img :src="check" alt="" loading="lazy" />Unlimited
                                         mileage
                                     </span>
                                     <span v-else-if="
@@ -1084,7 +1084,7 @@ const handleCategorySearchUpdate = (params) => {
                                         filters.package_type === 'day' &&
                                         vehicle.benefits.limited_km_per_day
                                     " class="flex gap-3 items-center text-[12px]">
-                                        <img :src="check" alt="" />Limited to
+                                        <img :src="check" alt="" loading="lazy" />Limited to
                                         {{
                                             vehicle.benefits
                                                 .limited_km_per_day_range
@@ -1098,7 +1098,7 @@ const handleCategorySearchUpdate = (params) => {
                                         !vehicle.benefits
                                             .limited_km_per_week
                                     " class="flex gap-3 items-center text-[12px]">
-                                        <img :src="check" alt="" />Unlimited
+                                        <img :src="check" alt="" loading="lazy" />Unlimited
                                         mileage
                                     </span>
                                     <span v-else-if="
@@ -1106,7 +1106,7 @@ const handleCategorySearchUpdate = (params) => {
                                         filters.package_type === 'week' &&
                                         vehicle.benefits.limited_km_per_week
                                     " class="flex gap-3 items-center text-[12px]">
-                                        <img :src="check" alt="" />Limited to
+                                        <img :src="check" alt="" loading="lazy" />Limited to
                                         {{
                                             vehicle.benefits
                                                 .limited_km_per_week_range
@@ -1120,7 +1120,7 @@ const handleCategorySearchUpdate = (params) => {
                                         !vehicle.benefits
                                             .limited_km_per_month
                                     " class="flex gap-3 items-center text-[12px]">
-                                        <img :src="check" alt="" />Unlimited
+                                        <img :src="check" alt="" loading="lazy" />Unlimited
                                         mileage
                                     </span>
                                     <span v-else-if="
@@ -1129,7 +1129,7 @@ const handleCategorySearchUpdate = (params) => {
                                         vehicle.benefits
                                             .limited_km_per_month
                                     " class="flex gap-3 items-center text-[12px]">
-                                        <img :src="check" alt="" />Limited to
+                                        <img :src="check" alt="" loading="lazy" />Limited to
                                         {{
                                             vehicle.benefits
                                                 .limited_km_per_month_range
@@ -1143,7 +1143,7 @@ const handleCategorySearchUpdate = (params) => {
                                         vehicle.benefits
                                             .price_per_km_per_day
                                     " class="flex gap-3 items-center text-[12px]">
-                                        <img :src="check" alt="" />{{
+                                        <img :src="check" alt="" loading="lazy" />{{
                                             vehicle.benefits
                                                 .price_per_km_per_day
                                         }}/km extra above limit
@@ -1154,7 +1154,7 @@ const handleCategorySearchUpdate = (params) => {
                                         vehicle.benefits
                                             .price_per_km_per_week
                                     " class="flex gap-3 items-center text-[12px]">
-                                        <img :src="check" alt="" />{{
+                                        <img :src="check" alt="" loading="lazy" />{{
                                             vehicle.benefits
                                                 .price_per_km_per_week
                                         }}/km extra above limit
@@ -1165,7 +1165,7 @@ const handleCategorySearchUpdate = (params) => {
                                         vehicle.benefits
                                             .price_per_km_per_month
                                     " class="flex gap-3 items-center text-[12px]">
-                                        <img :src="check" alt="" />{{
+                                        <img :src="check" alt="" loading="lazy" />{{
                                             vehicle.benefits
                                                 .price_per_km_per_month
                                         }}/km extra above limit
@@ -1175,7 +1175,7 @@ const handleCategorySearchUpdate = (params) => {
                                         vehicle.benefits &&
                                         vehicle.benefits.minimum_driver_age
                                     " class="flex gap-3 items-center text-[12px]">
-                                        <img :src="check" alt="" />Min age:
+                                        <img :src="check" alt="" loading="lazy" />Min age:
                                         {{
                                             vehicle.benefits.minimum_driver_age
                                         }}
@@ -1223,7 +1223,7 @@ const handleCategorySearchUpdate = (params) => {
                                             </div>
                                         </div>
                                     </div>
-                                    <img :src="goIcon" alt="Go" class="max-[768px]:w-[35px]" />
+                                    <img :src="goIcon" alt="Go" class="max-[768px]:w-[35px]" loading="lazy" />
                                 </div>
                             </div>
                         </a>
