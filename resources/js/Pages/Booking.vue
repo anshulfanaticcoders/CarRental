@@ -443,6 +443,9 @@ onMounted(async () => {
 
 const error = ref([]);
 const isLoading = ref(false);
+const showErrorDialog = ref(false);
+const dialogErrorMessage = ref('');
+
 watch(isLoading, (newValue) => {
     if (newValue) {
         document.body.style.overflow = 'hidden';
@@ -450,6 +453,13 @@ watch(isLoading, (newValue) => {
         document.body.style.overflow = '';
     }
 });
+
+// Function to handle errors from StripeCheckout
+const handleStripeError = (message) => {
+    dialogErrorMessage.value = message || "Something went wrong, please try again later.";
+    showErrorDialog.value = true;
+    isLoading.value = false; // Ensure loader is hidden on error
+};
 
 // const submitBooking = async () => {
 //     if (!validateSteps()) {
@@ -923,7 +933,7 @@ const bookingData = computed(() => {
                             class="flex justify-between gap-4 mt-4 max-[768px]:fixed max-[768px]:bottom-0 max-[768px]:left-0 max-[768px]:bg-white max-[768px]:w-full max-[768px]:z-10 max-[768px]:py-2 max-[768px]:px-[1.5rem]">
                             <button type="button" @click="moveToPrevStep"
                                 class="button-secondary w-[15rem] max-[768px]:text-[0.75rem]">Back</button>
-                            <StripeCheckout :booking-data="bookingData" />
+                            <StripeCheckout :booking-data="bookingData" @error="handleStripeError" />
                         </div>
                     </div>
                 </div>
@@ -936,6 +946,21 @@ const bookingData = computed(() => {
                             payment</p>
                     </div>
                 </div>
+
+                <!-- Error Dialog -->
+                <Dialog :open="showErrorDialog" @update:open="showErrorDialog = $event">
+                    <DialogContent>
+                        <DialogHeader>
+                            <DialogTitle>Payment Error</DialogTitle>
+                            <DialogDescription>
+                                {{ dialogErrorMessage }}
+                            </DialogDescription>
+                        </DialogHeader>
+                        <DialogFooter>
+                            <PrimaryButton @click="showErrorDialog = false">Close</PrimaryButton>
+                        </DialogFooter>
+                    </DialogContent>
+                </Dialog>
 
                 <div class="column w-[35%] max-[768px]:w-full">
                     <div

@@ -29,12 +29,13 @@ class PaymentController extends Controller
     {
         Stripe::setApiKey(config('stripe.secret'));
 
-        try {
-            $bookingData = $request->input('bookingData');
-            
-            // First save the customer and booking to database
-            $customer = Customer::where('email', $bookingData['customer']['email'])->first();
+        $bookingData = $request->input('bookingData');
+        $customer = null;
+        $booking = null;
 
+        try {
+            // First, find or create the customer
+            $customer = Customer::where('email', $bookingData['customer']['email'])->first();
             if (!$customer) {
                 $customer = Customer::create([
                     'user_id' => auth()->id(),
@@ -50,6 +51,7 @@ class PaymentController extends Controller
             // Generate a unique booking reference
             $bookingReference = Str::random(32);
 
+            // Create the booking record with a 'pending' status initially
             $booking = Booking::create([
                 'booking_number' => uniqid('BOOK-'),
                 'booking_reference' => $bookingReference,
@@ -70,15 +72,15 @@ class PaymentController extends Controller
                 'total_amount' => $bookingData['total_amount'],
                 'pending_amount' => $bookingData['pending_amount'],
                 'amount_paid' => $bookingData['amount_paid'],
-                'payment_status' => 'pending',
-                'booking_status' => 'pending',
+                'payment_status' => 'pending', // Initial status
+                'booking_status' => 'pending', // Initial status
                 'plan' => $bookingData['plan'] ?? null,
                 'plan_price' => $bookingData['plan_price'] ?? null,
                 'notes' => $bookingData['notes'] ?? null,
-                'cancellation_reason' => null, // Initialize as null
+                'cancellation_reason' => null,
             ]);
 
-            // Save extras if any
+            // Save extras if any, linked to the newly created booking
             if (!empty($bookingData['extras'])) {
                 $extrasData = [];
                 foreach ($bookingData['extras'] as $extra) {
@@ -94,45 +96,42 @@ class PaymentController extends Controller
                         ];
                     }
                 }
-                
                 if (!empty($extrasData)) {
                     BookingExtra::insert($extrasData);
                 }
             }
 
-            
-
-            // Create Stripe customer
+            // Create Stripe customer (using existing or newly created customer's email)
             $stripeCustomer = \Stripe\Customer::create([
                 'email' => $customer->email,
                 'name' => "{$customer->first_name} {$customer->last_name}",
                 'phone' => $customer->phone ?? null,
                 'address' => [
-                    'line1' => '123 Test Street',
-                    'city' => 'Berlin',
-                    'country' => 'DE',
-                    'postal_code' => '10115',
+                    'line1' => '123 Test Street', // Placeholder
+                    'city' => 'Berlin', // Placeholder
+                    'country' => 'DE', // Placeholder
+                    'postal_code' => '10115', // Placeholder
                 ],
             ]);
 
-            // Create Checkout Session
+            // Create Checkout Session with the actual booking ID
             $session = Session::create([
                 'customer' => $stripeCustomer->id,
                 'payment_method_types' => ['card', 'bancontact', 'klarna'],
                 'line_items' => [[
                     'price_data' => [
-                        'currency' => 'eur',
+                        'currency' => 'eur', // Ensure this matches your actual currency
                         'product_data' => [
                             'name' => 'Car Rental Booking',
                             'description' => "Booking for vehicle ID {$bookingData['vehicle_id']}",
                         ],
-                        'unit_amount' => $bookingData['amount_paid'] * 100,
+                        'unit_amount' => $bookingData['amount_paid'] * 100, // Amount in cents
                     ],
                     'quantity' => 1,
                 ]],
                 'mode' => 'payment',
                 'success_url' => url('/booking-success/details?session_id={CHECKOUT_SESSION_ID}&booking_id=' . $booking->id),
-                'cancel_url' => url('/booking/cancel'),
+                'cancel_url' => route('payment.cancel', ['booking_id' => $booking->id]),
                 'metadata' => [
                     'booking_id' => $booking->id,
                 ],
@@ -152,8 +151,27 @@ class PaymentController extends Controller
             ]);
 
         } catch (\Stripe\Exception\ApiErrorException $e) {
+            // If Stripe API call fails, delete the created booking and customer (if newly created)
+            if ($booking && $booking->exists) {
+                $booking->delete();
+            }
+            // Only delete customer if it was newly created and has no other bookings
+            if ($customer && $customer->wasRecentlyCreated && $customer->bookings()->count() === 0) {
+                $customer->delete();
+            }
+
             \Log::error('Stripe Error:', ['error' => $e->getMessage()]);
             return response()->json(['error' => $e->getMessage()], 400);
+        } catch (\Exception $e) {
+            // Catch any other general exceptions and rollback
+            if ($booking && $booking->exists) {
+                $booking->delete();
+            }
+            if ($customer && $customer->wasRecentlyCreated && $customer->bookings()->count() === 0) {
+                $customer->delete();
+            }
+            \Log::error('General Error in PaymentController::charge:', ['error' => $e->getMessage()]);
+            return response()->json(['error' => 'An unexpected error occurred. Please try again.'], 500);
         }
     }
 
@@ -168,15 +186,27 @@ class PaymentController extends Controller
 
         if (!$sessionId || !$bookingId) {
             Log::error('Missing session_id or booking_id in PaymentController::success');
-            return redirect()->route('booking.create')->with('error', 'Invalid payment session');
+            return redirect()->route('payment.cancel', ['booking_id' => $bookingId])->with('error', 'Invalid payment session');
         }
 
         $booking = Booking::findOrFail($bookingId);
         $customer = Customer::findOrFail($booking->customer_id);
         $vehicle = Vehicle::findOrFail($booking->vehicle_id);
+        // Find the payment record. Prioritize finding a pending one for this booking.
+        // If a payment record with the current sessionId exists, use it.
+        // Otherwise, find the most recent pending payment for this booking.
         $payment = BookingPayment::where('booking_id', $booking->id)
-                    ->where('transaction_id', $sessionId)
+                    ->where('transaction_id', $sessionId) // Try to find by current session ID first
                     ->first();
+
+        if (!$payment) {
+            // If not found by current session ID, try to find any pending payment for this booking
+            $payment = BookingPayment::where('booking_id', $booking->id)
+                                    ->where('payment_status', 'pending')
+                                    ->latest() // Get the most recent pending one
+                                    ->first();
+        }
+        
         $vendorProfile = VendorProfile::where('user_id', $vehicle->vendor_id)->first();
 
         $session = Session::retrieve($sessionId);
@@ -270,26 +300,112 @@ class PaymentController extends Controller
                         'payment_intent_id' => $paymentIntent->id,
                         'payment_intent_status' => $paymentIntent->status,
                     ]);
-                    return redirect()->route('booking.create')->with('error', 'Payment not completed. Status: ' . $paymentIntent->status);
+                    return redirect()->route('payment.cancel', ['booking_id' => $bookingId])->with('error', 'Payment not completed. Status: ' . $paymentIntent->status);
                 }
             } catch (\Stripe\Exception\ApiErrorException $e) {
                 Log::error('Stripe API Error while retrieving PaymentIntent/PaymentMethod in PaymentController::success', [
                     'session_id' => $sessionId,
                     'error' => $e->getMessage(),
                 ]);
-                return redirect()->route('booking.create')->with('error', 'Error processing payment details: ' . $e->getMessage());
+                return redirect()->route('payment.cancel', ['booking_id' => $bookingId])->with('error', 'Error processing payment details: ' . $e->getMessage());
             }
         } else {
 
             Log::error('PaymentIntent ID missing in session object in PaymentController::success', ['session_id' => $sessionId]);
-            return redirect()->route('booking.create')->with('error', 'Payment processing error: Missing Payment Intent.');
+            return redirect()->route('payment.cancel', ['booking_id' => $bookingId])->with('error', 'Payment processing error: Missing Payment Intent.');
         }
     } catch (\Exception $e) {
         Log::error('Error in PaymentController::success', [
             'message' => $e->getMessage(),
             'trace' => $e->getTraceAsString(),
         ]);
-        return redirect()->route('booking.create')->with('error', 'Error processing payment: ' . $e->getMessage());
+        return redirect()->route('payment.cancel', ['booking_id' => $request->query('booking_id')])->with('error', 'Error processing payment: ' . $e->getMessage());
+    }
+}
+
+public function cancel(Request $request, $booking_id)
+{
+    $booking = Booking::find($booking_id);
+
+    if ($booking) {
+        // Optionally, you can update the booking status to 'cancelled' if you want
+        // $booking->update(['booking_status' => 'cancelled']);
+    }
+
+    return Inertia::render('Booking/Cancel', [
+        'bookingId' => $booking_id,
+    ]);
+}
+
+public function retryPayment(Request $request)
+{
+    Stripe::setApiKey(config('stripe.secret'));
+
+    try {
+        $bookingId = $request->input('booking_id');
+        $booking = Booking::findOrFail($bookingId);
+        $customer = Customer::findOrFail($booking->customer_id);
+
+        // Create Stripe customer
+        $stripeCustomer = \Stripe\Customer::create([
+            'email' => $customer->email,
+            'name' => "{$customer->first_name} {$customer->last_name}",
+            'phone' => $customer->phone ?? null,
+            'address' => [
+                'line1' => '123 Test Street',
+                'city' => 'Berlin',
+                'country' => 'DE',
+                'postal_code' => '10115',
+            ],
+        ]);
+
+        // Create Checkout Session
+        $session = Session::create([
+            'customer' => $stripeCustomer->id,
+            'payment_method_types' => ['card', 'bancontact', 'klarna'],
+            'line_items' => [[
+                'price_data' => [
+                    'currency' => 'eur',
+                    'product_data' => [
+                        'name' => 'Car Rental Booking',
+                        'description' => "Booking for vehicle ID {$booking->vehicle_id}",
+                    ],
+                    'unit_amount' => $booking->amount_paid * 100,
+                ],
+                'quantity' => 1,
+            ]],
+            'mode' => 'payment',
+            'success_url' => url('/booking-success/details?session_id={CHECKOUT_SESSION_ID}&booking_id=' . $booking->id),
+            'cancel_url' => route('payment.cancel', ['booking_id' => $booking->id]),
+            'metadata' => [
+                'booking_id' => $booking->id,
+            ],
+        ]);
+
+        // Update payment record
+        $payment = BookingPayment::where('booking_id', $booking->id)->first();
+        if ($payment) {
+            $payment->update([
+                'transaction_id' => $session->id,
+                'payment_status' => 'pending',
+            ]);
+        } else {
+            BookingPayment::create([
+                'booking_id' => $booking->id,
+                'payment_method' => 'stripe',
+                'transaction_id' => $session->id,
+                'amount' => $booking->amount_paid,
+                'payment_status' => 'pending',
+            ]);
+        }
+
+        return response()->json([
+            'sessionId' => $session->id,
+        ]);
+
+    } catch (\Stripe\Exception\ApiErrorException $e) {
+        \Log::error('Stripe Error:', ['error' => $e->getMessage()]);
+        return response()->json(['error' => $e->getMessage()], 400);
     }
 }
     

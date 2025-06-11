@@ -429,7 +429,8 @@ Route::middleware(['auth', 'role:customer'])->group(function () {
     Route::get('/booking-success/details', [BookingController::class, 'getBookingDetails'])->name('booking-success.details');
     Route::get('/booking', [BookingController::class, 'create'])->name('booking.create');
     Route::post('/booking', [BookingController::class, 'store'])->name('booking.store');
-    Route::post('/booking/cancel', [App\Http\Controllers\BookingController::class, 'cancelBooking'])->name('booking.cancel');
+    Route::get('/booking/cancel/{booking_id}', [PaymentController::class, 'cancel'])->name('payment.cancel');
+    Route::post('/retry-payment', [PaymentController::class, 'retryPayment'])->name('payment.retry');
     Route::post('/payment/charge', [PaymentController::class, 'charge'])->name('payment.charge');
     // this route is to show customer booking in the customer profile
     Route::get('/customer/bookings', [BookingController::class, 'getCustomerBookingData'])->name('customer.bookings');

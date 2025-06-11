@@ -10,9 +10,6 @@
       </div>
     </div>
 
-    <div v-if="errorMessage" class="text-red-600 text-sm mb-4">
-      {{ errorMessage }}
-    </div>
     <PrimaryButton
       :disabled="isLoading"
       @click="initiateCheckout"
@@ -35,12 +32,15 @@ const props = defineProps({
   },
 });
 
+const emit = defineEmits(['error']); // Define emits for the error event
+
 const isLoading = ref(false);
-const errorMessage = ref('');
+// errorMessage is no longer needed here as it will be handled by the parent component
+// const errorMessage = ref('');
 
 const initiateCheckout = async () => {
   isLoading.value = true;
-  errorMessage.value = '';
+  // errorMessage.value = ''; // No longer needed
 
   try {
     // Load Stripe.js dynamically
@@ -70,7 +70,8 @@ const initiateCheckout = async () => {
       throw new Error(error.message);
     }
   } catch (err) {
-    errorMessage.value = err.message || 'An error occurred. Please try again.';
+    // Emit the error to the parent component
+    emit('error', err.message || 'An error occurred. Please try again.');
     isLoading.value = false;
   }
 };

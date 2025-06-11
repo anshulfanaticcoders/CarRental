@@ -46,6 +46,7 @@
             function gtag(){dataLayer.push(arguments);}
             gtag('js', new Date());
             gtag('config', 'AW-16944650756');
+            gtag('event', 'conversion', {'send_to': 'AW-16944650756/gSgaCLXb-skaEIS0648_'});
         </script>
 
         @inertiaHead
