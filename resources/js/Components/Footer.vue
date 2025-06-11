@@ -108,7 +108,7 @@ onMounted(async () => {
             <label for="" class="text-[1.25rem] font-medium max-[768px]:text-[1rem]">Categories</label>
             <ul class="flex flex-col gap-4 max-[768px]:text-[0.875rem]">
               <li v-for="category in footerCategories" :key="category.id">
-                <Link :href="`/search/category/${category.id}`">{{ category.name }}</Link>
+                <Link :href="`/search/category/${category.slug}`">{{ category.name }}</Link>
               </li>
               <!-- Fallback if no categories are selected -->
               <li v-if="footerCategories.length === 0"><Link href="/">No categories available</Link></li>

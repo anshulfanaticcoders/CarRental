@@ -224,7 +224,7 @@ const page = usePage();
                                 <CarouselItem v-for="category in props.categories" :key="category.id"
                                     class="md:basis-1/2 lg:basis-1/3">
                                     <div class="p-1">
-                                        <Link :href="`/search/category/${category.id}`">
+                                        <Link :href="`/search/category/${category.slug}`">
                                         <Card class="bg-transparent shadow-none border-none">
                                             <CardContent
                                                 class="cardContent flex h-[515px] max-[768px]:h-[17rem] items-center justify-center p-6 relative">

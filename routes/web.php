@@ -127,7 +127,7 @@ Route::get('/vehicles', [VehicleController::class, 'index'])->name('vehicles.ind
 Route::get('/vehicle/{id}', [VehicleController::class, 'show'])->name('vehicle.show');
 Route::get('/s', [SearchController::class, 'search']);
 Route::post('/store-search', [SearchController::class, 'storeSearchData'])->name('search.store');
-Route::get('/search/category/{category_id?}', [SearchController::class, 'searchByCategory'])->name('search.category');
+Route::get('/search/category/{category_slug?}', [SearchController::class, 'searchByCategory'])->name('search.category');
 Route::get('/api/geocoding/autocomplete', [GeocodingController::class, 'autocomplete']);
 Route::get('/api/geocoding/reverse', [GeocodingController::class, 'reverse']);
 Route::get('/blog', [BlogController::class, 'showBlogPage'])->name('blog');

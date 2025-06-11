@@ -241,17 +241,8 @@ const resetFilters = () => {
     form.price_range = "";
     form.color = "";
     form.mileage = "";
-    form.package_type = "day";
+    form.package_type = "";
     form.category_id = "";
-    form.city = "";
-    form.state = "";
-    form.country = "";
-    form.matched_field = null;
-    form.location = ""; // Reset location field
-    form.where = "";
-    form.latitude = null;
-    form.longitude = null;
-    form.radius = null;
     form.date_from = "";
     form.date_to = "";
     // price_range and package_type are also reset by form.reset() or should be explicitly set if needed
