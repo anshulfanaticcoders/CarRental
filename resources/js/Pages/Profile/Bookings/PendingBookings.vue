@@ -76,13 +76,20 @@
                 </div>
                 <div class="flex items-center justify-between">
                   <Link :href="`/booking-success?payment_intent=${booking.payments[0]?.transaction_id}`" class="underline">{{ _t('customerbooking', 'view_booking_details_link') }}</Link>
-                <Link
-                  v-if="booking.vehicle && booking.vehicle.vendor_id"
-                  class="button-primary px-5 py-4 max-[768px]:text-[0.75rem] ml-4"
-                  :href="`/messages?vendor_id=${booking.vehicle.vendor_id}`"
-                >
-                  {{ _t('customerbooking', 'chat_with_owner_link') }}
-                </Link>
+                  <button
+                    v-if="booking.payment_status === 'pending'"
+                    @click="retryPayment(booking.id)"
+                    class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded ml-4"
+                  >
+                    Retry Payment
+                  </button>
+                  <Link
+                    v-if="booking.vehicle && booking.vehicle.vendor_id"
+                    class="button-primary px-5 py-4 max-[768px]:text-[0.75rem] ml-4"
+                    :href="`/messages?vendor_id=${booking.vehicle.vendor_id}`"
+                  >
+                    {{ _t('customerbooking', 'chat_with_owner_link') }}
+                  </Link>
                 </div>
               </div>
             </div>
@@ -106,8 +113,10 @@
   import bookingstatusIcon from '../../../../assets/bookingstatusIcon.svg';
   import carIcon from '../../../../assets/carIcon.svg';
   import { Link, usePage, router } from '@inertiajs/vue3';
-   import Pagination from '@/Components/ReusableComponents/Pagination.vue';
+  import Pagination from '@/Components/ReusableComponents/Pagination.vue';
   import { ref, getCurrentInstance } from 'vue';
+  import { loadStripe } from '@stripe/stripe-js';
+  import axios from 'axios';
 
 const { appContext } = getCurrentInstance();
 const _t = appContext.config.globalProperties._t;
@@ -141,5 +150,19 @@ const props = defineProps({
   const formatPrice = (price, vehicle) => {
     const currencySymbol = vehicle?.vendor_profile?.currency ?? '$'; // Default to '$' if missing
     return `${currencySymbol}${price}`;
+};
+
+const retryPayment = async (bookingId) => {
+  try {
+    const response = await axios.post(route('payment.retry'), { booking_id: bookingId });
+    
+    if (response.data.sessionId) {
+      const stripe = await loadStripe(import.meta.env.VITE_STRIPE_KEY);
+      await stripe.redirectToCheckout({ sessionId: response.data.sessionId });
+    }
+  } catch (error) {
+    console.error('Error retrying payment:', error);
+    alert('Failed to retry payment. Please try again later.');
+  }
 };
   </script>
