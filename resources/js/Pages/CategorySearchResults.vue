@@ -71,7 +71,7 @@ const form = useForm({
     longitude: usePage().props.filters.longitude || null,
     radius: usePage().props.filters.radius || null,
     package_type: usePage().props.filters.package_type || "",
-    category_id: usePage().props.filters.category_id || "",
+    category_slug: usePage().props.filters.category_slug || "",
     city: usePage().props.filters.city || "",
     state: usePage().props.filters.state || "",
     country: usePage().props.filters.country || "",
@@ -79,7 +79,7 @@ const form = useForm({
 });
 
 const submitFilters = debounce(() => {
-    form.get(`/search/category/${form.category_id}`, {
+    form.get(`/search/category/${form.category_slug}`, {
         preserveState: true,
         preserveScroll: true,
         onSuccess: (response) => {
@@ -226,6 +226,7 @@ const createCustomIcon = (vehicle, isHighlighted = false) => {
 };
 
 const resetFilters = () => {
+    const slug = form.category_slug;
     form.reset();
     form.seating_capacity = "";
     form.brand = "";
@@ -234,8 +235,8 @@ const resetFilters = () => {
     form.price_range = "";
     form.color = "";
     form.mileage = "";
-    form.package_type = "day";
-    // form.category_id = ""; // Keep category_id as this page is for a specific category unless changed by user
+    form.package_type = "";
+    form.category_slug = slug; // Keep category slug
     form.city = "";
     form.state = "";
     form.country = "";
@@ -357,6 +358,14 @@ watch(
             initMap();
         }
     }
+);
+
+watch(
+    () => props.filters.category_slug,
+    (newSlug) => {
+        form.category_slug = newSlug;
+    },
+    { immediate: true }
 );
 
 onMounted(() => {
@@ -645,8 +654,8 @@ const handleCategorySearchUpdate = (params) => {
                 <!-- Category Filter -->
                 <div class="relative w-48 filter-group">
                     <div class="text-xs font-medium text-gray-500 mb-1 ml-1">Vehicle Type</div>
-                <CustomDropdown v-model="form.category_id" unique-id="category"
-                        :options="$page.props.categories.map(category => ({ value: category.id, label: category.name }))"
+                <CustomDropdown v-model="form.category_slug" unique-id="category"
+                        :options="$page.props.categories.map(category => ({ value: category.slug, label: category.name }))"
                         placeholder="All Categories" :left-icon="categoryIcon" :right-icon="CaretDown" />
                     </div>
 
@@ -789,8 +798,8 @@ const handleCategorySearchUpdate = (params) => {
                     <!-- Category Filter -->
                     <div class="filter-item">
                     <label class="text-sm font-medium text-gray-700 mb-1 block">Vehicle Type</label>
-                    <CustomDropdown v-model="form.category_id" unique-id="category-mobile"
-                        :options="$page.props.categories.map(category => ({ value: category.id, label: category.name }))"
+                    <CustomDropdown v-model="form.category_slug" unique-id="category-mobile"
+                        :options="$page.props.categories.map(category => ({ value: category.slug, label: category.name }))"
                         placeholder="All Categories" :left-icon="categoryIcon" :right-icon="CaretDown" />
                     </div>
 

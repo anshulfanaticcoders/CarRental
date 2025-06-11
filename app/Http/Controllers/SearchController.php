@@ -220,7 +220,7 @@ class SearchController extends Controller
         ]);
     }
 
-    public function searchByCategory(Request $request, $category_id = null)
+    public function searchByCategory(Request $request, $slug = null)
 {
     $validated = $request->validate([
         'seating_capacity' => 'nullable|integer',
@@ -242,11 +242,21 @@ class SearchController extends Controller
         'package_type' => 'nullable|string|in:day,week,month',
     ]);
 
+    // The slug from the URL is the source of truth for the main category filter.
+    // It's added to the validated data to be available in the view as a filter.
+    $validated['category_slug'] = $slug;
+
     // Base query
     $query = Vehicle::query();
 
-    if ($category_id) {
-        $query->where('category_id', $category_id);
+    if ($slug) {
+        $category = VehicleCategory::where('slug', $slug)->first();
+        if ($category) {
+            $query->where('category_id', $category->id);
+        } else {
+            // If slug is invalid, return no results.
+            $query->whereRaw('1 = 0');
+        }
     }
     
     $query->whereIn('status', ['available', 'rented'])
@@ -374,7 +384,7 @@ class SearchController extends Controller
     // $categoriesFromOptions = VehicleCategory::whereIn('id', $potentialVehiclesForOptionsCategory->pluck('category_id')->unique()->filter())->select('id', 'name')->get()->toArray();
     // However, typically for a category search page, you might just pass all categories or the specific one.
     // For consistency with the general search, let's fetch all categories available for the primary filters.
-    $allCategoriesForPage = VehicleCategory::select('id', 'name')->get()->toArray();
+    $allCategoriesForPage = VehicleCategory::select('id', 'name', 'slug')->get()->toArray();
 
 
     // --- Now apply secondary attribute filters to the main $query ---
