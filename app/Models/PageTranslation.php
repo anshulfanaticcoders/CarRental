@@ -13,6 +13,12 @@ class PageTranslation extends Model
         'page_id',
         'locale',
         'title',
+        'slug',
         'content',
     ];
+
+    public function page()
+    {
+        return $this->belongsTo(Page::class);
+    }
 }

@@ -466,7 +466,7 @@ onMounted(() => {
       </SidebarContent>
 
       <SidebarFooter>
-        <Link :href="route('logout')" method="post" as="button" class="text-[#EE1D52] flex items-center gap-1 pl-2 py-3 shadow-sm">
+        <Link :href="route('admin.logout')" method="post" as="button" class="text-[#EE1D52] flex items-center gap-1 pl-2 py-3 shadow-sm">
           <img :src=logoutIcon alt="">
           Log out
         </Link>

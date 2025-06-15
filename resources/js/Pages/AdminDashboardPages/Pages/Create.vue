@@ -39,6 +39,13 @@
                                     <p v-if="form.errors[`translations.${locale}.title`]" class="text-red-500 text-sm">{{ form.errors[`translations.${locale}.title`] }}</p>
                                 </div>
 
+                                <!-- Slug Field -->
+                                <div class="space-y-2">
+                                    <label :for="`slug-${locale}`" class="text-sm font-medium">Slug ({{ locale.toUpperCase() }})</label>
+                                    <Input :id="`slug-${locale}`" v-model="form.translations[locale].slug" type="text" class="w-full" required />
+                                    <p v-if="form.errors[`translations.${locale}.slug`]" class="text-red-500 text-sm">{{ form.errors[`translations.${locale}.slug`] }}</p>
+                                </div>
+
                                 <!-- Content Field -->
                                 <div class="space-y-2">
                                     <label :for="`content-${locale}`" class="text-sm font-medium">Content ({{ locale.toUpperCase() }})</label>
@@ -110,7 +117,7 @@
 </template>
 
 <script setup>
-import { Link, useForm } from '@inertiajs/vue3';
+import { Link, useForm, router } from '@inertiajs/vue3';
 import AdminDashboardLayout from '@/Layouts/AdminDashboardLayout.vue';
 import { Button } from '@/Components/ui/button';
 import { Input } from '@/Components/ui/input';
@@ -125,7 +132,7 @@ const activeLocale = ref('en');
 
 const initialTranslations = {};
 locales.forEach(locale => {
-    initialTranslations[locale] = { title: '', content: '' };
+    initialTranslations[locale] = { title: '', slug: '', content: '' };
 });
 
 const initialSeoTranslations = {};
@@ -139,6 +146,7 @@ locales.forEach(locale => {
 
 const form = useForm({
     translations: initialTranslations,
+    locale: activeLocale,
     // SEO Fields
     seo_title: '',
     canonical_url: '',
@@ -148,8 +156,20 @@ const form = useForm({
 });
 
 const submit = () => {
-    // The controller needs to be adapted to handle this new structure.
-    form.post(route('admin.pages.store'), {
+    const activeTranslation = form.translations[activeLocale.value];
+
+    const dataToSubmit = {
+        locale: activeLocale.value,
+        title: activeTranslation.title,
+        slug: activeTranslation.slug,
+        content: activeTranslation.content,
+        seo_title: form.seo_title,
+        canonical_url: form.canonical_url,
+        seo_image_url: form.seo_image_url,
+        seo_translations: form.seo_translations,
+    };
+
+    router.post(route('admin.pages.store'), dataToSubmit, {
         onSuccess: () => {
             toast.success('Page created successfully!', {
                 position: 'top-right',

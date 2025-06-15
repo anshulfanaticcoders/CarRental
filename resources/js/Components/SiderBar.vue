@@ -91,10 +91,10 @@ const menus = [
     key: "profile",
     icon: profileIcon,
     items: [
-      { name: _t('customerprofile','profile'), path: "/profile" },
-      { name: _t('customerprofile','travel_documents'), path: "/user/documents" },
-      { name: _t('customerprofile','issued_payments'), path: "/profile/payments" },
-      { name: _t('customerprofile','register_as_vendor'), path: "/vendor/register" },
+      { name: _t('customerprofile','profile'), path: route('profile.edit', { locale: usePage().props.locale }) },
+      { name: _t('customerprofile','travel_documents'), path: route('user.documents.index', { locale: usePage().props.locale }) },
+      { name: _t('customerprofile','issued_payments'), path: route('profile.payments', { locale: usePage().props.locale }) },
+      { name: _t('customerprofile','register_as_vendor'), path: route('vendor.register', { locale: usePage().props.locale }) },
     ],
   },
   {
@@ -102,17 +102,17 @@ const menus = [
     key: "bookings",
     icon: bookingsIcon,
     items: [
-      { name: _t('customerprofile','confirmed'), path: "/profile/bookings/confirmed" },
-      { name: _t('customerprofile','pending'), path: "/profile/bookings/pending" },
-      { name: _t('customerprofile','completed'), path: "/profile/bookings/completed" },
+      { name: _t('customerprofile','confirmed'), path: route('profile.bookings.confirmed', { locale: usePage().props.locale }) },
+      { name: _t('customerprofile','pending'), path: route('profile.bookings.pending', { locale: usePage().props.locale }) },
+      { name: _t('customerprofile','completed'), path: route('profile.bookings.completed', { locale: usePage().props.locale }) },
     ],
   },
 ];
 
 const otherLinks = [
-  { name: _t('customerprofile','inbox'), path: "/messages", icon: inboxIcon },
-  { name: _t('customerprofile','favorites'), path: "/favourites", icon: favoritesIcon },
-  { name: _t('customerprofile','my_reviews'), path: "/profile/reviews", icon: reviewsIcon },
+  { name: _t('customerprofile','inbox'), path: route('messages.index', { locale: usePage().props.locale }), icon: inboxIcon },
+  { name: _t('customerprofile','favorites'), path: route('profile.favourites', { locale: usePage().props.locale }), icon: favoritesIcon },
+  { name: _t('customerprofile','my_reviews'), path: route('profile.reviews', { locale: usePage().props.locale }), icon: reviewsIcon },
 ];
 
 // Additional menus for "vendor"
@@ -122,10 +122,10 @@ const vendorMenus = [
     key: "dashboard",
     icon: dashboardIcon,
     items: [
-      { name: _t('customerprofile','profile'), path: "/profile" },
-      { name: _t('customerprofile','overview'), path: "/vendor/overview" },
-      { name: _t('customerprofile','documents'), path: "/vendor/documents" },
-      { name: _t('customerprofile','verification_status'), path: "/vendor-status" },
+      { name: _t('customerprofile','profile'), path: route('profile.edit', { locale: usePage().props.locale }) },
+      { name: _t('customerprofile','overview'), path: route('vendor.overview', { locale: usePage().props.locale }) },
+      { name: _t('customerprofile','documents'), path: route('vendor.documents.index', { locale: usePage().props.locale }) },
+      { name: _t('customerprofile','verification_status'), path: route('vendor.status', { locale: usePage().props.locale }) },
     ],
   },
   {
@@ -133,20 +133,20 @@ const vendorMenus = [
     key: "vehicles",
     icon: vehiclesIcon,
     items: [
-      { name: _t('customerprofile','all_vehicles'), path: "/current-vendor-vehicles" },
-      { name: _t('customerprofile','add_new_vehicle'), path: "/vehicles/create" },
-      { name: _t('customerprofile','create_bulk_listing'), path: "/vehicles/bulk-upload" },
-      { name: _t('customerprofile','manage_plans'), path: "/plans" },
+      { name: _t('customerprofile','all_vehicles'), path: route('current-vendor-vehicles.index', { locale: usePage().props.locale }) },
+      { name: _t('customerprofile','add_new_vehicle'), path: route('vehicles.create', { locale: usePage().props.locale }) },
+      { name: _t('customerprofile','create_bulk_listing'), path: route('vehicles.bulk-upload.create', { locale: usePage().props.locale }) },
+      { name: _t('customerprofile','manage_plans'), path: route('VendorPlanIndex', { locale: usePage().props.locale }) },
     ],
   },
 ];
 
 const vendorOtherLinks = [
-  { name: _t('customerprofile','payment_history'), path: "/vendor/payments", icon: clockIcon },
-  { name: _t('customerprofile','bookings'), path: "/bookings", icon: vehiclesIcon },
-  { name: _t('customerprofile','date_blocking'), path: "/blocking-dates", icon: dateblockingIcon },
-  { name: _t('customerprofile','inbox'), path: "/messages/vendor", icon: inboxIcon },
-  { name: _t('customerprofile','customer_reviews'), path: "/customer-reviews", icon: reviewsIcon },
+  { name: _t('customerprofile','payment_history'), path: route('vendor.payments', { locale: usePage().props.locale }), icon: clockIcon },
+  { name: _t('customerprofile','bookings'), path: route('bookings.index', { locale: usePage().props.locale }), icon: vehiclesIcon },
+  { name: _t('customerprofile','date_blocking'), path: route('vendor.blocking-dates.index', { locale: usePage().props.locale }), icon: dateblockingIcon },
+  { name: _t('customerprofile','inbox'), path: route('messages.vendor.index', { locale: usePage().props.locale }), icon: inboxIcon },
+  { name: _t('customerprofile','customer_reviews'), path: route('vendor.reviews', { locale: usePage().props.locale }), icon: reviewsIcon },
 ];
 
 // Active menus based on role
@@ -169,24 +169,42 @@ const greetingMessage = computed(() => {
 });
 
 const setActiveLinkFromRoute = () => {
-  const currentPath = window.location.pathname;
-  const foundLink = activeOtherLinks.find(
-    (link) => link.path === currentPath
-  );
+  const currentPath = usePage().url.split("?")[0];
+  const foundLink = activeOtherLinks.find((link) => {
+    try {
+      return new URL(link.path).pathname === currentPath;
+    } catch (e) {
+      return link.path === currentPath;
+    }
+  });
+
   if (foundLink) {
     activeLink.value = foundLink.name;
+  } else {
+    activeLink.value = null;
   }
 };
 
 const setActiveSubmenuFromRoute = () => {
-  const currentPath = window.location.pathname;
+  const currentPath = usePage().url.split("?")[0];
+  let wasFound = false;
   activeMenus.forEach((menu) => {
-    const foundItem = menu.items.find((item) => item.path === currentPath);
+    const foundItem = menu.items.find((item) => {
+      try {
+        return new URL(item.path).pathname === currentPath;
+      } catch (e) {
+        return item.path === currentPath;
+      }
+    });
     if (foundItem) {
       activeMenu.value = menu.key;
       activeSubmenu.value = foundItem.name;
+      wasFound = true;
     }
   });
+  if (!wasFound) {
+    activeSubmenu.value = null;
+  }
 };
 
 onMounted(() => {
@@ -194,12 +212,17 @@ onMounted(() => {
   setActiveSubmenuFromRoute();
 });
 
+watch(() => usePage().url, () => {
+    setActiveLinkFromRoute();
+    setActiveSubmenuFromRoute();
+});
+
 import axios from "axios";
 
 const fetchUserProfile = async () => {
   try {
     // Make the request to fetch the current user's profile
-    const response = await axios.get("/user");
+    const response = await axios.get(route('user.profile'));
 
     if (response.data.status === "success") {
       user.value = response.data.data;
@@ -234,7 +257,7 @@ const profileCompletion = ref(0);
 
 const fetchProfileCompletion = async () => {
     try {
-        const response = await fetch('/profile/completion');
+        const response = await fetch(route('profile.completion', { locale: usePage().props.locale }));
         const data = await response.json();
         profileCompletion.value = data.percentage;
     } catch (error) {

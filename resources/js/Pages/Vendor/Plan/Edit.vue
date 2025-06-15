@@ -71,7 +71,7 @@
             </div>
             
             <div class="flex justify-end mt-6">
-              <Link :href="route('VendorPlanIndex')" class="bg-gray-200 py-2 px-4 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 hover:bg-gray-300 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 mr-3">
+              <Link :href="route('VendorPlanIndex', { locale: usePage().props.locale })" class="bg-gray-200 py-2 px-4 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 hover:bg-gray-300 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 mr-3">
                 {{ _t('vendorprofilepages', 'edit_plan_cancel_button') }}
               </Link>
               <Button type="submit" class="inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
@@ -88,7 +88,7 @@
 <script setup>
 import { Button } from '@/Components/ui/button';
 import MyProfileLayout from '@/Layouts/MyProfileLayout.vue';
-import { Link, useForm } from '@inertiajs/inertia-vue3';
+import { Link, useForm, usePage } from '@inertiajs/vue3';
 
 // Define props
 const props = defineProps({
@@ -124,6 +124,6 @@ function removeFeature(index) {
 
 // Submit function
 function submit() {
-  form.put(route('VendorPlanUpdate', props.plan.id));
+  form.put(route('VendorPlanUpdate', { locale: usePage().props.locale, id: props.plan.id }));
 }
 </script>

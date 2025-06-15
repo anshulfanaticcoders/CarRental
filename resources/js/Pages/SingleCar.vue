@@ -49,6 +49,7 @@ const vehicle = ref(props.vehicle);
 const user = ref(null);
 const reviews = ref([]);
 const isLoading = ref(true);
+const locale = usePage().props.locale;
 
 defineProps({
     schema: Object,
@@ -333,7 +334,7 @@ const fetchFavoriteStatus = async () => {
         return;
     }
     try {
-        const response = await axios.get("/favorites/status");
+        const response = await axios.get(route('favorites.status'));
         const favoriteIds = response.data; // The endpoint now returns an array of IDs
         const isFav = Array.isArray(favoriteIds) && favoriteIds.includes(vehicle.value.id);
 
@@ -352,9 +353,10 @@ const toggleFavourite = async (vehicle) => {
         return Inertia.visit('/login'); // Redirect if not logged in
     }
 
-    const endpoint = vehicle.is_favourite
-        ? `/vehicles/${vehicle.id}/unfavourite`
-        : `/vehicles/${vehicle.id}/favourite`;
+    
+const endpoint = vehicle.is_favourite
+    ? route('vehicles.unfavourite', { vehicle: vehicle.id })
+    : route('vehicles.favourite', { vehicle: vehicle.id });
 
     try {
         await axios.post(endpoint);
@@ -861,7 +863,7 @@ watch([
 const showWarningModal = ref(false);
 const proceedToPayment = async () => { // Make the function async
     if (!props.auth?.user) {
-        return router.get('/login');
+        return router.get(route('login', {}, usePage().props.locale));
     }
     // Validate rental details before proceeding
     if (!validateRentalDetails()) {
@@ -876,7 +878,7 @@ const proceedToPayment = async () => { // Make the function async
 
     try { // Add try block for the API call and navigation
         // Call backend to set session variable allowing booking page access
-        await axios.post('/booking/allow-access'); 
+        await axios.post(route('booking.allow_access')); 
         console.log('Booking access permission set.'); // Optional: for debugging
 
         // Your existing logic for localStorage and sessionStorage:
@@ -918,7 +920,7 @@ const proceedToPayment = async () => { // Make the function async
         console.log('Booking details stored in session storage:', bookingDataForSession); // Optional: for debugging
 
         // Proceed to payment page without query parameters
-        router.get(`/booking/${vehicle.value.id}`);
+        router.get(route('booking.show', { id: vehicle.value.id }));
 
     } catch (error) {
         console.error("Error setting booking access or navigating:", error);

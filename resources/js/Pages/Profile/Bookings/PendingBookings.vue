@@ -15,7 +15,7 @@
         <div v-else class="flex flex-col gap-10">
           <div v-for="booking in bookings.data" :key="booking.id"
             class="bg-white shadow-md rounded-lg p-6 gap-10 flex justify-between max-[768px]:flex-col">
-            <Link :href="`/vehicle/${booking.vehicle.id}`" class="w-[30%] max-[768px]:w-full">
+            <Link :href="route('vehicle.show', { locale: usePage().props.locale, id: booking.vehicle.id })" class="w-[30%] max-[768px]:w-full">
               <div class="">
                 <img v-if="booking.vehicle?.images" :src="`${booking.vehicle.images.find(
                   (image) => image.image_type === 'primary'
@@ -75,7 +75,7 @@
                     formatPrice(booking.vehicle.price_per_month, booking.vehicle) }}{{_t('customerbooking', 'price_per_month_suffix')}}</strong>
                 </div>
                 <div class="flex items-center justify-between">
-                  <Link :href="`/booking-success?payment_intent=${booking.payments[0]?.transaction_id}`" class="underline">{{ _t('customerbooking', 'view_booking_details_link') }}</Link>
+                  <Link :href="`/${usePage().props.locale}/booking-success?payment_intent=${booking.payments[0]?.transaction_id}`" class="underline">{{ _t('customerbooking', 'view_booking_details_link') }}</Link>
                   <button
                     v-if="booking.payment_status === 'pending'"
                     @click="retryPayment(booking.id)"
@@ -86,7 +86,7 @@
                   <Link
                     v-if="booking.vehicle && booking.vehicle.vendor_id"
                     class="button-primary px-5 py-4 max-[768px]:text-[0.75rem] ml-4"
-                    :href="`/messages?vendor_id=${booking.vehicle.vendor_id}`"
+                    :href="route('messages.index', { locale: usePage().props.locale, vendor_id: booking.vehicle.vendor_id })"
                   >
                     {{ _t('customerbooking', 'chat_with_owner_link') }}
                   </Link>
@@ -138,7 +138,7 @@ const props = defineProps({
   };
 
   const handlePageChange = (page) => {
-    router.get(route('profile.bookings.pending'), {
+    router.get(route('profile.bookings.pending', { locale: usePage().props.locale }), {
         ...props.filters,
         page
     }, {
@@ -154,7 +154,7 @@ const props = defineProps({
 
 const retryPayment = async (bookingId) => {
   try {
-    const response = await axios.post(route('payment.retry'), { booking_id: bookingId });
+    const response = await axios.post(route('payment.retry', { locale: usePage().props.locale }), { booking_id: bookingId });
     
     if (response.data.sessionId) {
       const stripe = await loadStripe(import.meta.env.VITE_STRIPE_KEY);

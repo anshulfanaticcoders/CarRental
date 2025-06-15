@@ -26,7 +26,7 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Session;
 class BookingController extends Controller
 {
-    public function allowAccess(Request $request)
+    public function allowAccess(Request $request, $locale)
     {
         Session::put('can_access_booking_page', true);
         return response()->json(['message' => 'Access to booking page granted.'], 200);

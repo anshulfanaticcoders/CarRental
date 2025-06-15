@@ -16,7 +16,7 @@ const props = defineProps({
     }
 });
 
-const emit = defineEmits(['back']);
+const emit = defineEmits(['back', 'messageReceived']);
 
 const messageList = ref(props.messages || []);
 const newMessage = ref('');
@@ -67,7 +67,7 @@ const sendMessage = async () => {
     };
 
     try {
-        const response = await axios.post('/messages', messageData);
+        const response = await axios.post(route('messages.store', { locale: usePage().props.locale }), messageData);
         // Append the sent message to the local messageList immediately
         messageList.value.push({
             id: response.data.message.id, // Ensure this is the actual new message ID from backend
@@ -99,7 +99,7 @@ const deleteMessage = async (messageId) => {
     // const originalContent = messageList.value[messageIndex].message;
 
     try {
-        const response = await axios.delete(`/messages/${messageId}`);
+        const response = await axios.delete(route('messages.destroy', { locale: usePage().props.locale, id: messageId }));
         if (response.data.success && response.data.message) {
             // Update the local message to reflect soft deletion
             messageList.value[messageIndex].deleted_at = response.data.message.deleted_at;
@@ -131,7 +131,7 @@ const undoDeleteMessage = async (messageId) => {
     if (!recentlyDeleted.value || recentlyDeleted.value.messageId !== messageId) return;
 
     try {
-        const response = await axios.post(`/messages/${messageId}/restore`);
+        const response = await axios.post(route('messages.restore', { locale: usePage().props.locale, id: messageId }));
         if (response.data.success && response.data.message) {
             const messageIndex = messageList.value.findIndex(msg => msg.id === messageId);
             if (messageIndex !== -1) {
@@ -208,6 +208,7 @@ onMounted(() => {
             if (e.message && e.message.booking_id == props.bookingId) {
                 if (!messageList.value.some(msg => msg.id === e.message.id)) {
                     messageList.value.push(e.message);
+                    emit('messageReceived', e.message);
                     scrollToBottom();
                 }
             }

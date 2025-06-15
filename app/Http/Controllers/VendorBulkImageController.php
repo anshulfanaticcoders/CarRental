@@ -12,7 +12,7 @@ class VendorBulkImageController extends Controller
     /**
      * Display a listing of the resource.
      */
-    public function index()
+    public function index($locale)
     {
         $user = Auth::user();
         $images = VendorBulkVehicleImage::where('user_id', $user->id)->orderBy('created_at', 'desc')->get();
@@ -30,7 +30,7 @@ class VendorBulkImageController extends Controller
     /**
      * Store a newly created resource in storage.
      */
-    public function store(Request $request)
+    public function store(Request $request, $locale)
     {
         $request->validate([
             'images' => 'required|array|max:50', // Max 50 images
@@ -88,7 +88,7 @@ class VendorBulkImageController extends Controller
     /**
      * Remove the specified resource from storage.
      */
-    public function destroy(VendorBulkVehicleImage $image)
+    public function destroy($locale, VendorBulkVehicleImage $image)
     {
         // Ensure the authenticated user owns this image
         if (Auth::id() !== $image->user_id) {

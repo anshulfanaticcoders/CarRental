@@ -28,8 +28,8 @@ const _t = appContext.config.globalProperties._t;
                             {{ _t('vendorprofilepages', 'pending_message') }}
                         </p>
                         <div class="flex justify-between items-center gap-10 mt-[2rem] max-[768px]:text-[0.875rem]">
-                            <Link href="/" class="text-blue-700 underline">{{ _t('vendorprofilepages', 'go_to_home_link') }}</Link>
-                            <Link href="/profile" class="text-blue-700 underline">{{ _t('vendorprofilepages', 'go_to_profile_link') }}</Link>
+                            <Link :href="route('welcome', { locale: usePage().props.locale })" class="text-blue-700 underline">{{ _t('vendorprofilepages', 'go_to_home_link') }}</Link>
+                            <Link :href="route('profile.edit', { locale: usePage().props.locale })" class="text-blue-700 underline">{{ _t('vendorprofilepages', 'go_to_profile_link') }}</Link>
                         </div>
                     </template>
 
@@ -43,8 +43,8 @@ const _t = appContext.config.globalProperties._t;
                             {{ _t('vendorprofilepages', 'rejected_message') }}
                         </p>
                         <div class="flex justify-between items-center gap-10 mt-[2rem] max-[768px]:text-[0.875rem]">
-                            <Link href="/" class="text-blue-700 underline">{{ _t('vendorprofilepages', 'go_to_home_link') }}</Link>
-                            <Link href="/vendor/documents" class="text-blue-700 underline">{{ _t('vendorprofilepages', 'check_documents_link') }}</Link>
+                            <Link :href="route('welcome', { locale: usePage().props.locale })" class="text-blue-700 underline">{{ _t('vendorprofilepages', 'go_to_home_link') }}</Link>
+                            <Link :href="route('vendor.documents.index', { locale: usePage().props.locale })" class="text-blue-700 underline">{{ _t('vendorprofilepages', 'check_documents_link') }}</Link>
                         </div>
                     </template>
 

@@ -5,17 +5,24 @@ namespace App\Http\Middleware;
 use Closure;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\App;
+use Illuminate\Support\Facades\URL;
 use Inertia\Inertia;
 
 class SetLocale
 {
     public function handle(Request $request, Closure $next)
-{
-    $locale = session('locale', app()->getLocale());
-    App::setLocale($locale);
+    {
+        $locale = $request->route('locale');
 
-    // Share all translations with Inertia
-    Inertia::share([
+        if (!in_array($locale, ['en', 'fr', 'nl'])) {
+            abort(404);
+        }
+
+        App::setLocale($locale);
+        URL::defaults(['locale' => $locale]);
+
+        // Share all translations with Inertia
+        Inertia::share([
         'locale' => $locale,
         'translations' => [
             'messages' => trans('messages'), // Common translations

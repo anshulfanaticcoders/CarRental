@@ -10,7 +10,7 @@ use Inertia\Inertia; // Added Inertia
 class FavoriteController extends Controller
 {
     // Add a vehicle to favorites
-    public function favourite(Vehicle $vehicle)
+    public function favourite(Request $request, $locale, Vehicle $vehicle)
     {
         if (!Auth::check()) {
             return response()->json(['message' => 'Unauthorized'], 401);
@@ -22,7 +22,7 @@ class FavoriteController extends Controller
     }
 
     // Remove a vehicle from favorites
-    public function unfavourite(Vehicle $vehicle)
+    public function unfavourite(Request $request, $locale, Vehicle $vehicle)
     {
         if (!Auth::check()) {
             return response()->json(['message' => 'Unauthorized'], 401);
@@ -58,7 +58,7 @@ class FavoriteController extends Controller
     }
 
     // Get favorite status for the current user
-    public function getFavoriteStatus()
+    public function getFavoriteStatus(Request $request, $locale)
     {
         if (!Auth::check()) {
             return response()->json([]); // Return empty array if not logged in

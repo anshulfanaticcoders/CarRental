@@ -623,7 +623,7 @@
                             :class="{ 'opacity-50 cursor-not-allowed': form.limited_km && !form.price_per_km }">
                             {{ _t('vendorprofilepages', 'update_vehicle_button') }}
                         </PrimaryButton>
-                        <Link href="/current-vendor-vehicles"
+                        <Link :href="route('current-vendor-vehicles.index', { locale: usePage().props.locale })"
                             class="px-4 flex justify-center items-center bg-[#EA3C3C] text-white rounded hover:bg-[#ea3c3ca2]">
                         {{ _t('vendorprofilepages', 'cancel_button') }}
                         </Link>

@@ -18,7 +18,7 @@ use Illuminate\Http\Request;
 
 class VendorBookingController extends Controller
 {
-    public function index(Request $request)
+    public function index(Request $request, $locale)
 {
     $vendorId = auth()->id();
     $searchQuery = $request->input('search', '');
@@ -62,7 +62,7 @@ class VendorBookingController extends Controller
 }
     
 
-    public function update(Request $request, Booking $booking)
+    public function update(Request $request, $locale, Booking $booking)
     {
         // Verify that the authenticated vendor owns this booking
         if ($booking->vehicle->vendor_id !== auth()->id()) {
@@ -114,14 +114,21 @@ class VendorBookingController extends Controller
         ]);
     }
 
-    public function cancel(Booking $booking)
+    public function cancel(Request $request, $locale, Booking $booking)
     {
         // Verify that the authenticated vendor owns this booking
         if ($booking->vehicle->vendor_id !== auth()->id()) {
             return response()->json(['message' => 'Unauthorized'], 403);
         }
 
-        $booking->update(['booking_status' => 'cancelled']);
+        $validated = $request->validate([
+            'cancellation_reason' => 'required|string',
+        ]);
+
+        $booking->update([
+            'booking_status' => 'cancelled',
+            'cancellation_reason' => $validated['cancellation_reason'],
+        ]);
 
         $vehicle = Vehicle::find($booking->vehicle_id);
         $vehicle->update(['status' => 'available']);
@@ -143,12 +150,10 @@ class VendorBookingController extends Controller
                 ->notify(new BookingStatusUpdatedCustomerNotification($booking, $customer, $vehicle, $vendor));
         }
 
-        return response()->json([
-            'message' => 'Booking cancelled successfully'
-        ]);
+        return back()->with('success', 'Booking cancelled successfully.');
     }
 
-    public function viewCustomerDocuments($customerId)
+    public function viewCustomerDocuments($locale, $customerId)
     {
         // Fetch customer by ID
         $customer = Customer::findOrFail($customerId);

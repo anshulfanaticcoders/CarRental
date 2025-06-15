@@ -292,6 +292,16 @@ return [
         'confirm_remove_blocking_date' => 'Weet u zeker dat u deze blokkeringsdatum wilt verwijderen?',
         'toast_success_blocking_date_removed' => 'Blokkeringsdatum succesvol verwijderd!',
         'toast_error_remove_blocking_date' => 'Kan blokkeringsdatum niet verwijderen. Probeer opnieuw.',
+        'add_edit_blocking_dates_button' => 'Blokkeerdata toevoegen/bewerken',
+        'add_edit_blocking_dates_dialog_title' => 'Blokkeerdata toevoegen/bewerken',
+        'add_edit_blocking_dates_dialog_description' => 'Voeg blokkeerdata toe of verwijder ze voor dit voertuig.',
+        'existing_blocking_dates_title' => 'Bestaande blokkeerdata',
+        'table_blocking_dates_header' => 'Blokkeerdata',
+        'see_more_button' => 'Meer bekijken',
+        'all_booking_dates_dialog_title' => 'Alle boekingsdata',
+
+
+
 
         // Vendor/Review/Index.vue
         'customer_reviews_header' => 'Klantbeoordelingen',
@@ -337,6 +347,9 @@ return [
         'plans_plan_updated_success' => 'Plan succesvol bijgewerkt!',
         'plans_plan_created_success' => 'Plan succesvol aangemaakt!',
         'plans_plan_deleted_success' => 'Plan succesvol verwijderd!',
+        'plans_add_button' => 'Toevoegen',
+        'plans_add_new_plan_button' => 'Nieuw plan toevoegen',
+
 
         // Vendor/Plan/Edit.vue
         'edit_plan_title' => 'Plandetails bewerken',

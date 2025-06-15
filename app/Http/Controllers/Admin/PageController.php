@@ -66,16 +66,19 @@ class PageController extends Controller
         if ($locale === 'en') {
             $request->validate(array_merge($baseValidationRules, [
                 'title' => 'required|string|max:255',
+                'slug' => 'required|string|max:255',
                 'content' => 'required',
             ]));
         } elseif ($locale === 'fr') {
             $request->validate(array_merge($baseValidationRules, [
                 'title' => 'required|string|max:255',
+                'slug' => 'required|string|max:255',
                 'content' => 'required',
             ]));
         } elseif ($locale === 'nl') {
             $request->validate(array_merge($baseValidationRules, [
                 'title' => 'required|string|max:255',
+                'slug' => 'required|string|max:255',
                 'content' => 'required',
             ]));
         } else {
@@ -85,7 +88,7 @@ class PageController extends Controller
 
         $title = $request->input('title');
         $content = $request->input('content');
-        $slug = Str::slug($title); // Generate page slug WITHOUT prefix
+        $slug = $request->input('slug') ? Str::slug($request->input('slug')) : Str::slug($title);
 
         // Check if page slug already exists
         $existingPage = Page::where('slug', $slug)->first();
@@ -101,6 +104,7 @@ class PageController extends Controller
         $page->translations()->create([
             'locale' => $locale,
             'title' => $title,
+            'slug' => $slug,
             'content' => $content,
         ]);
 
@@ -205,6 +209,7 @@ class PageController extends Controller
         $request->validate([
             'locale' => 'required|in:en,fr,nl',
             'title' => 'required|string|max:255',
+            'slug' => 'required|string|max:255',
             'content' => 'required',
             // SEO Meta Validation Rules
             'seo_title'       => 'nullable|string|max:60',
@@ -217,6 +222,7 @@ class PageController extends Controller
         $locale = $request->input('locale');
         $title = $request->input('title');
         $content = $request->input('content');
+        $slug = $request->input('slug') ? Str::slug($request->input('slug')) : Str::slug($title);
         // Page slug ($page->slug) DOES NOT change and is NOT prefixed.
         // SEO Meta url_slug WILL BE prefixed.
 
@@ -224,12 +230,14 @@ class PageController extends Controller
 
         if ($translation) {
             $translation->title = $title;
+            $translation->slug = $slug;
             $translation->content = $content;
             $translation->save();
         } else {
             $page->translations()->create([
                 'locale' => $locale,
                 'title' => $title,
+                'slug' => $slug,
                 'content' => $content,
             ]);
         }
@@ -304,12 +312,12 @@ class PageController extends Controller
     /**
      * Display the specified page on the frontend.
      */
-    public function showPublic(Request $request, $slug)
+    public function showPublic($locale, $slug)
     {
-        $locale = App::getLocale();
-        $page = Page::where('slug', $slug)->firstOrFail();
+        App::setLocale($locale);
 
-        $translation = $page->translations()->where('locale', $locale)->first();
+        $translation = \App\Models\PageTranslation::where('slug', $slug)->where('locale', $locale)->firstOrFail();
+        $page = $translation->page;
 
         if (!$translation) {
             $defaultLocale = config('app.fallback_locale', 'en');

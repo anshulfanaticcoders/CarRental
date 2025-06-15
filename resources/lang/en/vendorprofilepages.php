@@ -306,6 +306,13 @@ return [
     'confirm_remove_blocking_date' => 'Are you sure you want to remove this blocking date?',
     'toast_success_blocking_date_removed' => 'Blocking date removed successfully!',
     'toast_error_remove_blocking_date' => 'Failed to remove blocking date. Please try again.',
+    'add_edit_blocking_dates_button' => 'Add/Edit Blocking Dates',
+    'add_edit_blocking_dates_dialog_title' => 'Add/Edit Blocking Dates',
+    'add_edit_blocking_dates_dialog_description' => 'Add or remove blocking dates for this vehicle.',
+    'existing_blocking_dates_title' => 'Existing Blocking Dates',
+    'table_blocking_dates_header' => 'Blocking Dates',
+    'see_more_button' => 'See More',
+    'all_booking_dates_dialog_title' => 'All Booking Dates',
 
     // Vendor/Review/Index.vue
     'customer_reviews_header' => 'Customer Reviews',
@@ -350,6 +357,8 @@ return [
     'plans_plan_updated_success' => 'Plan updated successfully!',
     'plans_plan_created_success' => 'Plan created successfully!',
     'plans_plan_deleted_success' => 'Plan deleted successfully!',
+    'plans_add_button' => 'Add',
+    'plans_add_new_plan_button' => 'Add New Plan',
 
     // Vendor/Plan/Edit.vue
     'edit_plan_title' => 'Edit Plan Details',

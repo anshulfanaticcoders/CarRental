@@ -179,9 +179,9 @@ class SchemaBuilder
                 'position' => $index + 1,
                 'item' => [
                     '@type' => 'BlogPosting',
-                    '@id' => route('blog.show', $blog->slug), // Corrected route name
+                    '@id' => route('blog.show', ['locale' => app()->getLocale(), 'blog' => $blog->slug]),
                     'headline' => $blog->title,
-                    'url' => route('blog.show', $blog->slug), // Corrected route name
+                    'url' => route('blog.show', ['locale' => app()->getLocale(), 'blog' => $blog->slug]),
                     'image' => $blog->image_url ?? asset('default-blog-image.jpg'),
                     'datePublished' => $blog->published_at ? $blog->published_at->toIso8601String() : ($blog->created_at ? $blog->created_at->toIso8601String() : now()->toIso8601String()),
                     'author' => [
@@ -254,7 +254,7 @@ class SchemaBuilder
 
             $item = [
                 '@type' => 'Product', // Using Product schema, could be Vehicle if more specific fields are needed
-                '@id' => route('vehicle.show', $vehicle->id),
+                '@id' => route('vehicle.show', ['locale' => app()->getLocale(), 'id' => $vehicle->id]),
                 'name' => ($vehicle->brand ?? '') . ' ' . ($vehicle->model ?? '') . ' (' . ($vehicle->year ?? 'N/A') . ')',
                 'description' => $vehicle->description ?? 'High-quality rental vehicle.',
                 'image' => $primaryImage ?? asset('default-vehicle-image.jpg'),
@@ -274,7 +274,7 @@ class SchemaBuilder
                     'priceCurrency' => $currency,
                     'price' => (string)round($price, 2),
                     'availability' => $availability,
-                    'url' => route('vehicle.show', $vehicle->id), // Link to the product page
+                    'url' => route('vehicle.show', ['locale' => app()->getLocale(), 'id' => $vehicle->id]), // Link to the product page
                 ];
             }
             
@@ -401,7 +401,7 @@ class SchemaBuilder
                 'price' => (string)round($vehicle->price_per_day, 2),
                 'priceCurrency' => $currency,
                 'availability' => 'https://schema.org/InStock', // Assuming available if listed
-                'url' => route('vehicle.show', $vehicle->id),
+                'url' => route('vehicle.show', ['locale' => app()->getLocale(), 'id' => $vehicle->id]),
             ];
         }
         if (isset($vehicle->price_per_week) && $vehicle->price_per_week > 0) {
@@ -411,7 +411,7 @@ class SchemaBuilder
                 'price' => (string)round($vehicle->price_per_week, 2),
                 'priceCurrency' => $currency,
                 'availability' => 'https://schema.org/InStock',
-                'url' => route('vehicle.show', $vehicle->id),
+                'url' => route('vehicle.show', ['locale' => app()->getLocale(), 'id' => $vehicle->id]),
             ];
         }
         if (isset($vehicle->price_per_month) && $vehicle->price_per_month > 0) {
@@ -421,7 +421,7 @@ class SchemaBuilder
                 'price' => (string)round($vehicle->price_per_month, 2),
                 'priceCurrency' => $currency,
                 'availability' => 'https://schema.org/InStock',
-                'url' => route('vehicle.show', $vehicle->id),
+                'url' => route('vehicle.show', ['locale' => app()->getLocale(), 'id' => $vehicle->id]),
             ];
         }
         
@@ -501,7 +501,7 @@ class SchemaBuilder
                     'description' => $category->description ?? 'A category of vehicles available for rent.',
                     // Generate a URL to the search page for this category
                     // Ensure you have a route like 'search.category' that accepts a category slug or ID
-                    'url' => LaravelRoute::has('search.category') ? route('search.category', ['category_id' => $category->id]) : url('/search?category=' . $category->slug),
+                    'url' => LaravelRoute::has('search.category') ? route('search.category', ['locale' => app()->getLocale(), 'category_id' => $category->id]) : url('/' . app()->getLocale() . '/search?category=' . $category->slug),
                 ],
             ];
             if (!empty($category->image)) {

@@ -16,13 +16,21 @@ class LanguageController extends Controller
     ]);
 
     $locale = $request->locale;
-    App::setLocale($locale);
-    Session::put('locale', $locale);
+        App::setLocale($locale);
+        Session::put('locale', $locale);
 
-    if ($request->header('X-Inertia')) {
-        return Inertia::location($request->header('Referer') ?: '/');
+        $previousUrl = url()->previous();
+        $previousPath = parse_url($previousUrl, PHP_URL_PATH);
+
+        // Replace the old locale with the new one in the path
+        $segments = explode('/', ltrim($previousPath, '/'));
+        if (in_array($segments[0], ['en', 'fr', 'nl'])) {
+            $segments[0] = $locale;
+        } else {
+            array_unshift($segments, $locale);
+        }
+        $newPath = implode('/', $segments);
+
+        return redirect($newPath);
     }
-
-    return redirect()->back()->with('locale', $locale);
-}
 }

@@ -5,7 +5,20 @@ import facebookLogo from "../../assets/Facebook.svg";
 import twitterLogo from "../../assets/Twitter.svg";
 import instagramLogo from "../../assets/Instagram.svg";
 import paypalLogos from "../../assets/paymentIcons.svg";
-import { onMounted, ref } from "vue";
+import { onMounted, ref, computed } from "vue";
+import { usePage } from '@inertiajs/vue3';
+
+const page = usePage();
+const pages = computed(() => page.props.pages);
+
+const getTranslatedSlug = (pageSlug) => {
+    const targetPage = pages.value[pageSlug];
+    if (!targetPage) return pageSlug;
+
+    const locale = page.props.locale;
+    const translation = targetPage.translations.find(t => t.locale === locale);
+    return translation ? translation.slug : pageSlug;
+};
 
 // Fetch footer places and categories data
 const footerPlaces = ref([]);
@@ -14,8 +27,8 @@ const footerCategories = ref([]);
 onMounted(async () => {
   try {
     const [placesResponse, categoriesResponse] = await Promise.all([
-      axios.get('/api/footer-places'),
-      axios.get('/api/footer-categories'),
+      axios.get(`/${page.props.locale}/api/footer-places`),
+      axios.get(`/${page.props.locale}/api/footer-categories`),
     ]);
 
     footerPlaces.value = placesResponse.data;
@@ -65,16 +78,16 @@ onMounted(async () => {
                         <label for="" class="text-[1.25rem] font-medium max-[768px]:text-[1rem]">Company</label>
                         <ul class="flex flex-col gap-4 max-[768px]:text-[0.875rem]">
                             <li>
-                                <Link :href="route('pages.show', 'about-us')">About Us</Link>
+                                <Link :href="route('pages.show', { locale: page.props.locale, slug: getTranslatedSlug('about-us') })">About Us</Link>
                             </li>
                             <li>
-                                <Link href="/blog">Blogs</Link>
+                                <Link :href="route('blog', { locale: page.props.locale })">Blogs</Link>
                             </li>
                             <li>
-                                <Link href="/faq">FAQ</Link>
+                                <Link :href="route('faq.show', { locale: page.props.locale })">FAQ</Link>
                             </li>
                             <li>
-                                <Link href="/contact-us">Contact Us</Link>
+                                <Link :href="route('contact-us', { locale: page.props.locale })">Contact Us</Link>
                             </li>
                         </ul>
                     </div>
@@ -82,10 +95,10 @@ onMounted(async () => {
                         <label for="" class="text-[1.25rem] font-medium max-[768px]:text-[1rem]">Information</label>
                         <ul class="flex flex-col gap-4 max-[768px]:text-[0.875rem]">
                             <li>
-                                <Link :href="route('pages.show', 'privacy-policy')">Privacy Policy</Link>
+                                <Link :href="route('pages.show', { locale: page.props.locale, slug: getTranslatedSlug('privacy-policy') })">Privacy Policy</Link>
                             </li>
                             <li>
-                                <Link :href="route('pages.show', 'terms-and-conditions')">Terms & Conditions</Link>
+                                <Link :href="route('pages.show', { locale: page.props.locale, slug: getTranslatedSlug('terms-and-conditions') })">Terms & Conditions</Link>
                             </li>
                         </ul>
                     </div>
@@ -94,13 +107,13 @@ onMounted(async () => {
                         <ul class="flex flex-col gap-4 max-[768px]:text-[0.875rem]">
                             <li v-for="place in footerPlaces" :key="place.id">
                                 <Link
-                                    :href="`/s?where=${encodeURIComponent(place.place_name + ', ' + place.city + ', ' + place.country)}&latitude=${place.latitude}&longitude=${place.longitude}&radius=10000`">
+                                    :href="`/${page.props.locale}/s?where=${encodeURIComponent(place.place_name + ', ' + place.city + ', ' + place.country)}&latitude=${place.latitude}&longitude=${place.longitude}&radius=10000`">
                                 {{ place.place_name }}
                                 </Link>
                             </li>
                             <!-- Fallback if no places are selected -->
                             <li v-if="footerPlaces.length === 0">
-                                <Link href="/">No locations available</Link>
+                                <Link :href="route('welcome', { locale: page.props.locale })">No locations available</Link>
                             </li>
                         </ul>
                     </div>
@@ -108,10 +121,10 @@ onMounted(async () => {
             <label for="" class="text-[1.25rem] font-medium max-[768px]:text-[1rem]">Categories</label>
             <ul class="flex flex-col gap-4 max-[768px]:text-[0.875rem]">
               <li v-for="category in footerCategories" :key="category.id">
-                <Link :href="`/search/category/${category.slug}`">{{ category.name }}</Link>
+                <Link :href="route('search.category', { locale: page.props.locale, category_slug: category.slug })">{{ category.name }}</Link>
               </li>
               <!-- Fallback if no categories are selected -->
-              <li v-if="footerCategories.length === 0"><Link href="/">No categories available</Link></li>
+              <li v-if="footerCategories.length === 0"><Link :href="route('welcome', { locale: page.props.locale })">No categories available</Link></li>
             </ul>
           </div>
                 </div>

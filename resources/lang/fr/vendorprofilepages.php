@@ -294,6 +294,16 @@ return [
         'confirm_remove_blocking_date' => 'Êtes-vous sûr de vouloir supprimer cette date de blocage ?',
         'toast_success_blocking_date_removed' => 'Date de blocage supprimée avec succès !',
         'toast_error_remove_blocking_date' => 'Échec de la suppression de la date de blocage. Veuillez réessayer.',
+        'add_edit_blocking_dates_button' => 'Ajouter/Modifier les dates de blocage',
+        'add_edit_blocking_dates_dialog_title' => 'Ajouter/Modifier les dates de blocage',
+        'add_edit_blocking_dates_dialog_description' => 'Ajoutez ou supprimez des dates de blocage pour ce véhicule.',
+        'existing_blocking_dates_title' => 'Dates de blocage existantes',
+        'table_blocking_dates_header' => 'Dates de blocage',
+        'see_more_button' => 'Voir plus',
+        'all_booking_dates_dialog_title' => 'Toutes les dates de réservation',
+
+
+
 
 
         // Vendor/Review/Index.vue
@@ -340,6 +350,9 @@ return [
         'plans_plan_updated_success' => 'Plan mis à jour avec succès !',
         'plans_plan_created_success' => 'Plan créé avec succès !',
         'plans_plan_deleted_success' => 'Plan supprimé avec succès !',
+        'plans_add_button' => 'Ajouter',
+        'plans_add_new_plan_button' => 'Ajouter un nouveau plan',
+
 
         // Vendor/Plan/Edit.vue
         'edit_plan_title' => 'Modifier les détails du plan',

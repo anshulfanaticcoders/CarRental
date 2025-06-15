@@ -38,6 +38,13 @@
                                     <p v-if="form.errors[`translations.${locale}.title`]" class="text-red-500 text-sm">{{ form.errors[`translations.${locale}.title`] }}</p>
                                 </div>
 
+                                <!-- Slug Field -->
+                                <div class="space-y-2">
+                                    <label :for="`slug-${locale}`" class="text-sm font-medium">Slug ({{ locale.toUpperCase() }})</label>
+                                    <Input :id="`slug-${locale}`" v-model="form.translations[locale].slug" type="text" class="w-full" required />
+                                    <p v-if="form.errors[`translations.${locale}.slug`]" class="text-red-500 text-sm">{{ form.errors[`translations.${locale}.slug`] }}</p>
+                                </div>
+
                                 <!-- Content Field -->
                                 <div class="space-y-2">
                                     <label :for="`content-${locale}`" class="text-sm font-medium">Content ({{ locale.toUpperCase() }})</label>
@@ -108,7 +115,7 @@
 </template>
 
 <script setup>
-import { Link, useForm } from '@inertiajs/vue3';
+import { Link, useForm, router } from '@inertiajs/vue3';
 import AdminDashboardLayout from '@/Layouts/AdminDashboardLayout.vue';
 import { Button } from '@/Components/ui/button';
 import { Input } from '@/Components/ui/input';
@@ -134,6 +141,7 @@ locales.forEach(locale => {
     const existing = props.page.translations[locale];
     initialPageTranslations[locale] = {
         title: existing ? existing.title : '',
+        slug: existing ? existing.slug : '',
         content: existing ? existing.content : '',
     };
 });
@@ -166,8 +174,21 @@ const setActiveLocale = (locale, event) => {
 };
 
 const submit = () => {
-    // The controller needs to be adapted to handle this new structure.
-    form.post(route('admin.pages.update', props.page.id), {
+    const activeTranslation = form.translations[activeLocale.value];
+
+    const dataToSubmit = {
+        _method: 'PUT',
+        locale: activeLocale.value,
+        title: activeTranslation.title,
+        slug: activeTranslation.slug,
+        content: activeTranslation.content,
+        seo_title: form.seo_title,
+        canonical_url: form.canonical_url,
+        seo_image_url: form.seo_image_url,
+        seo_translations: form.seo_translations,
+    };
+
+    router.post(route('admin.pages.update', props.page.id), dataToSubmit, {
         onSuccess: () => {
             toast.success('Page updated successfully!', {
                 position: 'top-right',
@@ -175,6 +196,14 @@ const submit = () => {
                 closeOnClick: true,
                 pauseOnHover: true,
                 draggable: true,
+            });
+        },
+        onError: (errors) => {
+            console.error('Error updating page:', errors);
+            let errorMessages = Object.values(errors).join(' ');
+            toast.error('Error updating page: ' + errorMessages, {
+                position: 'top-right',
+                timeout: 7000,
             });
         }
     });

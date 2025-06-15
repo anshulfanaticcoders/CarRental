@@ -2,7 +2,7 @@
 import { ref, computed, onMounted, onUnmounted } from "vue";
 import ChatComponent from '@/Components/ChatComponent.vue';
 import axios from 'axios';
-import { Link } from '@inertiajs/vue3';
+import { Link, usePage } from '@inertiajs/vue3';
 import arrowBackIcon from '../../../assets/arrowBack.svg'; // Assuming path relative to Pages/Messages
 
 const props = defineProps({
@@ -109,7 +109,7 @@ const loadChat = async (partner) => {
         // If ChatComponent expects messages prop, we need to fetch them here.
         // The existing ChatComponent seems to get messages via /messages/{booking.id}
         // Let's keep the existing logic for fetching messages for now.
-        const response = await axios.get(`/messages/${partner.latest_booking_id}`);
+        const response = await axios.get(route('messages.show', { locale: usePage().props.locale, booking: partner.latest_booking_id }));
         
         if (response.data && response.data.props) {
             messages.value = response.data.props.messages || [];
@@ -139,6 +139,17 @@ const checkIfMobile = () => {
     isMobile.value = window.innerWidth < 768; // Adjusted breakpoint for sm/md
 };
 
+const handleMessageReceived = (message) => {
+    const partner = props.chatPartners.find(p => p.user.id === message.sender_id);
+    if (partner) {
+        partner.last_message_preview = message.message;
+        partner.last_message_at = message.created_at;
+        if (selectedPartner.value?.user.id !== message.sender_id) {
+            partner.unread_count++;
+        }
+    }
+};
+
 onMounted(() => {
     // console.log("Chat Partners Data:", props.chatPartners);
     
@@ -162,7 +173,7 @@ onUnmounted(() => {
         <!-- New Page Header -->
         <header class="bg-white shadow-sm p-3 flex items-center justify-between flex-shrink-0 border-b">
             <div class="flex items-center">
-                <Link :href="route('profile.edit')" class="mr-3 p-1.5 rounded-full hover:bg-gray-100">
+                <Link :href="route('profile.edit', { locale: usePage().props.locale })" class="mr-3 p-1.5 rounded-full hover:bg-gray-100">
                     <img :src="arrowBackIcon" alt="Back to Profile" class="w-5 h-5" />
                 </Link>
                 <h1 class="text-lg font-semibold text-gray-800">Inbox</h1>
@@ -247,6 +258,7 @@ onUnmounted(() => {
                     :showBackButton="isMobile"
                     @back="backToInbox"
                     @messageSent="messages.push($event)"
+                    @messageReceived="handleMessageReceived"
                     class="flex-grow"
                 />
             </div>

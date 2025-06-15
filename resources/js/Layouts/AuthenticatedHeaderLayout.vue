@@ -11,7 +11,7 @@ import globeIcon from '../../assets/globe.svg'
 
 // Get page properties
 const page = usePage();
-const { url } = page;
+const { url, props } = page;
 const showingNavigationDropdown = ref(false);
 
 // User data
@@ -42,7 +42,7 @@ const onBeforeUnmount = (callback) => {
 // Fetch user profile data
 const fetchUserProfile = async () => {
   try {
-    const response = await axios.get("/user");
+    const response = await axios.get(route('user.profile'));
     if (response.data.status === "success") {
       user.value = response.data.data;
     } else {
@@ -68,11 +68,38 @@ const availableLocales = {
   nl: 'Nl'
 };
 
-const changeLanguage = (locale) => {
-  router.post(route('language.change'), { locale }, {
-    preserveState: false,
-    preserveScroll: true,
-  });
+const changeLanguage = (newLocale) => {
+    const currentUrl = new URL(window.location.href);
+    const pathParts = currentUrl.pathname.split('/');
+
+    if (pathParts.length > 2 && pathParts[2] === 'page') {
+        const currentSlug = pathParts[3];
+        const pages = page.props.pages;
+        const currentPage = Object.values(pages).find(p => {
+            return p.translations.some(t => t.slug === currentSlug);
+        });
+
+        if (currentPage) {
+            const newTranslation = currentPage.translations.find(t => t.locale === newLocale);
+            if (newTranslation) {
+                router.visit(route('pages.show', { locale: newLocale, slug: newTranslation.slug }));
+                return;
+            }
+        }
+    }
+
+    // Fallback for other pages or if translation not found
+    pathParts[1] = newLocale;
+    const newPath = pathParts.join('/');
+
+    router.visit(newPath + currentUrl.search, {
+        onSuccess: () => {
+            router.post(route('language.change'), {
+                locale: newLocale,
+                _method: 'POST'
+            }, { preserveState: true });
+        }
+    });
 };
 
 // Function to toggle mobile navigation
@@ -92,7 +119,7 @@ watch(() => url.value, () => {
       <div class="flex justify-between items-center h-16 md:h-20">
         <!-- Logo Section -->
         <div class="flex-shrink-0">
-          <Link href="/" class="block w-32 md:w-40 transition-transform hover:opacity-80">
+          <Link :href="route('welcome', { locale: props.locale })" class="block w-32 md:w-40 transition-transform hover:opacity-80">
             <ApplicationLogo class="w-full h-auto" />
           </Link>
         </div>
@@ -102,7 +129,7 @@ watch(() => url.value, () => {
           <!-- Vendor/Customer Action Button -->
           <div v-if="isVendor">
             <Link 
-              :href="vendorStatus === 'approved' ? '/vehicles/create' : '/vendor-status'" 
+              :href="vendorStatus === 'approved' ? route('vehicles.create', { locale: props.locale }) : route('vendor.status', { locale: props.locale })" 
               class="button-secondary inline-flex items-center px-4 py-2 rounded-md text-sm font-medium transition-all duration-200 hover:shadow-md"
             >
               <span v-if="vendorStatus === 'approved'">{{ _t('header', 'create_listing') }}</span>
@@ -112,7 +139,7 @@ watch(() => url.value, () => {
 
           <div v-else-if="isCustomer">
             <Link 
-              href="/vendor/register" 
+              :href="route('vendor.register', { locale: props.locale })" 
               class="button-secondary inline-flex items-center px-4 py-2 rounded-md text-sm font-medium transition-all duration-200 hover:shadow-md"
             >
               {{ _t('header', 'register_as_vendor') }}
@@ -173,21 +200,21 @@ watch(() => url.value, () => {
               </template>
 
               <template #content>
-                <DropdownLink v-if="isAdmin" :href="'/admin-dashboard'" class="flex items-center">
+                <DropdownLink v-if="isAdmin" :href="route('admin.dashboard', { locale: props.locale })" class="flex items-center">
                   <svg class="mr-2 h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"></path>
                   </svg>
                   {{ _t('header', 'dashboard') }}
                 </DropdownLink>
                 
-                <DropdownLink v-else :href="route('profile.edit')" class="flex items-center">
+                <DropdownLink v-else :href="route('profile.edit', { locale: props.locale })" class="flex items-center">
                   <svg class="mr-2 h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path>
                   </svg>
                   {{ _t('header', 'profile') }}
                 </DropdownLink>
                 
-                <DropdownLink :href="route('logout')" method="post" as="button" class="flex items-center w-full text-left">
+                <DropdownLink :href="route('logout', { locale: props.locale })" method="post" as="button" class="flex items-center w-full text-left">
                   <svg class="mr-2 h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"></path>
                   </svg>
@@ -203,14 +230,14 @@ watch(() => url.value, () => {
         <!-- Guest Navigation (Desktop) -->
         <div v-else class="hidden md:flex md:items-center md:space-x-6">
           <Link 
-            :href="route('login')" 
+            :href="route('login', { locale: props.locale })" 
             class="button-primary py-2 px-4 text-sm font-medium rounded-md transition-all duration-200 hover:shadow-md"
           >
             {{ _t('header', 'log_in') }}
           </Link>
           
           <Link 
-            :href="route('register')" 
+            :href="route('register', { locale: props.locale })" 
             class="button-secondary py-2 px-4 text-sm font-medium rounded-md transition-all duration-200 hover:shadow-md"
           >
             {{ _t('header', 'create_account') }}
@@ -305,7 +332,7 @@ watch(() => url.value, () => {
           
           <div class="mt-4 space-y-2">
             <!-- Admin Dashboard Link -->
-            <ResponsiveNavLink v-if="isAdmin" :href="'/admin-dashboard'" class="flex items-center">
+            <ResponsiveNavLink v-if="isAdmin" :href="route('admin.dashboard', { locale: props.locale })" class="flex items-center">
               <svg class="mr-3 h-5 w-5 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"></path>
               </svg>
@@ -313,7 +340,7 @@ watch(() => url.value, () => {
             </ResponsiveNavLink>
             
             <!-- Profile Link -->
-            <ResponsiveNavLink :href="route('profile.edit')" class="flex items-center">
+            <ResponsiveNavLink :href="route('profile.edit', { locale: props.locale })" class="flex items-center">
               <svg class="mr-3 h-5 w-5 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path>
               </svg>
@@ -323,7 +350,7 @@ watch(() => url.value, () => {
             <!-- Vendor-specific actions -->
             <ResponsiveNavLink 
               v-if="isVendor"
-              :href="vendorStatus === 'approved' ? '/vehicles/create' : '/vendor-status'" 
+              :href="vendorStatus === 'approved' ? route('vehicles.create', { locale: props.locale }) : route('vendor.status', { locale: props.locale })" 
               class="flex items-center"
             >
               <svg class="mr-3 h-5 w-5 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -335,7 +362,7 @@ watch(() => url.value, () => {
             <!-- Customer-specific actions -->
             <ResponsiveNavLink 
               v-if="isCustomer"
-              href="/vendor/register" 
+              :href="route('vendor.register', { locale: props.locale })" 
               class="flex items-center"
             >
               <svg class="mr-3 h-5 w-5 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -362,7 +389,7 @@ watch(() => url.value, () => {
             
             <!-- Logout Button -->
      
-              <ResponsiveNavLink :href="route('logout')" method="post" as="button"  class="flex items-center w-full">
+              <ResponsiveNavLink :href="route('logout', { locale: props.locale })" method="post" as="button"  class="flex items-center w-full">
                 <svg class="mr-3 h-5 w-5 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"></path>
                 </svg>
@@ -375,14 +402,14 @@ watch(() => url.value, () => {
         <!-- Guest User Mobile Menu -->
         <div v-else class="px-4 py-3 space-y-3">
           <Link 
-            :href="route('login')" 
+            :href="route('login', { locale: props.locale })" 
             class="block w-full py-2 px-4 text-center font-medium text-white bg-customPrimaryColor hover:bg-[#153b4fef] rounded-md transition duration-150 ease-in-out"
           >
             Log in
           </Link>
           
           <Link 
-            :href="route('register')" 
+            :href="route('register', { locale: props.locale })" 
             class="block w-full py-2 px-4 text-center font-medium text-blue-600 bg-white border border-customPrimaryColor hover:bg-blue-50 rounded-md transition duration-150 ease-in-out"
           >
             Create an Account

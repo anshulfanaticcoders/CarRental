@@ -47,7 +47,7 @@ class SchemaController extends Controller
             'is_active' => $request->input('is_active', true),
         ]);
 
-        return redirect()->route('admin.schemas.index')->with('success', 'Schema created successfully.');
+        return redirect()->route('admin.schemas.index', ['locale' => app()->getLocale()])->with('success', 'Schema created successfully.');
     }
 
     /**
@@ -56,7 +56,7 @@ class SchemaController extends Controller
     public function show(Schema $schema)
     {
         // Not typically used for admin CRUD, redirect to edit or index.
-        return redirect()->route('admin.schemas.edit', $schema);
+        return redirect()->route('admin.schemas.edit', ['locale' => app()->getLocale(), 'schema' => $schema]);
     }
 
     /**
@@ -88,7 +88,7 @@ class SchemaController extends Controller
             'is_active' => $request->input('is_active', $schema->is_active),
         ]);
 
-        return redirect()->route('admin.schemas.index')->with('success', 'Schema updated successfully.');
+        return redirect()->route('admin.schemas.index', ['locale' => app()->getLocale()])->with('success', 'Schema updated successfully.');
     }
 
     /**
@@ -97,6 +97,6 @@ class SchemaController extends Controller
     public function destroy(Schema $schema)
     {
         $schema->delete();
-        return redirect()->route('admin.schemas.index')->with('success', 'Schema deleted successfully.');
+        return redirect()->route('admin.schemas.index', ['locale' => app()->getLocale()])->with('success', 'Schema deleted successfully.');
     }
 }

@@ -190,7 +190,7 @@
 <script setup>
 import { ref, computed, watch, getCurrentInstance } from 'vue';
 import MyProfileLayout from '@/Layouts/MyProfileLayout.vue';
-import { router } from '@inertiajs/vue3';
+import { router, usePage } from '@inertiajs/vue3';
 import axios from 'axios';
  import Pagination from '@/Components/ReusableComponents/Pagination.vue';
 import { useToast } from 'vue-toastification';
@@ -216,13 +216,13 @@ const documentFields = computed(() => [
 
 
 const goToDamageProtection = (bookingId) => {
-    router.get(route('vendor.damage-protection.index', { booking: bookingId }));
+    router.get(route('vendor.damage-protection.index', { locale: usePage().props.locale, booking: bookingId }));
 };
 
 const openCustomerDocumentsDialog = async (customerId) => {
   try {
     isLoading.value = true;
-    const response = await axios.get(route('vendor.customer-documents.index', { customer: customerId }));
+    const response = await axios.get(route('vendor.customer-documents.index', { locale: usePage().props.locale, customer: customerId }));
     console.log(response.data); // Log the response for debugging
     customerDocument.value = response.data.document || null;
     isCustomerDocumentsDialogOpen.value = true;
@@ -254,7 +254,7 @@ const props = defineProps({
 });
 
 const handlePageChange = (page) => {
-    router.get(route('bookings.index'), { ...props.filters, page }, { preserveState: true, preserveScroll: true });
+    router.get(route('bookings.index', { locale: usePage().props.locale }), { ...props.filters, page }, { preserveState: true, preserveScroll: true });
 };
 
 const formatDate = (dateStr) => {
@@ -265,7 +265,7 @@ const formatDate = (dateStr) => {
 const updateStatus = async (booking) => {
     isLoading.value = true;
     try {
-        await axios.put(`/bookings/${booking.id}`, {
+        await axios.put(route('bookings.update', { locale: usePage().props.locale, booking: booking.id }), {
             booking_status: booking.booking_status
         });
 
@@ -301,7 +301,7 @@ const updateStatus = async (booking) => {
 const cancelBooking = async (bookingId) => {
     if (confirm(_t('vendorprofilepages', 'confirm_cancel_booking_message'))) {
         try {
-            await axios.post(`/api/bookings/${bookingId}/cancel`);
+            await axios.post(route('bookings.cancel', { locale: usePage().props.locale, booking: bookingId }));
             router.reload();
         } catch (err) {
             console.error("Error canceling booking:", err);
@@ -334,7 +334,7 @@ const formatDocumentType = (documentType) => {
 
 watch(searchQuery, (newQuery) => {
     router.get(
-        route('bookings.index'),
+        route('bookings.index', { locale: usePage().props.locale }),
         { search: newQuery },
         { preserveState: true, preserveScroll: true }
     );

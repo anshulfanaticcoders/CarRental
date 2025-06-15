@@ -22,6 +22,7 @@
 
 <script setup>
 import { ref } from 'vue';
+import { usePage } from '@inertiajs/vue3';
 import axios from 'axios';
 import PrimaryButton from '@/Components/PrimaryButton.vue';
 
@@ -35,9 +36,8 @@ const props = defineProps({
 const emit = defineEmits(['error']); // Define emits for the error event
 
 const isLoading = ref(false);
+const page = usePage();
 // errorMessage is no longer needed here as it will be handled by the parent component
-// const errorMessage = ref('');
-
 const initiateCheckout = async () => {
   isLoading.value = true;
   // errorMessage.value = ''; // No longer needed
@@ -55,7 +55,7 @@ const initiateCheckout = async () => {
     }
 
     // Create Checkout Session
-    const response = await axios.post('/payment/charge', {
+    const response = await axios.post(route('payment.charge'), {
       bookingData: props.bookingData,
     });
 

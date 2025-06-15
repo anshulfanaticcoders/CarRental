@@ -3,10 +3,16 @@ import Checkbox from '@/Components/Checkbox.vue';
 import InputError from '@/Components/InputError.vue';
 import InputLabel from '@/Components/InputLabel.vue';
 import TextInput from '@/Components/TextInput.vue';
-import { Head, Link, useForm } from '@inertiajs/vue3';
+import { Head, Link, useForm, usePage } from '@inertiajs/vue3';
 import loginBg from '../../../assets/loginpageImage.jpg'
 import GuestHeader from '@/Layouts/GuestHeader.vue';
 import { ref } from 'vue';
+
+const page = usePage();
+
+const _t = (group, key) => {
+    return page.props.translations[group][key] || key;
+};
 
 defineProps({
     canResetPassword: {

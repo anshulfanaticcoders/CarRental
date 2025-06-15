@@ -148,7 +148,7 @@ class BlogController extends Controller
         }
 
 
-        return redirect()->route('admin.blogs.index')->with('success', 'Blog created successfully.');
+        return redirect()->route('admin.blogs.index', ['locale' => App::getLocale()])->with('success', 'Blog created successfully.');
     }
 
     public function edit(Blog $blog)
@@ -316,7 +316,7 @@ class BlogController extends Controller
         }
 
 
-        return redirect()->route('admin.blogs.index')->with('success', 'Blog updated successfully.');
+        return redirect()->route('admin.blogs.index', ['locale' => App::getLocale()])->with('success', 'Blog updated successfully.');
     }
 
     public function destroy(Blog $blog)
@@ -333,7 +333,7 @@ class BlogController extends Controller
 
         $blog->delete();
 
-        return redirect()->route('admin.blogs.index')->with('success', 'Blog deleted successfully.');
+        return redirect()->route('admin.blogs.index', ['locale' => App::getLocale()])->with('success', 'Blog deleted successfully.');
     }
 
     public function togglePublish(Request $request, Blog $blog)
@@ -429,7 +429,7 @@ class BlogController extends Controller
         ]);
     }
 
-    public function show(Blog $blog)
+    public function show($locale, Blog $blog)
     {
         if (!$blog->is_published && !(auth()->check() && auth()->user()->hasRole('admin'))) {
              abort(404);

@@ -7,7 +7,7 @@
                 <div v-for="review in reviews.data" :key="review.id" class="border rounded-lg p-6 mb-4 shadow-md">
                     <div class="flex justify-between items-start mb-4 max-[768px]:flex-col">
                         <div class="flex items-start gap-8 max-[768px]:flex-col">
-                            <div class="max-w-[308px] max-h-[100px] max-[768px]:max-w-full max-[768px]:max-h-[500px]">
+                            <div class="max-w-[308px] max-[768px]:max-w-full">
                                 <img :src="getPrimaryImage(review)"
                                     :alt="`${review.vehicle.brand} ${review.vehicle.model}`" alt="Vehicle"
                                     class="object-cover rounded mr-4 w-full h-full" />
@@ -84,6 +84,17 @@
                         <p class="text-gray-700">
                             "{{ review.review_text }}"
                         </p>
+
+                        <div class="flex mt-2 items-center gap-2">
+                            <span class="font-bold">Verification Status :</span>
+                            <span class="text-sm font-medium" :class="{
+                                'text-green-500': review.status === 'approved',
+                                'text-yellow-500': review.status === 'pending',
+                                'text-red-500': review.status === 'rejected',
+                            }">
+                                {{ review.status }}
+                            </span>
+                        </div>
                     </div>
 
                 </div>

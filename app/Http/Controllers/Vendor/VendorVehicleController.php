@@ -47,7 +47,7 @@ class VendorVehicleController extends Controller
     }
 
 
-    public function edit($id)
+    public function edit($locale, $id)
     {
         $vehicle = Vehicle::with(['specifications', 'images', 'benefits'])->findOrFail($id);
         // print_r($vehicle->all());
@@ -55,7 +55,7 @@ class VendorVehicleController extends Controller
 
         // Check if the vehicle belongs to the authenticated vendor
         if ($vehicle->vendor_id !== auth()->id()) {
-            return redirect()->route('current-vendor-vehicles.index')
+            return redirect()->route('current-vendor-vehicles.index', ['locale' => app()->getLocale()])
                 ->with('error', 'You do not have permission to edit this vehicle');
         }
 
@@ -67,7 +67,7 @@ class VendorVehicleController extends Controller
         ]);
     }
 
-    public function update(Request $request, $id)
+    public function update(Request $request, $locale, $id)
     {
 
         // echo "<pre>";
@@ -78,7 +78,7 @@ class VendorVehicleController extends Controller
 
         // Check if the vehicle belongs to the authenticated vendor
         if ($vehicle->vendor_id !== auth()->id()) {
-            return redirect()->route('current-vendor-vehicles.index')
+            return redirect()->route('current-vendor-vehicles.index', ['locale' => app()->getLocale()])
                 ->with('error', 'You do not have permission to update this vehicle');
         }
 
@@ -309,11 +309,11 @@ class VendorVehicleController extends Controller
         }
 
 
-        return redirect()->route('current-vendor-vehicles.index')
+        return redirect()->route('current-vendor-vehicles.index', ['locale' => app()->getLocale()])
             ->with('success', 'Vehicle updated successfully');
     }
 
-    public function destroy($id)
+    public function destroy($locale, $id)
     {
         $vendorId = auth()->id();
         $vehicle = Vehicle::where('vendor_id', $vendorId)->findOrFail($id);
@@ -325,7 +325,7 @@ class VendorVehicleController extends Controller
 
         $vehicle->delete();
 
-        return redirect()->route('current-vendor-vehicles.index')
+        return redirect()->route('current-vendor-vehicles.index', ['locale' => app()->getLocale()])
             ->with('success', 'Vehicle deleted successfully');
     }
 
@@ -370,7 +370,7 @@ class VendorVehicleController extends Controller
                             ->get();
 
         if ($vehicles->isEmpty()) {
-            return redirect()->route('current-vendor-vehicles.index')
+            return redirect()->route('current-vendor-vehicles.index', ['locale' => app()->getLocale()])
                              ->with('error', 'No vehicles found or you do not have permission to delete them.');
         }
 
@@ -391,11 +391,11 @@ class VendorVehicleController extends Controller
         }
 
         if ($deletedCount > 0) {
-            return redirect()->route('current-vendor-vehicles.index')
+            return redirect()->route('current-vendor-vehicles.index', ['locale' => app()->getLocale()])
                              ->with('success', $deletedCount . ' vehicle(s) deleted successfully.');
         }
 
-        return redirect()->route('current-vendor-vehicles.index')
+        return redirect()->route('current-vendor-vehicles.index', ['locale' => app()->getLocale()])
                          ->with('error', 'Could not delete the selected vehicles.');
     }
 }

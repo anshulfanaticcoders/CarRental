@@ -85,7 +85,7 @@ const loadChat = async (partner) => {
     if (partner.unread_count > 0) {
         try {
             // console.log(`Marking messages as read for booking ID: ${partner.latest_booking_id}`);
-            await axios.post(`/api/messages/mark-as-read/${partner.latest_booking_id}`);
+            await axios.post(route('notifications.mark-read', { locale: usePage().props.locale, id: partner.latest_booking_id }));
             // Optimistically update the unread count on the client side
             const partnerInList = props.chatPartners.find(p => p.latest_booking_id === partner.latest_booking_id);
             if (partnerInList) {
@@ -102,7 +102,7 @@ const loadChat = async (partner) => {
     }
     
     try {
-        const response = await axios.get(`/messages/${partner.latest_booking_id}`);
+        const response = await axios.get(route('messages.show', { locale: usePage().props.locale, booking: partner.latest_booking_id }));
         if (response.data && response.data.props) {
             messages.value = response.data.props.messages || [];
         } else {
@@ -124,6 +124,17 @@ const backToInbox = () => {
 
 const checkIfMobile = () => {
     isMobile.value = window.innerWidth < 768; // Adjusted breakpoint
+};
+
+const handleMessageReceived = (message) => {
+    const partner = props.chatPartners.find(p => p.user.id === message.sender_id);
+    if (partner) {
+        partner.last_message_preview = message.message;
+        partner.last_message_at = message.created_at;
+        if (selectedPartner.value?.user.id !== message.sender_id) {
+            partner.unread_count++;
+        }
+    }
 };
 
 onMounted(() => {
@@ -161,7 +172,7 @@ onUnmounted(() => {
         <!-- New Page Header -->
         <header class="bg-white shadow-sm p-3 flex items-center justify-between flex-shrink-0 border-b">
             <div class="flex items-center">
-                <Link :href="route('profile.edit')" class="mr-3 p-1.5 rounded-full hover:bg-gray-100">
+                <Link :href="route('profile.edit', { locale: usePage().props.locale })" class="mr-3 p-1.5 rounded-full hover:bg-gray-100">
                     <img :src="arrowBackIcon" alt="Back to Profile" class="w-5 h-5" />
                 </Link>
                 <h1 class="text-lg font-semibold text-gray-800">Inbox</h1>
@@ -246,6 +257,7 @@ onUnmounted(() => {
                     :showBackButton="isMobile"
                     @back="backToInbox"
                     @messageSent="messages.push($event)"
+                    @messageReceived="handleMessageReceived"
                     class="flex-grow"
                 />
             </div>

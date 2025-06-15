@@ -1,5 +1,5 @@
 <script setup>
-import { ref, onMounted } from "vue";
+import { ref, onMounted, watch } from "vue";
 import axios from "axios";
 import { usePage } from '@inertiajs/vue3'; // Added usePage
 import {
@@ -35,6 +35,14 @@ const fetchFaqs = async () => {
 
 // Load FAQs when component is mounted
 onMounted(fetchFaqs);
+
+// Watch for locale changes and re-fetch FAQs
+watch(() => page.props.locale, (newLocale, oldLocale) => {
+    if (newLocale !== oldLocale) {
+        isLoading.value = true;
+        fetchFaqs();
+    }
+});
 </script>
 
 <template>

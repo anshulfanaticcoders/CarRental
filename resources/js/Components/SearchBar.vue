@@ -128,7 +128,7 @@
 <script setup>
 import { computed, onMounted, onUnmounted, ref, watch } from "vue";
 import axios from "axios";
-import { router } from "@inertiajs/vue3";
+import { router, usePage } from "@inertiajs/vue3";
 import VueDatePicker from '@vuepic/vue-datepicker';
 import '@vuepic/vue-datepicker/dist/main.css';
 
@@ -188,7 +188,7 @@ const handleInputFocus = () => {
 
 const fetchPopularPlaces = async () => {
   try {
-    const response = await axios.get('/api/footer-places');
+    const response = await axios.get(`/${usePage().props.locale}/api/footer-places`);
     popularPlaces.value = response.data.map(place => {
       let label, belowLabel, matchedField;
 
@@ -258,7 +258,7 @@ const searchAroundMe = async () => {
     const { latitude, longitude } = position.coords;
 
     // Perform reverse geocoding
-    const response = await axios.get('/api/geocoding/reverse', {
+    const response = await axios.get(`/${usePage().props.locale}/api/geocoding/reverse`, {
       params: { lat: latitude, lon: longitude },
     });
 
@@ -358,7 +358,7 @@ const handleSearchInput = () => {
   searchTimeout.value = setTimeout(async () => {
     isSearching.value = true;
     try {
-      const response = await axios.get(`/api/vehicles/search-locations`, {
+      const response = await axios.get(`/${usePage().props.locale}/api/vehicles/search-locations`, {
         params: { text: form.value.where },
       });
       searchResults.value = response.data.results;
@@ -405,7 +405,7 @@ const submit = () => {
   // Remove radius adjustment since we’re not using radius-based filtering
   // form.value.radius = 30000; // Removed
 
-  router.get("/s", form.value);
+  router.get(route('search', { locale: usePage().props.locale }), form.value);
 };
 
 const getMinReturnDate = () => {

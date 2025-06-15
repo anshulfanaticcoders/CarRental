@@ -154,6 +154,13 @@ class BulkVehicleUploadController extends Controller
 
             try {
                 DB::transaction(function () use ($vehicleData, $user, &$createdCount, $request) {
+                    $fullAddress = implode(', ', array_filter([
+                        $vehicleData['location'] ?? null,
+                        $vehicleData['city'] ?? null,
+                        $vehicleData['state'] ?? null,
+                        $vehicleData['country'] ?? null,
+                    ]));
+
                     $vehicle = Vehicle::create([
                         'vendor_id' => $user->id,
                         'category_id' => $vehicleData['category_id'],
@@ -174,6 +181,7 @@ class BulkVehicleUploadController extends Controller
                         'city' => $vehicleData['city'] ?? null,
                         'state' => $vehicleData['state'] ?? null,
                         'country' => $vehicleData['country'] ?? null,
+                        'full_vehicle_address' => $fullAddress,
                         'status' => $vehicleData['status'],
                         'features' => !empty($vehicleData['features']) ? json_encode(explode(',', $vehicleData['features'])) : null,
                         'featured' => filter_var($vehicleData['featured'], FILTER_VALIDATE_BOOLEAN),
@@ -323,7 +331,7 @@ class BulkVehicleUploadController extends Controller
                 ->withErrors($errorMessages);
         }
 
-        return redirect('/current-vendor-vehicles')->with([
+        return redirect()->route('current-vendor-vehicles.index', ['locale' => app()->getLocale()])->with([
             'message' => $message,
             'type' => 'success'
         ]);

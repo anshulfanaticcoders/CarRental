@@ -42,7 +42,7 @@
                                     </div>
 
                                     <div class="flex items-center justify-between mt-4 max-[768px]:flex-col max-[768px]:gap-5 max-[768px]:items-start">
-                                        <a :href="route('vehicles.bulk-upload.template')" class="text-sm text-blue-600 hover:underline">
+                                        <a :href="route('vehicles.bulk-upload.template', { locale: usePage().props.locale })" class="text-sm text-blue-600 hover:underline">
                                             Download CSV Template
                                         </a>
                                         <PrimaryButton :class="{ 'opacity-25': csvForm.processing }" :disabled="csvForm.processing">
@@ -239,7 +239,7 @@ const loadingFeatures = ref(true);
 const fetchVehicleCategories = async () => {
     loadingCategories.value = true;
     try {
-        const response = await axios.get(route('api.vehicle-categories.index'));
+        const response = await axios.get(route('api.vehicle-categories.index', { locale: usePage().props.locale }));
         vehicleCategories.value = response.data;
     } catch (error) {
         console.error('Error fetching vehicle categories:', error);
@@ -251,7 +251,7 @@ const fetchVehicleCategories = async () => {
 const fetchVehicleFeatures = async () => {
     loadingFeatures.value = true;
     try {
-        const response = await axios.get(route('api.vehicle-features.index'));
+        const response = await axios.get(route('api.vehicle-features.index', { locale: usePage().props.locale }));
         allFeatures.value = response.data;
     } catch (error) {
         console.error('Error fetching vehicle features:', error);
@@ -300,7 +300,7 @@ const handleCsvFileChange = (event) => {
 };
 
 const submitCsvForm = () => {
-    csvForm.post(route('vehicles.bulk-upload.store'), {
+    csvForm.post(route('vehicles.bulk-upload.store', { locale: usePage().props.locale }), {
         preserveScroll: true,
         onSuccess: () => {
             csvForm.reset('csv_file');
@@ -328,7 +328,7 @@ const handleImageFileChange = (event) => {
 const fetchBulkImages = async () => {
     loadingImages.value = true;
     try {
-        const response = await axios.get(route('vendor.bulk-vehicle-images.index', { _t: new Date().getTime() }));
+        const response = await axios.get(route('vendor.bulk-vehicle-images.index', { locale: usePage().props.locale, _t: new Date().getTime() }));
         bulkImages.value = response.data;
         if (bulkImages.value.length === 0) {
             showImageUploadTutorial.value = true;
@@ -371,7 +371,7 @@ const prevPage = () => {
 const uploadImage = () => {
     if (selectedImageFiles.value.length === 0) return;
 
-    imageUploadForm.post(route('vendor.bulk-vehicle-images.store'), {
+    imageUploadForm.post(route('vendor.bulk-vehicle-images.store', { locale: usePage().props.locale }), {
         preserveScroll: true,
         onSuccess: () => { 
             fetchBulkImages(); 
@@ -398,7 +398,7 @@ const deleteImage = async (imageId) => {
     }
     try {
         // The delete endpoint returns JSON, so use axios directly.
-        await axios.delete(route('vendor.bulk-vehicle-images.destroy', imageId));
+        await axios.delete(route('vendor.bulk-vehicle-images.destroy', { locale: usePage().props.locale, 'image': imageId }));
         fetchBulkImages(); // Refresh the list
         // Consider adding a success flash message here if desired, e.g., by making a separate Inertia visit or local notification
     } catch (error) {

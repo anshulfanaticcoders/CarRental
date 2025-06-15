@@ -21,8 +21,8 @@ const toast = useToast(); // Initialize toast
 const toggleFavourite = async (vehicle) => {
     const action = vehicle.is_favourite ? 'removed from' : 'added to';
     const endpoint = vehicle.is_favourite
-        ? `/vehicles/${vehicle.id}/unfavourite`
-        : `/vehicles/${vehicle.id}/favourite`;
+        ? route('vehicles.unfavourite', { vehicle: vehicle.id })
+        : route('vehicles.favourite', { vehicle: vehicle.id });
 
     try {
         await axios.post(endpoint);
@@ -87,7 +87,7 @@ const handlePageChange = (page) => {
                                     class="w-full mb-[1rem] transition-colors duration-300" />
                             </button>
                 </div>
-                <Link :href="`/vehicle/${vehicle.id}`">
+                <Link :href="route('vehicle.show', { id: vehicle.id })">
                     <div class="column flex flex-col gap-5 items-start">
                         <img v-if="vehicle.images" :src="`${vehicle.images.find(
                             (image) =>

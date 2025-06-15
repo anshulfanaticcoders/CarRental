@@ -155,6 +155,7 @@
 <script setup>
 import { ref } from 'vue';
 import { router, useForm, usePage } from '@inertiajs/vue3';
+import { useToast } from 'vue-toastification';
 import MyProfileLayout from '@/Layouts/MyProfileLayout.vue';
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/Components/ui/dialog';
 import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious } from '@/Components/ui/carousel';
@@ -169,6 +170,7 @@ const { booking, damageProtection: initialDamageProtection } = usePage().props;
 const damageProtection = ref(initialDamageProtection);
 const beforeImageError = ref("");
 const afterImageError = ref("");
+const toast = useToast();
 
 // Image Viewer Modal
 const isImageModalOpen = ref(false);
@@ -212,6 +214,7 @@ const submitBeforeImages = () => {
             damageProtection.value = page.props.damageProtection;
             beforeImages.value = [];
             beforeImageInput.value.value = null;
+            toast.success('Before images uploaded successfully!');
         }
     });
 };
@@ -225,16 +228,33 @@ const submitAfterImages = () => {
             damageProtection.value = page.props.damageProtection;
             afterImages.value = [];
             afterImageInput.value.value = null;
+            toast.success('After images uploaded successfully!');
         }
     });
 };
 
 const deleteBeforeImages = () => {
-    router.delete(route('vendor.damage-protection.delete-before-images', { booking: booking.id }), { preserveScroll: true });
+    router.delete(route('vendor.damage-protection.delete-before-images', { booking: booking.id }), {
+        preserveScroll: true,
+        onSuccess: () => {
+            if (damageProtection.value) {
+                damageProtection.value.before_images = [];
+            }
+            toast.success('All before images deleted successfully!');
+        }
+    });
 };
 
 const deleteAfterImages = () => {
-    router.delete(route('vendor.damage-protection.delete-after-images', { booking: booking.id }), { preserveScroll: true });
+    router.delete(route('vendor.damage-protection.delete-after-images', { booking: booking.id }), {
+        preserveScroll: true,
+        onSuccess: () => {
+            if (damageProtection.value) {
+                damageProtection.value.after_images = [];
+            }
+            toast.success('All after images deleted successfully!');
+        }
+    });
 };
 
 const navigateToBooking = () => {

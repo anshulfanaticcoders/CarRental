@@ -59,7 +59,7 @@ class FaqController extends Controller
                 ]);
             }
         }
-        return redirect()->route('admin.settings.faq.index')->with('success', 'FAQ created successfully.');
+        return redirect()->route('admin.settings.faq.index', ['locale' => App::getLocale()])->with('success', 'FAQ created successfully.');
     }
 
     public function update(Request $request, Faq $faq)
@@ -88,14 +88,14 @@ class FaqController extends Controller
                 );
             }
         }
-        return redirect()->route('admin.settings.faq.index')->with('success', 'FAQ updated successfully.');
+        return redirect()->route('admin.settings.faq.index', ['locale' => App::getLocale()])->with('success', 'FAQ updated successfully.');
     }
 
     public function destroy(Faq $faq)
     {
         // Translations will be deleted by cascade constraint
         $faq->delete();
-        return redirect()->route('admin.settings.faq.index')->with('success', 'FAQ deleted successfully.');
+        return redirect()->route('admin.settings.faq.index', ['locale' => App::getLocale()])->with('success', 'FAQ deleted successfully.');
     }
 
     // This method is likely used by the public Faq.vue page

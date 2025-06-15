@@ -182,7 +182,7 @@ public function getUserForBooking()
 }
 
 
-public function getProfileCompletion()
+public function getProfileCompletion($locale)
 {
     $user = Auth::user()->load('profile');
 

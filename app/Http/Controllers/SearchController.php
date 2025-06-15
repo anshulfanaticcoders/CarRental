@@ -220,7 +220,7 @@ class SearchController extends Controller
         ]);
     }
 
-    public function searchByCategory(Request $request, $slug = null)
+    public function searchByCategory(Request $request, $locale, $slug = null)
 {
     $validated = $request->validate([
         'seating_capacity' => 'nullable|integer',

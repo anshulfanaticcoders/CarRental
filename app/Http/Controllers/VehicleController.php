@@ -283,7 +283,7 @@ class VehicleController extends Controller
         }
 
 
-        return redirect('/current-vendor-vehicles')->with([
+        return redirect()->route('current-vendor-vehicles.index', ['locale' => app()->getLocale()])->with([
             'message' => 'Vehicle added successfully!',
             'type' => 'success'
         ]);
@@ -304,7 +304,7 @@ class VehicleController extends Controller
     }
 
     //This is for getting particular vehicle information to the single car page
-    public function show($id, Request $request)
+    public function show($locale, $id, Request $request)
     {
 
         $vehicle = Vehicle::with([
@@ -342,11 +342,11 @@ class VehicleController extends Controller
     }
 
     //This is for getting particular vehicle information to the booking page 
-    public function booking(Request $request, $id)
+    public function booking(Request $request, $locale, $id)
     {
         if (!Session::get('can_access_booking_page')) {
             // If access is not granted, redirect to the single vehicle page
-            return Redirect::route('vehicle.show', ['id' => $id])
+            return Redirect::route('vehicle.show', ['locale' => $locale, 'id' => $id])
                            ->with('error', 'Please initiate the booking process from the vehicle page.');
         }
         

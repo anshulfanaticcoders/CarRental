@@ -10,7 +10,7 @@ use Illuminate\Support\Facades\Storage;
 
 class DamageProtectionController extends Controller
 {
-    public function index(Booking $booking)
+    public function index($locale, Booking $booking)
     {
         // Fetch existing damage protection record without creating a new one
         $damageProtection = DamageProtection::where('booking_id', $booking->id)->first();
@@ -21,7 +21,7 @@ class DamageProtectionController extends Controller
         ]);
     }
 
-    public function uploadBeforeImages(Request $request, Booking $booking)
+    public function uploadBeforeImages(Request $request, $locale, Booking $booking)
     {
         $request->validate([
             'images' => 'required|array',
@@ -60,7 +60,7 @@ class DamageProtectionController extends Controller
     }
     
 
-    public function uploadAfterImages(Request $request, Booking $booking)
+    public function uploadAfterImages(Request $request, $locale, Booking $booking)
     {
         $request->validate([
             'images' => 'required|array',
@@ -90,7 +90,7 @@ class DamageProtectionController extends Controller
         return back()->with('success', 'After images uploaded successfully')->with('damageProtection', $damageProtection);
     }
 
-    public function deleteBeforeImages(Booking $booking)
+    public function deleteBeforeImages($locale, Booking $booking)
     {
         $damageProtection = DamageProtection::where('booking_id', $booking->id)->first();
 
@@ -115,7 +115,7 @@ class DamageProtectionController extends Controller
         return back()->with('error', 'No before images found');
     }
 
-    public function deleteAfterImages(Booking $booking)
+    public function deleteAfterImages($locale, Booking $booking)
     {
         $damageProtection = DamageProtection::where('booking_id', $booking->id)->first();
 

@@ -61,7 +61,7 @@
 
 const markAllNotificationsAsRead = async () => {
     try {
-        await axios.post("/notifications/mark-all-read");
+        await axios.post(route('notifications.mark-all-read'));
         unreadCount.value = 0;
         notifications.value.forEach(notification => {
             notification.read_at = new Date().toISOString();
@@ -74,7 +74,7 @@ const markAllNotificationsAsRead = async () => {
   
 const fetchNotifications = async () => {
     try {
-        const response = await axios.get("/notifications");
+        const response = await axios.get(route('notifications.index'));
         if (response.status === 200) {
             notifications.value = response.data.notifications || [];
             unreadCount.value = response.data.unread_count || 0;

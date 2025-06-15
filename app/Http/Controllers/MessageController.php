@@ -15,7 +15,7 @@ use App\Events\MessageRestored; // Added import
 
 class MessageController extends Controller
 {
-    public function index()
+    public function index($locale)
     {
         // This will now also pass initial chat partners data
         // The Vue component can decide to use this or fetch fresh via API
@@ -84,7 +84,7 @@ class MessageController extends Controller
         return $vendorsData;
     }
 
-    public function vendorIndex()
+    public function vendorIndex($locale)
 {
     $vendorId = auth()->id();
 
@@ -92,7 +92,7 @@ class MessageController extends Controller
     $bookings = Booking::whereHas('vehicle', function ($query) use ($vendorId) {
         $query->where('vendor_id', $vendorId);
     })
-    ->with(['customer.user.profile', 'vehicle']) // Eager load necessary relations
+    ->with(['customer.user.profile', 'customer.user.chatStatus', 'vehicle']) // Eager load necessary relations
     ->orderBy('created_at', 'desc') // Get latest bookings first for a customer
     ->get();
 
@@ -136,7 +136,7 @@ class MessageController extends Controller
 }
 
 
-public function show($bookingId)
+public function show($locale, $bookingId)
 {
     $booking = Booking::with(['vehicle.vendor', 'customer'])->findOrFail($bookingId);
 

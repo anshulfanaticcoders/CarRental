@@ -135,7 +135,7 @@ const profileCompletion = ref(0);
 
 const fetchProfileCompletion = async () => {
     try {
-        const response = await fetch('/profile/completion');
+        const response = await fetch(route('profile.completion'));
         const data = await response.json();
         profileCompletion.value = data.percentage;
     } catch (error) {

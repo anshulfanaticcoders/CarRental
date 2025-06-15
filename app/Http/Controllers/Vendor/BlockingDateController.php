@@ -10,13 +10,13 @@ use Inertia\Inertia;
 
 class BlockingDateController extends Controller
 {
-    public function index(Request $request)
+    public function index(Request $request, $locale)
     {
         $vendorId = auth()->id();
         $searchQuery = $request->input('search', '');
     
         $vehicles = Vehicle::where('vendor_id', $vendorId)
-            ->with('blockings','bookings') // Fetch associated blocking dates
+            ->with('blockings','bookings', 'images') // Fetch associated blocking dates
             ->when($searchQuery, function ($query, $searchQuery) {
                 $query->where(function ($q) use ($searchQuery) {
                     $q->where('brand', 'like', '%' . $searchQuery . '%')
@@ -26,19 +26,12 @@ class BlockingDateController extends Controller
             ->paginate(7);
     
         return Inertia::render('Vendor/BlockingDates/Index', [
-            'vehicles' => $vehicles->items(),
-            'pagination' => [
-                'current_page' => $vehicles->currentPage(),
-                'last_page' => $vehicles->lastPage(),
-                'per_page' => $vehicles->perPage(),
-                'total' => $vehicles->total(),
-            ],
-            'filters' => $request->all(),
+            'vehicles' => $vehicles,
         ]);
     }
     
 
-    public function store(Request $request)
+    public function store(Request $request, $locale)
     {
         $validated = $request->validate([
             'vehicle_id' => 'required|exists:vehicles,id',
@@ -52,7 +45,7 @@ class BlockingDateController extends Controller
     }
     
 
-    public function update(Request $request, $id)
+    public function update(Request $request, $locale, $id)
     {
         $validated = $request->validate([
             'vehicle_id' => 'required|exists:vehicles,id',
@@ -67,7 +60,7 @@ class BlockingDateController extends Controller
     }
     
 
-    public function destroy($id)
+    public function destroy($locale, $id)
     {
         $blockingDate = BlockingDate::findOrFail($id);
         $blockingDate->delete();
@@ -75,6 +68,4 @@ class BlockingDateController extends Controller
         return response()->json(['message' => 'Blocking date removed successfully.']);
     }
     
-
-
 }

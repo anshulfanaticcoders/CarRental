@@ -8,6 +8,7 @@ import {
     AccordionTrigger,
 } from "@/Components/ui/accordion";
 import { usePage } from '@inertiajs/vue3';
+import { computed } from 'vue';
 
 // Access page props
 const page = usePage();
@@ -39,7 +40,7 @@ const _p = (key, replacements = {}) => {
 
 const defaultValue = "item-1";
 
-const accordionItems = [
+const accordionItems = computed(() => [
     {
         value: "item-1",
         title: _p('how_it_works_step_1_title'), // Use translation key
@@ -55,7 +56,7 @@ const accordionItems = [
         title: _p('how_it_works_step_3_title'),
         content: _p('how_it_works_step_3_content'),
     },
-];
+]);
 </script>
 
 <template>

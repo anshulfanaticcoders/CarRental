@@ -10,7 +10,7 @@
         >
           {{ _t('vendorprofilepages', 'delete_selected_button') }} ({{ selectedVehicleIds.length }})
         </button>
-        <Link :href="route('vehicles.create')"
+        <Link :href="route('vehicles.create', { locale: usePage().props.locale })"
           class="px-4 py-2 bg-customPrimaryColor border-customPrimaryColor border-[1px] text-white rounded-md hover:bg-white hover:text-customPrimaryColor">
         {{ _t('vendorprofilepages', 'add_new_vehicle_button') }}
         </Link>
@@ -31,23 +31,25 @@
                   <th class="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     <input type="checkbox" @change="toggleSelectAll" :checked="isAllSelected" class="rounded"/>
                   </th>
-                  <th class="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">{{ _t('vendorprofilepages', 'table_id_header') }}</th>
-                  <th class="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">{{ _t('vendorprofilepages', 'table_image_header') }}</th>
-                  <th class="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">{{ _t('vendorprofilepages', 'table_brand_model_header') }}</th>
-                  <th class="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th class="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">Sr. No</th>
+                  <th class="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">{{ _t('vendorprofilepages', 'table_id_header') }}</th>
+                  <th class="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">{{ _t('vendorprofilepages', 'table_image_header') }}</th>
+                  <th class="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">{{ _t('vendorprofilepages', 'table_brand_model_header') }}</th>
+                  <th class="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">
                     {{ _t('vendorprofilepages', 'table_transmission_header') }}</th>
-                  <th class="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">{{ _t('vendorprofilepages', 'table_fuel_header') }}</th>
-                  <th class="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">{{ _t('vendorprofilepages', 'table_location_header') }}
+                  <th class="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">{{ _t('vendorprofilepages', 'table_fuel_header') }}</th>
+                  <th class="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">{{ _t('vendorprofilepages', 'table_location_header') }}
                   </th>
-                  <th class="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">{{ _t('vendorprofilepages', 'table_limited_km_header') }}
+                  <th class="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">{{ _t('vendorprofilepages', 'table_limited_km_header') }}
                   </th>
-                  <th class="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th class="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">
                     {{ _t('vendorprofilepages', 'table_cancellation_header') }}
                   </th>
-                  <th class="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">{{ _t('vendorprofilepages', 'table_price_header') }}
+                  <th class="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">{{ _t('vendorprofilepages', 'table_price_header') }}
                   </th>
-                  <th class="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">{{ _t('vendorprofilepages', 'status_table_header') }}</th>
-                  <th class="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">{{ _t('vendorprofilepages', 'actions_table_header') }}
+                  <th class="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">{{ _t('vendorprofilepages', 'status_table_header') }}</th>
+                  <th class="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">Created At</th>
+                  <th class="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">{{ _t('vendorprofilepages', 'actions_table_header') }}
                   </th>
                 </tr>
               </thead>
@@ -56,9 +58,10 @@
                   <td class="px-2 py-4 whitespace-nowrap">
                     <input type="checkbox" :value="vehicle.id" v-model="selectedVehicleIds" class="rounded"/>
                   </td>
-                  <td class="px-6 py-4 whitespace-nowrap text-[0.875rem]">{{ (pagination.current_page - 1) *
+                  <td class="px-2 py-4 whitespace-nowrap text-[0.875rem]">{{ (pagination.current_page - 1) *
                     pagination.per_page + index + 1 }}</td>
-                  <Link :href="`/vehicle/${vehicle.id}`" class="w-full">
+                  <td class="px-2 py-4 whitespace-nowrap text-[0.875rem]">{{ vehicle.id }}</td>
+                  <Link :href="route('vehicle.show', { locale: usePage().props.locale, id: vehicle.id })" class="w-full">
                   <td class="px-2 py-4 whitespace-nowrap">
                     <img :src="getPrimaryImage(vehicle)" :alt="_t('vendorprofilepages', 'alt_no_image')" class="h-12 w-24 object-cover rounded">
                   </td>
@@ -66,8 +69,8 @@
                   <td class="px-2 py-4 whitespace-nowrap text-[0.875rem]">{{ vehicle.brand }} {{ vehicle.model }}</td>
                   <td class="px-2 py-4 whitespace-nowrap text-[0.875rem] capitalize">{{ vehicle.transmission }}</td>
                   <td class="px-2 py-4 whitespace-nowrap text-[0.875rem] capitalize">{{ vehicle.fuel }}</td>
-                  <td class="px-2 py-4 whitespace-wrap text-[0.875rem]">{{ vehicle.full_vehicle_address }}</td>
-                  <td class="px-2 py-4 whitespace-wrap text-[0.875rem]">
+                  <td class="px-2 py-4 whitespace-nowrap text-[0.875rem]">{{ vehicle.full_vehicle_address }}</td>
+                  <td class="px-2 py-4 whitespace-nowrap text-[0.875rem]">
                     <template v-if="vehicle.benefits && (vehicle.benefits.limited_km_per_day_range || vehicle.benefits.limited_km_per_week_range || vehicle.benefits.limited_km_per_month_range)">
                       <span v-if="vehicle.benefits.limited_km_per_day_range > 0">
                         {{ vehicle.benefits.limited_km_per_day_range }} {{ _t('vendorprofilepages', 'unit_km_day') }}
@@ -91,7 +94,7 @@
                     <span v-else-if="!vehicle.benefits || (vehicle.benefits && !vehicle.benefits.limited_km_per_day_range && !vehicle.benefits.limited_km_per_week_range && !vehicle.benefits.limited_km_per_month_range)">{{ _t('vendorprofilepages', 'unlimited_km_text') }}</span>
                   </td>
 
-                  <td class="px-2 py-4 whitespace-wrap text-[0.875rem]">
+                  <td class="px-2 py-4 whitespace-nowrap text-[0.875rem]">
                     <template v-if="vehicle.benefits && (vehicle.benefits.cancellation_available_per_day || vehicle.benefits.cancellation_available_per_week || vehicle.benefits.cancellation_available_per_month)">
                       <span v-if="vehicle.benefits.cancellation_available_per_day">{{ _t('vendorprofilepages', 'cancellation_day') }}</span>
                       <span
@@ -116,8 +119,9 @@
                       {{ vehicle.status }}
                     </span>
                   </td>
+                  <td class="px-2 py-4 whitespace-nowrap text-[0.875rem]">{{ formatDate(vehicle.created_at) }}</td>
                   <td class="px-2 py-4 whitespace-nowrap text-xs font-medium">
-                    <Link :href="route('current-vendor-vehicles.edit', vehicle.id)"
+                    <Link :href="route('current-vendor-vehicles.edit', { locale: usePage().props.locale, 'current_vendor_vehicle': vehicle.id })"
                       class="px-3 mr-2 py-1 bg-gray-600 text-white rounded hover:bg-gray-700">
                     {{ _t('vendorprofilepages', 'edit_button') }}
                     </Link>
@@ -164,7 +168,7 @@
 
 <script setup>
 import { ref, computed, watch, getCurrentInstance } from 'vue'
-import { Link } from '@inertiajs/vue3'
+import { Link, usePage } from '@inertiajs/vue3'
 import { router } from '@inertiajs/vue3'
 import Modal from '@/Components/Modal.vue'
 import MyProfileLayout from '@/Layouts/MyProfileLayout.vue'
@@ -202,14 +206,14 @@ const filteredVehicles = computed(() => {
 
 watch(searchQuery, (newQuery) => {
   router.get(
-    route('current-vendor-vehicles.index'),
+    route('current-vendor-vehicles.index', { locale: usePage().props.locale }),
     { search: newQuery },
     { preserveState: true, preserveScroll: true }
   );
 });
 
 const handlePageChange = (page) => {
-  router.get(route('current-vendor-vehicles.index'), { ...props.filters, page }, { preserveState: true, preserveScroll: true });
+  router.get(route('current-vendor-vehicles.index', { locale: usePage().props.locale }), { ...props.filters, page }, { preserveState: true, preserveScroll: true });
 
 };
 const showDeleteModal = ref(false)
@@ -271,7 +275,7 @@ const confirmBulkDeletion = () => {
 };
 
 const deleteVehicle = () => {
-  router.delete(route('current-vendor-vehicles.destroy', vehicleToDelete.value.id), {
+  router.delete(route('current-vendor-vehicles.destroy', { locale: usePage().props.locale, 'current_vendor_vehicle': vehicleToDelete.value.id }), {
     onSuccess: () => {
       showDeleteModal.value = false
       vehicleToDelete.value = null
@@ -289,7 +293,7 @@ const deleteVehicle = () => {
 
 const deleteSelectedVehicles = () => {
   if (selectedVehicleIds.value.length === 0) return;
-  router.post(route('current-vendor-vehicles.bulk-destroy'), { ids: selectedVehicleIds.value }, {
+  router.post(route('current-vendor-vehicles.bulk-destroy', { locale: usePage().props.locale }), { ids: selectedVehicleIds.value }, {
     onSuccess: () => {
       showDeleteModal.value = false;
       selectedVehicleIds.value = [];
@@ -315,6 +319,11 @@ const formatPricing = (vehicle) => {
   if (vehicle.price_per_month) prices.push(`${currencySymbol}${vehicle.price_per_month}${_t('vendorprofilepages', 'price_per_month_suffix')}`);
 
   return prices.length ? prices.join(' | ') : _t('vendorprofilepages', 'not_applicable_text');
+};
+
+const formatDate = (dateStr) => {
+    const date = new Date(dateStr);
+    return `${String(date.getMonth() + 1).padStart(2, '0')}/${String(date.getDate()).padStart(2, '0')}/${date.getFullYear()}`;
 };
 
 // filteredVehicles definition was moved up

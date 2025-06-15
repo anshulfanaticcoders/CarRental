@@ -15,7 +15,7 @@
       <div v-else class="flex flex-col gap-10">
         <div v-for="booking in bookings.data" :key="booking.id"
           class="bg-white shadow-md rounded-lg p-6 gap-10 flex justify-between mb-6 max-[768px]:flex-col">
-          <Link :href="`/vehicle/${booking.vehicle.id}`" class="w-[30%] max-[768px]:w-full">
+          <Link :href="route('vehicle.show', { locale: usePage().props.locale, id: booking.vehicle.id })" class="w-[30%] max-[768px]:w-full">
           <div class="">
             <img v-if="booking.vehicle?.images"
               :src="`${booking.vehicle.images.find(image => image.image_type === 'primary')?.image_url}`"
@@ -199,7 +199,7 @@ const handleReviewSubmitted = () => {
 // Handle pagination
 // Handle pagination
   const handlePageChange = (page) => {
-    router.get(route('profile.bookings.completed'), {
+    router.get(route('profile.bookings.completed', { locale: usePage().props.locale }), {
         ...props.filters,
         page
     }, {

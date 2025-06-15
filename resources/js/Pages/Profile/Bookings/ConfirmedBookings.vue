@@ -37,7 +37,7 @@
       <div v-else class="flex flex-col gap-10">
         <div v-for="booking in bookings.data" :key="booking.id"
           class="bg-white shadow-md rounded-lg p-6 gap-10 flex justify-between mb-6 max-[768px]:flex-col">
-          <Link :href="`/vehicle/${booking.vehicle.id}`" class="w-[30%] max-[768px]:w-full">
+          <Link :href="route('vehicle.show', { locale: usePage().props.locale, id: booking.vehicle.id })" class="w-[30%] max-[768px]:w-full">
           <div class=""> 
             <img v-if="booking.vehicle?.images"
               :src="`${booking.vehicle.images.find(image => image.image_type === 'primary')?.image_url}`"
@@ -95,7 +95,7 @@
                 </div>
             <div class="flex gap-4 max-[768px]:flex-col items-center justify-between">
             <div class="flex gap-5">
-              <Link :href="`/booking-success?payment_intent=${booking.payments[0]?.transaction_id}`" class="underline">{{ _t('customerbooking', 'view_booking_details_link')}}</Link>
+              <Link :href="`/${usePage().props.locale}/booking-success?payment_intent=${booking.payments[0]?.transaction_id}`" class="underline">{{ _t('customerbooking', 'view_booking_details_link') }}</Link>
             <button 
                 @click="openCancellationModal(booking)" 
                 class="text-red-600 underline"
@@ -106,7 +106,7 @@
               <Link
                   v-if="booking.vehicle && booking.vehicle.vendor_id"
                   class="button-primary px-5 py-4 max-[768px]:text-[0.75rem] max-[768px]:w-full max-[768px]:text-center"
-                  :href="`/messages?vendor_id=${booking.vehicle.vendor_id}`"
+                  :href="route('messages.index', { locale: usePage().props.locale, vendor_id: booking.vehicle.vendor_id })"
                 >
                   {{ _t('customerbooking', 'chat_with_owner_link') }}
                 </Link>
@@ -170,7 +170,7 @@ import MyProfileLayout from '@/Layouts/MyProfileLayout.vue';
 import bookingstatusIcon from '../../../../assets/bookingstatusIcon.svg';
 import carIcon from '../../../../assets/carIcon.svg'; // Import car icon
 import { defineProps, ref, getCurrentInstance } from 'vue';
-import { Link,router } from '@inertiajs/vue3';
+import { Link,router, usePage } from '@inertiajs/vue3';
  import Pagination from '@/Components/ReusableComponents/Pagination.vue';
 
 const { appContext } = getCurrentInstance();
@@ -215,7 +215,7 @@ const confirmCancellation = () => {
   isSubmitting.value = true;
   
   // Submit cancellation request to the server
-  router.post('/booking/cancel', {
+  router.post(route('booking.cancel', { locale: usePage().props.locale }), {
     booking_id: selectedBooking.value.id,
     cancellation_reason: cancellationReason.value
   }, {
@@ -248,7 +248,7 @@ const formatPrice = (price, vehicle) => {
 
 // Handle pagination
   const handlePageChange = (page) => {
-    router.get(route('profile.bookings.confirmed'), {
+    router.get(route('profile.bookings.confirmed', { locale: usePage().props.locale }), {
         ...props.filters,
         page
     }, {

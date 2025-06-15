@@ -9,34 +9,28 @@ use Inertia\Inertia;
 
 class PlanController extends Controller
 {
-    public function index(Request $request)
+    public function index(Request $request, $locale)
 {
-    $perPage = $request->input('per_page', 7);
+    $vendorId = auth()->id();
     $searchQuery = $request->input('search', '');
 
-    $plans = VendorVehiclePlan::where('vendor_id', auth()->id())
-        ->with(['vehicle', 'plan'])
+    $vehicles = \App\Models\Vehicle::where('vendor_id', $vendorId)
+        ->with('vendorPlans', 'images') // Fetch associated plans and images
         ->when($searchQuery, function ($query, $searchQuery) {
             $query->where(function ($q) use ($searchQuery) {
-                $q->whereHas('vehicle', function ($q) use ($searchQuery) {
-                    $q->where('brand', 'like', '%' . $searchQuery . '%');
-                })->orWhere('plan_type', 'like', '%' . $searchQuery . '%')
-                  ->orWhere('price', 'like', '%' . $searchQuery . '%');
+                $q->where('brand', 'like', '%' . $searchQuery . '%')
+                  ->orWhere('model', 'like', '%' . $searchQuery . '%');
             });
         })
-        ->paginate($perPage);
-
-        // Get all vehicles belonging to the current vendor
-    $vehicles = \App\Models\Vehicle::where('vendor_id', auth()->id())->get();
+        ->latest()
+        ->paginate(7);
 
     return Inertia::render('Vendor/Plan/Index', [
-        'plans' => $plans,
         'vehicles' => $vehicles,
-        'filters' => $request->all(),
     ]);
 }
 
-    public function edit($id)
+    public function edit($locale, $id)
     {
         $plan = VendorVehiclePlan::findOrFail($id);
         return Inertia::render('Vendor/Plan/Edit', [
@@ -44,64 +38,75 @@ class PlanController extends Controller
         ]);
     }
 
-    public function update(Request $request, $id)
+    public function update(Request $request, $locale, $id)
     {
-        $plan = VendorVehiclePlan::findOrFail($id);
-
         $validated = $request->validate([
-            'price' => 'required|numeric|min:0',
-            'plan_type' => 'required|string',
-            'plan_description' => 'required|string',
-            'features' => 'nullable|array',
+            'plans' => 'present|array|max:2',
+            'plans.*.id' => 'nullable|exists:vendor_vehicle_plans,id',
+            'plans.*.plan_type' => 'required|string',
+            'plans.*.price' => 'required|numeric|min:0',
+            'plans.*.plan_description' => 'required|string',
+            'plans.*.features' => 'nullable|array',
         ]);
 
-        $validated['features'] = isset($validated['features']) ? json_encode($validated['features']) : json_encode([]);
+        $vehicleId = \App\Models\Vehicle::findOrFail($id)->id;
 
-        $plan->update($validated);
+        $existingPlanIds = VendorVehiclePlan::where('vehicle_id', $vehicleId)
+            ->where('vendor_id', auth()->id())
+            ->pluck('id')
+            ->toArray();
 
-        return redirect()->route('VendorPlanIndex')->with('success', 'Plan updated successfully.');
+        $incomingPlanIds = collect($validated['plans'])->pluck('id')->filter()->toArray();
+
+        // Delete plans that are not in the incoming request
+        $plansToDelete = array_diff($existingPlanIds, $incomingPlanIds);
+        if (!empty($plansToDelete)) {
+            VendorVehiclePlan::whereIn('id', $plansToDelete)->delete();
+        }
+
+        foreach ($validated['plans'] as $planData) {
+            $planData['features'] = json_encode($planData['features']);
+            $planData['vehicle_id'] = $vehicleId;
+            $planData['vendor_id'] = auth()->id();
+
+            if (isset($planData['id'])) {
+                // Update existing plan
+                $plan = VendorVehiclePlan::findOrFail($planData['id']);
+                $plan->update($planData);
+            } else {
+                // Create new plan
+                $highestPlanId = VendorVehiclePlan::where('vehicle_id', $vehicleId)
+                                    ->max('plan_id') ?? 0;
+                $planData['plan_id'] = $highestPlanId + 1;
+                VendorVehiclePlan::create($planData);
+            }
+        }
+
+        return redirect()->route('VendorPlanIndex', ['locale' => $locale])->with('success', 'Plans updated successfully.');
     }
 
-    public function store(Request $request)
-{
-    $validated = $request->validate([
-        'vehicle_id' => 'required|exists:vehicles,id',
-        'plan_type' => 'required|string',
-        'price' => 'required|numeric|min:0',
-        'features' => 'nullable|array',
-        'plan_description' => 'required|string',
-    ]);
-
-    $validated['vendor_id'] = auth()->id();
-    $validated['features'] = json_encode($validated['features']);
-    
-    // Find the highest plan_id for this vehicle and increment it
-    $highestPlanId = VendorVehiclePlan::where('vehicle_id', $validated['vehicle_id'])
-                        ->max('plan_id') ?? 0;
-    $validated['plan_id'] = $highestPlanId + 1;
-    
-    $plan = VendorVehiclePlan::create($validated);
-
-    return redirect()->route('VendorPlanIndex')->with('success', 'Plan created successfully.');
-}
+    public function store(Request $request, $locale)
+    {
+        // This method is no longer needed, as the update method handles both creation and updates.
+        // You can remove this method or leave it empty.
+    }
 
 
-public function destroy($id)
+public function destroy($locale, $id)
 {
     // Find the plan or return 404 if not found
     $plan = VendorVehiclePlan::findOrFail($id);
     
     // Check if the authenticated user owns this plan
     if ($plan->vendor_id !== auth()->id()) {
-        return redirect()->route('VendorPlanIndex')
-            ->with('error', 'You are not authorized to delete this plan.');
+        return response()->json(['error' => 'You are not authorized to delete this plan.'], 403);
     }
     
     // Delete the plan
     $plan->delete();
     
-    // Redirect with success message
-    return redirect()->route('VendorPlanIndex')
-        ->with('success', 'Plan deleted successfully.');
+    // Return a success response
+    return response()->json(['message' => 'Plan deleted successfully.']);
 }
+
 }

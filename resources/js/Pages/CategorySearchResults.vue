@@ -79,7 +79,7 @@ const form = useForm({
 });
 
 const submitFilters = debounce(() => {
-    form.get(`/search/category/${form.category_slug}`, {
+    form.get(route('search.category', { locale: page.props.locale, category_slug: form.category_slug }), {
         preserveState: true,
         preserveScroll: true,
         onSuccess: (response) => {
@@ -430,7 +430,7 @@ const fetchFavoriteStatus = async () => {
     if (!page.props.auth?.user) return;
     try {
         if (!props.vehicles.data || props.vehicles.data.length === 0) return;
-        const response = await axios.get("/favorites/status");
+        const response = await axios.get(route('favorites.status'));
         const favoriteIds = response.data; // Now an array of IDs
         const newStatus = {};
         props.vehicles.data.forEach((vehicle) => {
@@ -450,8 +450,8 @@ const toggleFavourite = async (vehicle) => {
         return Inertia.visit("/login"); 
     }
     const endpoint = favoriteStatus.value[vehicle.id]
-        ? `/vehicles/${vehicle.id}/unfavourite`
-        : `/vehicles/${vehicle.id}/favourite`;
+        ? route('vehicles.unfavourite', { vehicle: vehicle.id })
+        : route('vehicles.favourite', { vehicle: vehicle.id });
     try {
         await axios.post(endpoint);
         favoriteStatus.value[vehicle.id] = !favoriteStatus.value[vehicle.id];
@@ -971,7 +971,7 @@ const handleCategorySearchUpdate = (params) => {
                             </div>
                         </div>
                         <a
-                            :href="`/vehicle/${vehicle.id}?package=${form.package_type}&pickup_date=${form.date_from}&return_date=${form.date_to}`">
+                            :href="route('vehicle.show', { locale: page.props.locale, id: vehicle.id, package: form.package_type, pickup_date: form.date_from, return_date: form.date_to })">
                             <div class="column flex flex-col gap-5 items-start">
                                 <img v-if="vehicle.images" :src="`${vehicle.images.find(
                                     (image) =>

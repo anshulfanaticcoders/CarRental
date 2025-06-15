@@ -12,7 +12,7 @@
             class="absolute inset-0 flex justify-between max-[768px]:relative max-[768px]:flex-col max-[768px]:h-auto max-[768px]:gap-10">
             <div class="column h-full w-[50%] flex items-center justify-center max-[768px]:w-full  max-[768px]:h-auto">
                 <div class="flex flex-col gap-5 w-[90%] max-[768px]:w-full">
-                    <Link href="/" class="max-[768px]:hidden absolute top-[2rem]">
+                    <Link :href="route('welcome', { locale: $page.props.locale })" class="max-[768px]:hidden absolute top-[2rem]">
                     <ApplicationLogo />
                     </Link>
                     <AuthenticatedHeaderLayout class="hidden max-[768px]:block max-[768px]:border-b-0" />
@@ -62,7 +62,7 @@
             <div
                 class="column overflow-y-auto w-[50%] h-full flex justify-center pb-[5rem] max-[768px]:pb-0 max-[768px]:w-full bg-white">
                 <div class="flex flex-col gap-10 w-[90%] max-[768px]:w-full">
-                    <Link href="/" class="max-[768px]:hidden mt-[2rem]">
+                    <Link :href="route('welcome', { locale: $page.props.locale })" class="max-[768px]:hidden mt-[2rem]">
                     <ApplicationLogo />
                     </Link>
                     <AuthenticatedHeaderLayout class="hidden max-[768px]:block max-[768px]:border-b-0" />
@@ -1957,7 +1957,7 @@ const submit = () => {
     // Construct full_vehicle_address
     const addressParts = [form.location, form.city, form.state, form.country];
     form.full_vehicle_address = addressParts.filter(Boolean).join(', ');
-    form.post(route("vehicles.store"), {
+    form.post(route("vehicles.store", { locale: usePage().props.locale }), {
         onSuccess: () => {
             toast.success('Vehicle Added Successfully', {
                 position: 'top-right',
@@ -2045,7 +2045,7 @@ const fetchFeaturesForCategory = async (categoryId) => {
     try {
         // Ensure the route name 'api.categories.features' is correct and returns expected data
         // The controller returns [{id, feature_name, icon_url}, ...]
-        const response = await axios.get(route('api.categories.features', categoryId));
+        const response = await axios.get(route('api.categories.features', { locale: usePage().props.locale, category: categoryId }));
         availableFeatures.value = response.data.map(feature => ({
             id: feature.id, // Keep id if needed for keys or future use
             name: feature.feature_name, // Use 'name' to match existing template iteration (feature.name)
