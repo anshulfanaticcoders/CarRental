@@ -130,8 +130,8 @@ class PaymentController extends Controller
                     'quantity' => 1,
                 ]],
                 'mode' => 'payment',
-                'success_url' => url('/booking-success/details?session_id={CHECKOUT_SESSION_ID}&booking_id=' . $booking->id),
-                'cancel_url' => route('payment.cancel', ['booking_id' => $booking->id]),
+                'success_url' => url(app()->getLocale() . '/booking-success/details?session_id={CHECKOUT_SESSION_ID}&booking_id=' . $booking->id),
+                'cancel_url' => route('payment.cancel', ['locale' => app()->getLocale(), 'booking_id' => $booking->id]),
                 'metadata' => [
                     'booking_id' => $booking->id,
                 ],
@@ -375,8 +375,8 @@ public function retryPayment(Request $request)
                 'quantity' => 1,
             ]],
             'mode' => 'payment',
-            'success_url' => url('/booking-success/details?session_id={CHECKOUT_SESSION_ID}&booking_id=' . $booking->id),
-            'cancel_url' => route('payment.cancel', ['booking_id' => $booking->id]),
+            'success_url' => url(app()->getLocale() . '/booking-success/details?session_id={CHECKOUT_SESSION_ID}&booking_id=' . $booking->id),
+            'cancel_url' => route('payment.cancel', ['locale' => app()->getLocale(), 'booking_id' => $booking->id]),
             'metadata' => [
                 'booking_id' => $booking->id,
             ],

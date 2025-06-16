@@ -98,7 +98,8 @@ onMounted(() => {
   // Trigger redirect after 5 seconds with loader
   showLoader.value = true;
   setTimeout(() => {
-    router.visit('/profile/bookings/pending', {
+    const locale = usePage().props.locale || 'en';
+    router.visit(`/${locale}/profile/bookings/pending`, {
       preserveState: false,
       preserveScroll: true,
     });
@@ -235,8 +236,8 @@ const formatTime = (timeStr) => {
         </div>
 
         <div class="flex justify-between">
-          <Link class="button-primary px-5 py-4 max-[768px]:text-[0.75rem]" href="/messages">Chat with owner</Link>
-          <Link class="button-secondary px-5 py-4 max-[768px]:text-[0.75rem]" href="/profile/bookings/pending">Go to Bookings</Link>
+          <Link class="button-primary px-5 py-4 max-[768px]:text-[0.75rem]" :href="`/${usePage().props.locale}/messages`">Chat with owner</Link>
+          <Link class="button-secondary px-5 py-4 max-[768px]:text-[0.75rem]" :href="`/${usePage().props.locale}/profile/bookings/pending`">Go to Bookings</Link>
         </div>
       </div>
 
