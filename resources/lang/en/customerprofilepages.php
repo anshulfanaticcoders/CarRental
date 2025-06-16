@@ -73,6 +73,11 @@ return [
     'no_file_uploaded_text' => 'No file uploaded',
     'no_documents_uploaded_yet_text' => 'No documents uploaded yet.',
     'error_all_files_required' => 'Please upload all required documents.',
+    'delete_all_documents_button' => 'Delete All',
+    'delete_documents_confirm_title' => 'Are you sure?',
+    'delete_documents_confirm_message' => 'Are you sure you want to delete all documents? This action cannot be undone.',
+    'deleting_button_text' => 'Deleting...',
+    'delete_button_text' => 'Delete',
 
     // IssuedPayments.vue
     'issued_payments_header' => 'Issued Payments',

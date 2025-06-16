@@ -254,6 +254,7 @@ Route::group([
         Route::get('/notifications', [NotificationController::class, 'index'])->name('notifications.index');
         Route::post('/notifications/mark-read/{id}', [NotificationController::class, 'markAsRead'])->name('notifications.mark-read');
         Route::post('/notifications/mark-all-read', [NotificationController::class, 'markAllAsRead'])->name('notifications.mark-all-read');
+        Route::delete('/notifications/clear-all', [NotificationController::class, 'clearAll'])->name('notifications.clear-all');
         Route::get('/notifications/unread', [NotificationController::class, 'getUnreadCount'])->name('notifications.unread');
 
         Route::get('/profile/completion', [ProfileController::class, 'getProfileCompletion'])->name('profile.completion');
@@ -368,6 +369,8 @@ Route::group([
         Route::get('/user/documents/{document}/edit', [UserDocumentController::class, 'edit'])->name('user.documents.edit');
         Route::patch('/user/documents/{document}', [UserDocumentController::class, 'update'])->name('user.documents.update');
         Route::post('/user/documents/bulk-upload', [UserDocumentController::class, 'bulkUpload'])->name('user.documents.bulk-upload');
+        Route::post('/user/documents/{document}', [UserDocumentController::class, 'update'])->name('user.documents.update.post');
+        Route::delete('/user/documents/{document}', [UserDocumentController::class, 'destroy'])->name('user.documents.destroy');
 
         Route::inertia('completed-bookings', 'Profile/CompletedBookings');
         Route::inertia('confirmed-bookings', 'Profile/ConfirmedBookings');

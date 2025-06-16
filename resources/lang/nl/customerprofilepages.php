@@ -75,6 +75,11 @@ return [
         'no_file_uploaded_text' => 'Geen bestand geüpload',
         'no_documents_uploaded_yet_text' => 'Nog geen documenten geüpload.',
         'error_all_files_required' => 'Upload alstublieft alle vereiste documenten.',
+        'delete_all_documents_button' => 'Alles verwijderen',
+        'delete_documents_confirm_title' => 'Weet je het zeker?',
+        'delete_documents_confirm_message' => 'Weet u zeker dat u alle documenten wilt verwijderen? Deze actie kan niet ongedaan worden gemaakt.',
+        'deleting_button_text' => 'Verwijderen...',
+        'delete_button_text' => 'Verwijder',
 
 
         // IssuedPayments.vue

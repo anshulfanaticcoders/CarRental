@@ -74,6 +74,11 @@ return [
         'no_file_uploaded_text' => 'Aucun fichier téléchargé',
         'no_documents_uploaded_yet_text' => 'Aucun document téléchargé pour le moment.',
         'error_all_files_required' => 'Veuillez télécharger tous les documents requis.',
+        'delete_all_documents_button' => 'Tout supprimer',
+        'delete_documents_confirm_title' => 'Êtes-vous sûr ?',
+        'delete_documents_confirm_message' => 'Êtes-vous sûr de vouloir supprimer tous les documents ? Cette action est irréversible.',
+        'deleting_button_text' => 'Suppression...',
+        'delete_button_text' => 'Supprimer',
 
         // IssuedPayments.vue
         'issued_payments_header' => 'Paiements émis',

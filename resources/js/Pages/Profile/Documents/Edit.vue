@@ -237,7 +237,7 @@
   
   <script setup>
   import { ref, onMounted } from 'vue';
-  import { router, usePage } from '@inertiajs/vue3';
+  import { router } from '@inertiajs/vue3';
   
   defineProps({
     document: Object,
@@ -303,9 +303,7 @@
       }
     });
   
-    const locale = usePage().props.locale || 'en';
-    formData.append('_method', 'PATCH');
-    router.post(route('user.documents.update', { locale, document: props.document.id }), formData, {
+    router.post(`/user/documents/${props.document.id}`, formData, {
       onSuccess: () => {
         isLoading.value = false;
       },

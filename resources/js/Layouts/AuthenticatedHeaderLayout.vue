@@ -6,16 +6,21 @@ import DropdownLink from "@/Components/DropdownLink.vue";
 import ResponsiveNavLink from "@/Components/ResponsiveNavLink.vue";
 import { Link, usePage, router } from "@inertiajs/vue3";
 import axios from "axios";
-import NotificationBell from "@/Components/NotificationBell.vue";
 import globeIcon from '../../assets/globe.svg'
+import bellIcon from '../../assets/bell.svg'
 
 // Get page properties
 const page = usePage();
 const { url, props } = page;
 const showingNavigationDropdown = ref(false);
+const showingNotificationDropdown = ref(false);
 
 // User data
 const user = ref(null);
+
+// Notifications
+const notifications = ref([]);
+const unreadCount = ref(0);
 
 // Close mobile menu when clicking outside
 const navRef = ref(null);
@@ -29,6 +34,7 @@ const closeNavOnOutsideClick = (event) => {
 onMounted(() => {
   if (page.props.auth?.user) {
     fetchUserProfile();
+    fetchNotifications();
   }
   
   document.addEventListener('click', closeNavOnOutsideClick);
@@ -51,6 +57,52 @@ const fetchUserProfile = async () => {
   } catch (error) {
     console.error("Error fetching user:", error);
   }
+};
+
+// Fetch notifications
+const fetchNotifications = async () => {
+    try {
+        const response = await axios.get(route('notifications.index', { locale: currentLocale.value }));
+        notifications.value = response.data.notifications.data;
+        unreadCount.value = response.data.unread_count;
+    } catch (error) {
+        console.error("Error fetching notifications:", error);
+    }
+};
+
+// Mark a notification as read
+const markAsRead = async (notification) => {
+    if (notification.read_at) return;
+    try {
+        await axios.post(route('notifications.mark-read', { locale: currentLocale.value, id: notification.id }));
+        notification.read_at = new Date().toISOString();
+        unreadCount.value--;
+    } catch (error) {
+        console.error("Error marking notification as read:", error);
+    }
+};
+
+// Mark all notifications as read
+const markAllAsRead = async () => {
+    try {
+        await axios.post(route('notifications.mark-all-read', { locale: currentLocale.value }));
+        notifications.value.forEach(n => n.read_at = new Date().toISOString());
+        unreadCount.value = 0;
+    } catch (error) {
+        console.error("Error marking all notifications as read:", error);
+    }
+};
+
+// Clear all notifications
+const clearAllNotifications = async () => {
+    try {
+        await axios.delete(route('notifications.clear-all', { locale: currentLocale.value }));
+        notifications.value = [];
+        unreadCount.value = 0;
+        showingNotificationDropdown.value = false;
+    } catch (error) {
+        console.error("Error clearing notifications:", error);
+    }
 };
 
 // Computed properties
@@ -184,7 +236,39 @@ watch(() => url.value, () => {
             </template>
           </Dropdown>
 
-          
+          <!-- Notification Bell -->
+            <div class="relative">
+                <button @click="showingNotificationDropdown = !showingNotificationDropdown" class="relative">
+                    <img :src="bellIcon" alt="Notifications" class="w-8 h-8">
+                    <span v-if="unreadCount > 0" class="absolute top-0 right-0 inline-flex items-center justify-center px-2 py-1 text-xs font-bold leading-none text-red-100 bg-red-600 rounded-full">{{ unreadCount }}</span>
+                </button>
+                <div v-if="showingNotificationDropdown" class="absolute right-0 mt-2 w-80 bg-white rounded-md shadow-lg z-20">
+                    <div class="p-4 border-b flex justify-between items-center">
+                        <h3 class="text-lg font-medium">Notifications</h3>
+                        <button @click="markAllAsRead" class="text-sm text-blue-500 hover:underline">Mark all as read</button>
+                    </div>
+                    <div class="overflow-y-auto" style="max-height: 400px;">
+                        <div v-if="notifications.length === 0" class="p-4 text-center text-gray-500">
+                            No notifications yet.
+                        </div>
+                        <div v-else>
+                            <div v-for="notification in notifications" :key="notification.id" @click="markAsRead(notification)"
+                                class="p-4 border-b hover:bg-gray-50 cursor-pointer"
+                                :class="{ 'bg-gray-100': !notification.read_at }">
+                                <div class="flex ">
+                                    <div class="font-semibold">{{ notification.data.title }}</div>
+                                    <div class="text-xs text-gray-500">{{ notification.type.split('\\').pop() }}</div>
+                                </div>
+                                <p class="text-sm text-gray-600">{{ notification.data.message }}</p>
+                                <div class="text-xs text-gray-400 mt-1">{{ new Date(notification.created_at).toLocaleString() }}</div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="p-2 border-t text-center">
+                        <button @click="clearAllNotifications" class="text-sm text-red-500 hover:underline">Clear all notifications</button>
+                    </div>
+                </div>
+            </div>
           
           <!-- User Profile Dropdown -->
           <div class="relative ml-3">
@@ -234,8 +318,6 @@ watch(() => url.value, () => {
               </template>
             </Dropdown>
           </div>
-          <!-- Notification Bell -->
-          <NotificationBell class="ml-2" />
         </div>
 
         <!-- Guest Navigation (Desktop) -->

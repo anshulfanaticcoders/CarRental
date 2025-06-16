@@ -4,19 +4,29 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\SoftDeletes;
 
 class Notification extends Model
 {
-    use HasFactory;
+    use HasFactory, SoftDeletes;
 
-    // Tell Laravel to use the correct table
-    protected $table = 'message_notifications';
+    protected $table = 'notifications';
 
-    protected $fillable = ['user_id', 'type', 'title', 'message', 'read_at', 'booking_id'];
+    protected $fillable = [
+        'type',
+        'notifiable_type',
+        'notifiable_id',
+        'data',
+        'read_at',
+    ];
 
-    public function user()
+    protected $casts = [
+        'data' => 'array',
+        'read_at' => 'datetime',
+    ];
+
+    public function notifiable()
     {
-        return $this->belongsTo(User::class);
+        return $this->morphTo();
     }
 }
-

@@ -100,7 +100,7 @@ class UserDocumentController extends Controller
     }
 
     // Update existing documents
-    public function update(Request $request, UserDocument $document)
+    public function update(Request $request, $locale, UserDocument $document)
     {
         try {
             $this->authorize('update', $document);
@@ -155,7 +155,7 @@ class UserDocumentController extends Controller
     }
 
     // Delete a document
-    public function destroy(UserDocument $document)
+    public function destroy($locale, UserDocument $document)
     {
         try {
             $this->authorize('delete', $document);

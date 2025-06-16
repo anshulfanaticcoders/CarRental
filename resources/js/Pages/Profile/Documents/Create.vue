@@ -237,7 +237,7 @@
   
   <script setup>
   import { ref } from 'vue';
-  import { router, usePage } from '@inertiajs/vue3';
+  import { router } from '@inertiajs/vue3';
   
   const isLoading = ref(false);
   const errors = ref({});
@@ -297,8 +297,7 @@
       }
     });
   
-    const locale = usePage().props.locale || 'en';
-    router.post(route('user.documents.store', { locale }), formData, {
+    router.post('/user/documents', formData, {
       onSuccess: () => {
         isLoading.value = false;
       },

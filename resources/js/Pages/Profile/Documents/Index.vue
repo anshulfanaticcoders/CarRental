@@ -3,10 +3,38 @@
       <div class="flex flex-col gap-4 w-[95%] ml-[1.5rem] max-[768px]:w-full max-[768px]:ml-0">
         <div class="flex items-center justify-between mt-[2rem]">
           <span class="text-[1.5rem] font-semibold max-[768px]:text-[1.2rem]">{{ _t('customerprofilepages', 'my_documents_header') }}</span>
-          <Button @click="openUploadDialog" :disabled="document && document.verification_status === 'verified'">
-            {{ document ? _t('customerprofilepages', 'edit_documents_button') : _t('customerprofilepages', 'upload_documents_button') }}
-          </Button>
+          <div class="flex items-center gap-2">
+            <Button @click="openUploadDialog" :disabled="document && document.verification_status === 'verified'">
+              {{ document ? _t('customerprofilepages', 'edit_documents_button') : _t('customerprofilepages', 'upload_documents_button') }}
+            </Button>
+            <Button v-if="document" @click="openDeleteConfirmDialog" variant="destructive" :disabled="document.verification_status === 'verified'">
+              {{ _t('customerprofilepages', 'delete_all_documents_button') }}
+            </Button>
+          </div>
         </div>
+  
+        <!-- Delete Confirmation Dialog -->
+        <Dialog v-model:open="isDeleteConfirmOpen">
+          <DialogContent class="sm:max-w-[400px]">
+            <DialogHeader>
+              <DialogTitle>{{ _t('customerprofilepages', 'delete_documents_confirm_title') }}</DialogTitle>
+            </DialogHeader>
+            <p>{{ _t('customerprofilepages', 'delete_documents_confirm_message') }}</p>
+            <DialogFooter class="mt-4">
+              <Button variant="outline" @click="isDeleteConfirmOpen = false">{{ _t('customerprofilepages', 'dialog_cancel_button') }}</Button>
+              <Button variant="destructive" @click="deleteDocuments" :disabled="isLoading">
+                <span v-if="isLoading" class="flex items-center">
+                  <svg class="animate-spin h-5 w-5 mr-2" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                  </svg>
+                  {{ _t('customerprofilepages', 'deleting_button_text') }}
+                </span>
+                <span v-else>{{ _t('customerprofilepages', 'delete_button_text') }}</span>
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
   
         <!-- Upload/Edit Document Dialog -->
         <Dialog v-model:open="isDialogOpen">
@@ -297,6 +325,7 @@
   
   const document = ref(usePage().props.document);
   const isDialogOpen = ref(false);
+  const isDeleteConfirmOpen = ref(false);
   const isLoading = ref(false);
   const errors = ref({});
   
@@ -350,6 +379,10 @@
       reader.readAsDataURL(file);
     }
   };
+
+  const openDeleteConfirmDialog = () => {
+    isDeleteConfirmOpen.value = true;
+  };
   
   const removeFile = (field) => {
     // If there was an existing file (identified by its URL in the initial form.value state or document.value)
@@ -391,9 +424,7 @@
     let submissionRoute;
   
     if (document.value) {
-      submissionRoute = route('user.documents.update', { locale, document: document.value.id });
-      // For FormData with file uploads, Laravel expects POST with _method spoofing for PATCH/PUT
-      formData.append('_method', 'PATCH');
+      submissionRoute = route('user.documents.update.post', { locale, document: document.value.id });
     } else {
       submissionRoute = route('user.documents.store', { locale });
     }
@@ -421,6 +452,26 @@
         errors.value = err;
         isLoading.value = false;
       },
+    });
+  };
+
+  const deleteDocuments = () => {
+    if (!document.value) return;
+    isLoading.value = true;
+    const locale = usePage().props.locale || 'en';
+    const submissionRoute = route('user.documents.destroy', { locale, document: document.value.id });
+
+    router.delete(submissionRoute, {
+        onSuccess: () => {
+            isDeleteConfirmOpen.value = false;
+            isLoading.value = false;
+            document.value = null; // Clear the document data on successful deletion
+        },
+        onError: (err) => {
+            errors.value = err;
+            isLoading.value = false;
+            isDeleteConfirmOpen.value = false;
+        },
     });
   };
   

@@ -74,7 +74,7 @@ class UsersController extends Controller
         // Log the activity
         ActivityLogHelper::logActivity('create', 'Created a new user', $user, $request);
 
-        return redirect()->route('users.index')->with('success', 'User created successfully.');
+        return redirect()->route('users.index', ['locale' => app()->getLocale()])->with('success', 'User created successfully.');
     }
 
     /**
@@ -105,7 +105,7 @@ class UsersController extends Controller
         // Log the activity
         ActivityLogHelper::logActivity('update', 'Updated a user', $user, $request);
 
-        return redirect()->route('users.index')->with('success', 'User updated successfully.');
+        return redirect()->route('users.index', ['locale' => app()->getLocale()])->with('success', 'User updated successfully.');
     }
 
     /**
@@ -116,6 +116,6 @@ class UsersController extends Controller
         // Log the activity
         ActivityLogHelper::logActivity('delete', 'User Deleted', $user);
         $user->delete();
-        return redirect()->route('users.index')->with('success', 'User deleted successfully.');
+        return redirect()->route('users.index', ['locale' => app()->getLocale()])->with('success', 'User deleted successfully.');
     }
 }
