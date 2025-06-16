@@ -16,10 +16,12 @@ return new class extends Migration
             $table->foreignId('blog_id')->constrained()->onDelete('cascade');
             $table->string('locale')->index();
             $table->string('title');
+            $table->string('slug');
             $table->text('content');
             $table->timestamps();
 
             $table->unique(['blog_id', 'locale']);
+            $table->unique(['locale', 'slug']);
         });
     }
 

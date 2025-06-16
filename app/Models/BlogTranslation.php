@@ -13,6 +13,7 @@ class BlogTranslation extends Model
         'blog_id',
         'locale',
         'title',
+        'slug',
         'content',
     ];
 

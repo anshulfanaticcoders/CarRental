@@ -72,6 +72,7 @@ const changeLanguage = (newLocale) => {
     const currentUrl = new URL(window.location.href);
     const pathParts = currentUrl.pathname.split('/');
 
+    // Handle page translations
     if (pathParts.length > 2 && pathParts[2] === 'page') {
         const currentSlug = pathParts[3];
         const pages = page.props.pages;
@@ -85,6 +86,16 @@ const changeLanguage = (newLocale) => {
                 router.visit(route('pages.show', { locale: newLocale, slug: newTranslation.slug }));
                 return;
             }
+        }
+    }
+
+    // Handle blog post translations
+    if (pathParts.length > 2 && pathParts[2] === 'blog' && page.props.blog) {
+        const blog = page.props.blog;
+        const newTranslation = blog.translations.find(t => t.locale === newLocale);
+        if (newTranslation && newTranslation.slug) {
+            router.visit(route('blog.show', { locale: newLocale, blog: newTranslation.slug }));
+            return;
         }
     }
 

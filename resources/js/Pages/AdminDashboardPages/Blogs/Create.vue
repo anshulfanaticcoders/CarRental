@@ -46,6 +46,13 @@
                             <p v-if="form.errors[`translations.${activeLocale}.title`]" class="text-red-500 text-sm">{{ form.errors[`translations.${activeLocale}.title`] }}</p>
                         </div>
 
+                        <!-- Slug Field -->
+                        <div class="space-y-2">
+                            <label :for="'slug-' + activeLocale" class="text-sm font-medium">Slug ({{ activeLocale.toUpperCase() }})</label>
+                            <Input :id="'slug-' + activeLocale" v-model="form.translations[activeLocale].slug" type="text" class="w-full" required />
+                            <p v-if="form.errors[`translations.${activeLocale}.slug`]" class="text-red-500 text-sm">{{ form.errors[`translations.${activeLocale}.slug`] }}</p>
+                        </div>
+
                         <!-- Content Field -->
                         <div class="space-y-2">
                             <label :for="'content-' + activeLocale" class="text-sm font-medium">Content ({{ activeLocale.toUpperCase() }})</label>
@@ -154,7 +161,7 @@ const activeLocale = ref(props.current_locale || props.available_locales[0]);
 
 const initialTranslations = {};
 props.available_locales.forEach(locale => {
-    initialTranslations[locale] = { title: '', content: '' };
+    initialTranslations[locale] = { title: '', slug: '', content: '' };
 });
 
 // Initialize seo_translations for SEO content
@@ -213,7 +220,7 @@ const submitForm = () => {
             // Re-initialize translations part of the form after reset
             const newInitialTranslations = {};
             props.available_locales.forEach(locale => {
-                newInitialTranslations[locale] = { title: '', content: '' };
+                newInitialTranslations[locale] = { title: '', slug: '', content: '' };
             });
             form.translations = newInitialTranslations;
             setActiveLocale(props.current_locale || props.available_locales[0]);

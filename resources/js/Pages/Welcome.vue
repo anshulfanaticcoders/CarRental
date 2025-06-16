@@ -426,7 +426,7 @@ const page = usePage();
             <!-- Blog Section -->
             <div class="flex gap-6 w-full full-w-container max-[768px]:flex-col">
                 <!-- First Blog (Large Left) -->
-                <Link :href="route('blog.show', { locale: page.props.locale, blog: blogs[0].slug })" v-if="!isLoading && blogs.length > 0"
+                <Link :href="route('blog.show', { locale: page.props.locale, blog: blogs[0].translated_slug })" v-if="!isLoading && blogs.length > 0"
                     class="w-1/2 h-[574px] relative rounded-lg overflow-hidden shadow-md blog-container max-[768px]:w-full max-[768px]:h-[380px]">
                 <img :src="blogs[0].image" :alt="blogs[0].title" class="w-full h-full object-cover rounded-lg" loading="lazy">
 
@@ -435,7 +435,7 @@ const page = usePage();
                         <img :src=calendarWhiteIcon alt="" loading="lazy"> {{ formatDate(blogs[0].created_at) }}
                     </p>
                     <h4 class="font-semibold text-[2rem] max-[768px]:text-[1.25rem]">{{ blogs[0].title }}</h4>
-                    <Link :href="route('blog.show', { locale: page.props.locale, blog: blogs[0].slug })" class="inline-flex items-center mt-2 text-blue-400">
+                    <Link :href="route('blog.show', { locale: page.props.locale, blog: blogs[0].translated_slug })" class="inline-flex items-center mt-2 text-blue-400">
                     <img :src=whiteGoIcon alt="" loading="lazy">
                     </Link>
                 </div>
@@ -452,7 +452,7 @@ const page = usePage();
                         class="relative rounded-lg h-[175px] flex justify-between gap-5 items-center">
                         <div v-if="!isLoading && blogs.length > index"
                             class="w-[30%] h-full blog-container max-[768px]:w-[40%] max-[768px]:h-[120px]">
-                            <Link :href="route('blog.show', { locale: page.props.locale, blog: blogs[index].slug })">
+                            <Link :href="route('blog.show', { locale: page.props.locale, blog: blogs[index].translated_slug })">
                             <img :src="blogs[index].image" :alt="blogs[index].title"
                                 class="w-full h-full object-cover rounded-lg transform transition-transform duration-300 ease-in-out hover:scale-105" loading="lazy">
                             </Link>
@@ -469,7 +469,7 @@ const page = usePage();
                             <h4 v-if="!isLoading && blogs.length > index"
                                 class="font-semibold text-[1.5rem] text-customDarkBlackColor max-[768px]:text-[1rem]">{{
                                     blogs[index].title }}</h4>
-                            <Link v-if="!isLoading && blogs.length > index" :href="route('blog.show', { locale: page.props.locale, blog: blogs[index].slug })"
+                            <Link v-if="!isLoading && blogs.length > index" :href="route('blog.show', { locale: page.props.locale, blog: blogs[index].translated_slug })"
                                 class="inline-flex items-center mt-2 text-customPrimaryColor read-story">
                             Read Story
                             <img :src=goIcon alt="" class="w-[1.5rem]" loading="lazy">

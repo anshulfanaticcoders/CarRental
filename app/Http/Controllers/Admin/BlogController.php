@@ -30,7 +30,8 @@ class BlogController extends Controller
             // Search in translation
             $query->whereHas('translations', function ($q) use ($search) {
                 $q->where('title', 'like', "%{$search}%")
-                  ->orWhere('content', 'like', "%{$search}%");
+                  ->orWhere('content', 'like', "%{$search}%")
+                  ->orWhere('slug', 'like', "%{$search}%");
             })->orWhere('slug', 'like', "%{$search}%");
         }
         
@@ -68,6 +69,7 @@ class BlogController extends Controller
 
         foreach ($available_locales as $locale) {
             $validationRules["translations.{$locale}.title"] = 'required|string|max:255';
+            $validationRules["translations.{$locale}.slug"] = 'required|string|max:255';
             $validationRules["translations.{$locale}.content"] = 'required|string';
         }
         $request->validate($validationRules);
@@ -75,15 +77,16 @@ class BlogController extends Controller
         $translationsData = $request->input('translations');
         
         // Generate slug from the 'en' title or the first available title
+        // Generate main slug from the 'en' title or the first available title
         $slugTitle = $translationsData['en']['title'] ?? $translationsData[array_key_first($translationsData)]['title'];
-        $slug = Str::slug($slugTitle);
-        $existingBlog = Blog::where('slug', $slug)->first();
+        $mainSlug = Str::slug($slugTitle);
+        $existingBlog = Blog::where('slug', $mainSlug)->first();
         if ($existingBlog) {
-            $slug = $slug . '-' . uniqid();
+            $mainSlug = $mainSlug . '-' . uniqid();
         }
 
         $blogData = [
-            'slug' => $slug,
+            'slug' => $mainSlug,
             'is_published' => $request->input('is_published', true),
         ];
 
@@ -99,6 +102,7 @@ class BlogController extends Controller
                  $blog->translations()->create([
                     'locale' => $locale,
                     'title' => $data['title'],
+                    'slug' => Str::slug($data['slug']),
                     'content' => $data['content'],
                 ]);
             }
@@ -168,6 +172,7 @@ class BlogController extends Controller
             $translation = $translations->get($locale);
             $blogData['translations'][$locale] = [
                 'title' => $translation ? $translation->title : '',
+                'slug' => $translation ? $translation->slug : '',
                 'content' => $translation ? $translation->content : '',
             ];
         }
@@ -203,7 +208,6 @@ class BlogController extends Controller
     {
         $available_locales = ['en', 'fr', 'nl']; // Or from config
         $validationRules = [
-            'slug' => 'required|string|max:255|unique:blogs,slug,' . $blog->id,
             'image' => 'nullable|image|mimes:jpg,jpeg,png|max:2048',
             'is_published' => 'sometimes|boolean',
             'translations' => 'required|array',
@@ -216,12 +220,12 @@ class BlogController extends Controller
         ];
         foreach ($available_locales as $locale) {
             $validationRules["translations.{$locale}.title"] = 'required|string|max:255';
+            $validationRules["translations.{$locale}.slug"] = 'required|string|max:255';
             $validationRules["translations.{$locale}.content"] = 'required|string';
         }
         $request->validate($validationRules);
 
         $blogData = [
-            'slug' => $request->input('slug'), // Slug can be edited here, ensure it's unique
             'is_published' => $request->input('is_published', $blog->is_published),
         ];
 
@@ -245,6 +249,7 @@ class BlogController extends Controller
                     ['locale' => $locale],
                     [
                         'title' => $data['title'],
+                        'slug' => Str::slug($data['slug']),
                         'content' => $data['content'],
                     ]
                 );
@@ -270,24 +275,33 @@ class BlogController extends Controller
         // If an old SEO record needs to be deleted, that logic would be more complex (store old slug before update).
         // For now, this handles creating/updating SEO for the current slug.
         
-        $newSlugFromRequest = $request->input('slug'); // This is the unprefixed blog slug from form
-        $newSeoUrlSlug = 'blog/' . $newSlugFromRequest;
-        $oldSeoUrlSlug = 'blog/' . $blog->getOriginal('slug'); // Prefixed version of the slug before potential update
-
-        // If the blog's own slug changed, delete the SeoMeta associated with the OLD prefixed slug
-        if ($newSlugFromRequest !== $blog->getOriginal('slug') && SeoMeta::where('url_slug', $oldSeoUrlSlug)->exists()) {
-            SeoMeta::where('url_slug', $oldSeoUrlSlug)->delete();
-        }
-        
-        // Also, ensure any SeoMeta with a non-prefixed slug (matching new or old blog slug) is removed
-        SeoMeta::where('url_slug', $newSlugFromRequest)->where('url_slug', '!=', $newSeoUrlSlug)->delete();
-        if ($newSlugFromRequest !== $blog->getOriginal('slug')) { // If slug changed, also check old non-prefixed
-             SeoMeta::where('url_slug', $blog->getOriginal('slug'))->where('url_slug', '!=', $newSeoUrlSlug)->delete();
+        // If the english title is updated, we update the main slug of the blog post
+        if (isset($translationsData['en']['title'])) {
+            $newMainSlug = Str::slug($translationsData['en']['title']);
+            if ($newMainSlug !== $blog->slug) {
+                $existingBlog = Blog::where('slug', $newMainSlug)->where('id', '!=', $blog->id)->first();
+                if ($existingBlog) {
+                    $newMainSlug = $newMainSlug . '-' . uniqid();
+                }
+                $blogData['slug'] = $newMainSlug;
+            }
         }
 
+        $blog->update($blogData);
+
+        // SEO Meta URL Slug Management
+        $newSeoUrlSlug = 'blog/' . $blog->slug;
+        $oldSeoUrlSlug = 'blog/' . $blog->getOriginal('slug');
+
+        // If the main slug changed, we need to move the SEO meta to the new slug.
+        if ($newSeoUrlSlug !== $oldSeoUrlSlug) {
+            SeoMeta::where('url_slug', $oldSeoUrlSlug)->update(['url_slug' => $newSeoUrlSlug]);
+        }
+
+        // Now, update or create the SEO meta with the new data for the correct slug.
         if (array_filter($seoMetaToSave) || !empty($seoMetaToSave['seo_title']) || SeoMeta::where('url_slug', $newSeoUrlSlug)->exists()) {
             $seoMeta = SeoMeta::updateOrCreate(
-                ['url_slug' => $newSeoUrlSlug], 
+                ['url_slug' => $newSeoUrlSlug],
                 array_filter($seoMetaToSave, fn($value) => !is_null($value) && $value !== '')
             );
 
@@ -429,8 +443,13 @@ class BlogController extends Controller
         ]);
     }
 
-    public function show($locale, Blog $blog)
+    public function show($locale, $slug)
     {
+        App::setLocale($locale);
+
+        $translation = \App\Models\BlogTranslation::where('slug', $slug)->where('locale', $locale)->firstOrFail();
+        $blog = $translation->blog;
+
         if (!$blog->is_published && !(auth()->check() && auth()->user()->hasRole('admin'))) {
              abort(404);
         }

@@ -179,9 +179,9 @@ class SchemaBuilder
                 'position' => $index + 1,
                 'item' => [
                     '@type' => 'BlogPosting',
-                    '@id' => route('blog.show', ['locale' => app()->getLocale(), 'blog' => $blog->slug]),
+                    '@id' => route('blog.show', ['locale' => app()->getLocale(), 'blog' => $blog->getTranslation(app()->getLocale())?->slug]),
                     'headline' => $blog->title,
-                    'url' => route('blog.show', ['locale' => app()->getLocale(), 'blog' => $blog->slug]),
+                    'url' => route('blog.show', ['locale' => app()->getLocale(), 'blog' => $blog->getTranslation(app()->getLocale())?->slug]),
                     'image' => $blog->image_url ?? asset('default-blog-image.jpg'),
                     'datePublished' => $blog->published_at ? $blog->published_at->toIso8601String() : ($blog->created_at ? $blog->created_at->toIso8601String() : now()->toIso8601String()),
                     'author' => [

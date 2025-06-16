@@ -46,6 +46,13 @@
                             <p v-if="form.errors[`translations.${activeLocale}.title`]" class="text-red-500 text-sm">{{ form.errors[`translations.${activeLocale}.title`] }}</p>
                         </div>
 
+                        <!-- Slug Field -->
+                        <div class="space-y-2">
+                            <label :for="'slug-' + activeLocale" class="text-sm font-medium">Slug ({{ activeLocale.toUpperCase() }})</label>
+                            <Input :id="'slug-' + activeLocale" v-model="form.translations[activeLocale].slug" type="text" class="w-full" required />
+                            <p v-if="form.errors[`translations.${activeLocale}.slug`]" class="text-red-500 text-sm">{{ form.errors[`translations.${activeLocale}.slug`] }}</p>
+                        </div>
+
                         <!-- Content Field -->
                         <div class="space-y-2">
                             <label :for="'content-' + activeLocale" class="text-sm font-medium">Content ({{ activeLocale.toUpperCase() }})</label>
@@ -61,12 +68,6 @@
                             <p v-if="form.errors.content" class="text-red-500 text-sm">{{ form.errors.content }}</p>
                         </div>
 
-                        <!-- Slug Field -->
-                        <div class="space-y-2">
-                            <label for="slug" class="text-sm font-medium">Slug</label>
-                            <Input id="slug" v-model="form.slug" type="text" class="w-full" required />
-                            <p v-if="form.errors.slug" class="text-red-500 text-sm">{{ form.errors.slug }}</p>
-                        </div>
                         
                         <!-- Image Upload -->
                         <div class="space-y-2">
@@ -172,6 +173,7 @@ props.available_locales.forEach(locale => {
     const existing = props.blog.translations[locale];
     initialFormTranslations[locale] = {
         title: existing ? existing.title : '',
+        slug: existing ? existing.slug : '',
         content: existing ? existing.content : '',
     };
 });
@@ -190,7 +192,6 @@ props.available_locales.forEach(locale => {
 const form = useForm({
     _method: 'PUT',
     translations: initialFormTranslations,
-    slug: props.blog.slug,
     image: null,
     is_published: props.blog.is_published,
     // SEO Fields
