@@ -387,14 +387,15 @@
       // do not append to formData. Backend will retain existing if field not present in request.
     });
   
-    let submissionRoute = '/user/documents';
-    let submissionMethod = 'post';
+    const locale = usePage().props.locale || 'en';
+    let submissionRoute;
   
     if (document.value) {
-      submissionRoute = `/user/documents/${document.value.id}`;
+      submissionRoute = route('user.documents.update', { locale, document: document.value.id });
       // For FormData with file uploads, Laravel expects POST with _method spoofing for PATCH/PUT
       formData.append('_method', 'PATCH');
-      // submissionMethod remains 'post' for Inertia to handle FormData correctly
+    } else {
+      submissionRoute = route('user.documents.store', { locale });
     }
   
     router.post(submissionRoute, formData, { // Always use router.post for FormData

@@ -76,7 +76,7 @@ class UserDocumentController extends Controller
                 ]
             );
 
-            return redirect()->route('user.documents.index')->with([
+            return redirect()->route('user.documents.index', ['locale' => app()->getLocale()])->with([
                 'message' => 'Documents uploaded successfully!',
                 'type' => 'success',
             ]);
@@ -141,7 +141,7 @@ class UserDocumentController extends Controller
             // Update the document record
             $document->update($dataToUpdate);
 
-            return redirect()->route('user.documents.index')->with([
+            return redirect()->route('user.documents.index', ['locale' => app()->getLocale()])->with([
                 'message' => 'Documents updated successfully!',
                 'type' => 'success',
             ]);
@@ -176,7 +176,7 @@ class UserDocumentController extends Controller
 
             $document->delete();
 
-            return redirect()->route('user.documents.index')->with([
+            return redirect()->route('user.documents.index', ['locale' => app()->getLocale()])->with([
                 'message' => 'Document deleted successfully!',
                 'type' => 'success',
             ]);
