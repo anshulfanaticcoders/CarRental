@@ -40,6 +40,7 @@ const initialSeoTranslations = {};
 locales.forEach(locale => {
     const t = props.seoTranslations[locale] || {};
     initialSeoTranslations[locale] = {
+        url_slug: t.url_slug || 'contact-us',
         seo_title: t.seo_title || '',
         meta_description: t.meta_description || '',
         keywords: t.keywords || '',
@@ -200,6 +201,11 @@ const submit = () => {
             <template v-for="locale in locales" :key="`seo-fields-${locale}`">
                 <div v-if="activeLocale === locale" class="grid grid-cols-1 gap-6 mt-4 pt-4 border-t">
                     <h4 class="text-md font-semibold text-gray-800">Localized SEO Fields ({{ locale.toUpperCase() }})</h4>
+                    <div class="space-y-2">
+                        <label :for="`url_slug_${locale}`" class="text-sm font-medium">URL Slug</label>
+                        <Input :id="`url_slug_${locale}`" v-model="form.seo_translations[locale].url_slug" type="text" class="w-full" />
+                        <p v-if="form.errors[`seo_translations.${locale}.url_slug`]" class="text-red-500 text-sm">{{ form.errors[`seo_translations.${locale}.url_slug`] }}</p>
+                    </div>
                     <div class="space-y-2">
                         <label :for="`seo_title_${locale}`" class="text-sm font-medium">SEO Title</label>
                         <Input :id="`seo_title_${locale}`" v-model="form.seo_translations[locale].seo_title" type="text" class="w-full" maxlength="60" />

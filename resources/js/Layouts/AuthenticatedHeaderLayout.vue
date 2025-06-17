@@ -151,6 +151,22 @@ const changeLanguage = (newLocale) => {
         }
     }
 
+    // Handle contact page translations
+    if (page.props.contactPage) {
+        const seoMeta = page.props.seoMeta;
+        if (seoMeta && seoMeta.translations) {
+            const newTranslation = seoMeta.translations.find(t => t.locale === newLocale);
+            if (newTranslation && newTranslation.url_slug) {
+                if (newTranslation.url_slug === 'contact-us') {
+                    router.visit(route('contact-us', { locale: newLocale }));
+                } else {
+                    router.visit(route('contact.show', { locale: newLocale, slug: newTranslation.url_slug }));
+                }
+                return;
+            }
+        }
+    }
+
     // Fallback for other pages or if translation not found
     pathParts[1] = newLocale;
     const newPath = pathParts.join('/');
