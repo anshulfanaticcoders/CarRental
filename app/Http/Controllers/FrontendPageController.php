@@ -9,15 +9,6 @@ use App\Helpers\SchemaBuilder; // Import SchemaBuilder
 
 class FrontendPageController extends Controller
 {
-    public function show($locale, $slug)
-    {
-        app()->setLocale($locale);
-        $page = Page::where('slug', $slug)->firstOrFail();
-        
-        return Inertia::render('Frontend/Page', [
-            'page' => $page
-        ]);
-    }
 
     /**
      * Generates and returns the Organization schema.

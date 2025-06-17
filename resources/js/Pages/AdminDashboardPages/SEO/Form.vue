@@ -8,13 +8,7 @@
 
             <form @submit.prevent="submitForm">
               <div class="grid grid-cols-1 gap-6">
-                <!-- URL Slug -->
-                <div>
-                  <label for="url_slug" class="block text-sm font-medium text-gray-700">URL Slug</label>
-                  <input type="text" id="url_slug" v-model="form.url_slug" class="mt-1 p-2 border-2 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md" placeholder="custom-url-path" />
-                  <p v-if="form.errors.url_slug" class="mt-1 text-xs text-red-500">{{ form.errors.url_slug }}</p>
-                  <p v-else class="mt-1 text-xs text-gray-500">Leave empty if not applicable. Must be unique. (e.g., about-us or / for homepage)</p>
-                </div>
+                <!-- The main URL Slug is removed and is now part of the localized content -->
 
                 <!-- SEO Title (Main/Default for SeoMeta model) -->
                 <div>
@@ -91,10 +85,17 @@
                     </div>
 
                     <!-- Translated Keywords -->
-                    <div>
+                    <div class="mb-4">
                       <label :for="'trans_keywords_' + locale" class="block text-sm font-medium text-gray-700">Keywords [{{ locale.toUpperCase() }}]</label>
                       <input type="text" :id="'trans_keywords_' + locale" v-model="form.translations[locale].keywords" class="mt-1 p-2 border-2 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md" :placeholder="'Keywords in ' + locale + ', comma-separated'" />
                       <p v-if="form.errors[`translations.${locale}.keywords`]" class="mt-1 text-xs text-red-500">{{ form.errors[`translations.${locale}.keywords`] }}</p>
+                    </div>
+
+                    <!-- Translated URL Slug -->
+                    <div>
+                      <label :for="'trans_url_slug_' + locale" class="block text-sm font-medium text-gray-700">URL Slug [{{ locale.toUpperCase() }}]</label>
+                      <input type="text" :id="'trans_url_slug_' + locale" v-model="form.translations[locale].url_slug" class="mt-1 p-2 border-2 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md" :placeholder="'url-slug-in-' + locale" />
+                      <p v-if="form.errors[`translations.${locale}.url_slug`]" class="mt-1 text-xs text-red-500">{{ form.errors[`translations.${locale}.url_slug`] }}</p>
                     </div>
                   </div>
                 </template>
@@ -142,15 +143,15 @@ const locales = ['en', 'fr', 'nl'];
 const initialTranslations = {};
 locales.forEach(locale => {
   initialTranslations[locale] = {
-    seo_title: props.translations?.[locale]?.seo_title || '',
-    meta_description: props.translations?.[locale]?.meta_description || '',
-    keywords: props.translations?.[locale]?.keywords || '',
+    seo_title: props.translations[locale]?.seo_title || '',
+    meta_description: props.translations[locale]?.meta_description || '',
+    keywords: props.translations[locale]?.keywords || '',
+    url_slug: props.translations[locale]?.url_slug || '',
   };
 });
 
 const form = useForm({
   _method: isEditing.value ? 'PUT' : 'POST',
-  url_slug: props.seoMeta?.url_slug || '',
   // The main seo_title on SeoMeta model is still required by backend validation
   seo_title: props.seoMeta?.seo_title || '', 
   // Main meta_description and keywords on SeoMeta can be fallbacks or not used if all translations are filled

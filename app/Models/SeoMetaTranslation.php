@@ -14,6 +14,7 @@ class SeoMetaTranslation extends Model
     protected $fillable = [
         'seo_meta_id',
         'locale',
+        'url_slug',
         'seo_title',
         'meta_description',
         'keywords',

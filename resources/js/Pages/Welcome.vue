@@ -44,7 +44,9 @@ const props = defineProps({
     testimonials: Array,
     popularPlaces: Array,
     faqs: Array, // Added faqs prop
-    schema: Array
+    schema: Array,
+    seoMeta: Object,
+    pages: Object,
 });
 
 
@@ -159,11 +161,54 @@ onBeforeUnmount(() => {
 import { usePage } from '@inertiajs/vue3';
 
 const page = usePage();
+
+const currentLocale = computed(() => page.props.locale || 'en');
+const currentUrl = computed(() => window.location.href);
+
+const seoTranslation = computed(() => {
+    if (!props.seoMeta || !props.seoMeta.translations) {
+        return {};
+    }
+    return props.seoMeta.translations.find(t => t.locale === currentLocale.value) || {};
+});
+
+const seoTitle = computed(() => {
+    return seoTranslation.value.seo_title || props.seoMeta?.seo_title || 'Welcome';
+});
+
+const seoDescription = computed(() => {
+    return seoTranslation.value.meta_description || props.seoMeta?.meta_description || '';
+});
+
+const seoKeywords = computed(() => {
+    return seoTranslation.value.keywords || props.seoMeta?.keywords || '';
+});
+
+const canonicalUrl = computed(() => {
+    return props.seoMeta?.canonical_url || window.location.href;
+});
+
+const seoImageUrl = computed(() => {
+    return props.seoMeta?.seo_image_url || '';
+});
 </script>
 
 <template>
 
-    <Head title="Welcome" />
+    <Head>
+        <title>{{ seoTitle }}</title>
+        <meta name="description" :content="seoDescription" />
+        <meta name="keywords" :content="seoKeywords" />
+        <link rel="canonical" :href="canonicalUrl" />
+        <meta property="og:title" :content="seoTitle" />
+        <meta property="og:description" :content="seoDescription" />
+        <meta property="og:image" :content="seoImageUrl" />
+        <meta property="og:url" :content="currentUrl" />
+        <meta name="twitter:card" content="summary_large_image" />
+        <meta name="twitter:title" :content="seoTitle" />
+        <meta name="twitter:description" :content="seoDescription" />
+        <meta name="twitter:image" :content="seoImageUrl" />
+    </Head>
     <!-- Inject all schemas passed in the 'schema' array prop -->
     <template v-if="schema && schema.length">
         <SchemaInjector v-for="(individualSchema, index) in schema" :key="`schema-${index}`" :schema="individualSchema" />

@@ -71,6 +71,7 @@ class SeoMetaController extends Controller
                         'seo_title'        => $translationInput['seo_title'] ?? null,
                         'meta_description' => $translationInput['meta_description'] ?? null,
                         'keywords'         => $translationInput['keywords'] ?? null,
+                        'url_slug'         => $translationInput['url_slug'] ?? null,
                     ]
                 );
             }
@@ -111,6 +112,7 @@ class SeoMetaController extends Controller
                 'seo_title'        => $translation->seo_title ?? null,
                 'meta_description' => $translation->meta_description ?? null,
                 'keywords'         => $translation->keywords ?? null,
+                'url_slug'         => $translation->url_slug ?? null,
             ];
         }
 
@@ -148,10 +150,11 @@ class SeoMetaController extends Controller
             if (isset($translationsData[$locale])) {
                 $translationInput = $translationsData[$locale];
                 // Validate translation fields
-                 $request->validate([
+                $request->validate([
                     "translations.{$locale}.seo_title" => 'nullable|string|max:60',
                     "translations.{$locale}.meta_description" => 'nullable|string|max:160',
                     "translations.{$locale}.keywords" => 'nullable|string|max:255',
+                    "translations.{$locale}.url_slug" => 'nullable|string|max:255',
                 ]);
 
                 $seoMeta->translations()->updateOrCreate(
@@ -160,6 +163,7 @@ class SeoMetaController extends Controller
                         'seo_title'        => $translationInput['seo_title'] ?? null,
                         'meta_description' => $translationInput['meta_description'] ?? null,
                         'keywords'         => $translationInput['keywords'] ?? null,
+                        'url_slug'         => $translationInput['url_slug'] ?? null,
                     ]
                 );
             } else {

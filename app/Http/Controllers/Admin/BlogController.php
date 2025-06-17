@@ -143,6 +143,7 @@ class BlogController extends Controller
                 $seoMeta->translations()->updateOrCreate(
                     ['locale' => $locale],
                     [
+                        'url_slug'         => Str::slug($translationsData[$locale]['slug']),
                         'seo_title'        => $translationInput['seo_title'] ?? null,
                         'meta_description' => $translationInput['meta_description'] ?? null,
                         'keywords'         => $translationInput['keywords'] ?? null,
@@ -188,6 +189,7 @@ class BlogController extends Controller
             foreach ($allLocales as $locale) {
                 $translation = $seoMeta->translations->firstWhere('locale', $locale);
                 $seoTranslations[$locale] = [
+                    'url_slug'         => $translation->url_slug ?? null,
                     'seo_title'        => $translation->seo_title ?? null,
                     'meta_description' => $translation->meta_description ?? null,
                     'keywords'         => $translation->keywords ?? null,
@@ -320,6 +322,7 @@ class BlogController extends Controller
                     $seoMeta->translations()->updateOrCreate(
                         ['locale' => $locale],
                         [
+                            'url_slug'         => Str::slug($translationsData[$locale]['slug']),
                             'seo_title'        => $translationInput['seo_title'] ?? null,
                             'meta_description' => $translationInput['meta_description'] ?? null,
                             'keywords'         => $translationInput['keywords'] ?? null,
@@ -429,6 +432,9 @@ class BlogController extends Controller
             }
         }
 
+        $seoMeta = SeoMeta::with('translations')->where('url_slug', '/')->first();
+        $pages = \App\Models\Page::with('translations')->get()->keyBy('slug');
+
         return Inertia::render('Welcome', [
             'canLogin' => Route::has('login'),
             'canRegister' => Route::has('register'),
@@ -440,6 +446,8 @@ class BlogController extends Controller
             'popularPlaces' => $popularPlaces,
             'faqs' => $faqs, // Pass FAQ data
             'schema' => $pageSchemas,
+            'seoMeta' => $seoMeta,
+            'pages' => $pages,
         ]);
     }
 
@@ -457,10 +465,23 @@ class BlogController extends Controller
 
         // Generate BlogPosting schema
         $blogSchema = SchemaBuilder::blog($blog);
+        
+        $seoMeta = null;
+        $seoMetaTranslation = \App\Models\SeoMetaTranslation::where('url_slug', $slug)->where('locale', $locale)->first();
+
+        if ($seoMetaTranslation) {
+            $seoMeta = SeoMeta::with('translations')->find($seoMetaTranslation->seo_meta_id);
+        }
+
+
+        $pages = \App\Models\Page::with('translations')->get()->keyBy('slug');
 
         return Inertia::render('SingleBlog', [
             'blog' => $blog,
             'schema' => $blogSchema, // Pass schema to the Vue component
+            'seoMeta' => $seoMeta,
+            'locale' => $locale,
+            'pages' => $pages,
         ]);
     }
     

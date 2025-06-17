@@ -174,21 +174,7 @@ const setActiveLocale = (locale, event) => {
 };
 
 const submit = () => {
-    const activeTranslation = form.translations[activeLocale.value];
-
-    const dataToSubmit = {
-        _method: 'PUT',
-        locale: activeLocale.value,
-        title: activeTranslation.title,
-        slug: activeTranslation.slug,
-        content: activeTranslation.content,
-        seo_title: form.seo_title,
-        canonical_url: form.canonical_url,
-        seo_image_url: form.seo_image_url,
-        seo_translations: form.seo_translations,
-    };
-
-    router.post(route('admin.pages.update', props.page.id), dataToSubmit, {
+    form.post(route('admin.pages.update', props.page.id), {
         onSuccess: () => {
             toast.success('Page updated successfully!', {
                 position: 'top-right',

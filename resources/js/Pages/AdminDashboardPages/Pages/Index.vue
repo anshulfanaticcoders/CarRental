@@ -30,7 +30,7 @@
                     <TableBody>
                         <TableRow v-for="(page, index) in pages.data" :key="page.id">
                             <TableCell>{{ (pages.current_page - 1) * pages.per_page + index + 1 }}</TableCell>
-                            <TableCell class="capitalize">{{ page.title }}</TableCell>
+                            <TableCell class="capitalize">{{ getTitle(page) }}</TableCell>
                             <TableCell>{{ page.slug }}</TableCell>
                             <TableCell>{{ new Date(page.created_at).toLocaleDateString() }}</TableCell>
                             <TableCell class="text-right">
@@ -101,6 +101,12 @@ const handlePageChange = (page) => {
         preserveState: true,
         replace: true,
     });
+};
+
+const getTitle = (page) => {
+    const locale = props.filters.locale || 'en';
+    const translation = page.translations.find(t => t.locale === locale);
+    return translation ? translation.title : page.slug;
 };
 </script>
 

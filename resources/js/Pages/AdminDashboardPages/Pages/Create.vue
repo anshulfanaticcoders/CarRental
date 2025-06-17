@@ -156,13 +156,8 @@ const form = useForm({
 });
 
 const submit = () => {
-    const activeTranslation = form.translations[activeLocale.value];
-
     const dataToSubmit = {
-        locale: activeLocale.value,
-        title: activeTranslation.title,
-        slug: activeTranslation.slug,
-        content: activeTranslation.content,
+        translations: form.translations,
         seo_title: form.seo_title,
         canonical_url: form.canonical_url,
         seo_image_url: form.seo_image_url,

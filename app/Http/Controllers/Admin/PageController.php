@@ -19,7 +19,7 @@ class PageController extends Controller
     {
         $search = $request->input('search');
 
-        $query = Page::query();
+        $query = Page::with('translations');
 
         // Apply search filter if provided
         if ($search) {
@@ -51,10 +51,9 @@ class PageController extends Controller
      */
     public function store(Request $request)
     {
-        $locale = $request->input('locale');
-
-        $baseValidationRules = [
-            'locale' => 'required|in:en,fr,nl',
+        $available_locales = ['en', 'fr', 'nl'];
+        $validationRules = [
+            'translations' => 'required|array',
             // SEO Meta Validation Rules
             'seo_title'       => 'nullable|string|max:60',
             'meta_description'=> 'nullable|string|max:160',
@@ -63,50 +62,36 @@ class PageController extends Controller
             'seo_image_url'   => 'nullable|url|max:255',
         ];
 
-        if ($locale === 'en') {
-            $request->validate(array_merge($baseValidationRules, [
-                'title' => 'required|string|max:255',
-                'slug' => 'required|string|max:255',
-                'content' => 'required',
-            ]));
-        } elseif ($locale === 'fr') {
-            $request->validate(array_merge($baseValidationRules, [
-                'title' => 'required|string|max:255',
-                'slug' => 'required|string|max:255',
-                'content' => 'required',
-            ]));
-        } elseif ($locale === 'nl') {
-            $request->validate(array_merge($baseValidationRules, [
-                'title' => 'required|string|max:255',
-                'slug' => 'required|string|max:255',
-                'content' => 'required',
-            ]));
-        } else {
-             $request->validate($baseValidationRules); // Should not happen if locale is required in:en,fr,nl
+        foreach ($available_locales as $locale) {
+            $validationRules["translations.{$locale}.title"] = 'required|string|max:255';
+            $validationRules["translations.{$locale}.slug"] = 'required|string|max:255';
+            $validationRules["translations.{$locale}.content"] = 'required|string';
         }
+        $request->validate($validationRules);
 
-
-        $title = $request->input('title');
-        $content = $request->input('content');
-        $slug = $request->input('slug') ? Str::slug($request->input('slug')) : Str::slug($title);
-
-        // Check if page slug already exists
-        $existingPage = Page::where('slug', $slug)->first();
+        $translationsData = $request->input('translations');
+        
+        $slugTitle = $translationsData['en']['title'] ?? $translationsData[array_key_first($translationsData)]['title'];
+        $mainSlug = Str::slug($slugTitle);
+        $existingPage = Page::where('slug', $mainSlug)->first();
         if ($existingPage) {
-            // Append a unique identifier if slug exists
-            $slug = $slug . '-' . uniqid();
+            $mainSlug = $mainSlug . '-' . uniqid();
         }
 
         $page = Page::create([
-            'slug' => $slug, // Save page with non-prefixed slug
+            'slug' => $mainSlug,
         ]);
 
-        $page->translations()->create([
-            'locale' => $locale,
-            'title' => $title,
-            'slug' => $slug,
-            'content' => $content,
-        ]);
+        foreach ($translationsData as $locale => $data) {
+            if (in_array($locale, $available_locales) && !empty($data['title']) && !empty($data['content'])) {
+                 $page->translations()->create([
+                    'locale' => $locale,
+                    'title' => $data['title'],
+                    'slug' => Str::slug($data['slug']),
+                    'content' => $data['content'],
+                ]);
+            }
+        }
 
         // Create or Update SEO Meta with prefixed url_slug
         $seoData = $request->only(['seo_title', 'meta_description', 'keywords', 'canonical_url', 'seo_image_url']);
@@ -133,9 +118,11 @@ class PageController extends Controller
                         "seo_translations.{$l}.keywords" => 'nullable|string|max:255',
                     ]);
 
+                    $pageTranslation = $page->translations->where('locale', $l)->first();
                     $seoMeta->translations()->updateOrCreate(
                         ['locale' => $l],
                         [
+                            'url_slug'         => $pageTranslation ? $pageTranslation->slug : null,
                             'seo_title'        => $translationInput['seo_title'] ?? null,
                             'meta_description' => $translationInput['meta_description'] ?? null,
                             'keywords'         => $translationInput['keywords'] ?? null,
@@ -206,40 +193,35 @@ class PageController extends Controller
      */
     public function update(Request $request, Page $page)
     {
-        $request->validate([
-            'locale' => 'required|in:en,fr,nl',
-            'title' => 'required|string|max:255',
-            'slug' => 'required|string|max:255',
-            'content' => 'required',
+        $available_locales = ['en', 'fr', 'nl'];
+        $validationRules = [
+            'translations' => 'required|array',
             // SEO Meta Validation Rules
             'seo_title'       => 'nullable|string|max:60',
             'meta_description'=> 'nullable|string|max:160',
             'keywords'        => 'nullable|string|max:255',
             'canonical_url'   => 'nullable|url|max:255',
             'seo_image_url'   => 'nullable|url|max:255',
-        ]);
+        ];
+        foreach ($available_locales as $locale) {
+            $validationRules["translations.{$locale}.title"] = 'required|string|max:255';
+            $validationRules["translations.{$locale}.slug"] = 'required|string|max:255';
+            $validationRules["translations.{$locale}.content"] = 'required|string';
+        }
+        $request->validate($validationRules);
 
-        $locale = $request->input('locale');
-        $title = $request->input('title');
-        $content = $request->input('content');
-        $slug = $request->input('slug') ? Str::slug($request->input('slug')) : Str::slug($title);
-        // Page slug ($page->slug) DOES NOT change and is NOT prefixed.
-        // SEO Meta url_slug WILL BE prefixed.
-
-        $translation = $page->translations()->where('locale', $locale)->first();
-
-        if ($translation) {
-            $translation->title = $title;
-            $translation->slug = $slug;
-            $translation->content = $content;
-            $translation->save();
-        } else {
-            $page->translations()->create([
-                'locale' => $locale,
-                'title' => $title,
-                'slug' => $slug,
-                'content' => $content,
-            ]);
+        $translationsData = $request->input('translations');
+        foreach ($translationsData as $locale => $data) {
+             if (in_array($locale, $available_locales) && !empty($data['title']) && !empty($data['content'])) {
+                $page->translations()->updateOrCreate(
+                    ['locale' => $locale],
+                    [
+                        'title' => $data['title'],
+                        'slug' => Str::slug($data['slug']),
+                        'content' => $data['content'],
+                    ]
+                );
+            }
         }
 
         // Page model is saved if translations are updated.
@@ -275,9 +257,11 @@ class PageController extends Controller
                         "seo_translations.{$l}.keywords" => 'nullable|string|max:255',
                     ]);
 
+                    $pageTranslation = $page->translations->where('locale', $l)->first();
                     $seoMeta->translations()->updateOrCreate(
                         ['locale' => $l],
                         [
+                            'url_slug'         => $pageTranslation ? $pageTranslation->slug : null,
                             'seo_title'        => $translationInput['seo_title'] ?? null,
                             'meta_description' => $translationInput['meta_description'] ?? null,
                             'keywords'         => $translationInput['keywords'] ?? null,
@@ -330,8 +314,20 @@ class PageController extends Controller
             'slug' => $page->slug,
         ];
 
+        $seoMeta = null;
+        $seoMetaTranslation = \App\Models\SeoMetaTranslation::where('url_slug', $slug)->where('locale', $locale)->first();
+
+        if ($seoMetaTranslation) {
+            $seoMeta = \App\Models\SeoMeta::with('translations')->find($seoMetaTranslation->seo_meta_id);
+        }
+
+        $pages = Page::with('translations')->get()->keyBy('slug');
+
         return Inertia::render('Frontend/Page', [
             'page' => $pageData,
+            'seoMeta' => $seoMeta,
+            'locale' => $locale,
+            'pages' => $pages,
         ]);
     }
 }

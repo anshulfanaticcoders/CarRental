@@ -1,5 +1,18 @@
 <template>
-    <Head :title="page.title" />
+    <Head>
+        <title>{{ seoTitle }}</title>
+        <meta name="description" :content="seoDescription" />
+        <meta name="keywords" :content="seoKeywords" />
+        <link rel="canonical" :href="canonicalUrl" />
+        <meta property="og:title" :content="seoTitle" />
+        <meta property="og:description" :content="seoDescription" />
+        <meta property="og:image" :content="seoImageUrl" />
+        <meta property="og:url" :content="currentUrl" />
+        <meta name="twitter:card" content="summary_large_image" />
+        <meta name="twitter:title" :content="seoTitle" />
+        <meta name="twitter:description" :content="seoDescription" />
+        <meta name="twitter:image" :content="seoImageUrl" />
+    </Head>
      <AuthenticatedHeaderLayout />
         <div class="max-w-[1200px] max-[768px]:max-w-full mx-auto py-customVerticalSpacing my-[2rem]
          px-[1.5rem] shadow-[0_3px_8px_rgba(0,0,0,0.24)] max-[768px]:my-0 max-[1230px]:shadow-none">
@@ -13,10 +26,44 @@
 <script setup>
 import Footer from '@/Components/Footer.vue';
 import AuthenticatedHeaderLayout from '@/Layouts/AuthenticatedHeaderLayout.vue';
-import { Head } from '@inertiajs/vue3';
+import { Head, usePage } from '@inertiajs/vue3';
+import { computed } from 'vue';
 
-defineProps({
-    page: Object
+const props = defineProps({
+    page: Object,
+    seoMeta: Object,
+    locale: String,
+});
+
+const page_ = usePage();
+const currentLocale = computed(() => props.locale || 'en');
+const currentUrl = computed(() => window.location.href);
+
+const seoTranslation = computed(() => {
+    if (!props.seoMeta || !props.seoMeta.translations) {
+        return {};
+    }
+    return props.seoMeta.translations.find(t => t.locale === currentLocale.value) || {};
+});
+
+const seoTitle = computed(() => {
+    return seoTranslation.value.seo_title || props.seoMeta?.seo_title || props.page.title;
+});
+
+const seoDescription = computed(() => {
+    return seoTranslation.value.meta_description || props.seoMeta?.meta_description || '';
+});
+
+const seoKeywords = computed(() => {
+    return seoTranslation.value.keywords || props.seoMeta?.keywords || '';
+});
+
+const canonicalUrl = computed(() => {
+    return props.seoMeta?.canonical_url || window.location.href;
+});
+
+const seoImageUrl = computed(() => {
+    return props.seoMeta?.seo_image_url || '';
 });
 </script>
 <style scoped>
