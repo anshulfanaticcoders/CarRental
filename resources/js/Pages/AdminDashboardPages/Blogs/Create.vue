@@ -207,6 +207,27 @@ watch(() => form.translations.en?.title, (newEnTitle, oldEnTitle) => {
     // The current logic prioritizes user's explicit seo_title if it's different from blog title.
 });
 
+// Slugify function
+const slugify = (text) => {
+    return text
+        .toString()
+        .normalize('NFD') // Normalize diacritics
+        .replace(/[\u0300-\u036f]/g, '') // Remove diacritics
+        .toLowerCase()
+        .trim()
+        .replace(/\s+/g, '-') // Replace spaces with -
+        .replace(/[^\w-]+/g, '') // Remove all non-word chars
+        .replace(/--+/g, '-'); // Replace multiple - with single -
+};
+
+// Watch for changes in the active locale's title and update the slug
+watch(() => form.translations[activeLocale.value]?.title, (newTitle) => {
+    if (newTitle) {
+        form.translations[activeLocale.value].slug = slugify(newTitle);
+    } else {
+        form.translations[activeLocale.value].slug = '';
+    }
+});
 
 const submitForm = () => {
     // The form.translations object already holds all the data

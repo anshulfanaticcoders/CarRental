@@ -120,7 +120,7 @@ import AdminDashboardLayout from '@/Layouts/AdminDashboardLayout.vue';
 import { Button } from '@/Components/ui/button';
 import { Input } from '@/Components/ui/input';
 import Editor from '@tinymce/tinymce-vue';
-import { ref, computed } from 'vue';
+import { ref, computed, watch } from 'vue';
 import { useToast } from 'vue-toastification';
 
 const props = defineProps({
@@ -172,6 +172,28 @@ const setActiveLocale = (locale, event) => {
     if (event) event.preventDefault();
     activeLocale.value = locale;
 };
+
+// Slugify function
+const slugify = (text) => {
+    return text
+        .toString()
+        .normalize('NFD') // Normalize diacritics
+        .replace(/[\u0300-\u036f]/g, '') // Remove diacritics
+        .toLowerCase()
+        .trim()
+        .replace(/\s+/g, '-') // Replace spaces with -
+        .replace(/[^\w-]+/g, '') // Remove all non-word chars
+        .replace(/--+/g, '-'); // Replace multiple - with single -
+};
+
+// Watch for changes in the active locale's title and update the slug
+watch(() => form.translations[activeLocale.value]?.title, (newTitle) => {
+    if (newTitle) {
+        form.translations[activeLocale.value].slug = slugify(newTitle);
+    } else {
+        form.translations[activeLocale.value].slug = '';
+    }
+}, { deep: true }); // Use deep watch for nested objects
 
 const submit = () => {
     form.post(route('admin.pages.update', props.page.id), {
