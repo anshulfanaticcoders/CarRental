@@ -30,6 +30,4 @@ Allow: /fr/faq
 Allow: /nl/faq
 Allow: /en/forgot-password
 
-Sitemap: /sitemap_en.xml
-Sitemap: /sitemap_fr.xml
-Sitemap: /sitemap_nl.xml
+Sitemap: /sitemap.xml

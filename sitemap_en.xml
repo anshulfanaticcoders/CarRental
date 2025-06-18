@@ -1,112 +1,112 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
   <url>
-    <loc>http://localhost/en/</loc>
+    <loc>https://vrooem.com/en/</loc>
     <changefreq>daily</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>http://localhost/en/login</loc>
+    <loc>https://vrooem.com/en/login</loc>
     <changefreq>daily</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>http://localhost/en/register</loc>
+    <loc>https://vrooem.com/en/register</loc>
     <changefreq>daily</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>http://localhost/en/blog</loc>
+    <loc>https://vrooem.com/en/blog</loc>
     <changefreq>daily</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>http://localhost/en/search/category/luxury-cars</loc>
+    <loc>https://vrooem.com/en/search/category/luxury-cars</loc>
     <changefreq>daily</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>http://localhost/en/search/category/suv-cars</loc>
+    <loc>https://vrooem.com/en/search/category/suv-cars</loc>
     <changefreq>daily</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>http://localhost/en/search/category/sports-car</loc>
+    <loc>https://vrooem.com/en/search/category/sports-car</loc>
     <changefreq>daily</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>http://localhost/en/search/category/vans</loc>
+    <loc>https://vrooem.com/en/search/category/vans</loc>
     <changefreq>daily</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>http://localhost/en/search/category/mobilehomes</loc>
+    <loc>https://vrooem.com/en/search/category/mobilehomes</loc>
     <changefreq>daily</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>http://localhost/en/contact-us</loc>
+    <loc>https://vrooem.com/en/contact-us</loc>
     <changefreq>daily</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>http://localhost/en/page/privacy-policy</loc>
+    <loc>https://vrooem.com/en/page/privacy-policy</loc>
     <changefreq>daily</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>http://localhost/en/page/terms-and-conditions</loc>
+    <loc>https://vrooem.com/en/page/terms-and-conditions</loc>
     <changefreq>daily</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>http://localhost/en/page/about-us</loc>
+    <loc>https://vrooem.com/en/page/about-us</loc>
     <changefreq>daily</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>http://localhost/en/faq</loc>
+    <loc>https://vrooem.com/en/faq</loc>
     <changefreq>daily</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>http://localhost/en/forgot-password</loc>
+    <loc>https://vrooem.com/en/forgot-password</loc>
     <changefreq>daily</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>http://localhost/en/vehicles</loc>
+    <loc>https://vrooem.com/en/vehicles</loc>
     <changefreq>daily</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>http://localhost/en/s</loc>
+    <loc>https://vrooem.com/en/s</loc>
     <changefreq>daily</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>http://localhost/en/vendor/1/reviews</loc>
+    <loc>https://vrooem.com/en/vendor/1/reviews</loc>
     <changefreq>daily</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>http://localhost/en/blog/example-blog-post</loc>
+    <loc>https://vrooem.com/en/blog/example-blog-post</loc>
     <changefreq>daily</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>http://localhost/en/vehicle/123</loc>
+    <loc>https://vrooem.com/en/vehicle/123</loc>
     <changefreq>daily</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>http://localhost/en/payment</loc>
+    <loc>https://vrooem.com/en/payment</loc>
     <changefreq>daily</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>http://localhost/en/booking-success/details</loc>
+    <loc>https://vrooem.com/en/booking-success/details</loc>
     <changefreq>daily</changefreq>
     <priority>0.8</priority>
   </url>
