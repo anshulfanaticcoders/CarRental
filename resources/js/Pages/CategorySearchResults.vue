@@ -1,5 +1,5 @@
 <script setup>
-import { Link, useForm, usePage } from "@inertiajs/vue3";
+import { Link, useForm, usePage, router } from "@inertiajs/vue3";
 import { computed, onMounted, provide, ref, watch } from "vue";
 import SchemaInjector from '@/Components/SchemaInjector.vue';
 import L from "leaflet";
@@ -447,7 +447,7 @@ const popEffect = ref({});
 
 const toggleFavourite = async (vehicle) => {
     if (!$page.props.auth?.user) {
-        return Inertia.visit("/login"); 
+        return router.get(route('login', {}, usePage().props.locale));
     }
     const endpoint = favoriteStatus.value[vehicle.id]
         ? route('vehicles.unfavourite', { vehicle: vehicle.id })
@@ -468,7 +468,7 @@ const toggleFavourite = async (vehicle) => {
         );
     } catch (error) {
         if (error.response && error.response.status === 401) {
-            Inertia.visit("/login");
+            router.get(route('login', {}, usePage().props.locale));
         } else {
             toast.error("Failed to update favorites", { position: "top-right", timeout: 3000, closeOnClick: true, pauseOnHover: true, draggable: true });
         }

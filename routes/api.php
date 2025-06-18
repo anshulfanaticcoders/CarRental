@@ -3,6 +3,7 @@
 use App\Http\Controllers\Admin\BlogController;
 use App\Http\Controllers\Admin\FaqController;
 use App\Http\Controllers\Api\CategoryFeaturesController;
+use App\Http\Controllers\Api\FooterController;
 use App\Http\Controllers\BookingAddonController;
 use App\Http\Controllers\BookingController;
 use App\Http\Controllers\CurrencyController;

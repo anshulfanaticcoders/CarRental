@@ -350,7 +350,7 @@ const popEffect = ref(false);
 
 const toggleFavourite = async (vehicle) => {
     if (!props.auth?.user) {
-        return Inertia.visit('/login'); // Redirect if not logged in
+        return router.get(route('login', {}, usePage().props.locale)); // Redirect if not logged in
     }
 
     
@@ -376,7 +376,7 @@ const endpoint = vehicle.is_favourite
 
     } catch (error) {
         if (error.response && error.response.status === 401) {
-            Inertia.visit('/login');
+            router.get(route('login', {}, usePage().props.locale));
         } else {
             toast.error('Failed to update favorites', {
                 position: 'top-right',

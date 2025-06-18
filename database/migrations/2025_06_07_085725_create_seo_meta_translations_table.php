@@ -15,6 +15,7 @@ return new class extends Migration
             $table->id();
             $table->foreignId('seo_meta_id')->constrained('seo_metas')->onDelete('cascade');
             $table->string('locale')->index();
+            $table->string('url_slug')->nullable();
             $table->string('seo_title', 60)->nullable();
             $table->string('meta_description', 160)->nullable();
             $table->string('keywords')->nullable();
