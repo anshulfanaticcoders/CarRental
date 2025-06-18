@@ -23,6 +23,22 @@
         </script>
         <script src="https://maps.googleapis.com/maps/api/js?key={{ env('GOOGLE_MAPS_API_KEY') }}&libraries=places&loading=async&callback=initGoogleMaps"></script>
 
+        <!-- Hreflang for SEO -->
+        @php
+            $currentRoute = \Illuminate\Support\Facades\Route::currentRouteName();
+            $routeParameters = request()->route()->parameters();
+            unset($routeParameters['locale']); // Remove locale from parameters
+            $alternateUrls = \App\Helpers\LocaleHelper::getAlternateUrls($currentRoute, $routeParameters);
+        @endphp
+        
+        @foreach($alternateUrls as $locale => $url)
+            <link rel="alternate" hreflang="{{ $locale }}" href="{{ $url }}">
+        @endforeach
+        
+        @if(isset($alternateUrls[config('app.locale')]))
+            <link rel="alternate" hreflang="x-default" href="{{ $alternateUrls[config('app.locale')] }}">
+        @endif
+
         <!-- Scripts -->
         @routes
         @vite(['resources/js/app.js', "resources/js/Pages/{$page['component']}.vue"])

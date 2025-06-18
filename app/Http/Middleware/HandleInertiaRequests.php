@@ -2,7 +2,6 @@
 
 namespace App\Http\Middleware;
 
-use App\Models\Page;
 use App\Models\VendorProfile;
 use Illuminate\Http\Request;
 use Inertia\Middleware;
@@ -79,8 +78,6 @@ class HandleInertiaRequests extends Middleware
                 ],
             ]);
         }
-
-        $sharedData['pages'] = Page::with('translations')->get()->keyBy('slug');
 
         return $sharedData;
     }

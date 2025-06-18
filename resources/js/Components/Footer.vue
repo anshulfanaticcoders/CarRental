@@ -12,11 +12,15 @@ const page = usePage();
 const pages = computed(() => page.props.pages);
 
 const getTranslatedSlug = (pageSlug) => {
+    if (!pages.value || !pages.value[pageSlug]) {
+        return pageSlug;
+    }
     const targetPage = pages.value[pageSlug];
-    if (!targetPage) return pageSlug;
+    
+    const currentLocale = page.props.locale || 'en';
 
-    const locale = page.props.locale;
-    const translation = targetPage.translations.find(t => t.locale === locale);
+    const translation = targetPage.translations.find(t => t.locale === currentLocale);
+
     return translation ? translation.slug : pageSlug;
 };
 
