@@ -105,6 +105,37 @@ const clearAllNotifications = async () => {
     }
 };
 
+// Function to get the appropriate link for a notification
+const getNotificationLink = (notification) => {
+  const type = notification.type.split('\\').pop();
+  const locale = currentLocale.value;
+
+  switch (type) {
+    case 'VendorVehicleCreateNotification':
+      return route('current-vendor-vehicles.index', { locale });
+    case 'BookingCreatedVendorNotification':
+      return route('bookings.index', { locale });
+    case 'BookingCreatedCustomerNotification':
+      return route('profile.bookings.confirmed', { locale });
+    case 'VendorStatusUpdatedNotification':
+      return route('vendor.status', { locale });
+    case 'NewMessageNotification':
+      return route('messages.index', { locale });
+    default:
+      return '#'; // Fallback for unknown notification types
+  }
+};
+
+// Handle notification click: mark as read and redirect
+const handleNotificationClick = async (notification) => {
+  await markAsRead(notification);
+  const link = getNotificationLink(notification);
+  if (link && link !== '#') {
+    router.visit(link);
+  }
+  showingNotificationDropdown.value = false; // Close dropdown after click
+};
+
 // Computed properties
 const vendorStatus = computed(() => page.props.vendorStatus);
 const currentLocale = computed(() => page.props.locale || 'en');
@@ -268,7 +299,7 @@ watch(() => url.value, () => {
                             No notifications yet.
                         </div>
                         <div v-else>
-                            <div v-for="notification in notifications" :key="notification.id" @click="markAsRead(notification)"
+                            <div v-for="notification in notifications" :key="notification.id" @click="handleNotificationClick(notification)"
                                 class="p-4 border-b hover:bg-gray-50 cursor-pointer"
                                 :class="{ 'bg-gray-100': !notification.read_at }">
                                 <div class="flex ">
