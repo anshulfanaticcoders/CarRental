@@ -272,8 +272,7 @@ class VehicleController extends Controller
         }
 
         // Notify the vendor
-        Notification::route('mail', $request->user()->email)
-            ->notify(new VendorVehicleCreateNotification($vehicle, $request->user()));
+        $request->user()->notify(new VendorVehicleCreateNotification($vehicle, $request->user()));
 
         // Notify the company
         $vendorProfile = VendorProfile::where('user_id', $request->user()->id)->first();
@@ -384,8 +383,7 @@ class VehicleController extends Controller
                     ->orWhereRaw("regexp_replace(LOWER(state), '[^a-z0-9]', '') LIKE ?", ["%{$normalizedQuery}%"])
                     ->orWhereRaw("regexp_replace(LOWER(country), '[^a-z0-9]', '') LIKE ?", ["%{$normalizedQuery}%"]);
             })
-            ->whereNotNull('city') // Ensure city, state, country are present
-            ->whereNotNull('state')
+            ->whereNotNull('city') // Ensure city, country are present, state can be null
             ->whereNotNull('country')
             ->groupBy('city', 'state', 'country') // Group by the administrative areas
             ->orderByRaw('

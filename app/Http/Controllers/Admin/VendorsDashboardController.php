@@ -54,8 +54,7 @@ class VendorsDashboardController extends Controller
 
         // Notify the user
         $user = User::findOrFail($vendorProfile->user_id);
-        Notification::route('mail', $user->email)
-            ->notify(new VendorStatusUpdatedNotification($vendorProfile, $user));
+        $user->notify(new VendorStatusUpdatedNotification($vendorProfile, $user));
 
         return redirect()->route('vendors.index')->with('success', 'User updated successfully.');
     }

@@ -255,8 +255,8 @@ watch(() => url.value, () => {
           <!-- Notification Bell -->
             <div class="relative">
                 <button @click="showingNotificationDropdown = !showingNotificationDropdown" class="relative">
-                    <img :src="bellIcon" alt="Notifications" class="w-8 h-8">
-                    <span v-if="unreadCount > 0" class="absolute top-0 right-0 inline-flex items-center justify-center px-2 py-1 text-xs font-bold leading-none text-red-100 bg-red-600 rounded-full">{{ unreadCount }}</span>
+                    <img :src="bellIcon" alt="Notifications" class="w-6 h-6">
+                    <span v-if="unreadCount > 0" class="absolute w-[18px] h-[18px] border-2 border-white top-[-3px] right-[-9px] inline-flex items-center justify-center px-2 py-1 text-xs font-bold leading-none text-red-100 bg-red-600 rounded-full">{{ unreadCount }}</span>
                 </button>
                 <div v-if="showingNotificationDropdown" class="absolute right-0 mt-2 w-80 bg-white rounded-md shadow-lg z-20">
                     <div class="p-4 border-b flex justify-between items-center">
