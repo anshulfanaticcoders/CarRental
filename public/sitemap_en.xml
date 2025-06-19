@@ -32,7 +32,7 @@
   </url>
   <url>
     <loc>https://vrooem.com/en/search/category/suv-cars</loc>
-    <<changefreq>daily</changefreq>
+    <changefreq>daily</changefreq>
     <priority>0.8</priority>
   </url>
   <url>

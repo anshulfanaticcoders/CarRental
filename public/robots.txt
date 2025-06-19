@@ -393,8 +393,8 @@ Allow: /en/search/category/sports-car
 Allow: /en/search/category/vans
 Allow: /en/search/category/mobilehomes
 Allow: /en/contact-us
-Allow: /fr/contact-us
-Allow: /nl/contact-us
+Allow: /fr/contactez-nous
+Allow: /nl/neem-contact-met-ons-op
 Allow: /en/page/privacy-policy
 Allow: /fr/page/politique-de-confidentialite
 Allow: /nl/page/privacybeleid
