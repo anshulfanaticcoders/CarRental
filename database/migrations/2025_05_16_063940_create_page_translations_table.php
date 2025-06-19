@@ -16,6 +16,7 @@ return new class extends Migration
             $table->foreignId('page_id')->constrained()->onDelete('cascade');
             $table->string('locale');
             $table->string('title');
+            $table->string('slug')->nullable();
             $table->text('content');
             $table->timestamps();
         });

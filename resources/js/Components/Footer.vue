@@ -11,16 +11,37 @@ import { usePage } from '@inertiajs/vue3';
 const page = usePage();
 const pages = computed(() => page.props.pages);
 
+
 const getTranslatedSlug = (pageSlug) => {
-    if (!pages.value || !pages.value[pageSlug]) {
+    let targetPage = null;
+    const currentLocale = page.props.locale || 'en';
+    const defaultLocale = 'en'; // Assuming 'en' is the default/main locale for the base slug
+
+    // Iterate through the values of the pages object to find the target page
+    // The keys of pages.value are translated slugs, but the input pageSlug is the main slug (e.g., 'about-us')
+    // So, we need to find the page whose 'en' translation slug matches the input pageSlug
+    if (pages.value) {
+        for (const key in pages.value) {
+            const pageItem = pages.value[key];
+            if (pageItem && pageItem.translations && Array.isArray(pageItem.translations)) {
+                const defaultTranslation = pageItem.translations.find(t => t.locale === defaultLocale && t.slug === pageSlug);
+                if (defaultTranslation) {
+                    targetPage = pageItem;
+                    break;
+                }
+            }
+        }
+    }
+
+    // If targetPage is not found or translations are not available, return the original slug
+    if (!targetPage || !targetPage.translations || !Array.isArray(targetPage.translations)) {
         return pageSlug;
     }
-    const targetPage = pages.value[pageSlug];
-    
-    const currentLocale = page.props.locale || 'en';
 
+    // Find the translation for the current locale
     const translation = targetPage.translations.find(t => t.locale === currentLocale);
 
+    // Return the translated slug if found, otherwise return the original slug
     return translation ? translation.slug : pageSlug;
 };
 
