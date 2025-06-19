@@ -21,6 +21,11 @@
     <priority>0.8</priority>
   </url>
   <url>
+    <loc>https://vrooem.com/fr/blog/example-blog-post</loc>
+    <changefreq>daily</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
     <loc>https://vrooem.com/fr/search/category/luxury-cars</loc>
     <changefreq>daily</changefreq>
     <priority>0.8</priority>
