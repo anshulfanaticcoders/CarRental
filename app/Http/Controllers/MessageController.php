@@ -296,7 +296,7 @@ public function show($locale, $bookingId)
     ]);
 }
 
-public function restore($id)
+    public function restore($id)
 {
     $message = Message::withTrashed()->findOrFail($id);
 
@@ -318,6 +318,29 @@ public function restore($id)
         'success' => 'Message restored successfully',
         'message' => $message->fresh()->load(['sender', 'receiver']) // Return the restored message model
     ]);
+}
+
+public function markMessagesAsRead($locale, $bookingId)
+{
+    $user = Auth::user();
+
+    // Find the booking to ensure the user is a participant
+    $booking = Booking::with(['vehicle.vendor', 'customer'])->findOrFail($bookingId);
+
+    $customerId = $booking->customer->user_id;
+    $vendorId = $booking->vehicle->vendor_id;
+
+    if ($user->id !== $customerId && $user->id !== $vendorId) {
+        return response()->json(['error' => 'Unauthorized to mark messages as read for this booking'], 403);
+    }
+
+    // Mark messages received by the current user for this booking as read
+    Message::where('receiver_id', $user->id)
+        ->where('booking_id', $bookingId)
+        ->whereNull('read_at')
+        ->update(['read_at' => now()]);
+
+    return response()->json(['success' => 'Messages marked as read.']);
 }
 
 }

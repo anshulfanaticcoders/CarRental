@@ -85,7 +85,7 @@ const loadChat = async (partner) => {
     if (partner.unread_count > 0) {
         try {
             // console.log(`Marking messages as read for booking ID: ${partner.latest_booking_id}`);
-            await axios.post(route('notifications.mark-read', { locale: usePage().props.locale, id: partner.latest_booking_id }));
+            await axios.post(route('messages.mark-as-read', { locale: usePage().props.locale, booking: partner.latest_booking_id }));
             // Optimistically update the unread count on the client side
             const partnerInList = props.chatPartners.find(p => p.latest_booking_id === partner.latest_booking_id);
             if (partnerInList) {

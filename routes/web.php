@@ -249,6 +249,7 @@ Route::group([
         Route::get('/messages/{booking}/last', [MessageController::class, 'getLastMessage'])->name('messages.last');
         Route::delete('/messages/{id}', [MessageController::class, 'destroy'])->name('messages.destroy');
         Route::post('/messages/{id}/restore', [MessageController::class, 'restore'])->name('messages.restore');
+        Route::post('/messages/{booking}/mark-as-read', [MessageController::class, 'markMessagesAsRead'])->name('messages.mark-as-read');
 
         // Notification routes
         Route::get('/notifications', [NotificationController::class, 'index'])->name('notifications.index');

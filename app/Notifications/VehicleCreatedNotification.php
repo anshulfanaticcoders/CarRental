@@ -28,7 +28,7 @@ class VehicleCreatedNotification extends Notification
      */
     public function via(object $notifiable): array
     {
-        return ['mail', 'database']; // Notify via email and store in database
+        return ['mail']; // Notify via email only, do not store in database
     }
 
     /**

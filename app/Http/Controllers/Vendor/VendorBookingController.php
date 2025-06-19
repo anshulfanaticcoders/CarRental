@@ -97,9 +97,8 @@ class VendorBookingController extends Controller
         }
 
         // Notify Customer
-        if ($customer) {
-            Notification::route('mail', $customer->email)
-                ->notify(new BookingStatusUpdatedCustomerNotification($booking, $customer, $vehicle, $vendor));
+        if ($customer && $customer->user) { // Ensure customer and associated user exist
+            $customer->user->notify(new BookingStatusUpdatedCustomerNotification($booking, $customer, $vehicle, $vendor));
         }
 
         // Notify Company

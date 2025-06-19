@@ -185,7 +185,7 @@ class ReviewController extends Controller
         return back()->with('success', 'Review status updated successfully');
     }
 
-    public function vendorAllReviews($vendorProfileId)
+    public function vendorAllReviews($locale, $vendorProfileId)
 {
     $reviews = Review::where('vendor_profile_id', $vendorProfileId)
         ->where('status', 'approved')

@@ -35,7 +35,6 @@ class ReviewSubmittedVendorNotification extends Notification
             ->line('**Vehicle:** ' . $this->vehicle->brand . ' ' . $this->vehicle->model)
             ->line('**Rating:** ' . $this->review->rating . '/5')
             ->line('**Review Text:** ' . $this->review->review_text)
-            ->action('View Reviews', url('/customer-reviews'))
             ->line('Please review the submission and approve or reject it.');
     }
 

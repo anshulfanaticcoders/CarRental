@@ -1,5 +1,5 @@
 <script setup>
-import { ref, onMounted, computed, watch } from "vue";
+import { ref, onMounted, computed, watch, onUnmounted } from "vue";
 import ApplicationLogo from "@/Components/ApplicationLogo.vue";
 import Dropdown from "@/Components/Dropdown.vue";
 import DropdownLink from "@/Components/DropdownLink.vue";
@@ -22,15 +22,28 @@ const user = ref(null);
 const notifications = ref([]);
 const unreadCount = ref(0);
 
-// Close mobile menu when clicking outside
+// Refs for dropdowns
 const navRef = ref(null);
+const notificationDropdownRef = ref(null);
+const bellIconRef = ref(null);
+
+// Close mobile menu when clicking outside
 const closeNavOnOutsideClick = (event) => {
   if (showingNavigationDropdown.value && navRef.value && !navRef.value.contains(event.target)) {
     showingNavigationDropdown.value = false;
   }
 };
 
-// Add click event listener on mount
+// Close notification dropdown when clicking outside
+const closeNotificationDropdownOnOutsideClick = (event) => {
+  if (showingNotificationDropdown.value && notificationDropdownRef.value && bellIconRef.value) {
+    if (!notificationDropdownRef.value.contains(event.target) && !bellIconRef.value.contains(event.target)) {
+      showingNotificationDropdown.value = false;
+    }
+  }
+};
+
+// Add click event listeners on mount
 onMounted(() => {
   if (page.props.auth?.user) {
     fetchUserProfile();
@@ -38,12 +51,14 @@ onMounted(() => {
   }
   
   document.addEventListener('click', closeNavOnOutsideClick);
+  document.addEventListener('click', closeNotificationDropdownOnOutsideClick);
 });
 
-// Clean up event listener on unmount
-const onBeforeUnmount = (callback) => {
+// Clean up event listeners on unmount
+onUnmounted(() => {
   document.removeEventListener('click', closeNavOnOutsideClick);
-};
+  document.removeEventListener('click', closeNotificationDropdownOnOutsideClick);
+});
 
 // Fetch user profile data
 const fetchUserProfile = async () => {
@@ -120,7 +135,23 @@ const getNotificationLink = (notification) => {
     case 'VendorStatusUpdatedNotification':
       return route('vendor.status', { locale });
     case 'NewMessageNotification':
-      return route('messages.index', { locale });
+      return isVendor.value ? route('messages.vendor.index', { locale }) : route('messages.index', { locale });
+    case 'VehicleCreatedNotification':
+      return route('current-vendor-vehicles.index', { locale });
+    case 'VehicleCreatedNotification':
+      return route('current-vendor-vehicles.index', { locale });
+    case 'ReviewSubmittedVendorNotification':
+      return route('vendor.reviews', { locale });
+    case 'BookingStatusUpdatedCustomerNotification':
+      const bookingStatus = notification.data.status;
+      if (bookingStatus === 'pending') {
+        return route('profile.bookings.pending', { locale });
+      } else if (bookingStatus === 'confirmed') {
+        return route('profile.bookings.confirmed', { locale });
+      } else if (bookingStatus === 'completed') {
+        return route('profile.bookings.completed', { locale });
+      }
+      return '#'; // Fallback if status is not recognized
     default:
       return '#'; // Fallback for unknown notification types
   }
@@ -207,7 +238,11 @@ const changeLanguage = (newLocale) => {
             router.post(route('language.change'), {
                 locale: newLocale,
                 _method: 'POST'
-            }, { preserveState: true });
+            }, {
+                onSuccess: () => {
+                    window.location.reload();
+                }
+            });
         }
     });
 };
@@ -284,15 +319,14 @@ watch(() => url.value, () => {
           </Dropdown>
 
           <!-- Notification Bell -->
-            <div class="relative">
-                <button @click="showingNotificationDropdown = !showingNotificationDropdown" class="relative">
+            <div class="relative mt-[6px]">
+                <button ref="bellIconRef" @click="showingNotificationDropdown = !showingNotificationDropdown; markAllAsRead()" class="relative p-2 rounded-[99px] focus:bg-[#efefef]">
                     <img :src="bellIcon" alt="Notifications" class="w-6 h-6">
-                    <span v-if="unreadCount > 0" class="absolute w-[18px] h-[18px] border-2 border-white top-[-3px] right-[-9px] inline-flex items-center justify-center px-2 py-1 text-xs font-bold leading-none text-red-100 bg-red-600 rounded-full">{{ unreadCount }}</span>
+                    <span v-if="unreadCount > 0" class="absolute w-[18px] h-[18px] border-2 border-white top-0 right-0 inline-flex items-center justify-center px-2 py-1 text-xs font-bold leading-none text-red-100 bg-red-600 rounded-full">{{ unreadCount }}</span>
                 </button>
-                <div v-if="showingNotificationDropdown" class="absolute right-0 mt-2 w-80 bg-white rounded-md shadow-lg z-20">
+                <div ref="notificationDropdownRef" v-if="showingNotificationDropdown" class="absolute right-0 mt-2 w-80 bg-white rounded-md shadow-lg z-20 top-[3rem]">
                     <div class="p-4 border-b flex justify-between items-center">
                         <h3 class="text-lg font-medium">Notifications</h3>
-                        <button @click="markAllAsRead" class="text-sm text-blue-500 hover:underline">Mark all as read</button>
                     </div>
                     <div class="overflow-y-auto" style="max-height: 400px;">
                         <div v-if="notifications.length === 0" class="p-4 text-center text-gray-500">
@@ -307,7 +341,7 @@ watch(() => url.value, () => {
                                     <div class="text-xs text-gray-500">{{ notification.type.split('\\').pop() }}</div>
                                 </div>
                                 <p class="text-sm text-gray-600">{{ notification.data.message }}</p>
-                                <div class="text-xs text-gray-400 mt-1">{{ new Date(notification.created_at).toLocaleString() }}</div>
+                                <div class="text-xs text-customPrimaryColor mt-1 text-right">{{ new Date(notification.created_at).toLocaleString() }}</div>
                             </div>
                         </div>
                     </div>
@@ -323,7 +357,7 @@ watch(() => url.value, () => {
               <template #trigger>
                 <button 
                   type="button"
-                  class="inline-flex items-center gap-2 py-2 border border-transparent text-sm font-medium rounded-full bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition duration-150 ease-in-out group"
+                  class="inline-flex items-center gap-2 py-2 border border-transparent text-sm font-medium rounded-full bg-white hover:bg-gray-50 focus:bg-[#efefef] p-4 transition duration-150 ease-in-out group"
                 >
                   <div v-if="user?.profile?.avatar" class="flex-shrink-0 relative">
                     <img 
