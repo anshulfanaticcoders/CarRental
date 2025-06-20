@@ -198,8 +198,8 @@ Route::middleware(['auth', 'role:admin'])->group(function () {
 
     // SEO Meta Settings
     Route::resource('admin/seo-meta', SeoMetaController::class)
-         ->parameters(['seo-meta' => 'seo_meta'])
-         ->names('admin.seo-meta');
+        ->parameters(['seo-meta' => 'seo_meta'])
+        ->names('admin.seo-meta');
 
     // Header Footer Scripts Settings
     Route::resource('admin/header-footer-scripts', \App\Http\Controllers\Admin\HeaderFooterScriptController::class)
@@ -225,7 +225,27 @@ Route::group([
         ]);
     })->name('welcome');
 
-    require __DIR__.'/auth.php';
+    require __DIR__ . '/auth.php';
+
+    // Sitemap Routes
+    Route::get('/sitemap_en_blogs.xml', [App\Http\Controllers\SiteMapController::class, 'blogsEn']);
+    Route::get('/sitemap_fr_blogs.xml', [App\Http\Controllers\SiteMapController::class, 'blogsFr']);
+    Route::get('/sitemap_nl_blogs.xml', [App\Http\Controllers\SiteMapController::class, 'blogsNl']);
+
+    // Sitemap Routes for Vehicles
+    Route::get('/sitemap_en_vehicles.xml', [App\Http\Controllers\SiteMapController::class, 'vehiclesEn']);
+    Route::get('/sitemap_fr_vehicles.xml', [App\Http\Controllers\SiteMapController::class, 'vehiclesFr']);
+    Route::get('/sitemap_nl_vehicles.xml', [App\Http\Controllers\SiteMapController::class, 'vehiclesNl']);
+
+    // Sitemap Routes for Vehicle Categories
+    Route::get('/sitemap_en_categories.xml', [App\Http\Controllers\SiteMapController::class, 'categoriesEn']);
+    Route::get('/sitemap_fr_categories.xml', [App\Http\Controllers\SiteMapController::class, 'categoriesFr']);
+    Route::get('/sitemap_nl_categories.xml', [App\Http\Controllers\SiteMapController::class, 'categoriesNl']);
+
+    // Sitemap Routes for Popular Places
+    Route::get('/sitemap_en_places.xml', [App\Http\Controllers\SiteMapController::class, 'placesEn']);
+    Route::get('/sitemap_fr_places.xml', [App\Http\Controllers\SiteMapController::class, 'placesFr']);
+    Route::get('/sitemap_nl_places.xml', [App\Http\Controllers\SiteMapController::class, 'placesNl']);
 
     Route::get('/dashboard', function () {
         return Inertia::render('Dashboard');
