@@ -2,55 +2,55 @@
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
     <!-- Static URLs -->
     <url>
-        <loc>https://vrooem.com/en</loc>
+        <loc>http://127.0.0.1:8000/en</loc>
         <lastmod>2025-06-20T00:00:00+00:00</lastmod>
         <changefreq>daily</changefreq>
         <priority>1.0</priority>
     </url>
     <url>
-        <loc>https://vrooem.com/en/login</loc>
+        <loc>http://127.0.0.1:8000/en/login</loc>
         <lastmod>2025-06-20T00:00:00+00:00</lastmod>
         <changefreq>daily</changefreq>
         <priority>1.0</priority>
     </url>
     <url>
-        <loc>https://vrooem.com/en/register</loc>
+        <loc>http://127.0.0.1:8000/en/register</loc>
         <lastmod>2025-06-20T00:00:00+00:00</lastmod>
         <changefreq>daily</changefreq>
         <priority>1.0</priority>
     </url>
     <url>
-        <loc>https://vrooem.com/en/blog</loc>
+        <loc>http://127.0.0.1:8000/en/blog</loc>
         <lastmod>2025-06-20T00:00:00+00:00</lastmod>
         <changefreq>daily</changefreq>
         <priority>1.0</priority>
     </url>
     <url>
-        <loc>https://vrooem.com/en/page/about-us</loc>
+        <loc>http://127.0.0.1:8000/en/page/about-us</loc>
         <lastmod>2025-06-20T00:00:00+00:00</lastmod>
         <changefreq>daily</changefreq>
         <priority>1.0</priority>
     </url>
     <url>
-        <loc>https://vrooem.com/en/faq</loc>
+        <loc>http://127.0.0.1:8000/en/faq</loc>
         <lastmod>2025-06-20T00:00:00+00:00</lastmod>
         <changefreq>daily</changefreq>
         <priority>1.0</priority>
     </url>
     <url>
-        <loc>https://vrooem.com/en/contact-us</loc>
+        <loc>http://127.0.0.1:8000/en/contact-us</loc>
         <lastmod>2025-06-20T00:00:00+00:00</lastmod>
         <changefreq>daily</changefreq>
         <priority>1.0</priority>
     </url>
     <url>
-        <loc>https://vrooem.com/en/page/privacy-policy</loc>
+        <loc>http://127.0.0.1:8000/en/page/privacy-policy</loc>
         <lastmod>2025-06-20T00:00:00+00:00</lastmod>
         <changefreq>daily</changefreq>
         <priority>1.0</priority>
     </url>
     <url>
-        <loc>https://vrooem.com/en/page/terms-and-conditions</loc>
+        <loc>http://127.0.0.1:8000/en/page/terms-and-conditions</loc>
         <lastmod>2025-06-20T00:00:00+00:00</lastmod>
         <changefreq>daily</changefreq>
         <priority>1.0</priority>
