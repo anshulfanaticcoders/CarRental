@@ -144,6 +144,7 @@ const internalForm = ref({
 
 const props = defineProps({
   prefill: Object,
+  categorySlug: String,
 });
 
 const pickupDate = ref(null);
@@ -402,7 +403,9 @@ const emitUpdate = () => {
   dateError.value = false;
   locationError.value = null;
   
-  emit('update-search-params', { ...internalForm.value });
+  emit('update-search-params', { ...internalForm.value, categorySlug: props.categorySlug });
+  const urlParams = new URLSearchParams(internalForm.value).toString();
+  sessionStorage.setItem('searchurl', `/search/category/${props.categorySlug}?${urlParams}`);
 };
 
 

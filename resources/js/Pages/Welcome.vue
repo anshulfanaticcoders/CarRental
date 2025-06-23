@@ -191,6 +191,20 @@ const canonicalUrl = computed(() => {
 const seoImageUrl = computed(() => {
     return props.seoMeta?.seo_image_url || '';
 });
+
+const updateSearchUrl = (place) => {
+    const urlParams = new URLSearchParams({
+        where: `${place.place_name}, ${place.city}, ${place.country}`,
+        latitude: place.latitude,
+        longitude: place.longitude,
+        radius: 10000
+    }).toString();
+    sessionStorage.setItem('searchurl', `/s?${urlParams}`);
+};
+
+const updateCategorySearchUrl = (category) => {
+    sessionStorage.setItem('searchurl', `/search/category/${category.slug}`);
+};
 </script>
 
 <template>
@@ -269,7 +283,7 @@ const seoImageUrl = computed(() => {
                                 <CarouselItem v-for="category in props.categories" :key="category.id"
                                     class="md:basis-1/2 lg:basis-1/3">
                                     <div class="p-1">
-                                        <Link :href="route('search.category', { locale: page.props.locale, category_slug: category.slug })">
+                                        <Link :href="route('search.category', { locale: page.props.locale, category_slug: category.slug })" @click="updateCategorySearchUrl(category)">
                                         <Card class="bg-transparent shadow-none border-none">
                                             <CardContent
                                                 class="cardContent flex h-[515px] max-[768px]:h-[17rem] items-center justify-center p-6 relative">
@@ -326,10 +340,11 @@ const seoImageUrl = computed(() => {
                         <!-- Show actual places when data is loaded from props -->
                         <template v-if="props.popularPlaces && props.popularPlaces.length > 0">
                             <CarouselItem v-for="place in props.popularPlaces" :key="place.id"
-                                class="pl-1 md:basis-1/2 lg:basis-1/5">
+                                 class="pl-1 md:basis-1/2 lg:basis-1/5">
                                 <div class="p-1">
                                     <Link
-                                        :href="`/${page.props.locale}/s?where=${encodeURIComponent(`${place.place_name}, ${place.city}, ${place.country}`)}&latitude=${place.latitude}&longitude=${place.longitude}&radius=10000`">
+                                        :href="`/${page.props.locale}/s?where=${encodeURIComponent(`${place.place_name}, ${place.city}, ${place.country}`)}&latitude=${place.latitude}&longitude=${place.longitude}&radius=10000`"
+                                        @click="updateSearchUrl(place)">
                                     <Card
                                         class="h-[18rem] border-0 rounded-[0.75rem] transition-all duration-300 hover:mt-[-1rem] max-[768px]:hover:mt-0">
                                         <CardContent class="flex flex-col gap-2 justify-center px-1 h-full">

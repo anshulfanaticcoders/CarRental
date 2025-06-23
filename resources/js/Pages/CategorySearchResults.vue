@@ -597,6 +597,7 @@ const handleCategorySearchUpdate = (params) => {
     <div class="">
          <CategorySearchBar 
             :prefill="searchQuery"
+            :category-slug="form.category_slug"
             @update-search-params="handleCategorySearchUpdate" 
             class="border-[2px] rounded-[20px] border-white mt-0 mb-0 max-[768px]:border-none"
         />

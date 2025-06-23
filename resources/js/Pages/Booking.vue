@@ -15,6 +15,7 @@ import PrimaryButton from "@/Components/PrimaryButton.vue";
 import Footer from "@/Components/Footer.vue";
 import StripeCheckout from "@/Components/StripeCheckout.vue";
 import loader from "../../assets/loader.gif";
+import { ChevronRight } from 'lucide-vue-next';
 import {
     Dialog,
     DialogContent,
@@ -70,10 +71,12 @@ const validateSteps = () => {
 const moveToNextStep = () => {
     if (validateSteps()) {
         currentStep.value++;
+        window.scrollTo(0, 0);
     }
 };
 const moveToPrevStep = () => {
     currentStep.value--;
+    window.scrollTo(0, 0);
 };
 
 // Getting the vehicle data from api
@@ -273,7 +276,7 @@ onMounted(() => {
         if (props.vehicle && parsedData.vehicleId && props.vehicle.id !== parsedData.vehicleId) {
             console.warn('Booking.vue: Vehicle ID mismatch between session storage ("bookingDetails".vehicleId) and props.vehicle.id. This could indicate an issue if props.vehicle is not correctly loaded for the session vehicle.');
         }
-        
+
         // Update reactive refs with data from session storage,
         // using existing values (from props.query or defaults) as fallbacks.
         packageType.value = parsedData.packageType || packageType.value;
@@ -300,15 +303,15 @@ onMounted(() => {
                 //    vehicle.value.category.name = parsedData.vehicleDetails.category;
                 // }
             }
-            
+
             // Ensure currency is available for formatPrice, supplementing from session if props.vehicle didn't have it
             if (parsedData.vendorDetails && parsedData.vendorDetails.currency) {
                 if (!vehicle.value.vendor_profile) {
-                    vehicle.value.vendor_profile = {}; 
+                    vehicle.value.vendor_profile = {};
                 }
                 // Only set from session if not already present on vehicle.value.vendor_profile from props
                 if (!vehicle.value.vendor_profile.currency) {
-                     vehicle.value.vendor_profile.currency = parsedData.vendorDetails.currency;
+                    vehicle.value.vendor_profile.currency = parsedData.vendorDetails.currency;
                 }
             }
         } else if (parsedData.vehicleDetails) {
@@ -629,8 +632,48 @@ const bookingData = computed(() => {
     <Head title="Booking" />
     <AuthenticatedHeaderLayout />
     <main>
+        <div
+            class="full-w-container breadcrumb my-8 flex items-center gap-2 max-[768px]:mt-8 max-[768px]:text-[0.75rem]">
+            <div class="flex items-center gap-2">
+                <Link :href="`/${$page.props.locale}`"
+                    :class="currentStep === 0 ? 'text-customPrimaryColor font-medium' : 'text-customPrimaryColor'">Home
+                </Link>
+                <ChevronRight class="h-5 w-5 text-customPrimaryColor" />
+            </div>
+
+            <div class="flex items-center gap-2">
+                <Link :href="`/${$page.props.locale}/s`"
+                    :class="currentStep === 1 ? 'text-customPrimaryColor font-medium' : 'text-customPrimaryColor'">Vehicle
+                </Link>
+                <ChevronRight class="h-5 w-5 text-customPrimaryColor" />
+            </div>
+
+            <div class="flex items-center gap-2">
+                <Link :href="`/${$page.props.locale}/vehicle/${vehicle?.id}`">
+             <span :class="currentStep === 1 && !selectedPlan ? 'font-medium' : ''">{{ vehicle?.brand }} {{
+                vehicle?.model }}</span>
+                </Link>
+            </div>
+
+
+            <div v-if="selectedPlan" class="flex items-center gap-2">
+                <ChevronRight class="h-5 w-5 text-customPrimaryColor" />
+                <span :class="currentStep === 1 && selectedPlan ? 'font-medium' : ''" @click="currentStep = 1" class="cursor-pointer">{{ selectedPlan?.plan_type
+                    }}</span>
+            </div>
+
+            <div v-if="currentStep > 1" class="flex items-center gap-2">
+                <ChevronRight class="h-5 w-5 text-customPrimaryColor" />
+                <span :class="currentStep === 2 ? 'font-medium' : ''" @click="currentStep = 2" class="cursor-pointer">Driver Info</span>
+            </div>
+
+            <div v-if="currentStep > 2" class="flex items-center gap-2">
+                <ChevronRight class="h-5 w-5 text-customPrimaryColor" />
+                <span :class="currentStep === 3 ? 'font-medium' : ''">Payment</span>
+            </div>
+        </div>
         <section>
-            <div class="full-w-container flex justify-between py-customVerticalSpacing gap-5 max-[768px]:flex-col">
+            <div class="full-w-container flex justify-between pb-customVerticalSpacing gap-5 max-[768px]:flex-col">
                 <div class="column w-[65%] flex flex-col gap-10 max-[768px]:w-full" v-if="currentStep === 1">
                     <div class="free_cancellation p-5 bg-[#0099001A] border-[#009900] rounded-[8px] border-[1px]">
                         <!-- Cancellation Availability Display -->
@@ -1001,17 +1044,19 @@ const bookingData = computed(() => {
                             <div class="col flex items-start gap-4">
                                 <img :src="pickupLocationIcon" alt="" />
                                 <div class="flex flex-col gap-1">
-                                    <span class="text-[1.25rem] text-medium max-[768px]:text-[1rem]">{{ vehicle?.full_vehicle_address }}</span>
-                                    <span
-                                        class="max-[768px]:text-[0.85rem]">From: {{ dateFrom }} {{
-                                            timeFrom }}</span>
+                                    <span class="text-[1.25rem] text-medium max-[768px]:text-[1rem]">{{
+                                        vehicle?.full_vehicle_address
+                                        }}</span>
+                                    <span class="max-[768px]:text-[0.85rem]">From: {{ dateFrom }} {{
+                                        timeFrom }}</span>
                                 </div>
                             </div>
                             <div class="col flex items-start gap-4 mt-[2.5rem]">
                                 <img :src="returnLocationIcon" alt="" />
                                 <div class="flex flex-col gap-1">
-                                    <span class="text-[1.25rem] text-medium max-[768px]:text-[1rem]">{{ vehicle?.full_vehicle_address }}</span><span
-                                        class="max-[768px]:text-[0.85rem]">To: {{ dateTo }} {{ timeTo
+                                    <span class="text-[1.25rem] text-medium max-[768px]:text-[1rem]">{{
+                                        vehicle?.full_vehicle_address
+                                        }}</span><span class="max-[768px]:text-[0.85rem]">To: {{ dateTo }} {{ timeTo
                                         }}</span>
                                 </div>
                             </div>
@@ -1033,7 +1078,7 @@ const bookingData = computed(() => {
                                         class="flex justify-between items-center text-[1.15rem] max-[768px]:text-[0.875rem]">
                                         <span>{{
                                             selectedPlan.plan_type
-                                        }}</span>
+                                            }}</span>
                                         <div>
                                             <div class="flex items-center gap-1">
                                                 <span>
@@ -1042,7 +1087,7 @@ const bookingData = computed(() => {
 
                                                 <strong class="text-[1.5rem] font-medium max-[768px]:text-[1.1rem]">{{
                                                     formatPrice(selectedPlan.price * totalDays)
-                                                }}</strong>
+                                                    }}</strong>
                                             </div>
 
                                         </div>
@@ -1112,7 +1157,7 @@ const bookingData = computed(() => {
                                                 class="flex justify-between text-[1.25rem] font-bold border-t pt-3 mt-3 max-[768px]:text-[0.875rem]">
                                                 <span>Total (incl. VAT)</span>
                                                 <p class="font-medium">{{ formatPrice(calculateTotal + discountAmount)
-                                                }}
+                                                    }}
                                                 </p>
                                             </div>
                                             <div v-if="discountAmount"
@@ -1122,7 +1167,7 @@ const bookingData = computed(() => {
                                                     <p class="border-b-2 mb-1 text-red-500 font-medium">-{{
                                                         formatPrice(discountAmount) }}</p>
                                                     <strong class="text-[1.3rem]">{{ formatPrice(calculateTotal)
-                                                        }}</strong>
+                                                    }}</strong>
                                                 </div>
                                             </div>
                                         </div>
@@ -1136,7 +1181,7 @@ const bookingData = computed(() => {
                                             <img :src="infoIcon" alt="" />
                                         </p>
                                         <span class="relative text-[1.25rem] font-bold">{{ formatPrice(calculateTotal)
-                                        }}
+                                            }}
                                             <span
                                                 class="absolute left-0 top-[50%] w-full bg-red-600 h-[2px] -rotate-6"></span>
                                         </span>
@@ -1146,7 +1191,7 @@ const bookingData = computed(() => {
                                             value</span>
                                         <span class="text-[1.25rem] font-bold text-green-600">{{
                                             formatPrice(calculateAmountPaid)
-                                        }}</span>
+                                            }}</span>
                                     </div>
                                 </div>
                             </div>

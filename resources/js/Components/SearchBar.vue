@@ -402,6 +402,12 @@ const submit = () => {
   let packageType = '';
   form.value.package_type = packageType;
 
+  // Create URL parameters object
+  const urlParams = new URLSearchParams(form.value).toString();
+
+  // Store the search URL in session storage
+   sessionStorage.setItem('searchurl', `/s?${urlParams}`);
+
   // Remove radius adjustment since we’re not using radius-based filtering
   // form.value.radius = 30000; // Removed
 

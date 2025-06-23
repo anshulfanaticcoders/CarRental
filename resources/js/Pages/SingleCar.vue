@@ -43,6 +43,8 @@ import CardContent from "@/Components/ui/card/CardContent.vue";
 import Autoplay from 'embla-carousel-autoplay';
 // Fetching Vehicle Details
 import { usePage } from "@inertiajs/vue3";
+import { ChevronRight } from 'lucide-vue-next';
+
 
 const { props } = usePage(); // Get the props passed from the controller
 const vehicle = ref(props.vehicle);
@@ -974,6 +976,12 @@ const allImages = computed(() => {
 const openLightbox = (index) => {
     lightboxRef.value.openLightbox(index);
 };
+const searchUrl = computed(() => {
+  if (typeof window !== 'undefined' && sessionStorage.getItem('searchurl')) {
+    return sessionStorage.getItem('searchurl');
+  }
+  return '';
+});
 </script>
 
 <template>
@@ -985,6 +993,13 @@ const openLightbox = (index) => {
     <main>
         <section>
             <div class="full-w-container py-customVerticalSpacing max-[768px]:py-0">
+                <div class="breadcrumb mb-8 flex items-center gap-2 max-[768px]:mt-8 max-[768px]:text-[0.85rem]">
+                    <Link :href="`/${$page.props.locale}`" class="text-customPrimaryColor">Home</Link>
+                    <ChevronRight class="h-5 w-5 text-customPrimaryColor" />
+                    <Link :href="searchUrl ? `/${$page.props.locale}${searchUrl}` : `/${$page.props.locale}/s`" class="text-customPrimaryColor">Vehicle</Link>
+                    <ChevronRight class="h-5 w-5 text-customPrimaryColor" />
+                    <span class="font-medium">{{ vehicle?.brand }} {{ vehicle?.model }}</span>
+                </div>
                 <div class="flex gap-2 items-center mb-1 max-[768px]:hidden">
                     <h4 class="font-medium">{{ vehicle?.brand }}</h4>
                     <span class="bg-[#f5f5f5] inline-block px-8 py-2 text-center rounded-[40px]">
@@ -1036,7 +1051,7 @@ const openLightbox = (index) => {
                                 <div class="gallery-item max-[768px]:flex-1 max-[768px]:aspect-square cursor-pointer relative"
                                     @click="openLightbox(4)">
                                     <div
-                                        class="absolute inset-0 bg-black/50 flex items-center justify-center rounded-lg z-10">
+                                        class="absolute inset-0 bg-black/50 flex items-center justify-center rounded-lg z-50">
                                         <span class="text-white text-lg font-semibold max-[768px]:text-[0.75rem]">
                                             +{{ vehicle.images.length - 5 }} View All
                                         </span>
@@ -1210,7 +1225,7 @@ const openLightbox = (index) => {
                                 <img :src=locationPinIcon alt="" class="w-8 h-8 max-[768px]:w-6" loading="lazy"> <span
                                     class="text-[1.2rem] max-[768px]:text-[0.95rem]">{{ vehicle?.full_vehicle_address }}</span>
                             </div>
-                            <div id="map" class="h-full rounded-lg mt-4"></div>
+                            <div id="map" class="h-full rounded-lg mt-4 z-10"></div>
                         </div>
 
                         <div class="mt-8 md:mt-16 max-w-4xl mx-auto">

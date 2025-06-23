@@ -74,7 +74,7 @@ const form = useForm({
     city: usePage().props.filters.city || "",
     state: usePage().props.filters.state || "",
     country: usePage().props.filters.country || "",
-    matched_field: usePage().props.filters.matched_field || null,
+    matched_field: usePage().props.filters.matched_field || "",
     location: usePage().props.filters.location || "", // Add location field
 });
 
@@ -94,6 +94,10 @@ const submitFilters = debounce(() => {
         onError: (errors) => {
             console.error('Filter errors:', errors);
         },
+        onSuccess: () => {
+            const urlParams = new URLSearchParams(form.data()).toString();
+            sessionStorage.setItem('searchurl', `/s?${urlParams}`);
+        }
     });
 }, 300);
 

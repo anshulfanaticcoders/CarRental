@@ -260,7 +260,7 @@ watch(() => url.value, () => {
 
 <template>
   <header class="border-b border-gray-200 shadow-sm bg-white" ref="navRef">
-    <div class="full-w-container mx-auto px-4 sm:px-6 lg:px-8">
+    <div class="full-w-container mx-auto">
       <div class="flex justify-between items-center h-16 md:h-20">
         <!-- Logo Section -->
         <div class="flex-shrink-0">

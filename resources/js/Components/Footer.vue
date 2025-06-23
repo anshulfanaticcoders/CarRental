@@ -47,7 +47,28 @@ const getTranslatedSlug = (pageSlug) => {
 
 // Fetch footer places and categories data
 const footerPlaces = ref([]);
+import { defineExpose } from 'vue';
+
 const footerCategories = ref([]);
+
+const updateSearchUrl = (place) => {
+    const urlParams = new URLSearchParams({
+        where: `${place.place_name}, ${place.city}, ${place.country}`,
+        latitude: place.latitude,
+        longitude: place.longitude,
+        radius: 10000
+    }).toString();
+    sessionStorage.setItem('searchurl', `/s?${urlParams}`);
+};
+
+const updateCategorySearchUrl = (category) => {
+    sessionStorage.setItem('searchurl', `/search/category/${category.slug}`);
+};
+
+defineExpose({
+  updateSearchUrl,
+  updateCategorySearchUrl
+});
 
 onMounted(async () => {
   try {
@@ -132,7 +153,8 @@ onMounted(async () => {
                         <ul class="flex flex-col gap-4 max-[768px]:text-[0.875rem]">
                             <li v-for="place in footerPlaces" :key="place.id">
                                 <Link
-                                    :href="`/${page.props.locale}/s?where=${encodeURIComponent(place.place_name + ', ' + place.city + ', ' + place.country)}&latitude=${place.latitude}&longitude=${place.longitude}&radius=10000`">
+                                    :href="`/${page.props.locale}/s?where=${encodeURIComponent(place.place_name + ', ' + place.city + ', ' + place.country)}&latitude=${place.latitude}&longitude=${place.longitude}&radius=10000`"
+                                    @click="updateSearchUrl(place)">
                                 {{ place.place_name }}
                                 </Link>
                             </li>
@@ -146,7 +168,7 @@ onMounted(async () => {
             <label for="" class="text-[1.25rem] font-medium max-[768px]:text-[1rem]">Categories</label>
             <ul class="flex flex-col gap-4 max-[768px]:text-[0.875rem]">
               <li v-for="category in footerCategories" :key="category.id">
-                <Link :href="route('search.category', { locale: page.props.locale, category_slug: category.slug })">{{ category.name }}</Link>
+                <Link :href="route('search.category', { locale: page.props.locale, category_slug: category.slug })" @click="updateCategorySearchUrl(category)">{{ category.name }}</Link>
               </li>
               <!-- Fallback if no categories are selected -->
               <li v-if="footerCategories.length === 0"><Link :href="route('welcome', { locale: page.props.locale })">No categories available</Link></li>
