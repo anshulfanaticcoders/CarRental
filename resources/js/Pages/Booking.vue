@@ -132,6 +132,12 @@ const getCancellationDate = computed(() => {
     // Subtract cancellation days
     bookingDate.setDate(bookingDate.getDate() - cancellationDays);
 
+    // Check if the cancellation date is in the future
+    const today = new Date();
+    if (bookingDate < today) {
+        return null;
+    }
+
     // Format the date as YYYY-MM-DD
     return bookingDate.toISOString().split('T')[0];
 });
