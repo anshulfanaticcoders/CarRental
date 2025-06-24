@@ -67,15 +67,15 @@ const form = useForm({
     date_from: usePage().props.filters.date_from || "",
     date_to: usePage().props.filters.date_to || "",
     where: usePage().props.filters.where || "",
-    latitude: usePage().props.filters.latitude || null,
-    longitude: usePage().props.filters.longitude || null,
-    radius: usePage().props.filters.radius || null,
+    latitude: usePage().props.filters.latitude || "",
+    longitude: usePage().props.filters.longitude || "",
+    radius: usePage().props.filters.radius || "",
     package_type: usePage().props.filters.package_type || "",
     category_slug: usePage().props.filters.category_slug || "",
     city: usePage().props.filters.city || "",
     state: usePage().props.filters.state || "",
     country: usePage().props.filters.country || "",
-    matched_field: usePage().props.filters.matched_field || null,
+    matched_field: usePage().props.filters.matched_field || "",
 });
 
 const submitFilters = debounce(() => {
@@ -88,6 +88,10 @@ const submitFilters = debounce(() => {
         onError: (errors) => {
             console.error('Filter errors:', errors);
         },
+        onSuccess: () => {
+            const urlParams = new URLSearchParams(form.data()).toString();
+            sessionStorage.setItem('searchurl', `/search/category/${form.category_slug}?${urlParams}`);
+        }
     });
 }, 300);
 
