@@ -314,12 +314,12 @@ onUnmounted(() => {
                 No messages found.
             </div>
             <div v-else v-for="message in filteredMessages" :key="message.id" class="group relative">
-                <div :class="[
+<div :class="[
                     'p-3 rounded-lg max-w-[45%] break-words',
                     message.sender_id === $page.props.auth.user.id
                         ? 'ml-auto bg-[#153b4f] text-white self-end '
                         : 'mr-0 bg-white text-gray-900 border self-start '
-                ]">
+                ]" style="word-break: break-word;">
                     <div class="flex justify-between items-start gap-2">
                         <span class="font-medium text-xs">
                             {{ message.sender_id === $page.props.auth.user.id ? 'Me' : otherUser.first_name }}
@@ -350,7 +350,7 @@ onUnmounted(() => {
 
                 <!-- Dropdown for delete -->
                 <div v-if="showOptions === message.id && message.sender_id === page.props.auth.user.id && !message.deleted_at"
-                    class="absolute right-0 mt-2 bg-white shadow-lg rounded-md py-1 w-28 z-20 border">
+                    class="absolute right-0 top-[-3rem] mt-2 bg-white shadow-lg rounded-md py-1 w-28 z-20 border">
                     <button @click="deleteMessage(message.id)"
                         class="w-full text-left px-3 py-1 text-sm text-red-600 hover:bg-red-50">
                         Delete

@@ -14,9 +14,15 @@ const page = usePage();
 const { url, props } = page;
 const showingNavigationDropdown = ref(false);
 const showingNotificationDropdown = ref(false);
+const mobileNotificationsOpen = ref(false);
 
 // User data
 const user = ref(null);
+
+// Function to toggle mobile notification
+const toggleMobileNotification = () => {
+  mobileNotificationsOpen.value = !mobileNotificationsOpen.value;
+};
 
 // Notifications
 const notifications = ref([]);
@@ -319,7 +325,7 @@ watch(() => url.value, () => {
           </Dropdown>
 
           <!-- Notification Bell -->
-            <div class="relative mt-[6px]">
+            <div class="relative">
                 <button ref="bellIconRef" @click="showingNotificationDropdown = !showingNotificationDropdown; markAllAsRead()" class="relative p-2 rounded-[99px] focus:bg-[#efefef]">
                     <img :src="bellIcon" alt="Notifications" class="w-6 h-6">
                     <span v-if="unreadCount > 0" class="absolute w-[18px] h-[18px] border-2 border-white top-0 right-0 inline-flex items-center justify-center px-2 py-1 text-xs font-bold leading-none text-red-100 bg-red-600 rounded-full">{{ unreadCount }}</span>
@@ -500,7 +506,10 @@ watch(() => url.value, () => {
               <div class="text-sm font-medium text-gray-500">{{ page.props.auth.user.email }}</div>
             </div>
             <div class="ml-auto">
-              <NotificationBell class="h-6 w-6" />
+              <button @click="toggleMobileNotification" class="relative p-2 rounded-[99px] focus:bg-[#efefef]">
+                <img :src="bellIcon" alt="Notifications" class="w-6 h-6">
+                <span v-if="unreadCount > 0" class="absolute w-[18px] h-[18px] border-2 border-white top-0 right-0 inline-flex items-center justify-center px-2 py-1 text-xs font-bold leading-none text-red-100 bg-red-600 rounded-full">{{ unreadCount }}</span>
+              </button>
             </div>
           </div>
           
@@ -607,6 +616,40 @@ watch(() => url.value, () => {
         </div>
       </div>
     </div>
+    
+    <!-- Full-screen notification component -->
+    <div v-if="mobileNotificationsOpen" class="fixed top-0 left-0 w-full h-full bg-white z-50">
+      <div class="flex justify-end p-4">
+        <button @click="toggleMobileNotification" class="text-gray-500 hover:text-gray-700">
+          <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+          </svg>
+        </button>
+      </div>
+      <div class="p-4 border-b flex justify-between items-center">
+        <h3 class="text-lg font-medium">Notifications</h3>
+      </div>
+      <div class="overflow-y-auto" style="max-height: calc(100vh - 100px);">
+        <div v-if="notifications.length === 0" class="p-4 text-center text-gray-500">
+          No notifications yet.
+        </div>
+        <div v-else>
+          <div v-for="notification in notifications" :key="notification.id" @click="handleNotificationClick(notification)"
+            class="p-4 border-b hover:bg-gray-50 cursor-pointer"
+            :class="{ 'bg-gray-100': !notification.read_at }">
+            <div class="flex ">
+              <div class="font-semibold">{{ notification.data.title }}</div>
+              <div class="text-xs text-gray-500">{{ notification.type.split('\\').pop() }}</div>
+            </div>
+            <p class="text-sm text-gray-600">{{ notification.data.message }}</p>
+            <div class="text-xs text-customPrimaryColor mt-1 text-right">{{ new Date(notification.created_at).toLocaleString() }}</div>
+          </div>
+        </div>
+      </div>
+      <div class="p-2 border-t text-center">
+        <button @click="clearAllNotifications" class="text-sm text-red-500 hover:underline">Clear all notifications</button>
+      </div>
+    </div>
   </header>
 </template>
 
@@ -635,5 +678,16 @@ header {
     padding: 0.5rem 1rem;
     font-size: 0.875rem;
   }
+}
+
+/* Mobile notification bell */
+.md\\:hidden .ml-auto {
+  display: block !important;
+}
+
+/* Full-screen notification styles */
+.fixed.top-0.left-0.w-full.h-full.bg-white.z-50 {
+  display: flex;
+  flex-direction: column;
 }
 </style>

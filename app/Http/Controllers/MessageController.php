@@ -273,7 +273,7 @@ public function show($locale, $bookingId)
 
 // ... (other methods)
 
-    public function destroy($id)
+    public function destroy($locale, $id)
 {
     $message = Message::findOrFail($id);
 
@@ -296,7 +296,7 @@ public function show($locale, $bookingId)
     ]);
 }
 
-    public function restore($id)
+    public function restore($locale, $id)
 {
     $message = Message::withTrashed()->findOrFail($id);
 
