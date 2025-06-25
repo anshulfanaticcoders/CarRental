@@ -96,8 +96,9 @@
             <div class="flex gap-4 max-[768px]:flex-col items-center justify-between">
             <div class="flex gap-5">
               <Link :href="`/${usePage().props.locale}/booking-success?payment_intent=${booking.payments[0]?.transaction_id}`" class="underline">{{ _t('customerbooking', 'view_booking_details_link') }}</Link>
-            <button 
-                @click="openCancellationModal(booking)" 
+            <button
+                v-if="isCancellationAllowed(booking)"
+                @click="openCancellationModal(booking)"
                 class="text-red-600 underline"
               >
                 {{ _t('customerbooking', 'cancel_booking_button') }}
@@ -169,9 +170,9 @@
 import MyProfileLayout from '@/Layouts/MyProfileLayout.vue';
 import bookingstatusIcon from '../../../../assets/bookingstatusIcon.svg';
 import carIcon from '../../../../assets/carIcon.svg'; // Import car icon
-import { defineProps, ref, getCurrentInstance } from 'vue';
+import { defineProps, ref, getCurrentInstance, computed } from 'vue';
 import { Link,router, usePage } from '@inertiajs/vue3';
- import Pagination from '@/Components/ReusableComponents/Pagination.vue';
+import Pagination from '@/Components/ReusableComponents/Pagination.vue';
 
 const { appContext } = getCurrentInstance();
 const _t = appContext.config.globalProperties._t;
@@ -231,6 +232,19 @@ const confirmCancellation = () => {
       }
     }
   });
+};
+
+const isCancellationAllowed = (booking) => {
+  if (!booking.vehicle?.benefits?.cancellation_available_per_day_date) {
+    return false; // Cancellation not available
+  }
+
+  const pickupDate = new Date(booking.pickup_date);
+  const currentDate = new Date();
+  const timeDiff = pickupDate.getTime() - currentDate.getTime();
+  const dayDiff = Math.ceil(timeDiff / (1000 * 3600 * 24));
+
+  return dayDiff > booking.vehicle.benefits.cancellation_available_per_day_date;
 };
 
 const formatDate = (dateString) => {

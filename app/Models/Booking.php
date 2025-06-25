@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 
 class Booking extends Model
@@ -99,5 +100,9 @@ class Booking extends Model
     return $this->hasOne(Review::class, 'booking_id');
 }
 
+ public function vehicleBenefit(): HasOne
+    {
+        return $this->hasOne(VehicleBenefit::class);
+    }
 
 }

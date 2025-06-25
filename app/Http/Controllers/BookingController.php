@@ -356,7 +356,7 @@ public function getConfirmedBookings()
     $confirmedBookings = $customer ? 
         Booking::where('customer_id', $customer->id)
             ->where('booking_status', 'confirmed')
-            ->with('vehicle.images','vehicle.category', 'payments','vehicle.vendorProfile')
+            ->with('vehicle.images','vehicle.category', 'payments','vehicle.vendorProfile', 'vehicle.benefits')
             ->orderBy('created_at', 'desc')
             ->paginate(3) : 
             collect();
