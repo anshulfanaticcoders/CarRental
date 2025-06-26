@@ -2,57 +2,73 @@
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
     <!-- Static URLs -->
     <url>
-        <loc>https://vrooem.com/nl</loc>
+        <loc>https://vrooem.com/en</loc>
         <lastmod>2025-06-20T00:00:00+00:00</lastmod>
         <changefreq>daily</changefreq>
         <priority>1.0</priority>
     </url>
     <url>
-        <loc>https://vrooem.com/nl/login</loc>
+        <loc>https://vrooem.com/en/login</loc>
         <lastmod>2025-06-20T00:00:00+00:00</lastmod>
         <changefreq>daily</changefreq>
         <priority>1.0</priority>
     </url>
     <url>
-        <loc>https://vrooem.com/nl/register</loc>
+        <loc>https://vrooem.com/en/register</loc>
         <lastmod>2025-06-20T00:00:00+00:00</lastmod>
         <changefreq>daily</changefreq>
         <priority>1.0</priority>
     </url>
     <url>
-        <loc>https://vrooem.com/nl/blog</loc>
+        <loc>https://vrooem.com/en/blog</loc>
         <lastmod>2025-06-20T00:00:00+00:00</lastmod>
         <changefreq>daily</changefreq>
         <priority>1.0</priority>
     </url>
     <url>
-        <loc>https://vrooem.com/nl/page/a-propos-de-nous</loc>
+        <loc>https://vrooem.com/en/page/about-us</loc>
         <lastmod>2025-06-20T00:00:00+00:00</lastmod>
         <changefreq>daily</changefreq>
         <priority>1.0</priority>
     </url>
     <url>
-        <loc>https://vrooem.com/nl/faq</loc>
+        <loc>https://vrooem.com/en/faq</loc>
         <lastmod>2025-06-20T00:00:00+00:00</lastmod>
         <changefreq>daily</changefreq>
         <priority>1.0</priority>
     </url>
     <url>
-        <loc>https://vrooem.com/nl/contact-us</loc>
+        <loc>https://vrooem.com/en/contact-us</loc>
         <lastmod>2025-06-20T00:00:00+00:00</lastmod>
         <changefreq>daily</changefreq>
         <priority>1.0</priority>
     </url>
     <url>
-        <loc>https://vrooem.com/nl/page/privacybeleid</loc>
+        <loc>https://vrooem.com/en/page/privacy-policy</loc>
         <lastmod>2025-06-20T00:00:00+00:00</lastmod>
         <changefreq>daily</changefreq>
         <priority>1.0</priority>
     </url>
     <url>
-        <loc>https://vrooem.com/nl/page/voorwaardnl</loc>
+        <loc>https://vrooem.com/en/page/terms-and-conditions</loc>
         <lastmod>2025-06-20T00:00:00+00:00</lastmod>
         <changefreq>daily</changefreq>
         <priority>1.0</priority>
     </url>
+    <sitemap>
+        <loc>https://vrooem.com/en/sitemap_en_blogs.xml</loc>
+        <lastmod>2025-06-20T00:00:00+00:00</lastmod>
+    </sitemap>
+    <sitemap>
+        <loc>https://vrooem.com/en/sitemap_en_categories.xml</loc>
+        <lastmod>2025-06-20T00:00:00+00:00</lastmod>
+    </sitemap>
+    <sitemap>
+        <loc>https://vrooem.com/en/sitemap_en_places.xml</loc>
+        <lastmod>2025-06-20T00:00:00+00:00</lastmod>
+    </sitemap>
+    <sitemap>
+        <loc>https://vrooem.com/en/sitemap_en_vehicles.xml</loc>
+        <lastmod>2025-06-20T00:00:00+00:00</lastmod>
+    </sitemap>
 </urlset>

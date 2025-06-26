@@ -1,63 +1,15 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <sitemapindex xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
     <sitemap>
-        <loc>https://vrooem.com/sitemap_en.xml</loc>
+        <loc>https://vrooem.com/en.xml</loc>
         <lastmod>2025-06-20T00:00:00+00:00</lastmod>
     </sitemap>
     <sitemap>
-        <loc>https://vrooem.com/en/sitemap_en_blogs.xml</loc>
+        <loc>https://vrooem.com/fr.xml</loc>
         <lastmod>2025-06-20T00:00:00+00:00</lastmod>
     </sitemap>
     <sitemap>
-        <loc>https://vrooem.com/en/sitemap_en_categories.xml</loc>
-        <lastmod>2025-06-20T00:00:00+00:00</lastmod>
-    </sitemap>
-    <sitemap>
-        <loc>https://vrooem.com/en/sitemap_en_places.xml</loc>
-        <lastmod>2025-06-20T00:00:00+00:00</lastmod>
-    </sitemap>
-    <sitemap>
-        <loc>https://vrooem.com/en/sitemap_en_vehicles.xml</loc>
-        <lastmod>2025-06-20T00:00:00+00:00</lastmod>
-    </sitemap>
-    <sitemap>
-        <loc>https://vrooem.com/sitemap_fr.xml</loc>
-        <lastmod>2025-06-20T00:00:00+00:00</lastmod>
-    </sitemap>
-    <sitemap>
-        <loc>https://vrooem.com/fr/sitemap_fr_blogs.xml</loc>
-        <lastmod>2025-06-20T00:00:00+00:00</lastmod>
-    </sitemap>
-    <sitemap>
-        <loc>https://vrooem.com/fr/sitemap_fr_categories.xml</loc>
-        <lastmod>2025-06-20T00:00:00+00:00</lastmod>
-    </sitemap>
-    <sitemap>
-        <loc>https://vrooem.com/fr/sitemap_fr_places.xml</loc>
-        <lastmod>2025-06-20T00:00:00+00:00</lastmod>
-    </sitemap>
-    <sitemap>
-        <loc>https://vrooem.com/fr/sitemap_fr_vehicles.xml</loc>
-        <lastmod>2025-06-20T00:00:00+00:00</lastmod>
-    </sitemap>
-    <sitemap>
-        <loc>https://vrooem.com/sitemap_nl.xml</loc>
-        <lastmod>2025-06-20T00:00:00+00:00</lastmod>
-    </sitemap>
-    <sitemap>
-        <loc>https://vrooem.com/nl/sitemap_nl_blogs.xml</loc>
-        <lastmod>2025-06-20T00:00:00+00:00</lastmod>
-    </sitemap>
-    <sitemap>
-        <loc>https://vrooem.com/nl/sitemap_nl_categories.xml</loc>
-        <lastmod>2025-06-20T00:00:00+00:00</lastmod>
-    </sitemap>
-    <sitemap>
-        <loc>https://vrooem.com/nl/sitemap_nl_places.xml</loc>
-        <lastmod>2025-06-20T00:00:00+00:00</lastmod>
-    </sitemap>
-    <sitemap>
-        <loc>https://vrooem.com/nl/sitemap_nl_vehicles.xml</loc>
+        <loc>https://vrooem.com/nl.xml</loc>
         <lastmod>2025-06-20T00:00:00+00:00</lastmod>
     </sitemap>
 </sitemapindex>
