@@ -2,7 +2,7 @@
 import { ref, computed, onMounted, onUnmounted } from "vue";
 import ChatComponent from '@/Components/ChatComponent.vue';
 import axios from 'axios';
-import { Link, usePage } from '@inertiajs/vue3';
+import { Link, usePage, Head  } from '@inertiajs/vue3';
 import arrowBackIcon from '../../../assets/arrowBack.svg'; // Assuming path relative to Pages/Messages
 
 const props = defineProps({
@@ -169,6 +169,10 @@ onUnmounted(() => {
 </script>
 
 <template>
+    <Head>
+        <meta name="robots" content="noindex, nofollow">
+        <title>Inbox</title>
+    </Head>
     <div class="flex flex-col h-screen bg-gray-100">
         <!-- New Page Header -->
         <header class="bg-white shadow-sm p-3 flex items-center justify-between flex-shrink-0 border-b">

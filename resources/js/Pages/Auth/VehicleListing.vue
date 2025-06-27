@@ -6,7 +6,10 @@
         </div>
     </div>
 
-    <Head title="Vehicle Listing" />
+    <Head>
+        <meta name="robots" content="noindex, nofollow">
+        <title>Vehicle Listing</title>
+    </Head>
     <div v-if="currentStep === 0" class="overflow-x-hidden vehicle-listing h-screen md:overflow-y-hidden relative">
         <div
             class="absolute inset-0 flex justify-between max-[768px]:relative max-[768px]:flex-col max-[768px]:h-auto max-[768px]:gap-10">

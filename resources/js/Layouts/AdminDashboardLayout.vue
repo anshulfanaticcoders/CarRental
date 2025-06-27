@@ -55,7 +55,10 @@ const currentPageTitle = computed(() => {
 </script>
 
 <template>
-    <Head title="Dashboard"/>
+    <Head>
+        <meta name="robots" content="noindex, nofollow">
+        <title>Dashboard</title>
+    </Head>
     <main class="">
         <div class="flex">
         <AdminSiderBar/>

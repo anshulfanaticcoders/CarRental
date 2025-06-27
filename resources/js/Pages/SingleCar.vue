@@ -47,14 +47,23 @@ import { ChevronRight } from 'lucide-vue-next';
 
 
 const { props } = usePage(); // Get the props passed from the controller
+const locale = usePage().props.locale;
 const vehicle = ref(props.vehicle);
 const user = ref(null);
 const reviews = ref([]);
+
+const metaTitle = computed(() => {
+  return `Rent ${vehicle.value.brand} ${vehicle.value.model} - ${vehicle.value.full_vehicle_address} - ${vehicle.value.id} - Vrooem`;
+});
+
+const canonicalUrl = computed(() => {
+  return `${props.appUrl}/${locale}/vehicle/${vehicle.value.id}`;
+});
 const isLoading = ref(true);
-const locale = usePage().props.locale;
 
 defineProps({
     schema: Object,
+    appUrl: String,
 });
 
 // Reference to the reviews section
@@ -138,7 +147,7 @@ const fetchAllVehicleFeatures = async () => {
     try {
         // Assuming '/api/vehicle-features' returns all features: [{ id, feature_name, icon_url }, ...]
         // If you have a different endpoint or it's paginated, this might need adjustment.
-        const response = await axios.get('/api/vehicle-features'); 
+        const response = await axios.get('/api/vehicle-features');
         if (response.data && Array.isArray(response.data)) {
             response.data.forEach(feature => {
                 allFeaturesMap.value[feature.feature_name] = feature.icon_url;
@@ -355,10 +364,10 @@ const toggleFavourite = async (vehicle) => {
         return router.get(route('login', {}, usePage().props.locale)); // Redirect if not logged in
     }
 
-    
-const endpoint = vehicle.is_favourite
-    ? route('vehicles.unfavourite', { vehicle: vehicle.id })
-    : route('vehicles.favourite', { vehicle: vehicle.id });
+
+    const endpoint = vehicle.is_favourite
+        ? route('vehicles.unfavourite', { vehicle: vehicle.id })
+        : route('vehicles.favourite', { vehicle: vehicle.id });
 
     try {
         await axios.post(endpoint);
@@ -880,7 +889,7 @@ const proceedToPayment = async () => { // Make the function async
 
     try { // Add try block for the API call and navigation
         // Call backend to set session variable allowing booking page access
-        await axios.post(route('booking.allow_access')); 
+        await axios.post(route('booking.allow_access'));
         console.log('Booking access permission set.'); // Optional: for debugging
 
         // Your existing logic for localStorage and sessionStorage:
@@ -977,16 +986,27 @@ const openLightbox = (index) => {
     lightboxRef.value.openLightbox(index);
 };
 const searchUrl = computed(() => {
-  if (typeof window !== 'undefined' && sessionStorage.getItem('searchurl')) {
-    return sessionStorage.getItem('searchurl');
-  }
-  return '';
+    if (typeof window !== 'undefined' && sessionStorage.getItem('searchurl')) {
+        return sessionStorage.getItem('searchurl');
+    }
+    return '';
 });
 </script>
 
 <template>
 
-    <Head title="Single Car" />
+    <Head>
+        <meta name="robots" content="index, follow" />
+        <title>{{ metaTitle }}</title>
+        <meta name="keywords" :content="seoKeywords" />
+        <link rel="canonical" :href="canonicalUrl" />
+        <meta property="og:title" :content="metaTitle" />
+        <meta property="og:image" :content="primaryImage?.image_url" />
+        <meta property="og:url" :content="canonicalUrl" />
+        <meta name="twitter:card" content="summary_large_image" />
+        <meta name="twitter:title" :content="metaTitle" />
+        <meta name="twitter:image" :content="primaryImage?.image_url" />
+    </Head>
     <SchemaInjector v-if="schema" :schema="schema" />
     <SchemaInjector v-if="$page.props.organizationSchema" :schema="$page.props.organizationSchema" />
     <AuthenticatedHeaderLayout />
@@ -996,7 +1016,8 @@ const searchUrl = computed(() => {
                 <div class="breadcrumb mb-8 flex items-center gap-2 max-[768px]:mt-8 max-[768px]:text-[0.85rem]">
                     <Link :href="`/${$page.props.locale}`" class="text-customPrimaryColor">Home</Link>
                     <ChevronRight class="h-5 w-5 text-customPrimaryColor" />
-                    <Link :href="searchUrl ? `/${$page.props.locale}${searchUrl}` : `/${$page.props.locale}/s`" class="text-customPrimaryColor">Vehicle</Link>
+                    <Link :href="searchUrl ? `/${$page.props.locale}${searchUrl}` : `/${$page.props.locale}/s`"
+                        class="text-customPrimaryColor">Vehicle</Link>
                     <ChevronRight class="h-5 w-5 text-customPrimaryColor" />
                     <span class="font-medium">{{ vehicle?.brand }} {{ vehicle?.model }}</span>
                 </div>
@@ -1023,12 +1044,13 @@ const searchUrl = computed(() => {
                     </div>
                 </div>
                 <div>
-                <div class="w-full mt-4 flex gap-2 max-[768px]:flex-col">
-                    <!-- Primary image -->
-                    <div class="primary-image w-[60%] max-h-[500px] aspect-video max-[768px]:w-full max-[768px]:aspect-[4/3] cursor-pointer"
-                        @click="openLightbox(0)">
-                        <img v-if="!isLoading && vehicle?.images" :src="primaryImage?.image_url" alt="Primary Image"
-                            class="w-full h-full object-cover rounded-lg transition-all duration-300 hover:brightness-90" loading="lazy" />
+                    <div class="w-full mt-4 flex gap-2 max-[768px]:flex-col">
+                        <!-- Primary image -->
+                        <div class="primary-image w-[60%] max-h-[500px] aspect-video max-[768px]:w-full max-[768px]:aspect-[4/3] cursor-pointer"
+                            @click="openLightbox(0)">
+                            <img v-if="!isLoading && vehicle?.images" :src="primaryImage?.image_url" alt="Primary Image"
+                                class="w-full h-full object-cover rounded-lg transition-all duration-300 hover:brightness-90"
+                                loading="lazy" />
                             <Skeleton v-else
                                 class="w-full h-[500px] object-cover rounded-lg max-[768px]:w-full max-[768px]:max-h-[200px]" />
                         </div>
@@ -1042,7 +1064,8 @@ const searchUrl = computed(() => {
                                     @click="openLightbox(index + 1)">
                                     <img v-if="!isLoading && vehicle" :src="image.image_url"
                                         :alt="`Gallery Image ${index + 1}`"
-                                        class="w-full h-[245px] object-cover rounded-lg max-[768px]:h-full transition-all duration-300 hover:brightness-90" loading="lazy" />
+                                        class="w-full h-[245px] object-cover rounded-lg max-[768px]:h-full transition-all duration-300 hover:brightness-90"
+                                        loading="lazy" />
                                     <Skeleton v-else
                                         class="w-full h-[245px] object-cover rounded-lg max-[768px]:h-full" />
                                 </div>
@@ -1058,7 +1081,8 @@ const searchUrl = computed(() => {
                                     </div>
                                     <img v-if="!isLoading && vehicle" :src="galleryImages[3].image_url"
                                         alt="View All Images"
-                                        class="w-full h-[245px] object-cover rounded-lg max-[768px]:h-full opacity-50" loading="lazy" />
+                                        class="w-full h-[245px] object-cover rounded-lg max-[768px]:h-full opacity-50"
+                                        loading="lazy" />
                                     <Skeleton v-else
                                         class="w-full h-[245px] object-cover rounded-lg max-[768px]:h-full" />
                                 </div>
@@ -1066,10 +1090,12 @@ const searchUrl = computed(() => {
 
                             <!-- Default gallery rendering when 5 or fewer images -->
                             <div v-else v-for="(image, index) in galleryImages" :key="image.id"
-                                class="gallery-item max-[768px]:flex-1 max-[768px]:aspect-square cursor-pointer" @click="openLightbox(index + 1)">
+                                class="gallery-item max-[768px]:flex-1 max-[768px]:aspect-square cursor-pointer"
+                                @click="openLightbox(index + 1)">
                                 <img v-if="!isLoading && vehicle" :src="image.image_url"
                                     :alt="`Gallery Image ${index + 1}`"
-                                    class="w-full h-[245px] object-cover rounded-lg max-[768px]:h-full transition-all duration-300 hover:brightness-90" loading="lazy" />
+                                    class="w-full h-[245px] object-cover rounded-lg max-[768px]:h-full transition-all duration-300 hover:brightness-90"
+                                    loading="lazy" />
                                 <Skeleton v-else class="w-full h-[245px] object-cover rounded-lg max-[768px]:h-full" />
                             </div>
                         </div>
@@ -1111,63 +1137,69 @@ const searchUrl = computed(() => {
                             <div class="features grid grid-cols-4 gap-x-[2rem] gap-y-[2rem] max-[768px]:grid-cols-3">
                                 <div class="feature-item items-center flex gap-3">
                                     <img :src="peopleIcon" alt=""
-                                        class='w-[30px] h-[30px] max-[768px]:w-[24px] max-[768px]:h-[24px]' loading="lazy" />
+                                        class='w-[30px] h-[30px] max-[768px]:w-[24px] max-[768px]:h-[24px]'
+                                        loading="lazy" />
                                     <div class="flex flex-col">
                                         <span
                                             class="text-customLightGrayColor text-[1rem] max-[768px]:text-[0.75rem]">People</span>
                                         <span class="font-medium text-[1rem] max-[768px]:text-[0.85rem]">{{
                                             vehicle?.seating_capacity
-                                            }}</span>
+                                        }}</span>
                                     </div>
                                 </div>
                                 <div class="feature-item items-center flex gap-3">
                                     <img :src="doorIcon" alt=""
-                                        class='w-[30px] h-[30px] max-[768px]:w-[24px] max-[768px]:h-[24px]' loading="lazy" />
+                                        class='w-[30px] h-[30px] max-[768px]:w-[24px] max-[768px]:h-[24px]'
+                                        loading="lazy" />
                                     <div class="flex flex-col">
                                         <span
                                             class="text-customLightGrayColor text-[1rem] max-[768px]:text-[0.75rem]">Doors</span>
                                         <span class="font-medium text-[1rem] max-[768px]:text-[0.85rem]">{{
                                             vehicle?.number_of_doors
-                                            }}</span>
+                                        }}</span>
                                     </div>
                                 </div>
                                 <div class="feature-item items-center flex gap-3">
                                     <img :src="luggageIcon" alt=""
-                                        class='w-[30px] h-[30px] max-[768px]:w-[24px] max-[768px]:h-[24px]' loading="lazy" />
+                                        class='w-[30px] h-[30px] max-[768px]:w-[24px] max-[768px]:h-[24px]'
+                                        loading="lazy" />
                                     <div class="flex flex-col">
                                         <span
                                             class="text-customLightGrayColor text-[1rem] max-[768px]:text-[0.75rem]">Luggage</span>
                                         <span class="font-medium text-[1rem] max-[768px]:text-[0.85rem]">{{
                                             vehicle?.luggage_capacity
-                                            }}</span>
+                                        }}</span>
                                     </div>
                                 </div>
                                 <div class="feature-item items-center flex gap-3">
                                     <img :src="transmisionIcon" alt=""
-                                        class='w-[30px] h-[30px] max-[768px]:w-[24px] max-[768px]:h-[24px]' loading="lazy" />
+                                        class='w-[30px] h-[30px] max-[768px]:w-[24px] max-[768px]:h-[24px]'
+                                        loading="lazy" />
                                     <div class="flex flex-col">
                                         <span
                                             class="text-customLightGrayColor text-[1rem] max-[768px]:text-[0.75rem]">Transmission</span>
                                         <span class="font-medium capitalize max-[768px]:text-[0.85rem]">{{
                                             vehicle?.transmission
-                                            }}</span>
+                                        }}</span>
                                     </div>
                                 </div>
                                 <div class="feature-item items-center flex gap-3">
                                     <img :src="fuelIcon" alt=""
-                                        class='w-[30px] h-[30px] max-[768px]:w-[24px] max-[768px]:h-[24px]' loading="lazy" />
+                                        class='w-[30px] h-[30px] max-[768px]:w-[24px] max-[768px]:h-[24px]'
+                                        loading="lazy" />
                                     <div class="flex flex-col">
                                         <span
                                             class="text-customLightGrayColor text-[1rem] max-[768px]:text-[0.75rem]">Fuel
                                             Type</span>
                                         <span class="font-medium capitalize max-[768px]:text-[0.85rem]">{{
                                             vehicle?.fuel
-                                            }}</span>
+                                        }}</span>
                                     </div>
                                 </div>
                                 <div class="feature-item items-center flex gap-3">
                                     <img :src="enginepowerIcon" alt=""
-                                        class='w-[30px] h-[30px] max-[768px]:w-[24px] max-[768px]:h-[24px]' loading="lazy" />
+                                        class='w-[30px] h-[30px] max-[768px]:w-[24px] max-[768px]:h-[24px]'
+                                        loading="lazy" />
                                     <div class="flex flex-col">
                                         <span
                                             class="text-customLightGrayColor text-[1rem] max-[768px]:text-[0.75rem]">Horsepower</span>
@@ -1177,18 +1209,20 @@ const searchUrl = computed(() => {
                                 </div>
                                 <div class="feature-item items-center flex gap-3">
                                     <img :src="carbonIcon" alt=""
-                                        class='w-[30px] h-[30px] max-[768px]:w-[24px] max-[768px]:h-[24px]' loading="lazy" />
+                                        class='w-[30px] h-[30px] max-[768px]:w-[24px] max-[768px]:h-[24px]'
+                                        loading="lazy" />
                                     <div class="flex flex-col">
                                         <span
                                             class="text-customLightGrayColor text-[1rem] max-[768px]:text-[0.75rem]">Co2
                                             Emission</span>
                                         <span class="font-medium text-[1rem] max-[768px]:text-[0.85rem]">{{ vehicle?.co2
-                                            }} (g/km)</span>
+                                        }} (g/km)</span>
                                     </div>
                                 </div>
                                 <div class="feature-item items-center flex gap-3">
                                     <img :src="mileageIcon" alt=""
-                                        class='w-[30px] h-[30px] max-[768px]:w-[24px] max-[768px]:h-[24px]' loading="lazy" />
+                                        class='w-[30px] h-[30px] max-[768px]:w-[24px] max-[768px]:h-[24px]'
+                                        loading="lazy" />
                                     <div class="flex flex-col">
                                         <span
                                             class="text-customLightGrayColor text-[1rem] max-[768px]:text-[0.75rem]">Mileage</span>
@@ -1207,9 +1241,13 @@ const searchUrl = computed(() => {
                                 class="grid grid-cols-4 mt-[2rem] gap-y-[2rem] max-[768px]:mt-[1rem] max-[768px]:grid-cols-3">
                                 <div v-for="(featureName, index) in JSON.parse(vehicle.features)" :key="index"
                                     class="flex items-center gap-3 max-[768px]:text-[0.65rem] whitespace-nowrap">
-                                    <img v-if="allFeaturesMap[featureName]" :src="allFeaturesMap[featureName]" :alt="featureName"
-                                        class="feature-icon w-[30px] h-[30px] max-[768px]:w-[24px] max-[768px]:h-[24px] object-contain" loading="lazy" />
-                                    <span v-else class="feature-icon w-[30px] h-[30px] max-[768px]:w-[24px] max-[768px]:h-[24px] inline-flex items-center justify-center text-gray-400 text-xs border rounded">?</span> <!-- Placeholder for no icon -->
+                                    <img v-if="allFeaturesMap[featureName]" :src="allFeaturesMap[featureName]"
+                                        :alt="featureName"
+                                        class="feature-icon w-[30px] h-[30px] max-[768px]:w-[24px] max-[768px]:h-[24px] object-contain"
+                                        loading="lazy" />
+                                    <span v-else
+                                        class="feature-icon w-[30px] h-[30px] max-[768px]:w-[24px] max-[768px]:h-[24px] inline-flex items-center justify-center text-gray-400 text-xs border rounded">?</span>
+                                    <!-- Placeholder for no icon -->
                                     {{ featureName }}
                                 </div>
                             </div>
@@ -1223,7 +1261,8 @@ const searchUrl = computed(() => {
                             <div
                                 class="gap-y-[2rem] max-[768px]:mt-[0.5rem] flex items-end mt-[1rem] gap-2 max-[768px]:gap-1 max-[768px]:items-center">
                                 <img :src=locationPinIcon alt="" class="w-8 h-8 max-[768px]:w-6" loading="lazy"> <span
-                                    class="text-[1.2rem] max-[768px]:text-[0.95rem]">{{ vehicle?.full_vehicle_address }}</span>
+                                    class="text-[1.2rem] max-[768px]:text-[0.95rem]">{{ vehicle?.full_vehicle_address
+                                    }}</span>
                             </div>
                             <div id="map" class="h-full rounded-lg mt-4 z-10"></div>
                         </div>
@@ -1247,7 +1286,7 @@ const searchUrl = computed(() => {
                                                 class="flex flex-col md:flex-row md:items-center gap-1 md:gap-2">
                                                 <span class="font-medium text-blue-700">Daily Limit:</span>
                                                 <span class="text-base">{{ vehicle?.benefits?.limited_km_per_day_range
-                                                    }} km/day</span>
+                                                }} km/day</span>
                                                 <span class="text-gray-700">
                                                     (Extra: {{ formatPrice(vehicle?.benefits?.price_per_km_per_day)
                                                     }}/km)
@@ -1258,7 +1297,7 @@ const searchUrl = computed(() => {
                                                 class="flex flex-col md:flex-row md:items-center gap-1 md:gap-2">
                                                 <span class="font-medium text-blue-700">Weekly Limit:</span>
                                                 <span class="text-base">{{ vehicle?.benefits?.limited_km_per_week_range
-                                                    }} km/week</span>
+                                                }} km/week</span>
                                                 <span class="text-gray-700">
                                                     (Extra: {{ formatPrice(vehicle?.benefits?.price_per_km_per_week)
                                                     }}/km)
@@ -1269,7 +1308,7 @@ const searchUrl = computed(() => {
                                                 class="flex flex-col md:flex-row md:items-center gap-1 md:gap-2">
                                                 <span class="font-medium text-blue-700">Monthly Limit:</span>
                                                 <span class="text-base">{{ vehicle?.benefits?.limited_km_per_month_range
-                                                    }} km/month</span>
+                                                }} km/month</span>
                                                 <span class="text-gray-700">
                                                     (Extra: {{ formatPrice(vehicle?.benefits?.price_per_km_per_month)
                                                     }}/km)
@@ -1397,12 +1436,14 @@ const searchUrl = computed(() => {
                                     </span>
                                 </div>
                                 <div class="icons flex items-center gap-3">
-                                    <Link href="" class="max-[768px]:w-[1.5rem]"><img :src="ShareIcon" alt="" loading="lazy" /></Link>
+                                    <Link href="" class="max-[768px]:w-[1.5rem]"><img :src="ShareIcon" alt=""
+                                        loading="lazy" /></Link>
                                     <button @click.stop="toggleFavourite(vehicle)" class="heart-icon"
                                         :class="{ 'filled-heart': vehicle.is_favourite, 'pop-animation': popEffect }"
                                         @animationend="popEffect = false">
                                         <img :src="vehicle.is_favourite ? FilledHeart : Heart" alt="Favorite"
-                                            class="w-[2rem] max-[768px]:w-[1.5rem] transition-colors duration-300" loading="lazy" />
+                                            class="w-[2rem] max-[768px]:w-[1.5rem] transition-colors duration-300"
+                                            loading="lazy" />
                                     </button>
 
                                 </div>
@@ -1435,14 +1476,15 @@ const searchUrl = computed(() => {
 
                             <div class="ratings"></div>
 
-                                <div class="location mt-[2rem]">
+                            <div class="location mt-[2rem]">
                                 <span
                                     class="text-[1.5rem] font-medium mb-[1rem] inline-block max-[768px]:text-[1.2rem]">Location</span>
                                 <div class="col flex items-start gap-4">
                                     <img :src="pickupLocationIcon" alt="" class="max-[768px]:w-[24px]" loading="lazy" />
                                     <div class="flex flex-col gap-1">
                                         <span>Pickup Location</span>
-                                        <span class="text-[1.25rem] text-medium max-[768px]:text-[1rem]">{{ vehicle?.full_vehicle_address }}</span>
+                                        <span class="text-[1.25rem] text-medium max-[768px]:text-[1rem]">{{
+                                            vehicle?.full_vehicle_address }}</span>
                                         <span class="max-[768px]:text-[0.95rem]">{{ route().params.pickup_date }}</span>
                                     </div>
                                 </div>
@@ -1450,7 +1492,8 @@ const searchUrl = computed(() => {
                                     <img :src="returnLocationIcon" alt="" class="max-[768px]:w-[24px]" loading="lazy" />
                                     <div class="flex flex-col gap-1">
                                         <span>Return Location</span>
-                                        <span class="text-[1.25rem] text-medium max-[768px]:text-[1rem]">{{ vehicle?.full_vehicle_address }}</span>
+                                        <span class="text-[1.25rem] text-medium max-[768px]:text-[1rem]">{{
+                                            vehicle?.full_vehicle_address }}</span>
                                         <span class="max-[768px]:text-[0.95rem]">{{ route().params.return_date }}</span>
                                     </div>
                                 </div>
@@ -1525,7 +1568,7 @@ const searchUrl = computed(() => {
                                                             <div class="flex items-center gap-3 mb-2">
                                                                 <component :is="pkg.icon" class="w-6 h-6" />
                                                                 <span class="font-semibold text-[1rem]">{{ pkg.label
-                                                                }}</span>
+                                                                    }}</span>
                                                             </div>
                                                             <p class="text-sm text-gray-600 mb-2">{{ pkg.description }}
                                                             </p>
@@ -1693,7 +1736,8 @@ const searchUrl = computed(() => {
                                             <div class="flex items-center gap-3">
                                                 <img :src="review.user.profile?.avatar ? `${review.user.profile?.avatar}` : '/storage/avatars/default-avatar.svg'"
                                                     alt="User Avatar"
-                                                    class="w-[50px] h-[50px] rounded-full object-cover" loading="lazy" />
+                                                    class="w-[50px] h-[50px] rounded-full object-cover"
+                                                    loading="lazy" />
                                                 <div>
                                                     <h4
                                                         class="text-customPrimaryColor font-medium max-[768px]:text-[1.1rem]">
@@ -1727,7 +1771,6 @@ const searchUrl = computed(() => {
                     <div class="flex justify-center pb-[3rem] max-[768px]:mt-[3rem]">
                         <a v-if="reviews && reviews.length > 0"
                             :href="`/${$page.props.locale}/vendor/${vehicle.vendor_profile_data?.id}/reviews`"
-
                             class="button-primary px-[2rem] py-[0.75rem]">View all</a>
                     </div>
                 </div>

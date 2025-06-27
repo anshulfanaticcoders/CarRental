@@ -54,7 +54,10 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-  <Head title="Dashboard" />
+  <Head>
+    <meta name="robots" content="noindex, nofollow">
+    <title>Profile</title>
+  </Head>
   <AuthenticatedHeaderLayout />
   <main class="">
     <div class="hidden max-[768px]:block max-[768px]:absolute max-[768px]:top-0 max-[768px]:right-[14px]">

@@ -1,5 +1,5 @@
 <script setup>
-import { Link, useForm, usePage, router } from "@inertiajs/vue3";
+import { Link, useForm, usePage, router, Head } from "@inertiajs/vue3";
 import { computed, onMounted, provide, ref, watch } from "vue";
 import SchemaInjector from '@/Components/SchemaInjector.vue'; // Import SchemaInjector
 import L from "leaflet";
@@ -648,6 +648,9 @@ provide('setActiveDropdown', setActiveDropdown);
 </script>
 
 <template>
+    <Head>
+        <meta name="robots" content="index, follow" />
+    </Head>
     <AuthenticatedHeaderLayout />
     <SchemaInjector v-if="schema" :schema="schema" />
     <section class="bg-customPrimaryColor py-customVerticalSpacing">

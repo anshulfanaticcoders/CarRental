@@ -1,6 +1,9 @@
 <template>
+    <Head>
+        <meta name="robots" content="index, follow" />
+        <title>Blog</title>
+    </Head>
     <AuthenticatedHeaderLayout />
-    <Head title="Blog"/>
     <div class="h-[28rem] blog_header py-[2rem] bg-no-repeat bg-center relative flex justify-center items-center"
         :style="{ backgroundImage: `url(${blogbgimage})`, backgroundSize: 'cover' }">
         <div class="overlay absolute bg-[#0000002a] h-full w-full top-0"></div>

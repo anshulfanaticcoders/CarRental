@@ -1,5 +1,6 @@
 <template>
     <Head>
+        <meta name="robots" content="index, follow" />
         <title>{{ seoTitle }}</title>
         <meta name="description" :content="seoDescription" />
         <meta name="keywords" :content="seoKeywords" />

@@ -257,7 +257,10 @@ onMounted(() => {
 
 <template>
 
-    <Head :title="_t('authpages', 'vendor_register_title')" />
+    <Head>
+        <meta name="robots" content="noindex, nofollow">
+        <title>{{ _t('authpages', 'vendor_register_title') }}</title>
+    </Head>
     <AuthenticatedHeaderLayout />
     <div class="max-[768px]:mt-8">
         <div

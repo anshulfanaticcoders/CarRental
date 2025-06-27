@@ -12,7 +12,10 @@ defineProps({
 </script>
 
 <template>
-    <Head title="FAQ"/>
+    <Head>
+        <meta name="robots" content="index, follow" />
+        <title>FAQ</title>
+    </Head>
     <SchemaInjector v-if="schema" :schema="schema" />
     <AuthenticatedHeaderLayout />
 

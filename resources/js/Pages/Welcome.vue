@@ -211,6 +211,7 @@ const updateCategorySearchUrl = (category) => {
 
     <Head>
         <title>{{ seoTitle }}</title>
+        <meta name="robots" content="index, follow" />
         <meta name="description" :content="seoDescription" />
         <meta name="keywords" :content="seoKeywords" />
         <link rel="canonical" :href="canonicalUrl" />

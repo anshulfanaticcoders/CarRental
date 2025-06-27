@@ -8,18 +8,6 @@
         <priority>1.0</priority>
     </url>
     <url>
-        <loc>https://vrooem.com/nl/login</loc>
-        <lastmod>2025-06-20T00:00:00+00:00</lastmod>
-        <changefreq>daily</changefreq>
-        <priority>1.0</priority>
-    </url>
-    <url>
-        <loc>https://vrooem.com/nl/register</loc>
-        <lastmod>2025-06-20T00:00:00+00:00</lastmod>
-        <changefreq>daily</changefreq>
-        <priority>1.0</priority>
-    </url>
-    <url>
         <loc>https://vrooem.com/nl/blog</loc>
         <lastmod>2025-06-20T00:00:00+00:00</lastmod>
         <changefreq>daily</changefreq>

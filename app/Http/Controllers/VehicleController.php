@@ -337,10 +337,12 @@ class VehicleController extends Controller
                 ];
             }),
             'schema' => SchemaBuilder::singleVehicle($vehicle), // Add vehicle schema
+            'appUrl' => env('APP_URL'),
+            'locale' => app()->getLocale(),
         ]);
     }
 
-    //This is for getting particular vehicle information to the booking page 
+    //This is for getting particular vehicle information to the booking page
     public function booking(Request $request, $locale, $id)
     {
         if (!Session::get('can_access_booking_page')) {

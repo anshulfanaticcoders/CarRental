@@ -42,7 +42,21 @@ const submit = () => {
 <template>
     <main class="">
 
-       <Head :title="_t('login', 'log_in')" />
+        <Head>
+            <meta name="robots" content="noindex, nofollow">
+            <title inertia>{{ _t('login', 'log_in') }}</title>
+            <meta name="description" :content="seoDescription" />
+            <meta name="keywords" :content="seoKeywords" />
+            <link rel="canonical" :href="canonicalUrl" />
+            <meta property="og:title" :content="seoTitle" />
+            <meta property="og:description" :content="seoDescription" />
+            <meta property="og:image" :content="seoImageUrl" />
+            <meta property="og:url" :content="currentUrl" />
+            <meta name="twitter:card" content="summary_large_image" />
+            <meta name="twitter:title" :content="seoTitle" />
+            <meta name="twitter:description" :content="seoDescription" />
+            <meta name="twitter:image" :content="seoImageUrl" />
+        </Head>
 
         <GuestHeader />
 
@@ -55,7 +69,8 @@ const submit = () => {
         ">
             <div class="column w-[40%] max-[768px]:w-full">
                 <div class="text-center mb-[4rem] text-[#111111]">
-                    <h3 class="font-medium text-[3rem] max-[768px]:text-[1.5rem] max-[768px]:text-white">{{ _t('login', 'sign_in') }}</h3>
+                    <h3 class="font-medium text-[3rem] max-[768px]:text-[1.5rem] max-[768px]:text-white">{{ _t('login',
+                        'sign_in') }}</h3>
                     <p
                         class='text-customLightGrayColor max-[768px]:text-white max-[768px]:text-[1rem] max-[768px]:mt-2'>
                         {{ _t('login', 'login_description') }}</p>
@@ -79,7 +94,8 @@ const submit = () => {
 
                         <button type="button" @click="showPassword = !showPassword"
                             class="absolute right-3 top-[50%] translate-y-[0%] font-medium text-customDarkBlackColor text-sm max-[768px]:text-white">
-                             {{ showPassword ? _t('registerUser', 'hide_password') : _t('registerUser', 'show_password') }}
+                            {{ showPassword ? _t('registerUser', 'hide_password') : _t('registerUser', 'show_password')
+                            }}
                         </button>
 
                         <InputError class="mt-2" :message="form.errors.password" />
@@ -89,8 +105,8 @@ const submit = () => {
                     <div class="flex mt-4 justify-between">
                         <label class="flex items-center">
                             <Checkbox name="remember" v-model:checked="form.remember" />
-                            <span
-                                class="ms-2 text-lg text-gray-600 max-[768px]:text-white max-[768px]:text-[1rem]">{{ _t('login', 'remember_me') }}</span>
+                            <span class="ms-2 text-lg text-gray-600 max-[768px]:text-white max-[768px]:text-[1rem]">{{
+                                _t('login', 'remember_me') }}</span>
                         </label>
                         <Link v-if="canResetPassword" :href="route('password.request')"
                             class="underline max-[768px]:text-[1rem] max-[768px]:text-white text-lg text-gray-600 hover:text-gray-900 rounded-md focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
@@ -111,7 +127,8 @@ const submit = () => {
 
             <div
                 class="column overflow-hidden h-full w-[50%] max-[768px]:w-full max-[768px]:absolute max-[768px]:top-0 max-[768px]:-z-10">
-                <img :src=loginBg alt="" class="w-full h-full brightness-90 object-cover repeat-0 max-[768px]:brightness-50">
+                <img :src=loginBg alt=""
+                    class="w-full h-full brightness-90 object-cover repeat-0 max-[768px]:brightness-50">
             </div>
         </div>
 

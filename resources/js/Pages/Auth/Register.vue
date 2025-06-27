@@ -313,9 +313,11 @@ watch(dateOfBirth, (newValue) => {
 </script>
 
 <template>
+    <Head>
+        <meta name="robots" content="noindex, nofollow">
+        <title>Register</title>
+    </Head>
     <AuthenticatedHeaderLayout />
-
-    <Head title="Register" />
 
     <div class="flex justify-center items-center register py-customVerticalSpacing">
         <div class="w-[60rem] max-w-full mx-auto px-4 max-[768px]:px-[1.5rem]">
