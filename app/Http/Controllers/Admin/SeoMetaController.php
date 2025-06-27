@@ -41,12 +41,12 @@ class SeoMetaController extends Controller
     public function store(Request $request)
     {
         $validatedData = $request->validate([
-            'url_slug'        => ['nullable', 'string', 'max:255', 'regex:/^(\/|\/?([a-z0-9]+(?:-[a-z0-9]+)*)(?:\/[a-z0-9]+(?:-[a-z0-9]+)*)*)$/', 'unique:seo_metas,url_slug'],
-            'seo_title'       => 'required|string|max:60',
-            'meta_description'=> 'nullable|string|max:160',
-            'keywords'        => 'nullable|string|max:255',
-            'canonical_url'   => 'nullable|url|max:255',
-            'seo_image_url'   => 'nullable|url|max:255',
+            'url_slug' => ['nullable', 'string', 'regex:/^(\/|\/?([a-z0-9]+(?:-[a-z0-9]+)*)(?:\/[a-z0-9]+(?:-[a-z0-9]+)*)*)$/', 'unique:seo_metas,url_slug'],
+            'seo_title' => 'required|string',
+            'meta_description' => 'nullable|string',
+            'keywords' => 'nullable|string',
+            'canonical_url' => 'nullable|url|max:255',
+            'seo_image_url' => 'nullable|url|max:255',
             // Add any other fields like 'page_id' or 'entity_type' if these SEO tags are for specific items
         ]);
 
@@ -60,18 +60,18 @@ class SeoMetaController extends Controller
                 $translationInput = $translationsData[$locale];
                 // Validate translation fields
                 $request->validate([
-                    "translations.{$locale}.seo_title" => 'nullable|string|max:60',
-                    "translations.{$locale}.meta_description" => 'nullable|string|max:160',
-                    "translations.{$locale}.keywords" => 'nullable|string|max:255',
+"translations.{$locale}.seo_title" => 'nullable|string',
+                    "translations.{$locale}.meta_description" => 'nullable|string',
+                    "translations.{$locale}.keywords" => 'nullable|string',
                 ]);
 
                 $seoMeta->translations()->updateOrCreate(
                     ['locale' => $locale],
                     [
-                        'seo_title'        => $translationInput['seo_title'] ?? null,
+                        'seo_title' => $translationInput['seo_title'] ?? null,
                         'meta_description' => $translationInput['meta_description'] ?? null,
-                        'keywords'         => $translationInput['keywords'] ?? null,
-                        'url_slug'         => $translationInput['url_slug'] ?? null,
+                        'keywords' => $translationInput['keywords'] ?? null,
+                        'url_slug' => $translationInput['url_slug'] ?? null,
                     ]
                 );
             }
@@ -109,10 +109,10 @@ class SeoMetaController extends Controller
         foreach (['en', 'fr', 'nl'] as $locale) {
             $translation = $seoMeta->translations->firstWhere('locale', $locale);
             $translations[$locale] = [
-                'seo_title'        => $translation->seo_title ?? null,
+                'seo_title' => $translation->seo_title ?? null,
                 'meta_description' => $translation->meta_description ?? null,
-                'keywords'         => $translation->keywords ?? null,
-                'url_slug'         => $translation->url_slug ?? null,
+                'keywords' => $translation->keywords ?? null,
+                'url_slug' => $translation->url_slug ?? null,
             ];
         }
 
@@ -133,12 +133,12 @@ class SeoMetaController extends Controller
     {
         // $seoMeta = SeoMeta::findOrFail($id);
         $validatedData = $request->validate([
-            'url_slug'        => ['nullable', 'string', 'max:255', 'regex:/^(\/|\/?([a-z0-9]+(?:-[a-z0-9]+)*)(?:\/[a-z0-9]+(?:-[a-z0-9]+)*)*)$/', 'unique:seo_metas,url_slug,' . $id],
-            'seo_title'       => 'required|string|max:60',
-            'meta_description'=> 'nullable|string|max:160',
-            'keywords'        => 'nullable|string|max:255',
-            'canonical_url'   => 'nullable|url|max:255',
-            'seo_image_url'   => 'nullable|url|max:255',
+            'url_slug' => ['nullable', 'string', 'regex:/^(\/|\/?([a-z0-9]+(?:-[a-z0-9]+)*)(?:\/[a-z0-9]+(?:-[a-z0-9]+)*)*)$/', 'unique:seo_metas,url_slug,' . $id],
+'seo_title' => 'required|string',
+            'meta_description' => 'nullable|string',
+            'keywords' => 'nullable|string',
+            'canonical_url' => 'nullable|url|max:255',
+            'seo_image_url' => 'nullable|url|max:255',
         ]);
 
         $seoMeta = SeoMeta::findOrFail($id);
@@ -151,19 +151,19 @@ class SeoMetaController extends Controller
                 $translationInput = $translationsData[$locale];
                 // Validate translation fields
                 $request->validate([
-                    "translations.{$locale}.seo_title" => 'nullable|string|max:60',
-                    "translations.{$locale}.meta_description" => 'nullable|string|max:160',
-                    "translations.{$locale}.keywords" => 'nullable|string|max:255',
-                    "translations.{$locale}.url_slug" => 'nullable|string|max:255',
+"translations.{$locale}.seo_title" => 'nullable|string',
+                    "translations.{$locale}.meta_description" => 'nullable|string',
+                    "translations.{$locale}.keywords" => 'nullable|string',
+                    "translations.{$locale}.url_slug" => 'nullable|string',
                 ]);
 
                 $seoMeta->translations()->updateOrCreate(
                     ['locale' => $locale],
                     [
-                        'seo_title'        => $translationInput['seo_title'] ?? null,
+                        'seo_title' => $translationInput['seo_title'] ?? null,
                         'meta_description' => $translationInput['meta_description'] ?? null,
-                        'keywords'         => $translationInput['keywords'] ?? null,
-                        'url_slug'         => $translationInput['url_slug'] ?? null,
+                        'keywords' => $translationInput['keywords'] ?? null,
+                        'url_slug' => $translationInput['url_slug'] ?? null,
                     ]
                 );
             } else {

@@ -57,7 +57,7 @@ const metaTitle = computed(() => {
 });
 
 const canonicalUrl = computed(() => {
-  return `${props.appUrl}/${locale}/vehicle/${vehicle.value.id}`;
+  return `${props.appUrl}${locale}/vehicle/${vehicle.value.id}`;
 });
 const isLoading = ref(true);
 
