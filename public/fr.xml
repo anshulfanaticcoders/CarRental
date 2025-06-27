@@ -55,22 +55,4 @@
         <changefreq>daily</changefreq>
         <priority>1.0</priority>
     </url>
-
-    <sitemap>
-        <loc>https://vrooem.com/fr/sitemap_fr_blogs.xml</loc>
-        <lastmod>2025-06-20T00:00:00+00:00</lastmod>
-    </sitemap>
-    <sitemap>
-        <loc>https://vrooem.com/fr/sitemap_fr_categories.xml</loc>
-        <lastmod>2025-06-20T00:00:00+00:00</lastmod>
-    </sitemap>
-    <sitemap>
-        <loc>https://vrooem.com/fr/sitemap_fr_places.xml</loc>
-        <lastmod>2025-06-20T00:00:00+00:00</lastmod>
-    </sitemap>
-    <sitemap>
-        <loc>https://vrooem.com/fr/sitemap_fr_vehicles.xml</loc>
-        <lastmod>2025-06-20T00:00:00+00:00</lastmod>
-    </sitemap>
-
 </urlset>
