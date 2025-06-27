@@ -158,6 +158,7 @@ const plugin = Autoplay({
 .testimonials {
     background-image: url('../../assets/gridlinetestimonials.png');
     background-size: cover;
+    background-position: center;
 }
 
 @media screen and (max-width:768px) {
