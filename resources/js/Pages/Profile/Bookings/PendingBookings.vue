@@ -1,10 +1,14 @@
 <template>
     <MyProfileLayout>
+      <!-- Loader Overlay -->
+      <div v-if="isLoading" class="fixed inset-0 z-50 flex items-center justify-center bg-white bg-opacity-70">
+        <img :src="loaderVariant" alt="Loading..." class="h-20 w-20" />
+      </div>
       <div class="container mx-auto px-4 max-[768px]:px-0">
         <p
           class="text-[1.5rem] max-[768px]:text-[1.2rem] text-customPrimaryColor font-bold mb-[2rem] bg-[#154D6A0D] rounded-[12px] px-[1rem] py-[1rem]">
           {{ _t('customerbooking', 'pending_bookings_header') }}</p>
-  
+
           <div v-if="!bookings.data || bookings.data.length === 0" class="text-center text-gray-500">
           <div class="flex flex-col justify-center items-center">
             <img :src="bookingstatusIcon" alt="" class="w-[30rem] max-[768px]:w-full">
@@ -74,18 +78,20 @@
                   <strong class="text-[1.5rem] font-medium" v-if="booking.preferred_day === 'month'">{{
                     formatPrice(booking.vehicle.price_per_month, booking.vehicle) }}{{_t('customerbooking', 'price_per_month_suffix')}}</strong>
                 </div>
-                <div class="flex items-center justify-between">
+                <div class="flex items-center justify-between max-[768px]:grid max-[768px]:grid-cols-2 max-[768px]:gap-3">
                   <Link :href="`/${usePage().props.locale}/booking-success?payment_intent=${booking.payments[0]?.transaction_id}`" class="underline">{{ _t('customerbooking', 'view_booking_details_link') }}</Link>
                   <button
                     v-if="booking.payment_status === 'pending'"
                     @click="retryPayment(booking.id)"
-                    class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded ml-4"
+                    class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded ml-4 max-[768px]:col-span-2 max-[768px]:ml-0"
+                    :disabled="isLoading"
                   >
-                    Retry Payment
+                    <span v-if="isLoading">Loading...</span>
+                    <span v-else>Retry Payment</span>
                   </button>
                   <Link
                     v-if="booking.vehicle && booking.vehicle.vendor_id"
-                    class="button-primary px-5 py-4 max-[768px]:text-[0.75rem] ml-4"
+                    class="button-primary px-5 py-4 max-[768px]:text-[0.75rem] ml-4 max-[768px]:col-span-2 max-[768px]:ml-0 max-[768px]:text-center"
                     :href="route('messages.index', { locale: usePage().props.locale, vendor_id: booking.vehicle.vendor_id })"
                   >
                     {{ _t('customerbooking', 'chat_with_owner_link') }}
@@ -114,9 +120,12 @@
   import carIcon from '../../../../assets/carIcon.svg';
   import { Link, usePage, router } from '@inertiajs/vue3';
   import Pagination from '@/Components/ReusableComponents/Pagination.vue';
-  import { ref, getCurrentInstance } from 'vue';
-  import { loadStripe } from '@stripe/stripe-js';
-  import axios from 'axios';
+import { ref, getCurrentInstance } from 'vue';
+import { loadStripe } from '@stripe/stripe-js';
+import axios from 'axios';
+import loaderVariant from '../../../../assets/loader-variant.svg';
+
+const isLoading = ref(false);
 
 const { appContext } = getCurrentInstance();
 const _t = appContext.config.globalProperties._t;
@@ -153,9 +162,10 @@ const props = defineProps({
 };
 
 const retryPayment = async (bookingId) => {
+  isLoading.value = true;
   try {
     const response = await axios.post(route('payment.retry', { locale: usePage().props.locale }), { booking_id: bookingId });
-    
+
     if (response.data.sessionId) {
       const stripe = await loadStripe(import.meta.env.VITE_STRIPE_KEY);
       await stripe.redirectToCheckout({ sessionId: response.data.sessionId });
@@ -163,6 +173,11 @@ const retryPayment = async (bookingId) => {
   } catch (error) {
     console.error('Error retrying payment:', error);
     alert('Failed to retry payment. Please try again later.');
+  } finally {
+    isLoading.value = false;
   }
 };
   </script>
+
+  <style scoped>
+  </style>

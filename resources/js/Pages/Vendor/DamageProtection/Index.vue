@@ -1,6 +1,10 @@
 <template>
     <MyProfileLayout>
         <div class="w-full">
+            <!-- Loader Overlay -->
+            <div v-if="isLoading" class="fixed inset-0 z-50 flex items-center justify-center bg-white bg-opacity-70">
+                <img :src="loaderVariant" alt="Loading..." class="h-20 w-20" />
+            </div>
             <!-- Header Section -->
             <div class="flex flex-col md:flex-row md:items-center justify-between bg-customLightPrimaryColor p-3 md:p-4 rounded-[12px] mb-4 md:mb-6">
                 <div class="flex flex-col md:flex-row md:gap-2 md:items-center mb-3 md:mb-0">
@@ -161,7 +165,9 @@ import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '
 import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious } from '@/Components/ui/carousel';
 import { Card, CardContent } from '@/Components/ui/card';
 import { Button } from '@/Components/ui/button';
+import loaderVariant from '../../../../assets/loader-variant.svg';
 
+const isLoading = ref(false);
 const beforeImages = ref([]);
 const afterImages = ref([]);
 const beforeImageInput = ref(null);
@@ -185,8 +191,8 @@ const openImageModal = (images, index) => {
 
 const handleBeforeFileUpload = (event) => {
     const files = Array.from(event.target.files);
-    if (files.length > 5) {
-        beforeImageError.value = "You can upload a maximum of 5 images at a time.";
+    if (files.length > 15) {
+        beforeImageError.value = "You can upload a maximum of 15 images at a time.";
         beforeImages.value = [];
         return;
     }
@@ -196,8 +202,8 @@ const handleBeforeFileUpload = (event) => {
 
 const handleAfterFileUpload = (event) => {
     const files = Array.from(event.target.files);
-    if (files.length > 5) {
-        afterImageError.value = "You can upload a maximum of 5 images at a time.";
+    if (files.length > 15) {
+        afterImageError.value = "You can upload a maximum of 15 images at a time.";
         afterImages.value = [];
         return;
     }
@@ -206,6 +212,7 @@ const handleAfterFileUpload = (event) => {
 };
 
 const submitBeforeImages = () => {
+    isLoading.value = true;
     const form = new FormData();
     beforeImages.value.forEach(file => form.append('images[]', file));
 
@@ -215,11 +222,15 @@ const submitBeforeImages = () => {
             beforeImages.value = [];
             beforeImageInput.value.value = null;
             toast.success('Before images uploaded successfully!');
+        },
+        onFinish: () => {
+            isLoading.value = false;
         }
     });
 };
 
 const submitAfterImages = () => {
+    isLoading.value = true;
     const form = new FormData();
     afterImages.value.forEach(file => form.append('images[]', file));
 
@@ -229,6 +240,9 @@ const submitAfterImages = () => {
             afterImages.value = [];
             afterImageInput.value.value = null;
             toast.success('After images uploaded successfully!');
+        },
+        onFinish: () => {
+            isLoading.value = false;
         }
     });
 };

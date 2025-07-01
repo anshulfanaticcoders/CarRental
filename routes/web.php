@@ -65,6 +65,7 @@ use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 use App\Http\Controllers\UserDocumentController;
 use App\Http\Controllers\VehicleController;
+use App\Http\Controllers\GreenMotionController;
 
 /*
 |--------------------------------------------------------------------------
@@ -483,3 +484,5 @@ Route::group([
 
     Route::get('/{slug}', [ContactUsPageController::class, 'show'])->name('contact.show');
 }); // End of locale group
+
+Route::get('/green-motion-vehicles', [GreenMotionController::class, 'getGreenMotionVehicles'])->name('green-motion-vehicles');

@@ -2,7 +2,7 @@
     <MyProfileLayout>
         <!-- Loader Overlay -->
         <div v-if="isLoading" class="fixed inset-0 z-50 flex items-center justify-center bg-white bg-opacity-70">
-            <div class="loader h-12 w-12 border-4 border-gray-300 border-t-blue-600 rounded-full animate-spin"></div>
+            <img :src="loaderVariant" alt="Loading..." class="h-20 w-20" />
         </div>
         <div class="">
             <p
@@ -107,7 +107,7 @@
                             </td>
                             <td class="px-4 py-2 text-sm whitespace-nowrap">
                                 <select v-model="booking.booking_status" @change="updateStatus(booking)"
-                                    class="w-full py-2 border rounded" :class="{
+                                    class="w-full py-2 px-2 border rounded" :class="{
                                         'text-green-600 font-medium': booking.booking_status === 'completed' || booking.booking_status === 'confirmed',
                                         'text-yellow-500 font-medium': booking.booking_status === 'pending',
                                         'text-red-500 font-medium': booking.booking_status === 'cancelled'
@@ -216,6 +216,7 @@ import axios from 'axios';
 import Pagination from '@/Components/ReusableComponents/Pagination.vue';
 import { useToast } from 'vue-toastification';
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/Components/ui/dialog';
+import loaderVariant from '../../../../assets/loader-variant.svg';
 
 const { appContext } = getCurrentInstance();
 const _t = appContext.config.globalProperties._t;
@@ -362,30 +363,4 @@ watch(searchQuery, (newQuery) => {
 });
 </script>
 
-<style scoped>
-.loader {
-    border-top-color: #3490dc;
-    animation: spin 1s linear infinite;
-}
 
-@keyframes spin {
-    to {
-        transform: rotate(360deg);
-    }
-}
-
-@media screen and (max-width:768px) {
-    th {
-        font-size: 0.75rem;
-    }
-
-    td {
-        font-size: 0.75rem;
-        text-wrap-mode: nowrap;
-    }
-
-    table select {
-        width: 100px;
-    }
-}
-</style>
