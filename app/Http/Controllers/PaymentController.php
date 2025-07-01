@@ -145,9 +145,24 @@ class PaymentController extends Controller
                 'amount' => $bookingData['amount_paid'],
                 'payment_status' => 'pending',
             ]);
+            
+            // Clear session storage
+            session()->forget(['pending_booking_id', 'driverInfo', 'rentalDates', 'selectionData']);
+            LaravelSession::forget('can_access_booking_page'); 
+
+            // Add JavaScript to clear browser sessionStorage
+            $clearSessionScript = "
+                <script>
+                    if(window.sessionStorage) {
+                        window.sessionStorage.clear();
+                        console.log('Session storage cleared');
+                    }
+                </script>
+            ";
 
             return response()->json([
                 'sessionId' => $session->id,
+                'clearSessionScript' => $clearSessionScript,
             ]);
 
         } catch (\Stripe\Exception\ApiErrorException $e) {

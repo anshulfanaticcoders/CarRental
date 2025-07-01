@@ -10,7 +10,8 @@
                 {{ _t('vendorprofilepages', 'booking_details_header') }}</p>
 
             <div class="mb-4">
-                <input type="text" v-model="searchQuery" :placeholder="_t('vendorprofilepages', 'search_bookings_placeholder')"
+                <input type="text" v-model="searchQuery"
+                    :placeholder="_t('vendorprofilepages', 'search_bookings_placeholder')"
                     class="px-4 py-2 border border-gray-300 rounded-md w-full" />
             </div>
 
@@ -20,31 +21,42 @@
                         <tr>
                             <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                                 {{ _t('vendorprofilepages', 'table_id_header') }}</th>
-                            <th class="px-4 py-2 text-left text-sm font-medium tracking-wider whitespace-nowrap">{{ _t('vendorprofilepages', 'table_booking_id_header') }}
-                                </th>
+                            <th class="px-4 py-2 text-left text-sm font-medium tracking-wider whitespace-nowrap">{{
+                                _t('vendorprofilepages', 'table_booking_id_header') }}
+                            </th>
                             <th class="px-4 py-2 text-left text-sm font-medium tracking-wider whitespace-nowrap">
                                 {{ _t('vendorprofilepages', 'table_customer_name_header') }}</th>
-                            <th class="px-4 py-2 text-left text-sm font-medium tracking-wider whitespace-nowrap">{{ _t('vendorprofilepages', 'table_vehicle_header') }}
+                            <th class="px-4 py-2 text-left text-sm font-medium tracking-wider whitespace-nowrap">{{
+                                _t('vendorprofilepages', 'table_vehicle_header') }}
                             </th>
-                            <th class="px-4 py-2 text-left text-sm font-medium tracking-wider whitespace-nowrap">{{ _t('vendorprofilepages', 'table_booking_date_header') }}
-                                </th>
-                            <th class="px-4 py-2 text-left text-sm font-medium tracking-wider whitespace-nowrap">{{ _t('vendorprofilepages', 'table_return_date_header') }}
-                                </th>
-                            <th class="px-4 py-2 text-left text-sm font-medium tracking-wider whitespace-nowrap">{{ _t('vendorprofilepages', 'table_booking_location_header') }}
-                                </th>
-                            <th class="px-4 py-2 text-left text-sm font-medium tracking-wider whitespace-nowrap">{{ _t('vendorprofilepages', 'table_total_payment_header') }}
-                                </th>
-                            <th class="px-4 py-2 text-left text-sm font-medium tracking-wider whitespace-nowrap">{{ _t('vendorprofilepages', 'table_amount_paid_header') }}
-                                </th>
-                            <th class="px-4 py-2 text-left text-sm font-medium tracking-wider whitespace-nowrap">{{ _t('vendorprofilepages', 'table_amount_pending_header') }}
-                                </th>
-                            <th class="px-4 py-2 text-left text-sm font-medium tracking-wider whitespace-nowrap">{{ _t('vendorprofilepages', 'table_payment_status_header') }}
-                                </th>
-                            <th class="px-4 py-2 text-left text-sm font-medium tracking-wider whitespace-nowrap">{{ _t('vendorprofilepages', 'table_booking_status_header') }}
-                                </th>
+                            <th class="px-4 py-2 text-left text-sm font-medium tracking-wider whitespace-nowrap">{{
+                                _t('vendorprofilepages', 'table_booking_date_header') }}
+                            </th>
+                            <th class="px-4 py-2 text-left text-sm font-medium tracking-wider whitespace-nowrap">{{
+                                _t('vendorprofilepages', 'table_return_date_header') }}
+                            </th>
+                            <th class="px-4 py-2 text-left text-sm font-medium tracking-wider whitespace-nowrap">{{
+                                _t('vendorprofilepages', 'table_booking_location_header') }}
+                            </th>
+                            <th class="px-4 py-2 text-left text-sm font-medium tracking-wider whitespace-nowrap">{{
+                                _t('vendorprofilepages', 'table_total_payment_header') }}
+                            </th>
+                            <th class="px-4 py-2 text-left text-sm font-medium tracking-wider whitespace-nowrap">{{
+                                _t('vendorprofilepages', 'table_amount_paid_header') }}
+                            </th>
+                            <th class="px-4 py-2 text-left text-sm font-medium tracking-wider whitespace-nowrap">{{
+                                _t('vendorprofilepages', 'table_amount_pending_header') }}
+                            </th>
+                            <th class="px-4 py-2 text-left text-sm font-medium tracking-wider whitespace-nowrap">{{
+                                _t('vendorprofilepages', 'table_payment_status_header') }}
+                            </th>
+                            <th class="px-4 py-2 text-left text-sm font-medium tracking-wider whitespace-nowrap">{{
+                                _t('vendorprofilepages', 'table_booking_status_header') }}
+                            </th>
                             <th class="px-4 py-2 text-left text-sm font-medium tracking-wider whitespace-nowrap">
                                 {{ _t('vendorprofilepages', 'table_cancellation_reason_header') }}</th>
-                            <th class="px-4 py-2 text-left text-sm font-medium tracking-wider whitespace-nowrap">{{ _t('vendorprofilepages', 'actions_table_header') }}
+                            <th class="px-4 py-2 text-left text-sm font-medium tracking-wider whitespace-nowrap">{{
+                                _t('vendorprofilepages', 'actions_table_header') }}
                             </th>
                         </tr>
                     </thead>
@@ -68,13 +80,20 @@
                             <td class="px-4 py-2 text-sm text-gray-700 whitespace-nowrap">{{
                                 formatDate(booking.return_date) }}</td>
                             <td class="px-4 py-2 text-sm text-gray-700 whitespace-nowrap">{{
-                               booking.pickup_location}}</td>
+                                booking.pickup_location }}</td>
                             <td class="px-4 py-2 text-sm text-gray-700 whitespace-nowrap">{{
-                                booking.vendor_profile?.currency }} {{ booking.total_amount || _t('vendorprofilepages', 'not_applicable_text') }}</td>
+                                booking.vendor_profile?.currency }} {{ booking.total_amount || _t('vendorprofilepages',
+                                'not_applicable_text') }}</td>
                             <td class="px-4 py-2 text-sm text-green-600 whitespace-nowrap font-medium">{{
-                                booking.vendor_profile?.currency }} {{ booking.amount_paid || _t('vendorprofilepages', 'not_applicable_text') }}</td>
+                                booking.payments[0]?.payment_status === 'pending' ? 'Nil' :
+                                    `${booking.vendor_profile?.currency} ${booking.amount_paid || _t('vendorprofilepages',
+                                'not_applicable_text')}`
+                                }}</td>
                             <td class="px-4 py-2 text-sm text-yellow-600 whitespace-nowrap font-medium">{{
-                                booking.vendor_profile?.currency }} {{ booking.pending_amount || _t('vendorprofilepages', 'not_applicable_text') }}</td>
+                                booking.payments[0]?.payment_status === 'pending' ? 'Nil' :
+                                    `${booking.vendor_profile?.currency} ${booking.pending_amount ||
+                                _t('vendorprofilepages', 'not_applicable_text')}`
+                                }}</td>
                             <td class="px-4 py-2 text-sm capitalize">
                                 <span :class="{
                                     'text-green-600 font-semibold': booking.payments[0]?.payment_status === 'succeeded',
@@ -82,7 +101,8 @@
                                     'text-red-500 font-semibold': booking.payments[0]?.payment_status === 'failed',
                                     'text-gray-500 font-semibold': !booking.payments.length
                                 }">
-                                    {{ booking.payments[0]?.payment_status || _t('vendorprofilepages', 'text_no_payment') }}
+                                    {{ booking.payments[0]?.payment_status || _t('vendorprofilepages',
+                                    'text_no_payment') }}
                                 </span>
                             </td>
                             <td class="px-4 py-2 text-sm whitespace-nowrap">
@@ -92,10 +112,14 @@
                                         'text-yellow-500 font-medium': booking.booking_status === 'pending',
                                         'text-red-500 font-medium': booking.booking_status === 'cancelled'
                                     }">
-                                    <option value="pending" class="text-yellow-500 font-medium">{{ _t('vendorprofilepages', 'booking_status_pending') }}</option>
-                                    <option value="confirmed" class="text-green-600 font-medium">{{ _t('vendorprofilepages', 'booking_status_confirmed') }}</option>
-                                    <option value="completed" class="text-green-600 font-medium">{{ _t('vendorprofilepages', 'booking_status_completed') }}</option>
-                                    <option value="cancelled" class="text-red-500 font-medium">{{ _t('vendorprofilepages', 'booking_status_cancelled') }}</option>
+                                    <option value="pending" class="text-yellow-500 font-medium">{{
+                                        _t('vendorprofilepages', 'booking_status_pending') }}</option>
+                                    <option value="confirmed" class="text-green-600 font-medium">{{
+                                        _t('vendorprofilepages', 'booking_status_confirmed') }}</option>
+                                    <option value="completed" class="text-green-600 font-medium">{{
+                                        _t('vendorprofilepages', 'booking_status_completed') }}</option>
+                                    <option value="cancelled" class="text-red-500 font-medium">{{
+                                        _t('vendorprofilepages', 'booking_status_cancelled') }}</option>
                                 </select>
                             </td>
                             <td class="px-4 py-2 text-sm">
@@ -136,54 +160,51 @@
             </div>
         </div>
 
-       <!-- Customer Documents Dialog -->
-      <Dialog v-model:open="isCustomerDocumentsDialogOpen">
-        <DialogContent class="max-w-[700px]">
-          <DialogHeader>
-            <DialogTitle>{{ _t('vendorprofilepages', 'customer_documents_dialog_title') }}</DialogTitle>
-          </DialogHeader>
-          <div v-if="customerDocument" class="grid grid-cols-2 gap-4">
-            <div v-for="field in documentFields" :key="field.key" class="mb-4 flex flex-col gap-2 items-center">
-              <p class="font-semibold">{{ field.label }}</p>
-              <img
-                v-if="customerDocument[field.key]"
-                :src="customerDocument[field.key]"
-                :alt="field.label"
-                class="h-20 w-[150px] object-cover mb-2 cursor-pointer"
-                @click="openImageModal(customerDocument[field.key])"
-              />
-              <span v-else class="text-gray-500">{{ _t('vendorprofilepages', 'not_uploaded_text') }}</span>
-              <p
-                class="text-sm capitalize"
-                :class="{
-                  'text-yellow-600': customerDocument.verification_status === 'pending',
-                  'text-green-600': customerDocument.verification_status === 'verified',
-                  'text-red-600': customerDocument.verification_status === 'rejected',
-                }"
-              >
-                {{ _t('vendorprofilepages', 'status_table_header') }}: {{ customerDocument.verification_status }}
-              </p>
-              <p class="text-sm text-gray-600">{{ _t('vendorprofilepages', 'doc_uploaded_on_prefix') }} {{ formatDate(customerDocument.created_at) }}</p>
-            </div>
-          </div>
-          <div v-else class="text-center py-6">
-            <span class="text-gray-500">{{ _t('vendorprofilepages', 'no_documents_available_text') }}</span>
-          </div>
-          <DialogFooter>
-            <Button @click="isCustomerDocumentsDialogOpen = false">{{ _t('vendorprofilepages', 'button_close') }}</Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+        <!-- Customer Documents Dialog -->
+        <Dialog v-model:open="isCustomerDocumentsDialogOpen">
+            <DialogContent class="max-w-[700px]">
+                <DialogHeader>
+                    <DialogTitle>{{ _t('vendorprofilepages', 'customer_documents_dialog_title') }}</DialogTitle>
+                </DialogHeader>
+                <div v-if="customerDocument" class="grid grid-cols-2 gap-4">
+                    <div v-for="field in documentFields" :key="field.key" class="mb-4 flex flex-col gap-2 items-center">
+                        <p class="font-semibold">{{ field.label }}</p>
+                        <img v-if="customerDocument[field.key]" :src="customerDocument[field.key]" :alt="field.label"
+                            class="h-20 w-[150px] object-cover mb-2 cursor-pointer"
+                            @click="openImageModal(customerDocument[field.key])" />
+                        <span v-else class="text-gray-500">{{ _t('vendorprofilepages', 'not_uploaded_text') }}</span>
+                        <p class="text-sm capitalize" :class="{
+                            'text-yellow-600': customerDocument.verification_status === 'pending',
+                            'text-green-600': customerDocument.verification_status === 'verified',
+                            'text-red-600': customerDocument.verification_status === 'rejected',
+                        }">
+                            {{ _t('vendorprofilepages', 'status_table_header') }}: {{
+                            customerDocument.verification_status }}
+                        </p>
+                        <p class="text-sm text-gray-600">{{ _t('vendorprofilepages', 'doc_uploaded_on_prefix') }} {{
+                            formatDate(customerDocument.created_at) }}</p>
+                    </div>
+                </div>
+                <div v-else class="text-center py-6">
+                    <span class="text-gray-500">{{ _t('vendorprofilepages', 'no_documents_available_text') }}</span>
+                </div>
+                <DialogFooter>
+                    <Button @click="isCustomerDocumentsDialogOpen = false">{{ _t('vendorprofilepages', 'button_close')
+                        }}</Button>
+                </DialogFooter>
+            </DialogContent>
+        </Dialog>
 
-      <!-- Image Modal -->
-      <Dialog v-model:open="isImageModalOpen">
-        <DialogContent class="sm:max-w-[425px]">
-          <img :src="selectedImage" :alt="_t('vendorprofilepages', 'document_preview_dialog_title')" class="w-full h-auto" />
-          <DialogFooter>
-            <Button @click="isImageModalOpen = false">{{ _t('vendorprofilepages', 'button_close') }}</Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+        <!-- Image Modal -->
+        <Dialog v-model:open="isImageModalOpen">
+            <DialogContent class="sm:max-w-[425px]">
+                <img :src="selectedImage" :alt="_t('vendorprofilepages', 'document_preview_dialog_title')"
+                    class="w-full h-auto" />
+                <DialogFooter>
+                    <Button @click="isImageModalOpen = false">{{ _t('vendorprofilepages', 'button_close') }}</Button>
+                </DialogFooter>
+            </DialogContent>
+        </Dialog>
     </MyProfileLayout>
 </template>
 
@@ -192,7 +213,7 @@ import { ref, computed, watch, getCurrentInstance } from 'vue';
 import MyProfileLayout from '@/Layouts/MyProfileLayout.vue';
 import { router, usePage } from '@inertiajs/vue3';
 import axios from 'axios';
- import Pagination from '@/Components/ReusableComponents/Pagination.vue';
+import Pagination from '@/Components/ReusableComponents/Pagination.vue';
 import { useToast } from 'vue-toastification';
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/Components/ui/dialog';
 
@@ -208,10 +229,10 @@ const searchQuery = ref('');
 const isLoading = ref(false);
 
 const documentFields = computed(() => [
-  { key: 'driving_license_front', label: _t('vendorprofilepages', 'doc_label_driving_license_front') },
-  { key: 'driving_license_back', label: _t('vendorprofilepages', 'doc_label_driving_license_back') },
-  { key: 'passport_front', label: _t('vendorprofilepages', 'passport_front_table_header') },
-  { key: 'passport_back', label: _t('vendorprofilepages', 'passport_back_table_header') },
+    { key: 'driving_license_front', label: _t('vendorprofilepages', 'doc_label_driving_license_front') },
+    { key: 'driving_license_back', label: _t('vendorprofilepages', 'doc_label_driving_license_back') },
+    { key: 'passport_front', label: _t('vendorprofilepages', 'passport_front_table_header') },
+    { key: 'passport_back', label: _t('vendorprofilepages', 'passport_back_table_header') },
 ]);
 
 
@@ -220,25 +241,25 @@ const goToDamageProtection = (bookingId) => {
 };
 
 const openCustomerDocumentsDialog = async (customerId) => {
-  try {
-    isLoading.value = true;
-    const response = await axios.get(route('vendor.customer-documents.index', { locale: usePage().props.locale, customer: customerId }));
-    console.log(response.data); // Log the response for debugging
-    customerDocument.value = response.data.document || null;
-    isCustomerDocumentsDialogOpen.value = true;
-  } catch (error) {
-    console.error('Error fetching customer documents:', error);
-    toast.error('Failed to fetch customer documents. Please try again.');
-  } finally {
-    isLoading.value = false;
-  }
+    try {
+        isLoading.value = true;
+        const response = await axios.get(route('vendor.customer-documents.index', { locale: usePage().props.locale, customer: customerId }));
+        console.log(response.data); // Log the response for debugging
+        customerDocument.value = response.data.document || null;
+        isCustomerDocumentsDialogOpen.value = true;
+    } catch (error) {
+        console.error('Error fetching customer documents:', error);
+        toast.error('Failed to fetch customer documents. Please try again.');
+    } finally {
+        isLoading.value = false;
+    }
 };
 
 const openImageModal = (imageUrl) => {
-  if (imageUrl) {
-    selectedImage.value = imageUrl;
-    isImageModalOpen.value = true;
-  }
+    if (imageUrl) {
+        selectedImage.value = imageUrl;
+        isImageModalOpen.value = true;
+    }
 };
 
 const props = defineProps({
