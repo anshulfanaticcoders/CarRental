@@ -14,8 +14,8 @@ return new class extends Migration {
             $table->unsignedBigInteger('vehicle_id');
             $table->dateTime('pickup_date');
             $table->dateTime('return_date');
-            $table->string('pickup_location');
-            $table->string('return_location');
+            $table->string('pickup_location')->nullable();
+            $table->string('return_location')->nullable();
             $table->string('pickup_time');
             $table->string('return_time');
             $table->string('plan')->nullable();

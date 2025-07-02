@@ -75,6 +75,12 @@ class VendorBookingController extends Controller
 
         $booking->update($validated);
 
+        if ($request->booking_status === 'cancelled') {
+            $booking->pickup_date = null;
+            $booking->return_date = null;
+            $booking->save();
+        }
+
         if ($request->booking_status === 'confirmed') {
             $vehicle = Vehicle::find($booking->vehicle_id);
             $vehicle->update(['status' => 'rented']);

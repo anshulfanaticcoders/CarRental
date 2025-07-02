@@ -454,15 +454,10 @@ public function cancelBooking(Request $request)
     // Update booking status and save cancellation reason
     $booking->booking_status = 'cancelled';
     $booking->cancellation_reason = $validatedData['cancellation_reason'];
-    $booking->save();
-    
-    // Update vehicle status to available
-    $vehicle = Vehicle::find($booking->vehicle_id);
-    if ($vehicle) {
-        $vehicle->update(['status' => 'available']);
-    }
 
-    // Notify Admin
+    $vehicle = Vehicle::find($booking->vehicle_id);
+
+        // Send notifications
     $adminEmail = env('VITE_ADMIN_EMAIL', 'default@admin.com');
     $admin = User::where('email', $adminEmail)->first();
     if ($admin) {
@@ -482,6 +477,15 @@ public function cancelBooking(Request $request)
         if ($companyUser) {
             $companyUser->notify(new BookingCancelledNotification($booking, $customer, $vehicle, 'company'));
         }
+    }
+
+    $booking->pickup_date = null;
+    $booking->return_date = null;
+    $booking->save();
+    
+    // Update vehicle status to available
+    if ($vehicle) {
+        $vehicle->update(['status' => 'available']);
     }
     
     return redirect()->back()->with('success', 'Booking cancelled successfully');

@@ -326,14 +326,14 @@ class VehicleController extends Controller
             'vehicle' => $vehicle,
             'booked_dates' => $vehicle->bookings->map(function ($booking) {
                 return [
-                    'pickup_date' => $booking->pickup_date->format('Y-m-d'),
-                    'return_date' => $booking->return_date->format('Y-m-d'),
+                    'pickup_date' => $booking->pickup_date ? $booking->pickup_date->format('Y-m-d') : null,
+                    'return_date' => $booking->return_date ? $booking->return_date->format('Y-m-d') : null,
                 ];
             }),
             'blocked_dates' => $vehicle->blockings->map(function ($blocking) {
                 return [
-                    'blocking_start_date' => $blocking->blocking_start_date->format('Y-m-d'),
-                    'blocking_end_date' => $blocking->blocking_end_date->format('Y-m-d'),
+                    'blocking_start_date' => $blocking->blocking_start_date ? $blocking->blocking_start_date->format('Y-m-d') : null,
+                    'blocking_end_date' => $blocking->blocking_end_date ? $blocking->blocking_end_date->format('Y-m-d') : null,
                 ];
             }),
             'schema' => SchemaBuilder::singleVehicle($vehicle), // Add vehicle schema

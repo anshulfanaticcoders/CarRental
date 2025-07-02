@@ -280,6 +280,9 @@ const handlePageChange = (page) => {
 };
 
 const formatDate = (dateStr) => {
+    if (!dateStr) {
+        return 'Nil';
+    }
     const date = new Date(dateStr);
     return `${String(date.getMonth() + 1).padStart(2, '0')}/${String(date.getDate()).padStart(2, '0')}/${date.getFullYear()}`;
 };
@@ -362,5 +365,3 @@ watch(searchQuery, (newQuery) => {
     );
 });
 </script>
-
-
