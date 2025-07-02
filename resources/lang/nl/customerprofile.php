@@ -14,6 +14,7 @@ return [
         'confirmed' => 'Bevestigd',
         'pending' => 'In afwachting',
         'completed' => 'Voltooid',
+        'cancelled' => 'Geannuleerd',
         // Customer Other Links
         'inbox' => 'Inbox',
         'favorites' => 'Favorieten',

@@ -14,6 +14,7 @@ return [
         'confirmed' => 'Confirmed',
         'pending' => 'Pending',
         'completed' => 'Completed',
+        'cancelled' => 'Cancelled',
         // Customer Other Links
         'inbox' => 'Inbox',
         'favorites' => 'Favorites',

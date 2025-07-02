@@ -42,4 +42,9 @@ return [
         'review_submitted_text' => 'Beoordeling ingediend',
         'dialog_title_write_review' => 'Een beoordeling schrijven',
         'toast_review_submitted_success' => 'Beoordeling succesvol ingediend!',
+
+        'cancelled_bookings_header' => 'Geannuleerde boekingen',
+        'booking_status_cancelled' => 'Geannuleerd',
+
+
 ];

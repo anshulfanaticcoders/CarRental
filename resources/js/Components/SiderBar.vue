@@ -105,6 +105,7 @@ const menus = [
       { name: _t('customerprofile','confirmed'), path: route('profile.bookings.confirmed', { locale: usePage().props.locale }) },
       { name: _t('customerprofile','pending'), path: route('profile.bookings.pending', { locale: usePage().props.locale }) },
       { name: _t('customerprofile','completed'), path: route('profile.bookings.completed', { locale: usePage().props.locale }) },
+      { name: _t('customerprofile','cancelled'), path: route('profile.bookings.cancelled', { locale: usePage().props.locale }) },
     ],
   },
 ];

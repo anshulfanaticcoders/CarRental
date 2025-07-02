@@ -404,6 +404,9 @@ Route::group([
         Route::post('/reviews', [ReviewController::class, 'store'])->name('reviews.store');
         Route::get('/profile/reviews', [ReviewController::class, 'userReviews'])->name('profile.reviews');
 
+        // Booking confirmation routes
+        Route::get('/profile/bookings/cancelled', [BookingController::class, 'getCancelledBookings'])->name('profile.bookings.cancelled');
+
         // Apply for vendor
         Route::post('/vendor/store', [VendorController::class, 'store'])->name('vendor.store');
         Route::get('/vendor/register', [VendorController::class, 'create'])->name('vendor.register');

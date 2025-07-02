@@ -42,4 +42,8 @@ return [
     'review_submitted_text' => 'Review Submitted',
     'dialog_title_write_review' => 'Write a Review',
     'toast_review_submitted_success' => 'Review submitted successfully!',
+
+     // CancelledBookings.vue
+    'cancelled_bookings_header' => 'Cancelled Bookings',
+    'booking_status_cancelled' => 'Cancelled',
 ];

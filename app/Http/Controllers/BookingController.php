@@ -523,4 +523,22 @@ public function getCustomerPaymentHistory(Request $request)
         ]
     ]);
 }
+
+    public function getCancelledBookings(Request $request)
+    {
+        $userId = Auth::id();
+        $customer = Customer::where('user_id', $userId)->first();
+
+        $cancelledBookings = $customer ?
+            Booking::where('customer_id', $customer->id)
+                ->where('booking_status', 'cancelled')
+                ->with('vehicle.images', 'vehicle.category', 'payments', 'vehicle.vendorProfile')
+                ->orderBy('created_at', 'desc')
+                ->paginate(3) :
+            collect();
+
+        return Inertia::render('Profile/Bookings/CancelledBookings', [
+            'bookings' => $cancelledBookings,
+        ]);
+    }
 }

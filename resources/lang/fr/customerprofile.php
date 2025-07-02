@@ -14,6 +14,7 @@ return [
         'confirmed' => 'Confirmé',
         'pending' => 'En attente',
         'completed' => 'Terminé',
+        'cancelled' => 'Annulé',
         // Customer Other Links
         'inbox' => 'Boîte de réception',
         'favorites' => 'Favoris',

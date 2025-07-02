@@ -43,4 +43,10 @@ return [
         'review_submitted_text' => 'Avis soumis',
         'dialog_title_write_review' => 'Écrire un avis',
         'toast_review_submitted_success' => 'Avis soumis avec succès !',
+
+        // CancelledBookings.vue
+       'cancelled_bookings_header' => 'Réservations annulées',
+       'booking_status_cancelled' => 'Annulée',
+
+
 ];
