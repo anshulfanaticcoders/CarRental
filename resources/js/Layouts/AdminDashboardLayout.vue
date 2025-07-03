@@ -1,7 +1,15 @@
 <script setup>
 import AdminSiderBar from '@/Components/AdminSiderBar.vue';
-import { Head } from '@inertiajs/vue3';
-import { computed} from 'vue';
+import { Head, Link } from '@inertiajs/vue3';
+import { computed, ref, onMounted } from 'vue';
+import axios from 'axios';
+import { ChevronsUpDown } from 'lucide-vue-next';
+
+const showDropdown = ref(false);
+
+const toggleDropdown = () => {
+    showDropdown.value = !showDropdown.value;
+};
 
 
 
@@ -42,8 +50,24 @@ const routeTitles = {
   '/admin/seo-meta/create':'Create SEO Metas\'s',
   '/radiuses':'Radius Management',
   '/admin/header-footer-scripts':'Header and Footer Scripts',
-  
+  '/admin/settings/profile':'Profile Setting',
+
 }
+
+const adminProfile = ref({
+    avatar: null,
+    company_name: null,
+    email: null,
+});
+
+onMounted(async () => {
+    try {
+        const response = await axios.get('/api/admin/profile');
+        adminProfile.value = response.data;
+    } catch (error) {
+        console.error('Error fetching admin profile:', error);
+    }
+});
 
 
 // Get current title based on route
@@ -65,9 +89,25 @@ const currentPageTitle = computed(() => {
         <!-- Content  -->
           <div class="column w-full flex flex-col" >
             <div class="py-5 px-5 text-white flex justify-between border-b bg-customDarkBlackColor">
-                <p>{{ currentPageTitle }}</p>
+                <p class="leading-8">{{ currentPageTitle }}</p>
+                <div class="relative" @click="toggleDropdown">
+                    <div class="flex items-center cursor-pointer">
+                        <img :src="adminProfile.avatar" alt="Admin Avatar" class="w-8 h-8 rounded-full mr-2">
+                        <div>
+                            <p class="text-sm">{{ adminProfile.company_name }}</p>
+                            <p class="text-xs">{{ adminProfile.email }}</p>
+                        </div>
+                        <div class="ml-2">
+                            <ChevronsUpDown />
+                        </div>
+                    </div>
+                    <div v-if="showDropdown" class="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg z-10">
+                        <Link href="/admin/settings/profile" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">Profile Setting</Link>
+                        <Link :href="route('admin.logout')" method="post" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">Logout</Link>
+                    </div>
+                </div>
             </div>
-             <div class="h-[92vh] overflow-y-auto">
+             <div class="h-[91vh] overflow-y-auto">
                <slot/>
              </div>
          </div>

@@ -85,3 +85,5 @@ Route::get('/radius', [RadiusApiController::class, 'getRadius']);
 
 // SEO Meta Route
 Route::get('/seo-meta', [SeoMetaController::class, 'getMetaBySlug'])->name('api.seo-meta.get');
+
+Route::get('/admin/profile', [App\Http\Controllers\AdminProfileController::class, 'getAdminProfile']);

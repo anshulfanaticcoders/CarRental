@@ -66,6 +66,7 @@ use Inertia\Inertia;
 use App\Http\Controllers\UserDocumentController;
 use App\Http\Controllers\VehicleController;
 use App\Http\Controllers\GreenMotionController;
+use App\Http\Controllers\AdminProfileController; // Import the AdminProfileController
 
 /*
 |--------------------------------------------------------------------------
@@ -209,6 +210,10 @@ Route::middleware(['auth', 'role:admin'])->group(function () {
 
     // Schema Management Routes
     Route::resource('admin/schemas', SchemaController::class)->names('admin.schemas');
+
+    // Admin Profile Settings
+    Route::get('/admin/settings/profile', [AdminProfileController::class, 'index'])->name('admin.settings.profile');
+    Route::post('/admin/settings/profile', [AdminProfileController::class, 'update'])->name('admin.settings.profile');
 });
 
 // Locale-prefixed routes (for customer and vendor)

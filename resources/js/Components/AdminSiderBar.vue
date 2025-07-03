@@ -2,6 +2,7 @@
 
 import axios from "axios";
 import { Link,router } from '@inertiajs/vue3';
+import { usePage } from '@inertiajs/vue3';
 import logoutIcon from '../../assets/logoutIcon.svg';
 import {
   Collapsible,
@@ -85,6 +86,10 @@ const data = {
         {
           title: 'Overview',
           url: '/admin-dashboard',
+        },
+        {
+          title: 'Profile Setting',
+          url: '/admin/settings/profile',
         },
       ],
     },
