@@ -1,61 +1,128 @@
 <script setup>
-import { Head, Link, useForm, usePage, router } from '@inertiajs/vue3';
-import AdminDashboardLayout from '@/Layouts/AdminDashboardLayout.vue'; // Assuming an AdminDashboardLayout exists
-import { defineProps, ref, computed } from 'vue';
+import { Head, useForm, usePage, router } from '@inertiajs/vue3';
+import AdminDashboardLayout from '@/Layouts/AdminDashboardLayout.vue';
 import Pagination from '@/Components/ReusableComponents/Pagination.vue';
-import { Dialog, DialogContent, DialogFooter } from '@/Components/ui/dialog';
+import { Dialog, DialogContent } from '@/Components/ui/dialog';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from '@/Components/ui/alert-dialog';
+import { Button } from '@/Components/ui/button';
+import { useToast } from '@/Components/ui/toast/use-toast';
+import { Toaster } from '@/Components/ui/toast';
+import { ref } from 'vue';
 
 const props = defineProps({
-  mediaItems: Object, // Paginated media items
+  mediaItems: Object,
   uploadDisk: String,
   uploadDirectory: String,
   errors: Object,
 });
 
 const { flash } = usePage().props;
+const { toast } = useToast();
 
 const uploadForm = useForm({
-  files: [], // Changed to 'files' and initialized as an array
+  files: [],
 });
 
 const fileInput = ref(null);
 
 const handleFileChange = (event) => {
-  uploadForm.files = Array.from(event.target.files); // Convert FileList to Array
+  uploadForm.files = Array.from(event.target.files);
 };
 
 const submitUpload = () => {
   if (uploadForm.files.length === 0) {
-    alert('Please select one or more files to upload.');
+    toast({
+      title: 'No Files Selected',
+      description: 'Please select one or more files to upload.',
+      variant: 'destructive',
+    });
     return;
   }
   uploadForm.post(route('admin.media.store'), {
     preserveScroll: true,
     onSuccess: () => {
-      uploadForm.reset('files'); // Reset only the files
+      uploadForm.reset('files');
       if (fileInput.value) {
-        fileInput.value.value = ''; // Clear the file input element
+        fileInput.value.value = '';
       }
+      toast({
+        title: 'Upload Successful',
+        description: 'Media files have been uploaded successfully.',
+        class: 'bg-customDarkBlackColor text-white border-none p-4 rounded-md',
+      });
     },
-    // onError will populate props.errors for the form (e.g., uploadForm.errors.files)
+    onError: (errors) => {
+      toast({
+        title: 'Upload Failed',
+        description: errors.files || 'An error occurred while uploading the files.',
+        variant: 'destructive',
+      });
+    },
   });
 };
 
-const deleteMedia = (mediaId) => {
-  if (confirm('Are you sure you want to delete this media file? This action cannot be undone.')) {
-    router.delete(route('admin.media.destroy', mediaId), {
+const isDeleteDialogOpen = ref(false);
+const mediaToDelete = ref(null);
+
+const openDeleteDialog = (mediaId) => {
+  mediaToDelete.value = mediaId;
+  isDeleteDialogOpen.value = true;
+};
+
+const deleteMedia = () => {
+  if (mediaToDelete.value) {
+    router.delete(route('admin.media.destroy', mediaToDelete.value), {
       preserveScroll: true,
+      onSuccess: () => {
+        isDeleteDialogOpen.value = false;
+        mediaToDelete.value = null;
+        toast({
+          title: 'Media Deleted',
+          description: 'The media file has been successfully deleted.',
+          class: 'bg-customDarkBlackColor text-white border-none p-4 rounded-md',
+        });
+      },
+      onError: (errors) => {
+        isDeleteDialogOpen.value = false;
+        mediaToDelete.value = null;
+        toast({
+          title: 'Deletion Failed',
+          description: errors.message || 'An error occurred while deleting the media file.',
+          variant: 'destructive',
+        });
+      },
     });
   }
+};
+
+const cancelDelete = () => {
+  isDeleteDialogOpen.value = false;
+  mediaToDelete.value = null;
 };
 
 const copyToClipboard = async (text) => {
   try {
     await navigator.clipboard.writeText(text);
-    alert('URL copied to clipboard!'); // Simple feedback
+    toast({
+      title: 'URL Copied',
+      description: 'The media URL has been copied to the clipboard.',
+      class: 'bg-customDarkBlackColor text-white border-none p-4 rounded-md',
+    });
   } catch (err) {
-    alert('Failed to copy URL.');
-    console.error('Failed to copy: ', err);
+    toast({
+      title: 'Copy Failed',
+      description: 'Failed to copy the URL to the clipboard.',
+      variant: 'destructive',
+    });
   }
 };
 
@@ -63,12 +130,11 @@ const getThumbnail = (media) => {
   if (media.mime_type && media.mime_type.startsWith('image/')) {
     return media.url;
   }
-  // Return a generic icon for non-image files or if URL is missing
-  return 'https://via.placeholder.com/100?text=No+Preview'; // Placeholder
+  return 'https://via.placeholder.com/100?text=No+Preview';
 };
 
 const handlePageChange = (page) => {
-  router.get(route('admin.media.index', { page }), {}, { // Assumes 'admin.media.index' named route
+  router.get(route('admin.media.index', { page }), {}, {
     preserveState: true,
     preserveScroll: true,
     replace: true,
@@ -79,13 +145,10 @@ const isLightboxOpen = ref(false);
 const currentLightboxImage = ref({ src: '', alt: '' });
 
 const openLightbox = (item) => {
-  // Ensure we only try to lightbox images and that item.url is present
   if (item.mime_type && item.mime_type.startsWith('image/') && item.url) {
     currentLightboxImage.value = { src: item.url, alt: item.title || item.filename };
     isLightboxOpen.value = true;
   }
-  // Optionally, you could add an alert here if a non-image or item without URL is clicked
-  // else { alert('This item cannot be previewed in a lightbox.'); }
 };
 
 const cancelUploadSelection = () => {
@@ -93,10 +156,6 @@ const cancelUploadSelection = () => {
   if (fileInput.value) {
     fileInput.value.value = '';
   }
-  // Optionally clear errors if you have specific file validation errors shown
-  // if (uploadForm.errors.files) {
-  //   uploadForm.clearErrors('files');
-  // }
 };
 </script>
 
@@ -112,7 +171,6 @@ const cancelUploadSelection = () => {
       <div class="mx-auto">
         <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg">
           <div class="p-6 bg-white border-b border-gray-200">
-
             <div v-if="flash && flash.success" class="mb-4 p-4 bg-green-100 text-green-700 border border-green-300 rounded">
               {{ flash.success }}
             </div>
@@ -120,7 +178,6 @@ const cancelUploadSelection = () => {
               {{ flash.error }}
             </div>
             <div v-if="uploadForm.errors.files" class="mb-4 p-4 bg-red-100 text-red-700 border border-red-300 rounded">
-              <!-- This might show a generic error for the 'files' array, or specific errors if backend returns them indexed -->
               {{ typeof uploadForm.errors.files === 'string' ? uploadForm.errors.files : 'Error with one or more files.' }}
               <ul v-if="typeof uploadForm.errors.files === 'object'">
                 <li v-for="(error, index) in uploadForm.errors.files" :key="index">{{ error }}</li>
@@ -146,9 +203,8 @@ const cancelUploadSelection = () => {
                     Cancel
                   </button>
                 </div>
-                <!-- Title input removed for multiple uploads; backend handles titles from filenames -->
-              </div>
-            </form>
+                </div>
+              </form>
 
             <!-- Media Grid -->
             <h3 class="text-lg font-medium leading-6 text-gray-900 mb-4">Uploaded Media</h3>
@@ -168,10 +224,26 @@ const cancelUploadSelection = () => {
                             class="text-xs bg-gray-200 hover:bg-gray-300 text-gray-700 py-1 px-2 rounded">
                       Copy URL
                     </button>
-                    <button @click="deleteMedia(item.id)"
-                            class="text-xs bg-red-500 hover:bg-red-700 text-white py-1 px-2 rounded">
-                      Delete
-                    </button>
+                    <AlertDialog>
+                      <AlertDialogTrigger as-child>
+                        <Button @click="openDeleteDialog(item.id)"
+                                class="text-xs bg-red-500 hover:bg-red-700 text-white py-1 px-2 rounded">
+                          Delete
+                        </Button>
+                      </AlertDialogTrigger>
+                      <AlertDialogContent>
+                        <AlertDialogHeader>
+                          <AlertDialogTitle>Delete Media File?</AlertDialogTitle>
+                          <AlertDialogDescription>
+                            Are you sure you want to delete this media file? This action cannot be undone.
+                          </AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                          <AlertDialogCancel @click="cancelDelete">Cancel</AlertDialogCancel>
+                          <AlertDialogAction @click="deleteMedia">Delete</AlertDialogAction>
+                        </AlertDialogFooter>
+                      </AlertDialogContent>
+                    </AlertDialog>
                   </div>
                 </div>
               </div>
@@ -202,7 +274,6 @@ const cancelUploadSelection = () => {
                   :alt="currentLightboxImage.alt" 
                   class="w-full h-auto max-h-[85vh] object-contain block rounded-md" 
                 />
-                <!-- Simple close button positioned absolutely -->
                 <button 
                   @click="isLightboxOpen = false" 
                   class="absolute top-2 right-2 p-2 bg-black/40 text-white rounded-full hover:bg-black/60 focus:outline-none focus:ring-2 focus:ring-white focus:ring-opacity-50 transition-colors"
@@ -215,9 +286,15 @@ const cancelUploadSelection = () => {
               </DialogContent>
             </Dialog>
 
+            <!-- Toast Container -->
+            <Toaster />
           </div>
         </div>
       </div>
     </div>
   </AdminDashboardLayout>
 </template>
+
+<style>
+/* Inherit custom styles from the application, assuming they're defined globally */
+</style>
