@@ -14,17 +14,35 @@ const form = useForm({
     last_name: props.user.last_name,
     email: props.user.email,
     phone: props.user.phone || '',
-    company_name: props.user.admin_profile ? props.user.admin_profile.company_name || '' : '',
-    avatar: null,
+    company_name: props.user.admin_profile?.company_name || '',
+    avatar: null, // Keep this separate for file handling
 });
 
 const submit = () => {
-    form.post('/admin/settings/profile', {
-        onSuccess: () => {
-            // Optionally, display a success message
-            alert('Profile updated successfully!');
-        },
-    });
+    // Create FormData to properly handle file upload
+    const formData = new FormData();
+    
+    // Append all regular fields
+    formData.append('first_name', form.first_name);
+    formData.append('last_name', form.last_name);
+    formData.append('email', form.email);
+    formData.append('phone', form.phone);
+    formData.append('company_name', form.company_name);
+    
+    // Append the file if it exists
+    if (form.avatar) {
+        formData.append('avatar', form.avatar);
+    }
+
+    // Use transform to send as FormData
+    form.transform((data) => formData)
+        .post('/admin/settings/profile', {
+            preserveScroll: true,
+            onSuccess: () => {
+                // Use your preferred notification method
+                alert('Profile updated successfully!');
+            },
+        });
 };
 
 const handleFileChange = (event) => {
@@ -79,6 +97,9 @@ const handleFileChange = (event) => {
                     file:bg-indigo-50 file:text-indigo-700
                     hover:file:bg-indigo-100" />
                 <div v-if="form.errors.avatar" class="text-red-500">{{ form.errors.avatar }}</div>
+            </div>
+            <div v-if="props.user.admin_profile.avatar">
+                <img :src="props.user.admin_profile.avatar" alt="Avatar" class="w-20 h-20 rounded-full">
             </div>
 
             <div class="flex items-center gap-4">

@@ -32,64 +32,59 @@ class AdminProfileController extends Controller
      * Update the admin profile information.
      */
     public function update(Request $request): RedirectResponse
-    {
-        try {
-            DB::beginTransaction();
+{
+    DB::beginTransaction();
 
-            // Get the authenticated admin user
-            $user = Auth::user();
+    try {
+        $user = Auth::user();
 
-            $validated = $request->validate([
-                'company_name' => 'nullable|string|max:255',
-                'avatar' => 'nullable|image|mimes:jpeg,png,jpg,gif,svg|max:2048',
-                'first_name' => 'required|string|max:255',
-                'last_name' => 'required|string|max:255',
-                'email' => 'required|string|email|max:255|unique:users,email,'.$user->id,
-                'phone' => 'nullable|string|max:20',
-            ]);
+        // Validate all fields
+        $validated = $request->validate([
+            'first_name' => 'required|string|max:255',
+            'last_name' => 'required|string|max:255',
+            'email' => 'required|string|email|max:255|unique:users,email,'.$user->id,
+            'phone' => 'nullable|string|max:20',
+            'company_name' => 'nullable|string|max:255',
+            'avatar' => 'nullable|image|mimes:jpeg,png,jpg,gif,svg|max:2048',
+        ]);
 
-            if ($request->hasFile('avatar')) {
-                $filePath = $request->file('avatar')->getClientOriginalName();
-                $folderName = 'avatars';
-                $path = $request->file('avatar')->store($folderName, 'upcloud');
+        // Update user data
+        $user->update([
+            'first_name' => $validated['first_name'],
+            'last_name' => $validated['last_name'],
+            'email' => $validated['email'],
+            'phone' => $validated['phone'] ?? null,
+        ]);
 
-                // Set the object to be publicly accessible
-                Storage::disk('upcloud')->setVisibility($path, 'public');
-
-                $url = Storage::disk('upcloud')->url($path);
-                $validated['avatar'] = $url;
-            }
-
-            // Update user basic info
-            $userFields = ['first_name', 'last_name', 'email', 'phone'];
-            $userInput = array_intersect_key($validated, array_flip($userFields));
-
-            if ($user->isDirty('email')) {
-                $userInput['email_verified_at'] = null;
-            }
-
-            $user->update($userInput);
-
-            // Update or create admin profile
-            $profileFields = ['company_name', 'avatar'];
-            $profileInput = array_intersect_key($validated, array_flip($profileFields));
-
-            $user->adminProfile()->updateOrCreate(
-                ['user_id' => $user->id],
-                $profileInput
-            );
-
-            DB::commit();
-
-            return Redirect::route('admin.settings.profile')
-                ->with('status', 'Profile updated successfully.');
-
-        } catch (\Exception $e) {
-            DB::rollBack();
-
-            return back()->withErrors(['error' => 'Failed to update profile. Please try again.']);
+        // Handle avatar upload
+        $avatarPath = null;
+        if ($request->hasFile('avatar')) {
+            $filePath = $request->file('avatar')->getClientOriginalName();
+            $folderName = 'avatars';
+            $path = $request->file('avatar')->store($folderName, 'upcloud');
+            Storage::disk('upcloud')->setVisibility($path, 'public');
+            $avatarPath = Storage::disk('upcloud')->url($path);
         }
+
+        // Update or create admin profile
+        $user->adminProfile()->updateOrCreate(
+            ['user_id' => $user->id],
+            [
+                'company_name' => $validated['company_name'] ?? null,
+                'avatar' => $avatarPath ?? $user->adminProfile->avatar ?? null,
+            ]
+        );
+
+        DB::commit();
+
+        return Redirect::route('admin.settings.profile')
+            ->with('success', 'Profile updated successfully.');
+
+    } catch (\Exception $e) {
+        DB::rollBack();
+        return back()->with('error', 'Failed to update profile: ' . $e->getMessage());
     }
+}
 
     /**
      * Get the admin profile data.
