@@ -50,6 +50,7 @@ const routeTitles = {
   '/radiuses': 'Radius Management',
   '/admin/header-footer-scripts': 'Header and Footer Scripts',
   '/admin/settings/profile': 'Profile Setting',
+  '/features': 'Features',
 };
 
 const adminProfile = ref({

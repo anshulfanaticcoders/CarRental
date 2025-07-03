@@ -212,7 +212,7 @@ const cancelUploadSelection = () => {
                  class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
               <div v-for="item in mediaItems.data" :key="item.id" class="border rounded-lg overflow-hidden shadow">
                 <img :src="getThumbnail(item)" :alt="item.title || item.filename"
-                     class="w-full h-32 object-cover bg-gray-100 cursor-pointer hover:opacity-80 transition-opacity"
+                     class="w-full h-32 object-contain bg-gray-100 cursor-pointer hover:opacity-80 transition-opacity"
                      @click="openLightbox(item)">
                 <div class="p-2">
                   <p class="text-sm font-medium text-gray-900 truncate" :title="item.title || item.filename">
