@@ -33,6 +33,9 @@ const form = useForm({
     phone: props.user.phone || '',
     company_name: props.user.admin_profile?.company_name || '',
     avatar: null,
+    current_password: '',
+    password: '',
+    password_confirmation: '',
 });
 
 const submit = () => {
@@ -66,6 +69,40 @@ const submit = () => {
             return;
         }
         formData.append('avatar', form.avatar);
+    }
+
+    // Conditionally append password fields if new password is provided
+    if (form.password) {
+        if (!form.current_password) {
+            toast({
+                title: 'Missing Current Password',
+                description: 'Please enter your current password to set a new one.',
+                variant: 'destructive',
+                class: 'bg-black text-white border-none p-4 rounded-md',
+            });
+            return;
+        }
+        if (form.password.length < 8) {
+            toast({
+                title: 'Password Too Short',
+                description: 'New password must be at least 8 characters long.',
+                variant: 'destructive',
+                class: 'bg-black text-white border-none p-4 rounded-md',
+            });
+            return;
+        }
+        if (form.password !== form.password_confirmation) {
+            toast({
+                title: 'Passwords Do Not Match',
+                description: 'New password and confirm password do not match.',
+                variant: 'destructive',
+                class: 'bg-black text-white border-none p-4 rounded-md',
+            });
+            return;
+        }
+        formData.append('current_password', form.current_password);
+        formData.append('password', form.password);
+        formData.append('password_confirmation', form.password_confirmation);
     }
 
      form.transform((data) => formData)
@@ -234,6 +271,48 @@ const handleFileChange = (event) => {
                                         placeholder="Enter your company name" />
                                     <div v-if="form.errors.company_name" class="mt-2 text-sm text-red-600">{{
                                         form.errors.company_name }}</div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Password Management -->
+                        <div class="mb-8">
+                            <h3 class="text-lg font-semibold text-gray-900 mb-6">Password Management</h3>
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                <!-- Current Password -->
+                                <div>
+                                    <label for="current_password" class="block text-sm font-medium text-gray-700 mb-2">
+                                        Current Password
+                                    </label>
+                                    <input type="password" id="current_password" v-model="form.current_password"
+                                        class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-customPrimaryColor focus:border-customPrimaryColor transition-colors duration-200 bg-gray-50 focus:bg-white"
+                                        placeholder="Enter your current password" />
+                                    <div v-if="form.errors.current_password" class="mt-2 text-sm text-red-600">{{
+                                        form.errors.current_password }}</div>
+                                </div>
+
+                                <!-- New Password -->
+                                <div>
+                                    <label for="password" class="block text-sm font-medium text-gray-700 mb-2">
+                                        New Password
+                                    </label>
+                                    <input type="password" id="password" v-model="form.password"
+                                        class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-customPrimaryColor focus:border-customPrimaryColor transition-colors duration-200 bg-gray-50 focus:bg-white"
+                                        placeholder="Enter new password" />
+                                    <div v-if="form.errors.password" class="mt-2 text-sm text-red-600">{{
+                                        form.errors.password }}</div>
+                                </div>
+
+                                <!-- Verify Password -->
+                                <div>
+                                    <label for="password_confirmation" class="block text-sm font-medium text-gray-700 mb-2">
+                                        Verify Password
+                                    </label>
+                                    <input type="password" id="password_confirmation" v-model="form.password_confirmation"
+                                        class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-customPrimaryColor focus:border-customPrimaryColor transition-colors duration-200 bg-gray-50 focus:bg-white"
+                                        placeholder="Re-enter new password" />
+                                    <div v-if="form.errors.password_confirmation" class="mt-2 text-sm text-red-600">{{
+                                        form.errors.password_confirmation }}</div>
                                 </div>
                             </div>
                         </div>

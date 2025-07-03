@@ -9,6 +9,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Redirect;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\Hash;
 use Inertia\Inertia;
 use Inertia\Response;
 use Illuminate\Support\Facades\DB;
@@ -46,6 +47,9 @@ class AdminProfileController extends Controller
             'phone' => 'nullable|string|max:20',
             'company_name' => 'nullable|string|max:255',
             'avatar' => 'nullable|image|mimes:jpeg,png,jpg,gif,svg|max:2048',
+            'current_password' => 'nullable|required_with:password|string',
+            'password' => 'nullable|string|min:8|confirmed',
+            'password_confirmation' => 'nullable|string',
         ]);
 
         // Update user data
@@ -55,6 +59,16 @@ class AdminProfileController extends Controller
             'email' => $validated['email'],
             'phone' => $validated['phone'] ?? null,
         ]);
+
+        // Handle password update
+        if ($request->filled('password')) {
+            if (!Hash::check($validated['current_password'], $user->password)) {
+                throw new \Exception('The provided current password does not match your actual password.');
+            }
+            $user->update([
+                'password' => Hash::make($validated['password']),
+            ]);
+        }
 
         // Handle avatar upload
         $avatarPath = null;
