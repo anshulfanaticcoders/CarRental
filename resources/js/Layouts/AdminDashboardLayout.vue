@@ -226,6 +226,7 @@ onUnmounted(() => {
                 ref="bellIconRef"
                 @click="toggleNotificationDropdown(); markAllAsRead()"
                 class="relative p-2 rounded-full hover:bg-gray-700 focus:bg-gray-700 bellicon_btn"
+                :class="{ 'ripple-effect': unreadCount > 0 }"
               >
                 <img :src="bellIcon" alt="Notifications" class="w-6 h-6 ml-[2px]" />
                 <span
@@ -353,7 +354,24 @@ onUnmounted(() => {
   transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
   transition-duration: 150ms;
 }
-.bellicon_btn{
-    box-shadow:inset 0px 0px 8px 0px white;
+.bellicon_btn {
+  box-shadow: inset 0px 0px 8px 0px white;
+}
+
+/* Ripple effect animation */
+@keyframes ripple {
+  0% {
+    box-shadow: 0 0 0 0 rgba(255, 255, 255, 0.7); /* White ripple */
+  }
+  70% {
+    box-shadow: 0 0 0 20px rgba(255, 255, 255, 0); /* Increased spread */
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(255, 255, 255, 0);
+  }
+}
+
+.ripple-effect {
+  animation: ripple 1.5s infinite;
 }
 </style>

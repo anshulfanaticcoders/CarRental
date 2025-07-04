@@ -330,7 +330,7 @@ watch(() => url.value, () => {
 
           <!-- Notification Bell -->
             <div class="relative">
-                <button ref="bellIconRef" @click="showingNotificationDropdown = !showingNotificationDropdown; markAllAsRead()" class="relative p-2 rounded-[99px] focus:bg-[#efefef]">
+                <button ref="bellIconRef" @click="showingNotificationDropdown = !showingNotificationDropdown; markAllAsRead()" class="relative p-2 rounded-[99px] focus:bg-[#efefef]" :class="{ 'ripple-effect': unreadCount > 0 }">
                     <img :src="bellIcon" alt="Notifications" class="w-6 h-6">
                     <span v-if="unreadCount > 0" class="absolute w-[18px] h-[18px] border-2 border-white top-0 right-0 inline-flex items-center justify-center px-2 py-1 text-xs font-bold leading-none text-red-100 bg-red-600 rounded-full">{{ unreadCount }}</span>
                 </button>
@@ -510,7 +510,7 @@ watch(() => url.value, () => {
               <div class="text-sm font-medium text-gray-500">{{ page.props.auth.user.email }}</div>
             </div>
             <div class="ml-auto">
-              <button @click="toggleMobileNotification" class="relative p-2 rounded-[99px] focus:bg-[#efefef]">
+              <button @click="toggleMobileNotification" class="relative p-2 rounded-[99px] focus:bg-[#efefef]" :class="{ 'ripple-effect': unreadCount > 0 }">
                 <img :src="bellIcon" alt="Notifications" class="w-6 h-6">
                 <span v-if="unreadCount > 0" class="absolute w-[18px] h-[18px] border-2 border-white top-0 right-0 inline-flex items-center justify-center px-2 py-1 text-xs font-bold leading-none text-red-100 bg-red-600 rounded-full">{{ unreadCount }}</span>
               </button>
@@ -693,5 +693,22 @@ header {
 .fixed.top-0.left-0.w-full.h-full.bg-white.z-50 {
   display: flex;
   flex-direction: column;
+}
+
+/* Ripple effect animation */
+@keyframes ripple {
+  0% {
+    box-shadow: 0 0 0 0 rgba(0, 0, 0, 0.4); /* Darker ripple, slightly less opaque */
+  }
+  70% {
+    box-shadow: 0 0 0 20px rgba(0, 0, 0, 0); /* Increased spread */
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(0, 0, 0, 0);
+  }
+}
+
+.ripple-effect {
+  animation: ripple 1.5s infinite;
 }
 </style>
