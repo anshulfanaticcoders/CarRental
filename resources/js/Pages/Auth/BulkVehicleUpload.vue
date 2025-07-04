@@ -1,6 +1,10 @@
 <template>
     <Head title="Bulk Vehicle Upload" />
     <AuthenticatedHeaderLayout/>
+        <!-- Loader Overlay -->
+        <div v-if="isLoading" class="fixed inset-0 z-50 flex items-center justify-center bg-white bg-opacity-70">
+            <img :src="loaderVariant" alt="Loading..." class="h-20 w-20" />
+        </div>
         <div class="full-w-container py-12 relative"> <!-- Added relative for positioning the popup -->
             <!-- "Copied!" Popup -->
             <div v-if="showCopyNotification" class="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 z-50">
@@ -225,6 +229,7 @@ import { Head, useForm, Link, usePage } from '@inertiajs/vue3';
 import { ref, onMounted, computed } from 'vue';
 import axios from 'axios';
 import AuthenticatedHeaderLayout from '@/Layouts/AuthenticatedHeaderLayout.vue';
+import loaderVariant from '../../../assets/loader-variant.svg';
 
 const page = usePage();
 
@@ -237,6 +242,7 @@ const allFeatures = ref([]);
 const loadingFeatures = ref(true);
 
 const fetchVehicleCategories = async () => {
+    isLoading.value = true;
     loadingCategories.value = true;
     try {
         const response = await axios.get(route('api.vehicle-categories.index', { locale: usePage().props.locale }));
@@ -245,10 +251,12 @@ const fetchVehicleCategories = async () => {
         console.error('Error fetching vehicle categories:', error);
     } finally {
         loadingCategories.value = false;
+        isLoading.value = false;
     }
 };
 
 const fetchVehicleFeatures = async () => {
+    isLoading.value = true;
     loadingFeatures.value = true;
     try {
         const response = await axios.get(route('api.vehicle-features.index', { locale: usePage().props.locale }));
@@ -257,6 +265,7 @@ const fetchVehicleFeatures = async () => {
         console.error('Error fetching vehicle features:', error);
     } finally {
         loadingFeatures.value = false;
+        isLoading.value = false;
     }
 };
 
@@ -289,6 +298,7 @@ const groupedFeatures = computed(() => {
 
 // "Copied!" Notification
 const showCopyNotification = ref(false);
+const isLoading = ref(false);
 
 // CSV Upload Form
 const csvForm = useForm({
@@ -300,12 +310,16 @@ const handleCsvFileChange = (event) => {
 };
 
 const submitCsvForm = () => {
+    isLoading.value = true;
     csvForm.post(route('vehicles.bulk-upload.store', { locale: usePage().props.locale }), {
         preserveScroll: true,
         onSuccess: () => {
             csvForm.reset('csv_file');
             // Inertia flash message will be shown from $page.props.flash
         },
+        onFinish: () => {
+            isLoading.value = false;
+        }
     });
 };
 
@@ -326,6 +340,7 @@ const handleImageFileChange = (event) => {
 };
 
 const fetchBulkImages = async () => {
+    isLoading.value = true;
     loadingImages.value = true;
     try {
         const response = await axios.get(route('vendor.bulk-vehicle-images.index', { locale: usePage().props.locale, _t: new Date().getTime() }));
@@ -339,6 +354,7 @@ const fetchBulkImages = async () => {
         // Optionally set a general error message if needed, though Inertia flash should cover server errors
     } finally {
         loadingImages.value = false;
+        isLoading.value = false;
     }
 };
 
@@ -371,6 +387,7 @@ const prevPage = () => {
 const uploadImage = () => {
     if (selectedImageFiles.value.length === 0) return;
 
+    isLoading.value = true;
     imageUploadForm.post(route('vendor.bulk-vehicle-images.store', { locale: usePage().props.locale }), {
         preserveScroll: true,
         onSuccess: () => { 
@@ -388,6 +405,9 @@ const uploadImage = () => {
             // The global flash message component at the top will also display any general error message
             // set in $page.props.flash.message by the backend on error.
             console.error("Image upload errors:", errors); 
+        },
+        onFinish: () => {
+            isLoading.value = false;
         }
     });
 };
@@ -396,6 +416,7 @@ const deleteImage = async (imageId) => {
     if (!confirm('Are you sure you want to delete this image? This action cannot be undone.')) {
         return;
     }
+    isLoading.value = true;
     try {
         // The delete endpoint returns JSON, so use axios directly.
         await axios.delete(route('vendor.bulk-vehicle-images.destroy', { locale: usePage().props.locale, 'image': imageId }));
@@ -404,6 +425,8 @@ const deleteImage = async (imageId) => {
     } catch (error) {
         console.error('Error deleting image:', error);
         alert('Failed to delete image. Please try again.'); // Simple feedback for now
+    } finally {
+        isLoading.value = false;
     }
 };
 

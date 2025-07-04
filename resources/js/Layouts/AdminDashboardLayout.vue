@@ -173,6 +173,10 @@ const getNotificationLink = (notification) => {
       return route('vendors', { locale });
     case 'BookingCancelledNotification':
       return route('customer-bookings.cancelled', { locale });
+    case 'AccountCreatedNotification':
+      return route('users.index', { locale });
+    case 'BulkVehicleUploadAdminNotification':
+      return route('admin.vehicles.index', { locale });
     case 'BookingStatusUpdatedCustomerNotification':
       const bookingStatus = notification.data.status;
       if (bookingStatus === 'pending') return route('customer-bookings.pending', { locale });
@@ -220,7 +224,7 @@ onUnmounted(() => {
             <div class="relative">
               <button
                 ref="bellIconRef"
-                @click="toggleNotificationDropdown"
+                @click="toggleNotificationDropdown(); markAllAsRead()"
                 class="relative p-2 rounded-full hover:bg-gray-700 focus:bg-gray-700 bellicon_btn"
               >
                 <img :src="bellIcon" alt="Notifications" class="w-6 h-6 ml-[2px]" />
@@ -251,12 +255,12 @@ onUnmounted(() => {
                       class="p-4 border-b hover:bg-gray-50 cursor-pointer"
                       :class="{ 'bg-gray-100': !notification.read_at }"
                     >
-                      <div class="flex justify-between">
+                      <div class="flex">
                         <div class="font-semibold">{{ notification.data.title }}</div>
-                        <div class="text-xs text-gray-500">{{ notification.type.split('\\').pop() }}</div>
+                        <div class="text-xs text-gray-500 ">{{ notification.type.split('\\').pop() }}</div>
                       </div>
                       <p class="text-sm text-gray-600">{{ notification.data.message }}</p>
-                      <div class="text-xs text-blue-600 mt-1 text-right">
+                      <div class="text-xs text-customPrimaryColor mt-1 text-right">
                         {{ new Date(notification.created_at).toLocaleString() }}
                       </div>
                     </div>

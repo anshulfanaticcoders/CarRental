@@ -150,6 +150,8 @@ const getNotificationLink = (notification) => {
       return route('vendor.reviews', { locale });
     case 'BookingCancelledNotification':
       return route('profile.bookings.cancelled', { locale });
+    case 'BulkVehicleUploadNotification':
+      return route('current-vendor-vehicles.index', { locale });
     case 'BookingStatusUpdatedCustomerNotification':
       const bookingStatus = notification.data.status;
       if (bookingStatus === 'pending') {

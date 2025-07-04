@@ -13,9 +13,8 @@ use App\Models\VehicleSpecification;
 use App\Models\VendorProfile;
 use App\Models\VendorVehicleAddon;
 use App\Models\VendorVehiclePlan;
-use App\Notifications\VehicleCreatedNotification;
-use App\Notifications\Vendor\VendorVehicleCreateCompanyNotification;
-use App\Notifications\Vendor\VendorVehicleCreateNotification;
+use App\Notifications\BulkVehicleUploadAdminNotification;
+use App\Notifications\BulkVehicleUploadNotification;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -79,7 +78,7 @@ class BulkVehicleUploadController extends Controller
         fclose($file);
 
         $user = $request->user();
-        $createdCount = 0;
+        $createdVehicles = collect();
         $errorMessages = [];
 
         foreach ($vehiclesData as $index => $vehicleData) {
@@ -153,7 +152,7 @@ class BulkVehicleUploadController extends Controller
             }
 
             try {
-                DB::transaction(function () use ($vehicleData, $user, &$createdCount, $request) {
+                DB::transaction(function () use ($vehicleData, $user, &$createdVehicles, $request) {
                     $fullAddress = implode(', ', array_filter([
                         $vehicleData['location'] ?? null,
                         $vehicleData['city'] ?? null,
@@ -297,24 +296,7 @@ class BulkVehicleUploadController extends Controller
                     }
 
                     ActivityLogHelper::logActivity('create_bulk', 'Created a new vehicle via bulk upload', $vehicle, $request);
-
-                    // Notify admin
-                    $adminEmail = env('VITE_ADMIN_EMAIL', 'default@admin.com');
-                    $admin = User::where('email', $adminEmail)->first();
-                    if ($admin) {
-                        $admin->notify(new VehicleCreatedNotification($vehicle));
-                    }
-
-                    // Notify vendor
-                    Notification::route('mail', $user->email)
-                        ->notify(new VendorVehicleCreateNotification($vehicle, $user));
-
-                    $vendorProfile = VendorProfile::where('user_id', $user->id)->first();
-                    if ($vendorProfile && $vendorProfile->company_email) {
-                        Notification::route('mail', $vendorProfile->company_email)
-                            ->notify(new VendorVehicleCreateCompanyNotification($vehicle, $user));
-                    }
-                    $createdCount++;
+                    $createdVehicles->push($vehicle);
                 });
             } catch (\Exception $e) {
                 Log::error("Error processing vehicle row " . ($index + 1) . ": " . $e->getMessage());
@@ -322,7 +304,17 @@ class BulkVehicleUploadController extends Controller
             }
         }
 
-        $message = $createdCount . " vehicles imported successfully.";
+        // Send a single notification to the vendor after the loop
+        $user->notify(new BulkVehicleUploadNotification($createdVehicles, $user, $errorMessages));
+
+        // Notify admin
+        $adminEmail = env('VITE_ADMIN_EMAIL', 'default@admin.com');
+        $admin = User::where('email', $adminEmail)->first();
+        if ($admin) {
+            $admin->notify(new BulkVehicleUploadAdminNotification($createdVehicles, $user, $errorMessages));
+        }
+
+        $message = $createdVehicles->count() . " vehicles imported successfully.";
         if (!empty($errorMessages)) {
             $message .= " However, some rows had errors: <br>" . implode('<br>', $errorMessages);
             return redirect()->back()

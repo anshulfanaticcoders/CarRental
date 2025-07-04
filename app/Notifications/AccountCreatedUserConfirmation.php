@@ -28,7 +28,7 @@ class AccountCreatedUserConfirmation extends Notification
      */
     public function via(object $notifiable): array
     {
-        return ['mail']; // Notify via email only
+        return ['mail','database']; // Notify via email only
     }
 
     /**
@@ -44,7 +44,6 @@ class AccountCreatedUserConfirmation extends Notification
             ->line('**Email:** ' . $this->user->email)
             ->line('**Phone:** ' . $this->user->phone_code . ' ' . $this->user->phone)
             ->line('You can now log in and explore our services.')
-            ->action('Log In', url('/login'))
             ->line('We’re excited to have you on board!');
     }
 
