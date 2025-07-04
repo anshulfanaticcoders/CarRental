@@ -2,6 +2,7 @@
 import { ref, computed, onMounted, nextTick, onUnmounted, watch } from 'vue';
 import axios from 'axios';
 import sendIcon from '../../assets/sendMessageIcon.svg';
+import attachmentIcon from '../../assets/attachmentIcon.svg'; // New import for attachment icon
 import { usePage } from '@inertiajs/vue3';
 import searchIcon from '../../assets/MagnifyingGlass.svg';
 import arrowBackIcon from '../../assets/arrowBack.svg'; // Make sure to add this icon to your assets
@@ -20,6 +21,8 @@ const emit = defineEmits(['back', 'messageReceived']);
 
 const messageList = ref(props.messages || []);
 const newMessage = ref('');
+const selectedFile = ref(null); // New ref for selected file
+const fileInput = ref(null); // New ref for file input element
 const searchQuery = ref('');
 const messageContainer = ref(null);
 const isLoading = ref(false);
@@ -33,7 +36,8 @@ const userRole = computed(() => page.props.auth.user.role);
 const filteredMessages = computed(() => {
     if (!searchQuery.value.trim()) return messageList.value;
     return messageList.value.filter(msg =>
-        msg.message.toLowerCase().includes(searchQuery.value.toLowerCase())
+        (msg.message && msg.message.toLowerCase().includes(searchQuery.value.toLowerCase())) ||
+        (msg.file_name && msg.file_name.toLowerCase().includes(searchQuery.value.toLowerCase()))
     );
 });
 
@@ -56,35 +60,81 @@ const scrollToBottom = () => {
 };
 
 const sendMessage = async () => {
-    if (!newMessage.value.trim()) return;
+    if (!newMessage.value.trim() && !selectedFile.value) return; // Ensure either message or file is present
     isLoading.value = true;
     error.value = null;
 
-    const messageData = {
-        booking_id: props.bookingId, // Changed from props.booking.id
-        receiver_id: props.otherUser.id,
-        message: newMessage.value
-    };
+    const formData = new FormData();
+    formData.append('booking_id', props.bookingId);
+    formData.append('receiver_id', props.otherUser.id);
+    formData.append('message', newMessage.value);
+    if (selectedFile.value) {
+        formData.append('file', selectedFile.value);
+    }
 
     try {
-        const response = await axios.post(route('messages.store', { locale: usePage().props.locale }), messageData);
-        // Append the sent message to the local messageList immediately
-        messageList.value.push({
-            id: response.data.message.id, // Ensure this is the actual new message ID from backend
-            sender_id: page.props.auth.user.id,
-            receiver_id: props.otherUser.id,
-            booking_id: props.bookingId, // Changed from props.booking.id
-            message: newMessage.value,
-            created_at: response.data.message.created_at || new Date().toISOString(), // Use backend created_at if available
-            read_at: null // New messages are initially unread
+        const response = await axios.post(route('messages.store', { locale: usePage().props.locale }), formData, {
+            headers: {
+                'Content-Type': 'multipart/form-data'
+            }
         });
+        // Append the sent message to the local messageList immediately
+        messageList.value.push(response.data.message); // Backend now returns full message object with file data
         newMessage.value = '';
+        selectedFile.value = null; // Clear selected file
+        if (fileInput.value) {
+            fileInput.value.value = ''; // Clear file input
+        }
         scrollToBottom();
     } catch (err) {
         error.value = err.response?.data?.message || 'Failed to send message.';
     } finally {
         isLoading.value = false;
     }
+};
+
+const handleFileChange = (event) => {
+    const file = event.target.files[0];
+    if (file) {
+        // Basic client-side validation (optional, backend also validates)
+        const allowedTypes = ['image/jpeg', 'image/png', 'image/jpg', 'image/gif', 'image/svg+xml', 'application/pdf', 'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', 'application/vnd.ms-excel', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', 'text/plain'];
+        const maxSize = 10 * 1024 * 1024; // 10MB
+
+        if (!allowedTypes.includes(file.type)) {
+            alert('Invalid file type. Allowed types: images, PDF, Word, Excel, TXT.');
+            selectedFile.value = null;
+            if (fileInput.value) fileInput.value.value = '';
+            return;
+        }
+        if (file.size > maxSize) {
+            alert('File size exceeds 10MB limit.');
+            selectedFile.value = null;
+            if (fileInput.value) fileInput.value.value = '';
+            return;
+        }
+        selectedFile.value = file;
+    } else {
+        selectedFile.value = null;
+    }
+};
+
+const clearSelectedFile = () => {
+    selectedFile.value = null;
+    if (fileInput.value) {
+        fileInput.value.value = '';
+    }
+};
+
+const isImage = (fileType) => {
+    return fileType && fileType.startsWith('image/');
+};
+
+const getFileIcon = (fileType) => {
+    if (fileType.includes('pdf')) return '/images/icons/pdf-icon.svg'; // Assuming you have these icons
+    if (fileType.includes('word') || fileType.includes('doc')) return '/images/icons/doc-icon.svg';
+    if (fileType.includes('excel') || fileType.includes('xls')) return '/images/icons/xls-icon.svg';
+    if (fileType.includes('text')) return '/images/icons/txt-icon.svg';
+    return '/images/icons/file-icon.svg'; // Generic file icon
 };
 
 const recentlyDeleted = ref(null); // To store { messageId, timerId } for undo
@@ -207,6 +257,13 @@ onMounted(() => {
         channel.listen('NewMessage', (e) => {
             if (e.message && e.message.booking_id == props.bookingId) {
                 if (!messageList.value.some(msg => msg.id === e.message.id)) {
+                    // Ensure the message object has the file_url accessor if a file is present
+                    // The backend should already send this, but as a fallback or for clarity:
+                    if (e.message.file_path && !e.message.file_url) {
+                        // This might not be strictly necessary if backend always sends file_url
+                        // but ensures robustness if the accessor isn't automatically serialized.
+                        // For now, assuming backend sends it.
+                    }
                     messageList.value.push(e.message);
                     emit('messageReceived', e.message);
                     scrollToBottom();
@@ -333,9 +390,28 @@ onUnmounted(() => {
                             </button>
                         </div>
                     </div>
-                    <p class="mt-1 text-sm">
-                        {{ message.deleted_at ? 'This message was deleted.' : message.message }}
-                    </p>
+                    <div class="mt-1 text-sm">
+                        <template v-if="message.deleted_at">
+                            This message was deleted.
+                        </template>
+                        <template v-else-if="message.file_path">
+                            <div v-if="isImage(message.file_type)">
+                                <a :href="message.file_url" target="_blank">
+                                    <img :src="message.file_url" :alt="message.file_name" class="max-w-full h-auto rounded-lg" />
+                                </a>
+                            </div>
+                            <div v-else class="flex items-center gap-2">
+                                <img :src="getFileIcon(message.file_type)" alt="File Icon" class="w-6 h-6" />
+                                <a :href="message.file_url" target="_blank" class="text-blue-400 hover:underline">
+                                    {{ message.file_name }} ({{ (message.file_size / 1024 / 1024).toFixed(2) }} MB)
+                                </a>
+                            </div>
+                            <p v-if="message.message" class="mt-1">{{ message.message }}</p>
+                        </template>
+                        <template v-else>
+                            {{ message.message }}
+                        </template>
+                    </div>
                     <div v-if="message.sender_id === page.props.auth.user.id && !message.deleted_at" class="text-right mt-1">
                         <span v-if="!message.read_at" class="text-gray-300 text-xs">✓</span> <!-- Delivered -->
                         <span v-else class="text-blue-300 text-xs">✓✓</span> <!-- Read -->
@@ -362,12 +438,27 @@ onUnmounted(() => {
         <!-- Error Message -->
         <div v-if="error" class="px-3 py-1.5 text-red-600 text-xs bg-red-100">{{ error }}</div>
 
+        <!-- File Preview -->
+        <div v-if="selectedFile" class="bg-white px-3 py-2 border-t flex items-center justify-between text-sm">
+            <div class="flex items-center gap-2">
+                <span class="text-gray-700">Selected file: {{ selectedFile.name }}</span>
+                <span class="text-gray-500 text-xs">({{ (selectedFile.size / 1024 / 1024).toFixed(2) }} MB)</span>
+            </div>
+            <button @click="clearSelectedFile" class="text-red-500 hover:text-red-700 text-sm">
+                Clear
+            </button>
+        </div>
+
         <!-- Input - Fixed -->
         <div class="bg-white border-t flex items-center gap-2 p-2 flex-shrink-0">
+            <input type="file" ref="fileInput" @change="handleFileChange" class="hidden" accept="image/*,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,text/plain" />
+            <button @click="fileInput.click()" class="p-2 rounded-full hover:bg-gray-100">
+                <img :src="attachmentIcon" alt="Attach File" class="w-5 h-5" />
+            </button>
             <textarea v-model="newMessage" placeholder="Type your message..."
                 class="flex-1 p-2 rounded-full border focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none h-10 text-sm"
                 @keyup.enter="sendMessage" />
-            <button @click="sendMessage" :disabled="isLoading || !newMessage.trim()"
+            <button @click="sendMessage" :disabled="isLoading || (!newMessage.trim() && !selectedFile)"
                 class="p-2 rounded-full bg-blue-300 hover:bg-blue-600 transition-colors disabled:opacity-50 disabled:bg-blue-300">
                 <img :src="sendIcon" alt="Send" class="w-5 h-5" v-if="!isLoading" />
                 <span v-else class="text-white text-xs">...</span>

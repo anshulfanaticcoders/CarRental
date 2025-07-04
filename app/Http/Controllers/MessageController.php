@@ -10,6 +10,7 @@ use App\Notifications\NewMessageNotification;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Storage; // Added import for Storage
 use App\Events\MessageDeleted; // Added import
 use App\Events\MessageRestored; // Added import
 
@@ -217,9 +218,15 @@ public function show($locale, $bookingId)
     $validated = $request->validate([
         'booking_id' => 'required|exists:bookings,id',
         'receiver_id' => 'required|exists:users,id',
-        'message' => 'required|string',
-        'parent_id' => 'nullable|exists:messages,id'
+        'message' => 'nullable|string', // Message can be nullable if a file is sent
+        'parent_id' => 'nullable|exists:messages,id',
+        'file' => 'nullable|file|max:10240|mimes:jpeg,png,jpg,gif,svg,pdf,doc,docx,xls,xlsx,txt', // Max 10MB, common file types
     ]);
+
+    // Ensure either message or file is present
+    if (empty($validated['message']) && !$request->hasFile('file')) {
+        return response()->json(['error' => 'Message content or a file is required.'], 422);
+    }
 
     $booking = Booking::with(['vehicle.vendor', 'customer'])->findOrFail($validated['booking_id']);
     $user = Auth::user();
@@ -228,15 +235,32 @@ public function show($locale, $bookingId)
         abort(403, 'Unauthorized access to this conversation');
     }
 
-    $message = Message::create([
+    $messageData = [
         'sender_id' => $user->id,
         'receiver_id' => $validated['receiver_id'],
         'booking_id' => $validated['booking_id'],
-        'message' => $validated['message'],
+        'message' => $validated['message'] ?? null,
         'parent_id' => $validated['parent_id'] ?? null
-    ]);
+    ];
+
+    // Handle file upload if present
+    if ($request->hasFile('file')) {
+        $file = $request->file('file');
+        $folderName = 'chat_attachments';
+        $fileName = time() . '_' . $file->getClientOriginalName();
+        $filePath = $file->storeAs($folderName, $fileName, 'upcloud');
+
+        $messageData['file_path'] = $filePath;
+        $messageData['file_name'] = $file->getClientOriginalName();
+        $messageData['file_type'] = $file->getMimeType();
+        $messageData['file_size'] = $file->getSize();
+    }
+
+    $message = Message::create($messageData);
 
     // Broadcast the new message
+    // Load file_url accessor for broadcasting
+    $message->load(['sender', 'receiver']); // Ensure sender/receiver are loaded for the event
     broadcast(new NewMessage($message))->toOthers();
 
     // Notify the receiver only for the first message in this booking's conversation
@@ -250,8 +274,6 @@ public function show($locale, $bookingId)
             $receiver->notify(new NewMessageNotification($message));
         }
     }
-
-    $message->load(['sender', 'receiver']);
 
     return response()->json(['message' => $message]);
 }

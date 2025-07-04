@@ -17,7 +17,11 @@ class Message extends Model
         'message',
         'read_at',
         'parent_id',
-        'reminder_sent_at', // Added
+        'reminder_sent_at',
+        'file_path',
+        'file_name',
+        'file_type',
+        'file_size',
     ];
 
     /**
@@ -26,6 +30,8 @@ class Message extends Model
      * @var array
      */
     protected $dates = ['deleted_at', 'reminder_sent_at']; // Ensure deleted_at and reminder_sent_at are Carbon instances
+
+    protected $appends = ['file_url']; // Append file_url accessor to JSON output
 
     public function sender()
     {
@@ -45,5 +51,14 @@ class Message extends Model
     public function replies()
     {
         return $this->hasMany(Message::class, 'parent_id');
+    }
+
+    // Accessor for file_url
+    public function getFileUrlAttribute()
+    {
+        if ($this->file_path) {
+            return \Illuminate\Support\Facades\Storage::disk('upcloud')->url($this->file_path);
+        }
+        return null;
     }
 }

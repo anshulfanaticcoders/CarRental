@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!-- Created with Inkscape (http://www.inkscape.org/) -->
+
+<svg
+   version="1.1"
+   id="svg795"
+   xml:space="preserve"
+   width="682.66669"
+   height="682.66669"
+   viewBox="0 0 682.66669 682.66669"
+   xmlns="http://www.w3.org/2000/svg"
+   xmlns:svg="http://www.w3.org/2000/svg"><defs
+     id="defs799"><clipPath
+       clipPathUnits="userSpaceOnUse"
+       id="clipPath809"><path
+         d="M 0,512 H 512 V 0 H 0 Z"
+         id="path807" /></clipPath></defs><g
+     id="g801"
+     transform="matrix(1.3333333,0,0,-1.3333333,0,682.66667)"><g
+       id="g803"><g
+         id="g805"
+         clip-path="url(#clipPath809)"><g
+           id="g811"
+           transform="translate(470.5293,299.3726)"><path
+             d="m 0,0 -224.11,-224.11 c -52.94,-52.94 -138.773,-52.94 -191.714,0 v 0 c -52.94,52.941 -52.94,138.774 0,191.714 l 209.466,209.466"
+             style="fill:none;stroke:#000000;stroke-width:30;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:10;stroke-dasharray:none;stroke-opacity:1"
+             id="path813" /></g><g
+           id="g815"
+           transform="translate(193.1655,277.6279)"><path
+             d="M 0,0 149.554,149.554"
+             style="fill:none;stroke:#000000;stroke-width:30;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:10;stroke-dasharray:none;stroke-opacity:1"
+             id="path817" /></g><g
+           id="g819"
+           transform="translate(391.9805,348.6333)"><path
+             d="m 0,0 -209.465,-209.466 c -17.647,-17.647 -46.259,-17.647 -63.905,0 -17.647,17.647 -17.647,46.258 0,63.905 l 74.555,74.556"
+             style="fill:none;stroke:#000000;stroke-width:30;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:10;stroke-dasharray:none;stroke-opacity:1"
+             id="path821" /></g><g
+           id="g823"
+           transform="translate(342.7207,427.1816)"><path
+             d="m 0,0 c 35.293,35.293 92.516,35.293 127.809,0 h 0.001 c 35.293,-35.293 35.293,-92.516 0,-127.81"
+             style="fill:none;stroke:#000000;stroke-width:30;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:10;stroke-dasharray:none;stroke-opacity:1"
+             id="path825" /></g></g></g></g></svg>
