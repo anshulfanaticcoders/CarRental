@@ -93,7 +93,7 @@ const submit = () => {
                             autocomplete="current-password" />
 
                         <button type="button" @click="showPassword = !showPassword"
-                            class="absolute right-3 top-[50%] translate-y-[0%] font-medium text-customDarkBlackColor text-sm max-[768px]:text-white">
+                            class="absolute right-3 top-[50%] translate-y-[0%] font-medium text-customDarkBlackColor text-sm">
                             {{ showPassword ? _t('registerUser', 'hide_password') : _t('registerUser', 'show_password')
                             }}
                         </button>
