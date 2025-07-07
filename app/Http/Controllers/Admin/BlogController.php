@@ -490,9 +490,14 @@ class BlogController extends Controller
         $blogs = Blog::with('translations')->where('is_published', true)->latest()->paginate(9);
         $pages = \App\Models\Page::with('translations')->get()->keyBy('slug');
 
+        // Fetch SEO meta for the blog page (assuming its url_slug is '/blog')
+        $seoMeta = SeoMeta::with('translations')->where('url_slug', '/blog')->first();
+        
         return Inertia::render('BlogPage', [
             'blogs' => $blogs,
             'pages' => $pages,
+            'seoMeta' => $seoMeta, // Pass SEO meta to the component
+            'locale' => App::getLocale(), // Pass current locale
         ]);
     }
     

@@ -45,6 +45,7 @@ locales.forEach(locale => {
 
 const form = useForm({
   _method: isEditing.value ? 'PUT' : 'POST',
+  url_slug: props.seoMeta?.url_slug || '', // Added for main seo_metas table
   seo_title: props.seoMeta?.seo_title || '',
   meta_description: props.seoMeta?.meta_description || '',
   keywords: props.seoMeta?.keywords || '',
@@ -184,6 +185,22 @@ const submitForm = () => {
                     />
                     <p v-if="form.errors.seo_image_url" class="mt-2 text-sm text-red-600">{{ form.errors.seo_image_url }}</p>
                     <p v-else class="mt-2 text-sm text-gray-500">Image for social sharing (Open Graph image).</p>
+                  </div>
+
+                  <!-- Main URL Slug -->
+                  <div>
+                    <label for="url_slug" class="block text-sm font-medium text-gray-700 mb-2">
+                      URL Slug (Main)
+                    </label>
+                    <input
+                      type="text"
+                      id="url_slug"
+                      v-model="form.url_slug"
+                      class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-customPrimaryColor focus:border-customPrimaryColor transition-colors duration-200 bg-gray-50 focus:bg-white"
+                      placeholder="/your-page-slug"
+                    />
+                    <p v-if="form.errors.url_slug" class="mt-2 text-sm text-red-600">{{ form.errors.url_slug }}</p>
+                    <p v-else class="mt-2 text-sm text-gray-500">The unique URL path for this SEO entry (e.g., /about-us, /blog/my-post).</p>
                   </div>
                 </div>
               </div>

@@ -1,7 +1,18 @@
 <template>
     <Head>
         <meta name="robots" content="index, follow" />
-        <title>Blog</title>
+        <title>{{ seoTitle }}</title>
+        <meta name="description" :content="seoDescription" />
+        <meta name="keywords" :content="seoKeywords" />
+        <link rel="canonical" :href="canonicalUrl" />
+        <meta property="og:title" :content="seoTitle" />
+        <meta property="og:description" :content="seoDescription" />
+        <meta property="og:image" :content="seoImageUrl" />
+        <meta property="og:url" :content="currentUrl" />
+        <meta name="twitter:card" content="summary_large_image" />
+        <meta name="twitter:title" :content="seoTitle" />
+        <meta name="twitter:description" :content="seoDescription" />
+        <meta name="twitter:image" :content="seoImageUrl" />
     </Head>
     <AuthenticatedHeaderLayout />
     <div class="h-[28rem] blog_header py-[2rem] bg-no-repeat bg-center relative flex justify-center items-center"
@@ -75,13 +86,45 @@ import blogbgimage from '../../assets/blogpagebgimage.jpg'
 import { ref, onMounted } from 'vue';
 import Footer from '@/Components/Footer.vue';
 import Pagination from '@/Components/ReusableComponents/Pagination.vue'; // Import the new component
+import { computed } from 'vue'; // Import computed
 
 const props = defineProps({
-    blogs: Object
+    blogs: Object,
+    seoMeta: Object, // Added seoMeta prop
+    locale: String, // Added locale prop
 });
 
 const page = usePage(); // Get page instance
 const recentBlogs = ref([]);
+const currentUrl = computed(() => window.location.href); // Added currentUrl
+
+const seoTranslation = computed(() => {
+    if (!props.seoMeta || !props.seoMeta.translations) {
+        return {};
+    }
+    return props.seoMeta.translations.find(t => t.locale === props.locale) || {};
+});
+
+const seoTitle = computed(() => {
+    return seoTranslation.value.seo_title || props.seoMeta?.seo_title || 'Blog'; // Fallback to 'Blog'
+});
+
+const seoDescription = computed(() => {
+    return seoTranslation.value.meta_description || props.seoMeta?.meta_description || '';
+});
+
+const seoKeywords = computed(() => {
+    return seoTranslation.value.keywords || props.seoMeta?.keywords || '';
+});
+
+const canonicalUrl = computed(() => {
+    return props.seoMeta?.canonical_url || window.location.href;
+});
+
+const seoImageUrl = computed(() => {
+    return props.seoMeta?.seo_image_url || '';
+});
+
 
 onMounted(async () => {
     try {
