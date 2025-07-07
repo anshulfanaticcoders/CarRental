@@ -187,7 +187,7 @@
                                     <BarChart :data="bookingOverview" :categories="['completed', 'confirmed', 'pending', 'cancelled']" index="name" :colors="['#10B981', '#153B4F', '#FFC633', '#EA3C3C']" :stacked="true" :rounded-corners="4" />
                                 </CardContent>
                             </Card>
-                            <Card class="col-span-3">
+                            <Card class="col-span-3 max-h-[550px] overflow-auto">
                                 <CardHeader>
                                     <CardTitle>Recent Sales</CardTitle>
                                     <CardDescription>

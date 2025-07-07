@@ -17,7 +17,10 @@
                 </div>
                 <div class="bg-white rounded-lg shadow p-4">
                     <h3 class="text-gray-500 text-sm">Total Amount</h3>
-                    <p class="text-2xl font-bold">€{{ formatNumber(stats.total_amount) }}</p>
+                    <p class="text-2xl font-bold">
+                        <span v-if="stats.currency_symbol === 'Mixed'">{{ formatNumber(stats.total_amount) }} (Mixed)</span>
+                        <span v-else>{{ stats.currency_symbol }}{{ formatNumber(stats.total_amount) }}</span>
+                    </p>
                 </div>
             </div>
 
@@ -29,10 +32,16 @@
                             class="w-full px-4 py-2 border rounded-lg" @input="debouncedSearch" />
                     </div>
                     <select v-model="filters.status" class="px-4 py-2 border rounded-lg" @change="updateFilters">
-                        <option value="">All Status</option>
+                        <option :value="null">All Status</option>
                         <option value="succeeded">Completed</option>
                         <option value="pending">Pending</option>
                         <option value="failed">Failed</option>
+                    </select>
+                    <select v-model="filters.currency" class="px-4 py-2 border rounded-lg" @change="updateFilters">
+                        <option value="all">All Currencies</option>
+                        <option v-for="currency in availableCurrencies" :key="currency" :value="currency">
+                            {{ currency }}
+                        </option>
                     </select>
                 </div>
             </div>
@@ -125,10 +134,17 @@ function debounce(func, wait) {
 const props = defineProps({
     payments: Object,
     stats: Object,
-    filters: Object
+    filters: Object,
+    availableCurrencies: Array
 })
 
 const search = ref(props.filters.search)
+
+// Initialize filters with proper currency value
+const filters = ref({
+    status: props.filters.status || null,
+    currency: props.filters.currency || 'all'
+})
 
 const formatNumber = (number) => {
     return new Intl.NumberFormat('en-US', {
@@ -145,7 +161,12 @@ const formatDate = (dateStr) => {
 const handlePageChange = (page) => {
     router.get(
         route('admin.payments.index'),
-        { ...props.filters, page },
+        { 
+            search: search.value,
+            status: filters.value.status,
+            currency: filters.value.currency,
+            page 
+        },
         { preserveState: true, preserveScroll: true }
     )
 }
@@ -153,7 +174,12 @@ const handlePageChange = (page) => {
 const debouncedSearch = debounce(() => {
     router.get(
         route('admin.payments.index'),
-        { ...props.filters, search: search.value, page: 1 }, // Reset to page 1 when searching
+        { 
+            search: search.value,
+            status: filters.value.status,
+            currency: filters.value.currency,
+            page: 1 
+        },
         { preserveState: true, preserveScroll: true }
     )
 }, 300)
@@ -161,12 +187,16 @@ const debouncedSearch = debounce(() => {
 const updateFilters = () => {
     router.get(
         route('admin.payments.index'),
-        { ...props.filters, page: 1 }, // Reset to page 1 when changing filters
+        { 
+            search: search.value,
+            status: filters.value.status,
+            currency: filters.value.currency,
+            page: 1 
+        },
         { preserveState: true, preserveScroll: true }
     )
 }
 </script>
-
 
 <style scoped>
 table th{
