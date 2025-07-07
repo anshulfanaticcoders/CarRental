@@ -205,6 +205,9 @@ class SearchController extends Controller
         // Generate ItemList schema for the vehicles
         $vehicleListSchema = SchemaBuilder::vehicleList($vehicles->getCollection(), 'Vehicle Search Results', $validated);
 
+        // Fetch SEO meta for the search results page (assuming its url_slug is '/s')
+        $seoMeta = \App\Models\SeoMeta::with('translations')->where('url_slug', '/s')->first();
+
         return Inertia::render('SearchResults', [
             'vehicles' => $vehicles,
             'filters' => $validated,
@@ -217,6 +220,8 @@ class SearchController extends Controller
             'mileages' => $mileages, // Use options derived from $potentialVehiclesForOptions
             'categories' => $categoriesFromOptions, // Use options derived from $potentialVehiclesForOptions
             'schema' => $vehicleListSchema, // Pass schema to the Vue component
+            'seoMeta' => $seoMeta, // Pass SEO meta to the component
+            'locale' => \Illuminate\Support\Facades\App::getLocale(), // Pass current locale
         ]);
     }
 
@@ -449,6 +454,11 @@ class SearchController extends Controller
     // Generate ItemList schema for the vehicles
         $vehicleListSchema = SchemaBuilder::vehicleList($vehicles->getCollection(), 'Vehicle Search Results', $validated);
     // Return Inertia response
+        // Fetch SEO meta for the category search results page
+        // The url_slug for category search pages will be dynamic, e.g., 'search/category/suv'
+        $seoUrlSlug = 'search/category/' . ($validated['category_slug'] ?? '');
+        $seoMeta = \App\Models\SeoMeta::with('translations')->where('url_slug', $seoUrlSlug)->first();
+
     return Inertia::render('CategorySearchResults', [
         'vehicles' => $vehicles,
         'filters' => $validated,
@@ -461,6 +471,8 @@ class SearchController extends Controller
         'mileages' => $mileages, // Use options derived from $potentialVehiclesForOptionsCategory
         'categories' => $allCategoriesForPage, // Pass all categories for selection
         'schema' => $vehicleListSchema, 
+        'seoMeta' => $seoMeta, // Pass SEO meta to the component
+        'locale' => \Illuminate\Support\Facades\App::getLocale(), // Pass current locale
     ]);
 }
 }

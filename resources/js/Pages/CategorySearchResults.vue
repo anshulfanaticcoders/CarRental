@@ -45,7 +45,9 @@ const props = defineProps({
     transmissions: Array, 
     fuels: Array,         
     mileages: Array,
-    schema: Object,      
+    schema: Object,
+    seoMeta: Object, // Added seoMeta prop
+    locale: String, // Added locale prop
 });
 
 const debounce = (fn, delay) => {
@@ -56,6 +58,47 @@ const debounce = (fn, delay) => {
     };
 };
 const page = usePage();
+
+const seoTranslation = computed(() => {
+    if (!props.seoMeta || !props.seoMeta.translations) {
+        return {};
+    }
+    return props.seoMeta.translations.find(t => t.locale === props.locale) || {};
+});
+
+const constructedLocalizedUrlSlug = computed(() => {
+    // Prioritize translated url_slug, fallback to main seoMeta url_slug, then category_slug from filters
+    return seoTranslation.value.url_slug || props.seoMeta?.url_slug || props.filters.category_slug || '';
+});
+
+const currentUrl = computed(() => {
+    // Construct the full localized URL for Open Graph and Canonical
+    return `${window.location.origin}/${props.locale}/search/category/${constructedLocalizedUrlSlug.value}`;
+});
+
+const canonicalUrl = computed(() => {
+    // Canonical URL should also reflect the localized slug
+    return props.seoMeta?.canonical_url || currentUrl.value;
+});
+
+const seoTitle = computed(() => {
+    // Fallback to category name if available, then 'Category Search Results'
+    const categoryName = props.categories.find(cat => cat.slug === props.filters.category_slug)?.name;
+    return seoTranslation.value.seo_title || props.seoMeta?.seo_title || categoryName + ' Vehicles' || 'Category Search Results';
+});
+
+const seoDescription = computed(() => {
+    return seoTranslation.value.meta_description || props.seoMeta?.meta_description || '';
+});
+
+const seoKeywords = computed(() => {
+    return seoTranslation.value.keywords || props.seoMeta?.keywords || '';
+});
+
+const seoImageUrl = computed(() => {
+    return props.seoMeta?.seo_image_url || '';
+});
+
 const form = useForm({
     seating_capacity: usePage().props.filters.seating_capacity || "",
     brand: usePage().props.filters.brand || "",
@@ -596,6 +639,18 @@ const handleCategorySearchUpdate = (params) => {
 
     <Head>
         <meta name="robots" content="index, follow" />
+        <title>{{ seoTitle }}</title>
+        <meta name="description" :content="seoDescription" />
+        <meta name="keywords" :content="seoKeywords" />
+        <link rel="canonical" :href="canonicalUrl" />
+        <meta property="og:title" :content="seoTitle" />
+        <meta property="og:description" :content="seoDescription" />
+        <meta property="og:image" :content="seoImageUrl" />
+        <meta property="og:url" :content="currentUrl" />
+        <meta name="twitter:card" content="summary_large_image" />
+        <meta name="twitter:title" :content="seoTitle" />
+        <meta name="twitter:description" :content="seoDescription" />
+        <meta name="twitter:image" :content="seoImageUrl" />
     </Head>
     <AuthenticatedHeaderLayout />
     <SchemaInjector v-if="schema" :schema="schema" />
