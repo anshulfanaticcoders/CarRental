@@ -217,7 +217,7 @@ onUnmounted(() => {
       <AdminSiderBar />
       <!-- Content -->
       <div class="column w-full flex flex-col">
-        <div class="py-5 px-5 text-white flex justify-between items-center border-b bg-customDarkBlackColor">
+        <div class="py-5 px-5 text-white flex justify-between items-center shadow-[5px_0px_3px_2px_#8d8d8d] bg-customDarkBlackColor">
           <p class="leading-8">{{ currentPageTitle }}</p>
           <div class="flex items-center space-x-4">
             <!-- Notification Bell (Before Company Details) -->
