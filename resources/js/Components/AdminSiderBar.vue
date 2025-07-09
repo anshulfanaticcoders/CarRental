@@ -335,10 +335,10 @@ const data = {
           title: 'FAQ',
           url: '/admin/settings/faq',
         },
-        // {
-        //   title: 'Radius',
-        //   url: '/radiuses',
-        // },
+        {
+          title: 'Payable Amount',
+          url: '/admin/settings/payable-amount',
+        },
         {
           title: 'Header/Footer Scripts',
           url: '/admin/header-footer-scripts',

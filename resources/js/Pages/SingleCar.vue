@@ -22,6 +22,7 @@ import mileageIcon from "../../assets/mileageIcon.svg";
 import pickupLocationIcon from "../../assets/pickupLocationIcon.svg";
 import returnLocationIcon from "../../assets/returnLocationIcon.svg";
 import partnersIcon from "../../assets/partners.svg";
+import offerIcon from "../../assets/percentage-tag.svg";
 import { Head, Link } from "@inertiajs/vue3";
 import { computed, ref, watch } from "vue";
 import AuthenticatedHeaderLayout from "@/Layouts/AuthenticatedHeaderLayout.vue";
@@ -51,6 +52,7 @@ const locale = usePage().props.locale;
 const vehicle = ref(props.vehicle);
 const user = ref(null);
 const reviews = ref([]);
+const paymentPercentage = ref(0.00); // New ref for payment percentage
 
 const metaTitle = computed(() => {
   return `Rent ${vehicle.value.brand} ${vehicle.value.model} - ${vehicle.value.full_vehicle_address} - ${vehicle.value.id} - Vrooem`;
@@ -112,6 +114,16 @@ const getStarAltText = (rating, starNumber) => {
 };
 onMounted(async () => {
     await fetchReviews();
+    // Fetch payment percentage from API
+    try {
+        const response = await axios.get('/api/payment-percentage');
+        if (response.data && response.data.payment_percentage !== undefined) {
+            paymentPercentage.value = Number(response.data.payment_percentage);
+        }
+    } catch (error) {
+        console.error('Error fetching payment percentage:', error);
+        // Keep default 0.00 if API call fails
+    }
 });
 
 const fetchReviews = async () => {
@@ -1505,6 +1517,12 @@ const searchUrl = computed(() => {
                                         <div class="mx-auto px-6 max-[768px]:px-0 max-[768px]:w-full">
                                             <Card>
                                                 <CardHeader>
+                                                    <div v-if="paymentPercentage > 0" class="flex gap-3 items-end bg-yellow-100 p-2 rounded-[12px] max-[768px]:mb-3">
+                                                        <img :src="offerIcon" alt="" class="w-6 h-6">
+                                                    <p class="text-lg text-customDarkBlackColor font-bold max-[768px]:text-[0.75rem]">
+                                                        Pay {{ paymentPercentage }}% now and rest pay later
+                                                    </p>
+                                                    </div>
                                                     <CardTitle class="inline-block text-[1rem]">Choose Your Rental
                                                         Package</CardTitle>
                                                     <div

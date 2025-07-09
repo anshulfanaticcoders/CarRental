@@ -90,6 +90,7 @@ const dateFrom = ref(props.query?.dateFrom || null);
 const dateTo = ref(props.query?.dateTo || null);
 const timeFrom = ref(props.query?.timeFrom || null);
 const timeTo = ref(props.query?.timeTo || null);
+const paymentPercentage = ref(0.00); // Initialize with 0, will be fetched from API
 
 const sessionBookingDetails = ref(null); // To store parsed session data
 const isBookingDataReady = ref(false); // Flag to control rendering of StripeCheckout
@@ -175,7 +176,7 @@ const parsedFeatures = (features) => {
         return [];
     }
 };
-onMounted(() => {
+onMounted(async () => {
     // Check if you should be using plan.plan_id instead of plan.id
     // const freePlan = plans.value.find(plan => plan.plan_id === 2);
     // if (freePlan) {
@@ -272,7 +273,7 @@ const loadSavedDriverInfo = () => {
     }
 };
 
-onMounted(() => {
+onMounted(async () => {
     // Load main booking details from 'bookingDetails' session item
     const bookingDetailsString = sessionStorage.getItem('bookingDetails');
     if (bookingDetailsString) {
@@ -339,6 +340,17 @@ onMounted(() => {
     // Load other parts of the state from their respective session storage items
     loadSavedDriverInfo(); // Loads 'driverInfo' into customer.value
     loadSelectionData();   // Loads 'selectionData' for plans and extras into selectedPlan.value and bookingExtras.value
+
+    // Fetch payment percentage from API
+    try {
+        const response = await axios.get('/api/payment-percentage');
+        if (response.data && response.data.payment_percentage !== undefined) {
+            paymentPercentage.value = Number(response.data.payment_percentage);
+        }
+    } catch (error) {
+        console.error('Error fetching payment percentage:', error);
+        // Keep default 0.00 if API call fails
+    }
 });
 
 // stripe payment
@@ -381,12 +393,12 @@ const calculateTotal = computed(() => {
 
 const calculateAmountPaid = computed(() => {
     const total = calculateTotal.value;
-    return Number((total * 0.3).toFixed(2));
+    return Number((total * (paymentPercentage.value / 100)).toFixed(2));
 });
 
 const calculatePendingAmount = computed(() => {
     const total = calculateTotal.value;
-    return Number((total * 0.7).toFixed(2));
+    return Number((total * (1 - (paymentPercentage.value / 100))).toFixed(2));
 });
 
 
@@ -1188,12 +1200,12 @@ const bookingData = computed(() => {
                                         </p>
                                         <span class="relative text-[1.25rem] font-bold">{{ formatPrice(calculateTotal)
                                             }}
-                                            <span
+                                            <span v-if="paymentPercentage > 0"
                                                 class="absolute left-0 top-[50%] w-full bg-red-600 h-[2px] -rotate-6"></span>
                                         </span>
                                     </div>
-                                    <div class="flex justify-between items-center">
-                                        <span class="text-[1.15rem] max-[768px]:text-[0.875rem]">Pay 30% now
+                                    <div v-if="paymentPercentage > 0" class="flex justify-between items-center">
+                                        <span class="text-[1.15rem] max-[768px]:text-[0.875rem]">Pay {{ paymentPercentage }}% now
                                             value</span>
                                         <span class="text-[1.25rem] font-bold text-green-600">{{
                                             formatPrice(calculateAmountPaid)

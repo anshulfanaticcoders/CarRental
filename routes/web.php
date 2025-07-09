@@ -57,6 +57,7 @@ use App\Http\Controllers\VendorBulkImageController;
 use App\Http\Controllers\VendorController;
 use App\Http\Controllers\PaymentController;
 use App\Http\Controllers\Admin\VendorsDashboardController;
+use App\Http\Controllers\Admin\PayableSettingController;
 use App\Models\Booking;
 use App\Models\Message;
 use App\Models\Page;
@@ -214,6 +215,10 @@ Route::middleware(['auth', 'role:admin'])->group(function () {
     // Admin Profile Settings
     Route::get('/admin/settings/profile', [AdminProfileController::class, 'index'])->name('admin.settings.profile');
     Route::post('/admin/settings/profile', [AdminProfileController::class, 'update'])->name('admin.settings.profile');
+
+    // Payable Amount Settings
+    Route::get('/admin/settings/payable-amount', [PayableSettingController::class, 'index'])->name('admin.settings.payable-amount.index');
+    Route::post('/admin/settings/payable-amount', [PayableSettingController::class, 'update'])->name('admin.settings.payable-amount.update');
 });
 
 // Locale-prefixed routes (for customer and vendor)
