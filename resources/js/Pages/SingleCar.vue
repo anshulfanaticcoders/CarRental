@@ -29,6 +29,7 @@ import AuthenticatedHeaderLayout from "@/Layouts/AuthenticatedHeaderLayout.vue";
 import { Skeleton } from '@/Components/ui/skeleton';
 import '@vuepic/vue-datepicker/dist/main.css';
 import VueDatepicker from '@vuepic/vue-datepicker';
+import { useToast } from 'vue-toastification';
 
 
 import {
@@ -125,6 +126,32 @@ onMounted(async () => {
         // Keep default 0.00 if API call fails
     }
 });
+
+const toast = useToast();
+
+const shareVehicle = async () => {
+    const shareData = {
+        title: metaTitle.value,
+        text: `Check out this amazing car for rent: ${vehicle.value.brand} ${vehicle.value.model}`,
+        url: canonicalUrl.value,
+        image: primaryImage.value?.image_url, // Added image URL directly
+    };
+
+    if (navigator.share) {
+        try {
+            await navigator.share(shareData);
+        } catch (error) {
+            console.error('Error sharing:', error);
+        }
+    } else {
+        // Fallback for browsers that do not support Web Share API
+        try {
+            await navigator.clipboard.writeText(canonicalUrl.value);
+        } catch (err) {
+            console.error('Failed to copy: ', err);
+        }
+    }
+};
 
 const fetchReviews = async () => {
     isLoading.value = true;
@@ -350,8 +377,6 @@ const validateRentalDetails = () => {
 
 
 // Function to toggle favourite status
-import { useToast } from 'vue-toastification';
-const toast = useToast();
 const fetchFavoriteStatus = async () => {
     if (!props.auth?.user) {
         return;
@@ -1448,8 +1473,8 @@ const searchUrl = computed(() => {
                                     </span>
                                 </div>
                                 <div class="icons flex items-center gap-3">
-                                    <Link href="" class="max-[768px]:w-[1.5rem]"><img :src="ShareIcon" alt=""
-                                        loading="lazy" /></Link>
+                                    <button @click="shareVehicle" class="max-[768px]:w-[1.5rem]"><img :src="ShareIcon" alt=""
+                                        loading="lazy" /></button>
                                     <button @click.stop="toggleFavourite(vehicle)" class="heart-icon"
                                         :class="{ 'filled-heart': vehicle.is_favourite, 'pop-animation': popEffect }"
                                         @animationend="popEffect = false">
