@@ -15,9 +15,12 @@
         <meta name="twitter:image" :content="seoImageUrl" />
     </Head>
      <AuthenticatedHeaderLayout />
-        <div class="max-w-[1200px] max-[768px]:max-w-full mx-auto py-customVerticalSpacing my-[2rem]
-         px-[1.5rem] shadow-[0_3px_8px_rgba(0,0,0,0.24)] max-[768px]:my-0 max-[1230px]:shadow-none">
-            <h1 class="text-3xl font-bold mb-6 max-[768px]:text-[1.2rem]">{{ page.title }}</h1>
+        <div class="hero-section relative h-[500px] max-[768px]:h-[300px] flex items-center justify-center text-white"
+             :style="{ backgroundImage: `url(${pageBg})`, backgroundSize: 'cover', backgroundPosition: 'bottom' }">
+            <h1 class="text-5xl font-bold text-center">{{ page.title }}</h1>
+        </div>
+        <div class="max-w-[1500px] max-[768px]:max-w-full mx-auto py-customVerticalSpacing my-[2rem]
+         px-[1.5rem] max-[768px]:my-0 max-[1230px]:shadow-none">
             <div class="prose max-w-none" v-html="page.content"></div>
         </div>
 
@@ -29,6 +32,7 @@ import Footer from '@/Components/Footer.vue';
 import AuthenticatedHeaderLayout from '@/Layouts/AuthenticatedHeaderLayout.vue';
 import { Head, usePage } from '@inertiajs/vue3';
 import { computed } from 'vue';
+import pageBg from '../../../assets/pageBg.jpg';
 
 const props = defineProps({
     page: Object,
