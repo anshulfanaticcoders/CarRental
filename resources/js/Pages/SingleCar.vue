@@ -1574,7 +1574,7 @@ const searchUrl = computed(() => {
                                                     <div v-if="paymentPercentage > 0" class="flex gap-3 items-end bg-yellow-100 p-2 rounded-[12px] max-[768px]:mb-3">
                                                         <img :src="offerIcon" alt="" class="w-6 h-6">
                                                     <p class="text-lg text-customDarkBlackColor font-bold max-[768px]:text-[0.75rem]">
-                                                        Pay {{ paymentPercentage }}% now and rest pay later
+                                                        Pay <span class="text-green-500">{{ paymentPercentage }}%</span> now and rest pay later
                                                     </p>
                                                     </div>
                                                     <CardTitle class="inline-block text-[1rem]">Choose Your Rental
