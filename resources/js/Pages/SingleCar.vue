@@ -1459,7 +1459,7 @@ const searchUrl = computed(() => {
 
                         <div v-if="vehicle.guidelines" class="mt-[3rem]">
                             <h2 class="text-xl md:text-2xl lg:text-3xl font-medium mb-4 md:mb-6">Guidelines</h2>
-                            <p>{{ vehicle.guidelines }}</p>
+                            <p class="whitespace-pre-wrap p-2 bg-customLightPrimaryColor rounded-[10px]">{{ vehicle.guidelines }}</p>
                         </div>
 
                         <div v-else>
