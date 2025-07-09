@@ -130,25 +130,54 @@ onMounted(async () => {
 const toast = useToast();
 
 const shareVehicle = async () => {
-    const shareData = {
-        title: metaTitle.value,
-        text: `Check out this amazing car for rent: ${vehicle.value.brand} ${vehicle.value.model}`,
-        url: canonicalUrl.value,
-        image: primaryImage.value?.image_url, // Added image URL directly
-    };
+    try {
+        const shareData = {
+            title: metaTitle.value,
+            text: `Check out this amazing ${vehicle.value.brand} ${vehicle.value.model} for rent on Vrooem!`,
+            url: canonicalUrl.value,
+        };
 
-    if (navigator.share) {
-        try {
+        // First check basic sharing capability
+        if (navigator.share) {
+            // For image sharing (only on supported platforms)
+            if (primaryImage.value?.image_url) {
+                try {
+                    // Check if files can be shared (Android Chrome)
+                    if (navigator.canShare && navigator.canShare({ files: [] })) {
+                        const response = await fetch(primaryImage.value.image_url);
+                        const blob = await response.blob();
+                        const file = new File([blob], 'car-image.jpg', { type: blob.type });
+                        
+                        // Try sharing with image
+                        await navigator.share({
+                            ...shareData,
+                            files: [file]
+                        });
+                        return;
+                    }
+                } catch (fileShareError) {
+                    console.log('File sharing not supported, falling back to text', fileShareError);
+                }
+            }
+            
+            // Fallback to regular share without files
             await navigator.share(shareData);
-        } catch (error) {
-            console.error('Error sharing:', error);
+        } else {
+            // Fallback for browsers without Web Share API
+            const shareText = `${shareData.text}\n${shareData.url}`;
+            
+            if (navigator.clipboard?.writeText) {
+                await navigator.clipboard.writeText(shareText);
+                toast.success('Link copied to clipboard!');
+            } else {
+                // Final fallback - show prompt
+                window.prompt('Copy this link:', shareData.url);
+            }
         }
-    } else {
-        // Fallback for browsers that do not support Web Share API
-        try {
-            await navigator.clipboard.writeText(canonicalUrl.value);
-        } catch (err) {
-            console.error('Failed to copy: ', err);
+    } catch (error) {
+        console.error('Error sharing:', error);
+        if (error.name !== 'AbortError') {
+            toast.error('Failed to share. Please try another method.');
         }
     }
 };
