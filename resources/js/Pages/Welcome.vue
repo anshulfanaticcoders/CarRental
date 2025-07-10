@@ -254,7 +254,7 @@ const updateCategorySearchUrl = (category) => {
                 <div
                     class="column h-[46rem] w-full relative max-[768px]:h-auto max-[768px]:pb-[2rem] max-[768px]:px-[1.5rem]">
                     <img class="rounded-bl-[20px] h-full w-full object-cover max-[768px]:rounded-[20px]" :src="heroImg"
-                        alt="" loading="lazy" />
+                        alt="" />
                     <div class="bg-customOverlayColor absolute top-0 w-full h-full rounded-bl-[20px]"></div>
                 </div>
             </div>
@@ -289,13 +289,13 @@ const updateCategorySearchUrl = (category) => {
                                             <CardContent
                                                 class="cardContent flex h-[515px] max-[768px]:h-[17rem] items-center justify-center p-6 relative">
                                                 <img class="rounded-[20px] h-full w-full object-cover"
-                                                    :src="`${category.image}`" alt="" loading="lazy" />
+                                                    :src="`${category.image}`" alt="" />
                                                 <div
                                                     class="category_name absolute bottom-10 left-0 flex justify-between w-full px-8">
                                                     <span class="text-white text-[2rem] font-semibold">
                                                         {{ category.name }}
                                                     </span>
-                                                    <img :src="goIcon" alt="" loading="lazy" />
+                                                    <img :src="goIcon" alt=""  />
                                                 </div>
                                             </CardContent>
                                         </Card>
@@ -350,7 +350,7 @@ const updateCategorySearchUrl = (category) => {
                                         class="h-[18rem] border-0 rounded-[0.75rem] transition-all duration-300 hover:mt-[-1rem] max-[768px]:hover:mt-0">
                                         <CardContent class="flex flex-col gap-2 justify-center px-1 h-full">
                                             <img :src="`${place.image}`" alt=""
-                                                class="rounded-[0.75rem] h-[12rem] w-full object-cover mb-2" loading="lazy" />
+                                                class="rounded-[0.75rem] h-[12rem] w-full object-cover mb-2"  />
                                             <div class="px-3">
                                                 <h3 class="text-lg font-medium">{{ place.place_name }}</h3>
                                                 <p class="text-sm text-customDarkBlackColor">{{ place.city }}, {{ place.country }}</p>
@@ -406,7 +406,7 @@ const updateCategorySearchUrl = (category) => {
                 max-[768px]:grid-cols-1">
                     <div class="col flex flex-col gap-10">
                         <div class="info-card flex gap-5 items-start">
-                            <img :src="locationMapIcon" alt="" loading="lazy" />
+                            <img :src="locationMapIcon" alt=""  />
                             <div class="flex flex-col gap-3">
                                 <span
                                     class="text-[1.5rem] text-customDarkBlackColor font-medium  max-[768px]:text-[1.25rem]">{{ _p('convenient_locations') }}</span>
@@ -416,7 +416,7 @@ const updateCategorySearchUrl = (category) => {
                             </div>
                         </div>
                         <div class="info-card flex gap-5 items-start">
-                            <img :src="phoneIcon" alt="" loading="lazy" />
+                            <img :src="phoneIcon" alt=""  />
                             <div class=" flex flex-col gap-3">
                                 <span
                                     class="text-[1.5rem] text-customDarkBlackColor font-medium  max-[768px]:text-[1.25rem]">{{ _p('fast_booking') }}</span>
@@ -428,11 +428,11 @@ const updateCategorySearchUrl = (category) => {
                     </div>
                     <div class="col flex justify-center">
                         <img class="rounded-[20px] h-full object-cover" :src="carImage" alt=""
-                            style="clip-path: polygon(30% 0%, 70% 0%, 100% 30%, 100% 70%, 70% 100%, 30% 100%, 0% 70%, 0% 30%);" loading="lazy" />
+                            style="clip-path: polygon(30% 0%, 70% 0%, 100% 30%, 100% 70%, 70% 100%, 30% 100%, 0% 70%, 0% 30%);"  />
                     </div>
                     <div class="col flex flex-col gap-10">
                         <div class="info-card flex gap-5 items-start">
-                            <img :src="chipIcon" alt="" loading="lazy" />
+                            <img :src="chipIcon" alt=""  />
                             <div class=" flex flex-col gap-3">
                                 <span
                                     class="text-[1.5rem] text-customDarkBlackColor font-medium  max-[768px]:text-[1.25rem]">{{ _p('modern_fleet') }}</span>
@@ -442,7 +442,7 @@ const updateCategorySearchUrl = (category) => {
                             </div>
                         </div>
                         <div class="info-card flex gap-5 items-start">
-                            <img :src="userCoverageIcon" alt="" loading="lazy" />
+                            <img :src="userCoverageIcon" alt=""  />
                             <div class="flex flex-col gap-3 ">
                                 <span
                                     class="text-[1.5rem] text-customDarkBlackColor font-medium  max-[768px]:text-[1.25rem]">{{ _p('insurance_coverage') }}</span>
@@ -489,15 +489,15 @@ const updateCategorySearchUrl = (category) => {
                 <!-- First Blog (Large Left) -->
                 <Link :href="route('blog.show', { locale: page.props.locale, blog: blogs[0].translated_slug })" v-if="!isLoading && blogs.length > 0"
                     class="w-1/2 h-[574px] relative rounded-lg overflow-hidden shadow-md blog-container max-[768px]:w-full max-[768px]:h-[380px]">
-                <img :src="blogs[0].image" :alt="blogs[0].title" class="w-full h-full object-cover rounded-lg" loading="lazy">
+                <img :src="blogs[0].image" :alt="blogs[0].title" class="w-full h-full object-cover rounded-lg" >
 
                 <div class="absolute bottom-0 bg-gradient-to-t from-black/70 to-transparent p-4 text-white">
                     <p class="text-[1.25rem] flex items-center gap-1">
-                        <img :src=calendarWhiteIcon alt="" loading="lazy"> {{ formatDate(blogs[0].created_at) }}
+                        <img :src=calendarWhiteIcon alt="" > {{ formatDate(blogs[0].created_at) }}
                     </p>
                     <h4 class="font-semibold text-[2rem] max-[768px]:text-[1.25rem]">{{ blogs[0].title }}</h4>
                     <Link :href="route('blog.show', { locale: page.props.locale, blog: blogs[0].translated_slug })" class="inline-flex items-center mt-2 text-blue-400">
-                    <img :src=whiteGoIcon alt="" loading="lazy">
+                    <img :src=whiteGoIcon alt="" >
                     </Link>
                 </div>
                 </Link>
@@ -515,7 +515,7 @@ const updateCategorySearchUrl = (category) => {
                             class="w-[30%] h-full blog-container max-[768px]:w-[40%] max-[768px]:h-[120px]">
                             <Link :href="route('blog.show', { locale: page.props.locale, blog: blogs[index].translated_slug })">
                             <img :src="blogs[index].image" :alt="blogs[index].title"
-                                class="w-full h-full object-cover rounded-lg transform transition-transform duration-300 ease-in-out hover:scale-105" loading="lazy">
+                                class="w-full h-full object-cover rounded-lg transform transition-transform duration-300 ease-in-out hover:scale-105" >
                             </Link>
                         </div>
                         <div v-else class="w-[30%] h-full blog-container max-[768px]:w-[40%] max-[768px]:h-[120px]">
@@ -525,7 +525,7 @@ const updateCategorySearchUrl = (category) => {
                         <div class="w-[70%]">
                             <p v-if="!isLoading && blogs.length > index"
                                 class="text-sm flex items-center gap-1 text-customLightGrayColor">
-                                <img :src=calendarIcon alt="" loading="lazy"> {{ formatDate(blogs[index].created_at) }}
+                                <img :src=calendarIcon alt="" > {{ formatDate(blogs[index].created_at) }}
                             </p>
                             <h4 v-if="!isLoading && blogs.length > index"
                                 class="font-semibold text-[1.5rem] text-customDarkBlackColor max-[768px]:text-[1rem]">{{
@@ -533,7 +533,7 @@ const updateCategorySearchUrl = (category) => {
                             <Link v-if="!isLoading && blogs.length > index" :href="route('blog.show', { locale: page.props.locale, blog: blogs[index].translated_slug })"
                                 class="inline-flex items-center mt-2 text-customPrimaryColor read-story">
                             Read Story
-                            <img :src=goIcon alt="" class="w-[1.5rem]" loading="lazy">
+                            <img :src=goIcon alt="" class="w-[1.5rem]" >
                             </Link>
                             <div v-else class="space-y-2">
                                 <Skeleton class="h-4 w-[70%]" />
