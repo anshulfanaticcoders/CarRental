@@ -6,6 +6,7 @@ use App\Models\VendorBulkVehicleImage;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Storage;
+use App\Helpers\ImageCompressionHelper;
 
 class VendorBulkImageController extends Controller
 {
@@ -34,7 +35,7 @@ class VendorBulkImageController extends Controller
     {
         $request->validate([
             'images' => 'required|array|max:50', // Max 50 images
-            'images.*' => 'image|mimes:jpeg,png,jpg,gif,svg|max:2048', // Max 2MB per image
+            'images.*' => 'image|mimes:jpeg,png,jpg,gif,svg', // Max 2MB per image
         ]);
 
         $user = Auth::user();
@@ -45,12 +46,22 @@ class VendorBulkImageController extends Controller
             foreach ($request->file('images') as $imageFile) {
                 try {
                     $originalName = $imageFile->getClientOriginalName();
-                    // Store in a vendor-specific folder: bulk_vehicle_images/{user_id}/
-                    $path = $imageFile->store('vehicle_images/' . $user->id, 'upcloud');
+                    $folderName = 'vehicle_images/' . $user->id;
+                    $compressedImageUrl = ImageCompressionHelper::compressImage(
+                        $imageFile,
+                        $folderName,
+                        quality: 80, // Adjust quality as needed (0-100)
+                        maxWidth: 1200, // Optional: Set max width for vehicle images
+                        maxHeight: 900 // Optional: Set max height for vehicle images
+                    );
+
+                    if (!$compressedImageUrl) {
+                        throw new \Exception("Failed to compress image: {$originalName}");
+                    }
 
                     $image = VendorBulkVehicleImage::create([
                         'user_id' => $user->id,
-                        'image_path' => $path,
+                        'image_path' => $compressedImageUrl,
                         'original_name' => $originalName,
                     ]);
 

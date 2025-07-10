@@ -75,6 +75,7 @@ const seoImageUrl = computed(() => {
 
 .prose ::v-deep h4 {
     font-size: 1.5rem !important;
+    font-weight: bold !important;
 }
 .prose ::v-deep h5 {
     font-weight: bold !important;

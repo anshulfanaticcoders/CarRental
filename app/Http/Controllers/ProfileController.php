@@ -7,6 +7,7 @@ use App\Http\Requests\ProfileUpdateRequest;
 use App\Models\UserProfile;
 use App\Models\User;
 use Illuminate\Http\RedirectResponse;
+use App\Helpers\ImageCompressionHelper;
 use Illuminate\Http\Request; // Make sure to import this
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Redirect;
@@ -51,15 +52,21 @@ class ProfileController extends Controller
             $validated = $request->validated();
 
             if ($request->hasFile('avatar')) {
-                $filePath = $request->file('avatar')->getClientOriginalName();
                 $folderName = 'avatars';
-                $path = $request->file('avatar')->store($folderName, 'upcloud');
-    
-                // Set the object to be publicly accessible
-                Storage::disk('upcloud')->setVisibility($path, 'public');
-    
-                $url = Storage::disk('upcloud')->url($path);
-                $validated['avatar'] = $url;
+                $compressedImageUrl = ImageCompressionHelper::compressImage(
+                    $request->file('avatar'),
+                    $folderName,
+                    quality: 80, // Adjust quality as needed (0-100)
+                    maxWidth: 800, // Optional: Set max width
+                    maxHeight: 800 // Optional: Set max height
+                );
+
+                if ($compressedImageUrl) {
+                    $validated['avatar'] = $compressedImageUrl;
+                } else {
+                    // Handle compression failure, e.g., log error or return an error response
+                    return back()->withErrors(['avatar' => 'Failed to compress image.']);
+                }
             }
             // Update user basic info
             $userFields = ['first_name', 'last_name', 'email', 'phone'];

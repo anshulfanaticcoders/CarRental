@@ -12,6 +12,7 @@ use App\Models\SeoMeta;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use App\Helpers\SchemaBuilder; // Added for Schema
+use App\Helpers\ImageCompressionHelper;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str; // Added for slug generation
 use Illuminate\Support\Facades\App; // Added for locale access
@@ -91,8 +92,21 @@ class BlogController extends Controller
         ];
 
         if ($request->hasFile('image')) {
-            $imagePath = $request->file('image')->store('blogs', 'upcloud');
-            $blogData['image'] = Storage::disk('upcloud')->url($imagePath);
+            $folderName = 'blogs';
+            $compressedImageUrl = ImageCompressionHelper::compressImage(
+                $request->file('image'),
+                $folderName,
+                quality: 80, // Adjust quality as needed (0-100)
+                maxWidth: 1200, // Optional: Set max width for blog images
+                maxHeight: 800 // Optional: Set max height for blog images
+            );
+
+            if ($compressedImageUrl) {
+                $blogData['image'] = Storage::disk('upcloud')->url($compressedImageUrl);
+            } else {
+                // Handle compression failure, e.g., log error or return an error response
+                return back()->withErrors(['image' => 'Failed to compress image.']);
+            }
         }
 
         $blog = Blog::create($blogData);
@@ -232,14 +246,29 @@ class BlogController extends Controller
         ];
 
         if ($request->hasFile('image')) {
+            // Delete old image if it exists
             if ($blog->image) {
                 $oldImagePath = str_replace(Storage::disk('upcloud')->url(''), '', $blog->image);
-                if ($oldImagePath) { // Ensure path is not empty
+                if ($oldImagePath) {
                     Storage::disk('upcloud')->delete($oldImagePath);
                 }
             }
-            $imagePath = $request->file('image')->store('blogs', 'upcloud');
-            $blogData['image'] = Storage::disk('upcloud')->url($imagePath);
+
+            $folderName = 'blogs';
+            $compressedImageUrl = ImageCompressionHelper::compressImage(
+                $request->file('image'),
+                $folderName,
+                quality: 80, // Adjust quality as needed (0-100)
+                maxWidth: 1200, // Optional: Set max width for blog images
+                maxHeight: 800 // Optional: Set max height for blog images
+            );
+
+            if ($compressedImageUrl) {
+                $blogData['image'] = Storage::disk('upcloud')->url($compressedImageUrl);
+            } else {
+                // Handle compression failure, e.g., log error or return an error response
+                return back()->withErrors(['image' => 'Failed to compress image.']);
+            }
         }
         
         $blog->update($blogData);

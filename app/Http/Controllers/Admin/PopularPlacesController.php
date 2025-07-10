@@ -8,6 +8,7 @@ use App\Models\PopularPlace;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Illuminate\Support\Facades\Storage;
+use App\Helpers\ImageCompressionHelper;
 
 class PopularPlacesController extends Controller
 {
@@ -58,8 +59,21 @@ class PopularPlacesController extends Controller
         $place->longitude = $request->longitude;
 
         if ($request->hasFile('image')) {
-            $imagePath = $request->file('image')->store('popularPlaces', 'upcloud'); // Store in UpCloud
-            $place->image = Storage::disk('upcloud')->url($imagePath); // Get full image URL
+            $folderName = 'popularPlaces';
+            $compressedImageUrl = ImageCompressionHelper::compressImage(
+                $request->file('image'),
+                $folderName,
+                quality: 80, // Adjust quality as needed (0-100)
+                maxWidth: 800, // Optional: Set max width
+                maxHeight: 600 // Optional: Set max height
+            );
+
+            if ($compressedImageUrl) {
+                $place->image = Storage::disk('upcloud')->url($compressedImageUrl);
+            } else {
+                // Handle compression failure, e.g., log error or return an error response
+                return back()->withErrors(['image' => 'Failed to compress image.']);
+            }
         }
     
 
@@ -99,11 +113,26 @@ class PopularPlacesController extends Controller
             // Delete old image from UpCloud
             if ($popularPlace->image) {
                 $oldImagePath = str_replace(Storage::disk('upcloud')->url(''), '', $popularPlace->image);
-                Storage::disk('upcloud')->delete($oldImagePath);
+                if ($oldImagePath) {
+                    Storage::disk('upcloud')->delete($oldImagePath);
+                }
             }
     
-            $imagePath = $request->file('image')->store('popularPlaces', 'upcloud');
-            $popularPlace->image = Storage::disk('upcloud')->url($imagePath);
+            $folderName = 'popularPlaces';
+            $compressedImageUrl = ImageCompressionHelper::compressImage(
+                $request->file('image'),
+                $folderName,
+                quality: 80, // Adjust quality as needed (0-100)
+                maxWidth: 800, // Optional: Set max width
+                maxHeight: 600 // Optional: Set max height
+            );
+
+            if ($compressedImageUrl) {
+                $popularPlace->image = Storage::disk('upcloud')->url($compressedImageUrl);
+            } else {
+                // Handle compression failure, e.g., log error or return an error response
+                return back()->withErrors(['image' => 'Failed to compress image.']);
+            }
         }
 
         $popularPlace->save();

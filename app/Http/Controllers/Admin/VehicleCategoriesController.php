@@ -9,6 +9,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Str;
 use Inertia\Inertia;
 use Illuminate\Support\Facades\Storage;
+use App\Helpers\ImageCompressionHelper;
 
 class VehicleCategoriesController extends Controller
 {
@@ -41,15 +42,28 @@ class VehicleCategoriesController extends Controller
         $request->validate([
             'name' => 'required|string|max:255',
             'description' => 'nullable|string',
-            'image' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048',
+            'image' => 'nullable|image|mimes:jpeg,png,jpg,gif',
         ]);
 
         $data = $request->all();
         $data['slug'] = $request->slug ?? Str::slug($request->name);
 
         if ($request->hasFile('image')) {
-            $data['image'] = $request->file('image')->store('categoryImages', 'upcloud');
-            $data['image'] = Storage::disk('upcloud')->url($data['image']);
+            $folderName = 'categoryImages';
+            $compressedImageUrl = ImageCompressionHelper::compressImage(
+                $request->file('image'),
+                $folderName,
+                quality: 80, // Adjust quality as needed (0-100)
+                maxWidth: 800, // Optional: Set max width
+                maxHeight: 600 // Optional: Set max height
+            );
+
+            if ($compressedImageUrl) {
+                $data['image'] = Storage::disk('upcloud')->url($compressedImageUrl);
+            } else {
+                // Handle compression failure, e.g., log error or return an error response
+                return back()->withErrors(['image' => 'Failed to compress image.']);
+            }
         }
 
         VehicleCategory::create($data);
@@ -66,7 +80,7 @@ class VehicleCategoriesController extends Controller
         $request->validate([
             'name' => 'required|string|max:255',
             'description' => 'nullable|string',
-            'image' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048',
+            'image' => 'nullable|image|mimes:jpeg,png,jpg,gif',
         ]);
 
         $data = [
@@ -82,8 +96,21 @@ class VehicleCategoriesController extends Controller
                 Storage::disk('upcloud')->delete($oldImagePath);
             }
 
-            $data['image'] = $request->file('image')->store('categoryImages', 'upcloud');
-            $data['image'] = Storage::disk('upcloud')->url($data['image']);
+            $folderName = 'categoryImages';
+            $compressedImageUrl = ImageCompressionHelper::compressImage(
+                $request->file('image'),
+                $folderName,
+                quality: 80, // Adjust quality as needed (0-100)
+                maxWidth: 800, // Optional: Set max width
+                maxHeight: 600 // Optional: Set max height
+            );
+
+            if ($compressedImageUrl) {
+                $data['image'] = Storage::disk('upcloud')->url($compressedImageUrl);
+            } else {
+                // Handle compression failure, e.g., log error or return an error response
+                return back()->withErrors(['image' => 'Failed to compress image.']);
+            }
         }
 
         $vehicleCategory->update($data);

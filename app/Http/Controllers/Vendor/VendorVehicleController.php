@@ -7,9 +7,11 @@ use App\Models\Vehicle;
 use App\Models\VehicleFeature;
 use App\Models\VehicleImage;
 use App\Models\VehicleSpecification;
+use App\Helpers\ImageCompressionHelper;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\Log; // Add this line
 use Inertia\Inertia;
 
 class VendorVehicleController extends Controller
@@ -119,7 +121,7 @@ class VendorVehicleController extends Controller
             'vehicle_height' => 'nullable|numeric|min:0',
             'dealer_cost' => 'nullable|numeric|min:0',
             'phone_number' => 'required|string|max:15',
-            'images.*' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048',
+            'images.*' => 'nullable|image|mimes:jpeg,png,jpg,gif',
             'primary_image_index' => 'nullable|integer|min:0',
             'existing_primary_image_id' => 'nullable|integer|exists:vehicle_images,id',
 
@@ -282,10 +284,18 @@ class VendorVehicleController extends Controller
 
 
             foreach ($request->file('images') as $index => $image) {
-                $originalName = $image->getClientOriginalName();
                 $folderName = 'vehicle_images';
-                $path = $image->storeAs($folderName, $originalName, 'upcloud');
-                $url = Storage::disk('upcloud')->url($path);
+                $compressedImageUrl = ImageCompressionHelper::compressImage(
+                    $image,
+                    $folderName,
+                    quality: 80, // Adjust quality as needed (0-100)
+                    maxWidth: 1200, // Optional: Set max width
+                    maxHeight: 800 // Optional: Set max height
+                );
+
+                if (!$compressedImageUrl) {
+                    return redirect()->back()->with('error', 'Failed to compress image: ' . $image->getClientOriginalName());
+                }
 
                 $imageType = 'gallery';
                 if ($primaryImageIndex === $index) {
@@ -298,11 +308,10 @@ class VendorVehicleController extends Controller
                     $imageType = 'primary';
                 }
 
-
                 VehicleImage::create([
                     'vehicle_id' => $vehicle->id,
-                    'image_path' => $path,
-                    'image_url' => $url,
+                    'image_path' => $compressedImageUrl, // Store the URL directly as path
+                    'image_url' => $compressedImageUrl,
                     'image_type' => $imageType,
                 ]);
             }
@@ -329,11 +338,12 @@ class VendorVehicleController extends Controller
             ->with('success', 'Vehicle deleted successfully');
     }
 
-    public function deleteImage($vehicleId, $imageId)
+    public function deleteImage($locale, $vehicleId, $imageId) // Added $locale parameter
     {
         $image = VehicleImage::where('vehicle_id', $vehicleId)->where('id', $imageId)->first();
 
         if (!$image) {
+            Log::warning("Image not found for deletion. Vehicle ID: {$vehicleId}, Image ID: {$imageId}"); // Log if image not found
             return response()->json(['message' => 'Image not found'], 404);
         }
 

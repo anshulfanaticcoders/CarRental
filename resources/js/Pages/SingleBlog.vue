@@ -144,11 +144,11 @@ const formatDate = (date) => {
 }
 
 .prose ::v-deep h2 {
-    font-size: 2.5rem !important;
+    font-size: 1.5rem !important;
 }
 
 .prose ::v-deep h3 {
-    font-size: 2rem !important;
+    font-size: 1.5rem !important;
 }
 
 .prose ::v-deep h4 {

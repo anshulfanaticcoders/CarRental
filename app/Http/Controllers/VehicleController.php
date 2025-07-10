@@ -16,6 +16,7 @@ use App\Models\VendorVehiclePlan;
 use App\Notifications\VehicleCreatedNotification;
 use App\Notifications\Vendor\VendorVehicleCreateCompanyNotification;
 use App\Notifications\Vendor\VendorVehicleCreateNotification;
+use App\Helpers\ImageCompressionHelper;
 use App\Providers\RouteServiceProvider;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
@@ -236,27 +237,35 @@ class VehicleController extends Controller
         // Handle vehicle images
         if ($request->hasFile('images')) {
             $primaryImageIndex = (int)$request->primary_image_index;
+            $folderName = 'vehicle_images';
+
             foreach ($request->file('images') as $index => $image) {
-                // Get the original file name
-                $originalName = $image->getClientOriginalName();
-                
-                // Define the folder and file path
-                $folderName = 'vehicle_images';
-                $path = $image->storeAs($folderName, $originalName, 'upcloud');
-                
-                // Get the full URL from UpCloud storage
-                $url = Storage::disk('upcloud')->url($path);
-            
-                // Determine image type
-                $imageType = ($index === $primaryImageIndex) ? 'primary' : 'gallery';
-            
-                // Create vehicle image record - store the path and full URL
-                VehicleImage::create([
-                    'vehicle_id' => $vehicle->id,
-                    'image_path' => $path, // Store the path (e.g., vehicle_images/background.jpg)
-                    'image_url' => $url,   // Store the full URL
-                    'image_type' => $imageType,
-                ]);
+                $compressedImageUrl = ImageCompressionHelper::compressImage(
+                    $image,
+                    $folderName,
+                    quality: 80, // Adjust quality as needed
+                    maxWidth: 1200, // Optional: Set max width for vehicle images
+                    maxHeight: 900 // Optional: Set max height for vehicle images
+                );
+
+                if ($compressedImageUrl) {
+                    // Determine image type
+                    $imageType = ($index === $primaryImageIndex) ? 'primary' : 'gallery';
+
+                    // Create vehicle image record - store the URL
+                    VehicleImage::create([
+                        'vehicle_id' => $vehicle->id,
+                        'image_path' => $compressedImageUrl, // Store the URL directly
+                        'image_url' => $compressedImageUrl,   // Store the full URL
+                        'image_type' => $imageType,
+                    ]);
+                } else {
+                    // Handle compression failure for a specific image
+                    // You might want to log this or return an error,
+                    // but for now, we'll just skip this image.
+                    // For a more robust solution, consider collecting errors and returning them.
+                    ActivityLogHelper::logActivity('error', 'Failed to compress vehicle image: ' . $image->getClientOriginalName(), $vehicle, $request);
+                }
             }
         }
 
