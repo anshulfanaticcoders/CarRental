@@ -32,20 +32,46 @@ class TapfiliateService
 
             if ($response->successful()) {
                 $affiliateData = $response->json();
+                $tapfiliateAffiliateId = $affiliateData['id'];
+
+                // Now, fetch the full affiliate details to get the referral_code
+                $affiliateDetailsResponse = Http::withHeaders([
+                    'Api-Key' => $this->apiKey,
+                    'Content-Type' => 'application/json',
+                ])->get($this->apiUrl . 'affiliates/' . $tapfiliateAffiliateId);
+
+                $referralCode = null;
+                if ($affiliateDetailsResponse->successful()) {
+                    $fullAffiliateData = $affiliateDetailsResponse->json();
+                    $referralCode = data_get($fullAffiliateData, 'referral_code');
+                    Log::info('Fetched referral code for affiliate ' . $tapfiliateAffiliateId . ': ' . $referralCode);
+                } else {
+                    Log::error('Failed to fetch full affiliate details for ' . $tapfiliateAffiliateId, [
+                        'status' => $affiliateDetailsResponse->status(),
+                        'response_body' => $affiliateDetailsResponse->body()
+                    ]);
+                }
+
                 TapfiliateUserMapping::create([
                     'user_id' => $user->id,
-                    'tapfiliate_affiliate_id' => $affiliateData['id'],
-                    'referral_code' => data_get($affiliateData, 'referral_code'), // Safely access referral_code
+                    'tapfiliate_affiliate_id' => $tapfiliateAffiliateId,
+                    'referral_code' => $referralCode, // Use the fetched referral code
                     'is_active' => true,
                 ]);
-                Log::info('Tapfiliate affiliate created for user: ' . $user->id);
+                Log::info('Tapfiliate affiliate created and mapped for user: ' . $user->id);
                 return $affiliateData;
             } else {
-                Log::error('Failed to create Tapfiliate affiliate for user: ' . $user->id, ['response' => $response->body()]);
+                Log::error('Failed to create Tapfiliate affiliate for user: ' . $user->id, [
+                    'status' => $response->status(),
+                    'response_body' => $response->body()
+                ]);
                 return null;
             }
         } catch (\Exception $e) {
-            Log::error('Exception creating Tapfiliate affiliate: ' . $e->getMessage(), ['user_id' => $user->id]);
+            Log::error('Exception creating Tapfiliate affiliate: ' . $e->getMessage(), [
+                'user_id' => $user->id,
+                'trace' => $e->getTraceAsString()
+            ]);
             return null;
         }
     }
