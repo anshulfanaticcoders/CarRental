@@ -10,6 +10,8 @@ use Illuminate\Auth\Events\Login; // Added import
 use Illuminate\Auth\Events\Logout; // Added import
 use App\Listeners\LogSuccessfulLogin; // Added import
 use App\Listeners\LogSuccessfulLogout; // Added import
+use App\Events\BookingCompleted; // Added for Tapfiliate integration
+use App\Listeners\ProcessTapfiliateBookingConversion; // Added for Tapfiliate integration
 
 class EventServiceProvider extends ServiceProvider
 {
@@ -27,6 +29,9 @@ class EventServiceProvider extends ServiceProvider
         ],
         Logout::class => [
             LogSuccessfulLogout::class,
+        ],
+        BookingCompleted::class => [
+            ProcessTapfiliateBookingConversion::class,
         ],
     ];
 

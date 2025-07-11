@@ -72,5 +72,6 @@ class Kernel extends HttpKernel
     protected $routeMiddleware = [
         'role' => \App\Http\Middleware\CheckUserRole::class,
         'vendor.status' => \App\Http\Middleware\CheckVendorStatus::class,
+        'track.referrals' => \App\Http\Middleware\TrackReferrals::class, // Added for Tapfiliate integration
     ];
 }

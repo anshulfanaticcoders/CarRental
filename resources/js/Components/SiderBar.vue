@@ -12,6 +12,7 @@ import vehiclesIcon from "../../assets/vehicletypeIcon.svg";
 import clockIcon from "../../assets/clockIcon.svg";
 import dateblockingIcon from "../../assets/dateblockingIcon.svg";
 import logoutIcon from '../../assets/logoutIcon.svg';
+import { Gift } from 'lucide-vue-next'; // Added for Tapfiliate referral icon
 import {
   AlertDialog,
   AlertDialogAction,
@@ -114,6 +115,7 @@ const otherLinks = [
   { name: _t('customerprofile','inbox'), path: route('messages.index', { locale: usePage().props.locale }), icon: inboxIcon },
   { name: _t('customerprofile','favorites'), path: route('profile.favourites', { locale: usePage().props.locale }), icon: favoritesIcon },
   { name: _t('customerprofile','my_reviews'), path: route('profile.reviews', { locale: usePage().props.locale }), icon: reviewsIcon },
+  { name: 'Referral Program', path: route('customer.referrals.tapfiliate.index', { locale: usePage().props.locale }), icon: Gift }, // Added for Tapfiliate
 ];
 
 // Additional menus for "vendor"

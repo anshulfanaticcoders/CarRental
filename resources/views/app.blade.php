@@ -19,7 +19,7 @@
                 window.initGoogleMaps = () => {
                     resolve();
                 };
-            });
+            }); 
         </script>
         <script src="https://maps.googleapis.com/maps/api/js?key={{ env('GOOGLE_MAPS_API_KEY') }}&libraries=places&loading=async&callback=initGoogleMaps"></script>
 
@@ -65,6 +65,14 @@
             gtag('event', 'conversion', {'send_to': 'AW-16944650756/gSgaCLXb-skaEIS0648_'});
         </script>
 
+        <!-- Tapfiliate Global Tracking Script -->
+        <script src="//tapfiliate.com/tapfiliate.js" async type="text/javascript"></script>
+        <script type="text/javascript">
+            (function(t,a,p){t.TapfiliateObject=a;t[a]=t[a]||function(){
+                (t[a].q=t[a].q||[]).push(arguments)}})(window,'tap');
+            tap('create', '60750-874db3', { integration: "javascript" }); // Replace with your actual Tapfiliate Account ID
+            tap('detect'); // Important for detecting referral codes in the URL
+        </script>
         @inertiaHead
     </head>
     <body class="antialiased">

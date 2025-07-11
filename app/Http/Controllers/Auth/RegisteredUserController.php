@@ -18,6 +18,7 @@ use Illuminate\Validation\Rules;
 use Illuminate\Support\Facades\Notification;
 use Inertia\Inertia;
 use Inertia\Response;
+use App\Services\TapfiliateService; // Added for Tapfiliate integration
 
 class RegisteredUserController extends Controller
 {
@@ -65,7 +66,16 @@ class RegisteredUserController extends Controller
             'last_login_at' => now(),
             'created_at' => now(),
             'updated_at' => now(),
+            'referred_by_user_id' => null, // Initialize as null
         ]);
+
+        // Check for referral code in session and update referred_by_user_id
+        if (session('referral_code')) {
+            $referrerUserMapping = \App\Models\TapfiliateUserMapping::where('referral_code', session('referral_code'))->first();
+            if ($referrerUserMapping) {
+                $user->update(['referred_by_user_id' => $referrerUserMapping->user_id]);
+            }
+        }
 
         // Create user profile
         UserProfile::create([
@@ -78,6 +88,17 @@ class RegisteredUserController extends Controller
         ]);
 
         event(new Registered($user));
+
+        // Create affiliate in Tapfiliate and track signup conversion
+        $tapfiliateService = app(TapfiliateService::class);
+        $tapfiliateService->createAffiliate($user);
+        $tapfiliateService->trackConversion(
+            'signup-' . $user->id, // Unique ID for this signup conversion
+            0, // Amount for signup is 0
+            $user->id,
+            session('referral_code') // Get referral code from session if stored by middleware
+        );
+        session()->forget('referral_code'); // Clear session
 
         Auth::login($user);
 
