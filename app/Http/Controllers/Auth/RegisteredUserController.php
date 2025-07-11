@@ -89,18 +89,18 @@ class RegisteredUserController extends Controller
 
         event(new Registered($user));
 
-        // Create affiliate in Tapfiliate and track signup conversion
-        $tapfiliateService = app(TapfiliateService::class);
-        $tapfiliateService->createAffiliate($user);
-        $tapfiliateService->trackConversion(
-            'signup-' . $user->id, // Unique ID for this signup conversion
-            0, // Amount for signup is 0
-            $user->id,
-            session('referral_code') // Get referral code from session if stored by middleware
-        );
+        // Pass user ID and referrer code to the frontend for client-side Tapfiliate tracking
+        // We will handle Tapfiliate customer tracking and affiliate creation via JavaScript
+        $referredByCode = session('referral_code');
         session()->forget('referral_code'); // Clear session
 
         Auth::login($user);
+
+        // Redirect with user data for client-side Tapfiliate tracking
+        return redirect(RouteServiceProvider::HOME)->with([
+            'newlyRegisteredUserId' => $user->id,
+            'referredByCode' => $referredByCode,
+        ]);
 
         // Log the activity
         ActivityLogHelper::logActivity('create', 'New User Created', $user, $request);
@@ -115,7 +115,8 @@ class RegisteredUserController extends Controller
         // Notify the user
         Notification::route('mail', $user->email)
             ->notify(new AccountCreatedUserConfirmation($user));
-        return redirect(RouteServiceProvider::HOME);
+        // The redirect is now handled above to pass data to frontend
+        // return redirect(RouteServiceProvider::HOME);
     }
 
     public function getUserWithRelations()

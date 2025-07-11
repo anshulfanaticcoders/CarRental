@@ -8,18 +8,43 @@ import axios from 'axios';
 const copied = ref(false);
 const referralCode = ref(null);
 const stats = ref(null); // To store stats fetched from Tapfiliate API
+const isLoading = ref(true);
+const errorMessage = ref(null);
 
 const user = usePage().props.auth.user; // Get authenticated user from Inertia props
 
-onMounted(async () => {
+const fetchReferralCode = async () => {
+    isLoading.value = true;
+    errorMessage.value = null;
     try {
-        // Fetch user's referral code from your backend
         const response = await axios.get(route('customer.referrals.tapfiliate.code', { locale: usePage().props.locale }));
         referralCode.value = response.data.referralCode;
     } catch (error) {
         console.error('Error fetching referral code:', error);
+        errorMessage.value = 'Failed to fetch referral code. Please try generating it.';
+    } finally {
+        isLoading.value = false;
     }
+};
 
+const generateReferralCode = async () => {
+    isLoading.value = true;
+    errorMessage.value = null;
+    try {
+        const response = await axios.post(route('customer.referrals.tapfiliate.generate-code', { locale: usePage().props.locale }));
+        referralCode.value = response.data.referralCode;
+        alert(response.data.message || 'Referral code generated successfully!');
+    } catch (error) {
+        console.error('Error generating referral code:', error);
+        errorMessage.value = 'Failed to generate referral code. Please try again.';
+        alert(error.response?.data?.message || 'Failed to generate referral code.');
+    } finally {
+        isLoading.value = false;
+    }
+};
+
+onMounted(() => {
+    fetchReferralCode();
     // Optionally, fetch stats from Tapfiliate API via your backend
     // You'd need a backend endpoint to proxy requests to Tapfiliate's API
     // try {
@@ -31,7 +56,7 @@ onMounted(async () => {
 });
 
 const referralLink = computed(() => {
-    return referralCode.value ? `https:/vrooem.be/${usePage().props.locale}/register?ref=${referralCode.value}` : 'Loading...';
+    return referralCode.value ? `https://vrooem.be/${usePage().props.locale}/register?ref=${referralCode.value}` : 'Loading...';
 });
 
 const copyReferralLink = () => {
@@ -80,6 +105,11 @@ const shareReferralLink = () => {
                 </div>
                 <div class="mt-4 text-sm text-gray-600">
                     <p><strong>Referral Code:</strong> {{ referralCode || 'Loading...' }}</p>
+                    <p v-if="errorMessage" class="text-red-500 mt-2">{{ errorMessage }}</p>
+                    <button v-if="!referralCode && !isLoading" @click="generateReferralCode"
+                            class="mt-4 bg-purple-600 text-white px-4 py-2 rounded-md hover:bg-purple-700">
+                        Generate My Referral Code
+                    </button>
                 </div>
             </div>
 

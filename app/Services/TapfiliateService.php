@@ -17,45 +17,34 @@ class TapfiliateService
         $this->apiKey = env('TAPFILIATE_API_KEY');
     }
 
-    public function createAffiliate(User $user)
+    /**
+     * Creates an affiliate in Tapfiliate via API and fetches their referral code.
+     * This method is primarily for existing users who need a code generated.
+     */
+    public function createAffiliateApi(User $user)
     {
         try {
             $response = Http::withHeaders([
                 'Api-Key' => $this->apiKey,
                 'Content-Type' => 'application/json',
             ])->post($this->apiUrl . 'affiliates/', [
-                'firstname' => $user->first_name, // Assuming User model has first_name
-                'lastname' => $user->last_name,   // Assuming User model has last_name
+                'firstname' => $user->first_name,
+                'lastname' => $user->last_name,
                 'email' => $user->email,
-                'customer_id' => $user->id, // Your internal user ID
+                'customer_id' => $user->id,
             ]);
 
             if ($response->successful()) {
                 $affiliateData = $response->json();
                 $tapfiliateAffiliateId = $affiliateData['id'];
 
-                // Now, fetch the full affiliate details to get the referral_code
-                $affiliateDetailsResponse = Http::withHeaders([
-                    'Api-Key' => $this->apiKey,
-                    'Content-Type' => 'application/json',
-                ])->get($this->apiUrl . 'affiliates/' . $tapfiliateAffiliateId);
-
-                $referralCode = null;
-                if ($affiliateDetailsResponse->successful()) {
-                    $fullAffiliateData = $affiliateDetailsResponse->json();
-                    $referralCode = data_get($fullAffiliateData, 'referral_code');
-                    Log::info('Fetched referral code for affiliate ' . $tapfiliateAffiliateId . ': ' . $referralCode);
-                } else {
-                    Log::error('Failed to fetch full affiliate details for ' . $tapfiliateAffiliateId, [
-                        'status' => $affiliateDetailsResponse->status(),
-                        'response_body' => $affiliateDetailsResponse->body()
-                    ]);
-                }
+                // Fetch the full affiliate details to get the referral_code
+                $referralCode = $this->getAffiliateReferralCode($tapfiliateAffiliateId);
 
                 TapfiliateUserMapping::create([
                     'user_id' => $user->id,
                     'tapfiliate_affiliate_id' => $tapfiliateAffiliateId,
-                    'referral_code' => $referralCode, // Use the fetched referral code
+                    'referral_code' => $referralCode,
                     'is_active' => true,
                 ]);
                 Log::info('Tapfiliate affiliate created and mapped for user: ' . $user->id);
@@ -76,6 +65,35 @@ class TapfiliateService
         }
     }
 
+    /**
+     * Fetches an affiliate's referral code from Tapfiliate API.
+     */
+    public function getAffiliateReferralCode(string $tapfiliateAffiliateId): ?string
+    {
+        try {
+            $response = Http::withHeaders([
+                'Api-Key' => $this->apiKey,
+                'Content-Type' => 'application/json',
+            ])->get($this->apiUrl . 'affiliates/' . $tapfiliateAffiliateId);
+
+            if ($response->successful()) {
+                $fullAffiliateData = $response->json();
+                return data_get($fullAffiliateData, 'referral_code');
+            } else {
+                Log::error('Failed to fetch referral code for affiliate ' . $tapfiliateAffiliateId, [
+                    'status' => $response->status(),
+                    'response_body' => $response->body()
+                ]);
+                return null;
+            }
+        } catch (\Exception $e) {
+            Log::error('Exception fetching referral code for affiliate ' . $tapfiliateAffiliateId . ': ' . $e->getMessage(), [
+                'trace' => $e->getTraceAsString()
+            ]);
+            return null;
+        }
+    }
+
     public function trackConversion($externalId, $amount, $customerId, $referralCode = null, $programId = null, $metadata = [])
     {
         try {
@@ -83,12 +101,12 @@ class TapfiliateService
                 'Api-Key' => $this->apiKey,
                 'Content-Type' => 'application/json',
             ])->post($this->apiUrl . 'conversions/', [
-                'external_id' => $externalId, // Your unique ID for this conversion (e.g., user ID for signup, booking ID for booking)
-                'amount' => $amount, // 0 for signup, booking total for booking
-                'customer_id' => $customerId, // The ID of the user who converted
-                'referral_code' => $referralCode, // The referral code used (if available)
-                'program_id' => $programId ?? env('TAPFILIATE_PROGRAM_ID'), // Your Tapfiliate program ID
-                'metadata' => $metadata, // Any additional data you want to send
+                'external_id' => $externalId,
+                'amount' => $amount,
+                'customer_id' => $customerId,
+                'referral_code' => $referralCode,
+                'program_id' => $programId ?? env('TAPFILIATE_PROGRAM_ID'),
+                'metadata' => $metadata,
             ]);
 
             if ($response->successful()) {
