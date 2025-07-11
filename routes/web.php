@@ -396,7 +396,7 @@ Route::group([
     // Customer Routes
     Route::middleware(['auth', 'role:customer'])->group(function () {
         // Tapfiliate Referral Routes
-        Route::prefix('referrals')->group(function () {
+        Route::prefix('customer/referrals')->group(function () { // Corrected prefix to include 'customer'
             Route::get('/tapfiliate', [TapfiliateReferralController::class, 'index'])->name('customer.referrals.tapfiliate.index');
             Route::get('/tapfiliate-code', [TapfiliateReferralController::class, 'getReferralCode'])->name('customer.referrals.tapfiliate.code');
             // Add more routes here if you need to proxy Tapfiliate API calls for stats

@@ -41,10 +41,14 @@ class TapfiliateService
                 Log::info('Tapfiliate affiliate created for user: ' . $user->id);
                 return $affiliateData;
             } else {
+                // Temporarily dump the response body for debugging on live
+                dd('Tapfiliate Affiliate Creation Failed:', $response->status(), $response->body());
                 Log::error('Failed to create Tapfiliate affiliate for user: ' . $user->id, ['response' => $response->body()]);
                 return null;
             }
         } catch (\Exception $e) {
+            // Temporarily dump the exception for debugging on live
+            dd('Tapfiliate Affiliate Creation Exception:', $e->getMessage(), $e->getTraceAsString());
             Log::error('Exception creating Tapfiliate affiliate: ' . $e->getMessage(), ['user_id' => $user->id]);
             return null;
         }
