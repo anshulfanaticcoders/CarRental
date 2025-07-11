@@ -18,7 +18,6 @@ use Illuminate\Validation\Rules;
 use Illuminate\Support\Facades\Notification;
 use Inertia\Inertia;
 use Inertia\Response;
-use App\Services\TapfiliateService; // Added for Tapfiliate integration
 
 class RegisteredUserController extends Controller
 {
@@ -66,16 +65,7 @@ class RegisteredUserController extends Controller
             'last_login_at' => now(),
             'created_at' => now(),
             'updated_at' => now(),
-            'referred_by_user_id' => null, // Initialize as null
         ]);
-
-        // Check for referral code in session and update referred_by_user_id
-        if (session('referral_code')) {
-            $referrerUserMapping = \App\Models\TapfiliateUserMapping::where('referral_code', session('referral_code'))->first();
-            if ($referrerUserMapping) {
-                $user->update(['referred_by_user_id' => $referrerUserMapping->user_id]);
-            }
-        }
 
         // Create user profile
         UserProfile::create([
@@ -89,18 +79,7 @@ class RegisteredUserController extends Controller
 
         event(new Registered($user));
 
-        // Pass user ID and referrer code to the frontend for client-side Tapfiliate tracking
-        // We will handle Tapfiliate customer tracking and affiliate creation via JavaScript
-        $referredByCode = session('referral_code');
-        session()->forget('referral_code'); // Clear session
-
         Auth::login($user);
-
-        // Redirect with user data for client-side Tapfiliate tracking
-        return redirect(RouteServiceProvider::HOME)->with([
-            'newlyRegisteredUserId' => $user->id,
-            'referredByCode' => $referredByCode,
-        ]);
 
         // Log the activity
         ActivityLogHelper::logActivity('create', 'New User Created', $user, $request);
@@ -115,8 +94,7 @@ class RegisteredUserController extends Controller
         // Notify the user
         Notification::route('mail', $user->email)
             ->notify(new AccountCreatedUserConfirmation($user));
-        // The redirect is now handled above to pass data to frontend
-        // return redirect(RouteServiceProvider::HOME);
+        return redirect(RouteServiceProvider::HOME);
     }
 
     public function getUserWithRelations()

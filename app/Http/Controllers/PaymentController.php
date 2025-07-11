@@ -282,9 +282,6 @@ class PaymentController extends Controller
             Notification::route('mail', $customer->email)
                 ->notify(new BookingCreatedCustomerNotification($booking, $customer, $vehicle));
 
-            // Dispatch BookingCompleted event for referral tracking
-            event(new \App\Events\BookingCompleted($booking));
-
             // Clear session storage
             session()->forget(['pending_booking_id', 'driverInfo', 'rentalDates', 'selectionData']);
             LaravelSession::forget('can_access_booking_page'); 

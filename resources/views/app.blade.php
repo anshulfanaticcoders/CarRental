@@ -65,14 +65,6 @@
             gtag('event', 'conversion', {'send_to': 'AW-16944650756/gSgaCLXb-skaEIS0648_'});
         </script>
 
-        <!-- Tapfiliate Global Tracking Script -->
-       <script src="https://script.tapfiliate.com/tapfiliate.js" type="text/javascript" async></script>
-<script type="text/javascript">
-  (function(t,a,p){t.TapfiliateObject=a;t[a]=t[a]||function(){ (t[a].q=t[a].q||[]).push(arguments)}})(window,'tap');
-
-  tap('create', '60750-874db3', { integration: "javascript" });
-  tap('detect');
-</script>
         @inertiaHead
     </head>
     <body class="antialiased">

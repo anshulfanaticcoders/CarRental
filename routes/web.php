@@ -68,7 +68,6 @@ use App\Http\Controllers\UserDocumentController;
 use App\Http\Controllers\VehicleController;
 use App\Http\Controllers\GreenMotionController;
 use App\Http\Controllers\AdminProfileController; // Import the AdminProfileController
-use App\Http\Controllers\Customer\TapfiliateReferralController; // Added for Tapfiliate integration
 
 /*
 |--------------------------------------------------------------------------
@@ -395,14 +394,6 @@ Route::group([
 
     // Customer Routes
     Route::middleware(['auth', 'role:customer'])->group(function () {
-        // Tapfiliate Referral Routes
-        Route::prefix('customer/referrals')->group(function () { // Corrected prefix to include 'customer'
-            Route::get('/tapfiliate', [TapfiliateReferralController::class, 'index'])->name('customer.referrals.tapfiliate.index');
-            Route::get('/tapfiliate-code', [TapfiliateReferralController::class, 'getReferralCode'])->name('customer.referrals.tapfiliate.code');
-            Route::post('/generate-code', [TapfiliateReferralController::class, 'generateReferralCode'])->name('customer.referrals.tapfiliate.generate-code');
-            // Add more routes here if you need to proxy Tapfiliate API calls for stats
-        });
-
         // User Profile routes
         Route::get('/user/documents', [UserDocumentController::class, 'index'])->name('user.documents.index');
         Route::get('/user/documents/create', [UserDocumentController::class, 'create'])->name('user.documents.create');

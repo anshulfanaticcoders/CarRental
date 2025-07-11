@@ -24,7 +24,6 @@ class User extends Authenticatable
         'phone_verified_at',
         'remember_token',
         'last_login_at',
-        'referred_by_user_id', // Added for referral system
     ];
 
     protected $hidden = [
@@ -91,26 +90,11 @@ public function bookings()
     return $this->hasMany(Booking::class);
 }
 
-public function referrer()
-{
-    return $this->belongsTo(User::class, 'referred_by_user_id');
-}
-
  /**
      * Get the chat status associated with the user.
      */
     public function chatStatus(): HasOne
     {
         return $this->hasOne(ChatStatus::class);
-    }
-
-    public function tapfiliateMapping()
-    {
-        return $this->hasOne(TapfiliateUserMapping::class);
-    }
-
-    public function getReferralCodeAttribute()
-    {
-        return $this->tapfiliateMapping ? $this->tapfiliateMapping->referral_code : null;
     }
 }

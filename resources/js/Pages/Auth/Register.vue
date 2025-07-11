@@ -31,48 +31,6 @@ import '@vuepic/vue-datepicker/dist/main.css';
 const stepIndex = ref(1);
 const showPassword = ref(false);
 const showconfirmPassword = ref(false);
-
-// Access Inertia page props
-const page = usePage();
-
-// Watch for flash messages after successful registration
-watch(() => page.props.flash, (newFlash) => {
-    if (newFlash && newFlash.newlyRegisteredUserId) {
-        const userId = newFlash.newlyRegisteredUserId;
-        const referredByCode = newFlash.referredByCode;
-
-        // Ensure Tapfiliate script is loaded
-        if (window.tap) {
-            // Track new customer
-            window.tap('customer', userId.toString(), {
-                meta_data: {
-                    email: form.email,
-                    first_name: form.first_name,
-                    last_name: form.last_name,
-                }
-            });
-            console.log('Tapfiliate customer tracked:', userId);
-
-            // Track signup conversion
-            // Only track conversion if there was a referrer
-            if (referredByCode) {
-                window.tap('conversion', `signup-${userId}`, 0, { // external_id, amount, options
-                    customer_id: userId.toString(),
-                    referral_code: referredByCode,
-                    meta_data: {
-                        conversion_type: 'signup',
-                        referred_user_email: form.email,
-                    }
-                });
-                console.log('Tapfiliate signup conversion tracked for referrer:', referredByCode);
-            }
-        } else {
-            console.warn('Tapfiliate script (window.tap) not loaded.');
-        }
-    }
-}, { deep: true });
-
-// ... rest of your script setup ...
 const _t = (section, key) => {
     const { props } = usePage();
     if (props.translations && props.translations[section] && props.translations[section][key]) {
@@ -274,21 +232,14 @@ const submit = () => {
     }
 
     form.post(route("register"), {
-        onSuccess: () => {
-            // The redirect with flash messages will be handled by the controller
-            // No need to reset form here, as it will be a new page load
+        onFinish: () => {
+            form.reset("password", "password_confirmation");
         },
         onError: (errors) => {
             Object.keys(errors).forEach((field) => {
                 form.errors[field] = errors[field];
             });
         },
-        onFinish: () => {
-            // Reset form only if not redirected (e.g., validation errors)
-            if (!page.props.flash.newlyRegisteredUserId) {
-                form.reset("password", "password_confirmation");
-            }
-        }
     });
 };
 
