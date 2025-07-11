@@ -62,7 +62,7 @@ class ProfileController extends Controller
                 );
 
                 if ($compressedImageUrl) {
-                    $validated['avatar'] = $compressedImageUrl;
+                    $validated['avatar'] = Storage::disk('upcloud')->url($compressedImageUrl);
                 } else {
                     // Handle compression failure, e.g., log error or return an error response
                     return back()->withErrors(['avatar' => 'Failed to compress image.']);
