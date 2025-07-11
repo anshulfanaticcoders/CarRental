@@ -66,13 +66,13 @@
         </script>
 
         <!-- Tapfiliate Global Tracking Script -->
-        <script src="//tapfiliate.com/tapfiliate.js" async type="text/javascript"></script>
-        <script type="text/javascript">
-            (function(t,a,p){t.TapfiliateObject=a;t[a]=t[a]||function(){
-                (t[a].q=t[a].q||[]).push(arguments)}})(window,'tap');
-            tap('create', '60750-874db3', { integration: "javascript" }); // Replace with your actual Tapfiliate Account ID
-            tap('detect'); // Important for detecting referral codes in the URL
-        </script>
+       <script src="https://script.tapfiliate.com/tapfiliate.js" type="text/javascript" async></script>
+<script type="text/javascript">
+  (function(t,a,p){t.TapfiliateObject=a;t[a]=t[a]||function(){ (t[a].q=t[a].q||[]).push(arguments)}})(window,'tap');
+
+  tap('create', '60750-874db3', { integration: "javascript" });
+  tap('detect');
+</script>
         @inertiaHead
     </head>
     <body class="antialiased">

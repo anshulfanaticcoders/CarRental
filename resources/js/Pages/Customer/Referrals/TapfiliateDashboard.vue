@@ -31,7 +31,7 @@ onMounted(async () => {
 });
 
 const referralLink = computed(() => {
-    return referralCode.value ? `https://your-domain.com/${usePage().props.locale}/register?ref=${referralCode.value}` : 'Loading...';
+    return referralCode.value ? `https:/vrooem.be/${usePage().props.locale}/register?ref=${referralCode.value}` : 'Loading...';
 });
 
 const copyReferralLink = () => {
