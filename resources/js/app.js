@@ -8,7 +8,6 @@ import { createApp, h } from 'vue';
 import { createInertiaApp } from '@inertiajs/vue3';
 import { resolvePageComponent } from 'laravel-vite-plugin/inertia-helpers';
 import { ZiggyVue } from '../../vendor/tightenco/ziggy';
-import ScrollToTop from '@/Components/ScrollToTop.vue';
 import TranslationPlugin from '../js/plugins/translation';
 
 const appName = import.meta.env.VITE_APP_NAME || 'Laravel';
@@ -18,11 +17,7 @@ createInertiaApp({
     resolve: (name) => resolvePageComponent(`./Pages/${name}.vue`, import.meta.glob('./Pages/**/*.vue')),
     setup({ el, App, props, plugin }) {
         const vueApp = createApp({
-            render: () => h('div', [
-                h(App, props),
-                h(ScrollToTop), 
-            ]),
-            components: { ScrollToTop }
+            render: () => h(App, props),
         });
 
         vueApp.use(plugin)

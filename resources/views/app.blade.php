@@ -55,8 +55,8 @@
     {{-- Organization Schema --}}
     @if(!empty($organizationSchemaForBlade))
         <script type="application/ld+json">
-                    {!! json_encode($organizationSchemaForBlade, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE) !!}
-                </script>
+                        {!! json_encode($organizationSchemaForBlade, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE) !!}
+                    </script>
     @endif
 
     <!-- Google tag (gtag.js) -->
@@ -69,17 +69,19 @@
         gtag('event', 'conversion', { 'send_to': 'AW-16944650756/gSgaCLXb-skaEIS0648_' });
     </script>
 
+    <!--Start of Tawk.to Script-->
     <script type="text/javascript">
         var Tawk_API = Tawk_API || {}, Tawk_LoadStart = new Date();
         (function () {
             var s1 = document.createElement("script"), s0 = document.getElementsByTagName("script")[0];
             s1.async = true;
-            s1.src = 'https://embed.tawk.to/6875f0c437f49b190d0f9f62/1j06b90l0';
+            s1.src = 'https://embed.tawk.to/6876027021757c1912dc0f68/1j06fj2e0';
             s1.charset = 'UTF-8';
             s1.setAttribute('crossorigin', '*');
             s0.parentNode.insertBefore(s1, s0);
         })();
     </script>
+    <!--End of Tawk.to Script-->
 
 
     @inertiaHead
