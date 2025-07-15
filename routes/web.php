@@ -58,7 +58,6 @@ use App\Http\Controllers\VendorController;
 use App\Http\Controllers\PaymentController;
 use App\Http\Controllers\Admin\VendorsDashboardController;
 use App\Http\Controllers\Admin\PayableSettingController;
-use App\Http\Controllers\WhatsAppController;
 use App\Models\Booking;
 use App\Models\Message;
 use App\Models\Page;
@@ -500,4 +499,3 @@ Route::group([
 }); // End of locale group
 
 Route::get('/green-motion-vehicles', [GreenMotionController::class, 'getGreenMotionVehicles'])->name('green-motion-vehicles');
-Route::get('/send-test-whatsapp', [WhatsAppController::class, 'sendTestMessage']);
