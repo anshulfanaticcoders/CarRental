@@ -159,6 +159,7 @@ onBeforeUnmount(() => {
 });
 
 import { usePage } from '@inertiajs/vue3';
+import WhatsAppWidget from "@/Components/WhatsAppWidget.vue";
 
 const page = usePage();
 
@@ -233,6 +234,7 @@ const updateCategorySearchUrl = (category) => {
     <SchemaInjector v-if="$page.props.organizationSchema" :schema="$page.props.organizationSchema" />
 
     <AuthenticatedHeaderLayout />
+    <WhatsAppWidget />
 
     <main class="overflow-x-hidden">
         <section class="hero_section max-[768px]:bg-customPrimaryColor">

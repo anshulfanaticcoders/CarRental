@@ -17,6 +17,7 @@ use App\Http\Controllers\VehicleCategoryController;
 use App\Http\Controllers\PopularPlacesController;
 use App\Http\Controllers\Api\SeoMetaController; // Added for SEO Meta
 use App\Http\Controllers\Admin\PayableSettingController; // Import PayableSettingController
+use App\Http\Controllers\WhatsAppController;
 use Illuminate\Http\Request;
 use App\Models\User;
 use Illuminate\Support\Facades\Route;
@@ -91,3 +92,5 @@ Route::get('/admin/profile', [App\Http\Controllers\AdminProfileController::class
 
 // Public API for fetching payment percentage
 Route::get('/payment-percentage', [PayableSettingController::class, 'getPercentage'])->name('api.payment-percentage');
+
+Route::post('/send-whatsapp-message', [WhatsAppController::class, 'sendMessageFromUser']);
