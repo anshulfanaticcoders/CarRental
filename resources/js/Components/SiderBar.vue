@@ -95,7 +95,6 @@ const menus = [
       { name: _t('customerprofile','travel_documents'), path: route('user.documents.index', { locale: usePage().props.locale }) },
       { name: _t('customerprofile','issued_payments'), path: route('profile.payments', { locale: usePage().props.locale }) },
       { name: _t('customerprofile','register_as_vendor'), path: route('vendor.register', { locale: usePage().props.locale }) },
-      ...(usePage().props.auth.user.is_affiliate ? [{ name: 'Affiliate Dashboard', path: route('affiliate.dashboard', { locale: usePage().props.locale }) }] : []),
     ],
   },
   {

@@ -262,10 +262,6 @@ Route::group([
         return Inertia::render('Dashboard');
     })->middleware(['auth', 'verified'])->name('dashboard');
 
-    // Affiliate Dashboard Route (accessible after registration on Tapfiliate's hosted page)
-    Route::middleware(['auth'])->group(function () {
-        Route::get('/affiliate/dashboard', [\App\Http\Controllers\AffiliateController::class, 'dashboard'])->name('affiliate.dashboard');
-    });
 
     // Authenticated routes
     Route::middleware(['auth'])->group(function () {

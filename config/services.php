@@ -31,9 +31,4 @@ return [
         'region' => env('AWS_DEFAULT_REGION', 'us-east-1'),
     ],
 
-    'tapfiliate' => [
-        'api_key' => env('TAPFILIATE_API_KEY'),
-        'program_id' => env('TAPFILIATE_PROGRAM_ID'),
-    ],
-
 ];

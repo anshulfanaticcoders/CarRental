@@ -11,7 +11,6 @@ use App\Http\Controllers\MessageController;
 use App\Http\Controllers\PlanController;
 use App\Http\Controllers\RadiusApiController;
 use App\Http\Controllers\ReviewController;
-use App\Http\Controllers\TapfiliateWebhookController;
 use App\Http\Controllers\UserDocumentController;
 use App\Http\Controllers\VehicleController;
 use App\Http\Controllers\VehicleCategoryController;
@@ -92,6 +91,3 @@ Route::get('/admin/profile', [App\Http\Controllers\AdminProfileController::class
 
 // Public API for fetching payment percentage
 Route::get('/payment-percentage', [PayableSettingController::class, 'getPercentage'])->name('api.payment-percentage');
-
-// Tapfiliate Webhook Endpoint
-Route::post('/tapfiliate/webhook', [TapfiliateWebhookController::class, 'handle'])->name('api.tapfiliate.webhook');

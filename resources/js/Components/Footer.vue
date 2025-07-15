@@ -146,6 +146,9 @@ onMounted(async () => {
                             <li>
                                 <Link :href="route('pages.show', { locale: page.props.locale, slug: getTranslatedSlug('terms-and-conditions') })">Terms & Conditions</Link>
                             </li>
+                            <li>
+                                <a href="https://vrooem.tapfiliate.com">Became a Affiliate</a>
+                            </li>
                         </ul>
                     </div>
                     <div class="col flex flex-col gap-8 max-[768px]:gap-4">
