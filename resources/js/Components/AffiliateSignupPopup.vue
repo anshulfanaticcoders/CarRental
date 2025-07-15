@@ -46,7 +46,7 @@ onMounted(() => {
                 &times;
             </button>
             <h3 class="text-2xl font-bold text-center text-white mb-4">Become an Affiliate!</h3>
-            <p class="text-gray-600 text-center mb-6">
+            <p class="text-white text-center mb-6">
                 Join our affiliate program and start earning commissions today.
             </p>
             <div class="flex justify-center">
