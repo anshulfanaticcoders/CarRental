@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "f9d3d89208beab49e298daa2d8310eff",
+    "content-hash": "65ab2f03e7ae4d13b1423b3878dc4712",
     "packages": [
         {
             "name": "aws/aws-crt-php",
@@ -6104,6 +6104,57 @@
                 }
             ],
             "time": "2024-11-08T15:28:48+00:00"
+        },
+        {
+            "name": "tapfiliate/sdk-php",
+            "version": "0.1.0",
+            "source": {
+                "type": "git",
+                "url": "https://github.com/Tapfiliate/sdk-php.git",
+                "reference": "835cef4f8c6e04f41c1ad94bfe2166a785fe8976"
+            },
+            "dist": {
+                "type": "zip",
+                "url": "https://api.github.com/repos/Tapfiliate/sdk-php/zipball/835cef4f8c6e04f41c1ad94bfe2166a785fe8976",
+                "reference": "835cef4f8c6e04f41c1ad94bfe2166a785fe8976",
+                "shasum": ""
+            },
+            "require": {
+                "ext-curl": "*",
+                "psr/log": "^3.0"
+            },
+            "require-dev": {
+                "friendsofphp/php-cs-fixer": "^3.13",
+                "phpstan/phpstan": "^1.8",
+                "phpunit/phpunit": "^9.5"
+            },
+            "type": "library",
+            "autoload": {
+                "psr-4": {
+                    "Tapfiliate\\": "src/"
+                }
+            },
+            "notification-url": "https://packagist.org/downloads/",
+            "license": [
+                "MIT"
+            ],
+            "authors": [
+                {
+                    "name": "Alexey Timchenko",
+                    "email": "a.timchenko@admitad.com"
+                }
+            ],
+            "description": "Client for tapfiliate.com",
+            "keywords": [
+                "php",
+                "sdk",
+                "tapfiliate"
+            ],
+            "support": {
+                "issues": "https://github.com/Tapfiliate/sdk-php/issues",
+                "source": "https://github.com/Tapfiliate/sdk-php/tree/0.1.0"
+            },
+            "time": "2022-12-14T11:38:41+00:00"
         },
         {
             "name": "tightenco/ziggy",

@@ -24,7 +24,13 @@ class User extends Authenticatable
         'phone_verified_at',
         'remember_token',
         'last_login_at',
+        'is_affiliate', // Add the new column
     ];
+
+    public function affiliate()
+    {
+        return $this->hasOne(Affiliate::class);
+    }
 
     protected $hidden = [
         'password',
@@ -37,6 +43,7 @@ class User extends Authenticatable
         'last_login_at' => 'datetime',
         'role' => 'string',
         'status' => 'string',
+        'is_affiliate' => 'boolean', // Cast the new column
     ];
 
     public function profile()

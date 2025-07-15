@@ -83,6 +83,13 @@
     </script>
     <!--End of Tawk.to Script-->
 
+    <script src="https://script.tapfiliate.com/tapfiliate.js" type="text/javascript" async></script>
+    <script type="text/javascript">
+      (function(t,a,p){t.TapfiliateObject=a;t[a]=t[a]||function(){ (t[a].q=t[a].q||[]).push(arguments)}})(window,'tap');
+
+      tap('create', '{{ config('services.tapfiliate.program_id') }}', { integration: "javascript" });
+      tap('detect');
+    </script>
 
     @inertiaHead
 </head>
