@@ -10,7 +10,12 @@ import Footer from "@/Components/Footer.vue";
 
 // Access props from Inertia
 const props = usePage().props;
-const booking = ref(props.booking);
+const booking = ref({
+    ...props.booking,
+    total_amount: Number(props.booking?.total_amount) || 0,
+    amount_paid: Number(props.booking?.amount_paid) || 0,
+    pending_amount: Number(props.booking?.pending_amount) || 0,
+});
 const payment = ref(props.payment);
 const vehicle = ref(props.vehicle);
 const customer = ref(props.customer);
@@ -86,8 +91,15 @@ onMounted(() => {
 
   // Tapfiliate Conversion Tracking
   if (window.tap) {
-      tap('conversion');
-      console.log('Tapfiliate basic conversion tracked.');
+      tap('conversion', 'successful_car_rental_booking', { // 'successful_car_rental_booking' is a placeholder conversion ID
+          external_id: booking.value.booking_number,
+          amount: Number(booking.value.amount_paid), // Changed to amount_paid
+          currency: vendorProfile.value.currency, // Guaranteed to have a value
+          customer_id: customer.value.id,
+          customer_email: customer.value.email
+      });
+      console.log('Tapfiliate conversion tracked for booking:', booking.value.booking_number);
+      console.log('Amount sent to Tapfiliate:', Number(booking.value.amount_paid));
   } else {
       console.warn('Tapfiliate object (tap) not found. Conversion not tracked.');
   }

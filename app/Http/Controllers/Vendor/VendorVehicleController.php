@@ -308,10 +308,13 @@ class VendorVehicleController extends Controller
                     $imageType = 'primary';
                 }
 
+                // Get the full URL for the stored image
+                $fullImageUrl = Storage::disk('upcloud')->url($compressedImageUrl);
+
                 VehicleImage::create([
                     'vehicle_id' => $vehicle->id,
-                    'image_path' => $compressedImageUrl, // Store the URL directly as path
-                    'image_url' => $compressedImageUrl,
+                    'image_path' => $compressedImageUrl, // Store the relative path
+                    'image_url' => $fullImageUrl,        // Store the full URL
                     'image_type' => $imageType,
                 ]);
             }

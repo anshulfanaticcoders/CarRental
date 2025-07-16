@@ -252,11 +252,14 @@ class VehicleController extends Controller
                     // Determine image type
                     $imageType = ($index === $primaryImageIndex) ? 'primary' : 'gallery';
 
-                    // Create vehicle image record - store the URL
+                    // Get the full URL for the stored image
+                    $fullImageUrl = Storage::disk('upcloud')->url($compressedImageUrl);
+
+                    // Create vehicle image record - store the relative path in image_path and full URL in image_url
                     VehicleImage::create([
                         'vehicle_id' => $vehicle->id,
-                        'image_path' => $compressedImageUrl, // Store the URL directly
-                        'image_url' => $compressedImageUrl,   // Store the full URL
+                        'image_path' => $compressedImageUrl, // Store the relative path
+                        'image_url' => $fullImageUrl,        // Store the full URL
                         'image_type' => $imageType,
                     ]);
                 } else {
