@@ -499,4 +499,4 @@ Route::group([
     Route::get('/{slug}', [ContactUsPageController::class, 'show'])->name('contact.show');
 }); // End of locale group
 
-Route::get('/green-motion-vehicles', [GreenMotionController::class, 'getGreenMotionVehicles'])->name('green-motion-vehicles');
+    Route::get('/green-motion-vehicles', [GreenMotionController::class, 'getGreenMotionVehicles'])->name('green-motion-vehicles');
