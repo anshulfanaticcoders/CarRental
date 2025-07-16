@@ -81,6 +81,20 @@ onMounted(() => {
     console.log('Session storage cleared on mount');
   }
 
+  // Tapfiliate Conversion Tracking
+  if (window.tap) {
+      tap('conversion', 'successful_car_rental_booking', { // 'successful_car_rental_booking' is a placeholder conversion ID
+          external_id: booking.value.booking_number,
+          amount: booking.value.total_amount,
+          currency: vendorProfile.value.currency,
+          customer_id: customer.value.id,
+          customer_email: customer.value.email
+      });
+      console.log('Tapfiliate conversion tracked for booking:', booking.value.booking_number);
+  } else {
+      console.warn('Tapfiliate object (tap) not found. Conversion not tracked.');
+  }
+
   // Validate required data
   if (!booking.value || !vehicle.value || !customer.value) {
     error.value = 'Booking, vehicle, or customer details are missing.';
