@@ -20,6 +20,7 @@ use App\Http\Controllers\Admin\PayableSettingController; // Import PayableSettin
 use Illuminate\Http\Request;
 use App\Models\User;
 use Illuminate\Support\Facades\Route;
+use App\Http\Controllers\AffiliateController; // Import the new controller
 
 /*
 |--------------------------------------------------------------------------
@@ -67,6 +68,9 @@ Route::get('/users', function () {
 });
 Route::get('/booking-success/details', [BookingController::class, 'getBookingDetails'])->name('booking-success.details');
 Route::get('/currencies', [CurrencyController::class, 'index']);
+
+// New API route for fetching affiliate conversions
+Route::middleware(['auth:sanctum'])->get('/affiliate/conversions', [AffiliateController::class, 'getConversions']);
 // Route::get('/vendor/payments', [BookingController::class, 'getVendorPaymentHistory'])->name('vendor.payments');
 // In your api.php routes file
 Route::get('/vendors/{vendorProfileId}/reviews', [ReviewController::class, 'getApprovedReviews']);

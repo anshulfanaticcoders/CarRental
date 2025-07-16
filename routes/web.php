@@ -26,6 +26,7 @@ use App\Http\Controllers\Admin\VehicleDashboardController;
 use App\Http\Controllers\Admin\DamageProtectionController as AdminDamageProtectionController;
 use App\Http\Controllers\Admin\SeoMetaController;
 use App\Http\Controllers\Admin\VendorsReportController;
+use App\Http\Controllers\AffiliateController;
 use App\Http\Controllers\Auth\AuthenticatedSessionController;
 use App\Http\Controllers\Auth\EmailValidationController;
 use App\Http\Controllers\Auth\VerifyEmailController;
@@ -448,6 +449,9 @@ Route::group([
         Route::post('/vehicles/{vehicle}/unfavourite', [FavoriteController::class, 'unfavourite'])->name('vehicles.unfavourite');
         Route::get('/favorites', [FavoriteController::class, 'getFavorites']);
         Route::get('/favorites/status', [FavoriteController::class, 'getFavoriteStatus'])->name('favorites.status');
+
+        // New route for Affiliate Dashboard
+        Route::get('/affiliate/dashboard', [AffiliateController::class, 'getConversions'])->name('affiliate.dashboard');
     });
 
     // Vendor status check for vehicle creation
