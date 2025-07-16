@@ -36,12 +36,22 @@ class DamageProtectionController extends Controller
     
         if ($request->hasFile('images')) {
             foreach ($request->file('images') as $image) {
-                // Store image in damage_protections/before directory on UpCloud Object Storage with original name
-                $filePath = $image->getClientOriginalName();
-                $folderName = 'uploads';
-                $path = $image->store($folderName, 'upcloud');
-                $url = Storage::disk('upcloud')->url($path);
-                $beforeImages[] = $url;
+                $folderName = 'damage_protections/before';
+                $compressedImageUrl = \App\Helpers\ImageCompressionHelper::compressImage(
+                    $image,
+                    $folderName,
+                    quality: 80, // Adjust quality as needed (0-100)
+                    maxWidth: 1200, // Optional: Set max width
+                    maxHeight: 900 // Optional: Set max height
+                );
+
+                if ($compressedImageUrl) {
+                    $url = Storage::disk('upcloud')->url($compressedImageUrl);
+                    $beforeImages[] = $url;
+                } else {
+                    // Handle compression failure, e.g., log error or return an error response
+                    return back()->withErrors(['images' => 'Failed to compress image: ' . $image->getClientOriginalName()]);
+                }
             }
         }
     
@@ -75,11 +85,22 @@ class DamageProtectionController extends Controller
 
         if ($request->hasFile('images')) {
             foreach ($request->file('images') as $image) {
-                // Store image in damage_protections/after directory on UpCloud Object Storage with original name
-                $filePath = 'damage_protections/after/' . time() . '_' . $image->getClientOriginalName();
-                $path = $image->storeAs('', $filePath, 'upcloud');
-                $url = Storage::disk('upcloud')->url($path);
-                $afterImages[] = $url;
+                $folderName = 'damage_protections/after';
+                $compressedImageUrl = \App\Helpers\ImageCompressionHelper::compressImage(
+                    $image,
+                    $folderName,
+                    quality: 80, // Adjust quality as needed (0-100)
+                    maxWidth: 1200, // Optional: Set max width
+                    maxHeight: 900 // Optional: Set max height
+                );
+
+                if ($compressedImageUrl) {
+                    $url = Storage::disk('upcloud')->url($compressedImageUrl);
+                    $afterImages[] = $url;
+                } else {
+                    // Handle compression failure, e.g., log error or return an error response
+                    return back()->withErrors(['images' => 'Failed to compress image: ' . $image->getClientOriginalName()]);
+                }
             }
         }
 

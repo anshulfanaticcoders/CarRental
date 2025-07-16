@@ -88,6 +88,7 @@
   (function(t,a,p){t.TapfiliateObject=a;t[a]=t[a]||function(){ (t[a].q=t[a].q||[]).push(arguments)}})(window,'tap');
 
   tap('create', '60750-874db3', { integration: "javascript" });
+  tap('detect');
 </script>
 
     @inertiaHead

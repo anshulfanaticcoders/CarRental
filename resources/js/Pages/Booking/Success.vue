@@ -7,6 +7,7 @@ import 'leaflet/dist/leaflet.css';
 import infoIcon from "../../../assets/WarningCircle.svg";
 import MapPin from "../../../assets/MapPin.svg";
 import Footer from "@/Components/Footer.vue";
+import currencyData from '../../../../public/currency.json'; // Import currency data
 
 // Access props from Inertia
 const props = usePage().props;
@@ -30,6 +31,12 @@ const paymentStatus = ref(props.payment_status);
 const error = ref(null);
 const map = ref(null);
 const showLoader = ref(false); // New ref to control loader visibility
+
+// Helper function to get ISO currency code from symbol
+const getIsoCurrencyCode = (symbol) => {
+  const currency = currencyData.find(c => c.symbol === symbol);
+  return currency ? currency.code : 'EUR'; // Default to EUR if not found
+};
 
 // Map initialization function
 const initMap = () => {
@@ -89,17 +96,18 @@ onMounted(() => {
     console.log('Session storage cleared on mount');
   }
 
-  // Tapfiliate Conversion Tracking
+  // Tapfiliate Conversion Tracking - Corrected to match documentation's positional arguments
   if (window.tap) {
-      tap('conversion', 'successful_car_rental_booking', { // 'successful_car_rental_booking' is a placeholder conversion ID
-          external_id: booking.value.booking_number,
-          amount: Number(booking.value.amount_paid), // Changed to amount_paid
-          currency: vendorProfile.value.currency, // Guaranteed to have a value
-          customer_id: customer.value.id,
-          customer_email: customer.value.email
-      });
+      tap('conversion',
+          booking.value.booking_number, // Unique Conversion Id
+          Number(booking.value.amount_paid), // Conversion Amount (explicitly converted to Number)
+          {
+              customer_id: customer.value?.id, // Customer Id
+              customer_email: customer.value?.email, // Optional: Customer Email as metadata
+              currency: getIsoCurrencyCode(vendorProfile.value?.currency) // Use ISO currency code
+          }
+      );
       console.log('Tapfiliate conversion tracked for booking:', booking.value.booking_number);
-      console.log('Amount sent to Tapfiliate:', Number(booking.value.amount_paid));
   } else {
       console.warn('Tapfiliate object (tap) not found. Conversion not tracked.');
   }
