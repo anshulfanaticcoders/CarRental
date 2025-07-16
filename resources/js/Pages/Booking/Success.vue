@@ -14,7 +14,10 @@ const booking = ref(props.booking);
 const payment = ref(props.payment);
 const vehicle = ref(props.vehicle);
 const customer = ref(props.customer);
-const vendorProfile = ref(props.vendorProfile || { currency: 'EUR' });
+const vendorProfile = ref({
+    ...(props.vendorProfile || {}),
+    currency: props.vendorProfile?.currency || 'EUR'
+});
 const plan = ref(props.plan);
 const sessionId = ref(props.session_id);
 const paymentIntentId = ref(props.payment_intent_id);
@@ -85,8 +88,8 @@ onMounted(() => {
   if (window.tap) {
       tap('conversion', 'successful_car_rental_booking', { // 'successful_car_rental_booking' is a placeholder conversion ID
           external_id: booking.value.booking_number,
-          amount: booking.value.total_amount,
-          currency: vendorProfile.value.currency,
+          amount: Number(booking.value.total_amount), // Ensure amount is a number
+          currency: vendorProfile.value.currency, // Now guaranteed to have a value
           customer_id: customer.value.id,
           customer_email: customer.value.email
       });
