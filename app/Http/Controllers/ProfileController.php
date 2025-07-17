@@ -57,8 +57,8 @@ class ProfileController extends Controller
                     $request->file('avatar'),
                     $folderName,
                     quality: 80, // Adjust quality as needed (0-100)
-                    maxWidth: 800, // Optional: Set max width
-                    maxHeight: 800 // Optional: Set max height
+                    maxWidth: 400, // Optional: Set max width
+                    maxHeight: 400 // Optional: Set max height
                 );
 
                 if ($compressedImageUrl) {

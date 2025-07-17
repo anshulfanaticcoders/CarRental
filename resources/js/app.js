@@ -37,6 +37,6 @@ createInertiaApp({
         return vueApp;
     },
     progress: {
-        color: '#4B5563',
+        color: '#ea3c3c',
     },
 });
