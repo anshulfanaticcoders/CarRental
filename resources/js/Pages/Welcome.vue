@@ -491,7 +491,7 @@ const updateCategorySearchUrl = (category) => {
                     class="w-1/2 h-[574px] relative rounded-lg overflow-hidden shadow-md blog-container max-[768px]:w-full max-[768px]:h-[380px]">
                 <img :src="blogs[0].image" :alt="blogs[0].title" class="w-full h-full object-cover rounded-lg" >
 
-                <div class="absolute bottom-0 bg-gradient-to-t from-black/70 to-transparent p-4 text-white">
+                <div class="absolute bottom-0 bg-gradient-to-t from-black/70 to-transparent p-4 text-white w-full">
                     <p class="text-[1.25rem] flex items-center gap-1">
                         <img :src=calendarWhiteIcon alt="" > {{ formatDate(blogs[0].created_at) }}
                     </p>
