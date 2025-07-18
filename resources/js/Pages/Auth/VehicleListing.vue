@@ -112,7 +112,7 @@
                         <div>
                             <InputLabel for="brand">{{ _t('createvehicle', 'step1_brand_label') }}</InputLabel>
                             <input type="text" v-model="form.brand" id="brand" required
-                                :placeholder="_t('createvehicle', 'step1_brand_placeholder')" />
+                                :placeholder="_t('createvehicle', 'step1_brand_placeholder')" class="capitalize"/>
                             <span v-if="errors.brand" class="text-red-500 max-[768px]:text-[0.75rem] text-sm">{{
                                 errors.brand }}</span>
                         </div>
@@ -121,7 +121,7 @@
                         <div>
                             <InputLabel for="model">{{ _t('createvehicle', 'step1_model_label') }}</InputLabel>
                             <input type="text" v-model="form.model" id="model" required
-                                :placeholder="_t('createvehicle', 'step1_model_placeholder')" />
+                                :placeholder="_t('createvehicle', 'step1_model_placeholder')" class="capitalize"/>
                             <span v-if="errors.model" class="text-red-500 max-[768px]:text-[0.75rem] text-sm">{{
                                 errors.model }}</span>
                         </div>
@@ -154,7 +154,7 @@
                         <div>
                             <InputLabel for="mileage">{{ _t('createvehicle', 'step1_mileage_label') }}</InputLabel>
                             <div class="relative">
-                                <input type="number" v-model="form.mileage" id="mileage" required />
+                                <input type="number" v-model="form.mileage" id="mileage" required  max="120"    />
                                 <span
                                     class="absolute bg-white text-[0.875rem] top-[50%] right-3 translate-y-[-50%] text-customLightGrayColor font-medium">{{
                                         _t('createvehicle','step1_mileage_unit') }}</span>
@@ -291,7 +291,7 @@
                         <div>
                             <InputLabel for="co2">{{ _t('createvehicle', 'step1_co2_label') }}</InputLabel>
                             <div class="relative">
-                                <input type="text" v-model="form.co2" id="co2" required />
+                                <input type="text" v-model="form.co2" id="co2" required max="100"/>
                                 <span
                                     class="absolute bg-white text-[0.875rem] top-[50%] right-3 translate-y-[-50%] text-customLightGrayColor font-medium">(g/km)</span>
                             </div>
@@ -522,7 +522,7 @@
                             <InputLabel class="text-black" for="vehicle_height">{{
                                 _t('createvehicle','step2_vehicle_height_label') }}</InputLabel>
                             <div class="relative">
-                                <input class="w-full" type="number" v-model="form.vehicle_height" id="vehicle_height" />
+                                <input class="w-full" type="number" v-model="form.vehicle_height" id="vehicle_height" max="5"/>
                                 <span
                                     class="absolute bg-white text-[0.875rem] top-[50%] right-3 translate-y-[-50%] text-customLightGrayColor font-medium">{{
                                         _t('createvehicle','step2_vehicle_height_unit') }}</span>
@@ -1847,6 +1847,27 @@ const removeReturnTime = (index) => {
     form.return_times.splice(index, 1);
 };
 
+
+watch(() => form.mileage, (newVal) => {
+  if (newVal > 120) {
+    form.mileage = 120;
+  }
+});
+
+watch(() => form.vehicle_height, (newVal) => {
+  if (newVal > 5) {
+    form.vehicle_height = 5;
+  }
+});
+
+watch(() => form.co2, (newVal) => {
+  if (newVal > 100) {
+    form.co2 = 100;
+  }
+});
+
+
+
 const normalizeTime = (field, index) => {
     const time = form[field][index];
     if (time) {
@@ -2769,6 +2790,10 @@ select {
 
 .animate-fade-in {
     animation: fadeIn 0.3s ease-in;
+}
+
+.capitalize {
+  text-transform: capitalize;
 }
 
 @keyframes fadeIn {
