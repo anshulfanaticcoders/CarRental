@@ -36,7 +36,7 @@ return [
     'step1_color_label' => 'Couleur :',
     'step1_color_placeholder' => 'Entrez la couleur du véhicule',
     'step1_mileage_label' => 'Kilométrage :',
-    'step1_mileage_unit' => '(km/j)',
+    'step1_mileage_unit' => '(km/L)',
     'step1_transmission_label' => 'Transmission :',
     'step1_transmission_placeholder' => 'Sélectionnez le type de transmission',
     'step1_transmission_select_label' => 'Transmission',

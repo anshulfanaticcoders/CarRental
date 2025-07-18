@@ -2,11 +2,18 @@
 import ApplicationLogo from "./ApplicationLogo.vue";
 import { Link } from "@inertiajs/vue3";
 import facebookLogo from "../../assets/Facebook.svg";
+import facebookLogoColored from "../../assets/facebookColored.png";
 import twitterLogo from "../../assets/Twitter.svg";
+import twitterLogoColored from "../../assets/twitterColored.png";
 import instagramLogo from "../../assets/Instagram.svg";
+import instagramLogoColored from "../../assets/instagramColored.png";
 import paypalLogos from "../../assets/paymentIcons.svg";
 import { onMounted, ref, computed } from "vue";
 import { usePage } from '@inertiajs/vue3';
+
+const isFacebookHovered = ref(false);
+const isTwitterHovered = ref(false);
+const isInstagramHovered = ref(false);
 
 const page = usePage();
 const pages = computed(() => page.props.pages);
@@ -66,22 +73,22 @@ const updateCategorySearchUrl = (category) => {
 };
 
 defineExpose({
-  updateSearchUrl,
-  updateCategorySearchUrl
+    updateSearchUrl,
+    updateCategorySearchUrl
 });
 
 onMounted(async () => {
-  try {
-    const [placesResponse, categoriesResponse] = await Promise.all([
-      axios.get(`/${page.props.locale}/api/footer-places`),
-      axios.get(`/${page.props.locale}/api/footer-categories`),
-    ]);
+    try {
+        const [placesResponse, categoriesResponse] = await Promise.all([
+            axios.get(`/${page.props.locale}/api/footer-places`),
+            axios.get(`/${page.props.locale}/api/footer-categories`),
+        ]);
 
-    footerPlaces.value = placesResponse.data;
-    footerCategories.value = categoriesResponse.data;
-  } catch (error) {
-    console.error('Failed to fetch footer data:', error);
-  }
+        footerPlaces.value = placesResponse.data;
+        footerCategories.value = categoriesResponse.data;
+    } catch (error) {
+        console.error('Failed to fetch footer data:', error);
+    }
 });
 </script>
 
@@ -97,12 +104,20 @@ onMounted(async () => {
                     <ApplicationLogo logoColor="#FFFFFF" />
                     </Link>
                     <div class="socialIcons flex gap-6">
-                        <Link href=""><img :src="facebookLogo" alt="" /></Link>
-                        <a href="https://www.instagram.com/vrooemofficial?igsh=ZXZkMTdycmN6Mmhz" target="_blank" rel="noopener noreferrer">
-  <img :src="instagramLogo" alt="" />
-</a>
+                        <Link href="" @mouseenter="isFacebookHovered = true" @mouseleave="isFacebookHovered = false" class="relative">
+                            <img :src="facebookLogo" alt="Facebook" class="absolute inset-0 transition-opacity duration-300" :class="{ 'opacity-0': isFacebookHovered }" />
+                            <img :src="facebookLogoColored" alt="Facebook Colored" class="relative transition-opacity duration-300" :class="{ 'opacity-0': !isFacebookHovered }" />
+                        </Link>
+                        <a href="https://www.instagram.com/vrooemofficial?igsh=ZXZkMTdycmN6Mmhz" target="_blank"
+                            rel="noopener noreferrer" @mouseenter="isInstagramHovered = true" @mouseleave="isInstagramHovered = false" class="relative">
+                            <img :src="instagramLogo" alt="Instagram" class="absolute inset-0 transition-opacity duration-300" :class="{ 'opacity-0': isInstagramHovered }" />
+                            <img :src="instagramLogoColored" alt="Instagram Colored" class="relative transition-opacity duration-300" :class="{ 'opacity-0': !isInstagramHovered }" />
+                        </a>
 
-                        <Link href=""><img :src="twitterLogo" alt="" /></Link>
+                        <Link href="" @mouseenter="isTwitterHovered = true" @mouseleave="isTwitterHovered = false" class="relative">
+                            <img :src="twitterLogo" alt="Twitter" class="absolute inset-0 transition-opacity duration-300" :class="{ 'opacity-0': isTwitterHovered }" />
+                            <img :src="twitterLogoColored" alt="Twitter Colored" class="relative transition-opacity duration-300" :class="{ 'opacity-0': !isTwitterHovered }" />
+                        </Link>
                     </div>
                     <div class="column flex flex-col gap-4 mt-[1rem]">
                         <span class="text-[1.5rem] max-[768px]:text-[1.2rem]">Subscribe to Newsletter</span>
@@ -124,7 +139,9 @@ onMounted(async () => {
                         <label for="" class="text-[1.25rem] font-medium max-[768px]:text-[1rem]">Company</label>
                         <ul class="flex flex-col gap-4 max-[768px]:text-[0.875rem]">
                             <li>
-                                <Link :href="route('pages.show', { locale: page.props.locale, slug: getTranslatedSlug('about-us') })">About Us</Link>
+                                <Link
+                                    :href="route('pages.show', { locale: page.props.locale, slug: getTranslatedSlug('about-us') })">
+                                About Us</Link>
                             </li>
                             <li>
                                 <Link :href="route('blog', { locale: page.props.locale })">Blogs</Link>
@@ -141,10 +158,14 @@ onMounted(async () => {
                         <label for="" class="text-[1.25rem] font-medium max-[768px]:text-[1rem]">Information</label>
                         <ul class="flex flex-col gap-4 max-[768px]:text-[0.875rem]">
                             <li>
-                                <Link :href="route('pages.show', { locale: page.props.locale, slug: getTranslatedSlug('privacy-policy') })">Privacy Policy</Link>
+                                <Link
+                                    :href="route('pages.show', { locale: page.props.locale, slug: getTranslatedSlug('privacy-policy') })">
+                                Privacy Policy</Link>
                             </li>
                             <li>
-                                <Link :href="route('pages.show', { locale: page.props.locale, slug: getTranslatedSlug('terms-and-conditions') })">Terms & Conditions</Link>
+                                <Link
+                                    :href="route('pages.show', { locale: page.props.locale, slug: getTranslatedSlug('terms-and-conditions') })">
+                                Terms & Conditions</Link>
                             </li>
                             <li>
                                 <a href="https://vrooem.tapfiliate.com">Became a Affiliate</a>
@@ -163,20 +184,26 @@ onMounted(async () => {
                             </li>
                             <!-- Fallback if no places are selected -->
                             <li v-if="footerPlaces.length === 0">
-                                <Link :href="route('welcome', { locale: page.props.locale })">No locations available</Link>
+                                <Link :href="route('welcome', { locale: page.props.locale })">No locations available
+                                </Link>
                             </li>
                         </ul>
                     </div>
                     <div class="col flex flex-col gap-8 max-[768px]:gap-4">
-            <label for="" class="text-[1.25rem] font-medium max-[768px]:text-[1rem]">Categories</label>
-            <ul class="flex flex-col gap-4 max-[768px]:text-[0.875rem]">
-              <li v-for="category in footerCategories" :key="category.id">
-                <Link :href="route('search.category', { locale: page.props.locale, category_slug: category.slug })" @click="updateCategorySearchUrl(category)">{{ category.name }}</Link>
-              </li>
-              <!-- Fallback if no categories are selected -->
-              <li v-if="footerCategories.length === 0"><Link :href="route('welcome', { locale: page.props.locale })">No categories available</Link></li>
-            </ul>
-          </div>
+                        <label for="" class="text-[1.25rem] font-medium max-[768px]:text-[1rem]">Categories</label>
+                        <ul class="flex flex-col gap-4 max-[768px]:text-[0.875rem]">
+                            <li v-for="category in footerCategories" :key="category.id">
+                                <Link
+                                    :href="route('search.category', { locale: page.props.locale, category_slug: category.slug })"
+                                    @click="updateCategorySearchUrl(category)">{{ category.name }}</Link>
+                            </li>
+                            <!-- Fallback if no categories are selected -->
+                            <li v-if="footerCategories.length === 0">
+                                <Link :href="route('welcome', { locale: page.props.locale })">No categories available
+                                </Link>
+                            </li>
+                        </ul>
+                    </div>
                 </div>
             </div>
         </div>

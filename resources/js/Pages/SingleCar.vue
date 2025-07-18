@@ -1293,7 +1293,7 @@ const searchUrl = computed(() => {
                                         <span
                                             class="text-customLightGrayColor text-[1rem] max-[768px]:text-[0.75rem]">Mileage</span>
                                         <span class="font-medium text-[1rem] max-[768px]:text-[0.85rem]">{{
-                                            vehicle?.mileage }} km/d</span>
+                                            vehicle?.mileage }} km/L</span>
                                     </div>
                                 </div>
 
@@ -1537,7 +1537,7 @@ const searchUrl = computed(() => {
                                 <div class="col flex gap-3">
                                     <img :src="mileageIcon" alt="" class="max-[768px]:w-[24px]" loading="lazy" />
                                     <span class="text-[1.15rem] max-[768px]:text-[0.85rem]">{{ vehicle?.mileage }}
-                                        km/d</span>
+                                        km/L</span>
                                 </div>
                             </div>
 

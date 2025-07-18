@@ -812,7 +812,7 @@ const handleCategorySearchUpdate = (params) => {
                 <div class="relative w-48 filter-group">
                     <div class="text-xs font-medium text-gray-500 mb-1 ml-1">Fuel Efficiency</div>
                     <CustomDropdown v-model="form.mileage" unique-id="mileage"
-                        :options="$page.props.mileages.map(mileage => ({ value: mileage, label: `${mileage} km/liter` }))"
+                        :options="$page.props.mileages.map(mileage => ({ value: mileage, label: `${mileage} km/L` }))"
                         placeholder="Any Mileage" :left-icon="mileageIcon2" :right-icon="CaretDown"
                         class="hover:border-customPrimaryColor transition-all duration-300" />
                 </div>
@@ -953,7 +953,7 @@ const handleCategorySearchUpdate = (params) => {
                     <div class="filter-item">
                         <label class="text-sm font-medium text-gray-700 mb-1 block">Fuel Efficiency</label>
                         <CustomDropdown v-model="form.mileage" unique-id="mileage-mobile"
-                            :options="$page.props.mileages.map(mileage => ({ value: mileage, label: `${mileage} km/liter` }))"
+                            :options="$page.props.mileages.map(mileage => ({ value: mileage, label: `${mileage} km/L` }))"
                             placeholder="Any Mileage" :left-icon="mileageIcon2" :right-icon="CaretDown" />
                     </div>
 
@@ -1102,7 +1102,7 @@ const handleCategorySearchUpdate = (params) => {
                                     <div class="col flex gap-3">
                                         <img :src="mileageIcon" alt="" loading="lazy" /><span
                                             class="text-[1.15rem] max-[768px]:text-[0.95rem]">
-                                            {{ vehicle.mileage }}km/d</span>
+                                            {{ vehicle.mileage }}km/L</span>
                                     </div>
                                 </div>
 

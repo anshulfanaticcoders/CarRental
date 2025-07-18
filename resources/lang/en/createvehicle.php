@@ -36,7 +36,7 @@ return [
     'step1_color_label' => 'Color:',
     'step1_color_placeholder' => 'Enter vehicle color',
     'step1_mileage_label' => 'Mileage:',
-    'step1_mileage_unit' => '(km/d)',
+    'step1_mileage_unit' => '(km/L)',
     'step1_transmission_label' => 'Transmission:',
     'step1_transmission_placeholder' => 'Select transmission type',
     'step1_transmission_select_label' => 'Transmission',
