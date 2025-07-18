@@ -135,10 +135,11 @@ class SearchController extends Controller
     $transmissions = $potentialVehiclesForOptions->pluck('transmission')->unique()->filter()->values()->all();
     $fuels = $potentialVehiclesForOptions->pluck('fuel')->unique()->filter()->values()->all();
     $mileages = $potentialVehiclesForOptions->pluck('mileage')->unique()->filter()->map(function ($mileage) {
-        if ($mileage >= 0 && $mileage <= 10) return '0-10';
-        if ($mileage > 10 && $mileage <= 20) return '10-20';
-        if ($mileage > 20 && $mileage <= 30) return '20-30';
-        if ($mileage > 30 && $mileage <= 40) return '30-40';
+        if ($mileage >= 0 && $mileage <= 25) return '0-25';
+        if ($mileage > 25 && $mileage <= 50) return '25-50';
+        if ($mileage > 50 && $mileage <= 75) return '50-75';
+        if ($mileage > 75 && $mileage <= 100) return '75-100';
+        if ($mileage > 100 && $mileage <= 120) return '100-120';
         return null;
     })->filter()->unique()->values()->all();
     // Ensure categories are also fetched based on this broader set
@@ -378,10 +379,11 @@ class SearchController extends Controller
     $transmissions = $potentialVehiclesForOptionsCategory->pluck('transmission')->unique()->filter()->values()->all();
     $fuels = $potentialVehiclesForOptionsCategory->pluck('fuel')->unique()->filter()->values()->all();
     $mileages = $potentialVehiclesForOptionsCategory->pluck('mileage')->unique()->filter()->map(function ($mileage) {
-        if ($mileage >= 0 && $mileage <= 10) return '0-10';
-        if ($mileage > 10 && $mileage <= 20) return '10-20';
-        if ($mileage > 20 && $mileage <= 30) return '20-30';
-        if ($mileage > 30 && $mileage <= 40) return '30-40';
+        if ($mileage >= 0 && $mileage <= 25) return '0-25';
+        if ($mileage > 25 && $mileage <= 50) return '25-50';
+        if ($mileage > 50 && $mileage <= 75) return '50-75';
+        if ($mileage > 75 && $mileage <= 100) return '75-100';
+        if ($mileage > 100 && $mileage <= 120) return '100-120';
         return null;
     })->filter()->unique()->values()->all();
     // For CategorySearchResults, all categories are usually passed, or just the current one.
