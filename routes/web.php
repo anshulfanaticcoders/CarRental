@@ -499,4 +499,7 @@ Route::group([
     Route::get('/{slug}', [ContactUsPageController::class, 'show'])->name('contact.show');
 }); // End of locale group
 
-Route::get('/green-motion-vehicles', [GreenMotionController::class, 'getGreenMotionVehicles'])->name('green-motion-vehicles');
+    Route::get('/green-motion-vehicles', [GreenMotionController::class, 'getGreenMotionVehicles'])->name('green-motion-vehicles');
+    Route::get('/green-motion-countries', [GreenMotionController::class, 'getGreenMotionCountries'])->name('green-motion-countries');
+    Route::get('/green-motion-locations', [GreenMotionController::class, 'getGreenMotionLocations'])->name('green-motion-locations');
+    Route::post('/green-motion-booking', [GreenMotionController::class, 'makeGreenMotionBooking'])->name('green-motion-booking');

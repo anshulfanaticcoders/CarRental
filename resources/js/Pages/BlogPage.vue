@@ -21,7 +21,7 @@
         <h2 class="text-white leading-tight tracking-wide text-shadow-md">Blogs</h2>
     </div>
     <div class="py-customVerticalSpacing full-w-container flex max-[768px]:flex-col">
-        <div class="w-3/4 pr-8 max-[768px]:w-full max-[768px]:pr-0">
+        <div id="blog-list-container" class="w-3/4 pr-8 max-[768px]:w-full max-[768px]:pr-0">
             <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
 
                 <div v-for="blog in blogs.data" :key="blog.id" class="rounded-lg overflow-hidden shadow-md
@@ -83,7 +83,7 @@ import goIcon from "../../assets/goIcon.svg";
 import calendarIcon from '../../assets/CalendarBlank.svg';
 import AuthenticatedHeaderLayout from '@/Layouts/AuthenticatedHeaderLayout.vue';
 import blogbgimage from '../../assets/blogpagebgimage.jpg'
-import { ref, onMounted } from 'vue';
+import { ref, onMounted, nextTick } from 'vue';
 import Footer from '@/Components/Footer.vue';
 import Pagination from '@/Components/ReusableComponents/Pagination.vue'; // Import the new component
 import { computed } from 'vue'; // Import computed
@@ -147,7 +147,25 @@ const formatDate = (date) => {
 
 const handlePageChange = (page) => {
     router.visit(route('blog', { page: page }), {
-        preserveScroll: true,
+        onSuccess: () => {
+            nextTick(() => {
+                setTimeout(() => {
+                    const container = document.getElementById('blog-list-container');
+                    if (container) {
+                        const offset = 45; // adjust as needed
+                        const topPosition = container.offsetTop - offset;
+                        window.scrollTo({
+                            top: topPosition >= 0 ? topPosition : 0,
+                            behavior: 'smooth'
+                        });
+                    }
+                }, 50); // small delay to ensure smooth scroll
+            });
+        },
+        onError: (errors) => {
+            console.error('Inertia visit error:', errors);
+        }
     });
 };
+
 </script>
