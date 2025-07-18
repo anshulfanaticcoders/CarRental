@@ -58,6 +58,10 @@ const debounce = (fn, delay) => {
 };
 const page = usePage();
 
+const isCustomer = computed(() => {
+    return page.props.auth?.user?.role === 'customer';
+});
+
 const seoTranslation = computed(() => {
     if (!props.seoMeta || !props.seoMeta.translations) {
         return {};
@@ -1071,7 +1075,7 @@ provide('setActiveDropdown', setActiveDropdown);
                         @mouseleave="unhighlightVehicleOnMap(vehicle)">
                         <div class="flex justify-end mb-3 absolute right-3 top-3">
                             <div class="column flex justify-end">
-                                <button @click.stop="toggleFavourite(vehicle)"
+                                <button v-if="!$page.props.auth?.user || isCustomer" @click.stop="toggleFavourite(vehicle)"
                                     class="heart-icon bg-white rounded-[99px] p-2" :class="{
                                         'filled-heart':
                                             favoriteStatus[vehicle.id],

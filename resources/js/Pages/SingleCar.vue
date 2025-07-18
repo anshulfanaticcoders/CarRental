@@ -1506,7 +1506,8 @@ const searchUrl = computed(() => {
                                         loading="lazy" /></button>
                                     <button @click.stop="toggleFavourite(vehicle)" class="heart-icon"
                                         :class="{ 'filled-heart': vehicle.is_favourite, 'pop-animation': popEffect }"
-                                        @animationend="popEffect = false">
+                                        @animationend="popEffect = false"
+                                        :disabled="authUser?.role === 'vendor' || authUser?.role === 'admin'">
                                         <img :src="vehicle.is_favourite ? FilledHeart : Heart" alt="Favorite"
                                             class="w-[2rem] max-[768px]:w-[1.5rem] transition-colors duration-300"
                                             loading="lazy" />
