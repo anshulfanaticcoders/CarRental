@@ -439,9 +439,9 @@
                             </InputLabel>
                             <span class="text-[0.675rem] mb-[1rem] inline-block">{{
                                 _t('createvehicle','step2_registration_number_tooltip') }}</span>
-                            <input class="w-full" type="text" v-model="form.registration_number"
+                            <input class="w-full uppercase" type="text" v-model="form.registration_number"
                                 id="registration_number" required
-                                :placeholder="_t('createvehicle', 'step2_registration_number_placeholder')" />
+                                :placeholder="_t('createvehicle', 'step2_registration_number_placeholder')" maxlength="10"/>
                             <span v-if="errors.registration_number"
                                 class="text-red-500 max-[768px]:text-[0.75rem] text-sm">{{
                                     errors.registration_number }}</span>
@@ -510,7 +510,7 @@
                                 _t('createvehicle','step2_gross_vehicle_mass_label') }}</InputLabel>
                             <div class="relative">
                                 <input class="w-full" type="number" v-model="form.gross_vehicle_mass"
-                                    id="gross_vehicle_mass" />
+                                    id="gross_vehicle_mass" max="20000"/>
                                 <span
                                     class="absolute bg-white text-[0.875rem] top-[50%] right-3 translate-y-[-50%] text-customLightGrayColor font-medium">{{
                                         _t('createvehicle','step2_gross_vehicle_mass_unit') }}</span>
@@ -1866,6 +1866,18 @@ watch(() => form.co2, (newVal) => {
   }
 });
 
+watch(() => form.gross_vehicle_mass, (newVal) => {
+  if (newVal > 20000) {
+    form.gross_vehicle_mass = 20000;
+  }
+});
+
+watch(() => form.registration_number, (newVal) => {
+  if (newVal.length > 10) {
+    form.registration_number = newVal.slice(0, 10);
+  }
+});
+
 
 
 const normalizeTime = (field, index) => {
@@ -2790,10 +2802,6 @@ select {
 
 .animate-fade-in {
     animation: fadeIn 0.3s ease-in;
-}
-
-.capitalize {
-  text-transform: capitalize;
 }
 
 @keyframes fadeIn {

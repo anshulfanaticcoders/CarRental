@@ -82,7 +82,7 @@ return [
     'step2_technical_specifications_description' => 'This information is needed to list your vehicle.',
     'step2_registration_number_label' => 'Registration Number:',
     'step2_registration_number_tooltip' => "As mentioned on your vehicle's registration certificate.",
-    'step2_registration_number_placeholder' => 'Enter your vehicle registration number',
+    'step2_registration_number_placeholder' => 'e.g. AB12 CD3456',
     'step2_registration_country_label' => 'Registration Country:',
     'step2_registration_country_placeholder' => 'Select a country',
     'step2_registration_country_select_label' => 'Countries',

@@ -82,7 +82,7 @@ return [
     'step2_technical_specifications_description' => 'Ces informations sont nécessaires pour répertorier votre véhicule.',
     'step2_registration_number_label' => 'Numéro d’immatriculation :',
     'step2_registration_number_tooltip' => 'Tel qu’indiqué sur le certificat d’immatriculation de votre véhicule.',
-    'step2_registration_number_placeholder' => 'Entrez le numéro d’immatriculation de votre véhicule',
+    'step2_registration_number_placeholder' => 'e.g. AB12 CD3456',
     'step2_registration_country_label' => 'Pays d’immatriculation :',
     'step2_registration_country_placeholder' => 'Sélectionnez un pays',
     'step2_registration_country_select_label' => 'Pays',

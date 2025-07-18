@@ -82,7 +82,7 @@ return [
     'step2_technical_specifications_description' => 'Deze informatie is nodig om uw voertuig te vermelden.',
     'step2_registration_number_label' => 'Kenteken:',
     'step2_registration_number_tooltip' => 'Zoals vermeld op het kentekenbewijs van uw voertuig.',
-    'step2_registration_number_placeholder' => 'Voer uw kenteken in',
+    'step2_registration_number_placeholder' => 'e.g. AB12 CD3456',
     'step2_registration_country_label' => 'Land van registratie:',
     'step2_registration_country_placeholder' => 'Selecteer een land',
     'step2_registration_country_select_label' => 'Landen',
