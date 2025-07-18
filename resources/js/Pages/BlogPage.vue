@@ -50,6 +50,8 @@
                     :currentPage="blogs.current_page"
                     :totalPages="blogs.last_page"
                     @page-change="handlePageChange"
+
+                    class="justify-center flex-wrap"
                 />
             </div>
         </div>

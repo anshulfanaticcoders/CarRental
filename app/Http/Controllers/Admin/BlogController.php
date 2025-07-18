@@ -516,7 +516,7 @@ class BlogController extends Controller
     
     public function showBlogPage(Request $request)
     {
-        $blogs = Blog::with('translations')->where('is_published', true)->latest()->paginate(1);
+        $blogs = Blog::with('translations')->where('is_published', true)->latest()->paginate(9);
         $pages = \App\Models\Page::with('translations')->get()->keyBy('slug');
 
         // Fetch SEO meta for the blog page (assuming its url_slug is '/blog')
