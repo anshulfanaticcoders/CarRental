@@ -75,6 +75,107 @@ class GreenMotionService
         }
     }
 
+    public function getTermsAndConditions($countryId, $language = null, $plaintext = null)
+    {
+        $languageXml = $language ? '<language>' . $language . '</language>' : '';
+        $plaintextXml = $plaintext ? '<plaintext>' . $plaintext . '</plaintext>' : '';
+
+        $xmlRequest = '<?xml version="1.0" encoding="utf-8"?>
+            <gm_webservice>
+                <header>
+                    <username>' . $this->username . '</username>
+                    <password>' . $this->password . '</password>
+                    <version>1.5</version>
+                </header>
+                <request type="getTermsAndConditions">
+                    <country_id>' . $countryId . '</country_id>
+                    ' . $languageXml . '
+                    ' . $plaintextXml . '
+                </request>
+            </gm_webservice>';
+
+        try {
+            $response = Http::withHeaders([
+                'Content-Type' => 'application/xml',
+            ])->send('POST', $this->baseUrl, ['body' => $xmlRequest]);
+
+            $response->throw();
+
+            return $response->body();
+        } catch (\Illuminate\Http\Client\RequestException $e) {
+            \Log::error('GreenMotion API Request Error (GetTermsAndConditions): ' . $e->getMessage() . ' Response: ' . $e->response->body());
+            return null;
+        } catch (\Exception $e) {
+            \Log::error('GreenMotion API General Error (GetTermsAndConditions): ' . $e->getMessage());
+            return null;
+        }
+    }
+
+    public function getRegionList($countryId)
+    {
+        $xmlRequest = '<?xml version="1.0" encoding="utf-8"?>
+            <gm_webservice>
+                <header>
+                    <username>' . $this->username . '</username>
+                    <password>' . $this->password . '</password>
+                    <version>1.5</version>
+                </header>
+                <request type="GetRegionList">
+                    <country_id>' . $countryId . '</country_id>
+                </request>
+            </gm_webservice>';
+
+        try {
+            $response = Http::withHeaders([
+                'Content-Type' => 'application/xml',
+            ])->send('POST', $this->baseUrl, ['body' => $xmlRequest]);
+
+            $response->throw();
+
+            return $response->body();
+        } catch (\Illuminate\Http\Client\RequestException $e) {
+            \Log::error('GreenMotion API Request Error (GetRegionList): ' . $e->getMessage() . ' Response: ' . $e->response->body());
+            return null;
+        } catch (\Exception $e) {
+            \Log::error('GreenMotion API General Error (GetRegionList): ' . $e->getMessage());
+            return null;
+        }
+    }
+
+    public function getServiceAreas($countryId, $language = null)
+    {
+        $languageXml = $language ? '<language>' . $language . '</language>' : '';
+
+        $xmlRequest = '<?xml version="1.0" encoding="utf-8"?>
+            <gm_webservice>
+                <header>
+                    <username>' . $this->username . '</username>
+                    <password>' . $this->password . '</password>
+                    <version>1.5</version>
+                </header>
+                <request type="GetServiceAreas">
+                    <country_id>' . $countryId . '</country_id>
+                    ' . $languageXml . '
+                </request>
+            </gm_webservice>';
+
+        try {
+            $response = Http::withHeaders([
+                'Content-Type' => 'application/xml',
+            ])->send('POST', $this->baseUrl, ['body' => $xmlRequest]);
+
+            $response->throw();
+
+            return $response->body();
+        } catch (\Illuminate\Http\Client\RequestException $e) {
+            \Log::error('GreenMotion API Request Error (GetServiceAreas): ' . $e->getMessage() . ' Response: ' . $e->response->body());
+            return null;
+        } catch (\Exception $e) {
+            \Log::error('GreenMotion API General Error (GetServiceAreas): ' . $e->getMessage());
+            return null;
+        }
+    }
+
     public function getLocationList($countryId)
     {
         $xmlRequest = '<?xml version="1.0" encoding="utf-8"?>

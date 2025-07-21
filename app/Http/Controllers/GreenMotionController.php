@@ -161,6 +161,129 @@ class GreenMotionController extends Controller
         return response()->json($locations);
     }
 
+    public function getGreenMotionTermsAndConditions(Request $request)
+    {
+        $countryId = $request->input('country_id', 1); // Default to 1 for testing
+        $language = $request->input('language');
+        $plaintext = $request->input('plaintext');
+
+        if (empty($countryId)) {
+            return response()->json(['error' => 'Country ID is required to get terms and conditions.'], 400);
+        }
+
+        $xml = $this->greenMotionService->getTermsAndConditions($countryId, $language, $plaintext);
+
+        if (is_null($xml) || empty($xml)) {
+            \Log::error('GreenMotion API returned null or empty XML response for GetTermsAndConditions.');
+            return response()->json(['error' => 'Failed to retrieve terms and conditions data. API returned empty response.'], 500);
+        }
+
+        libxml_use_internal_errors(true);
+        $xmlObject = simplexml_load_string($xml);
+
+        if ($xmlObject === false) {
+            $errors = libxml_get_errors();
+            foreach ($errors as $error) {
+                \Log::error('XML Parsing Error (GetTermsAndConditions): ' . $error->message);
+            }
+            libxml_clear_errors();
+            return response()->json(['error' => 'Failed to parse XML response for terms and conditions from API.'], 500);
+        }
+
+        $categories = [];
+        if (isset($xmlObject->response->category)) {
+            foreach ($xmlObject->response->category as $category) {
+                $conditions = [];
+                foreach ($category->condition as $condition) {
+                    $conditions[] = (string) $condition;
+                }
+                $categories[] = [
+                    'name' => (string) $category['name'],
+                    'conditions' => $conditions,
+                ];
+            }
+        }
+        return response()->json($categories);
+    }
+
+    public function getGreenMotionRegions(Request $request)
+    {
+        $countryId = $request->input('country_id', 1); // Default to 1 for testing
+
+        if (empty($countryId)) {
+            return response()->json(['error' => 'Country ID is required to get regions.'], 400);
+        }
+
+        $xml = $this->greenMotionService->getRegionList($countryId);
+
+        if (is_null($xml) || empty($xml)) {
+            \Log::error('GreenMotion API returned null or empty XML response for GetRegionList.');
+            return response()->json(['error' => 'Failed to retrieve region data. API returned empty response.'], 500);
+        }
+
+        libxml_use_internal_errors(true);
+        $xmlObject = simplexml_load_string($xml);
+
+        if ($xmlObject === false) {
+            $errors = libxml_get_errors();
+            foreach ($errors as $error) {
+                \Log::error('XML Parsing Error (GetRegionList): ' . $error->message);
+            }
+            libxml_clear_errors();
+            return response()->json(['error' => 'Failed to parse XML response for region list from API.'], 500);
+        }
+
+        $regions = [];
+        if (isset($xmlObject->response->region)) {
+            foreach ($xmlObject->response->region as $region) {
+                $regions[] = [
+                    'name' => (string) $region->name,
+                ];
+            }
+        }
+        return response()->json($regions);
+    }
+
+    public function getGreenMotionServiceAreas(Request $request)
+    {
+        $countryId = $request->input('country_id', 1); // Default to 1 for testing
+        $language = $request->input('language');
+
+        if (empty($countryId)) {
+            return response()->json(['error' => 'Country ID is required to get service areas.'], 400);
+        }
+
+        $xml = $this->greenMotionService->getServiceAreas($countryId, $language);
+
+        if (is_null($xml) || empty($xml)) {
+            \Log::error('GreenMotion API returned null or empty XML response for GetServiceAreas.');
+            return response()->json(['error' => 'Failed to retrieve service area data. API returned empty response.'], 500);
+        }
+
+        libxml_use_internal_errors(true);
+        $xmlObject = simplexml_load_string($xml);
+
+        if ($xmlObject === false) {
+            $errors = libxml_get_errors();
+            foreach ($errors as $error) {
+                \Log::error('XML Parsing Error (GetServiceAreas): ' . $error->message);
+            }
+            libxml_clear_errors();
+            return response()->json(['error' => 'Failed to parse XML response for service areas from API.'], 500);
+        }
+
+        $serviceAreas = [];
+        if (isset($xmlObject->response->servicearea)) {
+            foreach ($xmlObject->response->servicearea as $servicearea) {
+                $serviceAreas[] = [
+                    'locationID' => (string) $servicearea->locationID,
+                    'name' => (string) $servicearea->name,
+                ];
+            }
+        }
+        return response()->json($serviceAreas);
+    }
+
     public function makeGreenMotionBooking(Request $request)
     {
         $validatedData = $request->validate([

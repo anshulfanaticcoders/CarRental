@@ -502,4 +502,7 @@ Route::group([
     Route::get('/green-motion-vehicles', [GreenMotionController::class, 'getGreenMotionVehicles'])->name('green-motion-vehicles');
     Route::get('/green-motion-countries', [GreenMotionController::class, 'getGreenMotionCountries'])->name('green-motion-countries');
     Route::get('/green-motion-locations', [GreenMotionController::class, 'getGreenMotionLocations'])->name('green-motion-locations');
+    Route::get('/green-motion-terms-and-conditions', [GreenMotionController::class, 'getGreenMotionTermsAndConditions'])->name('green-motion-terms-and-conditions');
+    Route::get('/green-motion-regions', [GreenMotionController::class, 'getGreenMotionRegions'])->name('green-motion-regions');
+    Route::get('/green-motion-service-areas', [GreenMotionController::class, 'getGreenMotionServiceAreas'])->name('green-motion-service-areas');
     Route::post('/green-motion-booking', [GreenMotionController::class, 'makeGreenMotionBooking'])->name('green-motion-booking');
