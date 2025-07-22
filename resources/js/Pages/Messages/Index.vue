@@ -172,7 +172,7 @@ onUnmounted(() => {
         <meta name="robots" content="noindex, nofollow">
         <title>Inbox</title>
     </Head>
-    <div class="flex flex-col h-screen bg-gray-100 max-md:pb-[3.5rem]">
+    <div class="flex flex-col h-screen bg-gray-100">
         <!-- New Page Header -->
 
         <!-- Main Chat Area -->
@@ -259,3 +259,6 @@ onUnmounted(() => {
         </div>
     </div>
 </template>
+
+<style scoped>
+</style>

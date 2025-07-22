@@ -3,20 +3,19 @@ import { ref, computed, onMounted, nextTick, onUnmounted, watch } from 'vue';
 import axios from 'axios';
 import sendIcon from '../../assets/sendMessageIcon.svg';
 import attachmentIcon from '../../assets/attachmentIcon.svg';
-import microphoneIcon from '../../assets/microphoneIcon.svg'; // New import for microphone icon
-import stopRecordingIcon from '../../assets/stopRecordingIcon.svg'; // New import for stop icon
-import sendVoiceNoteIcon from '../../assets/sendVoiceNoteIcon.svg'; // New import for send voice note icon
-import cancelRecordingIcon from '../../assets/cancelRecordingIcon.svg'; // New import for cancel icon
-
+import microphoneIcon from '../../assets/microphoneIcon.svg';
+import stopRecordingIcon from '../../assets/stopRecordingIcon.svg';
+import sendVoiceNoteIcon from '../../assets/sendVoiceNoteIcon.svg';
+import cancelRecordingIcon from '../../assets/cancelRecordingIcon.svg';
 import { usePage } from '@inertiajs/vue3';
 import searchIcon from '../../assets/MagnifyingGlass.svg';
-import recordingStartSound from '../../assets/sounds/recording_start.mp3'; // Import the sound file
-import arrowBackIcon from '../../assets/arrowBack.svg'; // Make sure to add this icon to your assets
+import recordingStartSound from '../../assets/sounds/recording_start.mp3';
+import arrowBackIcon from '../../assets/arrowBack.svg';
 
 const props = defineProps({
-    bookingId: [String, Number], // Changed from booking: Object
+    bookingId: [String, Number],
     messages: Array,
-    otherUser: Object, // This user object should have chat_status loaded
+    otherUser: Object,
     showBackButton: {
         type: Boolean,
         default: false
@@ -27,8 +26,8 @@ const emit = defineEmits(['back', 'messageReceived']);
 
 const messageList = ref(props.messages || []);
 const newMessage = ref('');
-const selectedFile = ref(null); // New ref for selected file
-const fileInput = ref(null); // New ref for file input element
+const selectedFile = ref(null);
+const fileInput = ref(null);
 const searchQuery = ref('');
 const messageContainer = ref(null);
 const isLoading = ref(false);
@@ -43,8 +42,9 @@ const audioChunks = ref([]);
 const audioBlob = ref(null);
 const audioUrl = ref(null);
 const recordingTime = ref(0);
+const fileExtension = ref('webm');
+const recordingPulse = ref(false);
 let recordingInterval = null;
-let audioContext = null;
 let recordingStartAudio = null;
 
 const page = usePage();
@@ -55,7 +55,7 @@ const filteredMessages = computed(() => {
     return messageList.value.filter(msg =>
         (msg.message && msg.message.toLowerCase().includes(searchQuery.value.toLowerCase())) ||
         (msg.file_name && msg.file_name.toLowerCase().includes(searchQuery.value.toLowerCase())) ||
-        (msg.voice_note_path) // Include voice notes in search results (though content isn't searchable)
+        (msg.voice_note_path)
     );
 });
 
@@ -75,6 +75,14 @@ const formatRecordingTime = (seconds) => {
     return `${minutes.toString().padStart(2, '0')}:${remainingSeconds.toString().padStart(2, '0')}`;
 };
 
+const formatFileSize = (bytes) => {
+    if (bytes === 0) return '0 Bytes';
+    const k = 1024;
+    const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+};
+
 const scrollToBottom = () => {
     nextTick(() => {
         if (messageContainer.value) {
@@ -84,7 +92,7 @@ const scrollToBottom = () => {
 };
 
 const sendMessage = async () => {
-    if (!newMessage.value.trim() && !selectedFile.value && !audioBlob.value) return; // Ensure message, file, or voice note is present
+    if (!newMessage.value.trim() && !selectedFile.value && !audioBlob.value) return;
     isLoading.value = true;
     error.value = null;
 
@@ -96,7 +104,7 @@ const sendMessage = async () => {
         formData.append('file', selectedFile.value);
     }
     if (audioBlob.value) {
-        formData.append('voice_note', audioBlob.value, `voice_note_${Date.now()}.${fileExtension}`); // Append voice note with dynamic extension
+        formData.append('voice_note', audioBlob.value, `voice_note_${Date.now()}.${fileExtension.value}`);
     }
 
     try {
@@ -105,14 +113,13 @@ const sendMessage = async () => {
                 'Content-Type': 'multipart/form-data'
             }
         });
-        // Append the sent message to the local messageList immediately
-        messageList.value.push(response.data.message); // Backend now returns full message object with file/voice note data
+        messageList.value.push(response.data.message);
         newMessage.value = '';
-        selectedFile.value = null; // Clear selected file
+        selectedFile.value = null;
         if (fileInput.value) {
-            fileInput.value.value = ''; // Clear file input
+            fileInput.value.value = '';
         }
-        cancelRecording(); // Clear voice note state after sending
+        cancelRecording();
         scrollToBottom();
     } catch (err) {
         error.value = err.response?.data?.message || 'Failed to send message.';
@@ -124,7 +131,6 @@ const sendMessage = async () => {
 const handleFileChange = (event) => {
     const file = event.target.files[0];
     if (file) {
-        // Basic client-side validation (optional, backend also validates)
         const allowedTypes = ['image/jpeg', 'image/png', 'image/jpg', 'image/gif', 'image/svg+xml', 'application/pdf', 'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', 'application/vnd.ms-excel', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', 'text/plain'];
         const maxSize = 10 * 1024 * 1024; // 10MB
 
@@ -158,37 +164,41 @@ const isImage = (fileType) => {
 };
 
 const getFileIcon = (fileType) => {
-    if (fileType.includes('pdf')) return '/images/icons/pdf-icon.svg'; // Assuming you have these icons
+    if (fileType.includes('pdf')) return '/images/icons/pdf-icon.svg';
     if (fileType.includes('word') || fileType.includes('doc')) return '/images/icons/doc-icon.svg';
     if (fileType.includes('excel') || fileType.includes('xls')) return '/images/icons/xls-icon.svg';
     if (fileType.includes('text')) return '/images/icons/txt-icon.svg';
-    return '/images/icons/file-icon.svg'; // Generic file icon
+    return '/images/icons/file-icon.svg';
 };
 
-// Voice Note Functions
+const getFilePreview = (file) => {
+    if (isImage(file.type)) {
+        return URL.createObjectURL(file);
+    }
+    return null;
+};
+
 const startRecording = async () => {
     try {
-        // Play sound
         if (recordingStartAudio) {
             recordingStartAudio.play();
         }
 
         const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-        // Determine the best MIME type for recording, prioritizing iOS-friendly formats
-        let mimeType = 'audio/webm'; // Default fallback
-        let fileExtension = 'webm';
+        let mimeType = 'audio/webm';
+        fileExtension.value = 'webm';
 
-        if (MediaRecorder.isTypeSupported('audio/mp4')) {
-            mimeType = 'audio/mp4';
-            fileExtension = 'mp4';
-        } else if (MediaRecorder.isTypeSupported('audio/aac')) {
-            mimeType = 'audio/aac';
-            fileExtension = 'aac';
+        if (MediaRecorder.isTypeSupported('audio/mpeg')) {
+            mimeType = 'audio/mpeg';
+            fileExtension.value = 'mp3';
+        } else if (MediaRecorder.isTypeSupported('audio/ogg')) {
+            mimeType = 'audio/ogg';
+            fileExtension.value = 'ogg';
         } else if (MediaRecorder.isTypeSupported('audio/wav')) {
             mimeType = 'audio/wav';
-            fileExtension = 'wav';
+            fileExtension.value = 'wav';
         }
-        
+
         mediaRecorder.value = new MediaRecorder(stream, { mimeType });
         audioChunks.value = [];
         audioBlob.value = null;
@@ -200,14 +210,14 @@ const startRecording = async () => {
         };
 
         mediaRecorder.value.onstop = () => {
-            audioBlob.value = new Blob(audioChunks.value, { type: mimeType }); // Use the determined MIME type
+            audioBlob.value = new Blob(audioChunks.value, { type: mimeType });
             audioUrl.value = URL.createObjectURL(audioBlob.value);
-            // Stop all tracks in the stream to release microphone
             stream.getTracks().forEach(track => track.stop());
         };
 
         mediaRecorder.value.start();
         isRecording.value = true;
+        recordingPulse.value = true;
         recordingInterval = setInterval(() => {
             recordingTime.value++;
         }, 1000);
@@ -215,6 +225,7 @@ const startRecording = async () => {
         console.error('Error accessing microphone:', err);
         alert('Could not access microphone. Please ensure it is connected and permissions are granted.');
         isRecording.value = false;
+        recordingPulse.value = false;
         clearInterval(recordingInterval);
     }
 };
@@ -223,19 +234,20 @@ const stopRecording = () => {
     if (mediaRecorder.value && mediaRecorder.value.state !== 'inactive') {
         mediaRecorder.value.stop();
         isRecording.value = false;
+        recordingPulse.value = false;
         clearInterval(recordingInterval);
     }
 };
 
 const sendVoiceNote = () => {
     if (audioBlob.value) {
-        sendMessage(); // sendMessage will now handle the audioBlob
+        sendMessage();
     }
 };
 
 const cancelRecording = () => {
     if (mediaRecorder.value && mediaRecorder.value.state !== 'inactive') {
-        mediaRecorder.value.stop(); // This will trigger onstop and clean up
+        mediaRecorder.value.stop();
     }
     audioChunks.value = [];
     audioBlob.value = null;
@@ -244,48 +256,41 @@ const cancelRecording = () => {
         audioUrl.value = null;
     }
     isRecording.value = false;
+    recordingPulse.value = false;
     recordingTime.value = 0;
     clearInterval(recordingInterval);
 };
 
-
-const recentlyDeleted = ref(null); // To store { messageId, timerId } for undo
-const UNDO_TIMEOUT = 10000; // 10 seconds for undo
+const recentlyDeleted = ref(null);
+const UNDO_TIMEOUT = 10000;
 
 const deleteMessage = async (messageId) => {
-    // Optimistically update UI or wait for API response
     const messageIndex = messageList.value.findIndex(msg => msg.id === messageId);
     if (messageIndex === -1) return;
-
-    // Store original message content in case of immediate undo without API roundtrip (optional)
-    // const originalContent = messageList.value[messageIndex].message;
 
     try {
         const response = await axios.delete(route('messages.destroy', { locale: usePage().props.locale, id: messageId }));
         if (response.data.success && response.data.message) {
-            // Update the local message to reflect soft deletion
             messageList.value[messageIndex].deleted_at = response.data.message.deleted_at;
-            messageList.value[messageIndex].message_original_content_temp = messageList.value[messageIndex].message; // Store for undo
-            messageList.value[messageIndex].message = "This message was deleted."; // Placeholder
+            messageList.value[messageIndex].message_original_content_temp = messageList.value[messageIndex].message;
+            messageList.value[messageIndex].message = "This message was deleted.";
 
-            // Set up undo option
             if (recentlyDeleted.value && recentlyDeleted.value.timerId) {
-                clearTimeout(recentlyDeleted.value.timerId); // Clear previous undo timer
+                clearTimeout(recentlyDeleted.value.timerId);
             }
             const timerId = setTimeout(() => {
                 if (recentlyDeleted.value && recentlyDeleted.value.messageId === messageId) {
-                    recentlyDeleted.value = null; // Clear undo option after timeout
+                    recentlyDeleted.value = null;
                 }
             }, UNDO_TIMEOUT);
             recentlyDeleted.value = { messageId, timerId };
             
-            showOptions.value = null; // Close options menu
+            showOptions.value = null;
         } else {
             alert("Failed to delete message: " + (response.data.error || "Unknown error"));
         }
     } catch (err) {
         alert("Error deleting message: " + (err.response?.data?.message || err.message));
-        // Optionally revert optimistic UI update here if one was made
     }
 };
 
@@ -310,7 +315,6 @@ const undoDeleteMessage = async (messageId) => {
         alert("Error undoing delete: " + (err.response?.data?.message || err.message));
     }
 };
-
 
 const toggleOptions = (messageId) => {
     showOptions.value = showOptions.value === messageId ? null : messageId;
@@ -353,7 +357,6 @@ const lastSeenText = computed(() => {
     return `Last seen on ${formatDate(chatStatus.last_logout_at)}`;
 });
 
-// Watch for changes in props.messages to update local messages
 watch(() => props.messages, (newMessages) => {
     if (newMessages) {
         messageList.value = newMessages;
@@ -363,9 +366,8 @@ watch(() => props.messages, (newMessages) => {
 
 onMounted(() => {
     scrollToBottom();
-    // Initialize audio for recording start sound
     recordingStartAudio = new Audio(recordingStartSound);
-    recordingStartAudio.load(); // Preload the audio
+    recordingStartAudio.load();
 
     if (props.bookingId) {
         const channel = window.Echo.private(`chat.${props.bookingId}`);
@@ -373,13 +375,6 @@ onMounted(() => {
         channel.listen('NewMessage', (e) => {
             if (e.message && e.message.booking_id == props.bookingId) {
                 if (!messageList.value.some(msg => msg.id === e.message.id)) {
-                    // Ensure the message object has the file_url accessor if a file is present
-                    // The backend should already send this, but as a fallback or for clarity:
-                    if (e.message.file_path && !e.message.file_url) {
-                        // This might not be strictly necessary if backend always sends file_url
-                        // but ensures robustness if the accessor isn't automatically serialized.
-                        // For now, assuming backend sends it.
-                    }
                     messageList.value.push(e.message);
                     emit('messageReceived', e.message);
                     scrollToBottom();
@@ -388,27 +383,10 @@ onMounted(() => {
         });
 
         channel.listen('.messages.read', (e) => {
-            // e.bookingId, e.readerId, e.readAtTimestamp
-            // Update messages sent by the current user that were read by the other user
             if (e.bookingId == props.bookingId && e.readerId == props.otherUser.id) {
                 messageList.value.forEach(message => {
                     if (message.sender_id === page.props.auth.user.id && message.receiver_id === e.readerId && !message.read_at) {
                         message.read_at = e.readAtTimestamp;
-                    }
-                });
-            }
-            // Also, if the current user is the one who read the messages (e.g., action initiated from another tab/device, or by `show()` method)
-            // ensure their view reflects that messages they received are read.
-            // This part might be redundant if `markMessagesAsRead` in `index.vue` and `show()` in controller already handle local UI updates well.
-            // However, it ensures consistency if the event is the source of truth.
-            if (e.bookingId == props.bookingId && e.readerId == page.props.auth.user.id) {
-                 messageList.value.forEach(message => {
-                    if (message.receiver_id === page.props.auth.user.id && message.sender_id === props.otherUser.id && !message.read_at) {
-                        // This condition might be too broad if we only want to update based on the *other* user reading.
-                        // For now, let's assume the primary goal is to show ticks when the *other* user reads.
-                        // The `mark-as-read` API call in `index.vue` should handle the badge,
-                        // and the `show()` method in controller handles marking as read when chat is opened.
-                        // This listener is mainly for the *other* party's ticks.
                     }
                 });
             }
@@ -418,8 +396,7 @@ onMounted(() => {
             const messageIndex = messageList.value.findIndex(msg => msg.id === e.message_id);
             if (messageIndex !== -1) {
                 messageList.value[messageIndex].deleted_at = e.deleted_at;
-                // Ensure message content is updated if not already placeholder
-                if(messageList.value[messageIndex].message !== "This message was deleted.") {
+                if (messageList.value[messageIndex].message !== "This message was deleted.") {
                     messageList.value[messageIndex].message_original_content_temp = messageList.value[messageIndex].message;
                     messageList.value[messageIndex].message = "This message was deleted.";
                 }
@@ -429,11 +406,7 @@ onMounted(() => {
         channel.listen('.message.restored', (e) => {
             const messageIndex = messageList.value.findIndex(msg => msg.id === e.message.id);
             if (messageIndex !== -1) {
-                messageList.value[messageIndex] = e.message; // Replace with full restored message data
-                // Or more granularly:
-                // messageList.value[messageIndex].deleted_at = null;
-                // messageList.value[messageIndex].message = e.message.message;
-                // delete messageList.value[messageIndex].message_original_content_temp;
+                messageList.value[messageIndex] = e.message;
             }
         });
     }
@@ -441,201 +414,357 @@ onMounted(() => {
 
 onUnmounted(() => {
     if (props.bookingId) {
-        window.Echo.leave(`chat.${props.bookingId}`); // Changed from props.booking.id
+        window.Echo.leave(`chat.${props.bookingId}`);
     }
 });
 </script>
 
 <template>
-    <div class="flex flex-col h-full bg-gray-100 rounded-xl shadow-lg overflow-hidden"> <!-- Added h-full -->
+    <div class="flex flex-col h-full bg-gradient-to-b from-gray-50 to-gray-100 rounded-xl shadow-lg overflow-hidden">
         <!-- Header - Fixed -->
-        <div class="p-3 bg-white border-b flex items-center gap-3 shadow-sm flex-shrink-0">
-            <button v-if="showBackButton" @click="goBack" class="p-1 rounded-full hover:bg-gray-100">
-                <img :src="arrowBackIcon" alt="Back" class="w-6 h-6" />
+        <div class="p-4 bg-white border-b border-gray-200 flex items-center gap-3 shadow-sm flex-shrink-0">
+            <button v-if="showBackButton" @click="goBack" 
+                class="p-2 rounded-full hover:bg-gray-100 transition-colors duration-200">
+                <img :src="arrowBackIcon" alt="Back" class="w-5 h-5" />
             </button>
 
-            <!-- Use otherUser directly for profile image -->
-            <img :src="getProfileImage(otherUser)"
-                alt="User Avatar" class="w-10 h-10 rounded-full object-cover" />
-
-            <div class="flex-grow">
-                <h2 class="text-base font-semibold text-gray-800">
-                    {{ otherUser?.first_name || 'Chat Partner' }} {{ otherUser?.last_name || '' }}
-                </h2>
-                <p class="text-xs text-gray-500">{{ lastSeenText }}</p> <!-- Changed to lastSeenText -->
+            <div class="relative">
+                <img :src="getProfileImage(otherUser)"
+                    alt="User Avatar" class="w-12 h-12 rounded-full object-cover ring-2 ring-blue-100" />
+                <div v-if="otherUser?.chat_status?.is_online" 
+                    class="absolute -bottom-1 -right-1 w-4 h-4 bg-green-500 rounded-full border-2 border-white"></div>
             </div>
 
-            <button @click="toggleSearch" class="p-2 rounded-full hover:bg-gray-100">
+            <div class="flex-grow">
+                <h2 class="text-lg font-semibold text-gray-800">
+                    {{ otherUser?.first_name || 'Chat Partner' }} {{ otherUser?.last_name || '' }}
+                </h2>
+                <p class="text-sm text-gray-500">{{ lastSeenText }}</p>
+            </div>
+
+            <button @click="toggleSearch" 
+                class="p-2 rounded-full hover:bg-gray-100 transition-colors duration-200">
                 <img :src="searchIcon" alt="Search" class="w-5 h-5" />
             </button>
         </div>
 
         <!-- Search Bar - Conditional -->
-        <div v-if="isSearchVisible" class="p-2 bg-white border-b">
+        <div v-if="isSearchVisible" class="p-3 bg-white border-b border-gray-200">
             <div class="relative">
                 <input v-model="searchQuery" type="text" placeholder="Search messages..."
-                    class="w-full pl-10 pr-4 py-2 border rounded-full focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
+                    class="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-full focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-gray-50 transition-all duration-200"
                     autofocus />
                 <img :src="searchIcon" alt="Search"
-                    class="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5" />
+                    class="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
             </div>
         </div>
 
         <!-- Messages - Scrollable -->
-        <div ref="messageContainer" class="flex-1 overflow-y-auto p-3 space-y-3">
-            <div v-if="filteredMessages.length === 0" class="text-center text-gray-500 py-8">
-                No messages found.
+        <div ref="messageContainer" class="flex-1 overflow-y-auto p-4 space-y-4 scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-transparent">
+            <div v-if="filteredMessages.length === 0" class="text-center text-gray-500 py-12">
+                <div class="text-4xl mb-2">💬</div>
+                <p class="text-lg">No messages found</p>
             </div>
             <div v-else v-for="message in filteredMessages" :key="message.id" class="group relative">
-<div :class="[
-                    'p-3 rounded-lg max-w-[45%] break-words',
+                <div :class="[
+                    'p-4 rounded-2xl max-w-[75%] break-words shadow-sm transition-all duration-200 hover:shadow-md w-fit',
                     message.sender_id === $page.props.auth.user.id
-                        ? 'ml-auto bg-[#153b4f] text-white self-end '
-                        : 'mr-0 bg-white text-gray-900 border self-start '
-                ]" style="word-break: break-word;">
-                    <div class="flex justify-between items-start gap-2">
-                        <span class="font-medium text-xs">
-                            {{ message.sender_id === $page.props.auth.user.id ? 'Me' : otherUser.first_name }}
+                        ? 'ml-auto bg-customPrimaryColor text-white rounded-br-lg'
+                        : 'mr-auto bg-white text-gray-900 border border-gray-200 rounded-bl-lg'
+                ]">
+                    <div class="flex justify-between items-start gap-3 mb-2">
+                        <span class="font-medium text-sm opacity-90">
+                            {{ message.sender_id === $page.props.auth.user.id ? 'You' : otherUser.first_name }}
                         </span>
                         <div class="flex items-center gap-2">
-                            <span class="text-xs opacity-75">{{ formatTime(message.created_at) }}</span>
+                            <span class="text-xs opacity-70">{{ formatTime(message.created_at) }}</span>
                             <button v-if="message.sender_id === page.props.auth.user.id"
                                 @click="toggleOptions(message.id)"
-                                class="opacity-0 group-hover:opacity-100 transition-opacity text-gray-300 hover:text-white">
-                                ⋮
+                                class="opacity-0 group-hover:opacity-100 transition-opacity duration-200 p-1 rounded hover:bg-white/20">
+                                <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                                    <path d="M10 6a2 2 0 110-4 2 2 0 010 4zM10 12a2 2 0 110-4 2 2 0 010 4zM10 18a2 2 0 110-4 2 2 0 010 4z"></path>
+                                </svg>
                             </button>
                         </div>
                     </div>
-                    <div class="mt-1 text-sm">
+
+                    <!-- Message Content -->
+                    <div class="text-sm leading-relaxed">
                         <template v-if="message.deleted_at">
-                            This message was deleted.
+                            <div class="flex items-center gap-2 text-gray-400 italic">
+                                <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                                    <path fill-rule="evenodd" d="M9 2a1 1 0 000 2h2a1 1 0 100-2H9z" clip-rule="evenodd"></path>
+                                    <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-13a1 1 0 10-2 0v4a1 1 0 102 0V5z" clip-rule="evenodd"></path>
+                                </svg>
+                                This message was deleted
+                            </div>
                         </template>
                         <template v-else-if="message.file_path">
-                            <div v-if="isImage(message.file_type)">
-                                <a :href="message.file_url" target="_blank">
-                                    <img :src="message.file_url" :alt="message.file_name" class="max-w-full h-auto rounded-lg" />
+                            <div v-if="isImage(message.file_type)" class="mb-2">
+                                <a :href="message.file_url" target="_blank" class="block">
+                                    <img :src="message.file_url" :alt="message.file_name" 
+                                        class="w-60 rounded-lg shadow-sm hover:shadow-md transition-shadow duration-200" />
                                 </a>
                             </div>
-                            <div v-else class="flex items-center gap-2">
-                                <img :src="getFileIcon(message.file_type)" alt="File Icon" class="w-6 h-6" />
-                                <a :href="message.file_url" target="_blank" class="text-blue-400 hover:underline">
-                                    {{ message.file_name }} ({{ (message.file_size / 1024 / 1024).toFixed(2) }} MB)
-                                </a>
+                            <div v-else class="flex items-center gap-3 p-3 bg-gray-50 rounded-lg border">
+                                <img :src="getFileIcon(message.file_type)" alt="File Icon" class="w-8 h-8" />
+                                <div class="flex-grow min-w-0">
+                                    <a :href="message.file_url" target="_blank" 
+                                        class="text-blue-600 hover:text-blue-800 font-medium block truncate">
+                                        {{ message.file_name }}
+                                    </a>
+                                    <p class="text-xs text-gray-500">{{ formatFileSize(message.file_size) }}</p>
+                                </div>
                             </div>
-                            <p v-if="message.message" class="mt-1">{{ message.message }}</p>
+                            <p v-if="message.message" class="mt-2">{{ message.message }}</p>
                         </template>
                         <template v-else-if="message.voice_note_path">
-                            <audio controls :src="message.voice_note_url" class="w-full"></audio>
-                            <p v-if="message.message" class="mt-1">{{ message.message }}</p>
+                            <div class="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
+                                <div class="flex-shrink-0">
+                                    <svg class="w-6 h-6 text-blue-600" fill="currentColor" viewBox="0 0 20 20">
+                                        <path fill-rule="evenodd" d="M7 4a3 3 0 016 0v4a3 3 0 11-6 0V4zm4 10.93A7.001 7.001 0 0017 8a1 1 0 10-2 0A5 5 0 015 8a1 1 0 00-2 0 7.001 7.001 0 006 6.93V17H6a1 1 0 100 2h8a1 1 0 100-2h-3v-2.07z" clip-rule="evenodd"></path>
+                                    </svg>
+                                </div>
+                                <audio controls :src="message.voice_note_url" class="flex-grow h-8"></audio>
+                            </div>
+                            <p v-if="message.message" class="mt-2">{{ message.message }}</p>
                         </template>
                         <template v-else>
                             {{ message.message }}
                         </template>
                     </div>
-                    <div v-if="message.sender_id === page.props.auth.user.id && !message.deleted_at" class="text-right mt-1">
-                        <span v-if="!message.read_at" class="text-gray-300 text-xs">✓</span> <!-- Delivered -->
-                        <span v-else class="text-blue-300 text-xs">✓✓</span> <!-- Read -->
+
+                    <!-- Read Status -->
+                    <div v-if="message.sender_id === page.props.auth.user.id && !message.deleted_at" 
+                        class="text-right mt-2">
+                        <span v-if="!message.read_at" class="text-xs opacity-60">
+                            <svg class="w-4 h-4 inline" fill="currentColor" viewBox="0 0 20 20">
+                                <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"></path>
+                            </svg>
+                        </span>
+                        <span v-else class="text-xs text-blue-300">
+                            <svg class="w-4 h-4 inline" fill="currentColor" viewBox="0 0 20 20">
+                                <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"></path>
+                            </svg>
+                            <svg class="w-4 h-4 inline -ml-2" fill="currentColor" viewBox="0 0 20 20">
+                                <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"></path>
+                            </svg>
+                        </span>
                     </div>
-                     <!-- Undo Button -->
-                    <div v-if="recentlyDeleted && recentlyDeleted.messageId === message.id && message.sender_id === page.props.auth.user.id" class="mt-2 text-right">
-                        <button @click="undoDeleteMessage(message.id)" class="text-xs text-blue-500 hover:underline">
-                            Undo
+
+                    <!-- Undo Delete Button -->
+                    <div v-if="recentlyDeleted && recentlyDeleted.messageId === message.id && message.sender_id === page.props.auth.user.id" 
+                        class="mt-3 text-right">
+                        <button @click="undoDeleteMessage(message.id)" 
+                            class="text-xs bg-white/20 hover:bg-white/30 px-3 py-1 rounded-full transition-colors duration-200">
+                            Undo Delete
                         </button>
                     </div>
                 </div>
 
-                <!-- Dropdown for delete -->
+                <!-- Options Menu -->
                 <div v-if="showOptions === message.id && message.sender_id === page.props.auth.user.id && !message.deleted_at"
-                    class="absolute right-0 top-[-3rem] mt-2 bg-white shadow-lg rounded-md py-1 w-28 z-20 border">
+                    class="absolute right-10 top-2 mt-2 bg-white shadow-lg rounded-lg py-2 w-32 z-20 border border-gray-200 delete-message-popup-mobile">
                     <button @click="deleteMessage(message.id)"
-                        class="w-full text-left px-3 py-1 text-sm text-red-600 hover:bg-red-50">
-                        Delete
+                        class="w-full text-left px-4 py-2 text-[0.75rem] text-red-600 hover:bg-red-50 transition-colors duration-200">
+                        Delete Message
                     </button>
                 </div>
             </div>
         </div>
 
-        <!-- Error Message -->
-        <div v-if="error" class="px-3 py-1.5 text-red-600 text-xs bg-red-100">{{ error }}</div>
-
         <!-- File Preview -->
-        <div v-if="selectedFile" class="bg-white px-3 py-2 border-t flex items-center justify-between text-sm">
-            <div class="flex items-center gap-2">
-                <span class="text-gray-700">Selected file: {{ selectedFile.name }}</span>
-                <span class="text-gray-500 text-xs">({{ (selectedFile.size / 1024 / 1024).toFixed(2) }} MB)</span>
+        <div v-if="selectedFile" class="bg-white border-t border-gray-200 p-4">
+            <div class="flex items-start gap-3 bg-blue-50 rounded-lg p-3">
+                <div v-if="getFilePreview(selectedFile)" class="flex-shrink-0">
+                    <img :src="getFilePreview(selectedFile)" :alt="selectedFile.name" 
+                        class="w-16 h-16 object-cover rounded-lg" />
+                </div>
+                <div v-else class="flex-shrink-0">
+                    <img :src="getFileIcon(selectedFile.type)" alt="File Icon" class="w-12 h-12" />
+                </div>
+                <div class="flex-grow min-w-0">
+                    <span class="font-medium text-gray-900 truncate">{{ selectedFile.name }}</span>
+                    <p class="text-sm text-gray-500">{{ formatFileSize(selectedFile.size) }}</p>
+                    <div class="flex items-center gap-2 mt-2">
+                        <span class="text-xs text-blue-600 bg-blue-100 px-2 py-1 rounded-full">Ready to send</span>
+                        <button @click="clearSelectedFile" 
+                            class="text-xs text-red-600 hover:text-red-800 transition-colors duration-200">
+                            Remove
+                        </button>
+                    </div>
+                </div>
             </div>
-            <button @click="clearSelectedFile" class="text-red-500 hover:text-red-700 text-sm">
-                Clear
-            </button>
         </div>
 
-        <!-- Voice Note Preview/Controls -->
-        <div v-if="audioUrl" class="bg-white px-3 py-2 border-t flex items-center justify-between text-sm">
-            <div class="flex items-center gap-2 flex-grow">
-                <audio controls :src="audioUrl" class="flex-grow"></audio>
-                <span class="text-gray-500 text-xs">{{ formatRecordingTime(recordingTime) }}</span>
+        <!-- Voice Note Preview -->
+        <div v-if="audioUrl" class="bg-white border-t border-gray-200 p-4">
+            <div class="flex items-center gap-3 bg-green-50 rounded-lg p-3">
+                <div class="flex-shrink-0">
+                    <div class="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center">
+                        <svg class="w-6 h-6 text-green-600" fill="currentColor" viewBox="0 0 20 20">
+                            <path fill-rule="evenodd" d="M7 4a3 3 0 016 0v4a3 3 0 11-6 0V4zm4 10.93A7.001 7.001 0 0017 8a1 1 0 10-2 0A5 5 0 015 8a1 1 0 00-2 0 7.001 7.001 0 006 6.93V17H6a1 1 0 100 2h8a1 1 0 100-2h-3v-2.07z" clip-rule="evenodd"></path>
+                        </svg>
+                    </div>
+                </div>
+                <div class="flex-grow">
+                    <span class="font-medium text-gray-900">Voice Message</span>
+                    <p class="text-sm text-gray-500">{{ formatRecordingTime(recordingTime) }}</p>
+                    <audio controls :src="audioUrl" class="mt-2 w-full h-8"></audio>
+                </div>
+                <button @click="cancelRecording" 
+                    class="p-2 text-red-600 hover:text-red-800 hover:bg-red-50 rounded-full transition-colors duration-200">
+                    <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                        <path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd"></path>
+                    </svg>
+                </button>
             </div>
-            <button @click="cancelRecording" class="text-red-500 hover:text-red-700 text-sm ml-2">
-                <img :src="cancelRecordingIcon" alt="Cancel" class="w-5 h-5" />
-            </button>
         </div>
 
-        <!-- Input - Fixed -->
-        <div class="chat-input-bar bg-white border-t flex items-center gap-2 p-2 flex-shrink-0">
-            <input type="file" ref="fileInput" @change="handleFileChange" class="hidden" accept="image/*,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,text/plain" />
-            <button @click="fileInput.click()" class="p-2 rounded-full hover:bg-gray-100" :disabled="isRecording || audioUrl">
-                <img :src="attachmentIcon" alt="Attach File" class="w-5 h-5" />
-            </button>
+        <!-- Recording Status -->
+        <div v-if="isRecording" class="bg-red-50 border-t border-red-200 p-4">
+            <div class="flex items-center justify-center gap-3">
+                <div class="w-3 h-3 bg-red-500 rounded-full animate-pulse"></div>
+                <span class="text-red-700 font-medium">Recording: {{ formatRecordingTime(recordingTime) }}</span>
+                <button @click="stopRecording" 
+                    class="ml-4 px-4 py-2 bg-red-600 text-white rounded-full hover:bg-red-700 transition-colors duration-200">
+                    Stop Recording
+                </button>
+            </div>
+        </div>
 
-            <!-- Microphone/Recording Controls -->
-            <button v-if="!isRecording && !audioUrl" @click="startRecording" class="p-2 rounded-full hover:bg-gray-100" :disabled="selectedFile || newMessage.trim().length > 0">
-                <img :src="microphoneIcon" alt="Record Voice" class="w-5 h-5" />
-            </button>
-            <button v-else-if="isRecording" @click="stopRecording" class="p-2 rounded-full bg-red-500 hover:bg-red-600 transition-colors">
-                <img :src="stopRecordingIcon" alt="Stop Recording" class="w-5 h-5" />
-            </button>
-            
-            <textarea v-model="newMessage" placeholder="Type your message..."
-                class="flex-1 p-2 rounded-full border focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none h-10 text-sm"
-                @keyup.enter="sendMessage" :disabled="isRecording || audioUrl" />
-            
-            <button v-if="audioUrl" @click="sendVoiceNote" :disabled="isLoading"
-                class="p-2 rounded-full bg-blue-300 hover:bg-blue-600 transition-colors disabled:opacity-50 disabled:bg-blue-300">
-                <img :src="sendVoiceNoteIcon" alt="Send Voice Note" class="w-5 h-5" v-if="!isLoading" />
-                <span v-else class="text-white text-xs">...</span>
-            </button>
-            <button v-else @click="sendMessage" :disabled="isLoading || (!newMessage.trim() && !selectedFile)"
-                class="p-2 rounded-full bg-blue-300 hover:bg-blue-600 transition-colors disabled:opacity-50 disabled:bg-blue-300">
-                <img :src="sendIcon" alt="Send" class="w-5 h-5" v-if="!isLoading" />
-                <span v-else class="text-white text-xs">...</span>
-            </button>
+        <!-- Error Message -->
+        <div v-if="error" class="bg-red-50 border-t border-red-200 p-3">
+            <div class="flex items-center gap-2 text-red-700">
+                <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                    <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd"></path>
+                </svg>
+                <span class="text-sm">{{ error }}</span>
+            </div>
+        </div>
+
+        <!-- Input Area - Fixed -->
+        <div class="bg-white border-t border-gray-200 p-2 flex-shrink-0">
+            <div class="flex items-center gap-3">
+                <!-- Hidden File Input -->
+                <input type="file" ref="fileInput" @change="handleFileChange" class="hidden" 
+                    accept="image/*,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,text/plain" />
+                
+                <!-- Attachment Button -->
+                <button @click="fileInput.click()" 
+                    :disabled="isRecording || audioUrl" 
+                    class="p-3 rounded-full hover:bg-gray-100 transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed">
+                    <img :src="attachmentIcon" alt="Attach File" class="w-5 h-5" />
+                </button>
+
+                <!-- Voice Recording Button -->
+                <button v-if="!isRecording && !audioUrl" @click="startRecording" 
+                    :disabled="selectedFile || newMessage.trim().length > 0" 
+                    class="p-3 rounded-full hover:bg-gray-100 transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed">
+                    <img :src="microphoneIcon" alt="Record Voice" class="w-5 h-5" />
+                </button>
+
+                <!-- Message Input -->
+                <div class="flex-1 flex">
+                    <textarea v-model="newMessage" placeholder="Type your message..."
+                        class="w-full p-3 rounded-2xl border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none min-h-[44px] max-h-32 transition-all duration-200 bg-gray-50"
+                        :disabled="isRecording || audioUrl" 
+                        @keydown.enter.exact.prevent="sendMessage"
+                        rows="1" />
+                </div>
+                
+                <!-- Send Voice Note Button -->
+                <button v-if="audioUrl" @click="sendVoiceNote" 
+                    :disabled="isLoading"
+                    class="p-3 rounded-full bg-blue-600 hover:bg-blue-700 text-white transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed">
+                    <img :src="sendVoiceNoteIcon" alt="Send Voice Note" class="w-5 h-5" v-if="!isLoading" />
+                    <svg v-else class="w-5 h-5 animate-spin" fill="none" viewBox="0 0 24 24">
+                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                </button>
+                
+                <!-- Send Message Button -->
+                <button v-else @click="sendMessage" 
+                    :disabled="isLoading || (!newMessage.trim() && !selectedFile)"
+                    class="p-3 rounded-full bg-blue-600 hover:bg-blue-700 text-white transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed">
+                    <img :src="sendIcon" alt="Send" class="w-5 h-5" v-if="!isLoading" />
+                    <svg v-else class="w-5 h-5 animate-spin" fill="none" viewBox="0 0 24 24">
+                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                </button>
+            </div>
         </div>
     </div>
 </template>
 
 <style scoped>
+/* Custom scrollbar */
+.scrollbar-thin::-webkit-scrollbar {
+    width: 6px;
+}
+
+.scrollbar-thin::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.scrollbar-thin::-webkit-scrollbar-thumb {
+    background-color: #d1d5db;
+    border-radius: 3px;
+}
+
+.scrollbar-thin::-webkit-scrollbar-thumb:hover {
+    background-color: #9ca3af;
+}
+
+/* Auto-resize textarea */
+textarea {
+    transition: height 0.2s ease;
+}
+
 /* Mobile optimization */
 @media (max-width: 640px) {
     .rounded-xl {
         border-radius: 0;
     }
 
-    textarea.h-10 {
-        height: 40px;
-    }
-
-    .chat-input-bar {
-        position: fixed;
-        bottom: 0;
-        left: 0;
-        right: 0;
-        width: 100%;
-        z-index: 10; /* Ensure it's above other content */
-        box-shadow: 0 -2px 5px rgba(0,0,0,0.1); /* Optional: add shadow for better separation */
+    .bg-white {
+        position: relative;
+        z-index: 10;
     }
 
     .flex-1.overflow-y-auto {
-        padding-bottom: 40px; /* Adjust this value based on the actual height of your chat-input-bar */
+        padding-bottom: 20px;
     }
+
+    .max-w-\[75\%\] {
+        max-width: 85%;
+    }
+}
+
+@media (max-width: 768px) {
+    .delete-message-popup-mobile {
+        right: 8px; /* Equivalent to Tailwind's right-2 (2 * 4px) */
+        width: fit-content;
+        max-width: calc(100vw - 16px); /* 100vw minus 8px padding on each side */
+        left: auto;
+        top: 100%;
+        margin-top: 4px; /* Equivalent to Tailwind's mt-1 */
+    }
+}
+
+/* Animation for recording pulse */
+@keyframes pulse {
+    0%, 100% {
+        opacity: 1;
+    }
+    50% {
+        opacity: 0.5;
+    }
+}
+
+.animate-pulse {
+    animation: pulse 1s cubic-bezier(0.4, 0, 0.6, 1) infinite;
 }
 </style>
