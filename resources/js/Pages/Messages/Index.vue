@@ -174,15 +174,6 @@ onUnmounted(() => {
     </Head>
     <div class="flex flex-col h-screen bg-gray-100">
         <!-- New Page Header -->
-        <header class="bg-white shadow-sm p-3 flex items-center justify-between flex-shrink-0 border-b">
-            <div class="flex items-center">
-                <Link :href="route('profile.edit', { locale: usePage().props.locale })" class="mr-3 p-1.5 rounded-full hover:bg-gray-100">
-                    <img :src="arrowBackIcon" alt="Back to Profile" class="w-5 h-5" />
-                </Link>
-                <h1 class="text-lg font-semibold text-gray-800">Inbox</h1>
-            </div>
-            <!-- Placeholder for any right-side header actions if needed -->
-        </header>
 
         <!-- Main Chat Area -->
         <div class="flex flex-row flex-grow overflow-hidden">

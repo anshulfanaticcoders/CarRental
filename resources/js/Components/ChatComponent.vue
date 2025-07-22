@@ -635,7 +635,7 @@ onUnmounted(() => {
     }
 
     .flex-1.overflow-y-auto {
-        padding-bottom: 70px; /* Adjust this value based on the actual height of your chat-input-bar */
+        padding-bottom: 40px; /* Adjust this value based on the actual height of your chat-input-bar */
     }
 }
 </style>
