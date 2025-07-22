@@ -4,9 +4,7 @@ import axios from 'axios';
 import sendIcon from '../../assets/sendMessageIcon.svg';
 import attachmentIcon from '../../assets/attachmentIcon.svg';
 import microphoneIcon from '../../assets/microphoneIcon.svg';
-import stopRecordingIcon from '../../assets/stopRecordingIcon.svg';
 import sendVoiceNoteIcon from '../../assets/sendVoiceNoteIcon.svg';
-import cancelRecordingIcon from '../../assets/cancelRecordingIcon.svg';
 import { usePage } from '@inertiajs/vue3';
 import searchIcon from '../../assets/MagnifyingGlass.svg';
 import recordingStartSound from '../../assets/sounds/recording_start.mp3';
@@ -503,7 +501,7 @@ onUnmounted(() => {
                             <div v-if="isImage(message.file_type)" class="mb-2">
                                 <a :href="message.file_url" target="_blank" class="block">
                                     <img :src="message.file_url" :alt="message.file_name" 
-                                        class="w-60 rounded-lg shadow-sm hover:shadow-md transition-shadow duration-200" />
+                                        class="w-60 h-48 rounded-lg shadow-sm hover:shadow-md transition-shadow duration-200" />
                                 </a>
                             </div>
                             <div v-else class="flex items-center gap-3 p-3 bg-gray-50 rounded-lg border">
@@ -643,8 +641,8 @@ onUnmounted(() => {
             </div>
         </div>
 
-        <!-- Input Area - Fixed -->
-        <div class="bg-white border-t border-gray-200 p-2 flex-shrink-0">
+        <!-- Input Area -->
+        <div class="bg-white border-t border-gray-200 p-2 flex-shrink-0 chat-input-area">
             <div class="flex items-center gap-3">
                 <!-- Hidden File Input -->
                 <input type="file" ref="fileInput" @change="handleFileChange" class="hidden" 
@@ -653,14 +651,14 @@ onUnmounted(() => {
                 <!-- Attachment Button -->
                 <button @click="fileInput.click()" 
                     :disabled="isRecording || audioUrl" 
-                    class="p-3 rounded-full hover:bg-gray-100 transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed">
+                    class="p-3 rounded-full bg-gray-100 hover:bg-gray-100 transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed">
                     <img :src="attachmentIcon" alt="Attach File" class="w-5 h-5" />
                 </button>
 
                 <!-- Voice Recording Button -->
                 <button v-if="!isRecording && !audioUrl" @click="startRecording" 
                     :disabled="selectedFile || newMessage.trim().length > 0" 
-                    class="p-3 rounded-full hover:bg-gray-100 transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed">
+                    class="p-3 rounded-full bg-gray-100 hover:bg-gray-100 transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed">
                     <img :src="microphoneIcon" alt="Record Voice" class="w-5 h-5" />
                 </button>
 
@@ -687,7 +685,7 @@ onUnmounted(() => {
                 <!-- Send Message Button -->
                 <button v-else @click="sendMessage" 
                     :disabled="isLoading || (!newMessage.trim() && !selectedFile)"
-                    class="p-3 rounded-full bg-blue-600 hover:bg-blue-700 text-white transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed">
+                    class="p-3 rounded-full bg-customPrimaryColor hover:bg-blue-700 text-white transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed">
                     <img :src="sendIcon" alt="Send" class="w-5 h-5" v-if="!isLoading" />
                     <svg v-else class="w-5 h-5 animate-spin" fill="none" viewBox="0 0 24 24">
                         <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
@@ -744,6 +742,20 @@ textarea {
 }
 
 @media (max-width: 768px) {
+    .chat-input-area {
+        position: fixed;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        z-index: 10;
+        width: 100%;
+        max-width: 100%;
+    }
+
+    .flex-1.overflow-y-auto {
+        padding-bottom: 80px; /* Adjust padding to account for fixed input bar height */
+    }
+
     .delete-message-popup-mobile {
         right: 8px; /* Equivalent to Tailwind's right-2 (2 * 4px) */
         width: fit-content;
