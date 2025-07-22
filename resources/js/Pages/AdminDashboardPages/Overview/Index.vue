@@ -227,7 +227,7 @@
                                         </TableRow>
                                     </TableHeader>
                                     <TableBody>
-                                        <TableRow v-for="row in tableData.data" :key="row.booking_id">
+                                        <TableRow v-for="row in formattedTableData" :key="row.booking_id">
                                             <TableCell v-for="column in columns" :key="column.accessorKey">
                                                 {{ row[column.accessorKey] }}
                                             </TableCell>
@@ -456,7 +456,12 @@
                                     <TableBody>
                                         <TableRow v-for="row in userTableData.data" :key="row.id">
                                             <TableCell v-for="column in userColumns" :key="column.accessorKey">
-                                                {{ row[column.accessorKey] }}
+                                                <template v-if="column.formatter">
+                                                    {{ column.formatter(row[column.accessorKey]) }}
+                                                </template>
+                                                <template v-else>
+                                                    {{ row[column.accessorKey] }}
+                                                </template>
                                             </TableCell>
                                         </TableRow>
                                     </TableBody>
@@ -563,7 +568,12 @@
                                     <TableBody>
                                         <TableRow v-for="row in vendorTableData.data" :key="row.id">
                                             <TableCell v-for="column in vendorColumns" :key="column.accessorKey">
-                                                {{ row[column.accessorKey] }}
+                                                <template v-if="column.formatter">
+                                                    {{ column.formatter(row[column.accessorKey]) }}
+                                                </template>
+                                                <template v-else>
+                                                    {{ row[column.accessorKey] }}
+                                                </template>
                                             </TableCell>
                                         </TableRow>
                                     </TableBody>
@@ -837,7 +847,7 @@ const userColumns = [
     { accessorKey: 'phone', header: 'Phone' },
     { accessorKey: 'location', header: 'Location' },
     { accessorKey: 'status', header: 'Status' },
-    { accessorKey: 'joined_at', header: 'Joined' },
+    { accessorKey: 'joined_at', header: 'Joined', formatter: (date) => formatDate(date) },
 ];
 
 const vendorColumns = [
@@ -845,8 +855,24 @@ const vendorColumns = [
     { accessorKey: 'email', header: 'Email' },
     { accessorKey: 'company_name', header: 'Company' },
     { accessorKey: 'status', header: 'Status' },
-    { accessorKey: 'joined_at', header: 'Joined' },
+    { accessorKey: 'joined_at', header: 'Joined', formatter: (date) => formatDate(date) },
 ];
+
+const formatDate = (dateStr) => {
+    if (!dateStr) {
+        return 'Nil';
+    }
+    const date = new Date(dateStr);
+    return `${String(date.getDate()).padStart(2, '0')}/${String(date.getMonth() + 1).padStart(2, '0')}/${date.getFullYear()}`;
+};
+
+const formattedTableData = computed(() => {
+    return props.tableData.data.map(row => ({
+        ...row,
+        start_date: formatDate(row.start_date),
+        end_date: formatDate(row.end_date),
+    }));
+});
 
 const visibleVehiclePageNumbers = computed(() => {
     const max = 5;

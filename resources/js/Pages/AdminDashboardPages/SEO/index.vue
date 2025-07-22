@@ -51,7 +51,7 @@
                       {{ meta.seo_title }}
                     </td>
                     <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      {{ new Date(meta.updated_at).toLocaleDateString() }}
+                      {{ formatDate(meta.updated_at) }}
                     </td>
                     <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                       <Link :href="route('admin.seo-meta.edit', meta.id)" class="text-indigo-600 hover:text-indigo-900 mr-3">Edit</Link>
@@ -110,6 +110,11 @@ const handlePageChange = (page) => {
     preserveScroll: true, 
     replace: true, 
   });
+};
+
+const formatDate = (dateStr) => {
+    const date = new Date(dateStr);
+    return `${String(date.getDate()).padStart(2, '0')}/${String(date.getMonth() + 1).padStart(2, '0')}/${date.getFullYear()}`;
 };
 </script>
 

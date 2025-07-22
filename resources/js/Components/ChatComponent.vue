@@ -2,9 +2,15 @@
 import { ref, computed, onMounted, nextTick, onUnmounted, watch } from 'vue';
 import axios from 'axios';
 import sendIcon from '../../assets/sendMessageIcon.svg';
-import attachmentIcon from '../../assets/attachmentIcon.svg'; // New import for attachment icon
+import attachmentIcon from '../../assets/attachmentIcon.svg';
+import microphoneIcon from '../../assets/microphoneIcon.svg'; // New import for microphone icon
+import stopRecordingIcon from '../../assets/stopRecordingIcon.svg'; // New import for stop icon
+import sendVoiceNoteIcon from '../../assets/sendVoiceNoteIcon.svg'; // New import for send voice note icon
+import cancelRecordingIcon from '../../assets/cancelRecordingIcon.svg'; // New import for cancel icon
+
 import { usePage } from '@inertiajs/vue3';
 import searchIcon from '../../assets/MagnifyingGlass.svg';
+import recordingStartSound from '../../assets/sounds/recording_start.mp3'; // Import the sound file
 import arrowBackIcon from '../../assets/arrowBack.svg'; // Make sure to add this icon to your assets
 
 const props = defineProps({
@@ -30,6 +36,17 @@ const error = ref(null);
 const showOptions = ref(null);
 const isSearchVisible = ref(false);
 
+// Voice Note State
+const isRecording = ref(false);
+const mediaRecorder = ref(null);
+const audioChunks = ref([]);
+const audioBlob = ref(null);
+const audioUrl = ref(null);
+const recordingTime = ref(0);
+let recordingInterval = null;
+let audioContext = null;
+let recordingStartAudio = null;
+
 const page = usePage();
 const userRole = computed(() => page.props.auth.user.role);
 
@@ -37,7 +54,8 @@ const filteredMessages = computed(() => {
     if (!searchQuery.value.trim()) return messageList.value;
     return messageList.value.filter(msg =>
         (msg.message && msg.message.toLowerCase().includes(searchQuery.value.toLowerCase())) ||
-        (msg.file_name && msg.file_name.toLowerCase().includes(searchQuery.value.toLowerCase()))
+        (msg.file_name && msg.file_name.toLowerCase().includes(searchQuery.value.toLowerCase())) ||
+        (msg.voice_note_path) // Include voice notes in search results (though content isn't searchable)
     );
 });
 
@@ -51,6 +69,12 @@ const formatTime = (dateString) => {
     return date.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
 };
 
+const formatRecordingTime = (seconds) => {
+    const minutes = Math.floor(seconds / 60);
+    const remainingSeconds = seconds % 60;
+    return `${minutes.toString().padStart(2, '0')}:${remainingSeconds.toString().padStart(2, '0')}`;
+};
+
 const scrollToBottom = () => {
     nextTick(() => {
         if (messageContainer.value) {
@@ -60,7 +84,7 @@ const scrollToBottom = () => {
 };
 
 const sendMessage = async () => {
-    if (!newMessage.value.trim() && !selectedFile.value) return; // Ensure either message or file is present
+    if (!newMessage.value.trim() && !selectedFile.value && !audioBlob.value) return; // Ensure message, file, or voice note is present
     isLoading.value = true;
     error.value = null;
 
@@ -71,6 +95,9 @@ const sendMessage = async () => {
     if (selectedFile.value) {
         formData.append('file', selectedFile.value);
     }
+    if (audioBlob.value) {
+        formData.append('voice_note', audioBlob.value, `voice_note_${Date.now()}.webm`); // Append voice note
+    }
 
     try {
         const response = await axios.post(route('messages.store', { locale: usePage().props.locale }), formData, {
@@ -79,12 +106,13 @@ const sendMessage = async () => {
             }
         });
         // Append the sent message to the local messageList immediately
-        messageList.value.push(response.data.message); // Backend now returns full message object with file data
+        messageList.value.push(response.data.message); // Backend now returns full message object with file/voice note data
         newMessage.value = '';
         selectedFile.value = null; // Clear selected file
         if (fileInput.value) {
             fileInput.value.value = ''; // Clear file input
         }
+        cancelRecording(); // Clear voice note state after sending
         scrollToBottom();
     } catch (err) {
         error.value = err.response?.data?.message || 'Failed to send message.';
@@ -136,6 +164,75 @@ const getFileIcon = (fileType) => {
     if (fileType.includes('text')) return '/images/icons/txt-icon.svg';
     return '/images/icons/file-icon.svg'; // Generic file icon
 };
+
+// Voice Note Functions
+const startRecording = async () => {
+    try {
+        // Play sound
+        if (recordingStartAudio) {
+            recordingStartAudio.play();
+        }
+
+        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        mediaRecorder.value = new MediaRecorder(stream);
+        audioChunks.value = [];
+        audioBlob.value = null;
+        audioUrl.value = null;
+        recordingTime.value = 0;
+
+        mediaRecorder.value.ondataavailable = (event) => {
+            audioChunks.value.push(event.data);
+        };
+
+        mediaRecorder.value.onstop = () => {
+            audioBlob.value = new Blob(audioChunks.value, { type: 'audio/webm' });
+            audioUrl.value = URL.createObjectURL(audioBlob.value);
+            // Stop all tracks in the stream to release microphone
+            stream.getTracks().forEach(track => track.stop());
+        };
+
+        mediaRecorder.value.start();
+        isRecording.value = true;
+        recordingInterval = setInterval(() => {
+            recordingTime.value++;
+        }, 1000);
+    } catch (err) {
+        console.error('Error accessing microphone:', err);
+        alert('Could not access microphone. Please ensure it is connected and permissions are granted.');
+        isRecording.value = false;
+        clearInterval(recordingInterval);
+    }
+};
+
+const stopRecording = () => {
+    if (mediaRecorder.value && mediaRecorder.value.state !== 'inactive') {
+        mediaRecorder.value.stop();
+        isRecording.value = false;
+        clearInterval(recordingInterval);
+    }
+};
+
+const sendVoiceNote = () => {
+    if (audioBlob.value) {
+        sendMessage(); // sendMessage will now handle the audioBlob
+    }
+};
+
+const cancelRecording = () => {
+    if (mediaRecorder.value && mediaRecorder.value.state !== 'inactive') {
+        mediaRecorder.value.stop(); // This will trigger onstop and clean up
+    }
+    audioChunks.value = [];
+    audioBlob.value = null;
+    if (audioUrl.value) {
+        URL.revokeObjectURL(audioUrl.value);
+        audioUrl.value = null;
+    }
+    isRecording.value = false;
+    recordingTime.value = 0;
+    clearInterval(recordingInterval);
+};
+
 
 const recentlyDeleted = ref(null); // To store { messageId, timerId } for undo
 const UNDO_TIMEOUT = 10000; // 10 seconds for undo
@@ -251,6 +348,10 @@ watch(() => props.messages, (newMessages) => {
 
 onMounted(() => {
     scrollToBottom();
+    // Initialize audio for recording start sound
+    recordingStartAudio = new Audio(recordingStartSound);
+    recordingStartAudio.load(); // Preload the audio
+
     if (props.bookingId) {
         const channel = window.Echo.private(`chat.${props.bookingId}`);
         
@@ -408,6 +509,10 @@ onUnmounted(() => {
                             </div>
                             <p v-if="message.message" class="mt-1">{{ message.message }}</p>
                         </template>
+                        <template v-else-if="message.voice_note_path">
+                            <audio controls :src="message.voice_note_url" class="w-full"></audio>
+                            <p v-if="message.message" class="mt-1">{{ message.message }}</p>
+                        </template>
                         <template v-else>
                             {{ message.message }}
                         </template>
@@ -439,7 +544,7 @@ onUnmounted(() => {
         <div v-if="error" class="px-3 py-1.5 text-red-600 text-xs bg-red-100">{{ error }}</div>
 
         <!-- File Preview -->
-        <div v-if="selectedFile" class="bg-white px-3 py-2 border-t flex items-center justify-between text-sm">
+        <div v-if="selectedFile" class="bg-white px-3 py-2 border-t flex items-center justify-between text-sm max-[768px]:mb-[3.5rem]">
             <div class="flex items-center gap-2">
                 <span class="text-gray-700">Selected file: {{ selectedFile.name }}</span>
                 <span class="text-gray-500 text-xs">({{ (selectedFile.size / 1024 / 1024).toFixed(2) }} MB)</span>
@@ -449,16 +554,42 @@ onUnmounted(() => {
             </button>
         </div>
 
+        <!-- Voice Note Preview/Controls -->
+        <div v-if="audioUrl" class="bg-white px-3 py-2 border-t flex items-center justify-between text-sm max-[768px]:mb-[3.5rem]">
+            <div class="flex items-center gap-2 flex-grow">
+                <audio controls :src="audioUrl" class="flex-grow"></audio>
+                <span class="text-gray-500 text-xs">{{ formatRecordingTime(recordingTime) }}</span>
+            </div>
+            <button @click="cancelRecording" class="text-red-500 hover:text-red-700 text-sm ml-2">
+                <img :src="cancelRecordingIcon" alt="Cancel" class="w-5 h-5" />
+            </button>
+        </div>
+
         <!-- Input - Fixed -->
         <div class="chat-input-bar bg-white border-t flex items-center gap-2 p-2 flex-shrink-0">
             <input type="file" ref="fileInput" @change="handleFileChange" class="hidden" accept="image/*,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,text/plain" />
-            <button @click="fileInput.click()" class="p-2 rounded-full hover:bg-gray-100">
+            <button @click="fileInput.click()" class="p-2 rounded-full hover:bg-gray-100" :disabled="isRecording || audioUrl">
                 <img :src="attachmentIcon" alt="Attach File" class="w-5 h-5" />
             </button>
+
+            <!-- Microphone/Recording Controls -->
+            <button v-if="!isRecording && !audioUrl" @click="startRecording" class="p-2 rounded-full hover:bg-gray-100" :disabled="selectedFile || newMessage.trim().length > 0">
+                <img :src="microphoneIcon" alt="Record Voice" class="w-5 h-5" />
+            </button>
+            <button v-else-if="isRecording" @click="stopRecording" class="p-2 rounded-full bg-red-500 hover:bg-red-600 transition-colors">
+                <img :src="stopRecordingIcon" alt="Stop Recording" class="w-5 h-5" />
+            </button>
+            
             <textarea v-model="newMessage" placeholder="Type your message..."
                 class="flex-1 p-2 rounded-full border focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none h-10 text-sm"
-                @keyup.enter="sendMessage" />
-            <button @click="sendMessage" :disabled="isLoading || (!newMessage.trim() && !selectedFile)"
+                @keyup.enter="sendMessage" :disabled="isRecording || audioUrl" />
+            
+            <button v-if="audioUrl" @click="sendVoiceNote" :disabled="isLoading"
+                class="p-2 rounded-full bg-blue-300 hover:bg-blue-600 transition-colors disabled:opacity-50 disabled:bg-blue-300">
+                <img :src="sendVoiceNoteIcon" alt="Send Voice Note" class="w-5 h-5" v-if="!isLoading" />
+                <span v-else class="text-white text-xs">...</span>
+            </button>
+            <button v-else @click="sendMessage" :disabled="isLoading || (!newMessage.trim() && !selectedFile)"
                 class="p-2 rounded-full bg-blue-300 hover:bg-blue-600 transition-colors disabled:opacity-50 disabled:bg-blue-300">
                 <img :src="sendIcon" alt="Send" class="w-5 h-5" v-if="!isLoading" />
                 <span v-else class="text-white text-xs">...</span>

@@ -22,6 +22,7 @@ class Message extends Model
         'file_name',
         'file_type',
         'file_size',
+        'voice_note_path', // New fillable attribute for voice notes
     ];
 
     /**
@@ -31,7 +32,7 @@ class Message extends Model
      */
     protected $dates = ['deleted_at', 'reminder_sent_at']; // Ensure deleted_at and reminder_sent_at are Carbon instances
 
-    protected $appends = ['file_url']; // Append file_url accessor to JSON output
+    protected $appends = ['file_url', 'voice_note_url']; // Append file_url and voice_note_url accessors to JSON output
 
     public function sender()
     {
@@ -58,6 +59,15 @@ class Message extends Model
     {
         if ($this->file_path) {
             return \Illuminate\Support\Facades\Storage::disk('upcloud')->url($this->file_path);
+        }
+        return null;
+    }
+
+    // Accessor for voice_note_url
+    public function getVoiceNoteUrlAttribute()
+    {
+        if ($this->voice_note_path) {
+            return \Illuminate\Support\Facades\Storage::disk('upcloud')->url($this->voice_note_path);
         }
         return null;
     }

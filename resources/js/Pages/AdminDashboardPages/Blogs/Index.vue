@@ -43,7 +43,7 @@
                                     {{ blog.is_published ? 'Published' : 'Unpublished' }}
                                 </Button>
                             </TableCell>
-                            <TableCell>{{ new Date(blog.created_at).toLocaleDateString() }}</TableCell>
+                            <TableCell>{{ formatDate(blog.created_at) }}</TableCell>
                             <TableCell class="text-right">
                                 <div class="flex justify-end gap-2">
                                     <Link 
@@ -151,6 +151,11 @@ const handlePageChange = (page) => { // Changed to accept page number
         preserveState: true,
         replace: true,
     });
+};
+
+const formatDate = (dateStr) => {
+    const date = new Date(dateStr);
+    return `${String(date.getDate()).padStart(2, '0')}/${String(date.getMonth() + 1).padStart(2, '0')}/${date.getFullYear()}`;
 };
 </script>
 

@@ -218,14 +218,15 @@ public function show($locale, $bookingId)
     $validated = $request->validate([
         'booking_id' => 'required|exists:bookings,id',
         'receiver_id' => 'required|exists:users,id',
-        'message' => 'nullable|string', // Message can be nullable if a file is sent
+        'message' => 'nullable|string', // Message can be nullable if a file or voice note is sent
         'parent_id' => 'nullable|exists:messages,id',
         'file' => 'nullable|file|max:10240|mimes:jpeg,png,jpg,gif,svg,pdf,doc,docx,xls,xlsx,txt', // Max 10MB, common file types
+        'voice_note' => 'nullable|file|max:10240|mimes:mp3,wav,ogg,webm', // Max 10MB, common audio types
     ]);
 
-    // Ensure either message or file is present
-    if (empty($validated['message']) && !$request->hasFile('file')) {
-        return response()->json(['error' => 'Message content or a file is required.'], 422);
+    // Ensure either message, file, or voice note is present
+    if (empty($validated['message']) && !$request->hasFile('file') && !$request->hasFile('voice_note')) {
+        return response()->json(['error' => 'Message content, a file, or a voice note is required.'], 422);
     }
 
     $booking = Booking::with(['vehicle.vendor', 'customer'])->findOrFail($validated['booking_id']);
@@ -256,10 +257,21 @@ public function show($locale, $bookingId)
         $messageData['file_size'] = $file->getSize();
     }
 
+    // Handle voice note upload if present
+    if ($request->hasFile('voice_note')) {
+        $voiceNote = $request->file('voice_note');
+        $folderName = 'voice_notes';
+        $fileName = 'voice_note_' . time() . '.' . $voiceNote->getClientOriginalExtension();
+        $filePath = $voiceNote->storeAs($folderName, $fileName, 'upcloud');
+
+        $messageData['voice_note_path'] = $filePath;
+        // You might want to store voice note specific metadata here if needed, e.g., duration
+    }
+
     $message = Message::create($messageData);
 
     // Broadcast the new message
-    // Load file_url accessor for broadcasting
+    // Load file_url and voice_note_url accessors for broadcasting
     $message->load(['sender', 'receiver']); // Ensure sender/receiver are loaded for the event
     broadcast(new NewMessage($message))->toOthers();
 

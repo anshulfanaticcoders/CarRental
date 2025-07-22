@@ -32,7 +32,7 @@
                             <TableCell>{{ (pages.current_page - 1) * pages.per_page + index + 1 }}</TableCell>
                             <TableCell class="capitalize">{{ getTitle(page) }}</TableCell>
                             <TableCell>{{ page.slug }}</TableCell>
-                            <TableCell>{{ new Date(page.created_at).toLocaleDateString() }}</TableCell>
+                            <TableCell>{{ formatDate(page.created_at) }}</TableCell>
                             <TableCell class="text-right">
                                 <div class="flex justify-end gap-2">
                                     <Link 
@@ -107,6 +107,11 @@ const getTitle = (page) => {
     const locale = props.filters.locale || 'en';
     const translation = page.translations.find(t => t.locale === locale);
     return translation ? translation.title : page.slug;
+};
+
+const formatDate = (dateStr) => {
+    const date = new Date(dateStr);
+    return `${String(date.getDate()).padStart(2, '0')}/${String(date.getMonth() + 1).padStart(2, '0')}/${date.getFullYear()}`;
 };
 </script>
 
