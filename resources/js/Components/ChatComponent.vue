@@ -450,8 +450,8 @@ onUnmounted(() => {
         </div>
 
         <!-- Input - Fixed -->
-        <div class="bg-white border-t flex items-center gap-2 p-2 flex-shrink-0">
-            <input type="file" ref="fileInput" @change="handleFileChange" class="hidden" accept="image/*,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,text/plain" />
+        <div class="chat-input-bar bg-white border-t flex items-center gap-2 p-2 flex-shrink-0">
+            <input type="file" ref="fileInput" @change="handleFileChange" class="hidden" accept="image/*,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,text/plain" />
             <button @click="fileInput.click()" class="p-2 rounded-full hover:bg-gray-100">
                 <img :src="attachmentIcon" alt="Attach File" class="w-5 h-5" />
             </button>
@@ -476,6 +476,20 @@ onUnmounted(() => {
 
     textarea.h-10 {
         height: 40px;
+    }
+
+    .chat-input-bar {
+        position: fixed;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        width: 100%;
+        z-index: 10; /* Ensure it's above other content */
+        box-shadow: 0 -2px 5px rgba(0,0,0,0.1); /* Optional: add shadow for better separation */
+    }
+
+    .flex-1.overflow-y-auto {
+        padding-bottom: 70px; /* Adjust this value based on the actual height of your chat-input-bar */
     }
 }
 </style>
