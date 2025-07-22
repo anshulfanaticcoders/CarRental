@@ -447,9 +447,9 @@ onUnmounted(() => {
 </script>
 
 <template>
-    <div class="flex flex-col h-full bg-gray-100 rounded-xl shadow-lg overflow-hidden"> <!-- Added h-full -->
+    <div class="flex flex-col h-full bg-gray-100 rounded-xl shadow-lg overflow-hidden relative"> <!-- Added h-full and relative -->
         <!-- Header - Fixed -->
-        <div class="p-3 bg-white border-b flex items-center gap-3 shadow-sm flex-shrink-0">
+        <div class="p-3 bg-white border-b flex items-center gap-3 shadow-sm flex-shrink-0 fixed top-0 left-0 right-0 z-10 w-full">
             <button v-if="showBackButton" @click="goBack" class="p-1 rounded-full hover:bg-gray-100">
                 <img :src="arrowBackIcon" alt="Back" class="w-6 h-6" />
             </button>
@@ -471,7 +471,7 @@ onUnmounted(() => {
         </div>
 
         <!-- Search Bar - Conditional -->
-        <div v-if="isSearchVisible" class="p-2 bg-white border-b">
+        <div v-if="isSearchVisible" class="p-2 bg-white border-b fixed top-[60px] left-0 right-0 z-10 w-full"> <!-- Adjusted top based on header height -->
             <div class="relative">
                 <input v-model="searchQuery" type="text" placeholder="Search messages..."
                     class="w-full pl-10 pr-4 py-2 border rounded-full focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
@@ -482,7 +482,7 @@ onUnmounted(() => {
         </div>
 
         <!-- Messages - Scrollable -->
-        <div ref="messageContainer" class="flex-1 overflow-y-auto p-3 space-y-3 max-md:max-h-[63vh]">
+        <div ref="messageContainer" class="flex-1 overflow-y-auto p-3 space-y-3 pt-[120px] pb-[70px] md:pt-3 md:pb-3"> <!-- Adjusted padding for fixed header/search and input bar -->
             <div v-if="filteredMessages.length === 0" class="text-center text-gray-500 py-8">
                 No messages found.
             </div>
@@ -632,10 +632,6 @@ onUnmounted(() => {
         width: 100%;
         z-index: 10; /* Ensure it's above other content */
         box-shadow: 0 -2px 5px rgba(0,0,0,0.1); /* Optional: add shadow for better separation */
-    }
-
-    .flex-1.overflow-y-auto {
-        padding-bottom: 70px; /* Adjust this value based on the actual height of your chat-input-bar */
     }
 }
 </style>
