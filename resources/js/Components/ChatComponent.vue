@@ -449,7 +449,7 @@ onUnmounted(() => {
 <template>
     <div class="flex flex-col h-full bg-gray-100 rounded-xl shadow-lg overflow-hidden"> <!-- Added h-full -->
         <!-- Header - Fixed -->
-        <div class="p-3 bg-white border-b flex items-center gap-3 shadow-sm flex-shrink-0 max-[768px]:fixed max-[768px]:z-10 max-[768px]:w-full">
+        <div class="p-3 bg-white border-b flex items-center gap-3 shadow-sm flex-shrink-0">
             <button v-if="showBackButton" @click="goBack" class="p-1 rounded-full hover:bg-gray-100">
                 <img :src="arrowBackIcon" alt="Back" class="w-6 h-6" />
             </button>
@@ -482,7 +482,7 @@ onUnmounted(() => {
         </div>
 
         <!-- Messages - Scrollable -->
-        <div ref="messageContainer" class="flex-1 overflow-y-auto p-3 space-y-3 max-md:max-h-[65vh] max-[768px]:mt-20">
+        <div ref="messageContainer" class="flex-1 overflow-y-auto p-3 space-y-3">
             <div v-if="filteredMessages.length === 0" class="text-center text-gray-500 py-8">
                 No messages found.
             </div>
