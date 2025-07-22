@@ -482,7 +482,7 @@ onUnmounted(() => {
         </div>
 
         <!-- Messages - Scrollable -->
-        <div ref="messageContainer" class="flex-1 overflow-y-auto p-3 space-y-3">
+        <div ref="messageContainer" class="flex-1 overflow-y-auto p-3 space-y-3 max-md:max-h-[63vh]">
             <div v-if="filteredMessages.length === 0" class="text-center text-gray-500 py-8">
                 No messages found.
             </div>
@@ -559,7 +559,7 @@ onUnmounted(() => {
         <div v-if="error" class="px-3 py-1.5 text-red-600 text-xs bg-red-100">{{ error }}</div>
 
         <!-- File Preview -->
-        <div v-if="selectedFile" class="bg-white px-3 py-2 border-t flex items-center justify-between text-sm max-[768px]:mb-[3.5rem]">
+        <div v-if="selectedFile" class="bg-white px-3 py-2 border-t flex items-center justify-between text-sm">
             <div class="flex items-center gap-2">
                 <span class="text-gray-700">Selected file: {{ selectedFile.name }}</span>
                 <span class="text-gray-500 text-xs">({{ (selectedFile.size / 1024 / 1024).toFixed(2) }} MB)</span>
@@ -570,7 +570,7 @@ onUnmounted(() => {
         </div>
 
         <!-- Voice Note Preview/Controls -->
-        <div v-if="audioUrl" class="bg-white px-3 py-2 border-t flex items-center justify-between text-sm max-[768px]:mb-[3.5rem]">
+        <div v-if="audioUrl" class="bg-white px-3 py-2 border-t flex items-center justify-between text-sm">
             <div class="flex items-center gap-2 flex-grow">
                 <audio controls :src="audioUrl" class="flex-grow"></audio>
                 <span class="text-gray-500 text-xs">{{ formatRecordingTime(recordingTime) }}</span>
