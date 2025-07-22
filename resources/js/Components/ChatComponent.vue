@@ -96,7 +96,7 @@ const sendMessage = async () => {
         formData.append('file', selectedFile.value);
     }
     if (audioBlob.value) {
-        formData.append('voice_note', audioBlob.value, `voice_note_${Date.now()}.webm`); // Append voice note
+        formData.append('voice_note', audioBlob.value, `voice_note_${Date.now()}.${fileExtension}`); // Append voice note with dynamic extension
     }
 
     try {
@@ -174,7 +174,22 @@ const startRecording = async () => {
         }
 
         const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-        mediaRecorder.value = new MediaRecorder(stream);
+        // Determine the best MIME type for recording, prioritizing iOS-friendly formats
+        let mimeType = 'audio/webm'; // Default fallback
+        let fileExtension = 'webm';
+
+        if (MediaRecorder.isTypeSupported('audio/mp4')) {
+            mimeType = 'audio/mp4';
+            fileExtension = 'mp4';
+        } else if (MediaRecorder.isTypeSupported('audio/aac')) {
+            mimeType = 'audio/aac';
+            fileExtension = 'aac';
+        } else if (MediaRecorder.isTypeSupported('audio/wav')) {
+            mimeType = 'audio/wav';
+            fileExtension = 'wav';
+        }
+        
+        mediaRecorder.value = new MediaRecorder(stream, { mimeType });
         audioChunks.value = [];
         audioBlob.value = null;
         audioUrl.value = null;
@@ -185,7 +200,7 @@ const startRecording = async () => {
         };
 
         mediaRecorder.value.onstop = () => {
-            audioBlob.value = new Blob(audioChunks.value, { type: 'audio/webm' });
+            audioBlob.value = new Blob(audioChunks.value, { type: mimeType }); // Use the determined MIME type
             audioUrl.value = URL.createObjectURL(audioBlob.value);
             // Stop all tracks in the stream to release microphone
             stream.getTracks().forEach(track => track.stop());
