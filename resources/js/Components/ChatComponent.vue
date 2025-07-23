@@ -572,7 +572,7 @@ onUnmounted(() => {
         </div>
 
         <!-- File Preview -->
-        <div v-if="selectedFile" class="bg-white border-t border-gray-200 p-4">
+        <div v-if="selectedFile" class="bg-white border-t border-gray-200 p-4 preview">
             <div class="flex items-start gap-3 bg-blue-50 rounded-lg p-3">
                 <div v-if="getFilePreview(selectedFile)" class="flex-shrink-0">
                     <img :src="getFilePreview(selectedFile)" :alt="selectedFile.name" 
@@ -596,7 +596,7 @@ onUnmounted(() => {
         </div>
 
         <!-- Voice Note Preview -->
-        <div v-if="audioUrl" class="bg-white border-t border-gray-200 p-4">
+        <div v-if="audioUrl" class="bg-white border-t border-gray-200 p-4 preview">
             <div class="flex items-center gap-3 bg-green-50 rounded-lg p-3">
                 <div class="flex-shrink-0">
                     <div class="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center">
@@ -763,6 +763,9 @@ textarea {
         left: auto;
         top: 100%;
         margin-top: 4px; /* Equivalent to Tailwind's mt-1 */
+    }
+    .preview{
+        margin-bottom: 67px;
     }
 }
 
