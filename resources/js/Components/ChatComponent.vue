@@ -620,7 +620,7 @@ onUnmounted(() => {
         </div>
 
         <!-- Recording Status -->
-        <div v-if="isRecording" class="bg-red-50 border-t border-red-200 p-4">
+        <div v-if="isRecording" class="bg-red-50 border-t border-red-200 p-4 preview">
             <div class="flex items-center justify-center gap-3">
                 <div class="w-3 h-3 bg-red-500 rounded-full animate-pulse"></div>
                 <span class="text-red-700 font-medium">Recording: {{ formatRecordingTime(recordingTime) }}</span>
