@@ -111,7 +111,7 @@ const menus = [
 ];
 
 const otherLinks = [
-  { name: _t('customerprofile','inbox'), path: route('messages.index', { locale: usePage().props.locale }), icon: inboxIcon },
+  { name: _t('customerprofile','inbox'), path: route('messages.index', { locale: usePage().props.locale }), icon: inboxIcon, isInbox: true },
   { name: _t('customerprofile','favorites'), path: route('profile.favourites', { locale: usePage().props.locale }), icon: favoritesIcon },
   { name: _t('customerprofile','my_reviews'), path: route('profile.reviews', { locale: usePage().props.locale }), icon: reviewsIcon },
 ];
@@ -146,7 +146,7 @@ const vendorOtherLinks = [
   { name: _t('customerprofile','payment_history'), path: route('vendor.payments', { locale: usePage().props.locale }), icon: clockIcon },
   { name: _t('customerprofile','bookings'), path: route('bookings.index', { locale: usePage().props.locale }), icon: vehiclesIcon },
   { name: _t('customerprofile','date_blocking'), path: route('vendor.blocking-dates.index', { locale: usePage().props.locale }), icon: dateblockingIcon },
-  { name: _t('customerprofile','inbox'), path: route('messages.vendor.index', { locale: usePage().props.locale }), icon: inboxIcon },
+  { name: _t('customerprofile','inbox'), path: route('messages.vendor.index', { locale: usePage().props.locale }), icon: inboxIcon, isInbox: true },
   { name: _t('customerprofile','customer_reviews'), path: route('vendor.reviews', { locale: usePage().props.locale }), icon: reviewsIcon },
 ];
 
@@ -236,6 +236,22 @@ const fetchUserProfile = async () => {
 };
 
 onMounted(fetchUserProfile);
+
+const unreadMessageCount = ref(0);
+
+const fetchUnreadMessageCount = async () => {
+  try {
+    const response = await axios.get(route('messages.unreadCount', { locale: usePage().props.locale }));
+    if (response.data && typeof response.data.unread_count === 'number') {
+      unreadMessageCount.value = response.data.unread_count;
+    }
+  } catch (error) {
+    console.error("Error fetching unread message count:", error);
+  }
+};
+
+onMounted(fetchUnreadMessageCount);
+watch(() => usePage().url, fetchUnreadMessageCount); // Re-fetch on route change
 
 // Function to close mobile menu when clicking a link (for mobile view)
 const handleLinkClick = (name) => {
@@ -357,6 +373,9 @@ const showProfileAlert = computed(() => profileCompletion.value < 90);
           <img :src="link.icon" alt="" class="icon w-[24px] h-[24px]"
             :class="{ 'brightness-active': activeLink === link.name }" />
           <span v-if="!isCollapsed || isMobile">{{ link.name }}</span>
+          <span v-if="link.isInbox && unreadMessageCount > 0 && (!isCollapsed || isMobile)" class="unread-badge">
+            {{ unreadMessageCount }}
+          </span>
         </Link>
       </div>
 
@@ -492,5 +511,21 @@ a {
 
 .collapsed-avatar {
   margin-bottom: 20px;
+}
+
+.unread-badge {
+  background-color: #EE1D52; /* Red background */
+  color: white;
+  border-radius: 50%; /* Circular shape */
+  padding: 2px 8px; /* Adjust padding to make it look like a badge */
+  font-size: 0.75rem; /* Smaller font size */
+  font-weight: bold;
+  margin-left: auto; /* Push to the right */
+  min-width: 24px; /* Ensure it's circular even for single digits */
+  text-align: center;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 24px; /* Ensure height matches min-width for circular shape */
 }
 </style>

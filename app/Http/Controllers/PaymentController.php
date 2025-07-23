@@ -22,6 +22,8 @@ use App\Models\BookingPayment;
 use App\Models\BookingExtra;
 use App\Models\Vehicle;
 use Illuminate\Support\Facades\Session as LaravelSession;
+use App\Models\Message; // Added for sending messages
+use App\Events\NewMessage; // Added for broadcasting new messages
 
 class PaymentController extends Controller
 {
@@ -281,6 +283,20 @@ class PaymentController extends Controller
 
             Notification::route('mail', $customer->email)
                 ->notify(new BookingCreatedCustomerNotification($booking, $customer, $vehicle));
+
+            // Send a message notification from vendor to customer
+            $vendorUser = User::find($vehicle->vendor_id);
+            if ($vendorUser) {
+                $message = Message::create([
+                    'sender_id' => $vendorUser->id,
+                    'receiver_id' => $customer->user_id, // Assuming customer model has user_id
+                    'booking_id' => $booking->id,
+                    'message' => 'Hello, Thank you for booking. Feel free to ask anything!',
+                ]);
+                // Broadcast the new message
+                $message->load(['sender', 'receiver']);
+                broadcast(new NewMessage($message))->toOthers();
+            }
 
             // Clear session storage
             session()->forget(['pending_booking_id', 'driverInfo', 'rentalDates', 'selectionData']);

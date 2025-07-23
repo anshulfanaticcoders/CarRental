@@ -40,6 +40,7 @@ Route::middleware('auth:sanctum')->get('/user', function (Request $request) {
 Route::get('/categories/{category}/features', [CategoryFeaturesController::class, 'index'])
     ->name('api.categories.features');
 
+Route::middleware('auth:sanctum')->get('/messages/unread-count', [MessageController::class, 'getUnreadCount'])->name('messages.unreadCount');
 Route::middleware('auth:sanctum')->post('/messages/mark-as-read/{booking_id}', [MessageController::class, 'markMessagesAsRead']);
 Route::get('/vehicle-categories', [VehicleCategoryController::class, 'index'])->name('api.vehicle-categories.index');
 Route::get('/vehicle-features', [VehicleController::class, 'getFeatures'])->name('api.vehicle-features.index');

@@ -478,7 +478,7 @@ onUnmounted(() => {
                             <span class="text-xs opacity-70">{{ formatTime(message.created_at) }}</span>
                             <button v-if="message.sender_id === page.props.auth.user.id"
                                 @click="toggleOptions(message.id)"
-                                class="opacity-0 group-hover:opacity-100 transition-opacity duration-200 p-1 rounded hover:bg-white/20">
+                                class="opacity-0 group-hover:opacity-100 transition-opacity duration-200 p-1 rounded hover:bg-white/20 mobile-show-options">
                                 <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
                                     <path d="M10 6a2 2 0 110-4 2 2 0 010 4zM10 12a2 2 0 110-4 2 2 0 010 4zM10 18a2 2 0 110-4 2 2 0 010 4z"></path>
                                 </svg>
@@ -766,6 +766,10 @@ textarea {
     }
     .preview{
         margin-bottom: 67px;
+    }
+
+    .mobile-show-options {
+        opacity: 1 !important;
     }
 }
 

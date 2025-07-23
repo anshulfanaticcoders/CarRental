@@ -42,7 +42,9 @@ class MessageController extends Controller
             // If bookings.customer_id is directly users.id, this subquery is simpler.
             // Let's check Booking model structure. Assuming Booking has direct customer_user_id or similar.
             // For now, assuming Booking->customer is a relation to Customer model, which has user_id
-            $query->select('id')->from('customers')->where('user_id', $customerId);
+            // Modified to handle cases where a user might have multiple customer profiles,
+            // by selecting the latest created customer ID.
+            $query->select('id')->from('customers')->where('user_id', $customerId)->latest()->limit(1);
         })
         ->with(['vehicle.vendor.profile', 'vehicle.vendor.chatStatus', 'vehicle']) // Eager load: vehicle.vendor is User, then profile and chatStatus
         ->orderBy('created_at', 'desc') // Get latest bookings first for a vendor
@@ -275,17 +277,6 @@ public function show($locale, $bookingId)
     $message->load(['sender', 'receiver']); // Ensure sender/receiver are loaded for the event
     broadcast(new NewMessage($message))->toOthers();
 
-    // Notify the receiver only for the first message in this booking's conversation
-    $receiver = User::find($validated['receiver_id']);
-    if ($receiver) {
-        // Count messages for this booking_id.
-        // If this is the first message, then send the notification.
-        $messageCount = Message::where('booking_id', $validated['booking_id'])->count();
-
-        if ($messageCount === 1) {
-            $receiver->notify(new NewMessageNotification($message));
-        }
-    }
 
     return response()->json(['message' => $message]);
 }

@@ -6,6 +6,7 @@ use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Notifications\Messages\MailMessage;
 use Illuminate\Notifications\Notification;
+use App\Models\UserProfile; // Add this line
 
 class BookingCreatedVendorNotification extends Notification
 {
@@ -15,6 +16,7 @@ class BookingCreatedVendorNotification extends Notification
     protected $customer;
     protected $vehicle;
     protected $vendor; // Add vendor property
+    protected $currencySymbol; // Add this line
 
     public function __construct($booking, $customer, $vehicle, $vendor)
     {
@@ -22,6 +24,14 @@ class BookingCreatedVendorNotification extends Notification
         $this->customer = $customer;
         $this->vehicle = $vehicle;
         $this->vendor = $vendor; // Initialize vendor
+        $this->currencySymbol = $this->getCurrencySymbol($vehicle); // Initialize currency symbol based on vehicle's vendor
+    }
+
+    protected function getCurrencySymbol($vehicle)
+    {
+        // Access the vendor's UserProfile through the vehicle
+        $vendorUserProfile = $vehicle->vendorProfile;
+        return $vendorUserProfile ? $vendorUserProfile->currency : '$'; // Default to '$' if not found
     }
 
     public function via(object $notifiable): array
@@ -51,9 +61,9 @@ class BookingCreatedVendorNotification extends Notification
             ->line('**Pickup Time:** ' . $this->booking->pickup_time)
             ->line('**Return Date:** ' . $this->booking->return_date->format('Y-m-d'))
             ->line('**Return Time:** ' . $this->booking->return_time)
-            ->line('**Total Amount:** $' . number_format($this->booking->total_amount, 2))
-            ->line('**Amount Paid:** $' . number_format($this->booking->amount_paid, 2))
-            ->line('**Pending Amount:** $' . number_format($this->booking->pending_amount, 2))
+            ->line('**Total Amount:** ' . $this->currencySymbol . number_format($this->booking->total_amount, 2))
+            ->line('**Amount Paid:** ' . $this->currencySymbol . number_format($this->booking->amount_paid, 2))
+            ->line('**Pending Amount:** ' . $this->currencySymbol . number_format($this->booking->pending_amount, 2))
             ->line('**Customer Details:**')
             ->line('**Name:** ' . $this->customer->first_name . ' ' . $this->customer->last_name)
             ->line('**Email:** ' . $this->customer->email)
@@ -84,6 +94,7 @@ class BookingCreatedVendorNotification extends Notification
             'amount_paid' => $this->booking->amount_paid,
             'pending_amount' => $this->booking->pending_amount,
             'customer_name' => $this->customer->first_name . ' ' . $this->customer->last_name,
+            'currency_symbol' => $this->currencySymbol, // Add currency symbol to array
             'message' => 'A new booking has been made for your vehicle.',
         ];
     }

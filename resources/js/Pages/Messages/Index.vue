@@ -261,7 +261,9 @@ onUnmounted(() => {
 </template>
 
 <style>
+@media screen and (max-width:768px) {
 .message-box{
     padding-bottom: 4rem;
+}
 }
 </style>
