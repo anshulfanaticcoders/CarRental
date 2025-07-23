@@ -161,10 +161,8 @@ const getNotificationLink = (notification) => {
   switch (type) {
     case 'VendorVehicleCreateNotification':
       return route('vendor-vehicles', { locale });
-    case 'BookingCreatedVendorNotification':
-      return route('customer-bookings', { locale });
-    case 'BookingCreatedCustomerNotification':
-      return route('customer-bookings', { locale });
+    case 'BookingCreatedAdminNotification':
+      return route('customer-bookings.index', { locale });
     case 'VendorStatusUpdatedNotification':
       return route('vendors', { locale });
     case 'NewMessageNotification':
