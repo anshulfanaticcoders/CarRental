@@ -1,6 +1,6 @@
 <script setup>
 import { Link, useForm, usePage, router, Head } from "@inertiajs/vue3";
-import { computed, onMounted, provide, ref, watch } from "vue";
+import { computed, onMounted, onUnmounted, provide, ref, watch } from "vue";
 import SchemaInjector from '@/Components/SchemaInjector.vue';
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
@@ -637,6 +637,99 @@ const handleCategorySearchUpdate = (params) => {
     // The existing watch on form.data() will automatically trigger submitFilters()
 };
 
+const showFilterButton = ref(false);
+const showFixedMobileFilterButton = ref(false);
+
+const handleScroll = () => {
+    const filterSection = document.getElementById('filter-section');
+    if (filterSection) {
+        const rect = filterSection.getBoundingClientRect();
+        // Show button if filter section is scrolled out of view (top is above viewport)
+        showFilterButton.value = rect.top < -320;
+
+        // For mobile, show fixed button if scrolled past filter section and screen is small
+        const isMobile = window.innerWidth <= 768; // Adjust breakpoint as needed
+        showFixedMobileFilterButton.value = isMobile && rect.top < -100; // Show when filter section is mostly out of view
+    }
+};
+
+const scrollToFilter = () => {
+    const filterSection = document.getElementById('filter-section');
+    if (filterSection) {
+        filterSection.scrollIntoView({ behavior: 'smooth' });
+    }
+};
+
+onMounted(() => {
+    window.addEventListener('scroll', handleScroll);
+});
+
+onUnmounted(() => {
+    window.removeEventListener('scroll', handleScroll);
+    if (observer.value) {
+        observer.value.disconnect();
+    }
+});
+
+const observer = ref(null);
+const vehiclesInView = ref(new Set()); // To track vehicles that have already animated
+
+const setupIntersectionObserver = () => {
+    if (observer.value) {
+        observer.value.disconnect();
+    }
+
+    observer.value = new IntersectionObserver(
+        (entries) => {
+            entries.forEach((entry) => {
+                if (entry.isIntersecting && !vehiclesInView.value.has(entry.target.dataset.vehicleId)) {
+                    // Force reflow to ensure initial state is applied before transition
+                    void entry.target.offsetWidth; 
+                    entry.target.classList.add('fade-up-visible');
+                    vehiclesInView.value.add(entry.target.dataset.vehicleId);
+                }
+            });
+        },
+        {
+            root: null, // viewport
+            rootMargin: '0px',
+            threshold: 0.1, // Trigger when 10% of the item is visible
+        }
+    );
+
+    // Observe all vehicle cards
+    document.querySelectorAll('.vehicle-card').forEach((card) => {
+        if (!vehiclesInView.value.has(card.dataset.vehicleId)) {
+            card.classList.add('fade-up-hidden'); // Ensure initial hidden state
+        }
+        observer.value.observe(card);
+    });
+};
+
+onMounted(() => {
+    window.addEventListener('scroll', handleScroll);
+    initMap();
+    if (page.props.auth?.user) {
+        fetchFavoriteStatus();
+    }
+    setupIntersectionObserver(); // Initialize Intersection Observer
+});
+
+watch(
+    () => props.vehicles.data,
+    () => {
+        // Re-observe elements when vehicles data changes (e.g., on filter change)
+        vehiclesInView.value.clear(); // Clear seen vehicles
+        if (observer.value) {
+            observer.value.disconnect();
+        }
+        // Allow a small delay for DOM to update before re-observing
+        setTimeout(() => {
+            setupIntersectionObserver();
+        }, 100);
+    },
+    { deep: true }
+);
 </script>
 
 <template>
@@ -672,14 +765,14 @@ const handleCategorySearchUpdate = (params) => {
     </div>
     </section>
     <section>
-    <div class="full-w-container py-8">
+    <div id="filter-section" class="full-w-container py-8">
 
-        <!-- Mobile filter button (visible only on mobile for additional filters) -->
-        <div class="md:hidden mb-4">
+        <!-- Mobile filter button (visible only on mobile, hidden when fixed button appears) -->
+        <div class="md:hidden mb-4" v-if="!showFixedMobileFilterButton">
             <button @click="showMobileFilters = true"
                 class="flex items-center justify-center gap-3 p-3 w-full bg-white rounded-lg shadow-md hover:shadow-lg transition-all duration-300">
                 <img :src="filterIcon" alt="Filter" class="w-5 h-5" loading="lazy" />
-                <span class="text-lg font-medium">Additional Filters</span>
+                <span class="text-lg font-medium">Find Your Perfect Car</span>
             </button>
         </div>
 
@@ -1001,6 +1094,22 @@ const handleCategorySearchUpdate = (params) => {
 
     <div class="full-w-container mx-auto mb-[4rem]">
         <div class="flex gap-[2.5rem] max-[768px]:flex-col">
+            <!-- Filter button for desktop (appears on scroll) -->
+            <button v-if="showFilterButton" @click="scrollToFilter"
+                class="fixed left-0 top-[1.5rem] transform -translate-y-1/2 z-40 p-3 text-white rounded-r-lg shadow-lg opacity-50 hover:opacity-100 transition-opacity duration-300 hidden md:flex items-center gap-2"
+                style="background: linear-gradient(90deg, #FC466B 0%, #3F5EFB 100%);">
+                <img :src="filterIcon" alt="Filter" class="w-6 h-6 brightness-[20]" loading="lazy" />
+                <span class="font-medium">Filter</span>
+            </button>
+
+            <!-- Fixed Mobile Filter Button (appears on scroll) -->
+            <button v-if="showFixedMobileFilterButton && !showMobileFilters" @click="showMobileFilters = true"
+                class="fixed bottom-4 left-1/2 transform -translate-x-1/2 z-50 p-3 px-6 bg-customPrimaryColor text-white rounded-full shadow-lg flex items-center gap-3 md:hidden"
+                style="background: linear-gradient(90deg, #FC466B 0%, #3F5EFB 100%);">
+                <img :src="filterIcon" alt="Filter" class="w-5 h-5 brightness-[20]" loading="lazy" />
+                <span class="font-medium">Filters</span>
+            </button>
+
             <!-- Left Column - Vehicle List -->
             <div class="w-full">
                 <div :class="[
@@ -1020,7 +1129,8 @@ const handleCategorySearchUpdate = (params) => {
                         </button>
                     </div>
                     <div v-for="vehicle in vehicles.data" :key="vehicle.id"
-                        class="rounded-[12px] border-[1px] border-[#E7E7E7] relative overflow-hidden"
+                        class="rounded-[12px] border-[1px] border-[#E7E7E7] relative overflow-hidden vehicle-card fade-up-hidden"
+                        :data-vehicle-id="vehicle.id"
                         @mouseenter="highlightVehicleOnMap(vehicle)"
                         @mouseleave="unhighlightVehicleOnMap(vehicle)">
                         <div class="flex justify-end mb-3 absolute right-3 top-3">
@@ -1477,5 +1587,17 @@ select:focus+.caret-rotate {
     .pagination nav div:first-child {
         display: none;
     }
+}
+
+/* Fade-up animation styles */
+.fade-up-hidden {
+    opacity: 0;
+    transform: translateY(20px);
+}
+
+.fade-up-visible {
+    opacity: 1;
+    transform: translateY(0);
+    transition: opacity 0.6s ease-out, transform 0.6s ease-out;
 }
 </style>
