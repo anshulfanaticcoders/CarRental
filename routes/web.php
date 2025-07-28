@@ -495,7 +495,10 @@ Route::group([
             'messages' => $messages
         ]);
     });
+    // GreenMotion Cars Page
+    Route::get('/green-motion-cars', [GreenMotionController::class, 'showGreenMotionCars'])->name('green-motion-cars');
 
+    
     Route::get('/{slug}', [ContactUsPageController::class, 'show'])->name('contact.show');
 }); // End of locale group
 

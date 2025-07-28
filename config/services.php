@@ -31,4 +31,9 @@ return [
         'region' => env('AWS_DEFAULT_REGION', 'us-east-1'),
     ],
 
+    'greenmotion' => [
+        'username' => env('GREENMOTION_USERNAME'),
+        'password' => env('GREENMOTION_PASSWORD'),
+    ],
+
 ];
