@@ -15,6 +15,25 @@ import { Switch } from "@/Components/ui/switch";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 
+const currencySymbols = ref({});
+
+onMounted(async () => {
+    try {
+        const response = await fetch('/currency.json');
+        const data = await response.json();
+        currencySymbols.value = data.reduce((acc, curr) => {
+            acc[curr.code] = curr.symbol;
+            return acc;
+        }, {});
+    } catch (error) {
+        console.error("Error loading currency symbols:", error);
+    }
+});
+
+const getCurrencySymbol = (code) => {
+    return currencySymbols.value[code] || '$';
+};
+
 const props = defineProps({
     vehicles: Object, // Data from GreenMotion API
     locations: Array, // Locations from GreenMotion API (for map coordinates) - now an array of 0 or 1 location
@@ -134,8 +153,9 @@ const initMap = () => {
 };
 
 const createCustomIcon = (vehicle, isHighlighted = false) => {
-    const currency = vehicle.products[0]?.currency || "N/A";
-    const priceToDisplay = vehicle.products[0]?.total ? `${currency}${vehicle.products[0].total}` : "N/A";
+    const currencyCode = vehicle.products[0]?.currency;
+    const currencySymbol = getCurrencySymbol(currencyCode);
+    const priceToDisplay = vehicle.products[0]?.total ? `${currencySymbol}${vehicle.products[0].total}` : "N/A";
 
     const bgColor = isHighlighted ? 'bg-black' : 'bg-white';
     const textColor = isHighlighted ? 'text-white' : 'text-black';
@@ -200,10 +220,10 @@ const addMarkers = () => {
                 <img src="${primaryImage}" alt="${vehicle.name}" class="popup-image" />
                 <p class="font-semibold">${vehicle.name}</p>
                 <p class="">Price: ${currency}${price}</p>
-                <a href="#"
+                <a href="${route('green-motion-car.show', { locale: props.locale, id: vehicle.id, ...props.filters })}"
                    class="text-blue-500 hover:text-blue-700"
-                   onclick="event.preventDefault();">
-                    View Details (Not yet implemented)
+                   onclick="event.preventDefault(); window.location.href = this.href;">
+                    View Details
                 </a>
             </div>
         `);
@@ -411,23 +431,7 @@ const handleSearch = () => {
                         class="rounded-[12px] border-[1px] border-[#E7E7E7] relative overflow-hidden"
                         @mouseenter="highlightVehicleOnMap(vehicle)"
                         @mouseleave="unhighlightVehicleOnMap(vehicle)">
-                        <div class="flex justify-end mb-3 absolute right-3 top-3">
-                            <div class="column flex justify-end">
-                                <button @click.stop="toggleFavourite(vehicle)"
-                                    class="heart-icon bg-white rounded-[99px] p-2" :class="{
-                                        'filled-heart':
-                                            favoriteStatus[vehicle.id],
-                                        'pop-animation': popEffect[vehicle.id],
-                                    }">
-                                    <img :src="favoriteStatus[vehicle.id]
-                                        ? FilledHeart
-                                        : Heart
-                                        " alt="Favorite" class="w-[1.5rem] transition-colors duration-300" loading="lazy" />
-                                </button>
-                            </div>
-                        </div>
-                        <a
-                            :href="`#`"> <!-- Link to a detail page if implemented -->
+                        <a :href="route('green-motion-car.show', { locale: locale, id: vehicle.id, ...filters })">
                             <div class="column flex flex-col gap-5 items-start">
                                 <img :src="vehicle.image || '/default-image.png'" alt="Vehicle Image"
                                     class="w-full h-[250px] object-cover rounded-tl-lg rounded-tr-lg max-[768px]:h-[200px]" loading="lazy" />
@@ -442,14 +446,6 @@ const handleSearch = () => {
                                     {{ vehicle.groupName }}
                                 </h5>
 
-                                <!-- Reviews are not available from GreenMotion API -->
-                                <div class="reviews mt-[1rem] flex gap-2 items-center">
-                                    <div class="flex items-center gap-1">
-                                        <img v-for="n in 5" :key="n" :src="blankStar" alt="Blank Star" class="w-[16px] h-[16px]" loading="lazy" />
-                                    </div>
-                                    <span class="text-[1rem] text-gray-500">No reviews</span>
-                                </div>
-
                                  <div>
                                     <span class="italic font-medium">{{ vehicle.acriss }}</span>
                                  </div>
@@ -461,13 +457,6 @@ const handleSearch = () => {
                                             vehicle.transmission }} .
                                             {{ vehicle.fuel }} .
                                             {{ vehicle.adults }} Adults, {{ vehicle.children }} Children</span>
-                                    </div>
-                                </div>
-                                <div class="extra_details flex gap-5 mt-[1rem] items-center">
-                                    <div class="col flex gap-3">
-                                        <img :src="mileageIcon" alt="" loading="lazy" /><span
-                                            class="text-[1.15rem] max-[768px]:text-[0.95rem]">
-                                            {{ vehicle.mpg }} MPG</span>
                                     </div>
                                 </div>
 
@@ -493,29 +482,11 @@ const handleSearch = () => {
                                     </span>
                                 </div>
 
-                                <!-- Display Optional Extras -->
-                                <div v-if="optionalExtras && optionalExtras.length > 0" class="mt-[2rem]">
-                                    <h6 class="font-medium text-[1.2rem] text-customPrimaryColor mb-2">Optional Extras:</h6>
-                                    <ul class="list-disc list-inside">
-                                        <li v-for="extra in optionalExtras" :key="extra.optionID || extra.Name" class="text-sm text-gray-700">
-                                            {{ extra.Name }} ({{ extra.Description }}) -
-                                            <span v-if="extra.Daily_rate">{{ extra.Daily_rate_currency || '$' }}{{ extra.Daily_rate }}/day</span>
-                                            <span v-else-if="extra.options && extra.options.length > 0">
-                                                <ul class="list-circle list-inside ml-4">
-                                                    <li v-for="subOption in extra.options" :key="subOption.optionID" class="text-xs text-gray-600">
-                                                        {{ subOption.Name }} - {{ subOption.Daily_rate_currency || '$' }}{{ subOption.Daily_rate }}/day
-                                                    </li>
-                                                </ul>
-                                            </span>
-                                        </li>
-                                    </ul>
-                                </div>
-
                                 <div class="mt-[2rem] flex justify-between items-center">
                                     <div>
                                         <div v-if="vehicle.products[0]?.total && vehicle.products[0].total > 0">
                                             <span class="text-customPrimaryColor text-[1.875rem] font-medium max-[768px]:text-[1.3rem] max-[768px]:font-bold">
-                                                {{ vehicle.products[0].currency || '$' }}{{ vehicle.products[0].total }}
+                                                {{ getCurrencySymbol(vehicle.products[0].currency) }}{{ vehicle.products[0].total }}
                                             </span>
                                             <span>/rental</span>
                                         </div>

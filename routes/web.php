@@ -498,9 +498,18 @@ Route::group([
     // GreenMotion Cars Page
     Route::get('/green-motion-cars', [GreenMotionController::class, 'showGreenMotionCars'])->name('green-motion-cars');
 
+    // GreenMotion Booking Page
+    Route::get('/green-motion-booking/{id}/checkout', [GreenMotionController::class, 'showGreenMotionBookingPage'])
+        ->where('id', '[0-9]+') // Ensure ID is numeric
+        ->name('green-motion-booking.checkout');
     
     Route::get('/{slug}', [ContactUsPageController::class, 'show'])->name('contact.show');
 }); // End of locale group
+
+// GreenMotion Single Car Page (moved outside locale group to ensure correct ID parsing)
+Route::get('/{locale}/green-motion-car/{id}', [GreenMotionController::class, 'showGreenMotionCar'])
+    ->where('locale', '(en|fr|nl)')
+    ->name('green-motion-car.show');
 
     Route::get('/green-motion-vehicles', [GreenMotionController::class, 'getGreenMotionVehicles'])->name('green-motion-vehicles');
     Route::get('/green-motion-countries', [GreenMotionController::class, 'getGreenMotionCountries'])->name('green-motion-countries');

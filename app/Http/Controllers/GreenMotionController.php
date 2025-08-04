@@ -6,7 +6,8 @@ use App\Services\GreenMotionService;
 use Illuminate\Http\Request;
 use SimpleXMLElement;
 use Inertia\Inertia;
-use Illuminate\Support\Facades\Log; // Import Log facade
+use Illuminate\Support\Facades\Log;
+use App\Models\GreenMotionBooking; // Correctly placed import
 
 class GreenMotionController extends Controller
 {
@@ -14,59 +15,9 @@ class GreenMotionController extends Controller
     {
     }
 
-    public function getGreenMotionVehicles(Request $request)
+    private function parseVehicles(SimpleXMLElement $xmlObject): array
     {
-        $locationId = $request->input('location_id', 61627); // Default location ID for testing
-        $startDate = $request->input('start_date', '2032-01-06');
-        $startTime = $request->input('start_time', '09:00');
-        $endDate = $request->input('end_date', '2032-01-08');
-        $endTime = $request->input('end_time', '09:00');
-        $age = $request->input('age', 35);
-        $rentalCode = $request->input('rentalCode', null); // Make rentalCode optional for getVehicles
-
-        $options = [
-            'rentalCode' => $rentalCode,
-            // Add other optional parameters as needed from the request
-            'currency' => $request->input('currency'),
-            'fuel' => $request->input('fuel'),
-            'userid' => $request->input('userid'),
-            'username' => $request->input('username'),
-            'language' => $request->input('language'),
-            'full_credit' => $request->input('full_credit'),
-            'promocode' => $request->input('promocode'),
-            'dropoff_location_id' => $request->input('dropoff_location_id'),
-        ];
-
-        $xml = $this->greenMotionService->getVehicles(
-            $locationId,
-            $startDate,
-            $startTime,
-            $endDate,
-            $endTime,
-            $age,
-            $options
-        );
-
-        if (is_null($xml) || empty($xml)) {
-            Log::error('GreenMotion API returned null or empty XML response for GetVehicles.');
-            return response()->json(['error' => 'Failed to retrieve vehicle data. API returned empty response.'], 500);
-        }
-
-        libxml_use_internal_errors(true);
-        $xmlObject = simplexml_load_string($xml);
-
-        if ($xmlObject === false) {
-            $errors = libxml_get_errors();
-            foreach ($errors as $error) {
-                Log::error('XML Parsing Error (GetVehicles): ' . $error->message);
-            }
-            libxml_clear_errors();
-            return response()->json(['error' => 'Failed to parse XML response from API.'], 500);
-        }
-
         $vehicles = [];
-        $optionalExtras = [];
-
         if (isset($xmlObject->response->vehicles->vehicle)) {
             foreach ($xmlObject->response->vehicles->vehicle as $vehicle) {
                 $products = [];
@@ -86,12 +37,12 @@ class GreenMotionController extends Controller
                             'fasttrack' => (string) $product->fasttrack,
                             'oneway' => (string) $product->oneway,
                             'oneway_fee' => (string) $product->oneway_fee,
-                            'cancellation_rules' => json_decode(json_encode($product->CancellationRules), true), // Convert SimpleXMLElement to array
+                            'cancellation_rules' => json_decode(json_encode($product->CancellationRules), true),
                         ];
                     }
                 }
 
-                $vehicleOptionsData = []; // Initialize here
+                $vehicleOptionsData = [];
                 if (isset($vehicle->options->option)) {
                     foreach ($vehicle->options->option as $option) {
                         $vehicleOptionsData[] = [
@@ -113,7 +64,7 @@ class GreenMotionController extends Controller
                     }
                 }
 
-                $insuranceOptionsData = []; // Initialize here
+                $insuranceOptionsData = [];
                 if (isset($vehicle->insurance_options->option)) {
                     foreach ($vehicle->insurance_options->option as $option) {
                         $insuranceOptionsData[] = [
@@ -168,11 +119,16 @@ class GreenMotionController extends Controller
                 ];
             }
         }
+        return $vehicles;
+    }
 
+    private function parseOptionalExtras(SimpleXMLElement $xmlObject): array
+    {
+        $optionalExtras = [];
         if (isset($xmlObject->response->optionalextras->extra)) {
             foreach ($xmlObject->response->optionalextras->extra as $extra) {
                 $extraOptions = [];
-                if (isset($extra->options->option)) { // For advanced extras
+                if (isset($extra->options->option)) {
                     foreach ($extra->options->option as $option) {
                         $extraOptions[] = [
                             'optionID' => (string) $option->optionID,
@@ -191,7 +147,7 @@ class GreenMotionController extends Controller
                             'Choices' => (string) $option->Choices,
                         ];
                     }
-                } else { // For simple extras
+                } else {
                     $optionalExtras[] = [
                         'optionID' => (string) $extra->optionID,
                         'Name' => (string) $extra->Name,
@@ -210,7 +166,7 @@ class GreenMotionController extends Controller
                         'required' => (string) $extra['required'],
                         'numberAllowed' => (string) $extra['numberAllowed'],
                     ];
-                    continue; // Skip to next extra if it's a simple one
+                    continue;
                 }
 
                 $optionalExtras[] = [
@@ -222,78 +178,11 @@ class GreenMotionController extends Controller
                 ];
             }
         }
-
-        return response()->json([
-            'vehicles' => $vehicles,
-            'optionalExtras' => $optionalExtras,
-        ]);
+        return $optionalExtras;
     }
 
-    public function getGreenMotionCountries()
+    private function parseLocation(SimpleXMLElement $xmlObject, string $locationId): ?array
     {
-        $xml = $this->greenMotionService->getCountryList();
-
-        if (is_null($xml) || empty($xml)) {
-            Log::error('GreenMotion API returned null or empty XML response for GetCountryList.');
-            return response()->json(['error' => 'Failed to retrieve country data. API returned empty response.'], 500);
-        }
-
-        libxml_use_internal_errors(true);
-        $xmlObject = simplexml_load_string($xml);
-
-        if ($xmlObject === false) {
-            $errors = libxml_get_errors();
-            foreach ($errors as $error) {
-                Log::error('XML Parsing Error (GetCountryList): ' . $error->message);
-            }
-            libxml_clear_errors();
-            return response()->json(['error' => 'Failed to parse XML response for country list from API.'], 500);
-        }
-
-        $countries = [];
-        if (isset($xmlObject->response->CountryList->country)) { // Corrected path
-            foreach ($xmlObject->response->CountryList->country as $country) {
-                $countries[] = [
-                    'countryID' => (string) $country->countryID,
-                    'countryName' => (string) $country->countryName,
-                    'countryURL' => (string) $country->countryURL,
-                    'breakdownInstructions' => (string) $country->breakdownInstructions,
-                    'isUSAState' => (string) $country->isUSAState,
-                    'driver_requirements' => json_decode(json_encode($country->driver_requirements), true),
-                ];
-            }
-        }
-        return response()->json($countries);
-    }
-
-    public function getGreenMotionLocations(Request $request)
-    {
-        $locationId = $request->input('location_id'); // Changed from country_id to location_id
-
-        if (empty($locationId)) {
-            return response()->json(['error' => 'Location ID is required to get location info.'], 400);
-        }
-
-        $xml = $this->greenMotionService->getLocationInfo($locationId); // Changed to getLocationInfo
-
-        if (is_null($xml) || empty($xml)) {
-            Log::error('GreenMotion API returned null or empty XML response for GetLocationInfo.');
-            return response()->json(['error' => 'Failed to retrieve location data. API returned empty response.'], 500);
-        }
-
-        libxml_use_internal_errors(true);
-        $xmlObject = simplexml_load_string($xml);
-
-        if ($xmlObject === false) {
-            $errors = libxml_get_errors();
-            foreach ($errors as $error) {
-                Log::error('XML Parsing Error (GetLocationInfo): ' . $error->message);
-            }
-            libxml_clear_errors();
-            return response()->json(['error' => 'Failed to parse XML response for location info from API.'], 500);
-        }
-
-        $locationInfo = null;
         if (isset($xmlObject->response->location_info)) {
             $loc = $xmlObject->response->location_info;
             $openingHours = [];
@@ -351,8 +240,9 @@ class GreenMotionController extends Controller
                 }
             }
 
-            $locationInfo = [
-                'location_name' => (string) $loc->location_name,
+            return [
+                'id' => $locationId,
+                'name' => (string) $loc->location_name,
                 'address_1' => (string) $loc->address_1,
                 'address_2' => (string) $loc->address_2,
                 'address_3' => (string) $loc->address_3,
@@ -375,12 +265,389 @@ class GreenMotionController extends Controller
                 'extra' => (string) $loc->extra,
             ];
         }
+        return null;
+    }
+
+    public function getGreenMotionVehicles(Request $request)
+    {
+        $locationId = $request->input('location_id', 61627);
+        $startDate = $request->input('start_date', '2032-01-06');
+        $startTime = $request->input('start_time', '09:00');
+        $endDate = $request->input('end_date', '2032-01-08');
+        $endTime = $request->input('end_time', '09:00');
+        $age = $request->input('age', 35);
+        $rentalCode = $request->input('rentalCode', null);
+
+        $options = [
+            'rentalCode' => $rentalCode,
+            'currency' => $request->input('currency'),
+            'fuel' => $request->input('fuel'),
+            'userid' => $request->input('userid'),
+            'username' => $request->input('username'),
+            'language' => $request->input('language'),
+            'full_credit' => $request->input('full_credit'),
+            'promocode' => $request->input('promocode'),
+            'dropoff_location_id' => $request->input('dropoff_location_id'),
+        ];
+
+        $xml = $this->greenMotionService->getVehicles(
+            $locationId,
+            $startDate,
+            $startTime,
+            $endDate,
+            $endTime,
+            $age,
+            $options
+        );
+
+        if (is_null($xml) || empty($xml)) {
+            Log::error('GreenMotion API returned null or empty XML response for GetVehicles.');
+            return response()->json(['error' => 'Failed to retrieve vehicle data. API returned empty response.'], 500);
+        }
+
+        libxml_use_internal_errors(true);
+        $xmlObject = simplexml_load_string($xml);
+
+        if ($xmlObject === false) {
+            $errors = libxml_get_errors();
+            foreach ($errors as $error) {
+                Log::error('XML Parsing Error (GetVehicles): ' . $error->message);
+            }
+            libxml_clear_errors();
+            return response()->json(['error' => 'Failed to parse XML response from API.'], 500);
+        }
+
+        $vehicles = $this->parseVehicles($xmlObject);
+        $optionalExtras = $this->parseOptionalExtras($xmlObject);
+
+        return response()->json([
+            'vehicles' => $vehicles,
+            'optionalExtras' => $optionalExtras,
+        ]);
+    }
+
+    public function showGreenMotionCars(Request $request)
+    {
+        $locationId = $request->input('location_id', 61627);
+        $startDate = $request->input('start_date', '2032-01-06');
+        $startTime = $request->input('start_time', '09:00');
+        $endDate = $request->input('end_date', '2032-01-08');
+        $endTime = $request->input('end_time', '09:00');
+        $age = $request->input('age', 35);
+        $rentalCode = $request->input('rentalCode', null);
+
+        $vehicleOptions = [
+            'rentalCode' => $rentalCode,
+            'currency' => $request->input('currency'),
+            'fuel' => $request->input('fuel'),
+            'userid' => $request->input('userid'),
+            'username' => $request->input('username'),
+            'language' => $request->input('language'),
+            'full_credit' => $request->input('full_credit'),
+            'promocode' => $request->input('promocode'),
+            'dropoff_location_id' => $request->input('dropoff_location_id'),
+        ];
+
+        $xmlVehicles = $this->greenMotionService->getVehicles(
+            $locationId,
+            $startDate,
+            $startTime,
+            $endDate,
+            $endTime,
+            $age,
+            $vehicleOptions
+        );
+
+        $vehicles = [];
+        $optionalExtras = [];
+
+        if (!is_null($xmlVehicles) && !empty($xmlVehicles)) {
+            libxml_use_internal_errors(true);
+            $xmlObject = simplexml_load_string($xmlVehicles);
+
+            if ($xmlObject !== false) {
+                $vehicles = $this->parseVehicles($xmlObject);
+                $optionalExtras = $this->parseOptionalExtras($xmlObject);
+            } else {
+                Log::error('XML Parsing Error (showGreenMotionCars): Failed to parse XML or no vehicles found.');
+                libxml_clear_errors();
+            }
+        } else {
+            Log::error('GreenMotion API returned null or empty XML response for showGreenMotionCars.');
+        }
+
+        $location = null;
+        $xmlLocationInfo = $this->greenMotionService->getLocationInfo($locationId);
+        if (!is_null($xmlLocationInfo) && !empty($xmlLocationInfo)) {
+            libxml_use_internal_errors(true);
+            $xmlObject = simplexml_load_string($xmlLocationInfo);
+            if ($xmlObject !== false) {
+                $location = $this->parseLocation($xmlObject, $locationId);
+            }
+            libxml_clear_errors();
+        } else {
+            Log::error('GreenMotion API returned null or empty XML response for getLocationInfo for ID: ' . $locationId);
+        }
+
+        return Inertia::render('GreenMotionCars', [
+            'vehicles' => [
+                'data' => $vehicles,
+                'links' => [],
+            ],
+            'locations' => $location ? [$location] : [],
+            'optionalExtras' => $optionalExtras,
+            'filters' => $request->all(),
+            'pagination_links' => '',
+            'locale' => app()->getLocale(),
+        ]);
+    }
+
+    public function showGreenMotionCar(Request $request, $locale, $id)
+    {
+        $locationId = $request->input('location_id', 61627);
+        $startDate = $request->input('start_date', '2032-01-06');
+        $startTime = $request->input('start_time', '09:00');
+        $endDate = $request->input('end_date', '2032-01-08');
+        $endTime = $request->input('end_time', '09:00');
+        $age = $request->input('age', 35);
+        $rentalCode = $request->input('rentalCode', null);
+
+        $vehicleOptions = [
+            'rentalCode' => $rentalCode,
+            'currency' => $request->input('currency'),
+            'fuel' => $request->input('fuel'),
+            'userid' => $request->input('userid'),
+            'username' => $request->input('username'),
+            'language' => $request->input('language'),
+            'full_credit' => $request->input('full_credit'),
+            'promocode' => $request->input('promocode'),
+            'dropoff_location_id' => $request->input('dropoff_location_id'),
+        ];
+
+        $xmlVehicles = $this->greenMotionService->getVehicles(
+            $locationId,
+            $startDate,
+            $startTime,
+            $endDate,
+            $endTime,
+            $age,
+            $vehicleOptions
+        );
+
+        $vehicle = null;
+        $optionalExtras = [];
+
+        Log::info("showGreenMotionCar called with ID: {$id}, Location ID: {$locationId}, Locale: {$locale}");
+
+        if (!is_null($xmlVehicles) && !empty($xmlVehicles)) {
+            libxml_use_internal_errors(true);
+            $xmlObject = simplexml_load_string($xmlVehicles);
+
+            if ($xmlObject !== false) {
+                $vehicles = $this->parseVehicles($xmlObject);
+                Log::info('Parsed Vehicles in showGreenMotionCar: ' . json_encode(collect($vehicles)->pluck('id')));
+                $vehicle = collect($vehicles)->firstWhere('id', $id);
+                $optionalExtras = $this->parseOptionalExtras($xmlObject);
+            } else {
+                Log::error('XML Parsing Error (showGreenMotionCar): Failed to parse XML or no vehicles found.');
+                libxml_clear_errors();
+            }
+        } else {
+            Log::error('GreenMotion API returned null or empty XML response for showGreenMotionCar.');
+        }
+
+        if (!$vehicle) {
+            Log::error("Vehicle with ID {$id} not found for location ID {$locationId}. Available vehicles: " . json_encode(collect($vehicles)->pluck('id')));
+            return Inertia::render('GreenMotionSingle', [
+                'error' => 'Vehicle not found.',
+                'locale' => $locale, // Ensure locale is passed correctly
+            ]);
+        }
+
+        $location = null;
+        $xmlLocationInfo = $this->greenMotionService->getLocationInfo($locationId);
+        if (!is_null($xmlLocationInfo) && !empty($xmlLocationInfo)) {
+            libxml_use_internal_errors(true);
+            $xmlObject = simplexml_load_string($xmlLocationInfo);
+            if ($xmlObject !== false) {
+                $location = $this->parseLocation($xmlObject, $locationId);
+            }
+            libxml_clear_errors();
+        } else {
+            Log::error('GreenMotion API returned null or empty XML response for getLocationInfo for ID: ' . $locationId);
+        }
+
+        return Inertia::render('GreenMotionSingle', [
+            'vehicle' => $vehicle,
+            'location' => $location,
+            'optionalExtras' => $optionalExtras,
+            'filters' => $request->all(),
+            'locale' => $locale, // Use the $locale parameter from the route
+            'seoMeta' => [
+                'seo_title' => $vehicle['name'] . ' - GreenMotion Rental',
+                'meta_description' => 'Rent the ' . $vehicle['name'] . ' with GreenMotion. Check availability, features, and book your vehicle now.',
+                'keywords' => 'GreenMotion, car rental, ' . $vehicle['name'] . ', vehicle hire',
+                'url_slug' => 'green-motion-car/' . $id,
+                'seo_image_url' => $vehicle['image'] ?? '/default-image.png',
+                'canonical_url' => url($locale . '/green-motion-car/' . $id), // Use $locale for canonical URL
+                'translations' => [
+                    ['locale' => $locale, 'seo_title' => $vehicle['name'] . ' - GreenMotion Rental']
+                ],
+            ],
+        ]);
+    }
+
+    public function showGreenMotionBookingPage(Request $request, $locale, $id)
+    {
+        $locationId = $request->input('location_id', 61627);
+        $startDate = $request->input('start_date', '2032-01-06');
+        $startTime = $request->input('start_time', '09:00');
+        $endDate = $request->input('end_date', '2032-01-08');
+        $endTime = $request->input('end_time', '09:00');
+        $age = $request->input('age', 35);
+        $rentalCode = $request->input('rentalCode', null);
+
+        $vehicleOptions = [
+            'rentalCode' => $rentalCode,
+            'currency' => $request->input('currency'),
+            'fuel' => $request->input('fuel'),
+            'userid' => $request->input('userid'),
+            'username' => $request->input('username'),
+            'language' => $request->input('language'),
+            'full_credit' => $request->input('full_credit'),
+            'promocode' => $request->input('promocode'),
+            'dropoff_location_id' => $request->input('dropoff_location_id'),
+        ];
+
+        $xmlVehicles = $this->greenMotionService->getVehicles(
+            $locationId,
+            $startDate,
+            $startTime,
+            $endDate,
+            $endTime,
+            $age,
+            $vehicleOptions
+        );
+
+        $vehicle = null;
+        $optionalExtras = [];
+
+        if (!is_null($xmlVehicles) && !empty($xmlVehicles)) {
+            libxml_use_internal_errors(true);
+            $xmlObject = simplexml_load_string($xmlVehicles);
+
+            if ($xmlObject !== false) {
+                $vehicles = $this->parseVehicles($xmlObject);
+                $vehicle = collect($vehicles)->firstWhere('id', $id);
+                $optionalExtras = $this->parseOptionalExtras($xmlObject);
+            } else {
+                Log::error('XML Parsing Error (showGreenMotionBookingPage): Failed to parse XML or no vehicles found.');
+                libxml_clear_errors();
+            }
+        } else {
+            Log::error('GreenMotion API returned null or empty XML response for showGreenMotionBookingPage.');
+        }
+
+        if (!$vehicle) {
+            return Inertia::render('GreenMotionBooking', [
+                'error' => 'Vehicle not found for booking.',
+                'locale' => $locale,
+            ]);
+        }
+
+        $location = null;
+        $xmlLocationInfo = $this->greenMotionService->getLocationInfo($locationId);
+        if (!is_null($xmlLocationInfo) && !empty($xmlLocationInfo)) {
+            libxml_use_internal_errors(true);
+            $xmlObject = simplexml_load_string($xmlLocationInfo);
+            if ($xmlObject !== false) {
+                $location = $this->parseLocation($xmlObject, $locationId);
+            }
+            libxml_clear_errors();
+        } else {
+            Log::error('GreenMotion API returned null or empty XML response for getLocationInfo for ID: ' . $locationId);
+        }
+
+        return Inertia::render('GreenMotionBooking', [
+            'vehicle' => $vehicle,
+            'location' => $location,
+            'optionalExtras' => $optionalExtras,
+            'filters' => $request->all(),
+            'locale' => $locale,
+        ]);
+    }
+
+    public function getGreenMotionCountries()
+    {
+        $xml = $this->greenMotionService->getCountryList();
+
+        if (is_null($xml) || empty($xml)) {
+            Log::error('GreenMotion API returned null or empty XML response for GetCountryList.');
+            return response()->json(['error' => 'Failed to retrieve country data. API returned empty response.'], 500);
+        }
+
+        libxml_use_internal_errors(true);
+        $xmlObject = simplexml_load_string($xml);
+
+        if ($xmlObject === false) {
+            $errors = libxml_get_errors();
+            foreach ($errors as $error) {
+                Log::error('XML Parsing Error (GetCountryList): ' . $error->message);
+            }
+            libxml_clear_errors();
+            return response()->json(['error' => 'Failed to parse XML response for country list from API.'], 500);
+        }
+
+        $countries = [];
+        if (isset($xmlObject->response->CountryList->country)) {
+            foreach ($xmlObject->response->CountryList->country as $country) {
+                $countries[] = [
+                    'countryID' => (string) $country->countryID,
+                    'countryName' => (string) $country->countryName,
+                    'countryURL' => (string) $country->countryURL,
+                    'breakdownInstructions' => (string) $country->breakdownInstructions,
+                    'isUSAState' => (string) $country->isUSAState,
+                    'driver_requirements' => json_decode(json_encode($country->driver_requirements), true),
+                ];
+            }
+        }
+        return response()->json($countries);
+    }
+
+    public function getGreenMotionLocations(Request $request)
+    {
+        $locationId = $request->input('location_id');
+
+        if (empty($locationId)) {
+            return response()->json(['error' => 'Location ID is required to get location info.'], 400);
+        }
+
+        $xml = $this->greenMotionService->getLocationInfo($locationId);
+
+        if (is_null($xml) || empty($xml)) {
+            Log::error('GreenMotion API returned null or empty XML response for GetLocationInfo.');
+            return response()->json(['error' => 'Failed to retrieve location data. API returned empty response.'], 500);
+        }
+
+        libxml_use_internal_errors(true);
+        $xmlObject = simplexml_load_string($xml);
+
+        if ($xmlObject === false) {
+            $errors = libxml_get_errors();
+            foreach ($errors as $error) {
+                Log::error('XML Parsing Error (GetLocationInfo): ' . $error->message);
+            }
+            libxml_clear_errors();
+            return response()->json(['error' => 'Failed to parse XML response for location info from API.'], 500);
+        }
+
+        $locationInfo = $this->parseLocation($xmlObject, $locationId);
         return response()->json($locationInfo);
     }
 
     public function getGreenMotionTermsAndConditions(Request $request)
     {
-        $countryId = $request->input('country_id', 1); // Default to 1 for testing
+        $countryId = $request->input('country_id', 1);
         $language = $request->input('language');
         $plaintext = $request->input('plaintext');
 
@@ -425,7 +692,7 @@ class GreenMotionController extends Controller
 
     public function getGreenMotionRegions(Request $request)
     {
-        $countryId = $request->input('country_id', 1); // Default to 1 for testing
+        $countryId = $request->input('country_id', 1);
 
         if (empty($countryId)) {
             return response()->json(['error' => 'Country ID is required to get regions.'], 400);
@@ -451,7 +718,7 @@ class GreenMotionController extends Controller
         }
 
         $regions = [];
-        if (isset($xmlObject->response->RegionList->region)) { // Corrected path
+        if (isset($xmlObject->response->RegionList->region)) {
             foreach ($xmlObject->response->RegionList->region as $region) {
                 $regions[] = [
                     'name' => (string) $region->name,
@@ -463,7 +730,7 @@ class GreenMotionController extends Controller
 
     public function getGreenMotionServiceAreas(Request $request)
     {
-        $countryId = $request->input('country_id', 1); // Default to 1 for testing
+        $countryId = $request->input('country_id', 1);
         $language = $request->input('language');
 
         if (empty($countryId)) {
@@ -490,7 +757,7 @@ class GreenMotionController extends Controller
         }
 
         $serviceAreas = [];
-        if (isset($xmlObject->response->ServiceAreas->servicearea)) { // Corrected path
+        if (isset($xmlObject->response->ServiceAreas->servicearea)) {
             foreach ($xmlObject->response->ServiceAreas->servicearea as $servicearea) {
                 $serviceAreas[] = [
                     'locationID' => (string) $servicearea->locationID,
@@ -510,55 +777,54 @@ class GreenMotionController extends Controller
             'end_date' => 'required|date_format:Y-m-d',
             'end_time' => 'required|date_format:H:i',
             'rentalCode' => 'required|string',
-            'age' => 'required|integer',
+            'age' => 'required|integer|min:18',
             'dropoff_location_id' => 'nullable|string',
             'customer.title' => 'nullable|string',
-            'customer.firstname' => 'required|string',
-            'customer.surname' => 'required|string',
-            'customer.email' => 'required|email',
-            'customer.phone' => 'required|string',
-            'customer.address1' => 'required|string',
-            'customer.address2' => 'nullable|string',
-            'customer.address3' => 'nullable|string',
-            'customer.town' => 'required|string',
-            'customer.postcode' => 'required|string',
-            'customer.country' => 'required|string',
-            'customer.driver_licence_number' => 'required|string',
-            'customer.flight_number' => 'nullable|string',
-            'customer.comments' => 'nullable|string',
+            'customer.firstname' => 'required|string|max:255',
+            'customer.surname' => 'required|string|max:255',
+            'customer.email' => 'required|email|max:255',
+            'customer.phone' => 'required|string|max:20',
+            'customer.address1' => 'required|string|max:255',
+            'customer.address2' => 'nullable|string|max:255',
+            'customer.address3' => 'nullable|string|max:255',
+            'customer.town' => 'required|string|max:255',
+            'customer.postcode' => 'required|string|max:20',
+            'customer.country' => 'required|string|max:100',
+            'customer.driver_licence_number' => 'required|string|max:50',
+            'customer.flight_number' => 'nullable|string|max:50',
+            'customer.comments' => 'nullable|string|max:1000',
             'extras' => 'array',
             'extras.*.id' => 'required|string',
-            'extras.*.option_qty' => 'required|integer',
-            'extras.*.option_total' => 'required|numeric',
-            'extras.*.pre_pay' => 'nullable|string',
+            'extras.*.option_qty' => 'required|integer|min:0',
+            'extras.*.option_total' => 'required|numeric|min:0',
+            'extras.*.pre_pay' => 'nullable|string|in:Yes,No',
             'vehicle_id' => 'required|string',
-            'vehicle_total' => 'required|numeric',
-            'currency' => 'required|string',
-            'grand_total' => 'required|numeric',
-            'paymentHandlerRef' => 'nullable|string',
-            'quoteid' => 'required|string',
-            'payment_type' => 'nullable|string',
-            'customer.bplace' => 'nullable|string',
+            'vehicle_total' => 'required|numeric|min:0',
+            'currency' => 'required|string|max:3',
+            'grand_total' => 'required|numeric|min:0',
+            'paymentHandlerRef' => 'nullable|string|max:255',
+            'quoteid' => 'required|string|max:255',
+            'payment_type' => 'nullable|string|in:POA,PREPAID',
+            'customer.bplace' => 'nullable|string|max:255',
             'customer.bdate' => 'nullable|date_format:Y-m-d',
-            'customer.idno' => 'nullable|string',
-            'customer.idplace' => 'nullable|string',
+            'customer.idno' => 'nullable|string|max:50',
+            'customer.idplace' => 'nullable|string|max:255',
             'customer.idissue' => 'nullable|date_format:Y-m-d',
             'customer.idexp' => 'nullable|date_format:Y-m-d',
             'customer.licissue' => 'nullable|date_format:Y-m-d',
-            'customer.licplace' => 'nullable|string',
+            'customer.licplace' => 'nullable|string|max:255',
             'customer.licexp' => 'nullable|date_format:Y-m-d',
             'customer.idurl' => 'nullable|url',
             'customer.id_rear_url' => 'nullable|url',
             'customer.licurl' => 'nullable|url',
             'customer.lic_rear_url' => 'nullable|url',
-            'customer.verification_response' => 'nullable|string',
+            'customer.verification_response' => 'nullable|string|max:1000',
             'customer.custimage' => 'nullable|url',
-            'customer.dvlacheckcode' => 'nullable|string',
-            'remarks' => 'nullable|string',
+            'customer.dvlacheckcode' => 'nullable|string|max:50',
+            'remarks' => 'nullable|string|max:1000',
         ]);
 
         $customerDetails = $validatedData['customer'];
-        // Add "Test Booking - " prefix to comments
         $customerDetails['comments'] = 'Test Booking - ' . ($customerDetails['comments'] ?? '');
 
         $xmlResponse = $this->greenMotionService->makeReservation(
@@ -599,218 +865,54 @@ class GreenMotionController extends Controller
             return response()->json(['error' => 'Failed to parse XML response for booking submission from API.'], 500);
         }
 
-        // Assuming the API response for MakeReservation contains a booking reference
-        $bookingReference = (string) $xmlObject->response->booking_ref ?? null; // Corrected to booking_ref
-        $status = (string) $xmlObject->response->status ?? 'unknown'; // Adjust based on actual API response
+        $bookingReference = (string) $xmlObject->response->booking_ref ?? null;
+        $status = (string) $xmlObject->response->status ?? 'unknown';
+
+        // Save booking to database
+        try {
+            GreenMotionBooking::create([ // Use full namespace
+                'greenmotion_booking_ref' => $bookingReference,
+                'vehicle_id' => $validatedData['vehicle_id'],
+                'location_id' => $validatedData['location_id'],
+                'start_date' => $validatedData['start_date'],
+                'start_time' => $validatedData['start_time'],
+                'end_date' => $validatedData['end_date'],
+                'end_time' => $validatedData['end_time'],
+                'age' => $validatedData['age'],
+                'rental_code' => $validatedData['rentalCode'],
+                'customer_details' => $customerDetails,
+                'selected_extras' => $validatedData['extras'] ?? [],
+                'vehicle_total' => $validatedData['vehicle_total'],
+                'currency' => $validatedData['currency'],
+                'grand_total' => $validatedData['grand_total'],
+                'payment_handler_ref' => $validatedData['paymentHandlerRef'] ?? null,
+                'quote_id' => $validatedData['quoteid'],
+                'payment_type' => $validatedData['payment_type'] ?? 'POA',
+                'dropoff_location_id' => $validatedData['dropoff_location_id'] ?? null,
+                'remarks' => $validatedData['remarks'] ?? null,
+                'booking_status' => $status,
+                'api_response' => json_decode(json_encode($xmlObject), true), // Store full XML response as JSON
+            ]);
+            Log::info('GreenMotion booking saved to database successfully.');
+        } catch (\Exception $e) {
+            Log::error('Failed to save GreenMotion booking to database: ' . $e->getMessage(), [
+                'booking_data' => $validatedData,
+                'api_response' => $xmlResponse,
+            ]);
+            // Continue to return API response even if DB save fails
+        }
 
         if ($bookingReference) {
             return response()->json([
                 'message' => 'Booking submitted successfully.',
                 'booking_reference' => $bookingReference,
                 'status' => $status,
-                'api_response' => $xmlResponse, // Include raw XML for debugging if needed
+                'api_response' => $xmlResponse,
             ]);
         } else {
             Log::error('GreenMotion API did not return a booking reference for MakeReservation.', ['response' => $xmlResponse]);
             return response()->json(['error' => 'Booking submitted, but no reference received. Please check logs.'], 500);
         }
     }
-
-    public function showGreenMotionCars(Request $request)
-    {
-        $locationId = $request->input('location_id', 61627); // Default location ID for testing
-        $startDate = $request->input('start_date', '2032-01-06');
-        $startTime = $request->input('start_time', '09:00');
-        $endDate = $request->input('end_date', '2032-01-08');
-        $endTime = $request->input('end_time', '09:00');
-        $age = $request->input('age', 35);
-        $rentalCode = $request->input('rentalCode', null); // Make rentalCode optional for getVehicles
-
-        $vehicleOptions = [
-            'rentalCode' => $rentalCode,
-            'currency' => $request->input('currency'),
-            'fuel' => $request->input('fuel'),
-            'userid' => $request->input('userid'),
-            'username' => $request->input('username'),
-            'language' => $request->input('language'),
-            'full_credit' => $request->input('full_credit'),
-            'promocode' => $request->input('promocode'),
-            'dropoff_location_id' => $request->input('dropoff_location_id'),
-        ];
-
-        $xmlVehicles = $this->greenMotionService->getVehicles(
-            $locationId,
-            $startDate,
-            $startTime,
-            $endDate,
-            $endTime,
-            $age,
-            $vehicleOptions
-        );
-
-        $vehicles = [];
-        $optionalExtras = [];
-
-        if (!is_null($xmlVehicles) && !empty($xmlVehicles)) {
-            libxml_use_internal_errors(true);
-            $xmlObject = simplexml_load_string($xmlVehicles);
-
-            if ($xmlObject !== false && isset($xmlObject->response->vehicles->vehicle)) {
-                foreach ($xmlObject->response->vehicles->vehicle as $vehicle) {
-                    $products = [];
-                    if (isset($vehicle->product)) {
-                        foreach ($vehicle->product as $product) {
-                            $products[] = [
-                                'type' => (string) $product['type'],
-                                'total' => (string) $product->total,
-                                'currency' => (string) $product->total['currency'],
-                                'deposit' => (string) $product->deposit,
-                                'excess' => (string) $product->excess,
-                                'fuelpolicy' => (string) $product->fuelpolicy,
-                                'mileage' => (string) $product->mileage,
-                                'costperextradistance' => (string) $product->costperextradistance,
-                                'minage' => (string) $product->minage,
-                                'excludedextras' => (string) $product->excludedextras,
-                                'fasttrack' => (string) $product->fasttrack,
-                                'oneway' => (string) $product->oneway,
-                                'oneway_fee' => (string) $product->oneway_fee,
-                                'cancellation_rules' => json_decode(json_encode($product->CancellationRules), true),
-                            ];
-                        }
-                    }
-
-                    $vehicleOptionsData = []; // Initialize here
-                    if (isset($vehicle->options->option)) {
-                        foreach ($vehicle->options->option as $option) {
-                            $vehicleOptionsData[] = [
-                                'optionID' => (string) $option->optionID,
-                                'Name' => (string) $option->Name,
-                                'code' => (string) $option->code,
-                                'Description' => (string) $option->Description,
-                                'Daily_rate' => (string) $option->Daily_rate,
-                                'Daily_rate_currency' => (string) $option->Daily_rate['currency'],
-                                'Total_for_this_booking' => (string) $option->Total_for_this_booking,
-                                'Total_for_this_booking_currency' => (string) $option->Total_for_this_booking['currency'],
-                                'Prepay_available' => (string) $option->Prepay_available,
-                                'Prepay_daily_rate' => (string) $option->Prepay_daily_rate,
-                                'Prepay_daily_rate_currency' => (string) $option->Prepay_daily_rate['currency'],
-                                'Prepay_total_for_this_booking' => (string) $option->Prepay_total_for_this_booking,
-                                'Prepay_total_for_this_booking_currency' => (string) $option->Prepay_total_for_this_booking['currency'],
-                                'Choices' => (string) $option->Choices,
-                            ];
-                        }
-                    }
-
-                    $insuranceOptionsData = []; // Initialize here
-                    if (isset($vehicle->insurance_options->option)) {
-                        foreach ($vehicle->insurance_options->option as $option) {
-                            $insuranceOptionsData[] = [
-                                'optionID' => (string) $option->optionID,
-                                'Name' => (string) $option->Name,
-                                'code' => (string) $option->code,
-                                'Description' => (string) $option->Description,
-                                'Daily_rate' => (string) $option->Daily_rate,
-                                'Daily_rate_currency' => (string) $option->Daily_rate['currency'],
-                                'Total_for_this_booking' => (string) $option->Total_for_this_booking,
-                                'Total_for_this_booking_currency' => (string) $option->Total_for_this_booking['currency'],
-                                'Prepay_available' => (string) $option->Prepay_available,
-                                'Prepay_daily_rate' => (string) $option->Prepay_daily_rate,
-                                'Prepay_daily_rate_currency' => (string) $option->Prepay_daily_rate['currency'],
-                                'Prepay_total_for_this_booking' => (string) $option->Prepay_total_for_this_booking,
-                                'Prepay_total_for_this_booking_currency' => (string) $option->Prepay_total_for_this_booking['currency'],
-                                'Choices' => (string) $option->Choices,
-                                'Damage_excess' => (string) $option->Damage_excess,
-                                'Deposit' => (string) $option->Deposit,
-                            ];
-                        }
-                    }
-
-                    $vehicles[] = [
-                        'name' => (string) $vehicle['name'],
-                        'id' => (string) $vehicle['id'],
-                        'image' => urldecode((string) $vehicle['image']),
-                        'total' => (string) $vehicle->total,
-                        'total_currency' => (string) $vehicle->total['currency'],
-                        'groupName' => (string) $vehicle->groupName,
-                        'adults' => (string) $vehicle->adults,
-                        'children' => (string) $vehicle->children,
-                        'luggageSmall' => (string) $vehicle->luggageSmall,
-                        'luggageMed' => (string) $vehicle->luggageMed,
-                        'luggageLarge' => (string) $vehicle->luggageLarge,
-                        'smallImage' => (string) $vehicle->smallImage,
-                        'largeImage' => (string) $vehicle->largeImage,
-                        'fuel' => (string) $vehicle->fuel,
-                        'mpg' => (string) $vehicle->mpg,
-                        'co2' => (string) $vehicle->co2,
-                        'carorvan' => (string) $vehicle->carorvan,
-                        'airConditioning' => (string) $vehicle->airConditioning,
-                        'transmission' => (string) $vehicle->transmission,
-                        'paymentURL' => (string) $vehicle->paymentURL,
-                        'loyalty' => (string) $vehicle->loyalty,
-                        'originalPrice' => (string) $vehicle->originalPrice,
-                        'originalPrice_currency' => (string) $vehicle->originalPrice['currency'],
-                        'driveandgo' => (string) $vehicle->driveandgo,
-                        'products' => $products,
-                        'options' => $vehicleOptionsData,
-                        'insurance_options' => $insuranceOptionsData,
-                    ];
-                }
-            } else {
-                Log::error('XML Parsing Error (showGreenMotionCars): Failed to parse XML or no vehicles found.');
-            }
-            libxml_clear_errors();
-        } else {
-            Log::error('GreenMotion API returned null or empty XML response for showGreenMotionCars.');
-        }
-
-        // Fetch single location info for the map
-        $location = null;
-        $xmlLocationInfo = $this->greenMotionService->getLocationInfo($locationId);
-        if (!is_null($xmlLocationInfo) && !empty($xmlLocationInfo)) {
-            libxml_use_internal_errors(true);
-            $xmlObject = simplexml_load_string($xmlLocationInfo);
-            if ($xmlObject !== false && isset($xmlObject->response->location_info)) {
-                $loc = $xmlObject->response->location_info;
-                $location = [
-                    'id' => $locationId, // Use the requested locationId
-                    'name' => (string) $loc->location_name,
-                    'address_1' => (string) $loc->address_1,
-                    'address_2' => (string) $loc->address_2,
-                    'address_3' => (string) $loc->address_3,
-                    'address_city' => (string) $loc->address_city,
-                    'address_county' => (string) $loc->address_county,
-                    'address_postcode' => (string) $loc->address_postcode,
-                    'telephone' => (string) $loc->telephone,
-                    'fax' => (string) $loc->fax,
-                    'email' => (string) $loc->email,
-                    'latitude' => (string) $loc->latitude,
-                    'longitude' => (string) $loc->longitude,
-                    'iata' => (string) $loc->iata,
-                    'opening_hours' => json_decode(json_encode($loc->opening_hours->day), true),
-                    'office_opening_hours' => json_decode(json_encode($loc->office_opening_hours->day), true),
-                    'out_of_hours' => json_decode(json_encode($loc->out_of_hours->day), true),
-                    'out_of_hours_dropoff' => json_decode(json_encode($loc->out_of_hours_dropoff->day), true),
-                    'daytime_closures_hours' => json_decode(json_encode($loc->daytime_closures_hours->day), true),
-                    'out_of_hours_charge' => (string) $loc->out_of_hours_charge,
-                    'charge_both_ways' => (string) $loc->charge_both_ways,
-                    'extra' => (string) $loc->extra,
-                ];
-            }
-            libxml_clear_errors();
-        } else {
-            Log::error('GreenMotion API returned null or empty XML response for getLocationInfo for ID: ' . $locationId);
-        }
-
-        return Inertia::render('GreenMotionCars', [
-            'vehicles' => [
-                'data' => $vehicles,
-                'links' => [], // No pagination for now
-            ],
-            'locations' => $location ? [$location] : [], // Pass as an array containing the single location or empty
-            'optionalExtras' => $optionalExtras, // Pass optional extras to frontend
-            'filters' => $request->all(),
-            'pagination_links' => '', // No pagination for now
-            'locale' => app()->getLocale(),
-        ]);
-    }
 }
+?>
