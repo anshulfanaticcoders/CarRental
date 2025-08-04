@@ -1,31 +1,11 @@
 <script setup>
 import { Link, usePage, Head, router } from "@inertiajs/vue3";
 import { computed, onMounted, ref, watch, nextTick, onBeforeUnmount } from "vue";
-
-const currencySymbols = ref({});
-
-onMounted(async () => {
-    try {
-        const response = await fetch('/currency.json');
-        const data = await response.json();
-        currencySymbols.value = data.reduce((acc, curr) => {
-            acc[curr.code] = curr.symbol;
-            return acc;
-        }, {});
-    } catch (error) {
-        console.error("Error loading currency symbols:", error);
-    }
-});
-
-const getCurrencySymbol = (code) => {
-    return currencySymbols.value[code] || '$';
-};
 import AuthenticatedHeaderLayout from "@/Layouts/AuthenticatedHeaderLayout.vue";
 import Footer from "@/Components/Footer.vue";
 import carIcon from "../../assets/carIcon.svg";
 import mileageIcon from "../../assets/mileageIcon.svg";
 import check from "../../assets/Check.svg";
-import blankStar from "../../assets/blankStar.svg";
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import markerIcon2x from 'leaflet/dist/images/marker-icon-2x.png';
@@ -68,6 +48,26 @@ import { ChevronRight, ImageIcon, ZoomIn } from 'lucide-vue-next';
 import { Alert, AlertDescription } from '@/Components/ui/alert';
 import { Button } from "@/Components/ui/button";
 import Lightbox from "@/Components/Lightbox.vue";
+
+const currencySymbols = ref({});
+
+onMounted(async () => {
+    try {
+        const response = await fetch('/currency.json');
+        const data = await response.json();
+        currencySymbols.value = data.reduce((acc, curr) => {
+            acc[curr.code] = curr.symbol;
+            return acc;
+        }, {});
+    } catch (error) {
+        console.error("Error loading currency symbols:", error);
+    }
+});
+
+const getCurrencySymbol = (code) => {
+    return currencySymbols.value[code] || '$';
+};
+
 
 const props = defineProps({
     vehicle: Object,
@@ -376,27 +376,6 @@ const searchUrl = computed(() => {
     return '';
 });
 
-// Reviews
-const reviews = ref([]);
-const isLoading = ref(false);
-const reviewsSection = ref(null);
-const scrollToReviews = () => {
-    if (reviewsSection.value) {
-        reviewsSection.value.scrollIntoView({ behavior: "smooth" });
-    }
-};
-const averageRating = computed(() => 0);
-const getStarIcon = (rating, starNumber) => blankStar;
-const getStarAltText = (rating, starNumber) => "Blank Star";
-
-// Favorites
-const popEffect = ref(false);
-const toggleFavourite = async (vehicle) => {
-    console.log("Favorites are not supported for GreenMotion vehicles.");
-    toast.info("Favorites are not supported for GreenMotion vehicles.");
-    popEffect.value = true;
-};
-
 // Share
 const shareVehicle = async () => {
     try {
@@ -536,12 +515,6 @@ onBeforeUnmount(() => {
                     </div>
                 </div>
                 <div class="flex items-center gap-6">
-                    <div class="flex items-center gap-2 cursor-pointer bg-gray-50 px-3 py-2 rounded-lg" v-if="reviews.length > 0" @click="scrollToReviews">
-                        <img v-for="n in 5" :key="n" :src="getStarIcon(averageRating, n)" :alt="getStarAltText(averageRating, n)" class="w-4 h-4" loading="lazy" />
-                        <span class="text-sm font-medium">{{ averageRating }}</span>
-                        <span class="text-sm text-gray-500">({{ reviews.length }})</span>
-                    </div>
-                    <div v-else class="text-sm text-gray-500 bg-gray-50 px-3 py-2 rounded-lg">No ratings yet</div>
                     <div class="flex items-center gap-2 text-gray-600">
                         <img :src="locationPinIcon" alt="Location" class="w-4 h-4" loading="lazy" />
                         <span class="text-sm font-medium">{{ location?.address_city }}</span>
