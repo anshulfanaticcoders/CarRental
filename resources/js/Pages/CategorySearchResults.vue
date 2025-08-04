@@ -352,10 +352,10 @@ const addMarkers = () => {
             pane: "markers",
         }).bindPopup(`
             <div class="text-center popup-content">
-                <img src="${primaryImage}" alt="${vehicle.brand} ${vehicle.model}" class="popup-image" />
-                <p class="rating">${vehicle.average_rating ? vehicle.average_rating.toFixed(1) : '0.0'} ★ (${vehicle.review_count} reviews)</p>
-                <p class="font-semibold">${vehicle.brand} ${vehicle.model}</p>
-                <p class="">${vehicle.full_vehicle_address || ''}</p>
+                <img src="${primaryImage}" alt="${vehicle.brand} ${vehicle.model}" class="popup-image !w-40 !h-20" />
+                <p class="rating !w-40">${vehicle.average_rating ? vehicle.average_rating.toFixed(1) : '0.0'} ★ (${vehicle.review_count} reviews)</p>
+                <p class="font-semibold !w-40">${vehicle.brand} ${vehicle.model}</p>
+                <p class="!w-40">${vehicle.full_vehicle_address || ''}</p>
                 <a href="/${page.props.locale}/vehicle/${vehicle.id}" 
                    class="text-blue-500 hover:text-blue-700"
                    onclick="event.preventDefault(); window.location.href='/${page.props.locale}/vehicle/${vehicle.id}';"> 
