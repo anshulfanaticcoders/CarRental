@@ -272,17 +272,18 @@ class PaymentController extends Controller
 
             $vendor = User::find($vehicle->vendor_id);
             if ($vendor) {
-                Notification::route('mail', $vendor->email)
-                    ->notify(new BookingCreatedVendorNotification($booking, $customer, $vehicle, $vendor));
+                Log::info('Vendor Email for Notification: ' . $vendor->email);
+                $vendor->notify(new BookingCreatedVendorNotification($booking, $customer, $vehicle, $vendor));
             }
 
             if ($vendorProfile && $vendorProfile->company_email) {
+                Log::info('Company Email for Notification: ' . $vendorProfile->company_email);
                 Notification::route('mail', $vendorProfile->company_email)
                     ->notify(new BookingCreatedCompanyNotification($booking, $customer, $vehicle, $vendorProfile));
             }
 
-            Notification::route('mail', $customer->email)
-                ->notify(new BookingCreatedCustomerNotification($booking, $customer, $vehicle));
+            Log::info('Customer Email for Notification: ' . $customer->email);
+            $customer->notify(new BookingCreatedCustomerNotification($booking, $customer, $vehicle));
 
             // Send a message notification from vendor to customer
             $vendorUser = User::find($vehicle->vendor_id);
