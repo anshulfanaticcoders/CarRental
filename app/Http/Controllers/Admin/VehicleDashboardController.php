@@ -54,14 +54,44 @@ class VehicleDashboardController extends Controller
     public function update(Request $request, Vehicle $vendor_vehicle)
     {
         $validatedData = $request->validate([
+            'location' => 'nullable|string|max:255',
             'city' => 'nullable|string|max:255',
             'state' => 'nullable|string|max:255',
             'country' => 'nullable|string|max:255',
-            // Add other fields that can be updated here
+            'price_per_day' => 'nullable|numeric|min:0',
+            'price_per_week' => 'nullable|numeric|min:0',
+            'price_per_month' => 'nullable|numeric|min:0',
+            'preferred_price_type' => 'nullable|string|in:day,week,month',
         ]);
+
+        // Construct full_vehicle_address
+        $fullAddressParts = [];
+        if (!empty($validatedData['location'])) {
+            $fullAddressParts[] = $validatedData['location'];
+        }
+        if (!empty($validatedData['city'])) {
+            $fullAddressParts[] = $validatedData['city'];
+        }
+        if (!empty($validatedData['state'])) {
+            $fullAddressParts[] = $validatedData['state'];
+        }
+        if (!empty($validatedData['country'])) {
+            $fullAddressParts[] = $validatedData['country'];
+        }
+        $validatedData['full_vehicle_address'] = implode(', ', array_filter($fullAddressParts));
 
         $vendor_vehicle->update($validatedData);
 
         return redirect()->route('admin.vehicles.index')->with('success', 'Vehicle updated successfully.');
+    }
+
+    /**
+     * Remove the specified resource from storage.
+     */
+    public function destroy(Vehicle $vendor_vehicle)
+    {
+        $vendor_vehicle->delete();
+
+        return redirect()->route('admin.vehicles.index')->with('success', 'Vehicle deleted successfully.');
     }
 }
