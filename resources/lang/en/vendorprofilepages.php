@@ -63,7 +63,7 @@ return [
     'check_documents_link' => 'Check your documents',
     'alt_approved_status' => 'Approved Status',
     'approved_header' => 'Approved',
-    'approved_message' => 'Congratulations! Your account has been successfully verified. You can now start listing your vehicles and managing your fleet effortlessly. Click the button below to add your first vehicle.',
+    'approved_message' => 'Congratulations! Your account has been successfully verified. You can now start listing your vehicles and managing your fleet effortlessly.',
 
     // Vendor/Vehicles/Index.vue
     'my_vehicles_header' => 'My Vehicles',

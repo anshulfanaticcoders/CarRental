@@ -33,12 +33,12 @@
             <div class="flex flex-col">
               <label class="mb-2 inline-block text-customLightGrayColor font-medium">{{ _t('homepage', 'pickup_date_label') }}</label>
               <VueDatePicker v-model="pickupDate" :enable-time-picker="false" uid="pickup-date" auto-apply
-                :placeholder="_t('homepage', 'pickup_date_placeholder')" class="w-full" :min-date="new Date()" />
+                :placeholder="_t('homepage', 'pickup_date_placeholder')" class="w-full" :min-date="new Date()" :format="formatDate" />
             </div>
             <div class="flex flex-col">
               <label class="mb-2 inline-block text-customLightGrayColor font-medium">{{ _t('homepage', 'return_date_label') }}</label>
               <VueDatePicker v-model="returnDate" :enable-time-picker="false" uid="return-date" auto-apply
-                :placeholder="_t('homepage', 'return_date_placeholder')" class="w-full" :min-date="getMinReturnDate()" />
+                :placeholder="_t('homepage', 'return_date_placeholder')" class="w-full" :min-date="getMinReturnDate()" :format="formatDate" />
             </div>
           </div>
 
@@ -315,7 +315,7 @@ const searchAroundMe = async () => {
 const formatDate = (dateString) => {
   if (!dateString) return "Select date";
   const date = new Date(dateString);
-  return date.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
+  return date.toLocaleDateString('en-GB', { year: 'numeric', month: '2-digit', day: '2-digit' });
 };
 
 watch(pickupDate, (newValue) => {

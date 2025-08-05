@@ -18,6 +18,7 @@ import {
 } from '@/Components/ui/select';
 import VueDatePicker from '@vuepic/vue-datepicker';
 import '@vuepic/vue-datepicker/dist/main.css';
+import loaderVariant from '../../../../assets/loader-variant.svg';
 
 const toast = useToast();
 const user = usePage().props.auth.user;
@@ -390,6 +391,9 @@ onMounted(() => {
             </div>
         </form>
     </section>
+    <div v-if="form.processing" class="fixed inset-0 z-50 flex items-center justify-center bg-white bg-opacity-70">
+        <img :src="loaderVariant" alt="Loading..." class="h-20 w-20" />
+    </div>
 </template>
 
 <style scoped>

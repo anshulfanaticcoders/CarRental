@@ -32,12 +32,12 @@
             <div class="flex flex-col">
               <label class="mb-2 inline-block text-customLightGrayColor font-medium">Pickup Date</label>
               <VueDatePicker v-model="pickupDate" :enable-time-picker="false" uid="pickup-date-cat" auto-apply
-                placeholder="Pickup Date" class="w-full" :min-date="new Date()" />
+                placeholder="Pickup Date" class="w-full" :min-date="new Date()" :format="formatDate" />
             </div>
             <div class="flex flex-col">
               <label class="mb-2 inline-block text-customLightGrayColor font-medium">Return Date</label>
               <VueDatePicker v-model="returnDate" :enable-time-picker="false" uid="return-date-cat" auto-apply
-                placeholder="Return Date" class="w-full" :min-date="getMinReturnDate()" />
+                placeholder="Return Date" class="w-full" :min-date="getMinReturnDate()" :format="formatDate" />
             </div>
           </div>
 
@@ -317,7 +317,7 @@ const searchAroundMe = async () => {
 const formatDate = (dateString) => {
   if (!dateString) return "Select date";
   const date = new Date(dateString);
-  return date.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
+  return date.toLocaleDateString('en-GB', { year: 'numeric', month: '2-digit', day: '2-digit' });
 };
 
 watch(pickupDate, (newValue) => {

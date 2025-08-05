@@ -63,7 +63,7 @@ return [
         'check_documents_link' => 'Vérifier vos documents',
         'alt_approved_status' => 'Statut approuvé',
         'approved_header' => 'Approuvé',
-        'approved_message' => 'Félicitations ! Votre compte a été vérifié avec succès. Vous pouvez maintenant commencer à lister vos véhicules et gérer votre flotte sans effort. Cliquez sur le bouton ci-dessous pour ajouter votre premier véhicule.',
+        'approved_message' => 'Félicitations ! Votre compte a été vérifié avec succès. Vous pouvez maintenant commencer à lister vos véhicules et gérer votre flotte sans effort.',
 
 
         // Vendor/Vehicles/Index.vue

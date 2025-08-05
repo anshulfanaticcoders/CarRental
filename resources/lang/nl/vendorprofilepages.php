@@ -63,7 +63,7 @@ return [
         'check_documents_link' => 'Controleer uw documenten',
         'alt_approved_status' => 'Goedgekeurde status',
         'approved_header' => 'Goedgekeurd',
-        'approved_message' => 'Gefeliciteerd! Uw account is succesvol geverifieerd. U kunt nu beginnen met het aanbieden van uw voertuigen en het moeiteloos beheren van uw vloot. Klik op de knop hieronder om uw eerste voertuig toe te voegen.',
+        'approved_message' => 'Gefeliciteerd! Uw account is succesvol geverifieerd. U kunt nu beginnen met het aanbieden van uw voertuigen en het moeiteloos beheren van uw vloot.',
 
         // Vendor/Vehicles/Index.vue
         'my_vehicles_header' => 'Mijn voertuigen',
