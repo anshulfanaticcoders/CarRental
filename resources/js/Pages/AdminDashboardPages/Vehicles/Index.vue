@@ -161,7 +161,7 @@ const deleteUserId = ref(null);
 
 // Handle search input
 const handleSearch = () => {
-    router.get('/vendor-vehicles', { search: search.value }, {
+    router.get(route('admin.vehicles.index'), { search: search.value }, {
         preserveState: true,
         replace: true,
     });
@@ -183,7 +183,7 @@ const openDeleteDialog = (id) => {
 };
 
 const confirmDelete = () => {
-    router.delete(`/vendor-vehicles/${deleteUserId.value}`, {
+    router.delete(route('admin.vehicles.destroy', { vehicle: deleteUserId.value }), {
         onSuccess: () => {
             console.log('Vehicle deleted successfully');
             isDeleteDialogOpen.value = false;

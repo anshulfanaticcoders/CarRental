@@ -64,6 +64,13 @@ class VehicleDashboardController extends Controller
             'preferred_price_type' => 'nullable|string|in:day,week,month',
         ]);
 
+        // Convert 0 values to null for price fields
+        foreach (['price_per_day', 'price_per_week', 'price_per_month'] as $priceField) {
+            if (isset($validatedData[$priceField]) && $validatedData[$priceField] === 0) {
+                $validatedData[$priceField] = null;
+            }
+        }
+
         // Construct full_vehicle_address
         $fullAddressParts = [];
         if (!empty($validatedData['location'])) {
