@@ -67,6 +67,7 @@ use Inertia\Inertia;
 use App\Http\Controllers\UserDocumentController;
 use App\Http\Controllers\VehicleController;
 use App\Http\Controllers\GreenMotionController;
+use App\Http\Controllers\GreenMotionBookingController; // Import the new GreenMotionBookingController
 use App\Http\Controllers\AdminProfileController; // Import the AdminProfileController
 
 /*
@@ -518,3 +519,8 @@ Route::get('/{locale}/green-motion-car/{id}', [GreenMotionController::class, 'sh
     Route::get('/green-motion-regions', [GreenMotionController::class, 'getGreenMotionRegions'])->name('green-motion-regions');
     Route::get('/green-motion-service-areas', [GreenMotionController::class, 'getGreenMotionServiceAreas'])->name('green-motion-service-areas');
     Route::post('/green-motion-booking', [GreenMotionController::class, 'makeGreenMotionBooking'])->name('green-motion-booking');
+
+// GreenMotion Booking Routes (outside locale group to avoid double locale prefix)
+Route::post('/green-motion-booking/charge', [GreenMotionBookingController::class, 'processGreenMotionBookingPayment'])->name('greenmotion.booking.charge');
+Route::get('/green-motion-booking-success', [GreenMotionBookingController::class, 'greenMotionBookingSuccess'])->name('greenmotion.booking.success');
+Route::get('/green-motion-booking-cancel', [GreenMotionBookingController::class, 'greenMotionBookingCancel'])->name('greenmotion.booking.cancel');

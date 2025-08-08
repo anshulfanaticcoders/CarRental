@@ -38,6 +38,7 @@ class GreenMotionController extends Controller
                             'oneway' => (string) $product->oneway,
                             'oneway_fee' => (string) $product->oneway_fee,
                             'cancellation_rules' => json_decode(json_encode($product->CancellationRules), true),
+                            // Removed quoteid from here as it's at the response level
                         ];
                     }
                 }
@@ -314,8 +315,11 @@ class GreenMotionController extends Controller
                 Log::error('XML Parsing Error (GetVehicles): ' . $error->message);
             }
             libxml_clear_errors();
+            Log::error('Raw XML response for GetVehicles that failed parsing: ' . $xml); // Log raw XML if parsing fails
             return response()->json(['error' => 'Failed to parse XML response from API.'], 500);
         }
+
+        Log::info('Full XML Object from GetVehicles: ' . json_encode($xmlObject)); // Log the full XML object
 
         $vehicles = $this->parseVehicles($xmlObject);
         $optionalExtras = $this->parseOptionalExtras($xmlObject);
@@ -360,6 +364,7 @@ class GreenMotionController extends Controller
 
         $vehicles = [];
         $optionalExtras = [];
+        $quoteId = null; // Initialize quoteId
 
         if (!is_null($xmlVehicles) && !empty($xmlVehicles)) {
             libxml_use_internal_errors(true);
@@ -368,6 +373,7 @@ class GreenMotionController extends Controller
             if ($xmlObject !== false) {
                 $vehicles = $this->parseVehicles($xmlObject);
                 $optionalExtras = $this->parseOptionalExtras($xmlObject);
+                $quoteId = (string) $xmlObject->response->quoteid ?? null; // Extract quoteid from response
             } else {
                 Log::error('XML Parsing Error (showGreenMotionCars): Failed to parse XML or no vehicles found.');
                 libxml_clear_errors();
@@ -396,7 +402,7 @@ class GreenMotionController extends Controller
             ],
             'locations' => $location ? [$location] : [],
             'optionalExtras' => $optionalExtras,
-            'filters' => $request->all(),
+            'filters' => array_merge($request->all(), ['quoteid' => $quoteId]), // Pass quoteId in filters
             'pagination_links' => '',
             'locale' => app()->getLocale(),
         ]);
@@ -436,6 +442,7 @@ class GreenMotionController extends Controller
 
         $vehicle = null;
         $optionalExtras = [];
+        $quoteId = null; // Initialize quoteId
 
         Log::info("showGreenMotionCar called with ID: {$id}, Location ID: {$locationId}, Locale: {$locale}");
 
@@ -448,6 +455,12 @@ class GreenMotionController extends Controller
                 Log::info('Parsed Vehicles in showGreenMotionCar: ' . json_encode(collect($vehicles)->pluck('id')));
                 $vehicle = collect($vehicles)->firstWhere('id', $id);
                 $optionalExtras = $this->parseOptionalExtras($xmlObject);
+                $quoteId = (string) $xmlObject->response->quoteid ?? null; // Extract quoteid from response
+
+                if ($vehicle && isset($vehicle['products'])) {
+                    Log::info('Products for selected vehicle in showGreenMotionCar: ' . json_encode($vehicle['products']));
+                }
+
             } else {
                 Log::error('XML Parsing Error (showGreenMotionCar): Failed to parse XML or no vehicles found.');
                 libxml_clear_errors();
@@ -481,7 +494,7 @@ class GreenMotionController extends Controller
             'vehicle' => $vehicle,
             'location' => $location,
             'optionalExtras' => $optionalExtras,
-            'filters' => $request->all(),
+            'filters' => array_merge($request->all(), ['quoteid' => $quoteId]), // Pass quoteId in filters
             'locale' => $locale, // Use the $locale parameter from the route
             'seoMeta' => [
                 'seo_title' => $vehicle['name'] . ' - GreenMotion Rental',
@@ -529,8 +542,9 @@ class GreenMotionController extends Controller
             $vehicleOptions
         );
 
-        $vehicle = null;
+        $vehicles = [];
         $optionalExtras = [];
+        $quoteId = null; // Initialize quoteId
 
         if (!is_null($xmlVehicles) && !empty($xmlVehicles)) {
             libxml_use_internal_errors(true);
@@ -540,6 +554,12 @@ class GreenMotionController extends Controller
                 $vehicles = $this->parseVehicles($xmlObject);
                 $vehicle = collect($vehicles)->firstWhere('id', $id);
                 $optionalExtras = $this->parseOptionalExtras($xmlObject);
+                $quoteId = (string) $xmlObject->response->quoteid ?? null; // Extract quoteid from response
+
+                if ($vehicle && isset($vehicle['products'])) {
+                    Log::info('Products for selected vehicle in showGreenMotionBookingPage: ' . json_encode($vehicle['products']));
+                }
+
             } else {
                 Log::error('XML Parsing Error (showGreenMotionBookingPage): Failed to parse XML or no vehicles found.');
                 libxml_clear_errors();
@@ -568,11 +588,14 @@ class GreenMotionController extends Controller
             Log::error('GreenMotion API returned null or empty XML response for getLocationInfo for ID: ' . $locationId);
         }
 
+        $filters = array_merge($request->all(), ['quoteid' => $quoteId]);
+        Log::info('Filters passed to GreenMotionBooking.vue: ' . json_encode($filters));
+
         return Inertia::render('GreenMotionBooking', [
             'vehicle' => $vehicle,
             'location' => $location,
             'optionalExtras' => $optionalExtras,
-            'filters' => $request->all(),
+            'filters' => $filters,
             'locale' => $locale,
         ]);
     }

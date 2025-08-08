@@ -412,6 +412,18 @@ const proceedToPayment = async () => {
         return;
     }
 
+    // Check if user is authenticated
+    if (!page.props.auth.user) {
+        // Store current form data in session storage to retrieve after login
+        sessionStorage.setItem('greenMotionBookingForm', JSON.stringify(form.value));
+        sessionStorage.setItem('greenMotionVehicleId', props.vehicle.id);
+        sessionStorage.setItem('greenMotionLocationId', props.location.id);
+
+        // Redirect to login page
+        router.visit(route('login', { locale: props.locale }));
+        return;
+    }
+
     router.visit(route('green-motion-booking.checkout', {
         locale: props.locale,
         id: props.vehicle.id,
