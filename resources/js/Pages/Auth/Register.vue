@@ -359,12 +359,12 @@ watch(dateOfBirth, (newValue) => {
                                 ]" class="text-sm font-semibold transition lg:text-base max-[768px]:text-[0.65rem]">
                                     {{ _t('registerUser', 'step' + (index + 1) + '_title') }}
                                 </StepperTitle>
-                                <StepperDescription :class="[
+                                <!-- <StepperDescription :class="[
                                     state === 'active' && 'text-primary',
                                 ]"
                                     class="sr-only text-xs text-muted-foreground transition md:not-sr-only lg:text-sm max-[768px]:sr-only">
                                     {{ _t('registerUser', 'step' + (index + 1) + '_description').split('.')[0] }}
-                                </StepperDescription>
+                                </StepperDescription> -->
                             </div>
                         </StepperItem>
                     </div>

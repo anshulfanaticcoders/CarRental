@@ -138,53 +138,61 @@ onMounted(async () => {
                     <div class="col flex flex-col gap-8 max-[768px]:gap-4">
                         <label for="" class="text-[1.25rem] font-medium max-[768px]:text-[1rem]">Company</label>
                         <ul class="flex flex-col gap-4 max-[768px]:text-[0.875rem]">
-                            <li>
+                            <li class="relative group">
                                 <Link
-                                    :href="route('pages.show', { locale: page.props.locale, slug: getTranslatedSlug('about-us') })">
+                                    :href="route('pages.show', { locale: page.props.locale, slug: getTranslatedSlug('about-us') })"
+                                    class="footer-link-underline">
                                 About Us</Link>
                             </li>
-                            <li>
-                                <Link :href="route('blog', { locale: page.props.locale })">Blogs</Link>
+                            <li class="relative group">
+                                <Link :href="route('blog', { locale: page.props.locale })"
+                                    class="footer-link-underline">Blogs</Link>
                             </li>
-                            <li>
-                                <Link :href="route('faq.show', { locale: page.props.locale })">FAQ</Link>
+                            <li class="relative group">
+                                <Link :href="route('faq.show', { locale: page.props.locale })"
+                                    class="footer-link-underline">FAQ</Link>
                             </li>
-                            <li>
-                                <Link :href="route('contact-us', { locale: page.props.locale })">Contact Us</Link>
+                            <li class="relative group">
+                                <Link :href="route('contact-us', { locale: page.props.locale })"
+                                    class="footer-link-underline">Contact Us</Link>
                             </li>
                         </ul>
                     </div>
                     <div class="col flex flex-col gap-8 max-[768px]:gap-4">
                         <label for="" class="text-[1.25rem] font-medium max-[768px]:text-[1rem]">Information</label>
                         <ul class="flex flex-col gap-4 max-[768px]:text-[0.875rem]">
-                            <li>
+                            <li class="relative group">
                                 <Link
-                                    :href="route('pages.show', { locale: page.props.locale, slug: getTranslatedSlug('privacy-policy') })">
+                                    :href="route('pages.show', { locale: page.props.locale, slug: getTranslatedSlug('privacy-policy') })"
+                                    class="footer-link-underline">
                                 Privacy Policy</Link>
                             </li>
-                            <li>
+                            <li class="relative group">
                                 <Link
-                                    :href="route('pages.show', { locale: page.props.locale, slug: getTranslatedSlug('terms-and-conditions') })">
+                                    :href="route('pages.show', { locale: page.props.locale, slug: getTranslatedSlug('terms-and-conditions') })"
+                                    class="footer-link-underline">
                                 Terms & Conditions</Link>
                             </li>
-                            <li>
-                                <a href="https://vrooem.tapfiliate.com">Became a Affiliate</a>
+                            <li class="relative group">
+                                <a href="https://vrooem.tapfiliate.com" class="footer-link-underline">Became a Affiliate</a>
                             </li>
                         </ul>
                     </div>
                     <div class="col flex flex-col gap-8 max-[768px]:gap-4">
                         <label for="" class="text-[1.25rem] font-medium max-[768px]:text-[1rem]">Location</label>
                         <ul class="flex flex-col gap-4 max-[768px]:text-[0.875rem]">
-                            <li v-for="place in footerPlaces" :key="place.id">
+                            <li v-for="place in footerPlaces" :key="place.id" class="relative group">
                                 <Link
                                     :href="`/${page.props.locale}/s?where=${encodeURIComponent(place.place_name + ', ' + place.city + ', ' + place.country)}&latitude=${place.latitude}&longitude=${place.longitude}&radius=10000`"
-                                    @click="updateSearchUrl(place)">
+                                    @click="updateSearchUrl(place)"
+                                    class="footer-link-underline">
                                 {{ place.place_name }}
                                 </Link>
                             </li>
                             <!-- Fallback if no places are selected -->
-                            <li v-if="footerPlaces.length === 0">
-                                <Link :href="route('welcome', { locale: page.props.locale })">No locations available
+                            <li v-if="footerPlaces.length === 0" class="relative group">
+                                <Link :href="route('welcome', { locale: page.props.locale })"
+                                    class="footer-link-underline">No locations available
                                 </Link>
                             </li>
                         </ul>
@@ -192,14 +200,16 @@ onMounted(async () => {
                     <div class="col flex flex-col gap-8 max-[768px]:gap-4">
                         <label for="" class="text-[1.25rem] font-medium max-[768px]:text-[1rem]">Categories</label>
                         <ul class="flex flex-col gap-4 max-[768px]:text-[0.875rem]">
-                            <li v-for="category in footerCategories" :key="category.id">
+                            <li v-for="category in footerCategories" :key="category.id" class="relative group">
                                 <Link
                                     :href="route('search.category', { locale: page.props.locale, category_slug: category.slug })"
-                                    @click="updateCategorySearchUrl(category)">{{ category.name }}</Link>
+                                    @click="updateCategorySearchUrl(category)"
+                                    class="footer-link-underline">{{ category.name }}</Link>
                             </li>
                             <!-- Fallback if no categories are selected -->
-                            <li v-if="footerCategories.length === 0">
-                                <Link :href="route('welcome', { locale: page.props.locale })">No categories available
+                            <li v-if="footerCategories.length === 0" class="relative group">
+                                <Link :href="route('welcome', { locale: page.props.locale })"
+                                    class="footer-link-underline">No categories available
                                 </Link>
                             </li>
                         </ul>
@@ -224,4 +234,24 @@ onMounted(async () => {
     </div>
 </template>
 
-<style></style>
+<style>
+.footer-link-underline {
+    display: inline-block; /* Ensures the link wraps its content */
+    position: relative;
+}
+
+.footer-link-underline::after {
+    content: '';
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    height: 2px;
+    width: 0; /* Initial width */
+    background-color: white;
+    transition: width 0.3s ease-in-out;
+}
+
+.footer-link-underline:hover::after {
+    width: 100%; /* Stretches to content width of the inline-block parent */
+}
+</style>

@@ -369,7 +369,7 @@ watch(() => url.value, () => {
               <template #trigger>
                 <button 
                   type="button"
-                  class="inline-flex items-center gap-2 py-2 border border-transparent text-sm font-medium rounded-full bg-white hover:bg-gray-50 focus:bg-[#efefef] p-4 transition duration-150 ease-in-out group"
+                  class="inline-flex items-center gap-2 py-2 border border-transparent text-sm font-medium rounded-full bg-[#efefef] hover:bg-[#d6d6d6] focus:bg-[#d6d6d6] p-4 transition duration-150 ease-in-out group"
                 >
                   <div v-if="user?.profile?.avatar" class="flex-shrink-0 relative">
                     <img 

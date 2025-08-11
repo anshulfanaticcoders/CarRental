@@ -100,7 +100,7 @@ const plugin = Autoplay({
             @mouseenter="plugin.stop" 
             @mouseleave="[plugin.reset(), plugin.play()]" 
             :slides-to-show="3">
-            <CarouselContent class="max-[768px]:mx-0">
+            <CarouselContent class="max-[768px]:mx-0 px-[1rem] max-[768px]:px-0">
                 <CarouselItem v-for="(testimonial, index) in testimonials" :key="index"
                     class="pl-1 md:basis-1/2 lg:basis-1/4">
                     <div class="p-1">

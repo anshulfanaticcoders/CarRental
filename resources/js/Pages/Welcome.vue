@@ -271,7 +271,7 @@ const updateCategorySearchUrl = (category) => {
             <div
                 class="flex min-h-[inherit] items-center gap-24 max-[768px]:flex-col max-[768px]:gap-10 max-[768px]:items-start">
                 <div class="column max-[768px]:px-[1.5rem]">
-                    <h2>{{ _p('our_categories') }}</h2>
+                    <h2 class="leading-[1em]">{{ _p('our_categories') }}</h2>
                 </div>
                 <div class="column carousel rounded-[20px] p-6 max-[768px]:rounded-none max-[768px]:pl-3 max-[768px]:py-6"
                     style="background: linear-gradient(90deg, rgba(21, 59, 79, 0.2) 0%, rgba(21, 59, 79, 0) 94.4%);">
@@ -329,7 +329,7 @@ const updateCategorySearchUrl = (category) => {
 
 
         <!------------------------------- Top Destination Places -------------------------------------->
-        <section class="flex flex-col gap-10 py-customVerticalSpacing popular-places max-[768px]:py-[1rem]">
+        <section class="flex flex-col gap-2 py-customVerticalSpacing popular-places max-[768px]:py-[1rem] max-[768px]:gap-8">
             <div class="column ml-[2%]">
                 <span class="text-[1.15rem] text-customPrimaryColor">-{{ _p('top_destinations') }} -</span>
                 <h3 class="text-customDarkBlackColor mt-[1rem] max-[768px]:text-[1.75rem]">{{ _p('popular_places') }}</h3>

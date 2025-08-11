@@ -25,6 +25,7 @@ import {
     DialogTitle,
     DialogTrigger,
 } from '@/Components/ui/dialog'
+import Select from "@/Components/ui/select/Select.vue";
 
 // Add these methods to your script section
 const incrementQuantity = (extra) => {
@@ -256,7 +257,11 @@ const customer = ref({
 
 
 // Example driver age range
-const ageRange = Array.from({ length: 80 - 21 + 1 }, (_, i) => 21 + i);
+const ageRange = computed(() => {
+    const minAge = vehicle.value?.benefits?.minimum_driver_age || 21; // Default to 21 if not set
+    const maxAge = 80; // Assuming 80 is the maximum age
+    return Array.from({ length: maxAge - minAge + 1 }, (_, i) => minAge + i);
+});
 
 const isFormSaved = ref(false);
 
@@ -985,9 +990,9 @@ const bookingData = computed(() => {
                                 required />
                             <label for="terms" class="text-sm">
                                 I have read, understood, and accepted vroome.com
-                                <a href="#" class="text-customDarkBlackColor font-bold">Terms & Conditions</a>
+                                <Link :href="`/${$page.props.locale}/page/terms-and-conditions`" class="text-customDarkBlackColor font-bold">Terms & Conditions</Link>
                                 and
-                                <a href="#" class="text-customDarkBlackColor font-bold">Privacy Policy</a>.
+                                <Link :href="`/${$page.props.locale}/page/privacy-policy`" class="text-customDarkBlackColor font-bold">Privacy Policy</Link>.
                             </label>
                         </div>
                         <div
@@ -1060,7 +1065,9 @@ const bookingData = computed(() => {
                             <span
                                 class="text-[1.5rem] font-medium mb-[1rem] inline-block max-[768px]:text-[1.2rem]">Location</span>
                             <div class="col flex items-start gap-4">
-                                <img :src="pickupLocationIcon" alt="" />
+                                <div class="ripple_effect relative inline-block">
+                                    <img :src="pickupLocationIcon" alt="" />
+                                </div>
                                 <div class="flex flex-col gap-1">
                                     <span class="text-[1.25rem] text-medium max-[768px]:text-[1rem]">{{
                                         vehicle?.full_vehicle_address
@@ -1070,7 +1077,9 @@ const bookingData = computed(() => {
                                 </div>
                             </div>
                             <div class="col flex items-start gap-4 mt-[2.5rem]">
-                                <img :src="returnLocationIcon" alt="" />
+                                <div class="ripple_effect relative inline-block">
+                                    <img :src="returnLocationIcon" alt="" />
+                                </div>
                                 <div class="flex flex-col gap-1">
                                     <span class="text-[1.25rem] text-medium max-[768px]:text-[1rem]">{{
                                         vehicle?.full_vehicle_address
@@ -1348,4 +1357,35 @@ input {
     text-decoration: line-through;
     color: red;
 }
+
+.ripple_effect {
+  position: relative;
+  display: inline-block;
+}
+
+.ripple_effect::before {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 100%;
+  height: 100%;
+  border: 2px solid #f4f4f455; /* ripple color */
+  border-radius: 50%;
+  transform: translate(-50%, -50%) scale(1);
+  opacity: 1;
+  animation: ripple 1.5s infinite ease-out;
+}
+
+@keyframes ripple {
+  0% {
+    transform: translate(-50%, -50%) scale(1);
+    opacity: 1;
+  }
+  100% {
+    transform: translate(-50%, -50%) scale(1.3);
+    opacity: 0;
+  }
+}
+
 </style>
