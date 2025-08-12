@@ -332,8 +332,8 @@ watch(() => url.value, () => {
 
           <!-- Notification Bell -->
             <div class="relative">
-                <button ref="bellIconRef" @click="showingNotificationDropdown = !showingNotificationDropdown; markAllAsRead()" class="relative p-2 rounded-[99px] focus:bg-[#efefef]" :class="{ 'ripple-effect': unreadCount > 0 }">
-                    <img :src="bellIcon" alt="Notifications" class="w-6 h-6">
+                <button ref="bellIconRef" @click="showingNotificationDropdown = !showingNotificationDropdown; markAllAsRead()" class="relative p-2 rounded-[99px] bg-[#efefef] focus:bg-[#d6d6d6]" :class="{ 'ripple-effect': unreadCount > 0 }">
+                    <img :src="bellIcon" alt="Notifications" class="w-6 h-6 ml-[3px]">
                     <span v-if="unreadCount > 0" class="absolute w-[18px] h-[18px] border-2 border-white top-0 right-0 inline-flex items-center justify-center px-2 py-1 text-xs font-bold leading-none text-red-100 bg-red-600 rounded-full">{{ unreadCount }}</span>
                 </button>
                 <div ref="notificationDropdownRef" v-if="showingNotificationDropdown" class="absolute right-0 mt-2 w-80 bg-white rounded-md shadow-lg z-20 top-[3rem]">

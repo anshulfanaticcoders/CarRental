@@ -1,7 +1,7 @@
 <script setup>
 import { Head, Link } from "@inertiajs/vue3";
 import SchemaInjector from '@/Components/SchemaInjector.vue'; // Import SchemaInjector
-import heroImg from "../../assets/heroImage.jpeg";
+import heroImg from "../../assets/heroImage.jpg";
 import Footer from '@/Components/Footer.vue'
 import locationMapIcon from "../../assets/location.svg";
 import chipIcon from "../../assets/chip.svg";
