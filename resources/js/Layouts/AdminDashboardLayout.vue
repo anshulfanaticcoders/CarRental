@@ -175,6 +175,8 @@ const getNotificationLink = (notification) => {
       return route('users.index', { locale });
     case 'BulkVehicleUploadAdminNotification':
       return route('admin.vehicles.index', { locale });
+    case 'VendorRegisteredNotification':
+      return route('vendors.index', { locale });
     case 'BookingStatusUpdatedCustomerNotification':
       const bookingStatus = notification.data.status;
       if (bookingStatus === 'pending') return route('customer-bookings.pending', { locale });

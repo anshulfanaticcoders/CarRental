@@ -534,8 +534,8 @@ onMounted(async () => {
         </form>
     </div>
 
-    <div class="full-w-container flex justify-end max-[768px]:hidden">
-        <div class="flex items-center space-x-2 mb-[2rem]">
+    <div class="full-w-container flex justify-end max-[768px]:hidden my-[2rem]">
+        <div class="flex items-center space-x-2">
             <Label for="mapToggle" class="text-customPrimaryColor">Map</Label>
             <Switch id="mapToggle" :checked="showMap" @update:checked="handleMapToggle" />
         </div>
