@@ -225,10 +225,12 @@ class GreenMotionService
 
             $response->throw();
             Log::info('GreenMotion API Response (GetServiceAreas): ' . $response->body()); // Log response
+            Log::debug('Raw XML from GetServiceAreas: ' . $response->body()); // Add this line for debugging
 
             return $response->body();
         } catch (\Illuminate\Http\Client\RequestException $e) {
             Log::error('GreenMotion API Request Error (GetServiceAreas): ' . $e->getMessage() . ' Response: ' . $e->response->body());
+            Log::debug('Raw XML from GetServiceAreas (error response): ' . ($e->response ? $e->response->body() : 'N/A')); // Log error response body
             return null;
         } catch (\Exception $e) {
             Log::error('GreenMotion API General Error (GetServiceAreas): ' . $e->getMessage());

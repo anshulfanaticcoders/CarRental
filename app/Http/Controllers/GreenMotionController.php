@@ -791,6 +791,96 @@ class GreenMotionController extends Controller
         return response()->json($serviceAreas);
     }
 
+    /**
+     * Helper to parse XML response for service areas.
+     *
+     * @param SimpleXMLElement $xmlObject
+     * @return array
+     */
+    private function parseServiceAreas(SimpleXMLElement $xmlObject): array
+    {
+        $serviceAreas = [];
+
+        // Use DOMDocument and DOMXPath for more robust XML parsing
+        $dom = new \DOMDocument();
+        // Suppress warnings/errors from loadXML for malformed XML, as SimpleXMLElement already handles errors
+        @$dom->loadXML($xmlObject->asXML());
+        $xpath = new \DOMXPath($dom);
+
+        // Query for all 'servicearea' elements
+        $nodes = $xpath->query('//servicearea');
+
+        if ($nodes->length > 0) {
+            foreach ($nodes as $serviceareaNode) {
+                $locationID = '';
+                $name = '';
+
+                // Find child elements by tag name
+                $locationIDNode = $serviceareaNode->getElementsByTagName('locationID')->item(0);
+                if ($locationIDNode) {
+                    $locationID = $locationIDNode->nodeValue;
+                }
+
+                $nameNode = $serviceareaNode->getElementsByTagName('name')->item(0);
+                if ($nameNode) {
+                    $name = $nameNode->nodeValue;
+                }
+
+                $serviceAreas[] = [
+                    'locationID' => $locationID,
+                    'name' => $name,
+                ];
+            }
+        } else {
+            Log::warning('No servicearea elements found using DOMXPath in XML response for parsing.');
+        }
+        return $serviceAreas;
+    }
+
+    /**
+     * Get GreenMotion locations for autocomplete based on search term.
+     *
+     * @param Request $request
+     * @return \Illuminate\Http\JsonResponse
+     */
+    public function getGreenMotionLocationsForAutocomplete(Request $request)
+    {
+        $countryId = $request->input('country_id', 1); // Default to country ID 1 (e.g., UK)
+        $searchTerm = $request->input('search_term', '');
+        $language = $request->input('language', app()->getLocale()); // Use current locale for language
+
+        $xml = $this->greenMotionService->getServiceAreas($countryId, $language);
+
+        if (is_null($xml) || empty($xml)) {
+            Log::error('GreenMotion API returned null or empty XML response for GetServiceAreas (autocomplete).');
+            return response()->json(['error' => 'Failed to retrieve location data for autocomplete.'], 500);
+        }
+
+        libxml_use_internal_errors(true);
+        $xmlObject = simplexml_load_string($xml);
+
+        if ($xmlObject === false) {
+            $errors = libxml_get_errors();
+            foreach ($errors as $error) {
+                Log::error('XML Parsing Error (GetServiceAreas - autocomplete): ' . $error->message);
+            }
+            libxml_clear_errors();
+            return response()->json(['error' => 'Failed to parse XML response for locations from API.'], 500);
+        }
+
+        $allLocations = $this->parseServiceAreas($xmlObject);
+
+        // Filter locations by search term
+        $filteredLocations = collect($allLocations)->filter(function ($location) use ($searchTerm) {
+            // Ensure $location['name'] is treated as a string for stripos
+            $locationName = (string) $location['name'];
+            $match = stripos($locationName, $searchTerm) !== false;
+            return empty($searchTerm) || $match;
+        })->values()->all(); // Re-index the array
+
+        return response()->json($filteredLocations);
+    }
+
     public function makeGreenMotionBooking(Request $request)
     {
         $validatedData = $request->validate([
@@ -938,4 +1028,3 @@ class GreenMotionController extends Controller
         }
     }
 }
-?>
