@@ -8,6 +8,11 @@ import { Link, usePage, router } from "@inertiajs/vue3";
 import axios from "axios";
 import globeIcon from '../../assets/globe.svg'
 import bellIcon from '../../assets/bell.svg'
+import flagEn from '../../assets/flag-en.svg';
+import flagFr from '../../assets/flag-fr.svg';
+import flagNl from '../../assets/flag-nl.svg';
+import flagEs from '../../assets/flag-es.svg';
+import flagAr from '../../assets/flag-ar.svg';
 
 // Get page properties
 const page = usePage();
@@ -189,10 +194,11 @@ const isAdmin = computed(() => page.props.auth?.user?.role === 'admin');
 
 // Language switcher
 const availableLocales = {
-  en: 'En',
-  fr: 'Fr',
-  nl: 'Nl',
-  es: 'Es'
+  en: { name: 'En', flag: flagEn },
+  fr: { name: 'Fr', flag: flagFr },
+  nl: { name: 'Nl', flag: flagNl },
+  es: { name: 'Es', flag: flagEs },
+  ar: { name: 'Ar', flag: flagAr },
 };
 
 const changeLanguage = (newLocale) => {
@@ -311,8 +317,8 @@ watch(() => url.value, () => {
                 type="button" 
                 class="inline-flex items-center px-3 py-2 text-sm font-medium text-gray-600 hover:text-gray-800 transition duration-150 ease-in-out"
               >
-              <img :src=globeIcon alt="" class="w-8 h-8">
-                <span>{{ availableLocales[currentLocale] }}</span>
+                <img :src="availableLocales[currentLocale].flag" :alt="availableLocales[currentLocale].name + ' Flag'" class="w-6 h-6 mr-2 rounded-full">
+                <span>{{ availableLocales[currentLocale].name }}</span>
                 <svg class="ml-1 w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
                 </svg>
@@ -323,10 +329,11 @@ watch(() => url.value, () => {
                 v-for="(language, code) in availableLocales" 
                 :key="code"
                 @click="changeLanguage(code)"
-                class="block w-full px-4 py-2 text-left text-sm leading-5 text-white hover:text-[#153B4F] hover:bg-gray-100 transition duration-150 ease-in-out cursor-pointer"
+                class="flex items-center w-full px-4 py-2 text-left text-sm leading-5 text-white hover:text-[#153B4F] hover:bg-gray-100 transition duration-150 ease-in-out cursor-pointer"
                 :class="{ 'bg-gray-500': currentLocale === code }"
               >
-                {{ language }}
+                <img :src="language.flag" :alt="language.name + ' Flag'" class="w-5 h-5 mr-2 rounded-full">
+                {{ language.name }}
               </div>
             </template>
           </Dropdown>
@@ -437,8 +444,8 @@ watch(() => url.value, () => {
               type="button" 
               class="inline-flex items-center px-3 py-2 text-sm font-medium text-gray-600 hover:text-gray-800 transition duration-150 ease-in-out"
               >
-              <img :src=globeIcon alt="" class="w-8 h-8">
-                <span>{{ availableLocales[currentLocale] }}</span>
+                <img :src="availableLocales[currentLocale].flag" :alt="availableLocales[currentLocale].name + ' Flag'" class="w-6 h-6 mr-2 rounded-full">
+                <span>{{ availableLocales[currentLocale].name }}</span>
                 <svg class="ml-1 w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
                 </svg>
@@ -449,10 +456,11 @@ watch(() => url.value, () => {
                 v-for="(language, code) in availableLocales" 
                 :key="code"
                 @click="changeLanguage(code)"
-                class="block w-full px-4 py-2 text-left text-sm leading-5 text-white hover:text-[#153B4F] hover:bg-gray-100 transition duration-150 ease-in-out cursor-pointer"
+                class="flex items-center w-full px-4 py-2 text-left text-sm leading-5 text-white hover:text-[#153B4F] hover:bg-gray-100 transition duration-150 ease-in-out cursor-pointer"
                 :class="{ 'bg-gray-500': currentLocale === code }"
               >
-                {{ language }}
+                <img :src="language.flag" :alt="language.name + ' Flag'" class="w-5 h-5 mr-2 rounded-full">
+                {{ language.name }}
               </div>
             </template>
           </Dropdown>
@@ -569,10 +577,11 @@ watch(() => url.value, () => {
                   v-for="(language, code) in availableLocales" 
                   :key="code"
                   @click="changeLanguage(code)"
-                  class="text-center px-2 py-1 text-sm rounded-md transition-all duration-200 hover:bg-gray-200"
+                  class="flex items-center justify-center px-2 py-1 text-sm rounded-md transition-all duration-200 hover:bg-gray-200"
                   :class="currentLocale === code ? 'bg-gray-200 font-medium' : 'bg-gray-100'"
                 >
-                  {{ language }}
+                  <img :src="language.flag" :alt="language.name + ' Flag'" class="w-5 h-5 mr-1 rounded-full">
+                  {{ language.name }}
                 </button>
               </div>
             </div>
@@ -613,10 +622,11 @@ watch(() => url.value, () => {
                 v-for="(language, code) in availableLocales" 
                 :key="code"
                 @click="changeLanguage(code)"
-                class="text-center px-2 py-1 text-sm rounded-md transition-all duration-200 hover:bg-gray-200"
+                class="flex items-center justify-center px-2 py-1 text-sm rounded-md transition-all duration-200 hover:bg-gray-200"
                 :class="currentLocale === code ? 'bg-gray-200 font-medium' : 'bg-gray-100'"
               >
-                {{ language }}
+                <img :src="language.flag" :alt="language.name + ' Flag'" class="w-5 h-5 mr-1 rounded-full">
+                {{ language.name }}
               </button>
             </div>
           </div>

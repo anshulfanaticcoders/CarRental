@@ -33,7 +33,7 @@ const props = defineProps({
     },
     seoTranslations: {
         type: Object,
-        default: () => ({ en: {}, fr: {}, nl: {}, es: {} }),
+        default: () => ({ en: {}, fr: {}, nl: {}, es: {}, ar: {} }),
     },
 });
 

@@ -12,7 +12,7 @@ class LanguageController extends Controller
     public function change(Request $request)
 {
     $request->validate([
-        'locale' => 'required|in:en,fr,nl,es',
+        'locale' => 'required|in:en,fr,nl,es,ar',
     ]);
 
     $locale = $request->locale;
@@ -24,7 +24,7 @@ class LanguageController extends Controller
 
         // Replace the old locale with the new one in the path
         $segments = explode('/', ltrim($previousPath, '/'));
-        if (in_array($segments[0], ['en', 'fr', 'nl', 'es'])) {
+        if (in_array($segments[0], ['en', 'fr', 'nl', 'es', 'ar'])) {
             $segments[0] = $locale;
         } else {
             array_unshift($segments, $locale);

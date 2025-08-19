@@ -225,7 +225,7 @@ Route::middleware(['auth', 'role:admin'])->group(function () {
 // Locale-prefixed routes (for customer and vendor)
 Route::group([
     'prefix' => '{locale}',
-    'where' => ['locale' => '(en|fr|nl|es)'],
+    'where' => ['locale' => '(en|fr|nl|es|ar)'],
     'middleware' => 'set_locale'
 ], function () {
     Route::get('/', function () {
@@ -509,7 +509,7 @@ Route::group([
 
 // GreenMotion Single Car Page (moved outside locale group to ensure correct ID parsing)
 Route::get('/{locale}/green-motion-car/{id}', [GreenMotionController::class, 'showGreenMotionCar'])
-    ->where('locale', '(en|fr|nl|es)')
+    ->where('locale', '(en|fr|nl|es|ar)')
     ->name('green-motion-car.show');
 
     Route::get('/green-motion-vehicles', [GreenMotionController::class, 'getGreenMotionVehicles'])->name('green-motion-vehicles');

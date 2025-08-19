@@ -14,7 +14,7 @@ class SetLocale
     {
         $locale = $request->route('locale');
 
-        if (!in_array($locale, ['en', 'fr', 'nl', 'es'])) {
+        if (!in_array($locale, ['en', 'fr', 'nl', 'es', 'ar'])) {
             abort(404);
         }
 

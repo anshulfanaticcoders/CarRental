@@ -21,7 +21,7 @@ import loaderVariant from '../../../../assets/loader-variant.svg';
 
 const toast = useToast();
 
-const locales = ['en', 'fr', 'nl', 'es'];
+const locales = ['en', 'fr', 'nl', 'es', 'ar'];
 const activeLocale = ref('en');
 
 const initialTranslations = {};

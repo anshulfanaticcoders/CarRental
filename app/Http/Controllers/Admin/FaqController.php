@@ -30,14 +30,14 @@ class FaqController extends Controller
         return Inertia::render('AdminDashboardPages/Settings/Faq/Index', [
             'faqs' => $faqs,
             'search' => $search,
-            'available_locales' => ['en', 'fr', 'nl', 'es'], // Or from config
+            'available_locales' => ['en', 'fr', 'nl', 'es', 'ar'], // Or from config
             'current_locale' => App::getLocale(),
         ]);
     }
 
     public function store(Request $request)
     {
-        $available_locales = ['en', 'fr', 'nl', 'es']; // Or from config
+        $available_locales = ['en', 'fr', 'nl', 'es', 'ar']; // Or from config
         $validationRules = [
             'translations' => 'required|array',
         ];
@@ -64,7 +64,7 @@ class FaqController extends Controller
 
     public function update(Request $request, Faq $faq)
     {
-        $available_locales = ['en', 'fr', 'nl', 'es']; // Or from config
+        $available_locales = ['en', 'fr', 'nl', 'es', 'ar']; // Or from config
         $validationRules = [
             'translations' => 'required|array',
         ];
@@ -102,7 +102,7 @@ class FaqController extends Controller
     public function getFaqs(Request $request)
     {
         // If a locale is passed in the request, set it for this request's lifecycle
-        if ($request->has('locale') && in_array($request->input('locale'), ['en', 'fr', 'nl', 'es'])) {
+        if ($request->has('locale') && in_array($request->input('locale'), ['en', 'fr', 'nl', 'es', 'ar'])) {
             App::setLocale($request->input('locale'));
         }
         // Eager load translations. The accessors in Faq model will handle the rest.
