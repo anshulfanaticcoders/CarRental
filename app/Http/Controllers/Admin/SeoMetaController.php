@@ -55,7 +55,7 @@ class SeoMetaController extends Controller
 
         $seoMeta = SeoMeta::create($validatedData);
 
-        foreach (['en', 'fr', 'nl'] as $locale) {
+        foreach (['en', 'fr', 'nl', 'es'] as $locale) {
             if (isset($translationsData[$locale])) {
                 $translationInput = $translationsData[$locale];
                 // Validate translation fields
@@ -106,7 +106,7 @@ class SeoMetaController extends Controller
 
         // Prepare translations for the form
         $translations = [];
-        foreach (['en', 'fr', 'nl'] as $locale) {
+        foreach (['en', 'fr', 'nl', 'es'] as $locale) {
             $translation = $seoMeta->translations->firstWhere('locale', $locale);
             $translations[$locale] = [
                 'seo_title' => $translation->seo_title ?? null,
@@ -146,7 +146,7 @@ class SeoMetaController extends Controller
 
         // Handle translations
         $translationsData = $request->input('translations', []);
-        foreach (['en', 'fr', 'nl'] as $locale) {
+        foreach (['en', 'fr', 'nl', 'es'] as $locale) {
             if (isset($translationsData[$locale])) {
                 $translationInput = $translationsData[$locale];
                 // Validate translation fields

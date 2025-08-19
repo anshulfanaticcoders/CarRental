@@ -191,7 +191,8 @@ const isAdmin = computed(() => page.props.auth?.user?.role === 'admin');
 const availableLocales = {
   en: 'En',
   fr: 'Fr',
-  nl: 'Nl'
+  nl: 'Nl',
+  es: 'Es'
 };
 
 const changeLanguage = (newLocale) => {

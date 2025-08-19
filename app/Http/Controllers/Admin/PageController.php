@@ -43,7 +43,10 @@ class PageController extends Controller
      */
     public function create()
     {
-        return Inertia::render('AdminDashboardPages/Pages/Create');
+        return Inertia::render('AdminDashboardPages/Pages/Create', [
+            'available_locales' => ['en', 'fr', 'nl', 'es'],
+            'current_locale' => App::getLocale(),
+        ]);
     }
 
     /**
@@ -51,7 +54,7 @@ class PageController extends Controller
      */
     public function store(Request $request)
     {
-        $available_locales = ['en', 'fr', 'nl'];
+        $available_locales = ['en', 'fr', 'nl', 'es'];
         $validationRules = [
             'translations' => 'required|array',
             // SEO Meta Validation Rules
@@ -108,7 +111,7 @@ class PageController extends Controller
 
             // Handle SEO translations
             $seoTranslationsData = $request->input('seo_translations', []);
-            $available_locales = ['en', 'fr', 'nl']; // Or from config
+            $available_locales = ['en', 'fr', 'nl', 'es']; // Or from config
             foreach ($available_locales as $l) {
                 if (isset($seoTranslationsData[$l])) {
                     $translationInput = $seoTranslationsData[$l];
@@ -154,7 +157,7 @@ class PageController extends Controller
     {
         $translations = $page->translations->keyBy('locale');
         $locale = app()->getLocale();
-        $allLocales = ['en', 'fr', 'nl']; // Or from config
+        $allLocales = ['en', 'fr', 'nl', 'es']; // Or from config
         $seoUrlSlug = 'page/' . $page->slug; // SEO url_slug IS prefixed
         
         $seoMeta = SeoMeta::with('translations') // Eager load translations
@@ -193,7 +196,7 @@ class PageController extends Controller
      */
     public function update(Request $request, Page $page)
     {
-        $available_locales = ['en', 'fr', 'nl'];
+        $available_locales = ['en', 'fr', 'nl', 'es'];
         $validationRules = [
             'translations' => 'required|array',
             // SEO Meta Validation Rules
@@ -247,7 +250,7 @@ class PageController extends Controller
 
             // Handle SEO translations
             $seoTranslationsData = $request->input('seo_translations', []);
-            $available_locales = ['en', 'fr', 'nl']; // Or from config
+            $available_locales = ['en', 'fr', 'nl', 'es']; // Or from config
             foreach ($available_locales as $l) {
                 if (isset($seoTranslationsData[$l])) {
                     $translationInput = $seoTranslationsData[$l];

@@ -28,7 +28,7 @@ const props = defineProps({
 });
 
 const toast = useToast();
-const locales = props.available_locales || ['en', 'fr', 'nl'];
+const locales = props.available_locales || ['en', 'fr', 'nl', 'es'];
 const activeLocale = ref(locales[0]);
 
 // Initialize form.translations for page content

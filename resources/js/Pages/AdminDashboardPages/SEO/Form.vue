@@ -30,7 +30,7 @@ const props = defineProps({
 const isEditing = computed(() => !!props.seoMeta);
 const formTitle = computed(() => isEditing.value ? 'Edit SEO Meta' : 'Create New SEO Meta');
 const currentLocaleTab = ref('en');
-const locales = ['en', 'fr', 'nl'];
+const locales = ['en', 'fr', 'nl', 'es'];
 
 // Initialize translations with fallback to empty strings
 const initialTranslations = {};

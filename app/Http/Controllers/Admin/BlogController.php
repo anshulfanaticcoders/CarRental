@@ -48,14 +48,14 @@ class BlogController extends Controller
     public function create()
     {
         return Inertia::render('AdminDashboardPages/Blogs/Create', [
-            'available_locales' => ['en', 'fr', 'nl'], // Or from config
+            'available_locales' => ['en', 'fr', 'nl', 'es'], // Or from config
             'current_locale' => App::getLocale(),
         ]);
     }
 
     public function store(Request $request)
     {
-        $available_locales = ['en', 'fr', 'nl']; // Or from config
+        $available_locales = ['en', 'fr', 'nl', 'es']; // Or from config
         $validationRules = [
             'image' => 'nullable|image|mimes:jpg,jpeg,png|max:2048',
             'is_published' => 'sometimes|boolean',
@@ -173,7 +173,7 @@ class BlogController extends Controller
     public function edit(Blog $blog)
     {
         $translations = $blog->translations->keyBy('locale');
-        $allLocales = ['en', 'fr', 'nl']; // Or from config
+        $allLocales = ['en', 'fr', 'nl', 'es']; // Or from config
         
         $blogData = [
             'id' => $blog->id,
@@ -222,7 +222,7 @@ class BlogController extends Controller
 
     public function update(Request $request, Blog $blog)
     {
-        $available_locales = ['en', 'fr', 'nl']; // Or from config
+        $available_locales = ['en', 'fr', 'nl', 'es']; // Or from config
         $validationRules = [
             'image' => 'nullable|image|mimes:jpg,jpeg,png|max:2048',
             'is_published' => 'sometimes|boolean',
@@ -534,7 +534,7 @@ class BlogController extends Controller
     {
         // If a locale is passed in the request, set it for this request's lifecycle
         // This helps the Blog model's accessors pick up the correct language
-        if ($request->has('locale') && in_array($request->input('locale'), ['en', 'fr', 'nl'])) { // Validate locale
+        if ($request->has('locale') && in_array($request->input('locale'), ['en', 'fr', 'nl', 'es'])) { // Validate locale
             App::setLocale($request->input('locale'));
         }
 
