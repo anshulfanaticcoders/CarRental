@@ -13,6 +13,7 @@ import flagFr from '../../assets/flag-fr.svg';
 import flagNl from '../../assets/flag-nl.svg';
 import flagEs from '../../assets/flag-es.svg';
 import flagAr from '../../assets/flag-ar.svg';
+import loaderVariant from '../../assets/loader-variant.svg'; // Import loader for potential use
 
 // Get page properties
 const page = usePage();
@@ -20,6 +21,7 @@ const { url, props } = page;
 const showingNavigationDropdown = ref(false);
 const showingNotificationDropdown = ref(false);
 const mobileNotificationsOpen = ref(false);
+const animatedFlagUrl = ref(null); // New ref for animated flag URL
 
 // User data
 const user = ref(null);
@@ -202,68 +204,77 @@ const availableLocales = {
 };
 
 const changeLanguage = (newLocale) => {
-    const currentUrl = new URL(window.location.href);
-    const pathParts = currentUrl.pathname.split('/');
+    // Trigger flag animation
+    animatedFlagUrl.value = availableLocales[newLocale].flag;
+    
+    const animationDuration = 1500; // 1.5 seconds for animation and delay
 
-    // Handle page translations
-    if (pathParts.length > 2 && pathParts[2] === 'page') {
-        const currentSlug = pathParts[3];
-        const pages = page.props.pages;
-        const currentPage = Object.values(pages).find(p => {
-            return p.translations.some(t => t.slug === currentSlug);
-        });
+    setTimeout(() => {
+        animatedFlagUrl.value = null; // Hide flag after animation
+        
+        const currentUrl = new URL(window.location.href);
+        const pathParts = currentUrl.pathname.split('/');
 
-        if (currentPage) {
-            const newTranslation = currentPage.translations.find(t => t.locale === newLocale);
-            if (newTranslation) {
-                router.visit(route('pages.show', { locale: newLocale, slug: newTranslation.slug }));
-                return;
-            }
-        }
-    }
-
-    // Handle blog post translations
-    if (pathParts.length > 2 && pathParts[2] === 'blog' && page.props.blog) {
-        const blog = page.props.blog;
-        const newTranslation = blog.translations.find(t => t.locale === newLocale);
-        if (newTranslation && newTranslation.slug) {
-            router.visit(route('blog.show', { locale: newLocale, blog: newTranslation.slug }));
-            return;
-        }
-    }
-
-    // Handle contact page translations
-    if (page.props.contactPage) {
-        const seoMeta = page.props.seoMeta;
-        if (seoMeta && seoMeta.translations) {
-            const newTranslation = seoMeta.translations.find(t => t.locale === newLocale);
-            if (newTranslation && newTranslation.url_slug) {
-                if (newTranslation.url_slug === 'contact-us') {
-                    router.visit(route('contact-us', { locale: newLocale }));
-                } else {
-                    router.visit(route('contact.show', { locale: newLocale, slug: newTranslation.url_slug }));
-                }
-                return;
-            }
-        }
-    }
-
-    // Fallback for other pages or if translation not found
-    pathParts[1] = newLocale;
-    const newPath = pathParts.join('/');
-
-    router.visit(newPath + currentUrl.search, {
-        onSuccess: () => {
-            router.post(route('language.change'), {
-                locale: newLocale,
-                _method: 'POST'
-            }, {
-                onSuccess: () => {
-                    window.location.reload();
-                }
+        // Handle page translations
+        if (pathParts.length > 2 && pathParts[2] === 'page') {
+            const currentSlug = pathParts[3];
+            const pages = page.props.pages;
+            const currentPage = Object.values(pages).find(p => {
+                return p.translations.some(t => t.slug === currentSlug);
             });
+
+            if (currentPage) {
+                const newTranslation = currentPage.translations.find(t => t.locale === newLocale);
+                if (newTranslation) {
+                    router.visit(route('pages.show', { locale: newLocale, slug: newTranslation.slug }));
+                    return;
+                }
+            }
         }
-    });
+
+        // Handle blog post translations
+        if (pathParts.length > 2 && pathParts[2] === 'blog' && page.props.blog) {
+            const blog = page.props.blog;
+            const newTranslation = blog.translations.find(t => t.locale === newLocale);
+            if (newTranslation && newTranslation.slug) {
+                router.visit(route('blog.show', { locale: newLocale, blog: newTranslation.slug }));
+                return;
+            }
+        }
+
+        // Handle contact page translations
+        if (page.props.contactPage) {
+            const seoMeta = page.props.seoMeta;
+            if (seoMeta && seoMeta.translations) {
+                const newTranslation = seoMeta.translations.find(t => t.locale === newLocale);
+                if (newTranslation && newTranslation.url_slug) {
+                    if (newTranslation.url_slug === 'contact-us') {
+                        router.visit(route('contact-us', { locale: newLocale }));
+                    } else {
+                        router.visit(route('contact.show', { locale: newLocale, slug: newTranslation.url_slug }));
+                    }
+                    return;
+                }
+            }
+        }
+
+        // Fallback for other pages or if translation not found
+        pathParts[1] = newLocale;
+        const newPath = pathParts.join('/');
+
+        router.visit(newPath + currentUrl.search, {
+            onSuccess: () => {
+                router.post(route('language.change'), {
+                    locale: newLocale,
+                    _method: 'POST'
+                }, {
+                    onSuccess: () => {
+                        window.location.reload();
+                    }
+                });
+            }
+        });
+    }, animationDuration); // Delay navigation until animation is complete
 };
 
 // Function to toggle mobile navigation
@@ -634,6 +645,11 @@ watch(() => url.value, () => {
       </div>
     </div>
     
+    <!-- Animated Flag Overlay -->
+    <div v-if="animatedFlagUrl" class="fixed inset-0 z-[100] flex items-center justify-center bg-white bg-opacity-70">
+      <img :src="animatedFlagUrl" alt="Flag" class="animated-flag" />
+    </div>
+
     <!-- Full-screen notification component -->
     <div v-if="mobileNotificationsOpen" class="fixed top-0 left-0 w-full h-full bg-white z-50">
       <div class="flex justify-end p-4">
@@ -723,5 +739,30 @@ header {
 
 .ripple-effect {
   animation: ripple 1.5s infinite;
+}
+
+/* Flag animation styles */
+.animated-flag {
+  animation: zoom-fade 1.5s forwards; /* Set animation duration to 1.5 seconds */
+  width: 100px; /* Initial size */
+  height: 100px;
+  border-radius: 50%; /* Make it circular */
+  object-fit: cover;
+  box-shadow: 0 0 20px rgba(0, 0, 0, 0.3);
+}
+
+@keyframes zoom-fade {
+  0% {
+    transform: scale(0.5);
+    opacity: 0;
+  }
+  50% {
+    transform: scale(1.5);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(2);
+    opacity: 0;
+  }
 }
 </style>
