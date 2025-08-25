@@ -41,6 +41,7 @@ class SetLocale
             'customerbooking' => trans('customerbooking'),
             'createvehicle' => trans('createvehicle'),
             'contactus' => trans('contactus'),
+            'aboutus' => trans('aboutus'), // Added for About Us page translations
         ],
     ]);
 

@@ -42,7 +42,7 @@ class ContactUsPageController extends Controller
         $contactPage = ContactUsPage::first() ?? new ContactUsPage();
         $translations = $contactPage->translations->keyBy('locale');
         $locale = app()->getLocale();
-        $allLocales = ['en', 'fr', 'nl'];
+        $allLocales = ['en', 'fr', 'nl', 'es', 'ar'];
         
         $seoMeta = SeoMeta::with('translations')->where('url_slug', 'contact-us')->first();
 
@@ -142,7 +142,7 @@ class ContactUsPageController extends Controller
             );
 
             $seoTranslationsData = $request->input('seo_translations', []);
-            $available_locales = ['en', 'fr', 'nl'];
+            $available_locales = ['en', 'fr', 'nl', 'es', 'ar'];
             foreach ($available_locales as $locale) {
                 if (isset($seoTranslationsData[$locale])) {
                     $translationInput = $seoTranslationsData[$locale];

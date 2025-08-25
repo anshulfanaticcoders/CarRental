@@ -91,9 +91,31 @@ watch(() => form.translations.en?.title, (newEnTitle, oldEnTitle) => {
     }
 }, { deep: true });
 
+// Arabic to Latin transliteration map (simplified for common characters)
+const arabicToLatinMap = {
+    'أ': 'a', 'ا': 'a', 'إ': 'i', 'آ': 'aa', 'ب': 'b', 'ت': 't', 'ث': 'th', 'ج': 'j', 'ح': 'h', 'خ': 'kh',
+    'د': 'd', 'ذ': 'dh', 'ر': 'r', 'ز': 'z', 'س': 's', 'ش': 'sh', 'ص': 's', 'ض': 'd', 'ط': 't', 'ظ': 'z',
+    'ع': 'a', 'غ': 'gh', 'ف': 'f', 'ق': 'q', 'ك': 'k', 'ل': 'l', 'م': 'm', 'ن': 'n', 'ه': 'h', 'و': 'w',
+    'ي': 'y', 'ى': 'a', 'ة': 'h', 'ء': '', 'ؤ': 'u', 'ئ': 'i', ' ' : '-',
+    // Add more comprehensive mappings if needed
+};
+
+const arabicToLatin = (text) => {
+    let result = '';
+    for (let i = 0; i < text.length; i++) {
+        const char = text[i];
+        result += arabicToLatinMap[char] || char;
+    }
+    return result;
+};
+
 // Slugify function
-const slugify = (text) => {
-    return text
+const slugify = (text, locale) => {
+    let processedText = text;
+    if (locale === 'ar') {
+        processedText = arabicToLatin(text);
+    }
+    return processedText
         .toString()
         .normalize('NFD')
         .replace(/[\u0300-\u036f]/g, '')
@@ -107,7 +129,7 @@ const slugify = (text) => {
 // Watch for changes in the active locale's title and update the slug
 watch(() => form.translations[activeLocale.value]?.title, (newTitle) => {
     if (newTitle) {
-        form.translations[activeLocale.value].slug = slugify(newTitle);
+        form.translations[activeLocale.value].slug = slugify(newTitle, activeLocale.value);
     } else {
         form.translations[activeLocale.value].slug = '';
     }

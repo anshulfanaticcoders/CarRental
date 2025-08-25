@@ -1,6 +1,6 @@
 <template>
     <AboutUsPage
-        v-if="page.slug === 'about-us'"
+        v-if="page.slug === aboutUsTranslatedSlug"
         :page="page"
         :seoMeta="seoMeta"
         :locale="locale"
@@ -46,6 +46,7 @@ const props = defineProps({
     page: Object,
     seoMeta: Object,
     locale: String,
+    aboutUsTranslatedSlug: String, // New prop for dynamic About Us slug
 });
 
 const page_ = usePage();

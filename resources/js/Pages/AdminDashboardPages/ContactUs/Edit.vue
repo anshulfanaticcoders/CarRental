@@ -148,6 +148,26 @@ const submit = () => {
                     <textarea v-model="form.translations[locale].intro_text" class="w-full mt-1 p-2 border-2 shadow-sm sm:text-sm border-gray-300 rounded-md" rows="4"></textarea>
                     <p v-if="form.errors[`translations.${locale}.intro_text`]" class="text-red-500 text-xs italic">{{ form.errors[`translations.${locale}.intro_text`] }}</p>
                 </div>
+
+                <!-- Contact Points Section -->
+                <div class="mb-6">
+                    <h3 class="text-lg font-semibold mb-3">Contact Points</h3>
+                    <div v-for="(point, index) in form.translations[locale].contact_points" :key="index" class="flex items-end gap-4 mb-4 p-4 border rounded-md bg-gray-50">
+                        <div class="flex-grow">
+                            <label class="block text-gray-700 text-sm font-bold mb-2">Title</label>
+                            <Input v-model="point.title" type="text" class="w-full" :placeholder="`Contact Point ${index + 1} Title`" />
+                            <p v-if="form.errors[`translations.${locale}.contact_points.${index}.title`]" class="text-red-500 text-xs italic">{{ form.errors[`translations.${locale}.contact_points.${index}.title`] }}</p>
+                        </div>
+                        <div class="flex-grow">
+                            <label class="block text-gray-700 text-sm font-bold mb-2">Icon (SVG string or URL)</label>
+                            <Input v-model="form.contact_point_icons[index]" type="text" class="w-full" :placeholder="`Contact Point ${index + 1} Icon`" />
+                            <p v-if="form.errors[`contact_point_icons.${index}`]" class="text-red-500 text-xs italic">{{ form.errors[`contact_point_icons.${index}`] }}</p>
+                        </div>
+                        <Button type="button" @click="removeContactPoint(index)" variant="destructive">Remove</Button>
+                    </div>
+                    <Button type="button" @click="addContactPoint" class="mt-4">Add Contact Point</Button>
+                    <p v-if="form.errors[`translations.${locale}.contact_points`]" class="text-red-500 text-xs italic">{{ form.errors[`translations.${locale}.contact_points`] }}</p>
+                </div>
             </div>
         </template>
 

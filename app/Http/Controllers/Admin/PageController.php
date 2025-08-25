@@ -326,11 +326,24 @@ class PageController extends Controller
 
         $pages = Page::with('translations')->get()->keyBy('slug');
 
+        // Find the 'About Us' page based on its English translation title
+        $aboutUsPage = Page::whereHas('translations', function ($query) {
+            $query->where('locale', 'en')->where('title', 'About Us');
+        })->first();
+
+        $aboutUsTranslatedSlug = null;
+        if ($aboutUsPage) {
+            // Get the translated slug for the current locale
+            $aboutUsTranslation = $aboutUsPage->translations->firstWhere('locale', $locale);
+            $aboutUsTranslatedSlug = $aboutUsTranslation ? $aboutUsTranslation->slug : null;
+        }
+
         return Inertia::render('Frontend/Page', [
             'page' => $pageData,
             'seoMeta' => $seoMeta,
             'locale' => $locale,
             'pages' => $pages,
+            'aboutUsTranslatedSlug' => $aboutUsTranslatedSlug, // Pass the dynamic slug
         ]);
     }
 }

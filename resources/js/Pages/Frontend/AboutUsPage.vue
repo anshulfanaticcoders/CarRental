@@ -21,7 +21,7 @@
         <div class="container">
             <div class="hero-content">
                 <h1 class="hero-title">{{ page.title }}</h1>
-                <p class="hero-subtitle">Your trusted partner for seamless, affordable, and reliable car rental experiences across all your journeys</p>
+                <p class="hero-subtitle">{{ _t('aboutus', 'hero_subtitle') }}</p>
             </div>
         </div>
     </section>
@@ -41,54 +41,54 @@
             <!-- Excellence Section -->
             <section class="section mb-[3rem]">
                 <div class="section-header">
-                    <h2 class="section-title">Our Commitment to Excellence</h2>
-                    <p class="section-description">
-                        At Vrooem, we go beyond just renting out cars—we focus on delivering an <strong>exceptional customer experience</strong>. From booking to return, our dedicated team ensures every traveler has unique requirements met with <strong>flexible rental options</strong>.
-                    </p>
+                <h2 class="section-title">{{ _t('aboutus', 'commitment_to_excellence_title') }}</h2>
+                <p class="section-description">
+                    {{ _t('aboutus', 'commitment_to_excellence_description') }}
+                </p>
                 </div>
             </section>
 
             <!-- Why Choose Us Features -->
             <section class="section mb-[5rem]">
                 <div class="section-header">
-                    <h2 class="section-title">Why Choose Vrooem?</h2>
+                <h2 class="section-title">{{ _t('aboutus', 'why_choose_vrooem_title') }}</h2>
                 </div>
                 
                 <div class="features-grid">
                     <div class="feature-card fade-in-up">
                         <span class="feature-icon">🚙</span>
-                        <h3 class="feature-title">Diverse Fleet</h3>
-                        <p class="feature-description">Whether you need an economical compact car, comfortable sedan, spacious SUV, or luxury vehicle, we have the perfect ride for you. Our fleet is regularly serviced and maintained to ensure the highest safety standards.</p>
+                        <h3 class="feature-title">{{ _t('aboutus', 'diverse_fleet_title') }}</h3>
+                        <p class="feature-description">{{ _t('aboutus', 'diverse_fleet_description') }}</p>
                     </div>
 
                     <div class="feature-card fade-in-up">
                         <span class="feature-icon">💰</span>
-                        <h3 class="feature-title">Transparent Pricing</h3>
-                        <p class="feature-description">We believe in fair pricing with <strong>no hidden fees</strong>. Our rates are competitive, ensuring you get the best value for your money with complete transparency.</p>
+                        <h3 class="feature-title">{{ _t('aboutus', 'transparent_pricing_title') }}</h3>
+                        <p class="feature-description">{{ _t('aboutus', 'transparent_pricing_description') }}</p>
                     </div>
 
                     <div class="feature-card fade-in-up">
                         <span class="feature-icon">⏰</span>
-                        <h3 class="feature-title">Flexible Rental Options</h3>
-                        <p class="feature-description">Need a car for just a day? A week? A month? We offer flexible rental durations to accommodate your specific needs, whether short-term or long-term.</p>
+                        <h3 class="feature-title">{{ _t('aboutus', 'flexible_rental_options_title') }}</h3>
+                        <p class="feature-description">{{ _t('aboutus', 'flexible_rental_options_description') }}</p>
                     </div>
 
                     <div class="feature-card fade-in-up">
                         <span class="feature-icon">📍</span>
-                        <h3 class="feature-title">Convenient Locations</h3>
-                        <p class="feature-description">With multiple pickup and drop-off points, renting a car with Vrooem is convenient and accessible wherever you are.</p>
+                        <h3 class="feature-title">{{ _t('aboutus', 'convenient_locations_title') }}</h3>
+                        <p class="feature-description">{{ _t('aboutus', 'convenient_locations_description') }}</p>
                     </div>
 
                     <div class="feature-card fade-in-up">
                         <span class="feature-icon">🔧</span>
-                        <h3 class="feature-title">Well-Maintained Vehicles</h3>
-                        <p class="feature-description">Your safety and comfort are our priority. Each car in our fleet undergoes <strong>regular maintenance and inspections</strong> to ensure it meets top safety standards.</p>
+                        <h3 class="feature-title">{{ _t('aboutus', 'well_maintained_vehicles_title') }}</h3>
+                        <p class="feature-description">{{ _t('aboutus', 'well_maintained_vehicles_description') }}</p>
                     </div>
 
                     <div class="feature-card fade-in-up">
                         <span class="feature-icon">🤝</span>
-                        <h3 class="feature-title">Excellent Customer Support</h3>
-                        <p class="feature-description">Our team is always ready to assist you, whether you have questions about your booking or need help during your rental period.</p>
+                        <h3 class="feature-title">{{ _t('aboutus', 'excellent_customer_support_title') }}</h3>
+                        <p class="feature-description">{{ _t('aboutus', 'excellent_customer_support_description') }}</p>
                     </div>
                 </div>
             </section>
@@ -96,25 +96,25 @@
             <!-- Stats Section -->
             <section class="stats-section rounded-[20px]">
                 <div class="container">
-                    <h2 style="font-size: 2.5em;">Trusted by Thousands</h2>
-                    <p style="font-size: 1.2em; opacity: 0.9; margin-bottom: 40px;">Here's why customers choose Vrooem for their travel needs</p>
+                    <h2 style="font-size: 2.5em;">{{ _t('aboutus', 'trusted_by_thousands_title') }}</h2>
+                    <p style="font-size: 1.2em; opacity: 0.9; margin-bottom: 40px;">{{ _t('aboutus', 'trusted_by_thousands_description') }}</p>
                     
                     <div class="stats-grid">
                         <div class="stat-item">
-                            <span class="stat-number">50,000+</span>
-                            <span class="stat-label">Happy Customers</span>
+                            <span class="stat-number">{{ _t('aboutus', 'happy_customers_number') }}</span>
+                            <span class="stat-label">{{ _t('aboutus', 'happy_customers_label') }}</span>
                         </div>
                         <div class="stat-item">
-                            <span class="stat-number">500+</span>
-                            <span class="stat-label">Vehicles Available</span>
+                            <span class="stat-number">{{ _t('aboutus', 'vehicles_available_number') }}</span>
+                            <span class="stat-label">{{ _t('aboutus', 'vehicles_available_label') }}</span>
                         </div>
                         <div class="stat-item">
-                            <span class="stat-number">99.5%</span>
-                            <span class="stat-label">Customer Satisfaction</span>
+                            <span class="stat-number">{{ _t('aboutus', 'customer_satisfaction_number') }}</span>
+                            <span class="stat-label">{{ _t('aboutus', 'customer_satisfaction_label') }}</span>
                         </div>
                         <div class="stat-item">
-                            <span class="stat-number">24/7</span>
-                            <span class="stat-label">Customer Support</span>
+                            <span class="stat-number">{{ _t('aboutus', 'customer_support_number') }}</span>
+                            <span class="stat-label">{{ _t('aboutus', 'customer_support_label') }}</span>
                         </div>
                     </div>
                 </div>
@@ -123,17 +123,17 @@
             <!-- Hassle-Free Experience -->
             <section class="section mt-[4rem]">
                 <div class="section-header">
-                    <h2 class="section-title">A Hassle-Free Rental Experience</h2>
+                <h2 class="section-title">{{ _t('aboutus', 'hassle_free_experience_title') }}</h2>
                 </div>
                 
                 <div class="mission-grid">
                     <div class="mission-content fade-in-up">
-                        <h3 style="font-size: 1.8em; color: #2c3e50; margin-bottom: 20px;">Simple Online Booking</h3>
+                        <h3 style="font-size: 1.8em; color: #2c3e50; margin-bottom: 20px;">{{ _t('aboutus', 'simple_online_booking_title') }}</h3>
                         <p style="font-size: 1.1em; line-height: 1.8; margin-bottom: 20px;">
-                            We understand that renting a car should be as simple as possible. Our <strong>easy-to-use online booking system</strong> allows you to select your vehicle, choose your rental period, and confirm your reservation in just a few clicks.
+                            {{ _t('aboutus', 'simple_online_booking_description_1') }}
                         </p>
                         <p style="font-size: 1.1em; line-height: 1.8; color: #666;">
-                            Plus, our customer service team is always available to help with any inquiries or special requests. Whether you're exploring a new city, need a temporary vehicle while yours is in the shop, or require a business rental, <strong>Vrooem is here to provide a smooth and enjoyable ride</strong>.
+                            {{ _t('aboutus', 'simple_online_booking_description_2') }}
                         </p>
                     </div>
                     <div class="mission-image">
@@ -148,9 +148,9 @@
     <section class="cta-section">
         <div class="container">
             <div class="cta-content">
-                <h2 class="cta-title">Drive with Confidence</h2>
-                <p class="cta-description">At Vrooem, we don't just rent out cars—we help you create unforgettable journeys. With our commitment to quality, affordability, and customer satisfaction, we are the perfect travel companion for all your car rental needs.</p>
-                <a href="/" class="cta-button">Book Your Ride Today</a>
+                <h2 class="cta-title">{{ _t('aboutus', 'drive_with_confidence_title') }}</h2>
+                <p class="cta-description">{{ _t('aboutus', 'drive_with_confidence_description') }}</p>
+                <a href="/" class="cta-button">{{ _t('aboutus', 'book_your_ride_today_button') }}</a>
             </div>
         </div>
     </section>
