@@ -33,7 +33,17 @@ class GreenMotionBooking extends Model
         'remarks',
         'booking_status',
         'api_response',
+        'user_id', // Add user_id to fillable
+        'vehicle_location', // Add vehicle_location to fillable
     ];
+
+    /**
+     * Get the user that owns the GreenMotion booking.
+     */
+    public function user()
+    {
+        return $this->belongsTo(User::class);
+    }
 
     protected $casts = [
         'customer_details' => 'array',

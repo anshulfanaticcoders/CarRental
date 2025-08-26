@@ -96,6 +96,8 @@ const form = ref({
     quoteid: props.filters.quoteid || props.vehicle?.products?.[0]?.quoteid || 'dummy_quote_id',
     payment_type: 'POA',
     remarks: null,
+    user_id: props.auth.user?.id || null, // Add user_id to form
+    vehicle_location: props.location?.name || null, // Add vehicle_location to form
 });
 
 // Form validation
@@ -260,6 +262,8 @@ const bookingDataForStripe = computed(() => {
         payment_type: form.value.payment_type,
         remarks: form.value.remarks,
         extras: form.value.extras,
+        user_id: form.value.user_id, // Pass user_id
+        vehicle_location: form.value.vehicle_location, // Pass vehicle_location
         // Fields below are not directly validated by backend but might be useful for logging/storage
         pickup_location: props.location?.name || '',
         return_location: props.location?.name || '',

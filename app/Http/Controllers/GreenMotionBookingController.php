@@ -73,6 +73,8 @@ class GreenMotionBookingController extends Controller
             'customer.custimage' => 'nullable|url',
             'customer.dvlacheckcode' => 'nullable|string|max:50',
             'remarks' => 'nullable|string|max:1000',
+            'user_id' => 'nullable|exists:users,id', // Add user_id validation
+            'vehicle_location' => 'nullable|string|max:255', // Add vehicle_location validation
         ]);
 
         $customerDetails = $validatedData['customer'];
@@ -130,9 +132,11 @@ class GreenMotionBookingController extends Controller
 
             // Save booking to database
             $greenMotionBooking = GreenMotionBooking::create([
+                'user_id' => $validatedData['user_id'] ?? auth()->id(), // Use provided user_id or authenticated user's ID
                 'greenmotion_booking_ref' => $bookingReference,
                 'vehicle_id' => $validatedData['vehicle_id'],
                 'location_id' => $validatedData['location_id'],
+                'vehicle_location' => $validatedData['vehicle_location'] ?? null, // Save vehicle location
                 'start_date' => $validatedData['start_date'],
                 'start_time' => $validatedData['start_time'],
                 'end_date' => $validatedData['end_date'],
