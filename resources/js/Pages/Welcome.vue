@@ -11,6 +11,7 @@ import carImage from "../../assets/carImagebgrmoved.jpeg";
 import AuthenticatedHeaderLayout from "@/Layouts/AuthenticatedHeaderLayout.vue";
 import HowItWorks from "@/Components/ReusableComponents/HowItWorks.vue";
 import SearchBar from "@/Components/SearchBar.vue";
+import GreenMotionSearchbar from "@/Components/GreenMotionSearchBar.vue"; // Import the new component
 import goIcon from "../../assets/goIcon.svg";
 import Autoplay from 'embla-carousel-autoplay';
 import calendarIcon from '../../assets/CalendarBlank.svg';
@@ -67,6 +68,8 @@ import {
 import { computed, onBeforeUnmount, onMounted, ref, defineAsyncComponent } from "vue";
 import Card from "@/Components/ui/card/Card.vue";
 import CardContent from "@/Components/ui/card/CardContent.vue";
+
+const selectedSearchBar = ref('vrooem'); // 'vrooem' or 'greenmotion'
 
 const Testimonials = defineAsyncComponent(() => import('@/Components/Testimonials.vue'));
 const Faq = defineAsyncComponent(() => import('@/Components/Faq.vue'));
@@ -235,19 +238,32 @@ const updateCategorySearchUrl = (category) => {
     <AuthenticatedHeaderLayout />
 
     <main class="overflow-x-hidden">
-        <section class="hero_section max-[768px]:bg-customPrimaryColor">
+        <section class="hero_section max-[768px]:bg-customPrimaryColor relative">
             <div class="wrapper flex justify-between w-full
             max-[768px]:flex-col">
                 <div class="column bg-customPrimaryColor h-[38rem] w-full text-white flex flex-col items-end justify-center
                      max-[768px]:h-auto max-[768px]:px-[1.5rem] max-[768px]:py-[1.5rem]">
                     <div class="pl-[10%] max-[768px]:pl-0">
                         <h1>{{ _p('tagline') }}</h1>
-                        <div class="h-16 mt-3 max-[768px]:h-20">
+                        <div class="h-16 mt-3 max-[768px]:h-20 flex">
                             <!-- Typewriter text container -->
                             <p class="text-[1.25rem]  max-[768px]:text-[1rem] flex items-center">
                                 <span class="typewriter-text">{{ displayedText }}</span>
                                 <span class="cursor-blink ml-1"></span>
                             </p>
+                        </div>
+                        <div class="mt-2 flex max-[768px]:flex-col max-[768px]:gap-0 gap-5 items-start rounded-lg bg-customPrimaryColor-dark bg-opacity-70">
+                            <p class="text-white text-lg mb-4 font-semibold max-[768px]:text-center max-[768px]:text-[1rem]">Choose your preferred rental provider :</p>
+                            <div class="flex gap-8 max-[768px]:justify-center">
+                                <label class="inline-flex items-center cursor-pointer">
+                                    <input type="radio" class="form-radio h-5 w-5 max-[768px]:h-4 max-[768px]:w-4 text-customPrimaryColor-foreground border-gray-300 focus:ring-customPrimaryColor-foreground" name="search_bar_type" value="vrooem" v-model="selectedSearchBar">
+                                    <span class="ml-3 text-lg font-medium max-[768px]:text-[0.875rem] text-white">Vrooem</span>
+                                </label>
+                                <label class="inline-flex items-center cursor-pointer">
+                                    <input type="radio" class="form-radio h-5 w-5 max-[768px]:h-4 max-[768px]:w-4 text-customPrimaryColor-foreground border-gray-300 focus:ring-customPrimaryColor-foreground" name="search_bar_type" value="greenmotion" v-model="selectedSearchBar">
+                                    <span class="ml-3 text-lg font-medium max-[768px]:text-[0.875rem] text-white">GreenMotion</span>
+                                </label>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -262,8 +278,9 @@ const updateCategorySearchUrl = (category) => {
 
 
         <section
-            class="mt-[-14rem] mb-[12rem] max-[768px]:mb-[0] max-[768px]:mt-[-1rem] max-[768px]:pt-[2rem] max-[768px]:bg-customPrimaryColor">
-            <SearchBar />
+            class="mt-[-14rem] mb-[12rem] max-[768px]:mb-[0] max-[768px]:mt-[-1rem] max-[768px]:pt-[2rem] max-[768px]:bg-customPrimaryColor relative z-10">
+            <SearchBar v-if="selectedSearchBar === 'vrooem'" />
+            <GreenMotionSearchbar v-else-if="selectedSearchBar === 'greenmotion'" />
         </section>
 
         <section

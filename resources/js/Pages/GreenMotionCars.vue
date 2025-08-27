@@ -331,12 +331,12 @@ const toggleFavourite = async (vehicle) => {
 
 const searchForm = ref({
     location_id: props.filters.location_id || null,
-    location_name: '',
+    location_name: props.filters.location_name || '', // Initialize with prop if available
     start_date: props.filters.start_date || '', // Removed static prefill
     start_time: props.filters.start_time || '', // Removed static prefill
     end_date: props.filters.end_date || '',   // Removed static prefill
     end_time: props.filters.end_time || '',     // Removed static prefill
-    age: props.filters.age || null, // Removed static prefill, set to null
+    age: props.filters.age || 35, // Prefill with 35 if not in filters
     rentalCode: props.filters.rentalCode || '1', // Prefill with '1'
 });
 
@@ -431,7 +431,8 @@ watch(() => searchForm.value.location_name, (newValue, oldValue) => {
 // On initial load, if location_id is present, fetch its name to pre-fill the input
 onMounted(async () => {
     initMap();
-    if (props.filters.location_id) {
+    // Only fetch location name if location_id is present but location_name is not yet set
+    if (props.filters.location_id && !searchForm.value.location_name) {
         try {
             const response = await axios.get(route('api.greenmotion.locations', { locale: props.locale }), {
                 params: {
@@ -440,9 +441,14 @@ onMounted(async () => {
             });
             if (response.data && response.data.name) {
                 searchForm.value.location_name = response.data.name;
+            } else {
+                console.warn('onMounted: API response did not contain a name for location_id:', props.filters.location_id);
             }
         } catch (error) {
             console.error("Error fetching initial location name:", error);
+            // Optionally, clear location_id if fetching name failed to prevent further issues
+            searchForm.value.location_id = null;
+            searchForm.value.location_name = '';
         }
     }
 });
@@ -490,7 +496,7 @@ onMounted(async () => {
                 <input type="hidden" v-model="searchForm.location_id" />
                 <ul
                     v-if="showSuggestions && autocompleteSuggestions.length"
-                    class="absolute z-10 w-full bg-white border border-gray-300 rounded-md shadow-lg max-h-60 overflow-auto mt-1"
+                    class="absolute z-50 w-full bg-white border border-gray-300 rounded-md shadow-lg max-h-60 overflow-auto mt-1"
                     @mousedown="handleSuggestionsMousedown"
                     @mouseup="handleSuggestionsMouseup"
                 >
@@ -521,11 +527,11 @@ onMounted(async () => {
                 <input type="time" id="end_time" v-model="searchForm.end_time" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50">
            
             </div>
-            <div>
+            <div class="hidden">
                 <label for="age" class="block text-sm font-medium text-gray-700">Age</label>
                 <input type="number" id="age" v-model="searchForm.age" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50">
             </div>
-            <div>
+            <div class="hidden">
                 <label for="rentalCode" class="block text-sm font-medium text-gray-700">Rental Code (Optional)</label>
                 <input type="text" id="rentalCode" v-model="searchForm.rentalCode" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50">
             </div>
