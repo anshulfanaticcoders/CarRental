@@ -1,0 +1,2010 @@
+[
+    {
+        "locationID": "53981",
+        "name": "Tirana Airport"
+    },
+    {
+        "locationID": "56725",
+        "name": "Durres Port"
+    },
+    {
+        "locationID": "57376",
+        "name": "Saranda Port"
+    },
+    {
+        "locationID": "57374",
+        "name": "Shkodra Downtown"
+    },
+    {
+        "locationID": "56722",
+        "name": "Tirana Downtown"
+    },
+    {
+        "locationID": "61216",
+        "name": "St John's International Airport"
+    },
+    {
+        "locationID": "61213",
+        "name": "Belmont Complex"
+    },
+    {
+        "locationID": "61312",
+        "name": "Jujuy Airport"
+    },
+    {
+        "locationID": "61409",
+        "name": "Aeropuerto Internacional General Martin Miguel de Guemes"
+    },
+    {
+        "locationID": "61313",
+        "name": "Salta Center Office"
+    },
+    {
+        "locationID": "61348",
+        "name": "Yerevan Airport"
+    },
+    {
+        "locationID": "61436",
+        "name": "Darwin Airport"
+    },
+    {
+        "locationID": "60091",
+        "name": "Sydney Airport"
+    },
+    {
+        "locationID": "60637",
+        "name": "Ballarat Downtown"
+    },
+    {
+        "locationID": "60707",
+        "name": "Coogee Beach"
+    },
+    {
+        "locationID": "61433",
+        "name": "Sydney CBD Downtown"
+    },
+    {
+        "locationID": "61435",
+        "name": "Sydney Marrickville Downtown"
+    },
+    {
+        "locationID": "58366",
+        "name": "Vienna International Airport"
+    },
+    {
+        "locationID": "60599",
+        "name": "Vienna Central Train Station"
+    },
+    {
+        "locationID": "61672",
+        "name": "Vienna Downtown"
+    },
+    {
+        "locationID": "61346",
+        "name": "Baku International Airport"
+    },
+    {
+        "locationID": "61345",
+        "name": "Baku Downtown"
+    },
+    {
+        "locationID": "61024",
+        "name": "Banja Luka Airport"
+    },
+    {
+        "locationID": "244",
+        "name": "Sarajevo Airport"
+    },
+    {
+        "locationID": "284",
+        "name": "Tuzla Airport"
+    },
+    {
+        "locationID": "61026",
+        "name": "Banja Luka Downtown"
+    },
+    {
+        "locationID": "243",
+        "name": "Sarajevo Downtown"
+    },
+    {
+        "locationID": "285",
+        "name": "Tuzla Downtown"
+    },
+    {
+        "locationID": "58848",
+        "name": "Sofia Airport"
+    },
+    {
+        "locationID": "58897",
+        "name": "Sofia Airport Terminal 2"
+    },
+    {
+        "locationID": "58847",
+        "name": "Sofia Downtown"
+    },
+    {
+        "locationID": "269",
+        "name": "Toronto Airport"
+    },
+    {
+        "locationID": "60633",
+        "name": "Mississauga Downtown"
+    },
+    {
+        "locationID": "61668",
+        "name": "North York Downtown"
+    },
+    {
+        "locationID": "61647",
+        "name": "Armenia Airport"
+    },
+    {
+        "locationID": "61595",
+        "name": "Barranquilla Airport"
+    },
+    {
+        "locationID": "61598",
+        "name": "Bogota Airport"
+    },
+    {
+        "locationID": "61630",
+        "name": "Cali Airport"
+    },
+    {
+        "locationID": "61597",
+        "name": "Cartagena Airport"
+    },
+    {
+        "locationID": "61600",
+        "name": "Neiva Airport"
+    },
+    {
+        "locationID": "61599",
+        "name": "Pereira Airport"
+    },
+    {
+        "locationID": "61594",
+        "name": "Rionegro Airport"
+    },
+    {
+        "locationID": "61596",
+        "name": "Santa Marta Airport"
+    },
+    {
+        "locationID": "61601",
+        "name": "Bucaramanga Downtown"
+    },
+    {
+        "locationID": "61593",
+        "name": "Medellin Downtown"
+    },
+    {
+        "locationID": "61411",
+        "name": "Liberia Airport"
+    },
+    {
+        "locationID": "61410",
+        "name": "San Jose Airport"
+    },
+    {
+        "locationID": "61412",
+        "name": "San Jose downtown"
+    },
+    {
+        "locationID": "61324",
+        "name": "Felix Houphouet Boigny International Airport"
+    },
+    {
+        "locationID": "61327",
+        "name": "Abidjan Downtown"
+    },
+    {
+        "locationID": "246",
+        "name": "Dubrovnik Airport"
+    },
+    {
+        "locationID": "297",
+        "name": "Split Airport"
+    },
+    {
+        "locationID": "298",
+        "name": "Zadar Airport"
+    },
+    {
+        "locationID": "248",
+        "name": "Zagreb Airport"
+    },
+    {
+        "locationID": "61234",
+        "name": "ACI Marina Dubrovnik"
+    },
+    {
+        "locationID": "61237",
+        "name": "ACI Marina Korcula"
+    },
+    {
+        "locationID": "61236",
+        "name": "ACI Marina Slano"
+    },
+    {
+        "locationID": "245",
+        "name": "Dubrovnik Downtown"
+    },
+    {
+        "locationID": "295",
+        "name": "Samobor Downtown"
+    },
+    {
+        "locationID": "312",
+        "name": "Split Downtown"
+    },
+    {
+        "locationID": "247",
+        "name": "Zagreb Downtown"
+    },
+    {
+        "locationID": "57804",
+        "name": "Zagreb Jankomir"
+    },
+    {
+        "locationID": "61209",
+        "name": "Cura\u00e7ao International Airport"
+    },
+    {
+        "locationID": "94",
+        "name": "Larnaca Airport"
+    },
+    {
+        "locationID": "93",
+        "name": "Paphos Airport"
+    },
+    {
+        "locationID": "61335",
+        "name": "Ayia Napa Downtown"
+    },
+    {
+        "locationID": "60775",
+        "name": "Larnaca Downtown"
+    },
+    {
+        "locationID": "60776",
+        "name": "Limassol Downtown"
+    },
+    {
+        "locationID": "338",
+        "name": "Prague Airport"
+    },
+    {
+        "locationID": "365",
+        "name": "Prague Bus Station Florenc"
+    },
+    {
+        "locationID": "61694",
+        "name": "Hillerod Downtown"
+    },
+    {
+        "locationID": "61644",
+        "name": "Las Americas International Airport"
+    },
+    {
+        "locationID": "346",
+        "name": "Punta Cana International Airport"
+    },
+    {
+        "locationID": "61537",
+        "name": "Cairo International Airport"
+    },
+    {
+        "locationID": "61540",
+        "name": "Hurghada Airport"
+    },
+    {
+        "locationID": "61542",
+        "name": "Luxor International Airport"
+    },
+    {
+        "locationID": "61543",
+        "name": "Marsa Alam International Airport"
+    },
+    {
+        "locationID": "61673",
+        "name": "Sphinx International Airport"
+    },
+    {
+        "locationID": "61539",
+        "name": "Borg Al Arab"
+    },
+    {
+        "locationID": "61538",
+        "name": "Cairo Heliopolis"
+    },
+    {
+        "locationID": "61541",
+        "name": "Hurghada Downtown"
+    },
+    {
+        "locationID": "58189",
+        "name": "Tallinn Airport"
+    },
+    {
+        "locationID": "58190",
+        "name": "Tallinn Bus Station"
+    },
+    {
+        "locationID": "58192",
+        "name": "Tallinn Downtown"
+    },
+    {
+        "locationID": "58191",
+        "name": "Tallinn Sea Port"
+    },
+    {
+        "locationID": "58203",
+        "name": "Tallinn Train Station"
+    },
+    {
+        "locationID": "61632",
+        "name": "Addis Ababa Bole International Airport"
+    },
+    {
+        "locationID": "321",
+        "name": "Ivalo Airport"
+    },
+    {
+        "locationID": "330",
+        "name": "Kittila Airport"
+    },
+    {
+        "locationID": "60750",
+        "name": "Oulu Airport"
+    },
+    {
+        "locationID": "272",
+        "name": "Rovaniemi Airport"
+    },
+    {
+        "locationID": "270",
+        "name": "Tampere Airport"
+    },
+    {
+        "locationID": "267",
+        "name": "Helsinki Airport - Vantaa"
+    },
+    {
+        "locationID": "60771",
+        "name": "Helsinki Downtown - Hotel Valo"
+    },
+    {
+        "locationID": "60751",
+        "name": "Oulu Railway Station"
+    },
+    {
+        "locationID": "276",
+        "name": "Rovaniemi Railway Station"
+    },
+    {
+        "locationID": "61181",
+        "name": "Batumi International Airport"
+    },
+    {
+        "locationID": "61180",
+        "name": "Kutaisi International Airport"
+    },
+    {
+        "locationID": "61178",
+        "name": "Tbilisi International Airport"
+    },
+    {
+        "locationID": "61179",
+        "name": "Tbilisi Downtown"
+    },
+    {
+        "locationID": "61701",
+        "name": "Dusseldorf Airport"
+    },
+    {
+        "locationID": "61627",
+        "name": "Hamburg Airport"
+    },
+    {
+        "locationID": "143",
+        "name": "Athens International Airport"
+    },
+    {
+        "locationID": "147",
+        "name": "Corfu International Airport"
+    },
+    {
+        "locationID": "173",
+        "name": "Crete - Chania Airport"
+    },
+    {
+        "locationID": "171",
+        "name": "Crete - Heraklion Airport"
+    },
+    {
+        "locationID": "375",
+        "name": "Kalamata Airport"
+    },
+    {
+        "locationID": "313",
+        "name": "Kefalonia - Airport"
+    },
+    {
+        "locationID": "307",
+        "name": "Kos Airport"
+    },
+    {
+        "locationID": "306",
+        "name": "Mykonos Airport"
+    },
+    {
+        "locationID": "61714",
+        "name": "Naxos Airport"
+    },
+    {
+        "locationID": "61125",
+        "name": "Paros Airport"
+    },
+    {
+        "locationID": "149",
+        "name": "Preveza Aktion Lefkada Airport"
+    },
+    {
+        "locationID": "250",
+        "name": "Rhodes Airport"
+    },
+    {
+        "locationID": "332",
+        "name": "Samos Airport"
+    },
+    {
+        "locationID": "61577",
+        "name": "Santorini Airport"
+    },
+    {
+        "locationID": "381",
+        "name": "Skiathos Airport"
+    },
+    {
+        "locationID": "144",
+        "name": "Thessaloniki Airport"
+    },
+    {
+        "locationID": "384",
+        "name": "Volos Airport"
+    },
+    {
+        "locationID": "161",
+        "name": "Zakynthos Airport"
+    },
+    {
+        "locationID": "56720",
+        "name": "Athens 114 Leoforos Varis Koropiou"
+    },
+    {
+        "locationID": "54748",
+        "name": "Athens Downtown"
+    },
+    {
+        "locationID": "186",
+        "name": "Athens Koropi"
+    },
+    {
+        "locationID": "54749",
+        "name": "Athens Syngrou Avenue"
+    },
+    {
+        "locationID": "146",
+        "name": "Corfu Downtown"
+    },
+    {
+        "locationID": "206",
+        "name": "Corfu Port"
+    },
+    {
+        "locationID": "303",
+        "name": "Crete - Agios Nikolaos"
+    },
+    {
+        "locationID": "304",
+        "name": "Crete - Heraklion Downtown"
+    },
+    {
+        "locationID": "305",
+        "name": "Crete - Heraklion Port"
+    },
+    {
+        "locationID": "172",
+        "name": "Crete - Rethymno Adelianos Kampos"
+    },
+    {
+        "locationID": "240",
+        "name": "Igoumenitsa Downtown"
+    },
+    {
+        "locationID": "153",
+        "name": "Igoumenitsa Port"
+    },
+    {
+        "locationID": "376",
+        "name": "Kalamata Downtown"
+    },
+    {
+        "locationID": "377",
+        "name": "Kalamata Port"
+    },
+    {
+        "locationID": "315",
+        "name": "Kefalonia - Argostoli Port - Downtown"
+    },
+    {
+        "locationID": "314",
+        "name": "Kefalonia - Lassi Downtown"
+    },
+    {
+        "locationID": "319",
+        "name": "Kefalonia - Lixouri Port"
+    },
+    {
+        "locationID": "320",
+        "name": "Kefalonia - Pessada Port"
+    },
+    {
+        "locationID": "316",
+        "name": "Kefalonia - Poros Port"
+    },
+    {
+        "locationID": "317",
+        "name": "Kefalonia - Sami Port"
+    },
+    {
+        "locationID": "151",
+        "name": "Lefkada Agios Nikitas"
+    },
+    {
+        "locationID": "150",
+        "name": "Lefkada Downtown"
+    },
+    {
+        "locationID": "152",
+        "name": "Lefkada Nidri"
+    },
+    {
+        "locationID": "239",
+        "name": "Lefkada Vasilliki Port"
+    },
+    {
+        "locationID": "331",
+        "name": "Mykonos Old Port"
+    },
+    {
+        "locationID": "61715",
+        "name": "Naxos Port"
+    },
+    {
+        "locationID": "61431",
+        "name": "Paros Port"
+    },
+    {
+        "locationID": "217",
+        "name": "Preveza Aktion Marinas (Aktio, Cleopatra, Ionian)"
+    },
+    {
+        "locationID": "252",
+        "name": "Rhodes Downtown"
+    },
+    {
+        "locationID": "253",
+        "name": "Rhodes Faliraki"
+    },
+    {
+        "locationID": "254",
+        "name": "Rhodes Ialysos"
+    },
+    {
+        "locationID": "257",
+        "name": "Rhodes Lindos"
+    },
+    {
+        "locationID": "258",
+        "name": "Rhodes Port"
+    },
+    {
+        "locationID": "333",
+        "name": "Samos Pythagorion"
+    },
+    {
+        "locationID": "334",
+        "name": "Samos Pythagorion Port"
+    },
+    {
+        "locationID": "336",
+        "name": "Samos Vathy Port"
+    },
+    {
+        "locationID": "61576",
+        "name": "Santorini Firostefani"
+    },
+    {
+        "locationID": "61575",
+        "name": "Santorini New Port"
+    },
+    {
+        "locationID": "382",
+        "name": "Skiathos Downtown"
+    },
+    {
+        "locationID": "391",
+        "name": "Skiathos Port"
+    },
+    {
+        "locationID": "383",
+        "name": "Skopelos Downtown"
+    },
+    {
+        "locationID": "392",
+        "name": "Skopelos Port"
+    },
+    {
+        "locationID": "385",
+        "name": "Volos Downtown"
+    },
+    {
+        "locationID": "386",
+        "name": "Volos Port"
+    },
+    {
+        "locationID": "178",
+        "name": "Zakynthos Downtown"
+    },
+    {
+        "locationID": "223",
+        "name": "Zakynthos Kalamaki"
+    },
+    {
+        "locationID": "221",
+        "name": "Zakynthos Port (Lomvardou)"
+    },
+    {
+        "locationID": "61199",
+        "name": "Budapest Airport"
+    },
+    {
+        "locationID": "61707",
+        "name": "Budapest Downtown"
+    },
+    {
+        "locationID": "102",
+        "name": "Keflavik International Airport"
+    },
+    {
+        "locationID": "163",
+        "name": "Reykjavik Downtown"
+    },
+    {
+        "locationID": "61549",
+        "name": "Haifa Downtown"
+    },
+    {
+        "locationID": "61550",
+        "name": "Jerusalem Downtown"
+    },
+    {
+        "locationID": "61547",
+        "name": "Netania Downtown"
+    },
+    {
+        "locationID": "61548",
+        "name": "Tel Aviv Downtown"
+    },
+    {
+        "locationID": "60515",
+        "name": "Brindisi Airport"
+    },
+    {
+        "locationID": "123",
+        "name": "Milano Malpensa Airport"
+    },
+    {
+        "locationID": "61500",
+        "name": "Napoli Airport"
+    },
+    {
+        "locationID": "291",
+        "name": "Palermo Airport"
+    },
+    {
+        "locationID": "114",
+        "name": "Pisa Airport"
+    },
+    {
+        "locationID": "292",
+        "name": "Rome Ciampino Airport"
+    },
+    {
+        "locationID": "157",
+        "name": "Rome Fiumicino International Airport"
+    },
+    {
+        "locationID": "61200",
+        "name": "Firenze Downtown"
+    },
+    {
+        "locationID": "61197",
+        "name": "Firenze Railway Station"
+    },
+    {
+        "locationID": "61501",
+        "name": "Napoli Afragola Railway Station"
+    },
+    {
+        "locationID": "61602",
+        "name": "Napoli Centrale Railway Station"
+    },
+    {
+        "locationID": "165",
+        "name": "Palermo Downtown"
+    },
+    {
+        "locationID": "121",
+        "name": "Queen Alia International Airport"
+    },
+    {
+        "locationID": "61163",
+        "name": "Amman Mecca Street"
+    },
+    {
+        "locationID": "61524",
+        "name": "Diani Airport"
+    },
+    {
+        "locationID": "61649",
+        "name": "Malindi International Airport"
+    },
+    {
+        "locationID": "61260",
+        "name": "Mombasa Moi International Airport"
+    },
+    {
+        "locationID": "59898",
+        "name": "Nairobi International Airport"
+    },
+    {
+        "locationID": "61523",
+        "name": "Sgr Train Terminus, Mombasa"
+    },
+    {
+        "locationID": "61521",
+        "name": "SGR Train Terminus, Nairobi"
+    },
+    {
+        "locationID": "60175",
+        "name": "Prishtina International Airport"
+    },
+    {
+        "locationID": "61692",
+        "name": "Kuwait International Airport"
+    },
+    {
+        "locationID": "181",
+        "name": "Riga Airport"
+    },
+    {
+        "locationID": "183",
+        "name": "Riga Bus Station"
+    },
+    {
+        "locationID": "185",
+        "name": "Riga Downtown"
+    },
+    {
+        "locationID": "184",
+        "name": "Riga Sea Port"
+    },
+    {
+        "locationID": "182",
+        "name": "Riga Train Station"
+    },
+    {
+        "locationID": "59233",
+        "name": "Beirut Airport"
+    },
+    {
+        "locationID": "176",
+        "name": "Kaunas Airport"
+    },
+    {
+        "locationID": "51213",
+        "name": "Palanga Airport"
+    },
+    {
+        "locationID": "139",
+        "name": "Vilnius International Airport"
+    },
+    {
+        "locationID": "177",
+        "name": "Kaunas Bus and Train Station"
+    },
+    {
+        "locationID": "51217",
+        "name": "Klaipeda Bus and Train Station"
+    },
+    {
+        "locationID": "51219",
+        "name": "Klaipeda Downtown"
+    },
+    {
+        "locationID": "51215",
+        "name": "Klaipeda Port"
+    },
+    {
+        "locationID": "51214",
+        "name": "Palanga Bus Station"
+    },
+    {
+        "locationID": "58677",
+        "name": "Vilnius City Downtown"
+    },
+    {
+        "locationID": "158",
+        "name": "Vilnius Downtown"
+    },
+    {
+        "locationID": "159",
+        "name": "Vilnius Railway Station"
+    },
+    {
+        "locationID": "61221",
+        "name": "Skopje International Airport"
+    },
+    {
+        "locationID": "61222",
+        "name": "Skopje Downtown"
+    },
+    {
+        "locationID": "61639",
+        "name": "Kota Kinabalu International Airport"
+    },
+    {
+        "locationID": "61666",
+        "name": "Kuching International Airport"
+    },
+    {
+        "locationID": "61557",
+        "name": "Langkawi Airport"
+    },
+    {
+        "locationID": "61648",
+        "name": "Penang International Airport"
+    },
+    {
+        "locationID": "61640",
+        "name": "Kota Kinabalu Downtown"
+    },
+    {
+        "locationID": "61621",
+        "name": "Kuala Lumpur Downtown"
+    },
+    {
+        "locationID": "61619",
+        "name": "Kuala Lumpur International Airport KLIA"
+    },
+    {
+        "locationID": "61620",
+        "name": "Kuala Lumpur International Airport KLIA 2"
+    },
+    {
+        "locationID": "61558",
+        "name": "Langkawi Ferry Terminal"
+    },
+    {
+        "locationID": "78",
+        "name": "Malta International Airport"
+    },
+    {
+        "locationID": "38903",
+        "name": "Mauritius Airport"
+    },
+    {
+        "locationID": "59527",
+        "name": "Guadalajara Airport"
+    },
+    {
+        "locationID": "61322",
+        "name": "Hermosillo International Airport"
+    },
+    {
+        "locationID": "61321",
+        "name": "Tijuana International Airport"
+    },
+    {
+        "locationID": "99",
+        "name": "Cancun Aeropuerto"
+    },
+    {
+        "locationID": "37",
+        "name": "Chihuahua Aeropuerto"
+    },
+    {
+        "locationID": "38",
+        "name": "Chihuahua Downtown"
+    },
+    {
+        "locationID": "40",
+        "name": "Ciudad Juarez Aeropuerto"
+    },
+    {
+        "locationID": "39",
+        "name": "Ciudad Juarez Downtown"
+    },
+    {
+        "locationID": "59536",
+        "name": "Guadalajara Plaza Montenegro"
+    },
+    {
+        "locationID": "343",
+        "name": "Guadalajara Zapopan"
+    },
+    {
+        "locationID": "47",
+        "name": "Ixtapa-Zihuatanejo"
+    },
+    {
+        "locationID": "101",
+        "name": "Lazaro Cardenas Aeropuerto"
+    },
+    {
+        "locationID": "59",
+        "name": "Matamoros Aeropuerto"
+    },
+    {
+        "locationID": "59774",
+        "name": "Matamoros Downtown"
+    },
+    {
+        "locationID": "85",
+        "name": "Mexico City Aeropuerto"
+    },
+    {
+        "locationID": "57",
+        "name": "Mexico Interlomas"
+    },
+    {
+        "locationID": "86",
+        "name": "Mexico Reforma"
+    },
+    {
+        "locationID": "100",
+        "name": "Mexico Santa Fe"
+    },
+    {
+        "locationID": "337",
+        "name": "Mexico Villasana"
+    },
+    {
+        "locationID": "56",
+        "name": "Monterrey Aeropuerto"
+    },
+    {
+        "locationID": "51",
+        "name": "Monterrey Downtown"
+    },
+    {
+        "locationID": "58",
+        "name": "Nuevo Laredo Aeropuerto"
+    },
+    {
+        "locationID": "88",
+        "name": "Nuevo Laredo Downtown"
+    },
+    {
+        "locationID": "87",
+        "name": "Piedras Negras Aeropuerto"
+    },
+    {
+        "locationID": "60",
+        "name": "Poza Rica Aeropuerto"
+    },
+    {
+        "locationID": "82",
+        "name": "Poza Rica Downtown"
+    },
+    {
+        "locationID": "62",
+        "name": "Queretaro Downtown"
+    },
+    {
+        "locationID": "46",
+        "name": "Reynosa Aeropuerto"
+    },
+    {
+        "locationID": "45",
+        "name": "Reynosa Downtown"
+    },
+    {
+        "locationID": "44",
+        "name": "Saltillo Aeropuerto"
+    },
+    {
+        "locationID": "43",
+        "name": "Saltillo Downtown"
+    },
+    {
+        "locationID": "65",
+        "name": "San Luis Potosi Aeropuerto"
+    },
+    {
+        "locationID": "60876",
+        "name": "San Luis Potosi Downtown"
+    },
+    {
+        "locationID": "64",
+        "name": "Tampico Aeropuerto"
+    },
+    {
+        "locationID": "60893",
+        "name": "Tampico Downtown"
+    },
+    {
+        "locationID": "42",
+        "name": "Torreon Aeropuerto"
+    },
+    {
+        "locationID": "41",
+        "name": "Torreon Downtown"
+    },
+    {
+        "locationID": "84",
+        "name": "Villahermosa Downtown"
+    },
+    {
+        "locationID": "61246",
+        "name": "Chisinau International Airport"
+    },
+    {
+        "locationID": "279",
+        "name": "Podgorica Airport"
+    },
+    {
+        "locationID": "281",
+        "name": "Tivat Airport"
+    },
+    {
+        "locationID": "40472",
+        "name": "Becici Downtown"
+    },
+    {
+        "locationID": "40471",
+        "name": "Budva Downtown"
+    },
+    {
+        "locationID": "57503",
+        "name": "Kotor Bus Station"
+    },
+    {
+        "locationID": "57504",
+        "name": "Kotor Port"
+    },
+    {
+        "locationID": "57506",
+        "name": "Petrovac Bus Station"
+    },
+    {
+        "locationID": "57507",
+        "name": "Podgorica Bus Station"
+    },
+    {
+        "locationID": "280",
+        "name": "Podgorica Downtown"
+    },
+    {
+        "locationID": "57505",
+        "name": "Rafailovici Downtown"
+    },
+    {
+        "locationID": "57502",
+        "name": "Tivat Bus Station"
+    },
+    {
+        "locationID": "282",
+        "name": "Tivat Downtown"
+    },
+    {
+        "locationID": "352",
+        "name": "Agadir Airport"
+    },
+    {
+        "locationID": "354",
+        "name": "Casablanca Airport"
+    },
+    {
+        "locationID": "357",
+        "name": "Fez Airport"
+    },
+    {
+        "locationID": "359",
+        "name": "Marrakech Airport"
+    },
+    {
+        "locationID": "61705",
+        "name": "Nador Airport"
+    },
+    {
+        "locationID": "61703",
+        "name": "Oujda Airport"
+    },
+    {
+        "locationID": "361",
+        "name": "Rabat Airport"
+    },
+    {
+        "locationID": "61314",
+        "name": "Sania Ramel Airport"
+    },
+    {
+        "locationID": "363",
+        "name": "Tangier Airport"
+    },
+    {
+        "locationID": "353",
+        "name": "Agadir Downtown"
+    },
+    {
+        "locationID": "355",
+        "name": "Casablanca Downtown"
+    },
+    {
+        "locationID": "358",
+        "name": "Fez Downtown"
+    },
+    {
+        "locationID": "61157",
+        "name": "Kenitra Downtown"
+    },
+    {
+        "locationID": "360",
+        "name": "Marrakech Downtown"
+    },
+    {
+        "locationID": "61706",
+        "name": "Nador Downtown"
+    },
+    {
+        "locationID": "61704",
+        "name": "Oujda Downtown"
+    },
+    {
+        "locationID": "362",
+        "name": "Rabat Downtown"
+    },
+    {
+        "locationID": "364",
+        "name": "Tangier Downtown"
+    },
+    {
+        "locationID": "61590",
+        "name": "Green Motion Servicing Amsterdam Schiphol Airport"
+    },
+    {
+        "locationID": "61651",
+        "name": "Amsterdam City Centre"
+    },
+    {
+        "locationID": "61310",
+        "name": "Bonaire International Airport"
+    },
+    {
+        "locationID": "61573",
+        "name": "Grand Case Airport"
+    },
+    {
+        "locationID": "61400",
+        "name": "St Maarten Airport"
+    },
+    {
+        "locationID": "61659",
+        "name": "Auckland Airport"
+    },
+    {
+        "locationID": "61660",
+        "name": "Christchurch Airport"
+    },
+    {
+        "locationID": "61662",
+        "name": "Wellington Airport"
+    },
+    {
+        "locationID": "61661",
+        "name": "Kelston - Auckland"
+    },
+    {
+        "locationID": "61663",
+        "name": "Wellington CBD"
+    },
+    {
+        "locationID": "61610",
+        "name": "Augusto C. Sandino International Airport"
+    },
+    {
+        "locationID": "61700",
+        "name": "San Juan del Sur"
+    },
+    {
+        "locationID": "61588",
+        "name": "Muscat International Airport"
+    },
+    {
+        "locationID": "61699",
+        "name": "Salalah International Airport"
+    },
+    {
+        "locationID": "61677",
+        "name": "San Isidro Downtown"
+    },
+    {
+        "locationID": "61614",
+        "name": "Rzeszow Jasionka Airport"
+    },
+    {
+        "locationID": "61612",
+        "name": "Warsaw Chopin Airport"
+    },
+    {
+        "locationID": "61615",
+        "name": "Wroclaw Airport"
+    },
+    {
+        "locationID": "61686",
+        "name": "John Paul II International Airport Krakow\u0096Balice"
+    },
+    {
+        "locationID": "59534",
+        "name": "Green Motion Servicing Faro Airport"
+    },
+    {
+        "locationID": "61306",
+        "name": "Green Motion Servicing Lisbon Airport"
+    },
+    {
+        "locationID": "58385",
+        "name": "Green Motion Servicing Porto Airport"
+    },
+    {
+        "locationID": "61398",
+        "name": "San Juan Airport"
+    },
+    {
+        "locationID": "61675",
+        "name": "Hamad International Airport"
+    },
+    {
+        "locationID": "61676",
+        "name": "Doha Downtown"
+    },
+    {
+        "locationID": "61638",
+        "name": "Bucharest Airport"
+    },
+    {
+        "locationID": "61634",
+        "name": "Bucharest Downtown"
+    },
+    {
+        "locationID": "61266",
+        "name": "Masterpiece Mall Remera"
+    },
+    {
+        "locationID": "61256",
+        "name": "Dakar Downtown"
+    },
+    {
+        "locationID": "261",
+        "name": "Belgrade Airport"
+    },
+    {
+        "locationID": "283",
+        "name": "Nis Airport"
+    },
+    {
+        "locationID": "262",
+        "name": "Belgrade Downtown"
+    },
+    {
+        "locationID": "59711",
+        "name": "Nis Downtown"
+    },
+    {
+        "locationID": "61166",
+        "name": "Novi Sad Downtown"
+    },
+    {
+        "locationID": "61269",
+        "name": "Bratislava Airport"
+    },
+    {
+        "locationID": "374",
+        "name": "Ljubljana Airport"
+    },
+    {
+        "locationID": "60653",
+        "name": "Cape Town International Airport"
+    },
+    {
+        "locationID": "61259",
+        "name": "Chief Dawid Stuurman International Airport"
+    },
+    {
+        "locationID": "60720",
+        "name": "Durban King Shaka International Airport"
+    },
+    {
+        "locationID": "61255",
+        "name": "East London Airport"
+    },
+    {
+        "locationID": "61631",
+        "name": "George Airport"
+    },
+    {
+        "locationID": "60654",
+        "name": "Johannesburg O.R. Tambo International Airport"
+    },
+    {
+        "locationID": "60733",
+        "name": "Lanseria International Airport"
+    },
+    {
+        "locationID": "61303",
+        "name": "Mthatha Airport"
+    },
+    {
+        "locationID": "60725",
+        "name": "Cape Town Central Business District"
+    },
+    {
+        "locationID": "61254",
+        "name": "East London Downtown"
+    },
+    {
+        "locationID": "61253",
+        "name": "Port Elizabeth Downtown"
+    },
+    {
+        "locationID": "60735",
+        "name": "Pretoria Downtown"
+    },
+    {
+        "locationID": "60736",
+        "name": "Rhodesfield Downtown"
+    },
+    {
+        "locationID": "60737",
+        "name": "Sandton Downtown"
+    },
+    {
+        "locationID": "61109",
+        "name": "Umhlanga Downtown"
+    },
+    {
+        "locationID": "61684",
+        "name": "Gimhae International Airport"
+    },
+    {
+        "locationID": "61683",
+        "name": "Gimpo International Airport"
+    },
+    {
+        "locationID": "61682",
+        "name": "Incheonn International Airport"
+    },
+    {
+        "locationID": "61681",
+        "name": "Jeju International Airport"
+    },
+    {
+        "locationID": "61685",
+        "name": "Busan Train Station"
+    },
+    {
+        "locationID": "61334",
+        "name": "Almeria Airport"
+    },
+    {
+        "locationID": "61710",
+        "name": "Bilbao Airport"
+    },
+    {
+        "locationID": "61645",
+        "name": "Madrid Airport"
+    },
+    {
+        "locationID": "61336",
+        "name": "Mallorca Airport"
+    },
+    {
+        "locationID": "61337",
+        "name": "Murcia Airport"
+    },
+    {
+        "locationID": "61711",
+        "name": "Valencia Airport"
+    },
+    {
+        "locationID": "61718",
+        "name": "Vigo Airport"
+    },
+    {
+        "locationID": "61646",
+        "name": "Madrid Atocha Train Station"
+    },
+    {
+        "locationID": "61499",
+        "name": "Roquetas de Mar"
+    },
+    {
+        "locationID": "61712",
+        "name": "Valencia Joaquin Sorolla Train Station"
+    },
+    {
+        "locationID": "61522",
+        "name": "Bandaranayake International Airport"
+    },
+    {
+        "locationID": "387",
+        "name": "Stockholm Arlanda Airport"
+    },
+    {
+        "locationID": "60054",
+        "name": "Jonkoping Downtown"
+    },
+    {
+        "locationID": "60061",
+        "name": "Kalmar Downtown"
+    },
+    {
+        "locationID": "60070",
+        "name": "Karlskrona"
+    },
+    {
+        "locationID": "60064",
+        "name": "Nassjo"
+    },
+    {
+        "locationID": "60062",
+        "name": "Orebro"
+    },
+    {
+        "locationID": "60063",
+        "name": "Skovde Downtown"
+    },
+    {
+        "locationID": "60058",
+        "name": "Varnamo Downtown"
+    },
+    {
+        "locationID": "60059",
+        "name": "Vaxjo Downtown"
+    },
+    {
+        "locationID": "60065",
+        "name": "Vetlanda"
+    },
+    {
+        "locationID": "60066",
+        "name": "Vimmerby Downtown"
+    },
+    {
+        "locationID": "61489",
+        "name": "Zurich Airport"
+    },
+    {
+        "locationID": "61553",
+        "name": "Kloten Downtown"
+    },
+    {
+        "locationID": "61552",
+        "name": "Oerlikon Downtown"
+    },
+    {
+        "locationID": "61555",
+        "name": "Rumlang Downtown"
+    },
+    {
+        "locationID": "61554",
+        "name": "Winterthur Downtown"
+    },
+    {
+        "locationID": "61551",
+        "name": "Zurich Downtown"
+    },
+    {
+        "locationID": "60761",
+        "name": "Zanzibar International Airport"
+    },
+    {
+        "locationID": "60762",
+        "name": "Zanzibar Ferry Terminal"
+    },
+    {
+        "locationID": "57911",
+        "name": "Ankara Esenboga Airport"
+    },
+    {
+        "locationID": "58332",
+        "name": "Antalya Airport"
+    },
+    {
+        "locationID": "58333",
+        "name": "Bodrum Airport"
+    },
+    {
+        "locationID": "58334",
+        "name": "Dalaman Airport"
+    },
+    {
+        "locationID": "60971",
+        "name": "Denizli Airport"
+    },
+    {
+        "locationID": "61481",
+        "name": "Diyarbakir Airport"
+    },
+    {
+        "locationID": "61298",
+        "name": "Elazig Airport"
+    },
+    {
+        "locationID": "61618",
+        "name": "Erzurum Airport"
+    },
+    {
+        "locationID": "61427",
+        "name": "Gaziantep Airport"
+    },
+    {
+        "locationID": "59007",
+        "name": "Istanbul Airport"
+    },
+    {
+        "locationID": "57909",
+        "name": "Istanbul Sabiha Gokcen Airport"
+    },
+    {
+        "locationID": "57912",
+        "name": "Izmir Adnan Menderes Airport"
+    },
+    {
+        "locationID": "61308",
+        "name": "Kayseri Airport"
+    },
+    {
+        "locationID": "60919",
+        "name": "Konya Airport"
+    },
+    {
+        "locationID": "61617",
+        "name": "Mardin Airport"
+    },
+    {
+        "locationID": "61641",
+        "name": "Mersin Cukurova Airport"
+    },
+    {
+        "locationID": "60693",
+        "name": "Ordu Airport"
+    },
+    {
+        "locationID": "61304",
+        "name": "Rize Airport"
+    },
+    {
+        "locationID": "58335",
+        "name": "Samsun Airport"
+    },
+    {
+        "locationID": "58336",
+        "name": "Trabzon Airport"
+    },
+    {
+        "locationID": "60966",
+        "name": "Adana Downtown"
+    },
+    {
+        "locationID": "58331",
+        "name": "Ankara Downtown"
+    },
+    {
+        "locationID": "61434",
+        "name": "Bursa City Centre"
+    },
+    {
+        "locationID": "61426",
+        "name": "Bursa Nilufer"
+    },
+    {
+        "locationID": "60972",
+        "name": "Denizli Downtown"
+    },
+    {
+        "locationID": "61582",
+        "name": "Erzurum Downtown"
+    },
+    {
+        "locationID": "58046",
+        "name": "Istanbul Atasehir"
+    },
+    {
+        "locationID": "61297",
+        "name": "Istanbul Beylikduzu"
+    },
+    {
+        "locationID": "57752",
+        "name": "Istanbul Kadikoy"
+    },
+    {
+        "locationID": "58047",
+        "name": "Istanbul Kartal"
+    },
+    {
+        "locationID": "61525",
+        "name": "Istanbul Levent"
+    },
+    {
+        "locationID": "60516",
+        "name": "Istanbul Taksim"
+    },
+    {
+        "locationID": "61526",
+        "name": "Kanyon Downtown"
+    },
+    {
+        "locationID": "60967",
+        "name": "Konya Downtown"
+    },
+    {
+        "locationID": "61219",
+        "name": "Maltepe Downtown"
+    },
+    {
+        "locationID": "61584",
+        "name": "Mardin Downtown"
+    },
+    {
+        "locationID": "61583",
+        "name": "Mugla Mentese Downtown"
+    },
+    {
+        "locationID": "61629",
+        "name": "Samsun Atakum"
+    },
+    {
+        "locationID": "61628",
+        "name": "Samsun Downtown"
+    },
+    {
+        "locationID": "61201",
+        "name": "Tokat Downtown"
+    },
+    {
+        "locationID": "61195",
+        "name": "Yenibosna Downtown"
+    },
+    {
+        "locationID": "61299",
+        "name": "Yozgat"
+    },
+    {
+        "locationID": "61625",
+        "name": "Entebbe International Airport"
+    },
+    {
+        "locationID": "61626",
+        "name": "Kampala City"
+    },
+    {
+        "locationID": "59610",
+        "name": "Dubai Airport Terminal 1"
+    },
+    {
+        "locationID": "60847",
+        "name": "Dubai Airport Terminal 2"
+    },
+    {
+        "locationID": "60848",
+        "name": "Dubai Airport Terminal 3"
+    },
+    {
+        "locationID": "60160",
+        "name": "Dubai Downtown"
+    },
+    {
+        "locationID": "60923",
+        "name": "Dubai IBN Battuta Mall"
+    },
+    {
+        "locationID": "61295",
+        "name": "M\u00f6venpick Grand Al Bustan Dubai"
+    },
+    {
+        "locationID": "31",
+        "name": "Bristol Airport"
+    },
+    {
+        "locationID": "12",
+        "name": "East Midlands Airport"
+    },
+    {
+        "locationID": "259",
+        "name": "George Best Belfast City Airport"
+    },
+    {
+        "locationID": "115",
+        "name": "Glasgow Airport"
+    },
+    {
+        "locationID": "55",
+        "name": "Green Motion servicing Edinburgh Airport"
+    },
+    {
+        "locationID": "33",
+        "name": "Liverpool Airport"
+    },
+    {
+        "locationID": "73",
+        "name": "London City Airport"
+    },
+    {
+        "locationID": "2",
+        "name": "London Gatwick Airport"
+    },
+    {
+        "locationID": "6",
+        "name": "London Heathrow Airport"
+    },
+    {
+        "locationID": "7",
+        "name": "London Luton Airport"
+    },
+    {
+        "locationID": "61688",
+        "name": "London Southend Airport"
+    },
+    {
+        "locationID": "16",
+        "name": "London Stansted Airport"
+    },
+    {
+        "locationID": "19",
+        "name": "Manchester Airport"
+    },
+    {
+        "locationID": "57429",
+        "name": "Newcastle Airport"
+    },
+    {
+        "locationID": "61698",
+        "name": "Basildon Downtown"
+    },
+    {
+        "locationID": "58515",
+        "name": "Birmingham Downtown"
+    },
+    {
+        "locationID": "17",
+        "name": "Birmingham International"
+    },
+    {
+        "locationID": "61075",
+        "name": "Braintree Downtown"
+    },
+    {
+        "locationID": "61097",
+        "name": "Bristol Temple Meads Station"
+    },
+    {
+        "locationID": "61074",
+        "name": "Cambridge Downtown"
+    },
+    {
+        "locationID": "68",
+        "name": "Central London Edgware Road"
+    },
+    {
+        "locationID": "61079",
+        "name": "Chelmsford Downtown"
+    },
+    {
+        "locationID": "60905",
+        "name": "Crawley"
+    },
+    {
+        "locationID": "39382",
+        "name": "Edinburgh Waverley Station"
+    },
+    {
+        "locationID": "58514",
+        "name": "Glasgow Downtown"
+    },
+    {
+        "locationID": "61077",
+        "name": "Harlow Downtown"
+    },
+    {
+        "locationID": "60904",
+        "name": "Hayes"
+    },
+    {
+        "locationID": "61080",
+        "name": "Hoddesdon Downtown"
+    },
+    {
+        "locationID": "60903",
+        "name": "Hounslow"
+    },
+    {
+        "locationID": "11",
+        "name": "Leicester"
+    },
+    {
+        "locationID": "39386",
+        "name": "Leicester North"
+    },
+    {
+        "locationID": "57848",
+        "name": "Liverpool City Downtown"
+    },
+    {
+        "locationID": "60317",
+        "name": "Liverpool Lime Street"
+    },
+    {
+        "locationID": "28",
+        "name": "London Euston"
+    },
+    {
+        "locationID": "71",
+        "name": "London Kings Cross"
+    },
+    {
+        "locationID": "72",
+        "name": "London Marylebone"
+    },
+    {
+        "locationID": "70",
+        "name": "London Paddington"
+    },
+    {
+        "locationID": "69",
+        "name": "London St Pancras (Eurostar)"
+    },
+    {
+        "locationID": "322",
+        "name": "Manchester Downtown"
+    },
+    {
+        "locationID": "60772",
+        "name": "Newcastle Kingston Park"
+    },
+    {
+        "locationID": "89",
+        "name": "Reigate"
+    },
+    {
+        "locationID": "61697",
+        "name": "Southend Downtown"
+    },
+    {
+        "locationID": "61085",
+        "name": "Waltham Abbey Downtown"
+    },
+    {
+        "locationID": "60612",
+        "name": "Woburn"
+    },
+    {
+        "locationID": "60509",
+        "name": "Los Angeles Airport"
+    },
+    {
+        "locationID": "60510",
+        "name": "Orange County Airport"
+    },
+    {
+        "locationID": "61720",
+        "name": "San Diego Airport"
+    },
+    {
+        "locationID": "61307",
+        "name": "Arcadia Downtown, California"
+    },
+    {
+        "locationID": "58082",
+        "name": "San Diego Downtown"
+    },
+    {
+        "locationID": "61650",
+        "name": "Fort Lauderdale Airport"
+    },
+    {
+        "locationID": "134",
+        "name": "Miami International Airport"
+    },
+    {
+        "locationID": "174",
+        "name": "Orlando Airport"
+    },
+    {
+        "locationID": "61293",
+        "name": "Tampa International Airport"
+    },
+    {
+        "locationID": "61300",
+        "name": "Davenport"
+    },
+    {
+        "locationID": "61294",
+        "name": "Doral Downtown"
+    },
+    {
+        "locationID": "61341",
+        "name": "Baton Rouge Airport"
+    },
+    {
+        "locationID": "60874",
+        "name": "Lafayette Airport"
+    },
+    {
+        "locationID": "57550",
+        "name": "New Orleans Airport"
+    },
+    {
+        "locationID": "61338",
+        "name": "Abbeville City"
+    },
+    {
+        "locationID": "61480",
+        "name": "Breaux Bridge City"
+    },
+    {
+        "locationID": "61340",
+        "name": "Harvey City"
+    },
+    {
+        "locationID": "61495",
+        "name": "Houma"
+    },
+    {
+        "locationID": "61343",
+        "name": "Lake Charles City"
+    },
+    {
+        "locationID": "61339",
+        "name": "Morgan City"
+    },
+    {
+        "locationID": "61342",
+        "name": "Slidell City"
+    },
+    {
+        "locationID": "61375",
+        "name": "Denver International Airport"
+    },
+    {
+        "locationID": "61535",
+        "name": "Hilo International Airport"
+    },
+    {
+        "locationID": "61655",
+        "name": "Kenneth Kaunda International Airport"
+    },
+    {
+        "locationID": "61430",
+        "name": "Harare International Airport"
+    },
+    {
+        "locationID": "61429",
+        "name": "Harare"
+    }
+]

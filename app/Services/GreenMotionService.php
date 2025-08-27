@@ -118,6 +118,7 @@ class GreenMotionService
 
             $response->throw();
             Log::info('GreenMotion API Response (GetCountryList): ' . $response->body()); // Log response
+            Log::debug('Raw XML from GetCountryList: ' . $response->body()); // Add this line for debugging
 
             return $response->body();
         } catch (\Illuminate\Http\Client\RequestException $e) {

@@ -332,7 +332,7 @@ const updateCategorySearchUrl = (category) => {
         <section class="flex flex-col gap-2 py-customVerticalSpacing popular-places max-[768px]:py-[1rem] max-[768px]:gap-8">
             <div class="column ml-[2%]">
                 <span class="text-[1.15rem] text-customPrimaryColor">-{{ _p('top_destinations') }} -</span>
-                <h3 class="text-customDarkBlackColor mt-[1rem] max-[768px]:text-[1.75rem]">{{ _p('popular_places') }}</h3>
+                <h3 class="text-customDarkBlackColor max-[768px]:text-[1.75rem] max-[768px]:mt-[1rem]">{{ _p('popular_places') }}</h3>
             </div>
             <div class="column max-[768px]:px-[1.5rem]">
                 <Carousel class="relative w-full" :plugins="[plugin]" @mouseenter="plugin.stop"

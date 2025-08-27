@@ -197,41 +197,44 @@ const addMarkers = () => {
     // If multiple vehicles are at the exact same coordinate, offset them slightly.
     let offsetCount = 0;
     props.vehicles.data.forEach((vehicle) => {
-        let displayLat = lat;
-        let displayLng = lng;
+        // Only add marker if vehicle has a valid price
+        if (vehicle.products[0]?.total && vehicle.products[0].total > 0) {
+            let displayLat = lat;
+            let displayLng = lng;
 
-        // Simple offset for multiple vehicles at the same location
-        if (offsetCount > 0) {
-            const angle = offsetCount * (2 * Math.PI / 10); // Distribute up to 10 markers in a circle
-            const radius = 0.0001 * (Math.floor(offsetCount / 10) + 1); // Increase radius for more markers
-            displayLat = lat + radius * Math.sin(angle);
-            displayLng = lng + radius * Math.cos(angle);
+            // Simple offset for multiple vehicles at the exact same location
+            if (offsetCount > 0) {
+                const angle = offsetCount * (2 * Math.PI / 10); // Distribute up to 10 markers in a circle
+                const radius = 0.0001 * (Math.floor(offsetCount / 10) + 1); // Increase radius for more markers
+                displayLat = lat + radius * Math.sin(angle);
+                displayLng = lng + radius * Math.cos(angle);
+            }
+            offsetCount++;
+
+            const primaryImage = vehicle.image || '/default-image.png';
+            const price = vehicle.products[0]?.total;
+            const currency = vehicle.products[0]?.currency || '$';
+
+            const marker = L.marker([displayLat, displayLng], {
+                icon: createCustomIcon(vehicle),
+                pane: "markers",
+            }).bindPopup(`
+                <div class="text-center popup-content">
+                    <img src="${primaryImage}" alt="${vehicle.name}" class="popup-image" />
+                    <p class="font-semibold">${vehicle.name}</p>
+                    <p class="">Price: ${currency}${price}</p>
+                    <a href="${route('green-motion-car.show', { locale: props.locale, id: vehicle.id, ...props.filters })}"
+                       class="text-blue-500 hover:text-blue-700"
+                       onclick="event.preventDefault(); window.location.href = this.href;">
+                        View Details
+                    </a>
+                </div>
+            `);
+
+            map.addLayer(marker);
+            markers.push(marker);
+            vehicleMarkers.value[vehicle.id] = marker;
         }
-        offsetCount++;
-
-        const primaryImage = vehicle.image || '/default-image.png';
-        const price = vehicle.products[0]?.total || 'N/A';
-        const currency = vehicle.products[0]?.currency || '$';
-
-        const marker = L.marker([displayLat, displayLng], {
-            icon: createCustomIcon(vehicle),
-            pane: "markers",
-        }).bindPopup(`
-            <div class="text-center popup-content">
-                <img src="${primaryImage}" alt="${vehicle.name}" class="popup-image" />
-                <p class="font-semibold">${vehicle.name}</p>
-                <p class="">Price: ${currency}${price}</p>
-                <a href="${route('green-motion-car.show', { locale: props.locale, id: vehicle.id, ...props.filters })}"
-                   class="text-blue-500 hover:text-blue-700"
-                   onclick="event.preventDefault(); window.location.href = this.href;">
-                    View Details
-                </a>
-            </div>
-        `);
-
-        map.addLayer(marker);
-        markers.push(marker);
-        vehicleMarkers.value[vehicle.id] = marker;
     });
 
     // Adjust map view to fit the single location
@@ -545,92 +548,99 @@ onMounted(async () => {
         <div class="flex gap-[2.5rem] max-[768px]:flex-col">
             <!-- Left Column - Vehicle List -->
             <div class="w-full">
-                <div :class="[
-                    'grid gap-5',
-                    showMap ? 'w-full grid-cols-2' : 'w-full grid-cols-4',
-                ]" class="max-[768px]:grid-cols-1">
-                    <div v-if="!vehicles.data || vehicles.data.length === 0"
-                        class="text-center text-gray-500 col-span-2 flex flex-col justify-center items-center gap-4">
-                        <img :src=noVehicleIcon alt="" class="w-[25rem] max-[768px]:w-full" loading="lazy">
-                        <p class="text-lg font-medium text-customPrimaryColor">No GreenMotion vehicles available at the moment</p>
-                        <span>Please ensure a valid location is selected.</span>
+                <div v-if="props.filters.location_id && props.filters.start_date && props.filters.end_date">
+                    <div :class="[
+                        'grid gap-5',
+                        showMap ? 'w-full grid-cols-2' : 'w-full grid-cols-4',
+                    ]" class="max-[768px]:grid-cols-1">
+                        <div v-if="!vehicles.data || vehicles.data.length === 0"
+                            class="text-center text-gray-500 col-span-2 flex flex-col justify-center items-center gap-4">
+                            <img :src=noVehicleIcon alt="" class="w-[25rem] max-[768px]:w-full" loading="lazy">
+                            <p class="text-lg font-medium text-customPrimaryColor">No GreenMotion vehicles available at the moment</p>
+                            <span>Please ensure a valid location is selected.</span>
+                        </div>
+                        <div v-for="vehicle in vehicles.data" :key="vehicle.id"
+                            class="rounded-[12px] border-[1px] border-[#E7E7E7] relative overflow-hidden"
+                            @mouseenter="highlightVehicleOnMap(vehicle)"
+                            @mouseleave="unhighlightVehicleOnMap(vehicle)">
+                            <div class="green-corner-badge"></div>
+                            <a :href="route('green-motion-car.show', { locale: locale, id: vehicle.id, ...filters })">
+                                <div class="column flex flex-col gap-5 items-start">
+                                    <img :src="vehicle.image || '/default-image.png'" alt="Vehicle Image"
+                                        class="w-full h-[250px] object-cover rounded-tl-lg rounded-tr-lg max-[768px]:h-[200px]" loading="lazy" />
+                                    <span
+                                        class="bg-[#f5f5f5] ml-[1rem] inline-block px-8 py-2 text-center rounded-[40px] max-[768px]:text-[0.95rem]">
+                                        {{ vehicle.name }}
+                                    </span>
+                                </div>
+
+                                <div class="column p-[1rem]">
+                                    <h5 class="font-medium text-[1.5rem] text-customPrimaryColor max-[768px]:text-[1.2rem]">
+                                        {{ vehicle.groupName }}
+                                    </h5>
+
+                                     <div>
+                                        <span class="italic font-medium">{{ vehicle.acriss }}</span>
+                                     </div>
+
+                                    <div class="car_short_info mt-[1rem] flex gap-3">
+                                        <img :src="carIcon" alt="" loading="lazy" />
+                                        <div class="features">
+                                            <span class="capitalize text-[1.15rem] max-[768px]:text-[1rem]">{{
+                                                vehicle.transmission }} .
+                                                {{ vehicle.fuel }} .
+                                                {{ vehicle.adults }} Adults, {{ vehicle.children }} Children</span>
+                                        </div>
+                                    </div>
+
+
+                                    <div class="benefits mt-[2rem] grid grid-cols-2 gap-3">
+                                        <span v-if="vehicle.airConditioning === 'Yes'" class="flex gap-3 items-center text-[12px]">
+                                            <img :src="check" alt="" loading="lazy" />Air Conditioning
+                                        </span>
+                                        <span v-if="vehicle.refrigerated === 'Yes'" class="flex gap-3 items-center text-[12px]">
+                                            <img :src="check" alt="" loading="lazy" />Refrigerated
+                                        </span>
+                                        <span v-if="vehicle.keyngo === 'Yes'" class="flex gap-3 items-center text-[12px]">
+                                            <img :src="check" alt="" loading="lazy" />Key N Go
+                                        </span>
+                                        <span v-if="vehicle.driveandgo === 'Yes'" class="flex gap-3 items-center text-[12px]">
+                                            <img :src="check" alt="" loading="lazy" />Drive N Go
+                                        </span>
+                                        <span v-if="vehicle.products[0]?.fuelpolicy" class="flex gap-3 items-center text-[12px]">
+                                            <img :src="check" alt="" loading="lazy" />Fuel Policy: {{ vehicle.products[0].fuelpolicy }}
+                                        </span>
+                                        <span v-if="vehicle.products[0]?.minage" class="flex gap-3 items-center text-[12px]">
+                                            <img :src="check" alt="" loading="lazy" />Min Age: {{ vehicle.products[0].minage }}
+                                        </span>
+                                    </div>
+
+                                    <div class="mt-[2rem] flex justify-between items-center">
+                                        <div>
+                                            <div v-if="vehicle.products[0]?.total && vehicle.products[0].total > 0">
+                                                <span class="text-customPrimaryColor text-[1.875rem] font-medium max-[768px]:text-[1.3rem] max-[768px]:font-bold">
+                                                    {{ getCurrencySymbol(vehicle.products[0].currency) }}{{ vehicle.products[0].total }}
+                                                </span>
+                                                <span>/rental</span>
+                                            </div>
+                                            <div v-else>
+                                                <span class="text-sm text-gray-500">Price not available</span>
+                                            </div>
+                                        </div>
+                                        <img :src="goIcon" alt="Go" class="max-[768px]:w-[35px]" loading="lazy" />
+                                    </div>
+                                </div>
+                            </a>
+                        </div>
                     </div>
-                    <div v-for="vehicle in vehicles.data" :key="vehicle.id"
-                        class="rounded-[12px] border-[1px] border-[#E7E7E7] relative overflow-hidden"
-                        @mouseenter="highlightVehicleOnMap(vehicle)"
-                        @mouseleave="unhighlightVehicleOnMap(vehicle)">
-                        <a :href="route('green-motion-car.show', { locale: locale, id: vehicle.id, ...filters })">
-                            <div class="column flex flex-col gap-5 items-start">
-                                <img :src="vehicle.image || '/default-image.png'" alt="Vehicle Image"
-                                    class="w-full h-[250px] object-cover rounded-tl-lg rounded-tr-lg max-[768px]:h-[200px]" loading="lazy" />
-                                <span
-                                    class="bg-[#f5f5f5] ml-[1rem] inline-block px-8 py-2 text-center rounded-[40px] max-[768px]:text-[0.95rem]">
-                                    {{ vehicle.name }}
-                                </span>
-                            </div>
-
-                            <div class="column p-[1rem]">
-                                <h5 class="font-medium text-[1.5rem] text-customPrimaryColor max-[768px]:text-[1.2rem]">
-                                    {{ vehicle.groupName }}
-                                </h5>
-
-                                 <div>
-                                    <span class="italic font-medium">{{ vehicle.acriss }}</span>
-                                 </div>
-
-                                <div class="car_short_info mt-[1rem] flex gap-3">
-                                    <img :src="carIcon" alt="" loading="lazy" />
-                                    <div class="features">
-                                        <span class="capitalize text-[1.15rem] max-[768px]:text-[1rem]">{{
-                                            vehicle.transmission }} .
-                                            {{ vehicle.fuel }} .
-                                            {{ vehicle.adults }} Adults, {{ vehicle.children }} Children</span>
-                                    </div>
-                                </div>
-
-
-                                <div class="benefits mt-[2rem] grid grid-cols-2 gap-3">
-                                    <span v-if="vehicle.airConditioning === 'Yes'" class="flex gap-3 items-center text-[12px]">
-                                        <img :src="check" alt="" loading="lazy" />Air Conditioning
-                                    </span>
-                                    <span v-if="vehicle.refrigerated === 'Yes'" class="flex gap-3 items-center text-[12px]">
-                                        <img :src="check" alt="" loading="lazy" />Refrigerated
-                                    </span>
-                                    <span v-if="vehicle.keyngo === 'Yes'" class="flex gap-3 items-center text-[12px]">
-                                        <img :src="check" alt="" loading="lazy" />Key N Go
-                                    </span>
-                                    <span v-if="vehicle.driveandgo === 'Yes'" class="flex gap-3 items-center text-[12px]">
-                                        <img :src="check" alt="" loading="lazy" />Drive N Go
-                                    </span>
-                                    <span v-if="vehicle.products[0]?.fuelpolicy" class="flex gap-3 items-center text-[12px]">
-                                        <img :src="check" alt="" loading="lazy" />Fuel Policy: {{ vehicle.products[0].fuelpolicy }}
-                                    </span>
-                                    <span v-if="vehicle.products[0]?.minage" class="flex gap-3 items-center text-[12px]">
-                                        <img :src="check" alt="" loading="lazy" />Min Age: {{ vehicle.products[0].minage }}
-                                    </span>
-                                </div>
-
-                                <div class="mt-[2rem] flex justify-between items-center">
-                                    <div>
-                                        <div v-if="vehicle.products[0]?.total && vehicle.products[0].total > 0">
-                                            <span class="text-customPrimaryColor text-[1.875rem] font-medium max-[768px]:text-[1.3rem] max-[768px]:font-bold">
-                                                {{ getCurrencySymbol(vehicle.products[0].currency) }}{{ vehicle.products[0].total }}
-                                            </span>
-                                            <span>/rental</span>
-                                        </div>
-                                        <div v-else>
-                                            <span class="text-sm text-gray-500">Price not available</span>
-                                        </div>
-                                    </div>
-                                    <img :src="goIcon" alt="Go" class="max-[768px]:w-[35px]" loading="lazy" />
-                                </div>
-                            </div>
-                        </a>
+                    <!-- Pagination -->
+                    <div class="mt-4 pagination">
+                        <div v-html="pagination_links"></div>
                     </div>
                 </div>
-                <!-- Pagination -->
-                <div class="mt-4 pagination">
-                    <div v-html="pagination_links"></div>
+                <div v-else class="text-center text-gray-500 col-span-2 flex flex-col justify-center items-center gap-4 mt-8">
+                    <img :src=noVehicleIcon alt="" class="w-[25rem] max-[768px]:w-full" loading="lazy">
+                    <p class="text-lg font-medium text-customPrimaryColor">Please provide location, start date, and end date to search for vehicles.</p>
                 </div>
             </div>
             <!-- Right Column - Map -->
@@ -779,5 +789,29 @@ select:focus+.caret-rotate {
     .pagination nav div:first-child {
         display: none;
     }
+}
+
+.green-corner-badge {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 0;
+    height: 0;
+    border-top: 90px solid #4CAF50; /* Green color */
+    border-right: 90px solid transparent;
+    z-index: 10;
+}
+
+.green-corner-badge::after {
+    content: "Green Motion";
+    position: absolute;
+    top: -41px; /* Adjust as needed */
+    left: 0px; /* Adjust as needed */
+    color: white;
+    font-size: 0.7rem;
+    font-weight: bold;
+    transform: rotate(-45deg);
+    transform-origin: 0% 0%;
+    white-space: nowrap;
 }
 </style>
