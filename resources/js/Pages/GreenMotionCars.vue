@@ -12,7 +12,7 @@ import { Switch } from "@/Components/ui/switch";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import axios from 'axios'; // Import axios for API calls
-import GreenMotionSearchBar from "../Components/GreenMotionSearchBar.vue";
+import GreenMotionSearchComponent from "@/Components/GreenMotionSearchComponent.vue";
 
 const currencySymbols = ref({});
 
@@ -354,7 +354,7 @@ const toggleFavourite = async (vehicle) => {
     </section>
 
     <div class="full-w-container mx-auto mt-8">
-        <GreenMotionSearchBar :prefill="props.filters" />
+        <GreenMotionSearchComponent :prefill="props.filters" />
     </div>
 
     <div class="full-w-container flex justify-end max-[768px]:hidden my-[2rem]">

@@ -17,7 +17,6 @@ import calendarIcon from '../../assets/CalendarBlank.svg';
 import whiteGoIcon from '../../assets/whiteGoIcon.svg';
 import calendarWhiteIcon from '../../assets/CalendarWhite.svg';
 import { Skeleton } from '@/Components/ui/skeleton';
-import GreenMotionSearchBar from "@/Components/GreenMotionSearchBar.vue";
 
 const plugin = Autoplay({
     delay: 4000,
@@ -162,6 +161,7 @@ onBeforeUnmount(() => {
 });
 
 import { usePage } from '@inertiajs/vue3';
+import GreenMotionSearchComponent from "@/Components/GreenMotionSearchComponent.vue";
 
 
 const page = usePage();
@@ -282,7 +282,7 @@ const updateCategorySearchUrl = (category) => {
             class="mt-[-14rem] mb-[12rem] max-[768px]:mb-[0] max-[768px]:mt-[-1rem] max-[768px]:pt-[2rem] max-[768px]:bg-customPrimaryColor relative z-10">
             <Transition name="fade" mode="out-in">
                 <SearchBar v-if="selectedSearchBar === 'vrooem'" key="vrooem-search" />
-                <GreenMotionSearchBar v-else-if="selectedSearchBar === 'greenmotion'" key="greenmotion-search" />
+                <GreenMotionSearchComponent v-else-if="selectedSearchBar === 'greenmotion'" key="greenmotion-search" />
             </Transition>
         </section>
 
