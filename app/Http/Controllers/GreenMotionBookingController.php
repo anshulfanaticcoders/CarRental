@@ -10,6 +10,9 @@ use Inertia\Inertia;
 use Illuminate\Support\Facades\Log;
 use Stripe\Stripe;
 use Stripe\Checkout\Session;
+use App\Models\User; // Added for admin notification
+use App\Notifications\Booking\GreenMotionBookingCreatedAdminNotification; // Added for admin notification
+use App\Notifications\Booking\GreenMotionBookingCreatedCustomerNotification; // Added for customer notification
 
 class GreenMotionBookingController extends Controller
 {
@@ -160,7 +163,7 @@ class GreenMotionBookingController extends Controller
 
             // Create Stripe Checkout Session
             $session = Session::create([
-                'payment_method_types' => ['card'],
+                'payment_method_types' => ['card', 'bancontact', 'klarna'], // Added more payment methods
                 'line_items' => [[
                     'price_data' => [
                         'currency' => strtolower($validatedData['currency']),
@@ -210,8 +213,32 @@ class GreenMotionBookingController extends Controller
                     'booking_status' => 'confirmed',
                     'payment_handler_ref' => $session->payment_intent,
                 ]);
-                // You might want to send notifications here (email to customer, admin, etc.)
-                // Similar to what's done in PaymentController::success
+                
+                // Send notifications
+                $adminEmail = env('VITE_ADMIN_EMAIL', 'default@admin.com');
+                $admin = User::where('email', $adminEmail)->first();
+                if ($admin) {
+                    $admin->notify(new GreenMotionBookingCreatedAdminNotification($greenMotionBooking));
+                }
+
+                $customerDetails = $greenMotionBooking->customer_details;
+                // Assuming customer email is available in customer_details
+                if (isset($customerDetails['email'])) {
+                    // Create a dummy user object for notification if a real user doesn't exist
+                    // Or, if you have a Customer model for GreenMotion, use that.
+                    // For now, we'll use a temporary Notifiable instance.
+                    // For a more robust solution, consider creating a GreenMotionCustomer model
+                    // or ensuring the customer has a User account.
+                    $customerNotifiable = new class extends \Illuminate\Foundation\Auth\User {
+                        use \Illuminate\Notifications\Notifiable;
+                        public $email;
+                        public function __construct($email) { $this->email = $email; }
+                        public function routeNotificationForMail() { return $this->email; }
+                    };
+                    $customerNotifiable->email = $customerDetails['email'];
+                    $customerNotifiable->notify(new GreenMotionBookingCreatedCustomerNotification($greenMotionBooking));
+                }
+                
                 Log::info('GreenMotion booking confirmed via Stripe success callback. Booking ID: ' . $greenMotionBookingId);
             } else {
                 Log::warning('Stripe session not paid for GreenMotion booking. Session ID: ' . $sessionId);
