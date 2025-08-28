@@ -11,13 +11,13 @@ import carImage from "../../assets/carImagebgrmoved.jpeg";
 import AuthenticatedHeaderLayout from "@/Layouts/AuthenticatedHeaderLayout.vue";
 import HowItWorks from "@/Components/ReusableComponents/HowItWorks.vue";
 import SearchBar from "@/Components/SearchBar.vue";
-import GreenMotionSearchbar from "@/Components/GreenMotionSearchBar.vue"; // Import the new component
 import goIcon from "../../assets/goIcon.svg";
 import Autoplay from 'embla-carousel-autoplay';
 import calendarIcon from '../../assets/CalendarBlank.svg';
 import whiteGoIcon from '../../assets/whiteGoIcon.svg';
 import calendarWhiteIcon from '../../assets/CalendarWhite.svg';
 import { Skeleton } from '@/Components/ui/skeleton';
+import GreenMotionSearchBar from "@/Components/GreenMotionSearchBar.vue";
 
 const plugin = Autoplay({
     delay: 4000,
@@ -163,6 +163,7 @@ onBeforeUnmount(() => {
 
 import { usePage } from '@inertiajs/vue3';
 
+
 const page = usePage();
 
 const currentLocale = computed(() => page.props.locale || 'en');
@@ -279,8 +280,10 @@ const updateCategorySearchUrl = (category) => {
 
         <section
             class="mt-[-14rem] mb-[12rem] max-[768px]:mb-[0] max-[768px]:mt-[-1rem] max-[768px]:pt-[2rem] max-[768px]:bg-customPrimaryColor relative z-10">
-            <SearchBar v-if="selectedSearchBar === 'vrooem'" />
-            <GreenMotionSearchbar v-else-if="selectedSearchBar === 'greenmotion'" />
+            <Transition name="fade" mode="out-in">
+                <SearchBar v-if="selectedSearchBar === 'vrooem'" key="vrooem-search" />
+                <GreenMotionSearchBar v-else-if="selectedSearchBar === 'greenmotion'" key="greenmotion-search" />
+            </Transition>
         </section>
 
         <section
@@ -649,5 +652,16 @@ const updateCategorySearchUrl = (category) => {
         left: -4% !important;
         display: none;
     }
+}
+
+/* Fade transition styles */
+.fade-enter-active,
+.fade-leave-active {
+  transition: opacity 0.5s ease;
+}
+
+.fade-enter-from,
+.fade-leave-to {
+  opacity: 0;
 }
 </style>

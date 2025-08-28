@@ -3,8 +3,8 @@
     <div class="search_bar rounded-[20px] max-[768px]:border-[1px]">
       <div class="flex relative max-[768px]:flex-col max-[768px]:items-center">
         <div
-          class="column w-[20%] max-[768px]:w-[100%] max-[768px]:p-[1.5rem] bg-customPrimaryColor text-customPrimaryColor-foreground p-[2rem] rounded-tl-[20px] rounded-bl-[20px] max-[768px]:rounded-tr-[16px] max-[768px]:rounded-tl-[16px] max-[768px]:rounded-bl-[0] max-[768px]:border-[1px]">
-          <span class="text-[1.75rem] font-medium max-[768px]:text-[1.5rem]">{{ _t('homepage', 'search_bar_header') }}</span>
+          class="column w-[20%] max-[768px]:w-[100%] max-[768px]:p-[1.5rem] bg-green-600 text-customPrimaryColor-foreground p-[2rem] rounded-tl-[20px] rounded-bl-[20px] max-[768px]:rounded-tr-[16px] max-[768px]:rounded-tl-[16px] max-[768px]:rounded-bl-[0] max-[768px]:border-[1px]">
+          <span class="text-[1.75rem] font-medium max-[768px]:text-[1.5rem]">{{ _t('homepage', 'our_partner') }}</span>
         </div>
         <form @submit.prevent="handleSearch"
           class="column w-[80%] max-[768px]:w-[100%] px-[2rem] py-[1rem] rounded-tr-[16px] rounded-br-[16px] bg-white grid grid-cols-5 max-[768px]:flex max-[768px]:flex-col max-[768px]:gap-10 max-[768px]:rounded-tr-[0] max-[768px]:rounded-bl-[16px] max-[768px]:px-[1rem]">
@@ -54,27 +54,21 @@
           <div class="col-span-2 flex items-center gap-4">
             <div class="flex flex-col">
               <label class="mb-2 inline-block text-customLightGrayColor font-medium">{{ _t('homepage', 'pickup_date_label') }}</label>
-              <VueDatePicker v-model="pickupDate" :enable-time-picker="false" uid="pickup-date" auto-apply
-                :placeholder="_t('homepage', 'pickup_date_placeholder')" class="w-full" :min-date="new Date()" :format="formatDate" />
-            </div>
-            <div class="flex flex-col">
-              <label class="mb-2 inline-block text-customLightGrayColor font-medium">Pickup Time</label>
-              <input type="time" id="start_time" v-model="searchForm.start_time" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50">
+              <VueDatePicker v-model="pickupDate" :enable-time-picker="true" uid="pickup-date" auto-apply
+                :placeholder="_t('homepage', 'pickup_date_placeholder')" class="w-full" :min-date="getMinPickupDate()" :format="formatDateTime"
+                text-input />
             </div>
             <div class="flex flex-col">
               <label class="mb-2 inline-block text-customLightGrayColor font-medium">{{ _t('homepage', 'return_date_label') }}</label>
-              <VueDatePicker v-model="returnDate" :enable-time-picker="false" uid="return-date" auto-apply
-                :placeholder="_t('homepage', 'return_date_placeholder')" class="w-full" :min-date="getMinReturnDate()" :format="formatDate" />
-            </div>
-            <div class="flex flex-col">
-              <label class="mb-2 inline-block text-customLightGrayColor font-medium">Return Time</label>
-              <input type="time" id="end_time" v-model="searchForm.end_time" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50">
+              <VueDatePicker v-model="returnDate" :enable-time-picker="true" uid="return-date" auto-apply
+                :placeholder="_t('homepage', 'return_date_placeholder')" class="w-full" :min-date="getMinReturnDate()" :format="formatDateTime"
+                text-input />
             </div>
           </div>
 
           <div class="inner-col flex justify-center items-center">
             <button type="submit"
-              class="bg-customPrimaryColor text-customPrimaryColor-foreground rounded-[40px] w-[138px] max-[768px]:w-full py-4 text-center">
+              class="bg-green-500 text-customPrimaryColor-foreground rounded-[40px] w-[138px] max-[768px]:w-full py-4 text-center">
               {{ _t('homepage', 'search_button') }}
             </button>
           </div>
@@ -92,6 +86,7 @@ import axios from "axios";
 import { router, usePage } from "@inertiajs/vue3";
 import VueDatePicker from '@vuepic/vue-datepicker';
 import '@vuepic/vue-datepicker/dist/main.css';
+import { enGB } from 'date-fns/locale';
 
 const props = defineProps({
   prefill: Object,
@@ -101,9 +96,9 @@ const searchForm = ref({
     location_id: props.prefill?.location_id || null,
     location_name: props.prefill?.location_name || '',
     start_date: props.prefill?.start_date || '',
-    start_time: props.prefill?.start_time || '',
+    start_time: props.prefill?.start_time || '09:00', // Default to 09:00
     end_date: props.prefill?.end_date || '',
-    end_time: props.prefill?.end_time || '',
+    end_time: props.prefill?.end_time || '09:00',   // Default to 09:00
     age: props.prefill?.age || 35,
     rentalCode: props.prefill?.rentalCode || '1',
 });
@@ -211,35 +206,68 @@ watch(() => searchForm.value.location_name, (newValue, oldValue) => {
     fetchLocations();
 });
 
-const formatDate = (dateString) => {
-  if (!dateString) return "Select date";
-  const date = new Date(dateString);
-  return date.toLocaleDateString('en-GB', { year: 'numeric', month: '2-digit', day: '2-digit' });
+const formatDateTime = (date) => {
+  if (!date) return "Select date and time";
+  const options = {
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false
+  };
+  return date.toLocaleDateString('en-GB', options);
 };
 
-watch(pickupDate, (newValue) => {
-  if (newValue) {
-    searchForm.value.start_date = newValue.toISOString().split('T')[0];
-    if (returnDate.value && newValue > returnDate.value) {
+watch(pickupDate, (newDateTime) => {
+  if (newDateTime) {
+    // If the time is not explicitly set by the user, default to 09:00
+    if (newDateTime.getHours() === new Date().getHours() && newDateTime.getMinutes() === new Date().getMinutes()) {
+        newDateTime.setHours(9, 0, 0, 0);
+    }
+    searchForm.value.start_date = newDateTime.toISOString().split('T')[0];
+    searchForm.value.start_time = newDateTime.toTimeString().split(' ')[0].substring(0, 5); // HH:mm
+    if (returnDate.value && newDateTime > returnDate.value) {
       returnDate.value = null;
       searchForm.value.end_date = '';
+      searchForm.value.end_time = '';
     }
+  } else {
+    searchForm.value.start_date = '';
+    searchForm.value.start_time = '';
   }
-}, { deep: true });
+});
 
-watch(returnDate, (newValue) => {
-  if (newValue) {
-    searchForm.value.end_date = newValue.toISOString().split('T')[0];
+watch(returnDate, (newDateTime) => {
+  if (newDateTime) {
+    // If the time is not explicitly set by the user, default to 09:00
+    if (newDateTime.getHours() === new Date().getHours() && newDateTime.getMinutes() === new Date().getMinutes()) {
+        newDateTime.setHours(9, 0, 0, 0);
+    }
+    searchForm.value.end_date = newDateTime.toISOString().split('T')[0];
+    searchForm.value.end_time = newDateTime.toTimeString().split(' ')[0].substring(0, 5); // HH:mm
+  } else {
+    searchForm.value.end_date = '';
+    searchForm.value.end_time = '';
   }
-}, { deep: true });
+});
+
+const getMinPickupDate = () => {
+  const today = new Date();
+  today.setHours(0, 0, 0, 0); // Set time to the beginning of the day
+  return today;
+};
 
 const getMinReturnDate = () => {
   if (pickupDate.value) {
     const minReturnDate = new Date(pickupDate.value);
     minReturnDate.setDate(minReturnDate.getDate() + 1);
+    minReturnDate.setHours(0, 0, 0, 0); // Set time to the beginning of the day
     return minReturnDate;
   }
-  return new Date();
+  const today = new Date();
+  today.setHours(0, 0, 0, 0); // Set time to the beginning of the day
+  return today;
 };
 
 onMounted(async () => {
@@ -264,33 +292,16 @@ onMounted(async () => {
             }
         }
         if (props.prefill.start_date) {
-            pickupDate.value = new Date(props.prefill.start_date);
+            const startTime = props.prefill.start_time || '09:00';
+            pickupDate.value = new Date(`${props.prefill.start_date}T${startTime}:00`);
         }
         if (props.prefill.end_date) {
-            returnDate.value = new Date(props.prefill.end_date);
+            const endTime = props.prefill.end_time || '09:00';
+            returnDate.value = new Date(`${props.prefill.end_date}T${endTime}:00`);
         }
     }
 });
 
-watch(pickupDate, (newPickupDate) => {
-  if (newPickupDate) {
-    searchForm.value.start_date = newPickupDate.toISOString().split('T')[0];
-    if (returnDate.value && newPickupDate > returnDate.value) {
-      returnDate.value = null;
-      searchForm.value.end_date = '';
-    }
-  } else {
-    searchForm.value.start_date = '';
-  }
-});
-
-watch(returnDate, (newReturnDate) => {
-  if (newReturnDate) {
-    searchForm.value.end_date = newReturnDate.toISOString().split('T')[0];
-  } else {
-    searchForm.value.end_date = '';
-  }
-});
 
 const closeSearchResults = (event) => {
   if (showSuggestions.value &&

@@ -15,6 +15,7 @@ import { Switch } from "@/Components/ui/switch";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import axios from 'axios'; // Import axios for API calls
+import GreenMotionSearchBar from "@/Components/GreenMotionSearchBar.vue";
 
 const currencySymbols = ref({});
 
@@ -329,130 +330,6 @@ const toggleFavourite = async (vehicle) => {
     console.log("Favorites are not supported for GreenMotion vehicles.");
 };
 
-const searchForm = ref({
-    location_id: props.filters.location_id || null,
-    location_name: props.filters.location_name || '', // Initialize with prop if available
-    start_date: props.filters.start_date || '', // Removed static prefill
-    start_time: props.filters.start_time || '', // Removed static prefill
-    end_date: props.filters.end_date || '',   // Removed static prefill
-    end_time: props.filters.end_time || '',     // Removed static prefill
-    age: props.filters.age || 35, // Prefill with 35 if not in filters
-    rentalCode: props.filters.rentalCode || '1', // Prefill with '1'
-});
-
-const autocompleteSuggestions = ref([]);
-const showSuggestions = ref(false);
-let debounceTimeout = null;
-const preventHide = ref(false); // New flag to prevent immediate hiding on blur
-
-const fetchLocations = async () => {
-    console.log('fetchLocations called. Current search_term:', searchForm.value.location_name);
-    if (searchForm.value.location_name.length < 2) {
-        autocompleteSuggestions.value = [];
-        showSuggestions.value = false;
-        console.log('Search term too short. Suggestions cleared.');
-        return;
-    }
-
-    clearTimeout(debounceTimeout);
-    debounceTimeout = setTimeout(async () => {
-        try {
-            console.log('Making API call for search_term:', searchForm.value.location_name);
-            const response = await axios.get(route('api.greenmotion.locations-autocomplete', { locale: props.locale }), {
-                params: {
-                    search_term: searchForm.value.location_name,
-                    country_id: 1, // Assuming default country ID 1 (e.g., UK) for now
-                    language: props.locale,
-                }
-            });
-            console.log('Raw API response data:', response.data); // Log raw response data
-            autocompleteSuggestions.value = response.data;
-            showSuggestions.value = true;
-            console.log('autocompleteSuggestions.value updated:', autocompleteSuggestions.value);
-            console.log('showSuggestions.value updated:', showSuggestions.value);
-        } catch (error) {
-            console.error("Error fetching locations for autocomplete:", error);
-            autocompleteSuggestions.value = [];
-            showSuggestions.value = false;
-            console.log('Error during API call. Suggestions cleared.');
-        }
-    }, 300); // 300ms debounce
-};
-
-const selectLocation = (location) => {
-    searchForm.value.location_name = location.name;
-    searchForm.value.location_id = location.locationID;
-    autocompleteSuggestions.value = [];
-    showSuggestions.value = false;
-};
-
-// Method to handle blur event for autocomplete input
-const handleBlur = () => {
-    if (!preventHide.value) {
-        showSuggestions.value = false;
-    }
-};
-
-// Methods to manage preventHide flag for mousedown/mouseup on suggestions list
-const handleSuggestionsMousedown = () => {
-    preventHide.value = true;
-};
-
-const handleSuggestionsMouseup = () => {
-    preventHide.value = false;
-};
-
-const handleSearch = () => {
-    // Ensure location_id is set before searching
-    if (!searchForm.value.location_id && searchForm.value.location_name) {
-        // If user typed a name but didn't select from autocomplete, try to find a match
-        const matchedLocation = autocompleteSuggestions.value.find(loc => loc.name === searchForm.value.location_name);
-        if (matchedLocation) {
-            searchForm.value.location_id = matchedLocation.locationID;
-        } else {
-            // Optionally, handle cases where no match is found, e.g., alert user or prevent search
-            alert('Please select a valid location from the suggestions.');
-            return;
-        }
-    }
-
-    router.get(route('green-motion-cars', { locale: props.locale }), searchForm.value, {
-        preserveState: true,
-        preserveScroll: true,
-    });
-};
-
-// Watch for changes in location_name to trigger autocomplete
-watch(() => searchForm.value.location_name, (newValue, oldValue) => {
-    console.log('location_name changed from', oldValue, 'to', newValue);
-    fetchLocations();
-});
-
-// On initial load, if location_id is present, fetch its name to pre-fill the input
-onMounted(async () => {
-    initMap();
-    // Only fetch location name if location_id is present but location_name is not yet set
-    if (props.filters.location_id && !searchForm.value.location_name) {
-        try {
-            const response = await axios.get(route('api.greenmotion.locations', { locale: props.locale }), {
-                params: {
-                    location_id: props.filters.location_id,
-                }
-            });
-            if (response.data && response.data.name) {
-                searchForm.value.location_name = response.data.name;
-            } else {
-                console.warn('onMounted: API response did not contain a name for location_id:', props.filters.location_id);
-            }
-        } catch (error) {
-            console.error("Error fetching initial location name:", error);
-            // Optionally, clear location_id if fetching name failed to prevent further issues
-            searchForm.value.location_id = null;
-            searchForm.value.location_name = '';
-        }
-    }
-});
-
 </script>
 
 <template>
@@ -480,67 +357,7 @@ onMounted(async () => {
     </section>
 
     <div class="full-w-container mx-auto mt-8">
-        <form @submit.prevent="handleSearch" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 p-4 bg-white shadow-md rounded-lg">
-            <div class="relative">
-                <label for="location_name" class="block text-sm font-medium text-gray-700">Location</label>
-                <input
-                    type="text"
-                    id="location_name"
-                    v-model="searchForm.location_name"
-                    @focus="showSuggestions = true"
-                    @blur="handleBlur"
-                    class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50"
-                    placeholder="Enter location name"
-                    autocomplete="off"
-                />
-                <input type="hidden" v-model="searchForm.location_id" />
-                <ul
-                    v-if="showSuggestions && autocompleteSuggestions.length"
-                    class="absolute z-50 w-full bg-white border border-gray-300 rounded-md shadow-lg max-h-60 overflow-auto mt-1"
-                    @mousedown="handleSuggestionsMousedown"
-                    @mouseup="handleSuggestionsMouseup"
-                >
-                    <li
-                        v-for="location in autocompleteSuggestions"
-                        :key="location.locationID"
-                        @click="selectLocation(location)"
-                        class="px-4 py-2 cursor-pointer hover:bg-gray-100"
-                    >
-                        {{ location.name }}
-                    </li>
-                </ul>
-            </div>
-            <div>
-                <label for="start_date" class="block text-sm font-medium text-gray-700">Start Date</label>
-                <input type="date" id="start_date" v-model="searchForm.start_date" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50">
-            </div>
-            <div>
-                <label for="start_time" class="block text-sm font-medium text-gray-700">Start Time</label>
-                <input type="time" id="start_time" v-model="searchForm.start_time" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50">
-            </div>
-            <div>
-                <label for="end_date" class="block text-sm font-medium text-gray-700">End Date</label>
-                <input type="date" id="end_date" v-model="searchForm.end_date" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50">
-            </div>
-            <div>
-                <label for="end_time" class="block text-sm font-medium text-gray-700">End Time</label>
-                <input type="time" id="end_time" v-model="searchForm.end_time" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50">
-           
-            </div>
-            <div class="hidden">
-                <label for="age" class="block text-sm font-medium text-gray-700">Age</label>
-                <input type="number" id="age" v-model="searchForm.age" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50">
-            </div>
-            <div class="hidden">
-                <label for="rentalCode" class="block text-sm font-medium text-gray-700">Rental Code (Optional)</label>
-                <input type="text" id="rentalCode" v-model="searchForm.rentalCode" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50">
-            </div>
-            <div class="flex items-end">
-                <button type="submit" class="w-full bg-customPrimaryColor text-white py-2 px-4 rounded-md hover:bg-customPrimaryColor-dark focus:outline-none focus:ring-2 focus:ring-customPrimaryColor focus:ring-opacity-50">
-                    Search Vehicles
-                </button>
-            </div>
-        </form>
+        <GreenMotionSearchBar :prefill="props.filters" />
     </div>
 
     <div class="full-w-container flex justify-end max-[768px]:hidden my-[2rem]">

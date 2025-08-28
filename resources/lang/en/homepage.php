@@ -6,6 +6,7 @@ return [
     'typewriter_text_1' => 'Booked in a flash. Gone in a Vrooem.',
     'typewriter_text_2' => 'Step 1: Book online. Step 2: Pick it up. Step 3: Drop it off.',
     'typewriter_text_3' => 'No hidden fees. No stress. Vrooem\'s got you covered.',
+    'our_partner' => 'Green Motion Trusted Car Rental Partner',
     
     // Categories Section
     'our_categories' => 'Our Categories',
