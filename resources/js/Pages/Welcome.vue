@@ -68,7 +68,6 @@ import { computed, onBeforeUnmount, onMounted, ref, defineAsyncComponent } from 
 import Card from "@/Components/ui/card/Card.vue";
 import CardContent from "@/Components/ui/card/CardContent.vue";
 
-const selectedSearchBar = ref('vrooem'); // 'vrooem' or 'greenmotion'
 
 const Testimonials = defineAsyncComponent(() => import('@/Components/Testimonials.vue'));
 const Faq = defineAsyncComponent(() => import('@/Components/Faq.vue'));
@@ -253,19 +252,6 @@ const updateCategorySearchUrl = (category) => {
                                 <span class="cursor-blink ml-1"></span>
                             </p>
                         </div>
-                        <div class="mt-2 flex max-[768px]:flex-col max-[768px]:gap-0 gap-5 items-start rounded-lg bg-customPrimaryColor-dark bg-opacity-70">
-                            <p class="text-white text-lg mb-4 font-semibold max-[768px]:text-center max-[768px]:text-[1rem]">Choose your preferred rental provider :</p>
-                            <div class="flex gap-8 max-[768px]:justify-center">
-                                <label class="inline-flex items-center cursor-pointer">
-                                    <input type="radio" class="form-radio h-5 w-5 max-[768px]:h-4 max-[768px]:w-4 text-customPrimaryColor-foreground border-gray-300 focus:ring-customPrimaryColor-foreground" name="search_bar_type" value="vrooem" v-model="selectedSearchBar">
-                                    <span class="ml-3 text-lg font-medium max-[768px]:text-[0.875rem] text-white">Vrooem</span>
-                                </label>
-                                <label class="inline-flex items-center cursor-pointer">
-                                    <input type="radio" class="form-radio h-5 w-5 max-[768px]:h-4 max-[768px]:w-4 text-customPrimaryColor-foreground border-gray-300 focus:ring-customPrimaryColor-foreground" name="search_bar_type" value="greenmotion" v-model="selectedSearchBar">
-                                    <span class="ml-3 text-lg font-medium max-[768px]:text-[0.875rem] text-white">GreenMotion</span>
-                                </label>
-                            </div>
-                        </div>
                     </div>
                 </div>
                 <div
@@ -280,10 +266,7 @@ const updateCategorySearchUrl = (category) => {
 
         <section
             class="mt-[-14rem] mb-[12rem] max-[768px]:mb-[0] max-[768px]:mt-[-1rem] max-[768px]:pt-[2rem] max-[768px]:bg-customPrimaryColor relative z-10">
-            <Transition name="fade" mode="out-in">
-                <SearchBar v-if="selectedSearchBar === 'vrooem'" key="vrooem-search" />
-                <GreenMotionSearchComponent v-else-if="selectedSearchBar === 'greenmotion'" key="greenmotion-search" />
-            </Transition>
+                <SearchBar />
         </section>
 
         <section
