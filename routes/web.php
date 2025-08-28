@@ -504,7 +504,13 @@ Route::group([
         ->where('id', '[0-9]+') // Ensure ID is numeric
         ->name('green-motion-booking.checkout');
     
+    // GreenMotion Booking Routes (inside locale group, moved above general {slug} route)
+    Route::post('/green-motion-booking/charge', [GreenMotionBookingController::class, 'processGreenMotionBookingPayment'])->name('greenmotion.booking.charge');
+    Route::get('/green-motion-booking-success', [GreenMotionBookingController::class, 'greenMotionBookingSuccess'])->name('greenmotion.booking.success');
+    Route::get('/green-motion-booking-cancel', [GreenMotionBookingController::class, 'greenMotionBookingCancel'])->name('greenmotion.booking.cancel');
+
     Route::get('/{slug}', [ContactUsPageController::class, 'show'])->name('contact.show');
+
 }); // End of locale group
 
 // GreenMotion Single Car Page (moved outside locale group to ensure correct ID parsing)
@@ -519,8 +525,3 @@ Route::get('/{locale}/green-motion-car/{id}', [GreenMotionController::class, 'sh
     Route::get('/green-motion-regions', [GreenMotionController::class, 'getGreenMotionRegions'])->name('green-motion-regions');
     Route::get('/green-motion-service-areas', [GreenMotionController::class, 'getGreenMotionServiceAreas'])->name('green-motion-service-areas');
     Route::post('/green-motion-booking', [GreenMotionController::class, 'makeGreenMotionBooking'])->name('green-motion-booking');
-
-// GreenMotion Booking Routes (outside locale group to avoid double locale prefix)
-Route::post('/green-motion-booking/charge', [GreenMotionBookingController::class, 'processGreenMotionBookingPayment'])->name('greenmotion.booking.charge');
-Route::get('/green-motion-booking-success', [GreenMotionBookingController::class, 'greenMotionBookingSuccess'])->name('greenmotion.booking.success');
-Route::get('/green-motion-booking-cancel', [GreenMotionBookingController::class, 'greenMotionBookingCancel'])->name('greenmotion.booking.cancel');
