@@ -12,7 +12,7 @@ import { Switch } from "@/Components/ui/switch";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import axios from 'axios'; // Import axios for API calls
-import GreenMotionSearchBar from "@/Components/GreenMotionSearchBar.vue";
+import GreenMotionSearchBar from "../Components/GreenMotionSearchBar.vue";
 
 const currencySymbols = ref({});
 
