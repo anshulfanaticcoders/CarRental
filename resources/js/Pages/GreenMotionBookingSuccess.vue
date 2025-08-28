@@ -4,7 +4,6 @@ import { Link, usePage, router } from "@inertiajs/vue3";
 import AuthenticatedHeaderLayout from "@/Layouts/AuthenticatedHeaderLayout.vue";
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
-import infoIcon from "../../../assets/WarningCircle.svg";
 import MapPin from "../../../assets/MapPin.svg";
 import Footer from "@/Components/Footer.vue";
 import currencyData from '../../../../public/currency.json';
@@ -329,7 +328,6 @@ const formatTime = (timeStr) => {
             <div class="flex justify-between items-center">
               <p class="flex items-center gap-2">
                 <span class="text-[1.25rem] font-medium max-[768px]:text-[0.875rem]">Total Payment (incl. VAT)</span>
-                <img :src="infoIcon" alt="" class="w-[25px] h-[25px] max-[768px]:w-[20px] max-[768px]:h-[20px]" />
               </p>
               <span class="relative text-customPrimaryColor text-[1.5rem] font-medium max-[768px]:text-[1.2rem]">{{ formatCurrency(totalAmount) }}
                 <span v-if="paymentStatus !== 'paid'" class="absolute left-0 top-[50%] w-full bg-red-600 h-[3px] -rotate-6"></span>
