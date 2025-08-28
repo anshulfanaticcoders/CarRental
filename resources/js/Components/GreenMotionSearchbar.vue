@@ -86,7 +86,6 @@ import axios from "axios";
 import { router, usePage } from "@inertiajs/vue3";
 import VueDatePicker from '@vuepic/vue-datepicker';
 import '@vuepic/vue-datepicker/dist/main.css';
-import { enGB } from 'date-fns/locale';
 
 const props = defineProps({
   prefill: Object,
