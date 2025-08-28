@@ -4,7 +4,6 @@ import { Link, usePage, router } from "@inertiajs/vue3";
 import AuthenticatedHeaderLayout from "@/Layouts/AuthenticatedHeaderLayout.vue";
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
-import MapPin from "../../../assets/MapPin.svg";
 import Footer from "@/Components/Footer.vue";
 import currencyData from '../../../../public/currency.json';
 
@@ -55,7 +54,7 @@ const initMap = () => {
     className: 'custom-div-icon',
     html: `
       <div class="marker-pin">
-        <img src="${MapPin}" alt="Vehicle Location" />
+        <img src="" alt="Vehicle Location" />
       </div>
     `,
     iconSize: [30, 30],
