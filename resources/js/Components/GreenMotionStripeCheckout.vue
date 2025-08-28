@@ -54,7 +54,7 @@ const initiateCheckout = async () => {
     console.log("Raw form data from parent:", JSON.parse(JSON.stringify(props.bookingData)));
 
     // Call the new GreenMotion specific payment route
-    const response = await axios.post(route('greenmotion.booking.charge', { locale: page.props.locale }), {
+    const response = await axios.post(route('greenmotion.booking.charge'), {
       ...props.bookingData, // Pass all booking data directly
     });
 
