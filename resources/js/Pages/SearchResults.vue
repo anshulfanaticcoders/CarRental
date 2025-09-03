@@ -27,7 +27,7 @@ import SearchBar from "@/Components/SearchBar.vue";
 import { Label } from "@/Components/ui/label";
 import { Switch } from "@/Components/ui/switch";
 import CaretDown from "../../assets/CaretDown.svg";
-import fullStar from "../../assets/fullstar.svg"; 
+import fullStar from "../../assets/fullstar.svg";
 import halfStar from "../../assets/halfstar.svg";
 import blankStar from "../../assets/blankstar.svg";
 import VueSlider from 'vue-slider-component';
@@ -41,13 +41,33 @@ const props = defineProps({
     brands: Array,
     colors: Array,
     seatingCapacities: Array,
-    transmissions: Array, 
-    fuels: Array,         
+    transmissions: Array,
+    fuels: Array,
     mileages: Array,
     schema: Object, // Add schema prop
     seoMeta: Object, // Added seoMeta prop
     locale: String, // Added locale prop
+    greenMotionVehicles: Object, // New: GreenMotion vehicles data
 });
+// New: Currency symbols for GreenMotion vehicles
+const currencySymbols = ref({});
+
+onMounted(async () => {
+    try {
+        const response = await fetch('/currency.json');
+        const data = await response.json();
+        currencySymbols.value = data.reduce((acc, curr) => {
+            acc[curr.code] = curr.symbol;
+            return acc;
+        }, {});
+    } catch (error) {
+        console.error("Error loading currency symbols:", error);
+    }
+});
+
+const getCurrencySymbol = (code) => {
+    return currencySymbols.value[code] || '$';
+};
 
 const debounce = (fn, delay) => {
     let timeoutId;
@@ -120,7 +140,21 @@ const form = useForm({
     state: usePage().props.filters.state || "",
     country: usePage().props.filters.country || "",
     matched_field: usePage().props.filters.matched_field || "",
-    location: usePage().props.filters.location || "", // Add location field
+    location: usePage().props.filters.location || "",
+    source: usePage().props.filters.source || null,
+    greenmotion_location_id: usePage().props.filters.greenmotion_location_id || null,
+    start_time: usePage().props.filters?.start_time || '09:00',
+    end_time: usePage().props.filters?.end_time || '09:00',
+    age: usePage().props.filters?.age || 35,
+    rentalCode: usePage().props.filters?.rentalCode || '1',
+    currency: usePage().props.filters?.currency || null,
+    fuel: usePage().props.filters?.fuel || null,
+    userid: usePage().props.filters?.userid || null,
+    username: usePage().props.filters?.username || null,
+    language: usePage().props.filters?.language || null,
+    full_credit: usePage().props.filters?.full_credit || null,
+    promocode: usePage().props.filters?.promocode || null,
+    dropoff_location_id: usePage().props.filters?.dropoff_location_id || null,
 });
 
 const submitFilters = debounce(() => {
@@ -154,7 +188,13 @@ watch(
     { deep: true }
 );
 let map = null;
-let markers = []; 
+let markers = [];
+
+const allVehiclesForMap = computed(() => {
+    const internal = props.vehicles.data || [];
+    const greenMotion = props.greenMotionVehicles?.data || [];
+    return [...internal, ...greenMotion];
+});
 
 const isValidCoordinate = (coord) => {
     const num = parseFloat(coord);
@@ -163,11 +203,11 @@ const isValidCoordinate = (coord) => {
 
 const initMap = () => {
     const getValidVehicleCoords = () => {
-        if (!props.vehicles || !props.vehicles.data) return [];
-        return props.vehicles.data
-            .map(vehicle => 
-                (isValidCoordinate(vehicle.latitude) && isValidCoordinate(vehicle.longitude)) 
-                ? [parseFloat(vehicle.latitude), parseFloat(vehicle.longitude)] 
+        if (!allVehiclesForMap.value || allVehiclesForMap.value.length === 0) return [];
+        return allVehiclesForMap.value
+            .map(vehicle =>
+                (isValidCoordinate(vehicle.latitude) && isValidCoordinate(vehicle.longitude))
+                ? [parseFloat(vehicle.latitude), parseFloat(vehicle.longitude)]
                 : null
             )
             .filter(coord => coord !== null);
@@ -175,7 +215,7 @@ const initMap = () => {
 
     let vehicleCoords = getValidVehicleCoords();
 
-    if (map) { 
+    if (map) {
         map.remove();
         map = null;
     }
@@ -183,15 +223,15 @@ const initMap = () => {
     map = L.map("map", {
         zoomControl: true,
         maxZoom: 18,
-        minZoom: 3, 
+        minZoom: 3,
         zoomSnap: 0.25,
         markerZoomAnimation: false,
         preferCanvas: true,
     });
 
     if (vehicleCoords.length === 0) {
-        console.warn("No vehicles with valid coordinates to initialize map view.");
-        map.setView([20, 0], 2); 
+        console.warn("No vehicles with valid coordinates to initialize map view. Setting default view.");
+        map.setView([20, 0], 2);
     } else {
         const bounds = L.latLngBounds(vehicleCoords);
         if (bounds.isValid()) {
@@ -201,10 +241,10 @@ const initMap = () => {
                 map.fitBounds(bounds, { padding: [50, 50] });
             }
         } else {
-            map.setView([20,0],2); 
+            map.setView([20,0],2);
         }
     }
-    
+
     L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
         attribution: "© OpenStreetMap contributors",
     }).addTo(map);
@@ -212,55 +252,63 @@ const initMap = () => {
     map.createPane("markers");
     map.getPane("markers").style.zIndex = 1000;
 
-    addMarkers(); 
+    addMarkers();
 
     setTimeout(() => {
         if (map) {
             map.invalidateSize();
-            if (props.vehicles && props.vehicles.data) {
+            if (allVehiclesForMap.value && allVehiclesForMap.value.length > 0) {
                 const currentCoords = getValidVehicleCoords();
                 if (currentCoords.length > 0) {
                     const currentBounds = L.latLngBounds(currentCoords);
                     if (currentBounds.isValid()) {
                         if (currentCoords.length === 1) {
-                           if(map.getZoom() < 10) map.setView(currentBounds.getCenter(), 13); 
+                           if(map.getZoom() < 10) map.setView(currentBounds.getCenter(), 13);
                            else map.panTo(currentBounds.getCenter());
                         } else {
                            map.fitBounds(currentBounds, { padding: [50, 50] });
                         }
                     }
-                } else if (!map.getCenter() || (map.getCenter().lat === 20 && map.getCenter().lng === 0 && map.getZoom() === 2) ) { 
+                } else if (!map.getCenter() || (map.getCenter().lat === 20 && map.getCenter().lng === 0 && map.getZoom() === 2) ) {
                     map.setView([20,0],2);
                 }
             }
         }
-    }, 200); 
+    }, 200);
 };
 
 const createCustomIcon = (vehicle, isHighlighted = false) => {
-    const currency = vehicle.vendor_profile?.currency || "₹";
+    let currency = '$';
     let priceToDisplay = "N/A";
     let priceValue = null;
 
-    if (form.package_type === 'day' && vehicle.price_per_day) {
-        priceValue = vehicle.price_per_day;
-    } else if (form.package_type === 'week' && vehicle.price_per_week) {
-        priceValue = vehicle.price_per_week;
-    } else if (form.package_type === 'month' && vehicle.price_per_month) {
-        priceValue = vehicle.price_per_month;
+    if (vehicle.source === 'greenmotion') {
+        currency = getCurrencySymbol(vehicle.products[0]?.currency);
+        priceValue = vehicle.products[0]?.total;
     } else {
-        // Fallback if no package_type is selected or price for selected type is null
-        if (vehicle.price_per_day) {
+        currency = vehicle.vendor_profile?.currency || "$";
+        if (form.package_type === 'day' && vehicle.price_per_day) {
             priceValue = vehicle.price_per_day;
-        } else if (vehicle.price_per_week) {
+        } else if (form.package_type === 'week' && vehicle.price_per_week) {
             priceValue = vehicle.price_per_week;
-        } else if (vehicle.price_per_month) {
+        } else if (form.package_type === 'month' && vehicle.price_per_month) {
             priceValue = vehicle.price_per_month;
+        } else {
+            // Fallback if no package_type is selected or price for selected type is null
+            if (vehicle.price_per_day) {
+                priceValue = vehicle.price_per_day;
+            } else if (vehicle.price_per_week) {
+                priceValue = vehicle.price_per_week;
+            } else if (vehicle.price_per_month) {
+                priceValue = vehicle.price_per_month;
+            }
         }
     }
 
-    if (priceValue !== null) {
+    if (priceValue !== null && priceValue > 0) { // Ensure priceValue is greater than 0
         priceToDisplay = `${currency}${priceValue}`;
+    } else {
+        priceToDisplay = "N/A"; // Explicitly set to N/A if price is 0 or null
     }
 
     const bgColor = isHighlighted ? 'bg-black' : 'bg-white';
@@ -273,9 +321,9 @@ const createCustomIcon = (vehicle, isHighlighted = false) => {
       <span class="font-bold ${textColor}">${priceToDisplay}</span>
     </div>
   `,
-        iconSize: [80, 30], // Fixed size, now that w-fit is removed from HTML
-        iconAnchor: [40, 30], // Bottom center of the icon (assuming 30px height)
-        popupAnchor: [0, -30], // Standard offset to place popup directly above the marker
+        iconSize: [80, 30],
+        iconAnchor: [40, 30],
+        popupAnchor: [0, -30],
         pane: "markers",
     });
 };
@@ -299,6 +347,23 @@ const resetFilters = () => {
     tempPriceRangeValues.value = [0, 20000];
     form.price_range = ""; // Ensure price_range in form is also cleared
 
+    // Reset GreenMotion specific filters
+    form.start_time = '09:00';
+    form.end_time = '09:00';
+    form.age = 35;
+    form.rentalCode = '1';
+    form.currency = null;
+    form.fuel = null; // This was duplicated, ensure it's handled correctly
+    form.userid = null;
+    form.username = null;
+    form.language = null;
+    form.full_credit = null;
+    form.promocode = null;
+    form.dropoff_location_id = null;
+    form.source = null;
+    form.greenmotion_location_id = null;
+
+
     submitFilters(); // Submit with cleared filters
 };
 
@@ -307,22 +372,22 @@ const addMarkers = () => {
     markers = [];
     vehicleMarkers.value = {}; // Clear previous vehicle to marker mappings
 
-    if (!props.vehicles.data || props.vehicles.data.length === 0) {
+    if (!allVehiclesForMap.value || allVehiclesForMap.value.length === 0) {
         return;
     }
 
-    const coordData = new Map(); 
+    const coordData = new Map();
 
-    props.vehicles.data.forEach((vehicle) => {
+    allVehiclesForMap.value.forEach((vehicle) => {
         if (!isValidCoordinate(vehicle.latitude) || !isValidCoordinate(vehicle.longitude)) {
             console.warn(`Skipping vehicle ID ${vehicle.id} with invalid coordinates: Lat=${vehicle.latitude}, Lng=${vehicle.longitude}`);
             return;
         }
-        
+
         const lat = parseFloat(vehicle.latitude);
         const lng = parseFloat(vehicle.longitude);
-        const coordKey = `${lat.toFixed(5)}_${lng.toFixed(5)}`; 
-        
+        const coordKey = `${lat.toFixed(5)}_${lng.toFixed(5)}`;
+
         if (!coordData.has(coordKey)) {
             coordData.set(coordKey, { count: 0, originalLat: lat, originalLng: lng });
         }
@@ -337,9 +402,9 @@ const addMarkers = () => {
             const K_MAX_MARKERS_PER_RING = 8; // Max markers in one ring before increasing radius
             const ringNum = Math.floor((occurrence - 2) / K_MAX_MARKERS_PER_RING);
             const indexInRing = (occurrence - 2) % K_MAX_MARKERS_PER_RING;
-            
+
             const angle = indexInRing * (2 * Math.PI / K_MAX_MARKERS_PER_RING);
-            
+
             // Start with a more significant base radius, and increase for new "rings"
             const baseEffectiveRadius = 0.00030; // Approx 33 meters, adjust as needed
             const effectiveRadius = baseEffectiveRadius * (1 + ringNum * 0.65); // Increase radius for outer rings
@@ -348,8 +413,21 @@ const addMarkers = () => {
             displayLng = lng + effectiveRadius * Math.cos(angle);
         }
 
-        const currency = vehicle.vendor_profile?.currency || "$";
-        const primaryImage = vehicle.images?.find((image) => image.image_type === 'primary')?.image_url || '/default-image.png';
+        const primaryImage = vehicle.source === 'greenmotion' ? vehicle.image : (vehicle.images?.find((image) => image.image_type === 'primary')?.image_url || '/default-image.png');
+        const detailRoute = vehicle.source === 'greenmotion'
+            ? route('green-motion-car.show', { locale: page.props.locale, id: vehicle.id.replace('gm_', ''), ...form.data() })
+            : route('vehicle.show', { locale: page.props.locale, id: vehicle.id, package: form.package_type, pickup_date: form.date_from, return_date: form.date_to });
+
+        let popupPrice = "N/A";
+        let popupCurrencySymbol = "$";
+
+        if (vehicle.source === 'greenmotion' && vehicle.products[0]?.total && vehicle.products[0].total > 0) {
+            popupCurrencySymbol = getCurrencySymbol(vehicle.products[0].currency);
+            popupPrice = `${popupCurrencySymbol}${vehicle.products[0].total}`;
+        } else if (vehicle.price_per_day && vehicle.price_per_day > 0) {
+            popupCurrencySymbol = vehicle.vendor_profile?.currency || "$";
+            popupPrice = `${popupCurrencySymbol}${vehicle.price_per_day}`;
+        }
 
         const marker = L.marker([displayLat, displayLng], {
             icon: createCustomIcon(vehicle),
@@ -360,20 +438,21 @@ const addMarkers = () => {
                 <p class="rating !w-40">${vehicle.average_rating ? vehicle.average_rating.toFixed(1) : '0.0'} ★ (${vehicle.review_count} reviews)</p>
                 <p class="font-semibold !w-40">${vehicle.brand} ${vehicle.model}</p>
                 <p class="!w-40">${vehicle.full_vehicle_address || ''}</p>
-                <a href="/${page.props.locale}/vehicle/${vehicle.id}" 
+                <p class="!w-40">Price: ${popupPrice}</p>
+                <a href="${detailRoute}"
                    class="text-blue-500 hover:text-blue-700"
-                   onclick="event.preventDefault(); window.location.href='/${page.props.locale}/vehicle/${vehicle.id}';"> 
+                   onclick="event.preventDefault(); window.location.href = this.href;">
                     View Details
                 </a>
             </div>
         `);
-        
+
         map.addLayer(marker);
         markers.push(marker);
         vehicleMarkers.value[vehicle.id] = marker; // Store marker instance
     });
 
-    const validCoords = props.vehicles.data
+    const validCoords = allVehiclesForMap.value
         .filter(v => isValidCoordinate(v.latitude) && isValidCoordinate(v.longitude))
         .map(v => [parseFloat(v.latitude), parseFloat(v.longitude)]);
 
@@ -381,9 +460,9 @@ const addMarkers = () => {
         const allVehicleBounds = L.latLngBounds(validCoords);
         if (allVehicleBounds.isValid()) {
             if (validCoords.length === 1) {
-                map.setView(allVehicleBounds.getCenter(), 13); 
+                map.setView(allVehicleBounds.getCenter(), 13);
             } else {
-                map.fitBounds(allVehicleBounds, { padding: [50, 50] }); 
+                map.fitBounds(allVehicleBounds, { padding: [50, 50] });
             }
         }
     } else {
@@ -396,11 +475,23 @@ const addMarkers = () => {
 
 
 watch(
-    () => props.vehicles,
+    () => props.vehicles.data,
     (newVehicles, oldVehicles) => {
         if (map) {
             if (JSON.stringify(newVehicles) !== JSON.stringify(oldVehicles)) {
-                 addMarkers(); 
+                 addMarkers();
+            }
+        }
+    },
+    { deep: true }
+);
+
+watch(
+    () => props.greenMotionVehicles?.data,
+    (newVehicles, oldVehicles) => {
+        if (map) {
+            if (JSON.stringify(newVehicles) !== JSON.stringify(oldVehicles)) {
+                 addMarkers();
             }
         }
     },
@@ -452,10 +543,10 @@ const handleMapToggle = (value) => {
     if (value && map) {
         setTimeout(() => {
             map.invalidateSize();
-            const validCoords = props.vehicles.data
+            const validCoords = allVehiclesForMap.value
                 .filter(v => isValidCoordinate(v.latitude) && isValidCoordinate(v.longitude))
                 .map(v => [parseFloat(v.latitude), parseFloat(v.longitude)]);
-            
+
             if (validCoords.length > 0) {
                 const currentBounds = L.latLngBounds(validCoords);
                 if (currentBounds.isValid()) {
@@ -472,15 +563,16 @@ const handleMapToggle = (value) => {
     }
 };
 
-import { useToast } from "vue-toastification"; 
+import { useToast } from "vue-toastification";
 import { Inertia } from "@inertiajs/inertia";
 import CustomDropdown from "@/Components/CustomDropdown.vue";
-const toast = useToast(); 
-const favoriteStatus = ref({}); 
+const toast = useToast();
+const favoriteStatus = ref({});
 
 const fetchFavoriteStatus = async () => {
     if (!page.props.auth?.user) return;
     try {
+        // Fetch favorites for internal vehicles only
         if (!props.vehicles.data || props.vehicles.data.length === 0) return;
         const response = await axios.get(route('favorites.status'));
         const favoriteIds = response.data; // Now an array of IDs
@@ -495,11 +587,22 @@ const fetchFavoriteStatus = async () => {
 };
 const $page = usePage();
 
-const popEffect = ref({}); 
+const popEffect = ref({});
 
 const toggleFavourite = async (vehicle) => {
     if (!$page.props.auth?.user) {
         return router.get(route('login', {}, usePage().props.locale));
+    }
+
+    if (vehicle.source === 'greenmotion') {
+        toast.info("Favorites are not supported for GreenMotion vehicles.", {
+            position: "top-right",
+            timeout: 3000,
+            closeOnClick: true,
+            pauseOnHover: true,
+            draggable: true,
+        });
+        return;
     }
 
     const endpoint = favoriteStatus.value[vehicle.id]
@@ -514,7 +617,7 @@ const toggleFavourite = async (vehicle) => {
             popEffect.value[vehicle.id] = true;
             setTimeout(() => {
                 popEffect.value[vehicle.id] = false;
-            }, 300); 
+            }, 300);
         }
 
         toast.success(
@@ -594,6 +697,20 @@ const searchQuery = computed(() => {
         country: usePage().props.filters?.country || "",
         matched_field: usePage().props.filters?.matched_field || null,
         location: usePage().props.filters?.location || "",
+        source: usePage().props.filters?.source || null,
+        greenmotion_location_id: usePage().props.filters?.greenmotion_location_id || null,
+        start_time: usePage().props.filters?.start_time || '09:00',
+        end_time: usePage().props.filters?.end_time || '09:00',
+        age: usePage().props.filters?.age || 35,
+        rentalCode: usePage().props.filters?.rentalCode || '1',
+        currency: usePage().props.filters?.currency || null,
+        fuel: usePage().props.filters?.fuel || null,
+        userid: usePage().props.filters?.userid || null,
+        username: usePage().props.filters?.username || null,
+        language: usePage().props.filters?.language || null,
+        full_credit: usePage().props.filters?.full_credit || null,
+        promocode: usePage().props.filters?.promocode || null,
+        dropoff_location_id: usePage().props.filters?.dropoff_location_id || null,
     };
 });
 
@@ -610,6 +727,21 @@ const handleSearchUpdate = (params) => {
     form.state = params.state || "";
     form.country = params.country || "";
     form.matched_field = params.matched_field || null;
+    form.source = params.source || null;
+    form.greenmotion_location_id = params.greenmotion_location_id || null;
+    form.start_time = params.start_time || '09:00';
+    form.end_time = params.end_time || '09:00';
+    form.age = params.age || 35;
+    form.rentalCode = params.rentalCode || '1';
+    form.currency = params.currency || null;
+    form.fuel = params.fuel || null;
+    form.userid = params.userid || null;
+    form.username = params.username || null;
+    form.language = params.language || null;
+    form.full_credit = params.full_credit || null;
+    form.promocode = params.promocode || null;
+    form.dropoff_location_id = params.dropoff_location_id || null;
+
 
     if (params.matched_field === 'location') {
         form.location = params.location_name || params.where || ""; // Use location_name if provided by SearchBar, else fallback
@@ -737,7 +869,7 @@ const setupIntersectionObserver = () => {
             entries.forEach((entry) => {
                 if (entry.isIntersecting && !vehiclesInView.value.has(entry.target.dataset.vehicleId)) {
                     // Force reflow to ensure initial state is applied before transition
-                    void entry.target.offsetWidth; 
+                    void entry.target.offsetWidth;
                     entry.target.classList.add('fade-up-visible');
                     vehiclesInView.value.add(entry.target.dataset.vehicleId);
                 }
@@ -847,7 +979,7 @@ watch(
                     <div class="text-xs font-medium text-gray-500 mb-1 ml-1">Passenger Seats</div>
                     <CustomDropdown v-model="form.seating_capacity" unique-id="seating-capacity"
                         :options="$page.props.seatingCapacities.map(capacity => ({ value: capacity, label: capacity + ' Seats' }))"
-                        placeholder="Any Capacity" :left-icon="seatingIcon" :right-icon="CaretDown" 
+                        placeholder="Any Capacity" :left-icon="seatingIcon" :right-icon="CaretDown"
                         class="hover:border-customPrimaryColor transition-all duration-300" />
                 </div>
 
@@ -873,7 +1005,7 @@ watch(
                     <div class="text-xs font-medium text-gray-500 mb-1 ml-1">Transmission Type</div>
                     <CustomDropdown v-model="form.transmission" unique-id="transmission"
                         :options="$page.props.transmissions.map(transmission => ({ value: transmission, label: transmission.charAt(0).toUpperCase() + transmission.slice(1) }))"
-                        placeholder="Any Type" :left-icon="transmissionIcon" :right-icon="CaretDown" 
+                        placeholder="Any Type" :left-icon="transmissionIcon" :right-icon="CaretDown"
                         class="hover:border-customPrimaryColor transition-all duration-300" />
                 </div>
 
@@ -969,7 +1101,7 @@ watch(
                     ]" placeholder="Any Rate" :left-icon="priceperdayicon" :right-icon="CaretDown"
                     class="hover:border-customPrimaryColor bg-customPrimaryColor/5 transition-all duration-300" />
                 </div>
-                
+
             </div>
         </form>
 
@@ -1009,7 +1141,7 @@ watch(
                     <!-- Category Filter -->
                     <div class="filter-item">
                     <label class="text-sm font-medium text-gray-700 mb-1 block">Vehicle Type</label>
-                    <CustomDropdown v-model="form.category_id" unique-id="category-mobile" 
+                    <CustomDropdown v-model="form.category_id" unique-id="category-mobile"
                         :options="$page.props.categories.map(category => ({ value: category.id, label: category.name }))"
                         placeholder="All Categories" :left-icon="categoryIcon" :right-icon="CaretDown" />
                     </div>
@@ -1131,8 +1263,7 @@ watch(
                 </form>
             </div>
         </div>
-        
-       
+
     </div>
 </section>
 
@@ -1167,7 +1298,7 @@ watch(
                     'grid gap-5',
                     showMap ? 'w-full grid-cols-2' : 'w-full grid-cols-4',
                 ]" class="max-[768px]:grid-cols-1">
-                    <div v-if="!vehicles.data || vehicles.data.length === 0"
+                    <div v-if="!allVehiclesForMap || allVehiclesForMap.length === 0"
                         class="text-center text-gray-500 col-span-2 flex flex-col justify-center items-center gap-4">
                         <img :src=noVehicleIcon alt="" class="w-[25rem] max-[768px]:w-full" loading="lazy">
                         <p class="text-lg font-medium text-customPrimaryColor">No vehicles available at the moment</p>
@@ -1179,11 +1310,12 @@ watch(
                             Reset All Filters
                         </button>
                     </div>
-                    <div v-for="vehicle in vehicles.data" :key="vehicle.id"
+                    <div v-for="vehicle in allVehiclesForMap" :key="vehicle.id"
                         class="rounded-[12px] border-[1px] border-[#E7E7E7] relative overflow-hidden vehicle-card fade-up-hidden"
                         :data-vehicle-id="vehicle.id"
                         @mouseenter="highlightVehicleOnMap(vehicle)"
                         @mouseleave="unhighlightVehicleOnMap(vehicle)">
+                        <div class="green-corner-badge" v-if="vehicle.source === 'greenmotion'"></div>
                         <div class="flex justify-end mb-3 absolute right-3 top-3">
                             <div class="column flex justify-end">
                                 <button v-if="!$page.props.auth?.user || isCustomer" @click.stop="toggleFavourite(vehicle)"
@@ -1200,13 +1332,13 @@ watch(
                             </div>
                         </div>
                         <a
-                            :href="route('vehicle.show', { locale: page.props.locale, id: vehicle.id, package: form.package_type, pickup_date: form.date_from, return_date: form.date_to })">
+                            :href="vehicle.source === 'greenmotion' ? route('green-motion-car.show', { locale: page.props.locale, id: vehicle.id.replace('gm_', ''), location_id: form.greenmotion_location_id || form.location_id || null, start_date: form.date_from, end_date: form.date_to, start_time: form.start_time, end_time: form.end_time, age: form.age, rentalCode: form.rentalCode, currency: form.currency, fuel: form.fuel, userid: form.userid, username: form.username, language: form.language, full_credit: form.full_credit, promocode: form.promocode, dropoff_location_id: form.dropoff_location_id }) : route('vehicle.show', { locale: page.props.locale, id: vehicle.id, package: form.package_type, pickup_date: form.date_from, return_date: form.date_to })">
                             <div class="column flex flex-col gap-5 items-start">
-                                <img v-if="vehicle.images" :src="`${vehicle.images.find(
+                                <img :src="vehicle.source === 'greenmotion' ? vehicle.image : (vehicle.images?.find(
                                     (image) =>
                                         image.image_type === 'primary'
-                                )?.image_url
-                                    }`" alt="Primary Image"
+                                )?.image_url || '/default-image.png')
+                                    " alt="Vehicle Image"
                                     class="w-full h-[250px] object-cover rounded-tl-lg rounded-tr-lg max-[768px]:h-[200px]" loading="lazy" />
                                 <span
                                     class="bg-[#f5f5f5] ml-[1rem] inline-block px-8 py-2 text-center rounded-[40px] max-[768px]:text-[0.95rem]">
@@ -1254,7 +1386,7 @@ watch(
                                     <div class="features">
                                         <span class="capitalize text-[1.15rem] max-[768px]:text-[1rem]">{{
                                             vehicle.transmission }} .
-                                            {{ vehicle.fuel }} .
+                                            {{ vehicle.source === 'greenmotion' ? vehicle.fuel : vehicle.fuel }} .
                                             {{ vehicle.seating_capacity }}
                                             Seats</span>
                                     </div>
@@ -1263,7 +1395,7 @@ watch(
                                     <div class="col flex gap-3">
                                         <img :src="mileageIcon" alt="" loading="lazy" /><span
                                             class="text-[1.15rem] max-[768px]:text-[0.95rem]">
-                                            {{ vehicle.mileage }}km/L</span>
+                                            {{ vehicle.source === 'greenmotion' ? vehicle.mileage + ' MPG' : vehicle.mileage + ' km/L' }}</span>
                                     </div>
                                     <!-- <div class="col flex gap-3" v-if="vehicle.distance_in_km !== undefined">
                                         <img :src="walkIcon" alt="" /><span
@@ -1277,9 +1409,7 @@ watch(
                                     <!-- Free Cancellation based on the selected package type -->
                                     <span v-if="
                                         vehicle.benefits &&
-                                        filters.package_type === 'day' &&
-                                        vehicle.benefits
-                                            .cancellation_available_per_day
+                                        vehicle.benefits.cancellation_available_per_day
                                     " class="flex gap-3 items-center text-[12px]">
                                         <img :src="check" alt="" loading="lazy" />Free
                                         Cancellation ({{
@@ -1290,9 +1420,7 @@ watch(
                                     </span>
                                     <span v-else-if="
                                         vehicle.benefits &&
-                                        filters.package_type === 'week' &&
-                                        vehicle.benefits
-                                            .cancellation_available_per_week
+                                        vehicle.benefits.cancellation_available_per_week
                                     " class="flex gap-3 items-center text-[12px]">
                                         <img :src="check" alt="" loading="lazy" />Free
                                         Cancellation ({{
@@ -1303,9 +1431,7 @@ watch(
                                     </span>
                                     <span v-else-if="
                                         vehicle.benefits &&
-                                        filters.package_type === 'month' &&
-                                        vehicle.benefits
-                                            .cancellation_available_per_month
+                                        vehicle.benefits.cancellation_available_per_month
                                     " class="flex gap-3 items-center text-[12px]">
                                         <img :src="check" alt="" loading="lazy" />Free
                                         Cancellation ({{
@@ -1314,11 +1440,13 @@ watch(
                                         }}
                                         days)
                                     </span>
+                                    <span v-else-if="vehicle.source === 'greenmotion' && vehicle.benefits?.cancellation_available_per_day" class="flex gap-3 items-center text-[12px]">
+                                        <img :src="check" alt="" loading="lazy" />Free Cancellation
+                                    </span>
 
                                     <!-- Mileage information based on the selected package type -->
                                     <span v-if="
                                         vehicle.benefits &&
-                                        filters.package_type === 'day' &&
                                         !vehicle.benefits.limited_km_per_day
                                     " class="flex gap-3 items-center text-[12px]">
                                         <img :src="check" alt="" loading="lazy" />Unlimited
@@ -1326,7 +1454,6 @@ watch(
                                     </span>
                                     <span v-else-if="
                                         vehicle.benefits &&
-                                        filters.package_type === 'day' &&
                                         vehicle.benefits.limited_km_per_day
                                     " class="flex gap-3 items-center text-[12px]">
                                         <img :src="check" alt="" loading="lazy" />Limited to
@@ -1336,58 +1463,15 @@ watch(
                                         }}
                                         km/day
                                     </span>
-
-                                    <span v-if="
-                                        vehicle.benefits &&
-                                        filters.package_type === 'week' &&
-                                        !vehicle.benefits
-                                            .limited_km_per_week
-                                    " class="flex gap-3 items-center text-[12px]">
-                                        <img :src="check" alt="" loading="lazy" />Unlimited
-                                        mileage
-                                    </span>
-                                    <span v-else-if="
-                                        vehicle.benefits &&
-                                        filters.package_type === 'week' &&
-                                        vehicle.benefits.limited_km_per_week
-                                    " class="flex gap-3 items-center text-[12px]">
-                                        <img :src="check" alt="" loading="lazy" />Limited to
-                                        {{
-                                            vehicle.benefits
-                                                .limited_km_per_week_range
-                                        }}
-                                        km/week
+                                    <span v-else-if="vehicle.source === 'greenmotion' && !vehicle.benefits?.limited_km_per_day" class="flex gap-3 items-center text-[12px]">
+                                        <img :src="check" alt="" loading="lazy" />Unlimited mileage
                                     </span>
 
-                                    <span v-if="
-                                        vehicle.benefits &&
-                                        filters.package_type === 'month' &&
-                                        !vehicle.benefits
-                                            .limited_km_per_month
-                                    " class="flex gap-3 items-center text-[12px]">
-                                        <img :src="check" alt="" loading="lazy" />Unlimited
-                                        mileage
-                                    </span>
-                                    <span v-else-if="
-                                        vehicle.benefits &&
-                                        filters.package_type === 'month' &&
-                                        vehicle.benefits
-                                            .limited_km_per_month
-                                    " class="flex gap-3 items-center text-[12px]">
-                                        <img :src="check" alt="" loading="lazy" />Limited to
-                                        {{
-                                            vehicle.benefits
-                                                .limited_km_per_month_range
-                                        }}
-                                        km/month
-                                    </span>
 
                                     <!-- Additional cost per km if applicable -->
                                     <span v-if="
                                         vehicle.benefits &&
-                                        filters.package_type === 'day' &&
-                                        vehicle.benefits
-                                            .price_per_km_per_day
+                                        vehicle.benefits.price_per_km_per_day
                                     " class="flex gap-3 items-center text-[12px]">
                                         <img :src="check" alt="" loading="lazy" />{{
                                             vehicle.benefits
@@ -1396,9 +1480,7 @@ watch(
                                     </span>
                                     <span v-else-if="
                                         vehicle.benefits &&
-                                        filters.package_type === 'week' &&
-                                        vehicle.benefits
-                                            .price_per_km_per_week
+                                        vehicle.benefits.price_per_km_per_week
                                     " class="flex gap-3 items-center text-[12px]">
                                         <img :src="check" alt="" loading="lazy" />{{
                                             vehicle.benefits
@@ -1407,9 +1489,7 @@ watch(
                                     </span>
                                     <span v-else-if="
                                         vehicle.benefits &&
-                                        filters.package_type === 'month' &&
-                                        vehicle.benefits
-                                            .price_per_km_per_month
+                                        vehicle.benefits.price_per_km_per_month
                                     " class="flex gap-3 items-center text-[12px]">
                                         <img :src="check" alt="" loading="lazy" />{{
                                             vehicle.benefits
@@ -1428,6 +1508,12 @@ watch(
                                         }}
                                         years
                                     </span>
+                                    <span v-else-if="vehicle.source === 'greenmotion' && vehicle.benefits?.minimum_driver_age" class="flex gap-3 items-center text-[12px]">
+                                        <img :src="check" alt="" loading="lazy" />Min age: {{ vehicle.benefits.minimum_driver_age }} years
+                                    </span>
+                                    <span v-if="vehicle.source === 'greenmotion' && vehicle.benefits?.fuel_policy" class="flex gap-3 items-center text-[12px]">
+                                        <img :src="check" alt="" loading="lazy" />Fuel Policy: {{ vehicle.benefits.fuel_policy }}
+                                    </span>
                                 </div>
 
                                 <div class="mt-[2rem] flex justify-between items-center">
@@ -1437,7 +1523,7 @@ watch(
                                         <div v-if="form.package_type === 'day' || form.package_type === 'week' || form.package_type === 'month'">
                                             <div v-if="vehicle[priceField] && vehicle[priceField] > 0">
                                                 <span class="text-customPrimaryColor text-[1.875rem] font-medium max-[768px]:text-[1.3rem] max-[768px]:font-bold">
-                                                    {{ vehicle.vendor_profile?.currency || '$' }}{{ vehicle[priceField] }}
+                                                    {{ vehicle.source === 'greenmotion' ? getCurrencySymbol(vehicle.currency) : (vehicle.vendor_profile?.currency || '$') }}{{ vehicle[priceField] }}
                                                 </span>
                                                 <span>/{{ priceUnit }}</span>
                                             </div>
@@ -1447,27 +1533,40 @@ watch(
                                         </div>
                                         <!-- Else (no package_type filter is active, form.package_type is '') -->
                                         <div v-else class="flex flex-col">
-                                            <div v-if="vehicle.price_per_day && vehicle.price_per_day > 0" class="flex items-baseline">
-                                                <span class="text-customPrimaryColor text-lg font-semibold">
-                                                    {{ vehicle.vendor_profile?.currency || '$' }}{{ vehicle.price_per_day }}
-                                                </span>
-                                                <span class="text-xs text-gray-600 ml-1">/day</span>
-                                            </div>
-                                            <div v-if="vehicle.price_per_week && vehicle.price_per_week > 0" class="flex items-baseline mt-1">
-                                                <span class="text-customPrimaryColor text-lg font-semibold">
-                                                    {{ vehicle.vendor_profile?.currency || '$' }}{{ vehicle.price_per_week }}
-                                                </span>
-                                                <span class="text-xs text-gray-600 ml-1">/week</span>
-                                            </div>
-                                            <div v-if="vehicle.price_per_month && vehicle.price_per_month > 0" class="flex items-baseline mt-1">
-                                                <span class="text-customPrimaryColor text-lg font-semibold">
-                                                    {{ vehicle.vendor_profile?.currency || '$' }}{{ vehicle.price_per_month }}
-                                                </span>
-                                                <span class="text-xs text-gray-600 ml-1">/month</span>
-                                            </div>
-                                            <div v-if="!(vehicle.price_per_day && vehicle.price_per_day > 0) && !(vehicle.price_per_week && vehicle.price_per_week > 0) && !(vehicle.price_per_month && vehicle.price_per_month > 0)" class="mt-1">
-                                                <span class="text-sm text-gray-500">Price not available</span>
-                                            </div>
+                                            <template v-if="vehicle.source === 'greenmotion'">
+                                                <div v-if="vehicle.products[0]?.total && vehicle.products[0].total > 0" class="flex items-baseline">
+                                                    <span class="text-customPrimaryColor text-lg font-semibold">
+                                                        {{ getCurrencySymbol(vehicle.products[0].currency) }}{{ vehicle.products[0].total }}
+                                                    </span>
+                                                    <span class="text-xs text-gray-600 ml-1">/rental</span>
+                                                </div>
+                                                <div v-else class="mt-1">
+                                                    <span class="text-sm text-gray-500">Price not available</span>
+                                                </div>
+                                            </template>
+                                            <template v-else>
+                                                <div v-if="vehicle.price_per_day && vehicle.price_per_day > 0" class="flex items-baseline">
+                                                    <span class="text-customPrimaryColor text-lg font-semibold">
+                                                        {{ vehicle.vendor_profile?.currency || '$' }}{{ vehicle.price_per_day }}
+                                                    </span>
+                                                    <span class="text-xs text-gray-600 ml-1">/day</span>
+                                                </div>
+                                                <div v-if="vehicle.price_per_week && vehicle.price_per_week > 0" class="flex items-baseline mt-1">
+                                                    <span class="text-customPrimaryColor text-lg font-semibold">
+                                                        {{ vehicle.vendor_profile?.currency || '$' }}{{ vehicle.price_per_week }}
+                                                    </span>
+                                                    <span class="text-xs text-gray-600 ml-1">/week</span>
+                                                </div>
+                                                <div v-if="vehicle.price_per_month && vehicle.price_per_month > 0" class="flex items-baseline mt-1">
+                                                    <span class="text-customPrimaryColor text-lg font-semibold">
+                                                        {{ vehicle.vendor_profile?.currency || '$' }}{{ vehicle.price_per_month }}
+                                                    </span>
+                                                    <span class="text-xs text-gray-600 ml-1">/month</span>
+                                                </div>
+                                                <div v-if="!(vehicle.price_per_day && vehicle.price_per_day > 0) && !(vehicle.price_per_week && vehicle.price_per_week > 0) && !(vehicle.price_per_month && vehicle.price_per_month > 0)" class="mt-1">
+                                                    <span class="text-sm text-gray-500">Price not available</span>
+                                                </div>
+                                            </template>
                                         </div>
                                     </div>
                                     <img :src="goIcon" alt="Go" class="max-[768px]:w-[35px]" loading="lazy" />
@@ -1656,5 +1755,29 @@ select:focus+.caret-rotate {
     opacity: 1;
     transform: translateY(0);
     transition: opacity 0.6s ease-out, transform 0.6s ease-out;
+}
+
+.green-corner-badge {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 0;
+    height: 0;
+    border-top: 90px solid #4CAF50; /* Green color */
+    border-right: 90px solid transparent;
+    z-index: 10;
+}
+
+.green-corner-badge::after {
+    content: "Green Motion";
+    position: absolute;
+    top: -41px; /* Adjust as needed */
+    left: 0px; /* Adjust as needed */
+    color: white;
+    font-size: 0.7rem;
+    font-weight: bold;
+    transform: rotate(-45deg);
+    transform-origin: 0% 0%;
+    white-space: nowrap;
 }
 </style>

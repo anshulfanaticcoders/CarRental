@@ -53,17 +53,6 @@
         <!-- Search results dropdown -->
         <div v-if="showSearchBox && (searchResults.length > 0 || popularPlaces.length > 0 || searchPerformed)"
           class="search-results absolute z-20 top-[105%] w-[50%] rounded-[12px] border-[1px] border-white left-[20%] p-5 bg-white text-customDarkBlackColor max-h-[400px] overflow-y-auto max-[768px]:w-full max-[768px]:top-[45%] max-[768px]:left-0">
-          <!-- Around Me button -->
-          <div v-if="!searchPerformed && !isSearching" class="p-2 border-b border-gray-200 mb-2">
-            <div class="text-sm font-medium mb-2 text-customPrimaryColor">{{ _t('homepage', 'search_nearby_header') }}</div>
-            <button @click="searchAroundMe"
-              class="flex items-center gap-3 w-full text-left hover:bg-[#efefef4d] hover:text-customPrimaryColor cursor-pointer p-2">
-              <div class="h-10 w-10 md:h-12 md:w-12 bg-gray-100 text-gray-300 rounded flex justify-center items-center">
-                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" class="w-6 h-6 text-gray-500"><path fill-rule="evenodd" clip-rule="evenodd" d="M20.0322 3.05334C20.2938 2.94495 20.5948 3.00481 20.7951 3.20499C20.9952 3.40518 21.055 3.70625 20.9467 3.96778L14.0632 20.5685C13.9451 20.8529 13.6551 21.0267 13.3486 20.9966C13.0421 20.9666 12.7913 20.7398 12.7308 20.4379L11.2023 12.7977L3.56212 11.2693C3.26022 11.2087 3.0334 10.9579 3.00336 10.6514C2.97331 10.3449 3.1471 10.0548 3.43148 9.93681L20.0322 3.05334Z" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path></svg>
-              </div>
-              <div class="font-medium">{{ _t('homepage', 'search_around_me') }}</div>
-            </button>
-          </div>
 
           <!-- Existing search results -->
           <div v-if="searchResults.length > 0">
@@ -145,6 +134,20 @@ const form = ref({
   state: null,
   country: null,
   matched_field: null,
+  source: null, // Add source field
+  greenmotion_location_id: null, // Add GreenMotion specific ID
+  start_time: '09:00', // New: Start time for GreenMotion
+  end_time: '09:00',   // New: End time for GreenMotion
+  age: 35,       // New: Age for GreenMotion
+  rentalCode: '1', // New: Rental code for GreenMotion
+  currency: null, // New: Currency for GreenMotion
+  fuel: null, // New: Fuel for GreenMotion
+  userid: null, // New: User ID for GreenMotion
+  username: null, // New: Username for GreenMotion
+  language: null, // New: Language for GreenMotion
+  full_credit: null, // New: Full Credit for GreenMotion
+  promocode: null, // New: Promocode for GreenMotion
+  dropoff_location_id: null, // New: Dropoff Location ID for GreenMotion
 });
 
 const props = defineProps({
@@ -188,127 +191,11 @@ const handleInputFocus = () => {
 
 const fetchPopularPlaces = async () => {
   try {
-    const response = await axios.get(`/${usePage().props.locale}/api/footer-places`);
-    popularPlaces.value = response.data.map(place => {
-      let label, belowLabel, matchedField;
-
-      // Prioritize city, handle cases like Chandigarh
-      if (place.city) {
-        label = place.city; // e.g., "Chandigarh"
-        belowLabel = [place.state, place.country].filter(Boolean).join(', ');
-        matchedField = 'city';
-      } else if (place.state && (!place.city || place.state === place.city)) {
-        label = place.state; // Treat state as city if no city or same
-        belowLabel = place.country || null;
-        matchedField = 'city'; // Force city-based filtering
-      } else if (place.place_name) {
-        label = place.place_name;
-        belowLabel = [place.city, place.state, place.country].filter(Boolean).join(', ');
-        matchedField = 'location';
-      } else if (place.country) {
-        label = place.country;
-        belowLabel = null;
-        matchedField = 'country';
-      } else {
-        label = 'Unknown Location';
-        belowLabel = null;
-        matchedField = null;
-      }
-
-      return {
-        id: place.id,
-        label,
-        below_label: belowLabel,
-        location: place.place_name || null,
-        city: place.city || place.state || null, // Use state as city if no city
-        state: place.state || null,
-        country: place.country || null,
-        latitude: place.latitude || null,
-        longitude: place.longitude || null,
-        matched_field: matchedField
-      };
-    });
+    const response = await axios.get(`/api/unified-locations`); // Removed locale prefix
+    popularPlaces.value = response.data.filter(place => place.source === 'internal' || place.source === 'greenmotion'); // Filter for relevant sources
   } catch (error) {
     console.error("Error fetching popular places:", error);
     popularPlaces.value = [];
-  }
-};
-
-
-const searchAroundMe = async () => {
-  locationError.value = null;
-  isSearching.value = true;
-  showSearchBox.value = true;
-
-  if (!navigator.geolocation) {
-    locationError.value = "Geolocation is not supported by your browser.";
-    isSearching.value = false;
-    return;
-  }
-
-  try {
-    const position = await new Promise((resolve, reject) => {
-      navigator.geolocation.getCurrentPosition(resolve, reject, {
-        enableHighAccuracy: true,
-        timeout: 10000,
-        maximumAge: 0,
-      });
-    });
-
-    const { latitude, longitude } = position.coords;
-
-    // Perform reverse geocoding
-    const response = await axios.get(`/${usePage().props.locale}/api/geocoding/reverse`, {
-      params: { lat: latitude, lon: longitude },
-    });
-
-    const result = response.data.features[0]?.properties;
-    if (!result) {
-      locationError.value = "Unable to determine your location.";
-      isSearching.value = false;
-      return;
-    }
-
-    // Prioritize city for "Around Me" as it’s a common filter level
-    let label, matchedField;
-    if (result.city) {
-      label = result.city;
-      matchedField = 'city';
-    } else if (result.region) {
-      label = result.region;
-      matchedField = 'state';
-    } else if (result.country) {
-      label = result.country;
-      matchedField = 'country';
-    } else {
-      label = result.name || 'Around Me';
-      matchedField = 'location';
-    }
-
-    const belowLabel = [result.city, result.region, result.country]
-      .filter(Boolean)
-      .filter(item => item !== label)
-      .join(', ');
-
-    // Update form with location details
-    form.value.where = label;
-    form.value.location = result.name || null;
-    form.value.latitude = latitude;
-    form.value.longitude = longitude;
-    form.value.city = result.city || null;
-    form.value.state = result.region || null;
-    form.value.country = result.country || null;
-    form.value.matched_field = matchedField;
-    form.value.radius = 50000; // 50km radius for "Around Me"
-
-    // Close search box and reset search state
-    showSearchBox.value = false;
-    searchPerformed.value = false;
-    searchResults.value = [];
-    isSearching.value = false;
-  } catch (error) {
-    locationError.value = "Unable to get your location. Please allow location access or try another search.";
-    isSearching.value = false;
   }
 };
 
@@ -358,10 +245,10 @@ const handleSearchInput = () => {
   searchTimeout.value = setTimeout(async () => {
     isSearching.value = true;
     try {
-      const response = await axios.get(`/${usePage().props.locale}/api/vehicles/search-locations`, {
-        params: { text: form.value.where },
+      const response = await axios.get(`/api/unified-locations`, { // Removed locale prefix
+        params: { search_term: form.value.where },
       });
-      searchResults.value = response.data.results;
+      searchResults.value = response.data;
       searchPerformed.value = true;
     } catch (error) {
       console.error("Error fetching locations:", error);
@@ -382,6 +269,8 @@ const selectLocation = (result) => {
   form.value.state = result.state;
   form.value.country = result.country;
   form.value.matched_field = result.matched_field; // Set matched_field
+  form.value.source = result.source; // Set source
+  form.value.greenmotion_location_id = result.greenmotion_location_id || null; // Set GreenMotion specific ID
   showSearchBox.value = false;
   searchPerformed.value = false;
   searchResults.value = [];
@@ -444,10 +333,12 @@ onMounted(() => {
     }
     form.value.latitude = props.prefill.latitude || null;
     form.value.longitude = props.prefill.longitude || null;
-    form.value.radius = props.prefill.radius || 5000;
-    form.value.city = props.prefill.city || null;
-    form.value.state = props.prefill.state || null;
-    form.value.country = props.prefill.country || null;
+  form.value.radius = props.prefill.radius || 5000;
+  form.value.city = props.prefill.city || null;
+  form.value.state = props.prefill.state || null;
+  form.value.country = props.prefill.country || null;
+  form.value.source = props.prefill.source || null;
+  form.value.greenmotion_location_id = props.prefill.greenmotion_location_id || null;
   }
 });
 

@@ -9,202 +9,486 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
 use Illuminate\Support\Facades\Http;
-use App\Helpers\SchemaBuilder; // Import SchemaBuilder
+use App\Helpers\SchemaBuilder;
+use App\Services\GreenMotionService; // Import GreenMotionService
+use App\Services\LocationSearchService; // Import LocationSearchService
+use Illuminate\Support\Facades\Log; // Import Log facade
 
 class SearchController extends Controller
 {
+    protected $greenMotionService;
+    protected $locationSearchService;
+
+    public function __construct(GreenMotionService $greenMotionService, LocationSearchService $locationSearchService)
+    {
+        $this->greenMotionService = $greenMotionService;
+        $this->locationSearchService = $locationSearchService;
+    }
+
     public function search(Request $request)
-{
-    $validated = $request->validate([
-        'seating_capacity' => 'nullable|integer',
-        'brand' => 'nullable|string',
-        'transmission' => 'nullable|string|in:automatic,manual',
-        'fuel' => 'nullable|string|in:petrol,diesel,electric',
-        'price_range' => 'nullable|string',
-        'color' => 'nullable|string',
-        'mileage' => 'nullable|string',
-        'date_from' => 'nullable|date',
-        'date_to' => 'nullable|date|after:date_from',
-        'where' => 'nullable|string', 
-        'location' => 'nullable|string',
-        'city' => 'nullable|string',
-        'state' => 'nullable|string',
-        'country' => 'nullable|string',
-        'latitude' => 'nullable|numeric',
-        'longitude' => 'nullable|numeric',
-        'radius' => 'nullable|numeric',
-        'package_type' => 'nullable|string|in:day,week,month',
-        'category_id' => 'nullable|exists:vehicle_categories,id',
-        'matched_field' => 'nullable|string|in:location,city,state,country',
-    ]);
+    {
+        $validated = $request->validate([
+            'seating_capacity' => 'nullable|integer',
+            'brand' => 'nullable|string',
+            'transmission' => 'nullable|string|in:automatic,manual',
+            'fuel' => 'nullable|string|in:petrol,diesel,electric',
+            'price_range' => 'nullable|string',
+            'color' => 'nullable|string',
+            'mileage' => 'nullable|string',
+            'date_from' => 'nullable|date',
+            'date_to' => 'nullable|date|after:date_from',
+            'start_time' => 'nullable|string',
+            'end_time' => 'nullable|string',
+            'age' => 'nullable|integer',
+            'rentalCode' => 'nullable|string',
+            'currency' => 'nullable|string|max:3', // Added for GreenMotion
+            'fuel' => 'nullable|string', // Added for GreenMotion
+            'userid' => 'nullable|string', // Added for GreenMotion
+            'username' => 'nullable|string', // Added for GreenMotion
+            'language' => 'nullable|string', // Added for GreenMotion
+            'full_credit' => 'nullable|string', // Added for GreenMotion
+            'promocode' => 'nullable|string', // Added for GreenMotion
+            'dropoff_location_id' => 'nullable|string', // Added for GreenMotion
+            'where' => 'nullable|string',
+            'location' => 'nullable|string',
+            'city' => 'nullable|string',
+            'state' => 'nullable|string',
+            'country' => 'nullable|string',
+            'latitude' => 'nullable|numeric',
+            'longitude' => 'nullable|numeric',
+            'radius' => 'nullable|numeric',
+            'package_type' => 'nullable|string|in:day,week,month',
+            'category_id' => 'nullable|exists:vehicle_categories,id',
+            'matched_field' => 'nullable|string|in:location,city,state,country',
+            'source' => 'nullable|string|in:internal,greenmotion', // New: Source of the location
+            'greenmotion_location_id' => 'nullable|string', // New: GreenMotion specific location ID
+        ]);
 
-    // Base query
-    $query = Vehicle::query()->whereIn('status', ['available', 'rented'])
-        ->with('images', 'bookings', 'vendorProfile', 'benefits');
+        $internalVehiclesQuery = Vehicle::query()->whereIn('status', ['available', 'rented'])
+            ->with('images', 'bookings', 'vendorProfile', 'benefits');
 
-    // Apply date filters first
-    if (!empty($validated['date_from']) && !empty($validated['date_to'])) {
-        $query->whereDoesntHave('bookings', function ($q) use ($validated) {
-            $q->where(function ($query) use ($validated) {
-                $query->whereBetween('bookings.pickup_date', [$validated['date_from'], $validated['date_to']])
-                    ->orWhereBetween('bookings.return_date', [$validated['date_from'], $validated['date_to']])
-                    ->orWhere(function ($q) use ($validated) {
-                        $q->where('bookings.pickup_date', '<=', $validated['date_from'])
-                            ->where('bookings.return_date', '>=', $validated['date_to']);
-                    });
+        // Apply date filters to internal vehicles
+        if (!empty($validated['date_from']) && !empty($validated['date_to'])) {
+            $internalVehiclesQuery->whereDoesntHave('bookings', function ($q) use ($validated) {
+                $q->where(function ($query) use ($validated) {
+                    $query->whereBetween('bookings.pickup_date', [$validated['date_from'], $validated['date_to']])
+                        ->orWhereBetween('bookings.return_date', [$validated['date_from'], $validated['date_to']])
+                        ->orWhere(function ($q) use ($validated) {
+                            $q->where('bookings.pickup_date', '<=', $validated['date_from'])
+                                ->where('bookings.return_date', '>=', $validated['date_to']);
+                        });
+                });
             });
-        });
 
-        $query->whereDoesntHave('blockings', function ($q) use ($validated) {
-            $q->where(function ($query) use ($validated) {
-                $query->whereBetween('blocking_start_date', [$validated['date_from'], $validated['date_to']])
-                    ->orWhereBetween('blocking_end_date', [$validated['date_from'], $validated['date_to']])
-                    ->orWhere(function ($q) use ($validated) {
-                        $q->where('blocking_start_date', '<=', $validated['date_from'])
-                            ->where('blocking_end_date', '>=', $validated['date_to']);
-                    });
+            $internalVehiclesQuery->whereDoesntHave('blockings', function ($q) use ($validated) {
+                $q->where(function ($query) use ($validated) {
+                    $query->whereBetween('blocking_start_date', [$validated['date_from'], $validated['date_to']])
+                        ->orWhereBetween('blocking_end_date', [$validated['date_from'], $validated['date_to']])
+                        ->orWhere(function ($q) use ($validated) {
+                            $q->where('blocking_start_date', '<=', $validated['date_from'])
+                                ->where('blocking_end_date', '>=', $validated['date_to']);
+                        });
+                });
             });
-        });
-    }
-
-    // Apply primary location filters
-    if (!empty($validated['matched_field'])) {
-        $fieldToQuery = null;
-        $valueToQuery = null;
-
-        switch ($validated['matched_field']) {
-            case 'location':
-                if (!empty($validated['location'])) {
-                    $fieldToQuery = 'location';
-                    $valueToQuery = $validated['location']; // Use the specific location name
-                }
-                break;
-            case 'city':
-                if (!empty($validated['city'])) {
-                    $fieldToQuery = 'city';
-                    $valueToQuery = $validated['city'];
-                }
-                break;
-            case 'state':
-                if (!empty($validated['state'])) {
-                    $fieldToQuery = 'state';
-                    $valueToQuery = $validated['state'];
-                }
-                break;
-            case 'country':
-                if (!empty($validated['country'])) {
-                    $fieldToQuery = 'country';
-                    $valueToQuery = $validated['country'];
-                }
-                break;
         }
-        if ($fieldToQuery && $valueToQuery) {
-            $query->where($fieldToQuery, $valueToQuery);
+
+        // Apply location filters for internal vehicles based on search parameters
+        if (!empty($validated['greenmotion_location_id'])) {
+            // If a GreenMotion location is explicitly selected, internal vehicles should only be included
+            // if geographic coordinates are provided and match the GreenMotion location.
+            if (!empty($validated['latitude']) && !empty($validated['longitude']) && !empty($validated['radius'])) {
+                $lat = $validated['latitude'];
+                $lon = $validated['longitude'];
+                $radius = $validated['radius'] / 1000;
+
+                $internalVehiclesQuery->whereRaw("
+                    6371 * acos(
+                        cos(radians(?)) * cos(radians(latitude)) * cos(radians(longitude) - radians(?)) +
+                        sin(radians(?)) * sin(radians(latitude))
+                    ) <= ?
+                ", [$lat, $lon, $lat, $radius]);
+            } else {
+                // Exclude all internal vehicles if a GreenMotion location is selected but no geographic filter is provided
+                $internalVehiclesQuery->whereRaw('1 = 0');
+            }
+        } elseif (!empty($validated['source'])) {
+            if ($validated['source'] === 'internal') {
+                // If source is explicitly 'internal', apply internal-specific location filters
+                if (!empty($validated['matched_field'])) {
+                    $fieldToQuery = null;
+                    $valueToQuery = null;
+
+                    switch ($validated['matched_field']) {
+                        case 'location':
+                            if (!empty($validated['location'])) {
+                                $fieldToQuery = 'location';
+                                $valueToQuery = $validated['location'];
+                            }
+                            break;
+                        case 'city':
+                            if (!empty($validated['city'])) {
+                                $fieldToQuery = 'city';
+                                $valueToQuery = $validated['city'];
+                            }
+                            break;
+                        case 'state':
+                            if (!empty($validated['state'])) {
+                                $fieldToQuery = 'state';
+                                $valueToQuery = $validated['state'];
+                            }
+                            break;
+                        case 'country':
+                            if (!empty($validated['country'])) {
+                                $fieldToQuery = 'country';
+                                $valueToQuery = $validated['country'];
+                            }
+                            break;
+                    }
+                    if ($fieldToQuery && $valueToQuery) {
+                        $internalVehiclesQuery->where($fieldToQuery, $valueToQuery);
+                    }
+                } elseif (!empty($validated['latitude']) && !empty($validated['longitude']) && !empty($validated['radius'])) {
+                    $lat = $validated['latitude'];
+                    $lon = $validated['longitude'];
+                    $radius = $validated['radius'] / 1000;
+
+                    $internalVehiclesQuery->whereRaw("
+                        6371 * acos(
+                            cos(radians(?)) * cos(radians(latitude)) * cos(radians(longitude) - radians(?)) +
+                            sin(radians(?)) * sin(radians(latitude))
+                        ) <= ?
+                    ", [$lat, $lon, $lat, $radius]);
+                } elseif (!empty($validated['where'])) {
+                    $searchTerm = $validated['where'];
+                    $internalVehiclesQuery->where(function ($q) use ($searchTerm) {
+                        $q->where('location', 'LIKE', "%{$searchTerm}%")
+                            ->orWhere('city', 'LIKE', "%{$searchTerm}%")
+                            ->orWhere('state', 'LIKE', "%{$searchTerm}%")
+                            ->orWhere('country', 'LIKE', "%{$searchTerm}%");
+                    });
+                }
+            } elseif ($validated['source'] === 'greenmotion') {
+                // If source is explicitly 'greenmotion' but no greenmotion_location_id,
+                // internal vehicles should be excluded unless geographic data is provided.
+                if (!empty($validated['latitude']) && !empty($validated['longitude']) && !empty($validated['radius'])) {
+                    $lat = $validated['latitude'];
+                    $lon = $validated['longitude'];
+                    $radius = $validated['radius'] / 1000;
+
+                    $internalVehiclesQuery->whereRaw("
+                        6371 * acos(
+                            cos(radians(?)) * cos(radians(latitude)) * cos(radians(longitude) - radians(?)) +
+                            sin(radians(?)) * sin(radians(latitude))
+                        ) <= ?
+                    ", [$lat, $lon, $lat, $radius]);
+                } else {
+                    // Exclude all internal vehicles if source is greenmotion but no geographic filter is provided
+                    $internalVehiclesQuery->whereRaw('1 = 0');
+                }
+            }
+        } else { // If no source is specified, apply broad internal filters
+            if (!empty($validated['matched_field'])) {
+                $fieldToQuery = null;
+                $valueToQuery = null;
+
+                switch ($validated['matched_field']) {
+                    case 'location':
+                        if (!empty($validated['location'])) {
+                            $fieldToQuery = 'location';
+                            $valueToQuery = $validated['location'];
+                        }
+                        break;
+                    case 'city':
+                        if (!empty($validated['city'])) {
+                            $fieldToQuery = 'city';
+                            $valueToQuery = $validated['city'];
+                        }
+                        break;
+                    case 'state':
+                        if (!empty($validated['state'])) {
+                            $fieldToQuery = 'state';
+                            $valueToQuery = $validated['state'];
+                        }
+                        break;
+                    case 'country':
+                        if (!empty($validated['country'])) {
+                            $fieldToQuery = 'country';
+                            $valueToQuery = $validated['country'];
+                        }
+                        break;
+                }
+                if ($fieldToQuery && $valueToQuery) {
+                    $internalVehiclesQuery->where($fieldToQuery, $valueToQuery);
+                }
+            } elseif (!empty($validated['latitude']) && !empty($validated['longitude']) && !empty($validated['radius'])) {
+                $lat = $validated['latitude'];
+                $lon = $validated['longitude'];
+                $radius = $validated['radius'] / 1000;
+
+                $internalVehiclesQuery->whereRaw("
+                    6371 * acos(
+                        cos(radians(?)) * cos(radians(latitude)) * cos(radians(longitude) - radians(?)) +
+                        sin(radians(?)) * sin(radians(latitude))
+                    ) <= ?
+                ", [$lat, $lon, $lat, $radius]);
+            } elseif (!empty($validated['where'])) {
+                $searchTerm = $validated['where'];
+                $internalVehiclesQuery->where(function ($q) use ($searchTerm) {
+                    $q->where('location', 'LIKE', "%{$searchTerm}%")
+                        ->orWhere('city', 'LIKE', "%{$searchTerm}%")
+                        ->orWhere('state', 'LIKE', "%{$searchTerm}%")
+                        ->orWhere('country', 'LIKE', "%{$searchTerm}%");
+                });
+            }
         }
-    } elseif (!empty($validated['latitude']) && !empty($validated['longitude']) && !empty($validated['radius'])) {
-        // Radius-based filtering for "Around Me"
-        $lat = $validated['latitude'];
-        $lon = $validated['longitude'];
-        $radius = $validated['radius'] / 1000; // Convert meters to kilometers
 
-        // Haversine formula to calculate distance
-        $query->whereRaw("
-            6371 * acos(
-                cos(radians(?)) * cos(radians(latitude)) * cos(radians(longitude) - radians(?)) +
-                sin(radians(?)) * sin(radians(latitude))
-            ) <= ?
-        ", [$lat, $lon, $lat, $radius]);
-    } elseif (!empty($validated['where'])) {
-        $searchTerm = $validated['where'];
-        $query->where(function ($q) use ($searchTerm) {
-            $q->where('location', 'LIKE', "%{$searchTerm}%")
-              ->orWhere('city', 'LIKE', "%{$searchTerm}%")
-              ->orWhere('state', 'LIKE', "%{$searchTerm}%")
-              ->orWhere('country', 'LIKE', "%{$searchTerm}%");
-        });
-    }
 
-    // --- At this point, primary date and location filters are applied to $query ---
-    // --- Clone for fetching broad filter options BEFORE specific attribute filters ---
-    $queryForOptions = clone $query;
-    $potentialVehiclesForOptions = $queryForOptions->get();
+        // --- Clone for fetching broad filter options BEFORE specific attribute filters ---
+        $queryForOptions = clone $internalVehiclesQuery;
+        $potentialVehiclesForOptions = $queryForOptions->get();
 
-    $brands = $potentialVehiclesForOptions->pluck('brand')->unique()->filter()->values()->all();
-    $colors = $potentialVehiclesForOptions->pluck('color')->unique()->filter()->values()->all();
-    $seatingCapacities = $potentialVehiclesForOptions->pluck('seating_capacity')->unique()->filter()->values()->all();
-    $transmissions = $potentialVehiclesForOptions->pluck('transmission')->unique()->filter()->values()->all();
-    $fuels = $potentialVehiclesForOptions->pluck('fuel')->unique()->filter()->values()->all();
-    $mileages = $potentialVehiclesForOptions->pluck('mileage')->unique()->filter()->map(function ($mileage) {
-        if ($mileage >= 0 && $mileage <= 25) return '0-25';
-        if ($mileage > 25 && $mileage <= 50) return '25-50';
-        if ($mileage > 50 && $mileage <= 75) return '50-75';
-        if ($mileage > 75 && $mileage <= 100) return '75-100';
-        if ($mileage > 100 && $mileage <= 120) return '100-120';
-        return null;
-    })->filter()->unique()->values()->all();
-    // Ensure categories are also fetched based on this broader set
-    $categoriesFromOptions = VehicleCategory::whereIn('id', $potentialVehiclesForOptions->pluck('category_id')->unique()->filter())->select('id', 'name')->get()->toArray();
-
-    // --- Now apply secondary attribute filters to the main $query ---
-    if (!empty($validated['seating_capacity'])) {
-        $query->where('seating_capacity', $validated['seating_capacity']);
-    }
-    if (!empty($validated['brand'])) {
-        $query->where('brand', $validated['brand']);
-    }
-    if (!empty($validated['transmission'])) {
-        $query->where('transmission', $validated['transmission']);
-    }
-    if (!empty($validated['fuel'])) {
-        $query->where('fuel', $validated['fuel']);
-    }
-    if (!empty($validated['price_range'])) {
-        $range = explode('-', $validated['price_range']);
-        $query->whereBetween('price_per_day', [(int) $range[0], (int) $range[1]]);
-    }
-    if (!empty($validated['color'])) {
-        $query->where('color', $validated['color']);
-    }
-    if (!empty($validated['mileage'])) {
-        $range = explode('-', $validated['mileage']);
-        $query->whereBetween('mileage', [(int) $range[0], (int) $range[1]]);
-    }
-    if (!empty($validated['category_id'])) {
-        $query->where('category_id', $validated['category_id']);
-    }
-    
-    // Package type filter (applied to the main query for results)
-    if (!empty($validated['package_type'])) {
-        switch ($validated['package_type']) {
-            case 'week':
-                $query->whereNotNull('price_per_week')->orderBy('price_per_week');
-                break;
-            case 'month':
-                $query->whereNotNull('price_per_month')->orderBy('price_per_month');
-                break;
-            default:
-                $query->whereNotNull('price_per_day')->orderBy('price_per_day');
-                break;
+        $brands = $potentialVehiclesForOptions->pluck('brand')->unique()->filter()->values()->all();
+        $colors = $potentialVehiclesForOptions->pluck('color')->unique()->filter()->values()->all();
+        $seatingCapacities = $potentialVehiclesForOptions->pluck('seating_capacity')->unique()->filter()->values()->all();
+        $transmissions = $potentialVehiclesForOptions->pluck('transmission')->unique()->filter()->values()->all();
+        $fuels = $potentialVehiclesForOptions->pluck('fuel')->unique()->filter()->values()->all();
+        $mileages = $potentialVehiclesForOptions->pluck('mileage')->unique()->filter()->map(function ($mileage) {
+            if ($mileage >= 0 && $mileage <= 25) return '0-25';
+            if ($mileage > 25 && $mileage <= 50) return '25-50';
+            if ($mileage > 50 && $mileage <= 75) return '50-75';
+            if ($mileage > 75 && $mileage <= 100) return '75-100';
+            if ($mileage > 100 && $mileage <= 120) return '100-120';
+            return null;
+        })->filter()->unique()->values()->all();
+        $categoriesFromOptions = []; // Initialize as empty array
+        $categoryIds = $potentialVehiclesForOptions->pluck('category_id')->unique()->filter();
+        if ($categoryIds->isNotEmpty()) {
+            $categoriesFromOptions = VehicleCategory::whereIn('id', $categoryIds)->select('id', 'name')->get()->toArray();
         }
-    }
 
-    // Paginate the main query to get the vehicles for display
-    $vehicles = $query->paginate(20)->withQueryString();
+        // --- Now apply secondary attribute filters to the main $internalVehiclesQuery ---
+        if (!empty($validated['seating_capacity'])) {
+            $internalVehiclesQuery->where('seating_capacity', $validated['seating_capacity']);
+        }
+        if (!empty($validated['brand'])) {
+            $internalVehiclesQuery->where('brand', $validated['brand']);
+        }
+        if (!empty($validated['transmission'])) {
+            $internalVehiclesQuery->where('transmission', $validated['transmission']);
+        }
+        if (!empty($validated['fuel'])) {
+            $internalVehiclesQuery->where('fuel', $validated['fuel']);
+        }
+        if (!empty($validated['price_range'])) {
+            $range = explode('-', $validated['price_range']);
+            $internalVehiclesQuery->whereBetween('price_per_day', [(int) $range[0], (int) $range[1]]);
+        }
+        if (!empty($validated['color'])) {
+            $internalVehiclesQuery->where('color', $validated['color']);
+        }
+        if (!empty($validated['mileage'])) {
+            $range = explode('-', $validated['mileage']);
+            $internalVehiclesQuery->whereBetween('mileage', [(int) $range[0], (int) $range[1]]);
+        }
+        if (!empty($validated['category_id'])) {
+            $internalVehiclesQuery->where('category_id', $validated['category_id']);
+        }
 
-    // Transform the paginated collection to include review data
-    $vehicles->getCollection()->transform(function ($vehicle) {
-        $reviews = Review::where('vehicle_id', $vehicle->id)
-            ->where('status', 'approved')
-            ->get();
-        $vehicle->review_count = $reviews->count();
-        $vehicle->average_rating = $reviews->avg('rating') ?? 0;
+        // Package type filter (applied to the main query for results)
+        if (!empty($validated['package_type'])) {
+            switch ($validated['package_type']) {
+                case 'week':
+                    $internalVehiclesQuery->whereNotNull('price_per_week')->orderBy('price_per_week');
+                    break;
+                case 'month':
+                    $internalVehiclesQuery->whereNotNull('price_per_month')->orderBy('price_per_month');
+                    break;
+                default:
+                    $internalVehiclesQuery->whereNotNull('price_per_day')->orderBy('price_per_day');
+                    break;
+            }
+        }
 
-        return $vehicle;
-    });
+        // Paginate the main query to get the vehicles for display
+        $internalVehicles = $internalVehiclesQuery->paginate(10)->withQueryString(); // Reduced per page for combined results
 
-    // Return Inertia response
+        // Transform the paginated collection to include review data and source, then convert to plain PHP array
+        $internalVehiclesData = $internalVehicles->getCollection()->map(function ($vehicle) {
+            $reviews = Review::where('vehicle_id', $vehicle->id)
+                ->where('status', 'approved')
+                ->get();
+            $vehicle->review_count = $reviews->count();
+            $vehicle->average_rating = $reviews->avg('rating') ?? 0;
+            $vehicle->source = 'internal'; // Add source identifier
+            return $vehicle->toArray(); // Convert model to array
+        })->values()->all(); // Convert to plain PHP array
+
+        // Create a new Support\Collection from the plain array
+        $internalVehiclesCollection = collect($internalVehiclesData);
+
+        // Fetch GreenMotion vehicles if a greenmotion_location_id is provided or no source is specified
+        $greenMotionVehicles = collect();
+        // Only fetch GreenMotion vehicles if explicitly requested or no source is specified
+        if ((isset($validated['source']) && $validated['source'] === 'greenmotion') || empty($validated['source'])) {
+            if (!empty($validated['date_from']) && !empty($validated['date_to'])) {
+                $gmLocationId = $validated['greenmotion_location_id'] ?? null;
+                $gmLocationLat = null;
+                $gmLocationLng = null;
+                $gmLocationAddress = null;
+
+                // If no specific GM location ID, try to find one based on 'where' or lat/lng
+                if (!$gmLocationId && (!empty($validated['where']) || (!empty($validated['latitude']) && !empty($validated['longitude'])))) {
+                    $searchParam = $validated['where'] ?? ($validated['latitude'] . ',' . $validated['longitude']);
+                    $unifiedLocations = $this->locationSearchService->searchLocations($searchParam);
+                    $matchedGmLocation = collect($unifiedLocations)->first(function($loc) {
+                        return $loc['source'] === 'greenmotion' && !empty($loc['greenmotion_location_id']);
+                    });
+                    if ($matchedGmLocation) {
+                        $gmLocationId = $matchedGmLocation['greenmotion_location_id'];
+                        $gmLocationLat = $matchedGmLocation['latitude'];
+                        $gmLocationLng = $matchedGmLocation['longitude'];
+                        $gmLocationAddress = $matchedGmLocation['label'] . ', ' . $matchedGmLocation['below_label'];
+                    }
+                } elseif ($gmLocationId) {
+                    // If gmLocationId is provided, fetch its details from unified_locations.json
+                    $allUnifiedLocations = $this->locationSearchService->getAllLocations();
+                    $specificGmLocation = collect($allUnifiedLocations)->firstWhere('greenmotion_location_id', $gmLocationId);
+                    if ($specificGmLocation) {
+                        $gmLocationLat = $specificGmLocation['latitude'];
+                        $gmLocationLng = $specificGmLocation['longitude'];
+                        $gmLocationAddress = $specificGmLocation['label'] . ', ' . $specificGmLocation['below_label'];
+                    }
+                }
+
+                if ($gmLocationId && $gmLocationLat !== null && $gmLocationLng !== null) {
+                    try {
+                        $gmOptions = [
+                            'language' => $validated['language'] ?? app()->getLocale(),
+                            'rentalCode' => $validated['rentalCode'] ?? '1',
+                            'currency' => $validated['currency'] ?? null,
+                            'fuel' => $validated['fuel'] ?? null,
+                            'userid' => $validated['userid'] ?? null,
+                            'username' => $validated['username'] ?? null,
+                            'full_credit' => $validated['full_credit'] ?? null,
+                            'promocode' => $validated['promocode'] ?? null,
+                            'dropoff_location_id' => $validated['dropoff_location_id'] ?? null,
+                        ];
+
+                        $gmResponse = $this->greenMotionService->getVehicles(
+                            $gmLocationId,
+                            $validated['date_from'],
+                            $validated['start_time'] ?? '09:00',
+                            $validated['date_to'],
+                            $validated['end_time'] ?? '09:00',
+                            $validated['age'] ?? 35,
+                            array_filter($gmOptions) // Filter out null options
+                        );
+
+                        if ($gmResponse) {
+                            libxml_use_internal_errors(true);
+                            $xmlObject = simplexml_load_string($gmResponse);
+                            if ($xmlObject === false) {
+                                $errors = libxml_get_errors();
+                                foreach ($errors as $error) {
+                                    Log::error('XML Parsing Error (GreenMotion GetVehicles): ' . $error->message);
+                                }
+                                libxml_clear_errors();
+                            } elseif (isset($xmlObject->response->vehicles->vehicle)) {
+                                foreach ($xmlObject->response->vehicles->vehicle as $vehicle) {
+                                    // Extract products for benefits and other details
+                                    $products = [];
+                                    if (isset($vehicle->product)) {
+                                        foreach ($vehicle->product as $product) {
+                                            $products[] = [
+                                                'type' => (string) $product['type'],
+                                                'total' => (string) $product->total,
+                                                'currency' => (string) $product->total['currency'],
+                                                'deposit' => (string) $product->deposit,
+                                                'excess' => (string) $product->excess,
+                                                'fuelpolicy' => (string) $product->fuelpolicy,
+                                                'mileage' => (string) $product->mileage,
+                                                'costperextradistance' => (string) $product->costperextradistance,
+                                                'minage' => (string) $product->minage,
+                                                'excludedextras' => (string) $product->excludedextras,
+                                                'fasttrack' => (string) $product->fasttrack,
+                                                'oneway' => (string) $product->oneway,
+                                                'oneway_fee' => (string) $product->oneway_fee,
+                                                'cancellation_rules' => json_decode(json_encode($product->CancellationRules), true),
+                                            ];
+                                        }
+                                    }
+
+                                    // Determine min_driver_age and fuel_policy
+                                    $minDriverAge = 0;
+                                    $fuelPolicy = '';
+                                    if (!empty($products)) {
+                                        $minDriverAge = (int) ($products[0]['minage'] ?? 0);
+                                        $fuelPolicy = $products[0]['fuelpolicy'] ?? '';
+                                    }
+
+                                    $greenMotionVehicles->push((object) [ // Cast to object
+                                        'id' => 'gm_' . (string) $vehicle['id'],
+                                        'source' => 'greenmotion',
+                                        'brand' => (string) $vehicle->groupName,
+                                        'model' => (string) $vehicle['name'],
+                                        'image' => urldecode((string) $vehicle['image']),
+                                        'price_per_day' => (isset($vehicle->total) && is_numeric((string)$vehicle->total)) ? (float) (string)$vehicle->total : 0.0,
+                                        'price_per_week' => null,
+                                        'price_per_month' => null,
+                                        'currency' => (isset($vehicle->total['currency']) && !empty((string)$vehicle->total['currency'])) ? (string) $vehicle->total['currency'] : 'EUR',
+                                        'transmission' => (string) $vehicle->transmission,
+                                        'fuel' => (string) $vehicle->fuel,
+                                        'seating_capacity' => (int) $vehicle->adults + (int) $vehicle->children,
+                                        'mileage' => (string) $vehicle->mpg,
+                                        'latitude' => (float) $gmLocationLat,
+                                        'longitude' => (float) $gmLocationLng,
+                                        'full_vehicle_address' => $gmLocationAddress,
+                                        'greenmotion_location_id' => $gmLocationId,
+                                        'benefits' => (object) [
+                                            'cancellation_available_per_day' => true,
+                                            'limited_km_per_day' => false,
+                                            'minimum_driver_age' => $minDriverAge,
+                                            'fuel_policy' => $fuelPolicy,
+                                        ],
+                                        'review_count' => 0,
+                                        'average_rating' => 0,
+                                        'products' => $products,
+                                        'options' => [],
+                                        'insurance_options' => [],
+                                    ]);
+                                }
+                            } else {
+                                Log::warning('GreenMotion API response for vehicles was empty or malformed for location ID: ' . $gmLocationId);
+                            }
+                            libxml_clear_errors();
+                        }
+                    } catch (\Exception $e) {
+                        Log::error('Error fetching GreenMotion vehicles: ' . $e->getMessage());
+                    }
+                }
+            }
+        }
+
+        // Combine internal and GreenMotion vehicles
+        // Ensure all vehicles have a consistent structure for pagination
+        $combinedVehicles = $internalVehiclesCollection->merge($greenMotionVehicles);
+
+        // Manually paginate the combined results
+        $perPage = 10;
+        $currentPage = \Illuminate\Pagination\LengthAwarePaginator::resolveCurrentPage();
+        $currentItems = $combinedVehicles->slice(($currentPage - 1) * $perPage, $perPage)->values();
+        $vehicles = new \Illuminate\Pagination\LengthAwarePaginator(
+            $currentItems,
+            $combinedVehicles->count(),
+            $perPage,
+            $currentPage,
+            ['path' => $request->url(), 'query' => $request->query()]
+        );
+
+
         // Generate ItemList schema for the vehicles
-        $vehicleListSchema = SchemaBuilder::vehicleList($vehicles->getCollection(), 'Vehicle Search Results', $validated);
+        // Pass only the internal vehicles (Eloquent Collection) to SchemaBuilder
+        $vehicleListSchema = SchemaBuilder::vehicleList($internalVehicles->getCollection(), 'Vehicle Search Results', $validated);
 
         // Fetch SEO meta for the search results page (assuming its url_slug is '/s')
         $seoMeta = \App\Models\SeoMeta::with('translations')->where('url_slug', '/s')->first();
@@ -213,268 +497,505 @@ class SearchController extends Controller
             'vehicles' => $vehicles,
             'filters' => $validated,
             'pagination_links' => $vehicles->links()->toHtml(),
-            'brands' => $brands, // Use options derived from $potentialVehiclesForOptions
-            'colors' => $colors, // Use options derived from $potentialVehiclesForOptions
-            'seatingCapacities' => $seatingCapacities, // Use options derived from $potentialVehiclesForOptions
-            'transmissions' => $transmissions, // Use options derived from $potentialVehiclesForOptions
-            'fuels' => $fuels, // Use options derived from $potentialVehiclesForOptions
-            'mileages' => $mileages, // Use options derived from $potentialVehiclesForOptions
-            'categories' => $categoriesFromOptions, // Use options derived from $potentialVehiclesForOptions
-            'schema' => $vehicleListSchema, // Pass schema to the Vue component
-            'seoMeta' => $seoMeta, // Pass SEO meta to the component
-            'locale' => \Illuminate\Support\Facades\App::getLocale(), // Pass current locale
+            'brands' => $brands,
+            'colors' => $colors,
+            'seatingCapacities' => $seatingCapacities,
+            'transmissions' => $transmissions,
+            'fuels' => $fuels,
+            'mileages' => $mileages,
+            'categories' => $categoriesFromOptions,
+            'schema' => $vehicleListSchema,
+            'seoMeta' => $seoMeta,
+            'locale' => \Illuminate\Support\Facades\App::getLocale(),
         ]);
     }
 
     public function searchByCategory(Request $request, $locale, $slug = null)
-{
-    $validated = $request->validate([
-        'seating_capacity' => 'nullable|integer',
-        'brand' => 'nullable|string',
-        'transmission' => 'nullable|string|in:automatic,manual',
-        'fuel' => 'nullable|string|in:petrol,diesel,electric',
-        'price_range' => 'nullable|string',
-        'color' => 'nullable|string',
-        'mileage' => 'nullable|string',
-        'date_from' => 'nullable|date',
-        'date_to' => 'nullable|date|after:date_from',
-        'where' => 'nullable|string',
-        'city' => 'nullable|string',
-        'state' => 'nullable|string',
-        'country' => 'nullable|string',
-        'latitude' => 'nullable|numeric',
-        'longitude' => 'nullable|numeric',
-        'radius' => 'nullable|numeric',
-        'package_type' => 'nullable|string|in:day,week,month',
-    ]);
-
-    // The slug from the URL is the source of truth for the main category filter.
-    // It's added to the validated data to be available in the view as a filter.
-    $validated['category_slug'] = $slug;
-
-    // Base query
-    $query = Vehicle::query();
-
-    if ($slug) {
-        $category = VehicleCategory::where('slug', $slug)->first();
-        if ($category) {
-            $query->where('category_id', $category->id);
-        } else {
-            // If slug is invalid, return no results.
-            $query->whereRaw('1 = 0');
-        }
-    }
-    
-    $query->whereIn('status', ['available', 'rented'])
-        ->with('images', 'bookings', 'vendorProfile', 'benefits');
-
-    // Apply date filters first
-    if (!empty($validated['date_from']) && !empty($validated['date_to'])) {
-        $query->whereDoesntHave('bookings', function ($q) use ($validated) {
-            $q->where(function ($query) use ($validated) {
-                $query->whereBetween('bookings.pickup_date', [$validated['date_from'], $validated['date_to']])
-                    ->orWhereBetween('bookings.return_date', [$validated['date_from'], $validated['date_to']])
-                    ->orWhere(function ($q) use ($validated) {
-                        $q->where('bookings.pickup_date', '<=', $validated['date_from'])
-                            ->where('bookings.return_date', '>=', $validated['date_to']);
-                    });
-            });
-        });
-
-        $query->whereDoesntHave('blockings', function ($q) use ($validated) {
-            $q->where(function ($query) use ($validated) {
-                $query->whereBetween('blocking_start_date', [$validated['date_from'], $validated['date_to']])
-                    ->orWhereBetween('blocking_end_date', [$validated['date_from'], $validated['date_to']])
-                    ->orWhere(function ($q) use ($validated) {
-                        $q->where('blocking_start_date', '<=', $validated['date_from'])
-                            ->where('blocking_end_date', '>=', $validated['date_to']);
-                    });
-            });
-        });
-    }
-
-    // Apply primary location filters
-    if (!empty($validated['city'])) {
-        $query->where('city', 'LIKE', "%{$validated['city']}%");
-    } elseif (!empty($validated['state'])) {
-        $query->where('state', 'LIKE', "%{$validated['state']}%");
-    } elseif (!empty($validated['country'])) {
-        $query->where('country', 'LIKE', "%{$validated['country']}%");
-    } elseif (!empty($validated['where'])) { // Fallback to 'where' if specific fields are not provided
-        // Attempt geocoding only if specific city/state/country are not given
-        $cityFromGeocode = null;
-        // $stateFromGeocode = null; // Not strictly needed if we prioritize direct inputs
-        // $countryFromGeocode = null; // Not strictly needed
-
-        $geocodeResponse = Http::get('https://api.stadiamaps.com/geocoding/v1/search', [
-            'api_key' => env('STADIA_MAPS_API_KEY'),
-            'text' => $validated['where'],
-            'limit' => 1,
+    {
+        $validated = $request->validate([
+            'seating_capacity' => 'nullable|integer',
+            'brand' => 'nullable|string',
+            'transmission' => 'nullable|string|in:automatic,manual',
+            'fuel' => 'nullable|string|in:petrol,diesel,electric',
+            'price_range' => 'nullable|string',
+            'color' => 'nullable|string',
+            'mileage' => 'nullable|string',
+            'date_from' => 'nullable|date',
+            'date_to' => 'nullable|date|after:date_from',
+            'start_time' => 'nullable|string',
+            'end_time' => 'nullable|string',
+            'age' => 'nullable|integer',
+            'rentalCode' => 'nullable|string',
+            'currency' => 'nullable|string|max:3',
+            'userid' => 'nullable|string',
+            'username' => 'nullable|string',
+            'language' => 'nullable|string',
+            'full_credit' => 'nullable|string',
+            'promocode' => 'nullable|string',
+            'dropoff_location_id' => 'nullable|string',
+            'where' => 'nullable|string',
+            'location' => 'nullable|string',
+            'city' => 'nullable|string',
+            'state' => 'nullable|string',
+            'country' => 'nullable|string',
+            'latitude' => 'nullable|numeric',
+            'longitude' => 'nullable|numeric',
+            'radius' => 'nullable|numeric',
+            'package_type' => 'nullable|string|in:day,week,month',
+            'matched_field' => 'nullable|string|in:location,city,state,country',
+            'source' => 'nullable|string|in:internal,greenmotion', // New: Source of the location
+            'greenmotion_location_id' => 'nullable|string', // New: GreenMotion specific location ID
         ]);
 
-        if ($geocodeResponse->successful()) {
-            $geocodeData = $geocodeResponse->json()['features'][0]['properties'] ?? [];
-            $cityFromGeocode = $geocodeData['locality'] ?? null;
-            // $stateFromGeocode = $geocodeData['region'] ?? null;
-            // $countryFromGeocode = $geocodeData['country'] ?? null;
+        $validated['category_slug'] = $slug;
 
-            // Use geocoded city if found and no direct city/state/country was input
-            if ($cityFromGeocode) {
-                $query->where('city', $cityFromGeocode);
-            } else { // If geocoding doesn't give a city, search broadly in 'where'
-                 $query->where(function ($q) use ($validated) {
-                    $q->where('location', 'LIKE', "%{$validated['where']}%")
-                      ->orWhere('city', 'LIKE', "%{$validated['where']}%")
-                      ->orWhere('state', 'LIKE', "%{$validated['where']}%")
-                      ->orWhere('country', 'LIKE', "%{$validated['where']}%");
-                });
+        $internalVehiclesQuery = Vehicle::query();
+
+        if ($slug) {
+            $category = VehicleCategory::where('slug', $slug)->first();
+            if ($category) {
+                $internalVehiclesQuery->where('category_id', $category->id);
+            } else {
+                // If category not found, ensure no internal vehicles are returned
+                $internalVehiclesQuery->whereRaw('1 = 0');
             }
-        } elseif (!empty($validated['latitude']) && !empty($validated['longitude']) && !empty($validated['radius'])) {
-            // Fallback to radius search if 'where' fails or not provided, and lat/lon/radius are available
-            $radiusInKm = $validated['radius'] / 1000;
-            $query->selectRaw('*, ( 6371 * acos( 
-                cos(radians(?)) * cos(radians(latitude)) * 
-                cos(radians(longitude) - radians(?)) + 
-                sin(radians(?)) * sin(radians(latitude)) 
-            ) ) AS distance_in_km', [
-                $validated['latitude'],
-                $validated['longitude'],
-                $validated['latitude']
-            ])
-                ->havingRaw('distance_in_km <= ?', [$radiusInKm])
-                ->orderBy('distance_in_km');
-        } else {
-            // If 'where' is provided but geocoding fails and no lat/lon, search broadly
-            $query->where(function ($q) use ($validated) {
-                $q->where('location', 'LIKE', "%{$validated['where']}%")
-                  ->orWhere('city', 'LIKE', "%{$validated['where']}%")
-                  ->orWhere('state', 'LIKE', "%{$validated['where']}%")
-                  ->orWhere('country', 'LIKE', "%{$validated['where']}%");
+        }
+
+        $internalVehiclesQuery->whereIn('status', ['available', 'rented'])
+            ->with('images', 'bookings', 'vendorProfile', 'benefits');
+
+        // Apply date filters first
+        if (!empty($validated['date_from']) && !empty($validated['date_to'])) {
+            $internalVehiclesQuery->whereDoesntHave('bookings', function ($q) use ($validated) {
+                $q->where(function ($query) use ($validated) {
+                    $query->whereBetween('bookings.pickup_date', [$validated['date_from'], $validated['date_to']])
+                        ->orWhereBetween('bookings.return_date', [$validated['date_from'], $validated['date_to']])
+                        ->orWhere(function ($q) use ($validated) {
+                            $q->where('bookings.pickup_date', '<=', $validated['date_from'])
+                                ->where('bookings.return_date', '>=', $validated['date_to']);
+                        });
+                });
+            });
+
+            $internalVehiclesQuery->whereDoesntHave('blockings', function ($q) use ($validated) {
+                $q->where(function ($query) use ($validated) {
+                    $query->whereBetween('blocking_start_date', [$validated['date_from'], $validated['date_to']])
+                        ->orWhereBetween('blocking_end_date', [$validated['date_from'], $validated['date_to']])
+                        ->orWhere(function ($q) use ($validated) {
+                            $q->where('blocking_start_date', '<=', $validated['date_from'])
+                                ->where('blocking_end_date', '>=', $validated['date_to']);
+                        });
+                });
             });
         }
-    } elseif (!empty($validated['latitude']) && !empty($validated['longitude']) && !empty($validated['radius'])) {
-        // Radius search if no city/state/country/where are provided but lat/lon/radius are
-        $radiusInKm = $validated['radius'] / 1000;
-        $query->selectRaw('*, ( 6371 * acos( 
-            cos(radians(?)) * cos(radians(latitude)) * 
-            cos(radians(longitude) - radians(?)) + 
-            sin(radians(?)) * sin(radians(latitude)) 
-        ) ) AS distance_in_km', [
-            $validated['latitude'],
-            $validated['longitude'],
-            $validated['latitude']
-        ])
-            ->havingRaw('distance_in_km <= ?', [$radiusInKm])
-            ->orderBy('distance_in_km');
-    }
 
-    // --- At this point, primary date and location filters are applied to $query ---
-    // --- Clone for fetching broad filter options BEFORE specific attribute filters ---
-    $queryForOptionsCategory = clone $query; // Use a different name to avoid conflict if in same scope
-    $potentialVehiclesForOptionsCategory = $queryForOptionsCategory->get();
+        // Apply location filters based on 'source'
+        if (!empty($validated['source'])) {
+            if ($validated['source'] === 'internal') {
+                if (!empty($validated['matched_field'])) {
+                    $fieldToQuery = null;
+                    $valueToQuery = null;
 
-    $brands = $potentialVehiclesForOptionsCategory->pluck('brand')->unique()->filter()->values()->all();
-    $colors = $potentialVehiclesForOptionsCategory->pluck('color')->unique()->filter()->values()->all();
-    $seatingCapacities = $potentialVehiclesForOptionsCategory->pluck('seating_capacity')->unique()->filter()->values()->all();
-    $transmissions = $potentialVehiclesForOptionsCategory->pluck('transmission')->unique()->filter()->values()->all();
-    $fuels = $potentialVehiclesForOptionsCategory->pluck('fuel')->unique()->filter()->values()->all();
-    $mileages = $potentialVehiclesForOptionsCategory->pluck('mileage')->unique()->filter()->map(function ($mileage) {
-        if ($mileage >= 0 && $mileage <= 25) return '0-25';
-        if ($mileage > 25 && $mileage <= 50) return '25-50';
-        if ($mileage > 50 && $mileage <= 75) return '50-75';
-        if ($mileage > 75 && $mileage <= 100) return '75-100';
-        if ($mileage > 100 && $mileage <= 120) return '100-120';
-        return null;
-    })->filter()->unique()->values()->all();
-    // For CategorySearchResults, all categories are usually passed, or just the current one.
-    // If we want to show *other* categories available at this location/date, we'd use:
-    // $categoriesFromOptions = VehicleCategory::whereIn('id', $potentialVehiclesForOptionsCategory->pluck('category_id')->unique()->filter())->select('id', 'name')->get()->toArray();
-    // However, typically for a category search page, you might just pass all categories or the specific one.
-    // For consistency with the general search, let's fetch all categories available for the primary filters.
-    $allCategoriesForPage = VehicleCategory::select('id', 'name', 'slug')->get()->toArray();
+                    switch ($validated['matched_field']) {
+                        case 'location':
+                            if (!empty($validated['location'])) {
+                                $fieldToQuery = 'location';
+                                $valueToQuery = $validated['location'];
+                            }
+                            break;
+                        case 'city':
+                            if (!empty($validated['city'])) {
+                                $fieldToQuery = 'city';
+                                $valueToQuery = $validated['city'];
+                            }
+                            break;
+                        case 'state':
+                            if (!empty($validated['state'])) {
+                                $fieldToQuery = 'state';
+                                $valueToQuery = $validated['state'];
+                            }
+                            break;
+                        case 'country':
+                            if (!empty($validated['country'])) {
+                                $fieldToQuery = 'country';
+                                $valueToQuery = $validated['country'];
+                            }
+                            break;
+                    }
+                    if ($fieldToQuery && $valueToQuery) {
+                        $internalVehiclesQuery->where($fieldToQuery, $valueToQuery);
+                    }
+                } elseif (!empty($validated['latitude']) && !empty($validated['longitude']) && !empty($validated['radius'])) {
+                    $lat = $validated['latitude'];
+                    $lon = $validated['longitude'];
+                    $radiusInKm = $validated['radius'] / 1000;
 
+                    $internalVehiclesQuery->selectRaw('*, ( 6371 * acos(
+                        cos(radians(?)) * cos(radians(latitude)) *
+                        cos(radians(longitude) - radians(?)) +
+                        sin(radians(?)) * sin(radians(latitude))
+                    ) ) AS distance_in_km', [
+                        $lat,
+                        $lon,
+                        $lat
+                    ])
+                        ->havingRaw('distance_in_km <= ?', [$radiusInKm])
+                        ->orderBy('distance_in_km');
+                } elseif (!empty($validated['where'])) {
+                    $searchTerm = $validated['where'];
+                    $internalVehiclesQuery->where(function ($q) use ($searchTerm) {
+                        $q->where('location', 'LIKE', "%{$searchTerm}%")
+                            ->orWhere('city', 'LIKE', "%{$searchTerm}%")
+                            ->orWhere('state', 'LIKE', "%{$searchTerm}%")
+                            ->orWhere('country', 'LIKE', "%{$searchTerm}%");
+                    });
+                }
+            } elseif ($validated['source'] === 'greenmotion') {
+                // If source is explicitly 'greenmotion', exclude internal vehicles
+                $internalVehiclesQuery->whereRaw('1 = 0');
+            }
+        } else { // If no source is specified, apply location filters broadly to internal vehicles
+            if (!empty($validated['matched_field'])) {
+                $fieldToQuery = null;
+                $valueToQuery = null;
 
-    // --- Now apply secondary attribute filters to the main $query ---
-    if (!empty($validated['seating_capacity'])) {
-        $query->where('seating_capacity', $validated['seating_capacity']);
-    }
-    if (!empty($validated['brand'])) {
-        $query->where('brand', $validated['brand']);
-    }
-    if (!empty($validated['transmission'])) {
-        $query->where('transmission', $validated['transmission']);
-    }
-    if (!empty($validated['fuel'])) {
-        $query->where('fuel', $validated['fuel']);
-    }
-    if (!empty($validated['price_range'])) {
-        $range = explode('-', $validated['price_range']);
-        $query->whereBetween('price_per_day', [(int) $range[0], (int) $range[1]]);
-    }
-    if (!empty($validated['color'])) {
-        $query->where('color', $validated['color']);
-    }
-    if (!empty($validated['mileage'])) {
-        $range = explode('-', $validated['mileage']);
-        $query->whereBetween('mileage', [(int) $range[0], (int) $range[1]]);
-    }
-    // category_id is already applied at the top for this method.
+                switch ($validated['matched_field']) {
+                    case 'location':
+                        if (!empty($validated['location'])) {
+                            $fieldToQuery = 'location';
+                            $valueToQuery = $validated['location'];
+                        }
+                        break;
+                    case 'city':
+                        if (!empty($validated['city'])) {
+                            $fieldToQuery = 'city';
+                            $valueToQuery = $validated['city'];
+                        }
+                        break;
+                    case 'state':
+                        if (!empty($validated['state'])) {
+                            $fieldToQuery = 'state';
+                            $valueToQuery = $validated['state'];
+                        }
+                        break;
+                    case 'country':
+                        if (!empty($validated['country'])) {
+                            $fieldToQuery = 'country';
+                            $valueToQuery = $validated['country'];
+                        }
+                        break;
+                }
+                if ($fieldToQuery && $valueToQuery) {
+                    $internalVehiclesQuery->where($fieldToQuery, $valueToQuery);
+                }
+            } elseif (!empty($validated['latitude']) && !empty($validated['longitude']) && !empty($validated['radius'])) {
+                $lat = $validated['latitude'];
+                $lon = $validated['longitude'];
+                $radiusInKm = $validated['radius'] / 1000;
 
-    // Package type filter (applied to the main query for results)
-    if (!empty($validated['package_type'])) {
-        switch ($validated['package_type']) {
-            case 'week':
-                $query->whereNotNull('price_per_week')->orderBy('price_per_week');
-                break;
-            case 'month':
-                $query->whereNotNull('price_per_month')->orderBy('price_per_month');
-                break;
-            default:
-                $query->whereNotNull('price_per_day')->orderBy('price_per_day');
-                break;
+                $internalVehiclesQuery->selectRaw('*, ( 6371 * acos(
+                    cos(radians(?)) * cos(radians(latitude)) *
+                    cos(radians(longitude) - radians(?)) +
+                    sin(radians(?)) * sin(radians(latitude))
+                ) ) AS distance_in_km', [
+                    $lat,
+                    $lon,
+                    $lat
+                ])
+                    ->havingRaw('distance_in_km <= ?', [$radiusInKm])
+                    ->orderBy('distance_in_km');
+            } elseif (!empty($validated['where'])) {
+                $searchTerm = $validated['where'];
+                $internalVehiclesQuery->where(function ($q) use ($searchTerm) {
+                    $q->where('location', 'LIKE', "%{$searchTerm}%")
+                        ->orWhere('city', 'LIKE', "%{$searchTerm}%")
+                        ->orWhere('state', 'LIKE', "%{$searchTerm}%")
+                        ->orWhere('country', 'LIKE', "%{$searchTerm}%");
+                });
+            }
         }
-    }
 
-    // Paginate results
-    $vehicles = $query->paginate(20)->withQueryString();
+        // --- Clone for fetching broad filter options BEFORE specific attribute filters ---
+        $queryForOptionsCategory = clone $internalVehiclesQuery;
+        $potentialVehiclesForOptionsCategory = $queryForOptionsCategory->get();
 
-    // Transform the collection to include review data and distance
-    $vehicles->getCollection()->transform(function ($vehicle) {
-        $reviews = Review::where('vehicle_id', $vehicle->id)
-            ->where('status', 'approved')
-            ->get();
-        $vehicle->review_count = $reviews->count();
-        $vehicle->average_rating = $reviews->avg('rating') ?? 0;
+        $brands = $potentialVehiclesForOptionsCategory->pluck('brand')->unique()->filter()->values()->all();
+        $colors = $potentialVehiclesForOptionsCategory->pluck('color')->unique()->filter()->values()->all();
+        $seatingCapacities = $potentialVehiclesForOptionsCategory->pluck('seating_capacity')->unique()->filter()->values()->all();
+        $transmissions = $potentialVehiclesForOptionsCategory->pluck('transmission')->unique()->filter()->values()->all();
+        $fuels = $potentialVehiclesForOptionsCategory->pluck('fuel')->unique()->filter()->values()->all();
+        $mileages = $potentialVehiclesForOptionsCategory->pluck('mileage')->unique()->filter()->map(function ($mileage) {
+            if ($mileage >= 0 && $mileage <= 25) return '0-25';
+            if ($mileage > 25 && $mileage <= 50) return '25-50';
+            if ($mileage > 50 && $mileage <= 75) return '50-75';
+            if ($mileage > 75 && $mileage <= 100) return '75-100';
+            if ($mileage > 100 && $mileage <= 120) return '100-120';
+            return null;
+        })->filter()->unique()->values()->all();
+        $categoriesFromOptions = []; // Initialize as empty array
+        $categoryIds = $potentialVehiclesForOptionsCategory->pluck('category_id')->unique()->filter();
+        if ($categoryIds->isNotEmpty()) {
+            $categoriesFromOptions = VehicleCategory::whereIn('id', $categoryIds)->select('id', 'name')->get()->toArray();
+        }
+        $allCategoriesForPage = VehicleCategory::select('id', 'name', 'slug')->get()->toArray();
 
-        if (isset($vehicle->distance_in_km)) {
-            $vehicle->distance_in_km = intval($vehicle->distance_in_km);
+
+        // --- Now apply secondary attribute filters to the main $internalVehiclesQuery ---
+        if (!empty($validated['seating_capacity'])) {
+            $internalVehiclesQuery->where('seating_capacity', $validated['seating_capacity']);
+        }
+        if (!empty($validated['brand'])) {
+            $internalVehiclesQuery->where('brand', $validated['brand']);
+        }
+        if (!empty($validated['transmission'])) {
+            $internalVehiclesQuery->where('transmission', $validated['transmission']);
+        }
+        if (!empty($validated['fuel'])) {
+            $internalVehiclesQuery->where('fuel', $validated['fuel']);
+        }
+        if (!empty($validated['price_range'])) {
+            $range = explode('-', $validated['price_range']);
+            $internalVehiclesQuery->whereBetween('price_per_day', [(int) $range[0], (int) $range[1]]);
+        }
+        if (!empty($validated['color'])) {
+            $internalVehiclesQuery->where('color', $validated['color']);
+        }
+        if (!empty($validated['mileage'])) {
+            $range = explode('-', $validated['mileage']);
+            $internalVehiclesQuery->whereBetween('mileage', [(int) $range[0], (int) $range[1]]);
         }
 
-        return $vehicle;
-    });
-    
-    // Generate ItemList schema for the vehicles
-        $vehicleListSchema = SchemaBuilder::vehicleList($vehicles->getCollection(), 'Vehicle Search Results', $validated);
-    // Return Inertia response
-        // Fetch SEO meta for the category search results page
-        // The url_slug for category search pages will be dynamic, e.g., 'search/category/suv'
-        $seoUrlSlug = 'search/category/' . ($validated['category_slug'] ?? '');
-        $seoMeta = \App\Models\SeoMeta::with('translations')->where('url_slug', $seoUrlSlug)->first();
+        // Package type filter (applied to the main query for results)
+        if (!empty($validated['package_type'])) {
+            switch ($validated['package_type']) {
+                case 'week':
+                    $internalVehiclesQuery->whereNotNull('price_per_week')->orderBy('price_per_week');
+                    break;
+                case 'month':
+                    $internalVehiclesQuery->whereNotNull('price_per_month')->orderBy('price_per_month');
+                    break;
+                default:
+                    $internalVehiclesQuery->whereNotNull('price_per_day')->orderBy('price_per_day');
+                    break;
+            }
+        }
 
-    return Inertia::render('CategorySearchResults', [
-        'vehicles' => $vehicles,
-        'filters' => $validated,
-        'pagination_links' => $vehicles->links()->toHtml(),
-        'brands' => $brands, // Use options derived from $potentialVehiclesForOptionsCategory
-        'colors' => $colors, // Use options derived from $potentialVehiclesForOptionsCategory
-        'seatingCapacities' => $seatingCapacities, // Use options derived from $potentialVehiclesForOptionsCategory
-        'transmissions' => $transmissions, // Use options derived from $potentialVehiclesForOptionsCategory
-        'fuels' => $fuels, // Use options derived from $potentialVehiclesForOptionsCategory
-        'mileages' => $mileages, // Use options derived from $potentialVehiclesForOptionsCategory
-        'categories' => $allCategoriesForPage, // Pass all categories for selection
-        'schema' => $vehicleListSchema, 
-        'seoMeta' => $seoMeta, // Pass SEO meta to the component
-        'locale' => \Illuminate\Support\Facades\App::getLocale(), // Pass current locale
-    ]);
-}
+        // Paginate results
+        $internalVehicles = $internalVehiclesQuery->paginate(10)->withQueryString(); // Reduced per page for combined results
+
+        // Transform the collection to include review data and distance, then convert to objects
+        $internalVehiclesData = $internalVehicles->getCollection()->map(function ($vehicle) {
+            $reviews = Review::where('vehicle_id', $vehicle->id)
+                ->where('status', 'approved')
+                ->get();
+            $vehicle->review_count = $reviews->count();
+            $vehicle->average_rating = $reviews->avg('rating') ?? 0;
+
+            if (isset($vehicle->distance_in_km)) {
+                $vehicle->distance_in_km = intval($vehicle->distance_in_km);
+            }
+            $vehicle->source = 'internal'; // Add source identifier
+
+            return (object) $vehicle->toArray(); // Convert model to object
+        });
+
+        $greenMotionVehicles = collect();
+        // Only fetch GreenMotion vehicles if explicitly requested or no source is specified
+        if ((isset($validated['source']) && $validated['source'] === 'greenmotion') || empty($validated['source'])) {
+            if (!empty($validated['date_from']) && !empty($validated['date_to'])) {
+                $gmLocationId = $validated['greenmotion_location_id'] ?? null;
+                $gmLocationLat = null;
+                $gmLocationLng = null;
+                $gmLocationAddress = null;
+
+                // If no specific GM location ID, try to find one based on 'where' or lat/lng
+                if (!$gmLocationId && (!empty($validated['where']) || (!empty($validated['latitude']) && !empty($validated['longitude'])))) {
+                    $searchParam = $validated['where'] ?? ($validated['latitude'] . ',' . $validated['longitude']);
+                    $unifiedLocations = $this->locationSearchService->searchLocations($searchParam);
+                    $matchedGmLocation = collect($unifiedLocations)->first(function($loc) {
+                        return $loc['source'] === 'greenmotion' && !empty($loc['greenmotion_location_id']);
+                    });
+                    if ($matchedGmLocation) {
+                        $gmLocationId = $matchedGmLocation['greenmotion_location_id'];
+                        $gmLocationLat = $matchedGmLocation['latitude'];
+                        $gmLocationLng = $matchedGmLocation['longitude'];
+                        $gmLocationAddress = $matchedGmLocation['label'] . ', ' . $matchedGmLocation['below_label'];
+                    }
+                } elseif ($gmLocationId) {
+                    // If gmLocationId is provided, fetch its details from unified_locations.json
+                    $allUnifiedLocations = $this->locationSearchService->getAllLocations();
+                    $specificGmLocation = collect($allUnifiedLocations)->firstWhere('greenmotion_location_id', $gmLocationId);
+                    if ($specificGmLocation) {
+                        $gmLocationLat = $specificGmLocation['latitude'];
+                        $gmLocationLng = $specificGmLocation['longitude'];
+                        $gmLocationAddress = $specificGmLocation['label'] . ', ' . $specificGmLocation['below_label'];
+                    }
+                }
+
+                if ($gmLocationId && $gmLocationLat !== null && $gmLocationLng !== null) {
+                    try {
+                        $gmOptions = [
+                            'language' => $validated['language'] ?? app()->getLocale(),
+                            'rentalCode' => $validated['rentalCode'] ?? '1',
+                            'currency' => $validated['currency'] ?? null,
+                            'fuel' => $validated['fuel'] ?? null,
+                            'userid' => $validated['userid'] ?? null,
+                            'username' => $validated['username'] ?? null,
+                            'full_credit' => $validated['full_credit'] ?? null,
+                            'promocode' => $validated['promocode'] ?? null,
+                            'dropoff_location_id' => $validated['dropoff_location_id'] ?? null,
+                        ];
+
+                        $gmResponse = $this->greenMotionService->getVehicles(
+                            $gmLocationId,
+                            $validated['date_from'],
+                            $validated['start_time'] ?? '09:00',
+                            $validated['date_to'],
+                            $validated['end_time'] ?? '09:00',
+                            $validated['age'] ?? 35,
+                            array_filter($gmOptions) // Filter out null options
+                        );
+
+                        if ($gmResponse) {
+                            libxml_use_internal_errors(true);
+                            $xmlObject = simplexml_load_string($gmResponse);
+                            if ($xmlObject === false) {
+                                $errors = libxml_get_errors();
+                                foreach ($errors as $error) {
+                                    Log::error('XML Parsing Error (GreenMotion GetVehicles): ' . $error->message);
+                                }
+                                libxml_clear_errors();
+                            } elseif (isset($xmlObject->response->vehicles->vehicle)) {
+                                foreach ($xmlObject->response->vehicles->vehicle as $vehicle) {
+                                    // Extract products for benefits and other details
+                                    $products = [];
+                                    if (isset($vehicle->product)) {
+                                        foreach ($vehicle->product as $product) {
+                                            $products[] = [
+                                                'type' => (string) $product['type'],
+                                                'total' => (string) $product->total,
+                                                'currency' => (string) $product->total['currency'],
+                                                'deposit' => (string) $product->deposit,
+                                                'excess' => (string) $product->excess,
+                                                'fuelpolicy' => (string) $product->fuelpolicy,
+                                                'mileage' => (string) $product->mileage,
+                                                'costperextradistance' => (string) $product->costperextradistance,
+                                                'minage' => (string) $product->minage,
+                                                'excludedextras' => (string) $product->excludedextras,
+                                                'fasttrack' => (string) $product->fasttrack,
+                                                'oneway' => (string) $product->oneway,
+                                                'oneway_fee' => (string) $product->oneway_fee,
+                                                'cancellation_rules' => json_decode(json_encode($product->CancellationRules), true),
+                                            ];
+                                        }
+                                    }
+
+                                    // Determine min_driver_age and fuel_policy
+                                    $minDriverAge = 0;
+                                    $fuelPolicy = '';
+                                    if (!empty($products)) {
+                                        $minDriverAge = (int) ($products[0]['minage'] ?? 0);
+                                        $fuelPolicy = $products[0]['fuelpolicy'] ?? '';
+                                    }
+
+                                    $greenMotionVehicles->push((object) [
+                                        'id' => 'gm_' . (string) $vehicle['id'],
+                                        'source' => 'greenmotion',
+                                        'brand' => (string) $vehicle->groupName,
+                                        'model' => (string) $vehicle['name'],
+                                        'image' => urldecode((string) $vehicle['image']),
+                                        'price_per_day' => (isset($vehicle->total) && is_numeric((string)$vehicle->total)) ? (float) (string)$vehicle->total : 0.0,
+                                        'price_per_week' => null,
+                                        'price_per_month' => null,
+                                        'currency' => (isset($vehicle->total['currency']) && !empty((string)$vehicle->total['currency'])) ? (string) $vehicle->total['currency'] : 'EUR',
+                                        'transmission' => (string) $vehicle->transmission,
+                                        'fuel' => (string) $vehicle->fuel,
+                                        'seating_capacity' => (int) $vehicle->adults + (int) $vehicle->children,
+                                        'mileage' => (string) $vehicle->mpg,
+                                        'latitude' => (float) $gmLocationLat,
+                                        'longitude' => (float) $gmLocationLng,
+                                        'full_vehicle_address' => $gmLocationAddress,
+                                        'greenmotion_location_id' => $gmLocationId,
+                                        'benefits' => (object) [
+                                            'cancellation_available_per_day' => true,
+                                            'limited_km_per_day' => false,
+                                            'minimum_driver_age' => $minDriverAge,
+                                            'fuel_policy' => $fuelPolicy,
+                                        ],
+                                        'review_count' => 0,
+                                        'average_rating' => 0,
+                                        'products' => $products,
+                                        'options' => [],
+                                        'insurance_options' => [],
+                                    ]);
+                                }
+                            } else {
+                                Log::warning('GreenMotion API response for vehicles was empty or malformed for location ID: ' . $gmLocationId);
+                            }
+                            libxml_clear_errors();
+                        }
+                    } catch (\Exception $e) {
+                        Log::error('Error fetching GreenMotion vehicles: ' . $e->getMessage());
+                    }
+                }
+            }
+        }
+
+        // Combine internal and GreenMotion vehicles
+        // Ensure all vehicles have a consistent structure for pagination
+        $combinedVehicles = $internalVehiclesData->merge($greenMotionVehicles);
+
+        // Manually paginate the combined results
+        $perPage = 10;
+        $currentPage = \Illuminate\Pagination\LengthAwarePaginator::resolveCurrentPage();
+        $currentItems = $combinedVehicles->slice(($currentPage - 1) * $perPage, $perPage)->values();
+        $vehicles = new \Illuminate\Pagination\LengthAwarePaginator(
+            $currentItems,
+            $combinedVehicles->count(),
+            $perPage,
+            $currentPage,
+            ['path' => $request->url(), 'query' => $request->query()]
+        );
+
+
+        // Generate ItemList schema for the vehicles
+        // Pass only the internal vehicles (Eloquent Collection) to SchemaBuilder
+        $vehicleListSchema = SchemaBuilder::vehicleList($internalVehicles->getCollection(), 'Vehicle Search Results', $validated);
+
+        // Fetch SEO meta for the search results page (assuming its url_slug is '/s')
+        $seoMeta = \App\Models\SeoMeta::with('translations')->where('url_slug', '/s')->first();
+
+        return Inertia::render('SearchResults', [
+            'vehicles' => $vehicles,
+            'filters' => $validated,
+            'pagination_links' => $vehicles->links()->toHtml(),
+            'brands' => $brands,
+            'colors' => $colors,
+            'seatingCapacities' => $seatingCapacities,
+            'transmissions' => $transmissions,
+            'fuels' => $fuels,
+            'mileages' => $mileages,
+            'categories' => $categoriesFromOptions,
+            'schema' => $vehicleListSchema,
+            'seoMeta' => $seoMeta,
+            'locale' => \Illuminate\Support\Facades\App::getLocale(),
+        ]);
+    }
+
+    public function searchUnifiedLocations(Request $request)
+    {
+        $validated = $request->validate([
+            'search_term' => 'sometimes|string|min:2', // Use 'sometimes' for optional validation
+        ]);
+
+        $searchTerm = $validated['search_term'] ?? null;
+
+        if ($searchTerm) {
+            $locations = $this->locationSearchService->searchLocations($searchTerm);
+        } else {
+            $locations = $this->locationSearchService->getAllLocations(); // Get all locations if no search term
+        }
+
+        return response()->json($locations);
+    }
 }

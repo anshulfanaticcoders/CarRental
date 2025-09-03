@@ -27,9 +27,19 @@ use Inertia\Inertia;
 use Illuminate\Support\Facades\Session; 
 use Illuminate\Support\Facades\Redirect; 
 use App\Helpers\SchemaBuilder; // Import SchemaBuilder
+use App\Services\LocationSearchService;
 
 class VehicleController extends Controller
 {
+
+    protected $locationSearchService;
+
+    public function __construct(LocationSearchService $locationSearchService)
+    {
+        $this->locationSearchService = $locationSearchService;
+    }
+
+    
     public function create()
     {
         $categories = DB::table('vehicle_categories')->select('id', 'name')->get();
@@ -378,127 +388,8 @@ class VehicleController extends Controller
     public function searchLocations(Request $request)
     {
         $query = trim($request->input('text'));
-
-        if (strlen($query) < 3) {
-            return response()->json(['results' => []]);
-        }
-
-        $normalizedQuery = $this->normalizeString($query);
-        $locations = Vehicle::select(
-            DB::raw('MIN(location) as location'),
-            'city',
-            'state',
-            'country',
-            DB::raw('MIN(latitude) as latitude'),   // Representative latitude
-            DB::raw('MIN(longitude) as longitude') // Representative longitude
-        )
-            ->where(function ($q) use ($normalizedQuery) {
-                $q->whereRaw("regexp_replace(LOWER(city), '[^a-z0-9]', '') LIKE ?", ["%{$normalizedQuery}%"])
-                    ->orWhereRaw("regexp_replace(LOWER(state), '[^a-z0-9]', '') LIKE ?", ["%{$normalizedQuery}%"])
-                    ->orWhereRaw("regexp_replace(LOWER(country), '[^a-z0-9]', '') LIKE ?", ["%{$normalizedQuery}%"]);
-            })
-            ->whereNotNull('city') // Ensure city, country are present, state can be null
-            ->whereNotNull('country')
-            ->groupBy('city', 'state', 'country') // Group by the administrative areas
-            ->orderByRaw('
-                CASE
-                    WHEN regexp_replace(LOWER(city), \'[^a-z0-9]\', \'\') = ? THEN 0    -- Exact city match
-                    WHEN regexp_replace(LOWER(state), \'[^a-z0-9]\', \'\') = ? THEN 1   -- Exact state match
-                    WHEN regexp_replace(LOWER(country), \'[^a-z0-9]\', \'\') = ? THEN 2 -- Exact country match
-                    WHEN regexp_replace(LOWER(city), \'[^a-z0-9]\', \'\') LIKE ? THEN 3  -- Partial city match
-                    WHEN regexp_replace(LOWER(state), \'[^a-z0-9]\', \'\') LIKE ? THEN 4 -- Partial state match
-                    WHEN regexp_replace(LOWER(country), \'[^a-z0-9]\', \'\') LIKE ? THEN 5-- Partial country match
-                    ELSE 6
-                END', [
-                $normalizedQuery,
-                $normalizedQuery,
-                $normalizedQuery, // Exact matches
-                "%{$normalizedQuery}%",
-                "%{$normalizedQuery}%",
-                "%{$normalizedQuery}%" // Partial matches
-            ])
-            ->limit(50)
-            ->get();
-
-        $results = $locations->map(function ($area) use ($normalizedQuery) {
-            // Normalize fields from the aggregated $area result
-            $cityLower = $this->normalizeString($area->city ?? '');
-            $stateLower = $this->normalizeString($area->state ?? '');
-            $countryLower = $this->normalizeString($area->country ?? '');
-
-            $matchedField = null;
-            $label = null;
-            $belowLabel = null;
-
-            // Determine the matched field and set label/below_label
-            // Priority: City > State > Country
-            if (str_contains($cityLower, $normalizedQuery) && $area->city) {
-                $matchedField = 'city';
-                $label = $area->city;
-                $belowLabelParts = [];
-                if ($area->state)
-                    $belowLabelParts[] = $area->state;
-                if ($area->country)
-                    $belowLabelParts[] = $area->country;
-                $belowLabel = implode(', ', $belowLabelParts);
-            } elseif (str_contains($stateLower, $normalizedQuery) && $area->state) {
-                $matchedField = 'state';
-                $label = $area->state;
-                $belowLabel = $area->country ?? null;
-            } elseif (str_contains($countryLower, $normalizedQuery) && $area->country) {
-                $matchedField = 'country';
-                $label = $area->country;
-                $belowLabel = null;
-            }
-
-            if (!$label) {
-                return null; // Skip if no valid label could be formed
-            }
-
-            // Generate a unique ID for the suggestion item
-            // This ID should be based on the distinct combination of label and below_label
-            $uniqueIdContent = $this->normalizeString($label) . ($belowLabel ? $this->normalizeString($belowLabel) : '');
-
-            return [
-                // Use a hash of the normalized label and below_label for a more stable ID
-                'id' => md5($uniqueIdContent),
-                'label' => $label,
-                'below_label' => $belowLabel ?: null, // Ensure null if empty
-                'location' => $area->location,
-                'city' => $area->city,
-                'state' => $area->state,
-                'country' => $area->country,
-                'latitude' => $area->latitude,   // Representative lat
-                'longitude' => $area->longitude, // Representative lon
-                'matched_field' => $matchedField,
-            ];
-        })->filter() // Remove any null entries (e.g. if label couldn't be formed)
-            ->unique(function ($item) {
-                // Ensure uniqueness based on the combination of normalized label and below_label
-                return $this->normalizeString($item['label']) . ($item['below_label'] ? $this->normalizeString($item['below_label']) : '');
-            })->values(); // Re-index the array
-
+        $results = $this->locationSearchService->searchLocations($query);
         return response()->json(['results' => $results]);
-    }
-
-    /**
-     * Normalize a string by removing diacritics and converting to lowercase.
-     *
-     * @param string|null $string
-     * @return string
-     */
-    private function normalizeString($string)
-    {
-        if (is_null($string)) {
-            return '';
-        }
-
-        // Convert to lowercase and remove diacritics
-        $normalized = strtolower($string);
-        $normalized = transliterator_transliterate('NFKD; [:Nonspacing Mark:] Remove; NFC;', $normalized);
-        $normalized = preg_replace('/[^a-z0-9]/', '', $normalized); // Keep only alphanumeric
-
-        return $normalized;
     }
 
 }
