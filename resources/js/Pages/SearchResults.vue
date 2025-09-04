@@ -66,8 +66,21 @@ onMounted(async () => {
 });
 
 const getCurrencySymbol = (code) => {
-    return currencySymbols.value[code] || '$';
+    // For GreenMotion, always return '$' as per requirement
+    // For internal vehicles, use the fetched symbol or default to '$'
+    return '$'; // Always return dollar for display on search results page
 };
+
+const numberOfRentalDays = computed(() => {
+    if (form.date_from && form.date_to) {
+        const start = new Date(form.date_from);
+        const end = new Date(form.date_to);
+        const diffTime = Math.abs(end - start);
+        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+        return diffDays > 0 ? diffDays : 1; // Ensure at least 1 day for calculation
+    }
+    return 1; // Default to 1 day if dates are not set
+});
 
 const debounce = (fn, delay) => {
     let timeoutId;
@@ -283,8 +296,10 @@ const createCustomIcon = (vehicle, isHighlighted = false) => {
     let priceValue = null;
 
     if (vehicle.source === 'greenmotion') {
-        currency = getCurrencySymbol(vehicle.products[0]?.currency);
-        priceValue = vehicle.products[0]?.total;
+        currency = '$'; // Always dollar for GreenMotion
+        // Calculate price per day for GreenMotion vehicles
+        const totalGreenMotionPrice = parseFloat(vehicle.products[0]?.total || 0);
+        priceValue = totalGreenMotionPrice / numberOfRentalDays.value;
     } else {
         currency = vehicle.vendor_profile?.currency || "$";
         if (form.package_type === 'day' && vehicle.price_per_day) {
@@ -422,8 +437,10 @@ const addMarkers = () => {
         let popupCurrencySymbol = "$";
 
         if (vehicle.source === 'greenmotion' && vehicle.products[0]?.total && vehicle.products[0].total > 0) {
-            popupCurrencySymbol = getCurrencySymbol(vehicle.products[0].currency);
-            popupPrice = `${popupCurrencySymbol}${vehicle.products[0].total}`;
+            popupCurrencySymbol = '$'; // Always dollar for GreenMotion
+            const totalGreenMotionPrice = parseFloat(vehicle.products[0]?.total || 0);
+            const pricePerDay = totalGreenMotionPrice / numberOfRentalDays.value;
+            popupPrice = `${popupCurrencySymbol}${pricePerDay.toFixed(2)}`; // Display price per day
         } else if (vehicle.price_per_day && vehicle.price_per_day > 0) {
             popupCurrencySymbol = vehicle.vendor_profile?.currency || "$";
             popupPrice = `${popupCurrencySymbol}${vehicle.price_per_day}`;
@@ -1521,9 +1538,20 @@ watch(
                                     <div>
                                         <!-- If a specific package_type filter is active (day, week, or month) -->
                                         <div v-if="form.package_type === 'day' || form.package_type === 'week' || form.package_type === 'month'">
-                                            <div v-if="vehicle[priceField] && vehicle[priceField] > 0">
+                                            <div v-if="vehicle.source === 'greenmotion'">
+                                                <div v-if="vehicle.products[0]?.total && vehicle.products[0].total > 0">
+                                                    <span class="text-customPrimaryColor text-[1.875rem] font-medium max-[768px]:text-[1.3rem] max-[768px]:font-bold">
+                                                        ${{ (parseFloat(vehicle.products[0].total) / numberOfRentalDays).toFixed(2) }}
+                                                    </span>
+                                                    <span>/day</span>
+                                                </div>
+                                                <div v-else>
+                                                    <span class="text-sm text-gray-500">Price not available</span>
+                                                </div>
+                                            </div>
+                                            <div v-else-if="vehicle[priceField] && vehicle[priceField] > 0">
                                                 <span class="text-customPrimaryColor text-[1.875rem] font-medium max-[768px]:text-[1.3rem] max-[768px]:font-bold">
-                                                    {{ vehicle.source === 'greenmotion' ? getCurrencySymbol(vehicle.currency) : (vehicle.vendor_profile?.currency || '$') }}{{ vehicle[priceField] }}
+                                                    {{ vehicle.vendor_profile?.currency || '$' }}{{ vehicle[priceField] }}
                                                 </span>
                                                 <span>/{{ priceUnit }}</span>
                                             </div>
@@ -1536,9 +1564,9 @@ watch(
                                             <template v-if="vehicle.source === 'greenmotion'">
                                                 <div v-if="vehicle.products[0]?.total && vehicle.products[0].total > 0" class="flex items-baseline">
                                                     <span class="text-customPrimaryColor text-lg font-semibold">
-                                                        {{ getCurrencySymbol(vehicle.products[0].currency) }}{{ vehicle.products[0].total }}
+                                                        ${{ (parseFloat(vehicle.products[0].total) / numberOfRentalDays).toFixed(2) }}
                                                     </span>
-                                                    <span class="text-xs text-gray-600 ml-1">/rental</span>
+                                                    <span class="text-xs text-gray-600 ml-1">/day</span>
                                                 </div>
                                                 <div v-else class="mt-1">
                                                     <span class="text-sm text-gray-500">Price not available</span>

@@ -23,6 +23,7 @@
   </div>
 </template>
 
+
 <script setup>
 import { ref } from 'vue';
 import { usePage } from '@inertiajs/vue3';
@@ -49,12 +50,15 @@ const initiateCheckout = async () => {
       throw new Error('Failed to load Stripe.js');
     }
 
-    // ADD THESE TWO LINES
+    // Get the current locale from the Inertia page props
+    const currentLocale = page.props.locale;
+
+    // Log data for debugging (optional)
     console.log("Booking data sent to backend:", JSON.parse(JSON.stringify(props.bookingData)));
     console.log("Raw form data from parent:", JSON.parse(JSON.stringify(props.bookingData)));
 
-    // Call the new GreenMotion specific payment route
-    const response = await axios.post(route('greenmotion.booking.charge'), {
+    // Pass the locale to the route() helper
+    const response = await axios.post(route('greenmotion.booking.charge', { locale: currentLocale }), {
       ...props.bookingData, // Pass all booking data directly
     });
 
@@ -87,6 +91,7 @@ async function loadStripe(key) {
   });
 }
 </script>
+
 
 <style scoped>
 .greenmotion-stripe-checkout {

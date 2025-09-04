@@ -13,6 +13,7 @@ use Stripe\Checkout\Session;
 use App\Models\User; // Added for admin notification
 use App\Notifications\Booking\GreenMotionBookingCreatedAdminNotification; // Added for admin notification
 use App\Notifications\Booking\GreenMotionBookingCreatedCustomerNotification; // Added for customer notification
+use App\Jobs\SendGreenMotionBookingNotificationJob;
 
 class GreenMotionBookingController extends Controller
 {
@@ -151,7 +152,7 @@ class GreenMotionBookingController extends Controller
                 'vehicle_total' => $validatedData['vehicle_total'],
                 'currency' => $validatedData['currency'],
                 'grand_total' => $validatedData['grand_total'],
-                'payment_handler_ref' => $validatedData['paymentHandlerRef'] ?? null,
+                'payment_handler_ref' => null, // Initially null
                 'quote_id' => $validatedData['quoteid'],
                 'payment_type' => $validatedData['payment_type'] ?? 'POA',
                 'dropoff_location_id' => $validatedData['dropoff_location_id'] ?? null,
@@ -177,12 +178,15 @@ class GreenMotionBookingController extends Controller
                 ]],
                 'mode' => 'payment',
                 'success_url' => url(app()->getLocale() . '/green-motion-booking-success?session_id={CHECKOUT_SESSION_ID}&booking_id=' . $greenMotionBooking->id),
-                'cancel_url' => url(app()->getLocale() . '/green-motion-booking-cancel?booking_id=' . $greenMotionBooking->id),
+                'cancel_url' => route('greenmotion.booking.cancel', ['locale' => app()->getLocale(), 'booking_id' => $greenMotionBooking->id]),
                 'metadata' => [
                     'greenmotion_booking_id' => $greenMotionBooking->id,
                     'greenmotion_booking_ref' => $bookingReference,
                 ],
             ]);
+
+            // Save the session ID to the booking record
+            $greenMotionBooking->update(['payment_handler_ref' => $session->id]);
 
             return response()->json([
                 'sessionId' => $session->id,
@@ -204,61 +208,48 @@ class GreenMotionBookingController extends Controller
         $sessionId = $request->query('session_id');
         $greenMotionBookingId = $request->query('booking_id');
 
+        if (!$sessionId || !$greenMotionBookingId) {
+            Log::error('Missing session_id or booking_id in greenMotionBookingSuccess');
+            return redirect()->route('greenmotion.booking.cancel', ['locale' => app()->getLocale(), 'booking_id' => $greenMotionBookingId])->with('error', 'Invalid payment session');
+        }
+
         try {
             $session = Session::retrieve($sessionId);
-            $greenMotionBooking = GreenMotionBooking::findOrFail($greenMotionBookingId);
+            $greenMotionBooking = GreenMotionBooking::where('payment_handler_ref', $sessionId)->firstOrFail();
 
             if ($session->payment_status === 'paid') {
                 $greenMotionBooking->update([
                     'booking_status' => 'confirmed',
                     'payment_handler_ref' => $session->payment_intent,
                 ]);
-                
-                // Send notifications
-                $adminEmail = env('VITE_ADMIN_EMAIL', 'default@admin.com');
-                $admin = User::where('email', $adminEmail)->first();
-                if ($admin) {
-                    $admin->notify(new GreenMotionBookingCreatedAdminNotification($greenMotionBooking));
-                }
 
-                $customerDetails = $greenMotionBooking->customer_details;
-                // Assuming customer email is available in customer_details
-                if (isset($customerDetails['email'])) {
-                    // Create a dummy user object for notification if a real user doesn't exist
-                    // Or, if you have a Customer model for GreenMotion, use that.
-                    // For now, we'll use a temporary Notifiable instance.
-                    // For a more robust solution, consider creating a GreenMotionCustomer model
-                    // or ensuring the customer has a User account.
-                    $customerNotifiable = new class extends \Illuminate\Foundation\Auth\User {
-                        use \Illuminate\Notifications\Notifiable;
-                        public $email;
-                        public function __construct($email) { $this->email = $email; }
-                        public function routeNotificationForMail() { return $this->email; }
-                    };
-                    $customerNotifiable->email = $customerDetails['email'];
-                    $customerNotifiable->notify(new GreenMotionBookingCreatedCustomerNotification($greenMotionBooking));
+                // Send notifications
+                try {
+                    dispatch(new SendGreenMotionBookingNotificationJob($greenMotionBooking));
+                } catch (\Exception $e) {
+                    Log::error('Failed to dispatch notification job for GreenMotion booking: ' . $e->getMessage(), [
+                        'booking_id' => $greenMotionBooking->id
+                    ]);
                 }
                 
-                Log::info('GreenMotion booking confirmed via Stripe success callback. Booking ID: ' . $greenMotionBookingId);
+                Log::info('GreenMotion booking confirmed via Stripe success callback. Booking ID: ' . $greenMotionBooking->id);
+                
+                // Redirect to the profile bookings page
+                return redirect()->route('profile.bookings.green-motion', ['locale' => app()->getLocale()]);
+
             } else {
                 Log::warning('Stripe session not paid for GreenMotion booking. Session ID: ' . $sessionId);
                 $greenMotionBooking->update(['booking_status' => 'payment_failed']);
+                return redirect()->route('greenmotion.booking.cancel', ['locale' => app()->getLocale(), 'booking_id' => $greenMotionBooking->id])->with('error', 'Payment not completed.');
             }
-
-            return Inertia::render('GreenMotionBookingSuccess', [
-                'booking' => $greenMotionBooking,
-                'payment_status' => $session->payment_status,
-            ]);
 
         } catch (\Exception $e) {
             Log::error('Error in GreenMotionBookingController::greenMotionBookingSuccess: ' . $e->getMessage(), [
                 'exception' => $e,
                 'session_id' => $sessionId,
-                'booking_id' => $greenMotionBookingId,
+                'booking_id' => $greenMotionBookingId
             ]);
-            return Inertia::render('GreenMotionBookingCancel', [
-                'error' => 'Error processing success callback: ' . $e->getMessage(),
-            ]);
+            return redirect()->route('greenmotion.booking.cancel', ['locale' => app()->getLocale(), 'booking_id' => $greenMotionBookingId])->with('error', 'Error processing success callback: ' . $e->getMessage());
         }
     }
 
@@ -278,6 +269,17 @@ class GreenMotionBookingController extends Controller
         return Inertia::render('GreenMotionBookingCancel', [
             'bookingId' => $greenMotionBookingId,
             'booking' => $greenMotionBooking,
+        ]);
+    }
+
+    public function getCustomerGreenMotionBookings()
+    {
+        $bookings = \App\Models\GreenMotionBooking::where('user_id', auth()->id())
+            ->latest()
+            ->paginate(10);
+
+        return Inertia::render('Profile/Bookings/GreenMotionBookings', [
+            'bookings' => $bookings,
         ]);
     }
 }

@@ -24,8 +24,55 @@ class GreenMotionController extends Controller
                 $products = [];
                 if (isset($vehicle->product)) {
                     foreach ($vehicle->product as $product) {
+                        $productType = (string) $product['type'];
+                        $benefits = [];
+
+                        switch ($productType) {
+                            case 'BAS':
+                                $benefits = [
+                                    'Excess liability' => true,
+                                    'Security deposit' => true,
+                                    'Fuel policy Like for Like' => true,
+                                    '100 free miles per rental' => true,
+                                    'Non refundable' => false,
+                                    'Non amendable' => false,
+                                ];
+                                break;
+                            case 'PLU':
+                                $benefits = [
+                                    'Excess liability' => true,
+                                    'Security deposit' => true,
+                                    'Fuel policy Like for Like' => true,
+                                    '100 free miles per rental' => true,
+                                    'Cancellation in line with T&Cs' => true,
+                                ];
+                                break;
+                            case 'PRE':
+                                $benefits = [
+                                    'Excess liability' => true,
+                                    'Security deposit' => true,
+                                    'Fuel policy Like for Like' => true,
+                                    'Unlimited mileage' => true,
+                                    'Cancellation in line with T&Cs' => true,
+                                ];
+                                break;
+                            case 'PMP':
+                                $benefits = [
+                                    'Excess liability $0' => true,
+                                    'Security deposit' => true,
+                                    'Fuel policy Like for Like' => true,
+                                    'Unlimited mileage' => true,
+                                    'Cancellation in line with T&Cs' => true,
+                                    'Glass and tyres covered' => true,
+                                    'Debit Card Accepted for Deposits' => true,
+                                    'Two free extras on collection' => true,
+                                ];
+                                break;
+                        }
+
                         $products[] = [
-                            'type' => (string) $product['type'],
+                            'type' => $productType,
+                            'benefits' => $benefits,
                             'total' => (string) $product->total,
                             'currency' => (string) $product->total['currency'],
                             'deposit' => (string) $product->deposit,

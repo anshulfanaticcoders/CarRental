@@ -1,7 +1,6 @@
 <script setup>
 import { Link, usePage, Head, router } from "@inertiajs/vue3";
 import { computed, onMounted, ref, watch, nextTick, onBeforeUnmount } from "vue";
-import AuthenticatedHeaderLayout from "@/Layouts/AuthenticatedHeaderLayout.vue";
 import Footer from "@/Components/Footer.vue";
 import carIcon from "../../assets/carIcon.svg";
 import mileageIcon from "../../assets/mileageIcon.svg";
@@ -48,6 +47,7 @@ import { ChevronRight, ImageIcon, ZoomIn } from 'lucide-vue-next';
 import { Alert, AlertDescription } from '@/Components/ui/alert';
 import { Button } from "@/Components/ui/button";
 import Lightbox from "@/Components/Lightbox.vue";
+import AuthenticatedHeaderLayout from "@/Layouts/AuthenticatedHeaderLayout.vue";
 
 const currencySymbols = ref({});
 
@@ -65,7 +65,7 @@ onMounted(async () => {
 });
 
 const getCurrencySymbol = (code) => {
-    return currencySymbols.value[code] || '$';
+    return '$'; // Always return dollar for display on GreenMotionSingle page
 };
 
 
@@ -418,6 +418,7 @@ const proceedToPayment = async () => {
         sessionStorage.setItem('greenMotionBookingForm', JSON.stringify(form.value));
         sessionStorage.setItem('greenMotionVehicleId', props.vehicle.id);
         sessionStorage.setItem('greenMotionLocationId', props.location.id);
+        sessionStorage.setItem('currentLocale', props.locale); // Store the current locale explicitly
 
         // Redirect to login page
         router.visit(route('login', { locale: props.locale }));

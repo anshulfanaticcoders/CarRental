@@ -443,12 +443,18 @@ Route::group([
         Route::get('/profile/bookings/pending', [BookingController::class, 'getPendingBookings'])->name('profile.bookings.pending');
         Route::get('/profile/bookings/confirmed', [BookingController::class, 'getConfirmedBookings'])->name('profile.bookings.confirmed');
         Route::get('/profile/bookings/completed', [BookingController::class, 'getCompletedBookings'])->name('profile.bookings.completed');
+        Route::get('/profile/bookings/green-motion', [GreenMotionBookingController::class, 'getCustomerGreenMotionBookings'])->name('profile.bookings.green-motion');
 
         // Favourite vehicles
         Route::post('/vehicles/{vehicle}/favourite', [FavoriteController::class, 'favourite'])->name('vehicles.favourite');
         Route::post('/vehicles/{vehicle}/unfavourite', [FavoriteController::class, 'unfavourite'])->name('vehicles.unfavourite');
         Route::get('/favorites', [FavoriteController::class, 'getFavorites']);
         Route::get('/favorites/status', [FavoriteController::class, 'getFavoriteStatus'])->name('favorites.status');
+
+         // GreenMotion Booking Routes
+    Route::post('/green-motion-booking/charge', [GreenMotionBookingController::class, 'processGreenMotionBookingPayment'])->name('greenmotion.booking.charge');
+     Route::get('/green-motion-booking-success', [GreenMotionBookingController::class, 'greenMotionBookingSuccess'])->name('greenmotion.booking.success');
+        Route::get('/green-motion-booking-cancel', [GreenMotionBookingController::class, 'greenMotionBookingCancel'])->name('greenmotion.booking.cancel');
     });
 
     // Vendor status check for vehicle creation
@@ -505,6 +511,8 @@ Route::group([
         ->name('green-motion-booking.checkout');
     
     Route::get('/{slug}', [ContactUsPageController::class, 'show'])->name('contact.show');
+
+   
 }); // End of locale group
 
 // GreenMotion Single Car Page (moved outside locale group to ensure correct ID parsing)
@@ -519,8 +527,3 @@ Route::get('/{locale}/green-motion-car/{id}', [GreenMotionController::class, 'sh
     Route::get('/green-motion-regions', [GreenMotionController::class, 'getGreenMotionRegions'])->name('green-motion-regions');
     Route::get('/green-motion-service-areas', [GreenMotionController::class, 'getGreenMotionServiceAreas'])->name('green-motion-service-areas');
     Route::post('/green-motion-booking', [GreenMotionController::class, 'makeGreenMotionBooking'])->name('green-motion-booking');
-
-// GreenMotion Booking Routes (outside locale group to avoid double locale prefix)
-Route::post('/green-motion-booking/charge', [GreenMotionBookingController::class, 'processGreenMotionBookingPayment'])->name('greenmotion.booking.charge');
-Route::get('/green-motion-booking-success', [GreenMotionBookingController::class, 'greenMotionBookingSuccess'])->name('greenmotion.booking.success');
-Route::get('/green-motion-booking-cancel', [GreenMotionBookingController::class, 'greenMotionBookingCancel'])->name('greenmotion.booking.cancel');

@@ -44,6 +44,16 @@ const getCurrencySymbol = (code) => {
     return currencySymbols.value[code] || '$';
 };
 
+const getPackageFullName = (type) => {
+    const names = {
+        BAS: 'Basic',
+        PLU: 'Plus',
+        PRE: 'Premium',
+        PMP: 'Premium Plus',
+    };
+    return names[type] || type;
+};
+
 const selectedPackage = ref(null);
 const selectedOptionalExtras = ref([]);
 
@@ -160,6 +170,16 @@ const availablePackages = computed(() => {
     return props.vehicle?.products || [];
 });
 
+const freeExtras = computed(() => {
+    if (selectedPackage.value && selectedPackage.value.type === 'PMP') {
+        return [...selectedOptionalExtras.value]
+            .sort((a, b) => parseFloat(b.Total_for_this_booking) - parseFloat(a.Total_for_this_booking))
+            .slice(0, 2)
+            .map(extra => extra.optionID);
+    }
+    return [];
+});
+
 const calculateTotals = () => {
     let packagePrice = 0;
     if (selectedPackage.value) {
@@ -168,9 +188,18 @@ const calculateTotals = () => {
     }
 
     let extrasTotal = 0;
-    selectedOptionalExtras.value.forEach(extra => {
-        extrasTotal += parseFloat(extra.Total_for_this_booking || 0);
-    });
+    if (selectedPackage.value && selectedPackage.value.type === 'PMP') {
+        const sortedExtras = [...selectedOptionalExtras.value].sort((a, b) => parseFloat(b.Total_for_this_booking) - parseFloat(a.Total_for_this_booking));
+        sortedExtras.forEach((extra, index) => {
+            if (index >= 2) {
+                extrasTotal += parseFloat(extra.Total_for_this_booking || 0);
+            }
+        });
+    } else {
+        selectedOptionalExtras.value.forEach(extra => {
+            extrasTotal += parseFloat(extra.Total_for_this_booking || 0);
+        });
+    }
 
     form.value.vehicle_total = packagePrice;
     form.value.grand_total = packagePrice + extrasTotal;
@@ -324,7 +353,7 @@ const bookingDataForStripe = computed(() => {
             </div>
         </div>
 
-        <div v-else-if="vehicle" class="max-w-7xl mx-auto py-12">
+        <div v-else-if="vehicle" class=" mx-auto py-12">
             <!-- Progress Steps -->
             <div class="mb-8">
                 <div class="flex items-center justify-center space-x-8 mb-8">
@@ -408,7 +437,7 @@ const bookingDataForStripe = computed(() => {
                                            : 'border-gray-200 hover:border-gray-300'"
                                          @click="selectedPackage = pkg">
                                         <div class="flex items-start justify-between mb-4">
-                                            <h4 class="text-lg font-bold text-gray-900">{{ pkg.type }}</h4>
+                                            <h4 class="text-lg font-bold text-gray-900">{{ getPackageFullName(pkg.type) }}</h4>
                                             <div class="w-5 h-5 rounded-full border-2 flex items-center justify-center"
                                                  :class="selectedPackage?.type === pkg.type 
                                                    ? 'border-primary bg-primary' 
@@ -435,6 +464,20 @@ const bookingDataForStripe = computed(() => {
                                                 <span class="font-semibold">{{ pkg.fuelpolicy }}</span>
                                             </div>
                                         </div>
+                                        <div v-if="pkg.benefits" class="mt-4 pt-4 border-t border-gray-200">
+                                            <h5 class="text-sm font-semibold text-gray-800 mb-2">Package Includes:</h5>
+                                            <ul class="space-y-2">
+                                                <li v-for="(value, key) in pkg.benefits" :key="key" class="flex items-center text-sm text-gray-600">
+                                                    <svg v-if="value" class="w-4 h-4 mr-2 text-green-500" fill="currentColor" viewBox="0 0 20 20">
+                                                        <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/>
+                                                    </svg>
+                                                    <svg v-else class="w-4 h-4 mr-2 text-red-500" fill="currentColor" viewBox="0 0 20 20">
+                                                        <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd"/>
+                                                    </svg>
+                                                    <span>{{ key }}</span>
+                                                </li>
+                                            </ul>
+                                        </div>
                                     </div>
                                 </div>
                             </div>
@@ -449,7 +492,10 @@ const bookingDataForStripe = computed(() => {
                             <div class="p-6">
                                 <div v-if="optionalExtras.length > 0" class="space-y-4">
                                     <div v-for="extra in optionalExtras" :key="extra.optionID || extra.Name"
-                                         class="flex items-center justify-between p-4 border border-gray-200 rounded-xl hover:bg-gray-50 transition-colors">
+                                         class="relative flex items-center justify-between p-4 border border-gray-200 rounded-xl hover:bg-gray-50 transition-colors">
+                                        <div v-if="freeExtras.includes(extra.optionID)" class="absolute top-0 right-0 bg-green-500 text-white text-xs font-bold px-2 py-1 rounded-bl-lg rounded-tr-lg">
+                                            Free
+                                        </div>
                                         <div class="flex items-start space-x-4">
                                             <div class="flex-shrink-0 w-12 h-12 bg-secondary/20 rounded-lg flex items-center justify-center">
                                                 <svg class="w-6 h-6 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -526,8 +572,8 @@ const bookingDataForStripe = computed(() => {
                                                 <label for="email" class="block text-sm font-medium text-gray-700 mb-2">
                                                     Email Address <span class="text-red-500">*</span>
                                                 </label>
-                                                <input type="email" id="email" v-model="form.customer.email" 
-                                                       class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary transition-colors"
+                                                <input type="email" id="email" v-model="form.customer.email" readonly
+                                                       class="w-full px-4 py-3 border border-gray-300 bg-gray-200 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary transition-colors"
                                                        :class="{ 'border-red-300 bg-red-50': formErrors.email }"
                                                        placeholder="your.email@example.com" />
                                                 <p v-if="formErrors.email" class="mt-1 text-sm text-red-600">{{ formErrors.email }}</p>
@@ -881,7 +927,7 @@ const bookingDataForStripe = computed(() => {
 }
 
 .container {
-    max-width: 1500px;
+    max-width: 1600px;
     margin: 0 auto;
 }
 
