@@ -19,7 +19,7 @@ class LocaleHelper
     public static function getAlternateUrls($currentRoute, $routeParameters)
     {
         $urls = [];
-        $locales = ['en', 'fr', 'nl']; // Available locales
+        $locales = ['en', 'fr', 'nl', 'es', 'ar']; // Available locales
         $translatedSlugs = [];
         $slugKey = null;
         $originalSlug = null;
@@ -80,5 +80,28 @@ class LocaleHelper
         }
 
         return $urls;
+    }
+
+    /**
+     * Recursively sanitizes data to ensure it's valid UTF-8.
+     * This prevents json_encode errors with malformed characters.
+     *
+     * @param mixed $data The data to sanitize (string, array, or object).
+     * @return mixed The sanitized data.
+     */
+    public static function sanitizeUtf8($data)
+    {
+        if (is_array($data)) {
+            foreach ($data as $key => $value) {
+                $data[$key] = self::sanitizeUtf8($value);
+            }
+        } elseif (is_object($data)) {
+            foreach ($data as $key => $value) {
+                $data->$key = self::sanitizeUtf8($value);
+            }
+        } elseif (is_string($data)) {
+            return mb_convert_encoding($data, 'UTF-8', 'UTF-8');
+        }
+        return $data;
     }
 }

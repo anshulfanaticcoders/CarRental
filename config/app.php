@@ -106,7 +106,7 @@ return [
     | A list of all locales that are supported by the application.
     |
     */
-    'available_locales' => ['en', 'fr', 'nl'],
+    'available_locales' => ['en', 'fr', 'nl', 'es', 'ar'],
 
     /*
     |--------------------------------------------------------------------------

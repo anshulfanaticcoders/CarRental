@@ -13,6 +13,7 @@ use Illuminate\Http\Request;
 use Inertia\Inertia;
 use App\Helpers\SchemaBuilder; // Added for Schema
 use App\Helpers\ImageCompressionHelper;
+use App\Helpers\LocaleHelper;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str; // Added for slug generation
 use Illuminate\Support\Facades\App; // Added for locale access
@@ -469,14 +470,14 @@ class BlogController extends Controller
             'canRegister' => Route::has('register'),
             'laravelVersion' => Application::VERSION,
             'phpVersion' => PHP_VERSION,
-            'blogs' => $blogs,
-            'testimonials' => $testimonials,
-            'categories' => $categories,
-            'popularPlaces' => $popularPlaces,
-            'faqs' => $faqs, // Pass FAQ data
-            'schema' => $pageSchemas,
-            'seoMeta' => $seoMeta,
-            'pages' => $pages,
+            'blogs' => LocaleHelper::sanitizeUtf8($blogs),
+            'testimonials' => LocaleHelper::sanitizeUtf8($testimonials),
+            'categories' => LocaleHelper::sanitizeUtf8($categories),
+            'popularPlaces' => LocaleHelper::sanitizeUtf8($popularPlaces),
+            'faqs' => LocaleHelper::sanitizeUtf8($faqs), // Pass FAQ data
+            'schema' => LocaleHelper::sanitizeUtf8($pageSchemas),
+            'seoMeta' => LocaleHelper::sanitizeUtf8($seoMeta),
+            'pages' => LocaleHelper::sanitizeUtf8($pages),
         ]);
     }
 
