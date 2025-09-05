@@ -512,13 +512,11 @@ Route::group([
     
     Route::get('/{slug}', [ContactUsPageController::class, 'show'])->name('contact.show');
 
+    // GreenMotion Single Car Page
+    Route::get('/green-motion-car/{id}', [GreenMotionController::class, 'showGreenMotionCar'])
+        ->name('green-motion-car.show');
    
 }); // End of locale group
-
-// GreenMotion Single Car Page (moved outside locale group to ensure correct ID parsing)
-Route::get('/{locale}/green-motion-car/{id}', [GreenMotionController::class, 'showGreenMotionCar'])
-    ->where('locale', '(en|fr|nl|es|ar)')
-    ->name('green-motion-car.show');
 
     Route::get('/green-motion-vehicles', [GreenMotionController::class, 'getGreenMotionVehicles'])->name('green-motion-vehicles');
     Route::get('/green-motion-countries', [GreenMotionController::class, 'getGreenMotionCountries'])->name('green-motion-countries');

@@ -74,7 +74,6 @@ const props = defineProps({
     location: Object,
     optionalExtras: Array,
     filters: Object,
-    locale: String,
     seoMeta: Object,
     error: String,
 });
@@ -93,7 +92,7 @@ const seoTranslation = computed(() => {
     if (!props.seoMeta || !props.seoMeta.translations) {
         return {};
     }
-    return props.seoMeta.translations.find(t => t.locale === props.locale) || {};
+    return props.seoMeta.translations.find(t => t.locale === page.props.locale) || {};
 });
 
 const constructedLocalizedUrlSlug = computed(() => {
@@ -101,7 +100,7 @@ const constructedLocalizedUrlSlug = computed(() => {
 });
 
 const currentUrl = computed(() => {
-    return `${window.location.origin}/${props.locale}/${constructedLocalizedUrlSlug.value}`;
+    return `${window.location.origin}/${page.props.locale}/${constructedLocalizedUrlSlug.value}`;
 });
 
 const canonicalUrl = computed(() => {
@@ -125,7 +124,7 @@ const seoImageUrl = computed(() => {
 });
 
 const backToSearchUrl = computed(() => {
-    return route('green-motion-cars', { locale: props.locale, ...props.filters });
+    return route('green-motion-cars', { locale: page.props.locale, ...props.filters });
 });
 
 const vehicleProduct = computed(() => {
@@ -418,15 +417,15 @@ const proceedToPayment = async () => {
         sessionStorage.setItem('greenMotionBookingForm', JSON.stringify(form.value));
         sessionStorage.setItem('greenMotionVehicleId', props.vehicle.id);
         sessionStorage.setItem('greenMotionLocationId', props.location.id);
-        sessionStorage.setItem('currentLocale', props.locale); // Store the current locale explicitly
+        sessionStorage.setItem('currentLocale', page.props.locale); // Store the current locale explicitly
 
         // Redirect to login page
-        router.visit(route('login', { locale: props.locale }));
+        router.visit(route('login', { locale: page.props.locale }));
         return;
     }
 
     router.visit(route('green-motion-booking.checkout', {
-        locale: props.locale,
+        locale: page.props.locale,
         id: props.vehicle.id,
         location_id: form.value.location_id,
         start_date: form.value.start_date,
@@ -504,7 +503,7 @@ onBeforeUnmount(() => {
         <div v-else-if="vehicle">
             <!-- Breadcrumb -->
             <nav class="flex items-center gap-2 text-sm mb-8 p-4 bg-gray-50 rounded-lg">
-                <Link :href="`/${locale}`" class="text-customPrimaryColor hover:underline font-medium">Home</Link>
+                <Link :href="`/${$page.props.locale}`" class="text-customPrimaryColor hover:underline font-medium">Home</Link>
                 <ChevronRight class="h-4 w-4 text-gray-400" />
                 <Link :href="backToSearchUrl" class="text-customPrimaryColor hover:underline font-medium">GreenMotion Vehicles</Link>
                 <ChevronRight class="h-4 w-4 text-gray-400" />

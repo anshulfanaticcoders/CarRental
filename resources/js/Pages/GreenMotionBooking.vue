@@ -41,7 +41,7 @@ onMounted(async () => {
 });
 
 const getCurrencySymbol = (code) => {
-    return currencySymbols.value[code] || '$';
+    return '$';
 };
 
 const getPackageFullName = (type) => {
@@ -50,6 +50,7 @@ const getPackageFullName = (type) => {
         PLU: 'Plus',
         PRE: 'Premium',
         PMP: 'Premium Plus',
+        FF: 'Full',
     };
     return names[type] || type;
 };
@@ -461,7 +462,7 @@ const bookingDataForStripe = computed(() => {
                                             </div>
                                             <div class="flex justify-between">
                                                 <span class="text-gray-600">Fuel Policy</span>
-                                                <span class="font-semibold">{{ pkg.fuelpolicy }}</span>
+                                                <span class="font-semibold">{{ pkg.fuelpolicy }} <span class="text-[0.75rem]">(Full To Full)</span></span>
                                             </div>
                                         </div>
                                         <div v-if="pkg.benefits" class="mt-4 pt-4 border-t border-gray-200">
