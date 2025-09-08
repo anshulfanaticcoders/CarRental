@@ -2,6 +2,7 @@
 import { Head, Link } from "@inertiajs/vue3";
 import SchemaInjector from '@/Components/SchemaInjector.vue'; // Import SchemaInjector
 import heroImg from "../../assets/heroImage.jpg";
+import FloatingBubbles from '@/Components/FloatingBubbles.vue';
 import Footer from '@/Components/Footer.vue'
 import locationMapIcon from "../../assets/location.svg";
 import chipIcon from "../../assets/chip.svg";
@@ -65,6 +66,7 @@ import {
     CarouselPrevious,
 } from "@/Components/ui/carousel";
 import { computed, onBeforeUnmount, onMounted, ref, defineAsyncComponent } from "vue";
+import { useScrollAnimation } from '@/composables/useScrollAnimation';
 import Card from "@/Components/ui/card/Card.vue";
 import CardContent from "@/Components/ui/card/CardContent.vue";
 
@@ -208,6 +210,44 @@ const updateSearchUrl = (place) => {
 const updateCategorySearchUrl = (category) => {
     sessionStorage.setItem('searchurl', `/search/category/${category.slug}`);
 };
+
+// Animations
+useScrollAnimation('.hero_section', '.hero-content', {
+  opacity: 0,
+  y: -50,
+  duration: 1.2,
+});
+
+useScrollAnimation('.hero_section', '.hero-image', {
+  opacity: 0,
+  duration: 1.5,
+});
+
+useScrollAnimation('.search-bar-section', '.search-bar-animation', {
+    opacity: 0,
+    y: 50,
+    duration: 1,
+});
+
+useScrollAnimation('.why-choose-us-trigger', '.why-choose-us-title', {
+  opacity: 0,
+  y: 30,
+});
+
+useScrollAnimation('.why-choose-us-trigger', '.why-choose-us-card-left', {
+  opacity: 0,
+  x: -50,
+});
+
+useScrollAnimation('.why-choose-us-trigger', '.why-choose-us-image', {
+  opacity: 0,
+  scale: 0.8,
+});
+
+useScrollAnimation('.why-choose-us-trigger', '.why-choose-us-card-right', {
+  opacity: 0,
+  x: 50,
+});
 </script>
 
 <template>
@@ -242,8 +282,9 @@ const updateCategorySearchUrl = (category) => {
             <div class="wrapper flex justify-between w-full
             max-[768px]:flex-col">
                 <div class="column bg-customPrimaryColor h-[38rem] w-full text-white flex flex-col items-end justify-center
-                     max-[768px]:h-auto max-[768px]:px-[1.5rem] max-[768px]:py-[1.5rem]">
-                    <div class="pl-[10%] max-[768px]:pl-0">
+                     max-[768px]:h-auto max-[768px]:px-[1.5rem] max-[768px]:py-[1.5rem] relative">
+                    <FloatingBubbles />
+                    <div class="pl-[10%] max-[768px]:pl-0 hero-content relative z-10">
                         <h1>{{ _p('tagline') }}</h1>
                         <div class="h-16 mt-3 max-[768px]:h-20 flex">
                             <!-- Typewriter text container -->
@@ -255,7 +296,7 @@ const updateCategorySearchUrl = (category) => {
                     </div>
                 </div>
                 <div
-                    class="column h-[46rem] w-full relative max-[768px]:h-auto max-[768px]:pb-[2rem] max-[768px]:px-[1.5rem]">
+                    class="column h-[46rem] w-full relative max-[768px]:h-auto max-[768px]:pb-[2rem] max-[768px]:px-[1.5rem] hero-image">
                     <img class="rounded-bl-[20px] h-full w-full object-cover max-[768px]:rounded-[20px]" :src="heroImg"
                         alt="" />
                     <div class="bg-customOverlayColor absolute top-0 w-full h-full rounded-bl-[20px]"></div>
@@ -265,8 +306,8 @@ const updateCategorySearchUrl = (category) => {
 
 
         <section
-            class="mt-[-14rem] mb-[12rem] max-[768px]:mb-[0] max-[768px]:mt-[-1rem] max-[768px]:pt-[2rem] max-[768px]:bg-customPrimaryColor relative z-10">
-                <SearchBar />
+            class="mt-[-14rem] mb-[12rem] max-[768px]:mb-[0] max-[768px]:mt-[-1rem] max-[768px]:pt-[2rem] max-[768px]:bg-customPrimaryColor relative z-10 search-bar-section">
+                <SearchBar class="search-bar-animation" />
         </section>
 
         <section
@@ -397,9 +438,9 @@ const updateCategorySearchUrl = (category) => {
 
         <!------------------------------- WHY CHOOSE US -------------------------------------->
         <!------------------------------ <Start>  -------------------------------------------------->
-        <section class="py-customVerticalSpacing">
+        <section class="py-customVerticalSpacing why-choose-us-trigger">
             <div class="full-w-container flex flex-col gap-16">
-                <div class="column text-center flex flex-col gap-5 items-center">
+                <div class="column text-center flex flex-col gap-5 items-center why-choose-us-title">
                     <span class="text-[1.25rem] text-customPrimaryColor">-{{ _p('why_choose_us') }}-</span>
                     <h3 class="max-w-[883px] text-customDarkBlackColor">
                         {{ _p('why_subtitle') }}
@@ -408,7 +449,7 @@ const updateCategorySearchUrl = (category) => {
                 <div class="column grid grid-cols-3 gap-16
                 max-[768px]:grid-cols-1">
                     <div class="col flex flex-col gap-10">
-                        <div class="info-card flex gap-5 items-start">
+                        <div class="info-card flex gap-5 items-start why-choose-us-card-left">
                             <img :src="locationMapIcon" alt=""  />
                             <div class="flex flex-col gap-3">
                                 <span
@@ -418,7 +459,7 @@ const updateCategorySearchUrl = (category) => {
                                 </p>
                             </div>
                         </div>
-                        <div class="info-card flex gap-5 items-start">
+                        <div class="info-card flex gap-5 items-start why-choose-us-card-left">
                             <img :src="phoneIcon" alt=""  />
                             <div class=" flex flex-col gap-3">
                                 <span
@@ -429,12 +470,12 @@ const updateCategorySearchUrl = (category) => {
                             </div>
                         </div>
                     </div>
-                    <div class="col flex justify-center">
+                    <div class="col flex justify-center why-choose-us-image">
                         <img class="rounded-[20px] h-full object-cover" :src="carImage" alt=""
                             style="clip-path: polygon(30% 0%, 70% 0%, 100% 30%, 100% 70%, 70% 100%, 30% 100%, 0% 70%, 0% 30%);"  />
                     </div>
                     <div class="col flex flex-col gap-10">
-                        <div class="info-card flex gap-5 items-start">
+                        <div class="info-card flex gap-5 items-start why-choose-us-card-right">
                             <img :src="chipIcon" alt=""  />
                             <div class=" flex flex-col gap-3">
                                 <span
@@ -444,7 +485,7 @@ const updateCategorySearchUrl = (category) => {
                                 </p>
                             </div>
                         </div>
-                        <div class="info-card flex gap-5 items-start">
+                        <div class="info-card flex gap-5 items-start why-choose-us-card-right">
                             <img :src="userCoverageIcon" alt=""  />
                             <div class="flex flex-col gap-3 ">
                                 <span
