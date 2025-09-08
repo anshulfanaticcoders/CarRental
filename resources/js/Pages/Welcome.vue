@@ -631,6 +631,10 @@ useScrollAnimation('.why-choose-us-trigger', '.why-choose-us-card-right', {
     display: none;
 }
 
+.hero-content, .hero-image, .search-bar-animation, .why-choose-us-title, .why-choose-us-card-left, .why-choose-us-image, .why-choose-us-card-right {
+    will-change: transform, opacity;
+}
+
 .blog-container>img {
     transition: transform 0.3s ease-in-out;
 }

@@ -20,6 +20,7 @@
   background-color: rgba(255, 255, 255, 0.15);
   border-radius: 50%;
   animation: float 6s infinite alternate ease-in-out;
+  will-change: transform;
 }
 
 .bubble:nth-child(1) {
