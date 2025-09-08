@@ -27,6 +27,7 @@ import {
 
 import VueDatePicker from '@vuepic/vue-datepicker';
 import '@vuepic/vue-datepicker/dist/main.css';
+import loaderVariant from '../../../assets/loader-variant.svg';
 
 const stepIndex = ref(1);
 const showPassword = ref(false);
@@ -79,6 +80,7 @@ const form = useForm({
     country: "",
     password: "",
     password_confirmation: "",
+    currency: "$",
 });
 
 const isPasswordValid = computed(() => {
@@ -645,6 +647,9 @@ watch(dateOfBirth, (newValue) => {
                 </form>
             </Stepper>
         </div>
+    </div>
+    <div v-if="form.processing" class="fixed inset-0 z-50 flex items-center justify-center bg-white bg-opacity-70">
+        <img :src="loaderVariant" alt="Loading..." class="h-20 w-20" />
     </div>
 </template>
 

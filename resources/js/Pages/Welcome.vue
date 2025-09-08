@@ -67,6 +67,7 @@ import {
 } from "@/Components/ui/carousel";
 import { computed, onBeforeUnmount, onMounted, ref, defineAsyncComponent } from "vue";
 import { useScrollAnimation } from '@/composables/useScrollAnimation';
+import { usePage } from '@inertiajs/vue3';
 import Card from "@/Components/ui/card/Card.vue";
 import CardContent from "@/Components/ui/card/CardContent.vue";
 
@@ -104,6 +105,21 @@ const _t = (key) => {
     }
     return key; 
 };
+
+const animatedTagline = computed(() => {
+    const tagline = _t('tagline');
+    if (!tagline) return '';
+
+    const words = tagline.split(' ');
+
+    if (words.length > 5) {
+        words[2] = `<span class="anim-title-word">${words[2]}</span>`;
+        words[5] = `<span class="anim-title-word">${words[5]}`;
+        words[words.length - 1] = `${words[words.length - 1]}</span>`;
+    }
+
+    return words.join(' ').replace(/</g, '<').replace(/>/g, '>');
+});
 
 const translatedPhrases = computed(() => [
     _t('typewriter_text_1'),
@@ -161,7 +177,7 @@ onBeforeUnmount(() => {
     if (timer) clearTimeout(timer);
 });
 
-import { usePage } from '@inertiajs/vue3';
+
 import GreenMotionSearchComponent from "@/Components/GreenMotionSearchComponent.vue";
 
 
@@ -218,6 +234,13 @@ useScrollAnimation('.hero_section', '.hero-content', {
   duration: 1.2,
 });
 
+useScrollAnimation('.hero_section', '.anim-title-word', {
+  y: 150,
+  opacity: 0,
+  stagger: 0.05,
+  duration: 1,
+});
+
 useScrollAnimation('.hero_section', '.hero-image', {
   opacity: 0,
   duration: 1.5,
@@ -247,6 +270,12 @@ useScrollAnimation('.why-choose-us-trigger', '.why-choose-us-image', {
 useScrollAnimation('.why-choose-us-trigger', '.why-choose-us-card-right', {
   opacity: 0,
   x: 50,
+});
+
+useScrollAnimation('.popular-places-trigger', '.popular-place-card', {
+  opacity: 0,
+  y: 50,
+  stagger: 0.5,
 });
 </script>
 
@@ -285,7 +314,7 @@ useScrollAnimation('.why-choose-us-trigger', '.why-choose-us-card-right', {
                      max-[768px]:h-auto max-[768px]:px-[1.5rem] max-[768px]:py-[1.5rem] relative">
                     <FloatingBubbles />
                     <div class="pl-[10%] max-[768px]:pl-0 hero-content relative z-10">
-                        <h1>{{ _p('tagline') }}</h1>
+                        <h1 class="anim-title clip-path-anim" v-html="animatedTagline"></h1>
                         <div class="h-16 mt-3 max-[768px]:h-20 flex">
                             <!-- Typewriter text container -->
                             <p class="text-[1.25rem]  max-[768px]:text-[1rem] flex items-center">
@@ -373,7 +402,7 @@ useScrollAnimation('.why-choose-us-trigger', '.why-choose-us-card-right', {
 
 
         <!------------------------------- Top Destination Places -------------------------------------->
-        <section class="flex flex-col gap-2 py-customVerticalSpacing popular-places max-[768px]:py-[1rem] max-[768px]:gap-8">
+        <section class="flex flex-col gap-2 py-customVerticalSpacing popular-places max-[768px]:py-[1rem] max-[768px]:gap-8 popular-places-trigger">
             <div class="column ml-[2%]">
                 <span class="text-[1.15rem] text-customPrimaryColor">-{{ _p('top_destinations') }} -</span>
                 <h3 class="text-customDarkBlackColor max-[768px]:text-[1.75rem] max-[768px]:mt-[1rem]">{{ _p('popular_places') }}</h3>
@@ -385,7 +414,7 @@ useScrollAnimation('.why-choose-us-trigger', '.why-choose-us-card-right', {
                         <!-- Show actual places when data is loaded from props -->
                         <template v-if="props.popularPlaces && props.popularPlaces.length > 0">
                             <CarouselItem v-for="place in props.popularPlaces" :key="place.id"
-                                 class="pl-1 md:basis-1/2 lg:basis-1/5">
+                                 class="pl-1 md:basis-1/2 lg:basis-1/5 popular-place-card">
                                 <div class="p-1">
                                     <Link
                                         :href="`/${page.props.locale}/s?where=${encodeURIComponent(`${place.place_name}, ${place.city}, ${place.country}`)}&latitude=${place.latitude}&longitude=${place.longitude}&radius=10000`"
@@ -631,7 +660,7 @@ useScrollAnimation('.why-choose-us-trigger', '.why-choose-us-card-right', {
     display: none;
 }
 
-.hero-content, .hero-image, .search-bar-animation, .why-choose-us-title, .why-choose-us-card-left, .why-choose-us-image, .why-choose-us-card-right {
+.hero-content, .hero-image, .search-bar-animation, .why-choose-us-title, .why-choose-us-card-left, .why-choose-us-image, .why-choose-us-card-right, .popular-place-card {
     will-change: transform, opacity;
 }
 
@@ -691,5 +720,13 @@ useScrollAnimation('.why-choose-us-trigger', '.why-choose-us-card-right', {
 .fade-enter-from,
 .fade-leave-to {
   opacity: 0;
+}
+
+.clip-path-anim {
+    clip-path: polygon(0 0, 100% 0, 100% 100%, 0% 100%);
+}
+
+.anim-title-word {
+    display: inline-block;
 }
 </style>

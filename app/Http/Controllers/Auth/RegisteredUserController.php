@@ -48,6 +48,7 @@ class RegisteredUserController extends Controller
             'postcode' => 'required|string|max:10',
             'city' => 'required|string|max:255',
             'country' => 'required|string|max:255',
+            'currency' => 'required|string|max:10',
         ]);
 
         // Create user
@@ -75,6 +76,7 @@ class RegisteredUserController extends Controller
             'city' => $validated['city'],
             'country' => $validated['country'],
             'date_of_birth' => $validated['date_of_birth'],
+            'currency' => $validated['currency'],
         ]);
 
         event(new Registered($user));
