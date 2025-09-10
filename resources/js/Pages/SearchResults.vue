@@ -137,7 +137,6 @@ const form = useForm({
     seating_capacity: usePage().props.filters.seating_capacity || "",
     brand: usePage().props.filters.brand || "",
     transmission: usePage().props.filters.transmission || "",
-    fuel: usePage().props.filters.fuel || "",
     price_range: usePage().props.filters.price_range || "",
     color: usePage().props.filters.color || "",
     mileage: usePage().props.filters.mileage || "",
@@ -344,8 +343,7 @@ const createCustomIcon = (vehicle, isHighlighted = false) => {
 };
 
 const resetFilters = () => {
-    form.reset(); // This should reset all fields defined in useForm to their initial values or empty strings if not defined initially
-    // Explicitly ensure all filter-related fields are cleared
+    // Reset only the vehicle-specific filters
     form.seating_capacity = "";
     form.brand = "";
     form.transmission = "";
@@ -355,31 +353,23 @@ const resetFilters = () => {
     form.mileage = "";
     form.package_type = "";
     form.category_id = "";
-    form.date_from = "";
-    form.date_to = "";
-    // price_range and package_type are also reset by form.reset() or should be explicitly set if needed
-    priceRangeValues.value = [0, 20000]; // Reset price slider UI
-    tempPriceRangeValues.value = [0, 20000];
-    form.price_range = ""; // Ensure price_range in form is also cleared
 
-    // Reset GreenMotion specific filters
-    form.start_time = '09:00';
-    form.end_time = '09:00';
-    form.age = 35;
-    form.rentalCode = '1';
+    // Reset UI components
+    priceRangeValues.value = [0, 20000];
+    tempPriceRangeValues.value = [0, 20000];
+
+    // Reset other non-essential GreenMotion params to default
     form.currency = null;
-    form.fuel = null; // This was duplicated, ensure it's handled correctly
     form.userid = null;
     form.username = null;
     form.language = null;
     form.full_credit = null;
     form.promocode = null;
     form.dropoff_location_id = null;
-    form.source = null;
-    form.greenmotion_location_id = null;
 
-
-    submitFilters(); // Submit with cleared filters
+    // The other fields like where, lat, lng, dates, source, etc., are NOT touched.
+    // They will retain their current values.
+    submitFilters();
 };
 
 const addMarkers = () => {

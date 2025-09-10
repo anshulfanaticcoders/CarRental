@@ -309,11 +309,14 @@ class SearchController extends Controller
             }
         }
 
-        // Paginate the main query to get the vehicles for display
-        $internalVehicles = $internalVehiclesQuery->paginate(10)->withQueryString(); // Reduced per page for combined results
+        // Get all matching internal vehicles as an Eloquent Collection
+        $internalVehiclesEloquent = $internalVehiclesQuery->get();
 
-        // Transform the paginated collection to include review data and source, then convert to plain PHP array
-        $internalVehiclesData = $internalVehicles->getCollection()->map(function ($vehicle) {
+        // Generate ItemList schema for the vehicles using the Eloquent Collection
+        $vehicleListSchema = SchemaBuilder::vehicleList($internalVehiclesEloquent, 'Vehicle Search Results', $validated);
+
+        // Transform the Eloquent collection to include review data and source, then convert to plain PHP array
+        $internalVehiclesData = $internalVehiclesEloquent->map(function ($vehicle) {
             $reviews = Review::where('vehicle_id', $vehicle->id)
                 ->where('status', 'approved')
                 ->get();
@@ -323,7 +326,7 @@ class SearchController extends Controller
             return $vehicle->toArray(); // Convert model to array
         })->values()->all(); // Convert to plain PHP array
 
-        // Create a new Support\Collection from the plain array
+        // Create a new Support\Collection from the plain array for merging
         $internalVehiclesCollection = collect($internalVehiclesData);
 
         // Fetch GreenMotion vehicles if a greenmotion_location_id is provided or no source is specified
@@ -426,10 +429,12 @@ class SearchController extends Controller
                                         $fuelPolicy = $products[0]['fuelpolicy'] ?? '';
                                     }
 
+                                    $brandName = explode(' ', (string) $vehicle['name'])[0];
+                                    $brandName = explode(' ', (string) $vehicle['name'])[0];
                                     $greenMotionVehicles->push((object) [ // Cast to object
                                         'id' => 'gm_' . (string) $vehicle['id'],
                                         'source' => 'greenmotion',
-                                        'brand' => (string) $vehicle->groupName,
+                                        'brand' => $brandName,
                                         'model' => (string) $vehicle['name'],
                                         'image' => urldecode((string) $vehicle['image']),
                                         'price_per_day' => (isset($vehicle->total) && is_numeric((string)$vehicle->total)) ? (float) (string)$vehicle->total : 0.0,
@@ -469,9 +474,50 @@ class SearchController extends Controller
             }
         }
 
+        // --- Apply filters to GreenMotion vehicles ---
+        $filteredGreenMotionVehicles = $greenMotionVehicles->filter(function ($vehicle) use ($validated) {
+            if (!empty($validated['seating_capacity']) && $vehicle->seating_capacity != $validated['seating_capacity']) {
+                return false;
+            }
+            if (!empty($validated['brand']) && strcasecmp($vehicle->brand, $validated['brand']) != 0) {
+                return false;
+            }
+            if (!empty($validated['transmission']) && strcasecmp($vehicle->transmission, $validated['transmission']) != 0) {
+                return false;
+            }
+            if (!empty($validated['fuel']) && strcasecmp($vehicle->fuel, $validated['fuel']) != 0) {
+                return false;
+            }
+            if (!empty($validated['price_range'])) {
+                $range = explode('-', $validated['price_range']);
+                if ($vehicle->price_per_day < (int) $range[0] || $vehicle->price_per_day > (int) $range[1]) {
+                    return false;
+                }
+            }
+            // Mileage filter for GreenMotion is tricky as it's often a string like "Unlimited".
+            // This example assumes a numeric conversion is possible or the filter should be skipped.
+            // A more robust implementation would handle various string formats.
+            if (!empty($validated['mileage'])) {
+                $range = explode('-', $validated['mileage']);
+                $mileageValue = (int) $vehicle->mileage; // This might need adjustment based on actual data format
+                if ($mileageValue < (int) $range[0] || $mileageValue > (int) $range[1]) {
+                    return false;
+                }
+            }
+            // Category filter for GreenMotion might require mapping their groupName to your internal categories.
+            // This example assumes a direct match, which might not be accurate.
+            if (!empty($validated['category_id'])) {
+                // This requires a mapping logic from GreenMotion's vehicle group to your category IDs.
+                // For now, we'll skip this filter for GreenMotion unless a direct mapping is available.
+                // Example: if ($this->mapGreenMotionCategory($vehicle->brand) != $validated['category_id']) return false;
+            }
+            return true;
+        });
+
+
         // Combine internal and GreenMotion vehicles
         // Ensure all vehicles have a consistent structure for pagination
-        $combinedVehicles = $internalVehiclesCollection->merge($greenMotionVehicles);
+        $combinedVehicles = $internalVehiclesCollection->merge($filteredGreenMotionVehicles);
 
         // Manually paginate the combined results
         $perPage = 10;
@@ -485,10 +531,17 @@ class SearchController extends Controller
             ['path' => $request->url(), 'query' => $request->query()]
         );
 
+        // --- Merge filter options from both sources ---
+        $gmBrands = $greenMotionVehicles->pluck('brand')->unique()->filter()->values()->all();
+        $gmSeatingCapacities = $greenMotionVehicles->pluck('seating_capacity')->unique()->filter()->values()->all();
+        $gmTransmissions = $greenMotionVehicles->pluck('transmission')->unique()->filter()->values()->all();
+        $gmFuels = $greenMotionVehicles->pluck('fuel')->unique()->filter()->values()->all();
 
-        // Generate ItemList schema for the vehicles
-        // Pass only the internal vehicles (Eloquent Collection) to SchemaBuilder
-        $vehicleListSchema = SchemaBuilder::vehicleList($internalVehicles->getCollection(), 'Vehicle Search Results', $validated);
+        $combinedBrands = collect($brands)->merge($gmBrands)->map(fn($val) => trim($val))->unique(fn($val) => strtolower($val))->sort()->values()->all();
+        $combinedSeatingCapacities = collect($seatingCapacities)->merge($gmSeatingCapacities)->unique()->sort()->values()->all();
+        $combinedTransmissions = collect($transmissions)->merge($gmTransmissions)->map(fn($val) => trim($val))->unique(fn($val) => strtolower($val))->sort()->values()->all();
+        $combinedFuels = collect($fuels)->merge($gmFuels)->map(fn($val) => trim($val))->unique(fn($val) => strtolower($val))->sort()->values()->all();
+
 
         // Fetch SEO meta for the search results page (assuming its url_slug is '/s')
         $seoMeta = \App\Models\SeoMeta::with('translations')->where('url_slug', '/s')->first();
@@ -497,13 +550,13 @@ class SearchController extends Controller
             'vehicles' => $vehicles,
             'filters' => $validated,
             'pagination_links' => $vehicles->links()->toHtml(),
-            'brands' => $brands,
-            'colors' => $colors,
-            'seatingCapacities' => $seatingCapacities,
-            'transmissions' => $transmissions,
-            'fuels' => $fuels,
-            'mileages' => $mileages,
-            'categories' => $categoriesFromOptions,
+            'brands' => $combinedBrands,
+            'colors' => $colors, // Assuming GreenMotion doesn't provide color info
+            'seatingCapacities' => $combinedSeatingCapacities,
+            'transmissions' => $combinedTransmissions,
+            'fuels' => $combinedFuels,
+            'mileages' => $mileages, // Mileage ranges are complex to combine dynamically
+            'categories' => $categoriesFromOptions, // Category mapping needed for GM
             'schema' => $vehicleListSchema,
             'seoMeta' => $seoMeta,
             'locale' => \Illuminate\Support\Facades\App::getLocale(),
@@ -780,11 +833,14 @@ class SearchController extends Controller
             }
         }
 
-        // Paginate results
-        $internalVehicles = $internalVehiclesQuery->paginate(10)->withQueryString(); // Reduced per page for combined results
+        // Get all matching internal vehicles as an Eloquent Collection
+        $internalVehiclesEloquent = $internalVehiclesQuery->get();
+
+        // Generate ItemList schema for the vehicles using the Eloquent Collection
+        $vehicleListSchema = SchemaBuilder::vehicleList($internalVehiclesEloquent, 'Vehicle Search Results', $validated);
 
         // Transform the collection to include review data and distance, then convert to objects
-        $internalVehiclesData = $internalVehicles->getCollection()->map(function ($vehicle) {
+        $internalVehiclesData = $internalVehiclesEloquent->map(function ($vehicle) {
             $reviews = Review::where('vehicle_id', $vehicle->id)
                 ->where('status', 'approved')
                 ->get();
@@ -898,10 +954,11 @@ class SearchController extends Controller
                                         $fuelPolicy = $products[0]['fuelpolicy'] ?? '';
                                     }
 
+                                    $brandName = explode(' ', (string) $vehicle['name'])[0];
                                     $greenMotionVehicles->push((object) [
                                         'id' => 'gm_' . (string) $vehicle['id'],
                                         'source' => 'greenmotion',
-                                        'brand' => (string) $vehicle->groupName,
+                                        'brand' => $brandName,
                                         'model' => (string) $vehicle['name'],
                                         'image' => urldecode((string) $vehicle['image']),
                                         'price_per_day' => (isset($vehicle->total) && is_numeric((string)$vehicle->total)) ? (float) (string)$vehicle->total : 0.0,
@@ -941,9 +998,39 @@ class SearchController extends Controller
             }
         }
 
+        // --- Apply filters to GreenMotion vehicles ---
+        $filteredGreenMotionVehicles = $greenMotionVehicles->filter(function ($vehicle) use ($validated) {
+            if (!empty($validated['seating_capacity']) && $vehicle->seating_capacity != $validated['seating_capacity']) {
+                return false;
+            }
+            if (!empty($validated['brand']) && strcasecmp($vehicle->brand, $validated['brand']) != 0) {
+                return false;
+            }
+            if (!empty($validated['transmission']) && strcasecmp($vehicle->transmission, $validated['transmission']) != 0) {
+                return false;
+            }
+            if (!empty($validated['fuel']) && strcasecmp($vehicle->fuel, $validated['fuel']) != 0) {
+                return false;
+            }
+            if (!empty($validated['price_range'])) {
+                $range = explode('-', $validated['price_range']);
+                if ($vehicle->price_per_day < (int) $range[0] || $vehicle->price_per_day > (int) $range[1]) {
+                    return false;
+                }
+            }
+            if (!empty($validated['mileage'])) {
+                $range = explode('-', $validated['mileage']);
+                $mileageValue = (int) $vehicle->mileage;
+                if ($mileageValue < (int) $range[0] || $mileageValue > (int) $range[1]) {
+                    return false;
+                }
+            }
+            return true;
+        });
+
         // Combine internal and GreenMotion vehicles
         // Ensure all vehicles have a consistent structure for pagination
-        $combinedVehicles = $internalVehiclesData->merge($greenMotionVehicles);
+        $combinedVehicles = $internalVehiclesData->merge($filteredGreenMotionVehicles);
 
         // Manually paginate the combined results
         $perPage = 10;
@@ -957,10 +1044,17 @@ class SearchController extends Controller
             ['path' => $request->url(), 'query' => $request->query()]
         );
 
+        // --- Merge filter options from both sources ---
+        $gmBrands = $greenMotionVehicles->pluck('brand')->unique()->filter()->values()->all();
+        $gmSeatingCapacities = $greenMotionVehicles->pluck('seating_capacity')->unique()->filter()->values()->all();
+        $gmTransmissions = $greenMotionVehicles->pluck('transmission')->unique()->filter()->values()->all();
+        $gmFuels = $greenMotionVehicles->pluck('fuel')->unique()->filter()->values()->all();
 
-        // Generate ItemList schema for the vehicles
-        // Pass only the internal vehicles (Eloquent Collection) to SchemaBuilder
-        $vehicleListSchema = SchemaBuilder::vehicleList($internalVehicles->getCollection(), 'Vehicle Search Results', $validated);
+        $combinedBrands = collect($brands)->merge($gmBrands)->map(fn($val) => trim($val))->unique(fn($val) => strtolower($val))->sort()->values()->all();
+        $combinedSeatingCapacities = collect($seatingCapacities)->merge($gmSeatingCapacities)->unique()->sort()->values()->all();
+        $combinedTransmissions = collect($transmissions)->merge($gmTransmissions)->map(fn($val) => trim($val))->unique(fn($val) => strtolower($val))->sort()->values()->all();
+        $combinedFuels = collect($fuels)->merge($gmFuels)->map(fn($val) => trim($val))->unique(fn($val) => strtolower($val))->sort()->values()->all();
+
 
         // Fetch SEO meta for the search results page (assuming its url_slug is '/s')
         $seoMeta = \App\Models\SeoMeta::with('translations')->where('url_slug', '/s')->first();
@@ -969,11 +1063,11 @@ class SearchController extends Controller
             'vehicles' => $vehicles,
             'filters' => $validated,
             'pagination_links' => $vehicles->links()->toHtml(),
-            'brands' => $brands,
+            'brands' => $combinedBrands,
             'colors' => $colors,
-            'seatingCapacities' => $seatingCapacities,
-            'transmissions' => $transmissions,
-            'fuels' => $fuels,
+            'seatingCapacities' => $combinedSeatingCapacities,
+            'transmissions' => $combinedTransmissions,
+            'fuels' => $combinedFuels,
             'mileages' => $mileages,
             'categories' => $categoriesFromOptions,
             'schema' => $vehicleListSchema,
