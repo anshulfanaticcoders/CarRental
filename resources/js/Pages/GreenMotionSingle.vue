@@ -48,7 +48,10 @@ import { Alert, AlertDescription } from '@/Components/ui/alert';
 import { Button } from "@/Components/ui/button";
 import Lightbox from "@/Components/Lightbox.vue";
 import AuthenticatedHeaderLayout from "@/Layouts/AuthenticatedHeaderLayout.vue";
+import { Vue3Lottie } from 'vue3-lottie';
+import universalLoader from '../../../public/animations/universal-loader.json';
 
+const isBooking = ref(false);
 const currencySymbols = ref({});
 
 onMounted(async () => {
@@ -410,9 +413,11 @@ const proceedToPayment = async () => {
         toast.error("Please fill all required rental details (Location ID, Dates, Times, Age).");
         return;
     }
+    isBooking.value = true;
 
     // Check if user is authenticated
     if (!page.props.auth.user) {
+        sessionStorage.setItem('returnToUrl', window.location.href);
         // Store current form data in session storage to retrieve after login
         sessionStorage.setItem('greenMotionBookingForm', JSON.stringify(form.value));
         sessionStorage.setItem('greenMotionVehicleId', props.vehicle.id);
@@ -434,7 +439,11 @@ const proceedToPayment = async () => {
         end_time: form.value.end_time,
         age: form.value.age,
         rentalCode: form.value.rentalCode,
-    }));
+    }), {
+        onFinish: () => {
+            isBooking.value = false;
+        },
+    });
 };
 
 // Lifecycle Hooks
@@ -1062,7 +1071,7 @@ onBeforeUnmount(() => {
                                 </div>
 
                                 <!-- Book Button -->
-                                <Button @click="proceedToPayment" class="w-full bg-gradient-to-r from-customPrimaryColor to-blue-700 hover:from-customPrimaryColor/90 hover:to-blue-700/90 text-white py-4 font-semibold text-lg rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-105">
+                                <Button @click="proceedToPayment" :disabled="isBooking" class="w-full bg-gradient-to-r from-customPrimaryColor to-blue-700 hover:from-customPrimaryColor/90 hover:to-blue-700/90 text-white py-4 font-semibold text-lg rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-105">
                                     <div class="flex items-center justify-center gap-2">
                                         <span>Reserve Now</span>
                                         <ChevronRight class="w-5 h-5" />
@@ -1102,9 +1111,26 @@ onBeforeUnmount(() => {
     </Dialog>
 
     <Footer />
+
+    <!-- Loader Overlay -->
+    <div v-if="isBooking" class="loader-overlay">
+        <Vue3Lottie :animation-data="universalLoader" :height="200" :width="200" />
+    </div>
 </template>
 
 <style scoped>
+.loader-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(0, 0, 0, 0.5);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 9999;
+}
 .bg-customPrimaryColor {
     background-color: #153b4f;
 }

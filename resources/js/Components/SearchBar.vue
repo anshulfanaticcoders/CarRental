@@ -7,7 +7,7 @@
           <span class="text-[1.75rem] font-medium max-[768px]:text-[1.5rem]">{{ _t('homepage', 'search_bar_header') }}</span>
         </div>
         <form @submit.prevent="submit"
-          class="column w-[80%] max-[768px]:w-[100%] px-[2rem] py-[1rem] rounded-tr-[16px] rounded-br-[16px] bg-white grid grid-cols-5 max-[768px]:flex max-[768px]:flex-col max-[768px]:gap-10 max-[768px]:rounded-tr-[0] max-[768px]:rounded-bl-[16px] max-[768px]:px-[1rem]">
+          class="column w-[80%] max-[768px]:w-[100%] px-[2rem] py-[1rem] rounded-tr-[16px] rounded-br-[16px] bg-white grid grid-cols-7 max-[768px]:flex max-[768px]:flex-col max-[768px]:gap-10 max-[768px]:rounded-tr-[0] max-[768px]:rounded-bl-[16px] max-[768px]:px-[1rem]">
           <div class="col col-span-2 flex flex-col justify-center">
             <div class="flex flex-col">
               <div class="col">
@@ -36,19 +36,36 @@
                 :placeholder="_t('homepage', 'pickup_date_placeholder')" class="w-full" :min-date="new Date()" :format="formatDate" />
             </div>
             <div class="flex flex-col">
+              <label class="mb-2 inline-block text-customLightGrayColor font-medium">Start Time</label>
+              <input type="time" v-model="form.start_time" class="border-b border-customLightGrayColor focus:outline-none w-full h-[38px]" />
+            </div>
+          </div>
+
+          <div class="col-span-2 flex items-center gap-4">
+            <div class="flex flex-col">
               <label class="mb-2 inline-block text-customLightGrayColor font-medium">{{ _t('homepage', 'return_date_label') }}</label>
               <VueDatePicker v-model="returnDate" :enable-time-picker="false" uid="return-date" auto-apply
                 :placeholder="_t('homepage', 'return_date_placeholder')" class="w-full" :min-date="getMinReturnDate()" :format="formatDate" />
             </div>
+            <div class="flex flex-col">
+              <label class="mb-2 inline-block text-customLightGrayColor font-medium">End Time</label>
+              <input type="time" v-model="form.end_time" class="border-b border-customLightGrayColor focus:outline-none w-full h-[38px]" />
+            </div>
           </div>
 
-          <div class="inner-col flex justify-center items-center">
+          <div class="inner-col flex justify-center items-center col-span-1">
             <button type="submit"
-              class="bg-customPrimaryColor text-customPrimaryColor-foreground rounded-[40px] w-[138px] max-[768px]:w-full py-4 text-center">
+              class="bg-customPrimaryColor text-customPrimaryColor-foreground rounded-[40px] w-[138px] max-[768px]:w-full py-4 text-center"
+              :disabled="isLoading">
               {{ _t('homepage', 'search_button') }}
             </button>
           </div>
         </form>
+
+        <!-- Loader Overlay -->
+        <div v-if="isLoading" class="loader-overlay">
+          <Vue3Lottie :animation-data="LoaderAnimation" :height="200" :width="200" />
+        </div>
 
         <!-- Search results dropdown -->
         <div v-if="showSearchBox && (searchResults.length > 0 || popularPlaces.length > 0 || searchPerformed)"
@@ -120,6 +137,8 @@ import axios from "axios";
 import { router, usePage } from "@inertiajs/vue3";
 import VueDatePicker from '@vuepic/vue-datepicker';
 import '@vuepic/vue-datepicker/dist/main.css';
+import { Vue3Lottie } from 'vue3-lottie';
+import LoaderAnimation from '../../../public/animations/Loader-animation.json';
 
 const form = ref({
   where: "",
@@ -159,6 +178,7 @@ const returnDate = ref(null);
 const searchResults = ref([]);
 const dateError = ref(false);
 const isSearching = ref(false);
+const isLoading = ref(false);
 const searchTimeout = ref(null);
 const searchPerformed = ref(false);
 const showSearchBox = ref(false);
@@ -276,31 +296,42 @@ const selectLocation = (result) => {
   searchResults.value = [];
 };
 
-const submit = () => {
+const submit = async () => {
   if (!form.value.date_from || !form.value.date_to || !form.value.where) {
     dateError.value = true;
     return;
   }
   dateError.value = false;
+  isLoading.value = true;
 
-  const pickupDate = new Date(form.value.date_from);
-  const returnDate = new Date(form.value.date_to);
-  const diffTime = Math.abs(returnDate - pickupDate);
-  const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+  try {
+    const pickupDate = new Date(form.value.date_from);
+    const returnDate = new Date(form.value.date_to);
+    const diffTime = Math.abs(returnDate - pickupDate);
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
 
-  let packageType = '';
-  form.value.package_type = packageType;
+    let packageType = '';
+    form.value.package_type = packageType;
 
-  // Create URL parameters object
-  const urlParams = new URLSearchParams(form.value).toString();
+    // Create URL parameters object
+    const urlParams = new URLSearchParams(form.value).toString();
 
-  // Store the search URL in session storage
-   sessionStorage.setItem('searchurl', `/s?${urlParams}`);
+    // Store the search URL in session storage
+    sessionStorage.setItem('searchurl', `/s?${urlParams}`);
 
-  // Remove radius adjustment since we’re not using radius-based filtering
-  // form.value.radius = 30000; // Removed
+    // Remove radius adjustment since we’re not using radius-based filtering
+    // form.value.radius = 30000; // Removed
 
-  router.get(route('search', { locale: usePage().props.locale }), form.value);
+    await new Promise(resolve => {
+        router.get(route('search', { locale: usePage().props.locale }), form.value, {
+            onFinish: () => resolve(),
+        });
+    });
+  } catch (error) {
+    console.error("An error occurred during submission:", error);
+  } finally {
+    isLoading.value = false;
+  }
 };
 
 const getMinReturnDate = () => {
@@ -339,6 +370,8 @@ onMounted(() => {
   form.value.country = props.prefill.country || null;
   form.value.source = props.prefill.source || null;
   form.value.greenmotion_location_id = props.prefill.greenmotion_location_id || null;
+  form.value.start_time = props.prefill.start_time || '09:00';
+  form.value.end_time = props.prefill.end_time || '09:00';
   }
 });
 
@@ -398,6 +431,19 @@ const ErrorDialog = {
 
 .search-results {
   box-shadow: 5px 5px 10px rgba(0, 0, 0, 0.349);
+}
+
+.loader-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(0, 0, 0, 0.2);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 9999;
 }
 
 @media screen and (max-width:768px) {

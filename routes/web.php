@@ -510,7 +510,7 @@ Route::group([
         ->where('id', '[0-9]+') // Ensure ID is numeric
         ->name('green-motion-booking.checkout');
     
-    Route::get('/{slug}', [ContactUsPageController::class, 'show'])->name('contact.show');
+    // Route::get('/{slug}', [ContactUsPageController::class, 'show'])->name('contact.show');
 
     // GreenMotion Single Car Page
     Route::get('/green-motion-car/{id}', [GreenMotionController::class, 'showGreenMotionCar'])
@@ -525,3 +525,7 @@ Route::group([
     Route::get('/green-motion-regions', [GreenMotionController::class, 'getGreenMotionRegions'])->name('green-motion-regions');
     Route::get('/green-motion-service-areas', [GreenMotionController::class, 'getGreenMotionServiceAreas'])->name('green-motion-service-areas');
     Route::post('/green-motion-booking', [GreenMotionController::class, 'makeGreenMotionBooking'])->name('green-motion-booking');
+
+Route::fallback(function () {
+    return inertia('Error', ['status' => 404]);
+});

@@ -251,7 +251,7 @@ const changeLanguage = (newLocale) => {
                     if (newTranslation.url_slug === 'contact-us') {
                         router.visit(route('contact-us', { locale: newLocale }));
                     } else {
-                        router.visit(route('contact.show', { locale: newLocale, slug: newTranslation.url_slug }));
+                        router.visit(route('contact-us', { locale: newLocale, slug: newTranslation.url_slug }));
                     }
                     return;
                 }

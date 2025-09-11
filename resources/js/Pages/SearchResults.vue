@@ -320,7 +320,7 @@ const createCustomIcon = (vehicle, isHighlighted = false) => {
     }
 
     if (priceValue !== null && priceValue > 0) { // Ensure priceValue is greater than 0
-        priceToDisplay = `${currency}${priceValue}`;
+        priceToDisplay = `${currency}${parseFloat(priceValue).toFixed(2)}`;
     } else {
         priceToDisplay = "N/A"; // Explicitly set to N/A if price is 0 or null
     }
@@ -1323,9 +1323,9 @@ watch(
                         @mouseenter="highlightVehicleOnMap(vehicle)"
                         @mouseleave="unhighlightVehicleOnMap(vehicle)">
                         <div class="green-corner-badge" v-if="vehicle.source === 'greenmotion'"></div>
-                        <div class="flex justify-end mb-3 absolute right-3 top-3">
+                        <div class="flex justify-end mb-3 absolute right-3 topseas-3">
                             <div class="column flex justify-end">
-                                <button v-if="!$page.props.auth?.user || isCustomer" @click.stop="toggleFavourite(vehicle)"
+                                <button v-if="(!$page.props.auth?.user || isCustomer) && vehicle.source !== 'greenmotion'" @click.stop="toggleFavourite(vehicle)"
                                     class="heart-icon bg-white rounded-[99px] p-2" :class="{
                                         'filled-heart':
                                             favoriteStatus[vehicle.id],

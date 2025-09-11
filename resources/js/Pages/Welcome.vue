@@ -66,6 +66,7 @@ import {
     CarouselPrevious,
 } from "@/Components/ui/carousel";
 import { computed, onBeforeUnmount, onMounted, ref, defineAsyncComponent } from "vue";
+import axios from 'axios';
 import { useScrollAnimation } from '@/composables/useScrollAnimation';
 import { usePage } from '@inertiajs/vue3';
 import Card from "@/Components/ui/card/Card.vue";
@@ -213,14 +214,62 @@ const seoImageUrl = computed(() => {
     return props.seoMeta?.seo_image_url || '';
 });
 
+const unifiedLocations = ref([]);
+
+onMounted(async () => {
+  try {
+    const response = await axios.get('/unified_locations.json');
+    unifiedLocations.value = response.data;
+  } catch (error) {
+    console.error('Error fetching unified locations:', error);
+  }
+});
+
+const navigateToSearch = (place) => {
+    updateSearchUrl(place);
+    const searchUrl = sessionStorage.getItem('searchurl');
+    if (searchUrl) {
+        window.location.href = `/${page.props.locale}${searchUrl}`;
+    }
+};
+
 const updateSearchUrl = (place) => {
-    const urlParams = new URLSearchParams({
-        where: `${place.place_name}, ${place.city}, ${place.country}`,
-        latitude: place.latitude,
-        longitude: place.longitude,
-        radius: 10000
-    }).toString();
-    sessionStorage.setItem('searchurl', `/s?${urlParams}`);
+    const location = unifiedLocations.value.find(l => l.label === place.place_name);
+
+    if (location && location.source === 'greenmotion') {
+        const today = new Date();
+        const pickupDate = new Date(today);
+        pickupDate.setDate(today.getDate() + 1);
+        const returnDate = new Date(pickupDate);
+        returnDate.setDate(pickupDate.getDate() + 1);
+
+        const formatDate = (date) => date.toISOString().split('T')[0];
+
+        const params = {
+            where: location.label,
+            location: location.location,
+            latitude: location.latitude,
+            longitude: location.longitude,
+            city: location.city,
+            state: location.state,
+            country: location.country,
+            matched_field: location.matched_field,
+            source: location.source,
+            greenmotion_location_id: location.greenmotion_location_id,
+            date_from: formatDate(pickupDate),
+            date_to: formatDate(returnDate),
+            start_time: '09:00',
+            end_time: '09:00',
+            age: 35,
+        };
+        const urlParams = new URLSearchParams(params).toString();
+        sessionStorage.setItem('searchurl', `/s?${urlParams}`);
+    } else {
+        const urlParams = new URLSearchParams({
+            where: place.place_name,
+        }).toString();
+        sessionStorage.setItem('searchurl', `/s?${urlParams}`);
+    }
 };
 
 const updateCategorySearchUrl = (category) => {
@@ -416,9 +465,9 @@ useScrollAnimation('.popular-places-trigger', '.popular-place-card', {
                             <CarouselItem v-for="place in props.popularPlaces" :key="place.id"
                                  class="pl-1 md:basis-1/2 lg:basis-1/5 popular-place-card">
                                 <div class="p-1">
-                                    <Link
-                                        :href="`/${page.props.locale}/s?where=${encodeURIComponent(`${place.place_name}, ${place.city}, ${place.country}`)}&latitude=${place.latitude}&longitude=${place.longitude}&radius=10000`"
-                                        @click="updateSearchUrl(place)">
+                                    <a
+                                        :href="`/${page.props.locale}/s?where=${encodeURIComponent(place.place_name)}`"
+                                        @click.prevent="navigateToSearch(place)">
                                     <Card
                                         class="h-[18rem] border-0 rounded-[0.75rem] transition-all duration-300 hover:mt-[-1rem] max-[768px]:hover:mt-0">
                                         <CardContent class="flex flex-col gap-2 justify-center px-1 h-full">
@@ -430,7 +479,7 @@ useScrollAnimation('.popular-places-trigger', '.popular-place-card', {
                                             </div>
                                         </CardContent>
                                     </Card>
-                                    </Link>
+                                    </a>
                                 </div>
                             </CarouselItem>
                         </template>

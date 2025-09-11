@@ -234,6 +234,13 @@ const submit = () => {
     }
 
     form.post(route("register"), {
+        onSuccess: () => {
+            const returnToUrl = sessionStorage.getItem('returnToUrl');
+            if (returnToUrl) {
+                sessionStorage.removeItem('returnToUrl');
+                window.location.href = returnToUrl;
+            }
+        },
         onFinish: () => {
             form.reset("password", "password_confirmation");
         },

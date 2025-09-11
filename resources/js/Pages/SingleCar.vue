@@ -26,6 +26,8 @@ import offerIcon from "../../assets/percentage-tag.svg";
 import { Head, Link } from "@inertiajs/vue3";
 import { computed, ref, watch } from "vue";
 import AuthenticatedHeaderLayout from "@/Layouts/AuthenticatedHeaderLayout.vue";
+import { Vue3Lottie } from 'vue3-lottie';
+import universalLoader from '../../../public/animations/universal-loader.json';
 import { Skeleton } from '@/Components/ui/skeleton';
 import '@vuepic/vue-datepicker/dist/main.css';
 import VueDatepicker from '@vuepic/vue-datepicker';
@@ -938,8 +940,10 @@ watch([
 });
 
 const showWarningModal = ref(false);
+const isBooking = ref(false);
 const proceedToPayment = async () => { // Make the function async
     if (!props.auth?.user) {
+        sessionStorage.setItem('returnToUrl', window.location.href);
         return router.get(route('login', {}, usePage().props.locale));
     }
     // Validate rental details before proceeding
@@ -952,6 +956,7 @@ const proceedToPayment = async () => { // Make the function async
         return;
     }
 
+    isBooking.value = true;
 
     try { // Add try block for the API call and navigation
         // Call backend to set session variable allowing booking page access
@@ -997,13 +1002,18 @@ const proceedToPayment = async () => { // Make the function async
         console.log('Booking details stored in session storage:', bookingDataForSession); // Optional: for debugging
 
         // Proceed to payment page without query parameters
-        router.get(route('booking.show', { id: vehicle.value.id }));
+        router.get(route('booking.show', { id: vehicle.value.id }), {
+            onFinish: () => {
+                isBooking.value = false;
+            },
+        });
 
     } catch (error) {
         console.error("Error setting booking access or navigating:", error);
         // You might want to use your toast notification system here
         // For example: toast.error('Could not proceed to booking. Please try again.');
         alert('Could not proceed to booking. Please try again.'); // Simple alert as a placeholder
+        isBooking.value = false;
     }
 };
 
@@ -1766,7 +1776,7 @@ const searchUrl = computed(() => {
                                         </DialogContent>
                                     </Dialog>
                                     <div class="column mt-[2rem]">
-                                        <button @click="proceedToPayment"
+                                        <button @click="proceedToPayment" :disabled="isBooking"
                                             class="button-primary block text-center p-5 w-full max-[768px]:text-[0.875rem]">Proceed
                                             to Pay</button>
                                     </div>
@@ -1899,9 +1909,26 @@ const searchUrl = computed(() => {
     </main>
 
     <Footer />
+
+    <!-- Loader Overlay -->
+    <div v-if="isBooking" class="loader-overlay">
+        <Vue3Lottie :animation-data="universalLoader" :height="200" :width="200" />
+    </div>
 </template>
 
 <style scoped>
+.loader-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(0, 0, 0, 0.5);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 9999;
+}
 .overview .col:not(:last-child) {
     border-bottom: 1px solid #2b2b2b;
 }
