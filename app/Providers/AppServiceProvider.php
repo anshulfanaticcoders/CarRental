@@ -26,7 +26,7 @@ class AppServiceProvider extends ServiceProvider
     public function boot(): void
     {
         if (env('APP_ENV') !== 'local') {
-            URL::forceScheme('http'); // Force HTTPS for all routes
+            URL::forceScheme('https'); // Force HTTPS for all routes
         }
 
         Inertia::share('flash', function () {
