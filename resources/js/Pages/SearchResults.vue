@@ -153,8 +153,8 @@ const form = useForm({
     country: usePage().props.filters.country || "",
     matched_field: usePage().props.filters.matched_field || "",
     location: usePage().props.filters.location || "",
-    source: usePage().props.filters.source || null,
-    greenmotion_location_id: usePage().props.filters.greenmotion_location_id || null,
+    provider: usePage().props.filters.provider || null,
+    provider_pickup_id: usePage().props.filters.provider_pickup_id || null,
     start_time: usePage().props.filters?.start_time || '09:00',
     end_time: usePage().props.filters?.end_time || '09:00',
     age: usePage().props.filters?.age || 35,
@@ -294,11 +294,11 @@ const createCustomIcon = (vehicle, isHighlighted = false) => {
     let priceToDisplay = "N/A";
     let priceValue = null;
 
-    if (vehicle.source === 'greenmotion') {
-        currency = '$'; // Always dollar for GreenMotion
-        // Calculate price per day for GreenMotion vehicles
-        const totalGreenMotionPrice = parseFloat(vehicle.products[0]?.total || 0);
-        priceValue = totalGreenMotionPrice / numberOfRentalDays.value;
+    if (vehicle.source !== 'internal') {
+        currency = '$'; // Always dollar for providers
+        // Calculate price per day for provider vehicles
+        const totalProviderPrice = parseFloat(vehicle.products[0]?.total || 0);
+        priceValue = totalProviderPrice / numberOfRentalDays.value;
     } else {
         currency = vehicle.vendor_profile?.currency || "$";
         if (form.package_type === 'day' && vehicle.price_per_day) {
@@ -426,12 +426,12 @@ const addMarkers = () => {
         let popupPrice = "N/A";
         let popupCurrencySymbol = "$";
 
-        if (vehicle.source === 'greenmotion' && vehicle.products[0]?.total && vehicle.products[0].total > 0) {
-            popupCurrencySymbol = '$'; // Always dollar for GreenMotion
-            const totalGreenMotionPrice = parseFloat(vehicle.products[0]?.total || 0);
-            const pricePerDay = totalGreenMotionPrice / numberOfRentalDays.value;
+        if (vehicle.source !== 'internal' && vehicle.products && vehicle.products[0]?.total && vehicle.products[0].total > 0) {
+            popupCurrencySymbol = '$'; // Always dollar for providers
+            const totalProviderPrice = parseFloat(vehicle.products[0]?.total || 0);
+            const pricePerDay = totalProviderPrice / numberOfRentalDays.value;
             popupPrice = `${popupCurrencySymbol}${pricePerDay.toFixed(2)}`; // Display price per day
-        } else if (vehicle.price_per_day && vehicle.price_per_day > 0) {
+        } else if (vehicle.source === 'internal' && vehicle.price_per_day && vehicle.price_per_day > 0) {
             popupCurrencySymbol = vehicle.vendor_profile?.currency || "$";
             popupPrice = `${popupCurrencySymbol}${vehicle.price_per_day}`;
         }
@@ -704,8 +704,8 @@ const searchQuery = computed(() => {
         country: usePage().props.filters?.country || "",
         matched_field: usePage().props.filters?.matched_field || null,
         location: usePage().props.filters?.location || "",
-        source: usePage().props.filters?.source || null,
-        greenmotion_location_id: usePage().props.filters?.greenmotion_location_id || null,
+        provider: usePage().props.filters?.provider || null,
+        provider_pickup_id: usePage().props.filters?.provider_pickup_id || null,
         start_time: usePage().props.filters?.start_time || '09:00',
         end_time: usePage().props.filters?.end_time || '09:00',
         age: usePage().props.filters?.age || 35,
@@ -718,6 +718,7 @@ const searchQuery = computed(() => {
         full_credit: usePage().props.filters?.full_credit || null,
         promocode: usePage().props.filters?.promocode || null,
         dropoff_location_id: usePage().props.filters?.dropoff_location_id || null,
+        dropoff_where: usePage().props.filters?.dropoff_where || "",
     };
 });
 
@@ -748,6 +749,7 @@ const handleSearchUpdate = (params) => {
     form.full_credit = params.full_credit || null;
     form.promocode = params.promocode || null;
     form.dropoff_location_id = params.dropoff_location_id || null;
+    form.dropoff_where = params.dropoff_where || "";
 
 
     if (params.matched_field === 'location') {
@@ -1323,9 +1325,10 @@ watch(
                         @mouseenter="highlightVehicleOnMap(vehicle)"
                         @mouseleave="unhighlightVehicleOnMap(vehicle)">
                         <div class="green-corner-badge" v-if="vehicle.source === 'greenmotion'"></div>
+                        <div class="yellow-corner-badge" v-if="vehicle.source === 'usave'"></div>
                         <div class="flex justify-end mb-3 absolute right-3 topseas-3">
                             <div class="column flex justify-end">
-                                <button v-if="(!$page.props.auth?.user || isCustomer) && vehicle.source !== 'greenmotion'" @click.stop="toggleFavourite(vehicle)"
+                                <button v-if="(!$page.props.auth?.user || isCustomer) && vehicle.source === 'internal'" @click.stop="toggleFavourite(vehicle)"
                                     class="heart-icon bg-white rounded-[99px] p-2" :class="{
                                         'filled-heart':
                                             favoriteStatus[vehicle.id],
@@ -1339,9 +1342,9 @@ watch(
                             </div>
                         </div>
                         <a
-                            :href="vehicle.source === 'greenmotion' ? route('green-motion-car.show', { locale: page.props.locale, id: vehicle.id.replace('gm_', ''), location_id: form.greenmotion_location_id || form.location_id || null, start_date: form.date_from, end_date: form.date_to, start_time: form.start_time, end_time: form.end_time, age: form.age, rentalCode: form.rentalCode, currency: form.currency, fuel: form.fuel, userid: form.userid, username: form.username, language: form.language, full_credit: form.full_credit, promocode: form.promocode, dropoff_location_id: form.dropoff_location_id }) : route('vehicle.show', { locale: page.props.locale, id: vehicle.id, package: form.package_type, pickup_date: form.date_from, return_date: form.date_to })">
+                            :href="vehicle.source !== 'internal' ? route('green-motion-car.show', { locale: page.props.locale, id: vehicle.id.substring(vehicle.id.indexOf('_') + 1), location_id: vehicle.provider_pickup_id, start_date: form.date_from, end_date: form.date_to, start_time: form.start_time, end_time: form.end_time, age: form.age, rentalCode: form.rentalCode, currency: form.currency, fuel: form.fuel, userid: form.userid, username: form.username, language: form.language, full_credit: form.full_credit, promocode: form.promocode, dropoff_location_id: form.dropoff_location_id, dropoff_where: form.dropoff_where, where: form.where }) : route('vehicle.show', { locale: page.props.locale, id: vehicle.id, package: form.package_type, pickup_date: form.date_from, return_date: form.date_to })">
                             <div class="column flex flex-col gap-5 items-start">
-                                <img :src="vehicle.source === 'greenmotion' ? vehicle.image : (vehicle.images?.find(
+                                <img :src="vehicle.source !== 'internal' ? vehicle.image : (vehicle.images?.find(
                                     (image) =>
                                         image.image_type === 'primary'
                                 )?.image_url || '/default-image.png')
@@ -1528,8 +1531,8 @@ watch(
                                     <div>
                                         <!-- If a specific package_type filter is active (day, week, or month) -->
                                         <div v-if="form.package_type === 'day' || form.package_type === 'week' || form.package_type === 'month'">
-                                            <div v-if="vehicle.source === 'greenmotion'">
-                                                <div v-if="vehicle.products[0]?.total && vehicle.products[0].total > 0">
+                                            <div v-if="vehicle.source !== 'internal'">
+                                                <div v-if="vehicle.products && vehicle.products[0]?.total && vehicle.products[0].total > 0">
                                                     <span class="text-customPrimaryColor text-[1.875rem] font-medium max-[768px]:text-[1.3rem] max-[768px]:font-bold">
                                                         ${{ (parseFloat(vehicle.products[0].total) / numberOfRentalDays).toFixed(2) }}
                                                     </span>
@@ -1551,8 +1554,8 @@ watch(
                                         </div>
                                         <!-- Else (no package_type filter is active, form.package_type is '') -->
                                         <div v-else class="flex flex-col">
-                                            <template v-if="vehicle.source === 'greenmotion'">
-                                                <div v-if="vehicle.products[0]?.total && vehicle.products[0].total > 0" class="flex items-baseline">
+                                            <template v-if="vehicle.source !== 'internal'">
+                                                <div v-if="vehicle.products && vehicle.products[0]?.total && vehicle.products[0].total > 0" class="flex items-baseline">
                                                     <span class="text-customPrimaryColor text-lg font-semibold">
                                                         ${{ (parseFloat(vehicle.products[0].total) / numberOfRentalDays).toFixed(2) }}
                                                     </span>
@@ -1796,6 +1799,28 @@ select:focus+.caret-rotate {
     font-weight: bold;
     transform: rotate(-45deg);
     transform-origin: 0% 0%;
+    white-space: nowrap;
+}
+
+.yellow-corner-badge {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 0;
+    height: 0;
+    border-top: 90px solid #FFC107; /* Yellow color */
+    border-right: 90px solid transparent;
+    z-index: 10;
+}
+
+.yellow-corner-badge::after {
+    content: "U-SAVE";
+    position: absolute;
+    color: white;
+    font-size: 0.7rem;
+    font-weight: bold;
+    transform: rotate(-45deg);
+    transform-origin: -59px -37px;
     white-space: nowrap;
 }
 </style>

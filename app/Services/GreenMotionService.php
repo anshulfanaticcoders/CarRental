@@ -7,14 +7,29 @@ use Illuminate\Support\Facades\Log; // Import Log facade
 
 class GreenMotionService
 {
-    private $baseUrl = 'https://gmvrl.fusemetrix.com/bespoke/GMWebService.php';
+    private $baseUrl;
     private $username;
     private $password;
 
     public function __construct()
     {
-        $this->username = config('services.greenmotion.username');
-        $this->password = config('services.greenmotion.password');
+        // Default to GreenMotion for backward compatibility
+        $this->setProvider('greenmotion');
+    }
+
+    public function setProvider(string $provider): self
+    {
+        $config = config("services.{$provider}");
+
+        if (empty($config['username']) || empty($config['password']) || empty($config['url'])) {
+            throw new \Exception("Credentials or URL for provider '{$provider}' are not configured correctly.");
+        }
+
+        $this->username = $config['username'];
+        $this->password = $config['password'];
+        $this->baseUrl = $config['url'];
+
+        return $this;
     }
 
     public function getVehicles(

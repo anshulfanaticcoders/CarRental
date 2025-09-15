@@ -96,6 +96,7 @@ Route::get('/payment-percentage', [PayableSettingController::class, 'getPercenta
 
 // GreenMotion API routes
 Route::get('/greenmotion/locations-autocomplete', [GreenMotionController::class, 'getGreenMotionLocationsForAutocomplete'])->name('api.greenmotion.locations-autocomplete');
+Route::get('/{provider}/dropoff-locations/{location_id}', [GreenMotionController::class, 'getDropoffLocationsForProvider'])->name('api.provider.dropoff-locations');
 
 // Route for unified location search
 Route::get('/unified-locations', [App\Http\Controllers\SearchController::class, 'searchUnifiedLocations'])->name('api.unified-locations.search');

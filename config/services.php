@@ -34,6 +34,13 @@ return [
     'greenmotion' => [
         'username' => env('GREENMOTION_USERNAME'),
         'password' => env('GREENMOTION_PASSWORD'),
+        'url' => env('GREENMOTION_URL', 'https://gmvrl.fusemetrix.com/bespoke/GMWebService.php'),
+    ],
+
+    'usave' => [
+        'username' => env('USAVE_USERNAME'),
+        'password' => env('USAVE_PASSWORD'),
+        'url' => env('USAVE_URL'),
     ],
 
 ];

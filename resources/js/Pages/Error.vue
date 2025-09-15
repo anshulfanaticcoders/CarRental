@@ -15,7 +15,7 @@
 
 <script>
 import { Vue3Lottie } from 'vue3-lottie';
-import error404 from '../../../public/animations/error-404.json';
+import error404 from '../../../public/animations/Error-404.json';
 
 export default {
   components: {

@@ -40,13 +40,16 @@ class UpdateUnifiedLocationsCommand extends Command
         $internalLocations = $this->getInternalVehicleLocations();
         $this->info('Fetched ' . count($internalLocations) . ' internal vehicle locations.');
 
-        $greenMotionLocations = $this->getGreenMotionLocations();
+        $greenMotionLocations = $this->fetchProviderLocations('greenmotion');
         $this->info('Fetched ' . count($greenMotionLocations) . ' GreenMotion locations.');
 
-        $unifiedLocations = $this->mergeAndNormalizeLocations($internalLocations, $greenMotionLocations);
-        $this->info('Merged ' . count($unifiedLocations) . ' unique unified locations.');
+        $usaveLocations = $this->fetchProviderLocations('usave');
+        $this->info('Fetched ' . count($usaveLocations) . ' U-SAVE locations.');
 
-        $this->saveUnifiedLocations($unifiedLocations);
+        $unifiedLocations = $this->mergeAndNormalizeLocations($internalLocations, $greenMotionLocations, $usaveLocations);
+        $this->info('Merged into ' . count($unifiedLocations) . ' unique unified locations.');
+
+        $this->saveUnifiedLocations(array_values($unifiedLocations));
 
         $this->info('Unified locations updated successfully!');
     }
@@ -79,18 +82,19 @@ class UpdateUnifiedLocationsCommand extends Command
             ->toArray();
     }
 
-    private function getGreenMotionLocations(): array
+    private function fetchProviderLocations(string $providerName): array
     {
-        $allGreenMotionLocations = [];
+        $allProviderLocations = [];
+        $this->greenMotionService->setProvider($providerName);
 
         try {
             // 1. Get all countries
-            $this->info('Fetching GreenMotion country list...');
+            $this->info("Fetching {$providerName} country list...");
             $xmlCountries = $this->greenMotionService->getCountryList();
 
             if (is_null($xmlCountries) || empty($xmlCountries)) {
-                $this->error('Failed to retrieve country data from GreenMotion API.');
-                \Illuminate\Support\Facades\Log::error('GreenMotionLocationsUpdateCommand: Failed to retrieve country data.');
+                $this->error("Failed to retrieve country data from {$providerName} API.");
+                \Illuminate\Support\Facades\Log::error("GreenMotionLocationsUpdateCommand: Failed to retrieve country data for {$providerName}.");
                 return [];
             }
 
@@ -131,7 +135,7 @@ class UpdateUnifiedLocationsCommand extends Command
                 return [];
             }
 
-            $this->info(sprintf('Found %d GreenMotion countries. Fetching service areas for each...', count($countries)));
+            $this->info(sprintf('Found %d %s countries. Fetching service areas for each...', count($countries), $providerName));
 
             // 2. For each country, get service areas
             foreach ($countries as $country) {
@@ -208,56 +212,88 @@ class UpdateUnifiedLocationsCommand extends Command
                             $loc->latitude = $xpathLocationInfo->query('latitude', $locationInfoNode)->item(0)?->nodeValue;
                             $loc->longitude = $xpathLocationInfo->query('longitude', $locationInfoNode)->item(0)?->nodeValue;
 
-                            $allGreenMotionLocations[] = [
-                                'id' => 'gm_' . ($loc->location_id ?? $locationId),
+                            $allProviderLocations[] = [
+                                'id' => $providerName . '_' . ($loc->location_id ?? $locationId),
                                 'label' => $loc->location_name ?? $serviceAreaName,
                                 'below_label' => implode(', ', array_filter([$loc->address_city, $loc->address_county, $loc->address_postcode])),
                                 'location' => $loc->location_name ?? $serviceAreaName,
                                 'city' => $loc->address_city,
                                 'state' => $loc->address_county,
-                                'country' => $countryName, // Use actual country name
+                                'country' => $countryName,
                                 'latitude' => (float) ($loc->latitude ?? 0),
                                 'longitude' => (float) ($loc->longitude ?? 0),
-                                'source' => 'greenmotion',
+                                'source' => $providerName,
                                 'matched_field' => 'location',
-                                'greenmotion_location_id' => $loc->location_id ?? $locationId,
+                                'provider_location_id' => $loc->location_id ?? $locationId,
                             ];
                         } else {
-                            $this->warn('GreenMotion GetLocationInfo response for ID ' . $locationId . ' in ' . $countryName . ' did not contain location_info node.');
-                            \Illuminate\Support\Facades\Log::warning('GreenMotion GetLocationInfo response for ID ' . $locationId . ' in ' . $countryName . ' did not contain location_info node. Raw XML: ' . $xmlLocationInfo);
+                            $this->warn("{$providerName} GetLocationInfo response for ID {$locationId} in {$countryName} did not contain location_info node.");
+                            \Illuminate\Support\Facades\Log::warning("{$providerName} GetLocationInfo response for ID {$locationId} in {$countryName} did not contain location_info node. Raw XML: " . $xmlLocationInfo);
                         }
                     }
                 } else {
-                    $this->warn('GreenMotion GetServiceAreas response for ' . $countryName . ' did not contain any servicearea nodes.');
+                    $this->warn("{$providerName} GetServiceAreas response for {$countryName} did not contain any servicearea nodes.");
                     if ($xmlServiceAreas) {
-                        $this->warn('Raw XML response from GetServiceAreas for ' . $countryName . ': ' . $xmlServiceAreas);
+                        $this->warn("Raw XML response from GetServiceAreas for {$countryName}: " . $xmlServiceAreas);
                     }
                 }
             }
         } catch (\Exception $e) {
-            $this->error('An unexpected error occurred while fetching GreenMotion locations: ' . $e->getMessage());
-            \Illuminate\Support\Facades\Log::error('Error fetching GreenMotion locations: ' . $e->getMessage(), ['exception' => $e]);
+            $this->error("An unexpected error occurred while fetching {$providerName} locations: " . $e->getMessage());
+            \Illuminate\Support\Facades\Log::error("Error fetching {$providerName} locations: " . $e->getMessage(), ['exception' => $e]);
         }
-        return $allGreenMotionLocations;
+        return $allProviderLocations;
     }
 
-    private function mergeAndNormalizeLocations(array $internal, array $greenMotion): array
+    private function mergeAndNormalizeLocations(array ...$locationGroups): array
     {
-        $allLocations = array_merge($internal, $greenMotion);
-        $uniqueLocations = [];
-        $seenKeys = [];
+        $unifiedLocations = [];
+        $allLocations = array_merge(...$locationGroups);
 
         foreach ($allLocations as $location) {
-            $normalizedLabel = $this->locationSearchService->normalizeString($location['label'] ?? '');
-            $normalizedBelowLabel = $this->locationSearchService->normalizeString($location['below_label'] ?? '');
-            $key = $normalizedLabel . '_' . $normalizedBelowLabel . '_' . $location['source']; // Include source in key for uniqueness
+            $normalizedName = $this->locationSearchService->normalizeString($location['label']);
+            if (empty($normalizedName)) {
+                continue;
+            }
 
-            if (!isset($seenKeys[$key])) {
-                $uniqueLocations[] = $location;
-                $seenKeys[$key] = true;
+            if (!isset($unifiedLocations[$normalizedName])) {
+                $unifiedLocations[$normalizedName] = [
+                    'unified_location_id' => crc32($normalizedName),
+                    'name' => $location['label'],
+                    'city' => $location['city'],
+                    'country' => $location['country'],
+                    'latitude' => $location['latitude'],
+                    'longitude' => $location['longitude'],
+                    'providers' => [],
+                    'our_location_id' => null,
+                ];
+            }
+
+            if ($location['source'] === 'internal') {
+                $unifiedLocations[$normalizedName]['our_location_id'] = $location['id'];
+            } else {
+                $providerData = [
+                    'provider' => $location['source'],
+                    'pickup_id' => $location['provider_location_id'],
+                    'dropoffs' => [], // This would require another API call per location to get dropoffs.
+                ];
+
+                // Avoid adding duplicate providers
+                $providerExists = false;
+                foreach ($unifiedLocations[$normalizedName]['providers'] as $existingProvider) {
+                    if ($existingProvider['provider'] === $providerData['provider'] && $existingProvider['pickup_id'] === $providerData['pickup_id']) {
+                        $providerExists = true;
+                        break;
+                    }
+                }
+
+                if (!$providerExists) {
+                    $unifiedLocations[$normalizedName]['providers'][] = $providerData;
+                }
             }
         }
-        return $uniqueLocations;
+
+        return $unifiedLocations;
     }
 
     private function saveUnifiedLocations(array $locations)

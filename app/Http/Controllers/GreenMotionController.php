@@ -9,6 +9,9 @@ use Inertia\Inertia;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\File; // Import File facade
 use App\Models\GreenMotionBooking; // Correctly placed import
+use App\Models\User;
+use App\Notifications\GreenMotionBooking\BookingCreatedAdminNotification;
+use App\Notifications\GreenMotionBooking\BookingCreatedCustomerNotification;
 
 class GreenMotionController extends Controller
 {
@@ -538,9 +541,26 @@ class GreenMotionController extends Controller
             Log::error('GreenMotion API returned null or empty XML response for getLocationInfo for ID: ' . $locationId);
         }
 
+        $dropoffLocation = null;
+        if ($request->has('dropoff_location_id')) {
+            $dropoffLocationId = $request->input('dropoff_location_id');
+            $xmlDropoffLocationInfo = $this->greenMotionService->getLocationInfo($dropoffLocationId);
+            if (!is_null($xmlDropoffLocationInfo) && !empty($xmlDropoffLocationInfo)) {
+                libxml_use_internal_errors(true);
+                $xmlObject = simplexml_load_string($xmlDropoffLocationInfo);
+                if ($xmlObject !== false) {
+                    $dropoffLocation = $this->parseLocation($xmlObject, $dropoffLocationId);
+                }
+                libxml_clear_errors();
+            } else {
+                Log::error('GreenMotion API returned null or empty XML response for dropoff getLocationInfo for ID: ' . $dropoffLocationId);
+            }
+        }
+
         return Inertia::render('GreenMotionSingle', [
             'vehicle' => $vehicle,
             'location' => $location,
+            'dropoffLocation' => $dropoffLocation,
             'optionalExtras' => $optionalExtras,
             'filters' => array_merge($request->all(), ['quoteid' => $quoteId]), // Pass quoteId in filters
             'locale' => $locale, // Use the $locale parameter from the route
@@ -639,9 +659,26 @@ class GreenMotionController extends Controller
         $filters = array_merge($request->all(), ['quoteid' => $quoteId]);
         Log::info('Filters passed to GreenMotionBooking.vue: ' . json_encode($filters));
 
+        $dropoffLocation = null;
+        if ($request->has('dropoff_location_id')) {
+            $dropoffLocationId = $request->input('dropoff_location_id');
+            $xmlDropoffLocationInfo = $this->greenMotionService->getLocationInfo($dropoffLocationId);
+            if (!is_null($xmlDropoffLocationInfo) && !empty($xmlDropoffLocationInfo)) {
+                libxml_use_internal_errors(true);
+                $xmlObject = simplexml_load_string($xmlDropoffLocationInfo);
+                if ($xmlObject !== false) {
+                    $dropoffLocation = $this->parseLocation($xmlObject, $dropoffLocationId);
+                }
+                libxml_clear_errors();
+            } else {
+                Log::error('GreenMotion API returned null or empty XML response for dropoff getLocationInfo for ID: ' . $dropoffLocationId);
+            }
+        }
+
         return Inertia::render('GreenMotionBooking', [
             'vehicle' => $vehicle,
             'location' => $location,
+            'dropoffLocation' => $dropoffLocation,
             'optionalExtras' => $optionalExtras,
             'filters' => $filters,
             'locale' => $locale,
@@ -874,17 +911,112 @@ class GreenMotionController extends Controller
         return response()->json($filteredLocations);
     }
 
+    public function getDropoffLocations(Request $request, $location_id)
+    {
+        $xml = $this->greenMotionService->getLocationInfo($location_id);
+
+        if (is_null($xml) || empty($xml)) {
+            Log::error('GreenMotion API returned null or empty XML response for GetLocationInfo.');
+            return response()->json(['error' => 'Failed to retrieve location data. API returned empty response.'], 500);
+        }
+
+        libxml_use_internal_errors(true);
+        $xmlObject = simplexml_load_string($xml);
+
+        if ($xmlObject === false) {
+            $errors = libxml_get_errors();
+            foreach ($errors as $error) {
+                Log::error('XML Parsing Error (GetLocationInfo for dropoff): ' . $error->message);
+            }
+            libxml_clear_errors();
+            return response()->json(['error' => 'Failed to parse XML response for location info from API.'], 500);
+        }
+
+        $dropoffLocationIds = [];
+        if (isset($xmlObject->response->location_info->oneway->location_id)) {
+            foreach ($xmlObject->response->location_info->oneway->location_id as $id) {
+                $dropoffLocationIds[] = (string) $id;
+            }
+        }
+
+        $locationsFilePath = public_path('unified_locations.json');
+        if (!File::exists($locationsFilePath)) {
+            return response()->json(['error' => 'Unified locations file not found.'], 500);
+        }
+
+        $allLocations = json_decode(File::get($locationsFilePath), true);
+        $dropoffLocations = collect($allLocations)->whereIn('greenmotion_location_id', $dropoffLocationIds)->values()->all();
+
+        return response()->json($dropoffLocations);
+    }
+
+    public function getDropoffLocationsForProvider(Request $request, $provider, $location_id)
+    {
+        try {
+            $this->greenMotionService->setProvider($provider);
+        } catch (\Exception $e) {
+            return response()->json(['error' => "Invalid provider: {$provider}"], 400);
+        }
+
+        $xml = $this->greenMotionService->getLocationInfo($location_id);
+
+        if (is_null($xml) || empty($xml)) {
+            Log::error("{$provider} API returned null or empty XML response for GetLocationInfo.");
+            return response()->json(['error' => 'Failed to retrieve location data. API returned empty response.'], 500);
+        }
+
+        libxml_use_internal_errors(true);
+        $xmlObject = simplexml_load_string($xml);
+
+        if ($xmlObject === false) {
+            $errors = libxml_get_errors();
+            foreach ($errors as $error) {
+                Log::error("XML Parsing Error (GetLocationInfo for dropoff - {$provider}): " . $error->message);
+            }
+            libxml_clear_errors();
+            return response()->json(['error' => 'Failed to parse XML response for location info from API.'], 500);
+        }
+
+        $dropoffLocationIds = [];
+        if (isset($xmlObject->response->location_info->oneway->location_id)) {
+            foreach ($xmlObject->response->location_info->oneway->location_id as $id) {
+                $dropoffLocationIds[] = (string) $id;
+            }
+        }
+
+        $locationsFilePath = public_path('unified_locations.json');
+        if (!File::exists($locationsFilePath)) {
+            return response()->json(['error' => 'Unified locations file not found.'], 500);
+        }
+
+        $allLocations = json_decode(File::get($locationsFilePath), true);
+
+        $dropoffLocations = collect($allLocations)->filter(function ($location) use ($dropoffLocationIds, $provider) {
+            if (isset($location['providers'])) {
+                foreach ($location['providers'] as $p) {
+                    if ($p['provider'] === $provider && in_array($p['pickup_id'], $dropoffLocationIds)) {
+                        return true;
+                    }
+                }
+            }
+            return false;
+        })->values()->all();
+
+
+        return response()->json($dropoffLocations);
+    }
+
     public function makeGreenMotionBooking(Request $request)
     {
         $validatedData = $request->validate([
             'location_id' => 'required|string',
+            'dropoff_location_id' => 'nullable|string',
             'start_date' => 'required|date_format:Y-m-d',
             'start_time' => 'required|date_format:H:i',
             'end_date' => 'required|date_format:Y-m-d',
             'end_time' => 'required|date_format:H:i',
             'rentalCode' => 'required|string',
             'age' => 'required|integer|min:18',
-            'dropoff_location_id' => 'nullable|string',
             'customer.title' => 'nullable|string',
             'customer.firstname' => 'required|string|max:255',
             'customer.surname' => 'required|string|max:255',
@@ -928,10 +1060,17 @@ class GreenMotionController extends Controller
             'customer.custimage' => 'nullable|url',
             'customer.dvlacheckcode' => 'nullable|string|max:50',
             'remarks' => 'nullable|string|max:1000',
+            'user_id' => 'nullable|exists:users,id',
         ]);
 
         $customerDetails = $validatedData['customer'];
         $customerDetails['comments'] = 'Test Booking - ' . ($customerDetails['comments'] ?? '');
+
+        // Determine if a dropoff_location_id should be sent
+        $dropoffLocationId = $validatedData['dropoff_location_id'] ?? null;
+        if ($dropoffLocationId && $dropoffLocationId === $validatedData['location_id']) {
+            $dropoffLocationId = null; // It's not a one-way rental, so don't send the ID
+        }
 
         $xmlResponse = $this->greenMotionService->makeReservation(
             $validatedData['location_id'],
@@ -948,7 +1087,7 @@ class GreenMotionController extends Controller
             $validatedData['paymentHandlerRef'] ?? null,
             $validatedData['quoteid'],
             $validatedData['extras'] ?? [],
-            $validatedData['dropoff_location_id'] ?? null,
+            $dropoffLocationId,
             $validatedData['payment_type'] ?? 'POA',
             $validatedData['rentalCode'],
             $validatedData['remarks'] ?? null
@@ -976,8 +1115,9 @@ class GreenMotionController extends Controller
 
         // Save booking to database
         try {
-            GreenMotionBooking::create([ // Use full namespace
+            $booking = GreenMotionBooking::create([ // Use full namespace
                 'greenmotion_booking_ref' => $bookingReference,
+                'user_id' => $validatedData['user_id'] ?? null,
                 'vehicle_id' => $validatedData['vehicle_id'],
                 'location_id' => $validatedData['location_id'],
                 'start_date' => $validatedData['start_date'],
@@ -1000,6 +1140,21 @@ class GreenMotionController extends Controller
                 'api_response' => json_decode(json_encode($xmlObject), true), // Store full XML response as JSON
             ]);
             Log::info('GreenMotion booking saved to database successfully.');
+
+            // Send notifications
+            if ($bookingReference && isset($validatedData['user_id'])) {
+                $customer = User::find($validatedData['user_id']);
+                $adminEmail = env('VITE_ADMIN_EMAIL', 'default@admin.com');
+                $admin = User::where('email', $adminEmail)->first();
+
+                if ($customer) {
+                    $customer->notify(new BookingCreatedCustomerNotification($booking, $customer));
+                }
+                if ($admin) {
+                    $admin->notify(new BookingCreatedAdminNotification($booking, $customer));
+                }
+            }
+
         } catch (\Exception $e) {
             Log::error('Failed to save GreenMotion booking to database: ' . $e->getMessage(), [
                 'booking_data' => $validatedData,

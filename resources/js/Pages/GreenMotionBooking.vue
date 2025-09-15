@@ -9,6 +9,7 @@ import GreenMotionStripeCheckout from "@/Components/GreenMotionStripeCheckout.vu
 const props = defineProps({
     vehicle: Object,
     location: Object,
+    dropoffLocation: Object,
     optionalExtras: Array,
     filters: Object,
     locale: String,
@@ -49,11 +50,23 @@ const getPackageFullName = (type) => {
         BAS: 'Basic',
         PLU: 'Plus',
         PRE: 'Premium',
-        PMP: 'Premium Plus',
+        PMP: 'Premium Plus +',
         FF: 'Full',
     };
     return names[type] || type;
 };
+
+const getFuelPolicyName = (policy) => {
+  const policies = {
+    FF: "Full To Full",
+    SL: "Same To Last",
+    SS: "Same To Same",
+    EF: "Empty To Full",
+    // add other cases here
+  };
+  return policies[policy] || policy;
+};
+
 
 const selectedPackage = ref(null);
 const selectedOptionalExtras = ref([]);
@@ -105,6 +118,7 @@ const form = ref({
     grand_total: 0,
     paymentHandlerRef: null,
     quoteid: props.filters.quoteid || props.vehicle?.products?.[0]?.quoteid || 'dummy_quote_id',
+    dropoff_location_id: props.filters.dropoff_location_id || null,
     payment_type: 'POA',
     remarks: null,
     user_id: props.auth.user?.id || null, // Add user_id to form
@@ -294,9 +308,10 @@ const bookingDataForStripe = computed(() => {
         extras: form.value.extras,
         user_id: form.value.user_id, // Pass user_id
         vehicle_location: form.value.vehicle_location, // Pass vehicle_location
+        dropoff_location_id: props.filters.dropoff_location_id,
         // Fields below are not directly validated by backend but might be useful for logging/storage
         pickup_location: props.location?.name || '',
-        return_location: props.location?.name || '',
+        return_location: props.dropoffLocation?.name || props.location?.name || '',
         total_days: rentalDuration.value,
         extra_charges: form.value.grand_total - form.value.vehicle_total,
         tax_amount: 0,
@@ -438,7 +453,10 @@ const bookingDataForStripe = computed(() => {
                                            : 'border-gray-200 hover:border-gray-300'"
                                          @click="selectedPackage = pkg">
                                         <div class="flex items-start justify-between mb-4">
-                                            <h4 class="text-lg font-bold text-gray-900">{{ getPackageFullName(pkg.type) }}</h4>
+                                            <h4 :class="[
+    'text-lg font-bold text-gray-900',
+    getPackageFullName(pkg.type) === 'Premium Plus +' ? 'border-[2px] border-green-500 p-2 rounded' : ''
+  ]" class="text-lg font-bold text-gray-900">{{ getPackageFullName(pkg.type) }}</h4>
                                             <div class="w-5 h-5 rounded-full border-2 flex items-center justify-center"
                                                  :class="selectedPackage?.type === pkg.type 
                                                    ? 'border-primary bg-primary' 
@@ -462,7 +480,7 @@ const bookingDataForStripe = computed(() => {
                                             </div>
                                             <div class="flex justify-between">
                                                 <span class="text-gray-600">Fuel Policy</span>
-                                                <span class="font-semibold">{{ pkg.fuelpolicy }} <span class="text-[0.75rem]">(Full To Full)</span></span>
+                                                <span class="font-semibold">{{ pkg.fuelpolicy }} <span class="text-[0.75rem]">({{ getFuelPolicyName(pkg.fuelpolicy) }})</span></span>
                                             </div>
                                         </div>
                                         <div v-if="pkg.benefits" class="mt-4 pt-4 border-t border-gray-200">
@@ -774,7 +792,7 @@ const bookingDataForStripe = computed(() => {
                                         <span class="text-gray-600">Return</span>
                                         <div class="text-right">
                                             <p class="font-medium text-gray-900">{{ form.end_date }}</p>
-                                            <p class="text-sm text-gray-500">{{ form.end_time }} at {{ location?.name }}</p>
+                                            <p class="text-sm text-gray-500">{{ form.end_time }} at {{ dropoffLocation?.name || location?.name }}</p>
                                         </div>
                                     </div>
                                     <div class="flex justify-between items-center">

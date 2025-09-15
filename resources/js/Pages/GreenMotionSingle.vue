@@ -75,6 +75,7 @@ const getCurrencySymbol = (code) => {
 const props = defineProps({
     vehicle: Object,
     location: Object,
+    dropoffLocation: Object, // New prop for dropoff location
     optionalExtras: Array,
     filters: Object,
     seoMeta: Object,
@@ -244,31 +245,63 @@ const initMap = () => {
         console.error('Tile loading error:', error);
     });
 
-    const customIcon = L.divIcon({
-        className: 'custom-div-icon',
-        html: `
-            <div class="marker-pin">
-                <img src="${MapPin}" alt="Vehicle Location" loading="lazy" />
-            </div>
-        `,
-        iconSize: [50, 30],
-        iconAnchor: [25, 15],
-        popupAnchor: [0, -15]
-    });
+    const createColoredIcon = (color) => {
+        return L.divIcon({
+            className: 'custom-div-icon',
+            html: `
+                <div class="marker-pin" style="filter: drop-shadow(0 4px 3px rgba(0,0,0,0.2));">
+                    <svg width="40" height="40" viewBox="0 0 24 24" fill="${color}" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/>
+                    </svg>
+                </div>
+            `,
+            iconSize: [40, 40],
+            iconAnchor: [20, 40],
+            popupAnchor: [0, -40]
+        });
+    };
 
-    L.marker([parseFloat(props.location.latitude), parseFloat(props.location.longitude)], {
-        icon: customIcon
-    })
+    const pickupIcon = createColoredIcon('#22c55e'); // Green
+    const dropoffIcon = createColoredIcon('#ef4444'); // Red
+
+    const pickupLatLng = [parseFloat(props.location.latitude), parseFloat(props.location.longitude)];
+    
+    L.marker(pickupLatLng, { icon: pickupIcon })
         .bindPopup(`
             <div class="text-center">
-                <p class="font-semibold">${props.location.name}</p>
+                <p class="font-semibold">Pickup: ${props.location.name}</p>
                 <p>${props.location.address_city}</p>
             </div>
         `)
         .addTo(map.value);
 
+    let bounds = L.latLngBounds([pickupLatLng]);
+
+    if (props.dropoffLocation && 
+        (props.location.latitude !== props.dropoffLocation.latitude || props.location.longitude !== props.dropoffLocation.longitude)) {
+        
+        const dropoffLatLng = [parseFloat(props.dropoffLocation.latitude), parseFloat(props.dropoffLocation.longitude)];
+        
+        L.marker(dropoffLatLng, { icon: dropoffIcon })
+            .bindPopup(`
+                <div class="text-center">
+                    <p class="font-semibold">Dropoff: ${props.dropoffLocation.name}</p>
+                    <p>${props.dropoffLocation.address_city}</p>
+                </div>
+            `)
+            .addTo(map.value);
+        
+        bounds.extend(dropoffLatLng);
+        map.value.fitBounds(bounds, { padding: [50, 50] });
+    }
+
     setTimeout(() => {
         map.value.invalidateSize();
+        if (bounds.getNorthEast().equals(bounds.getSouthWest())) {
+            map.value.setView(bounds.getCenter(), 15);
+        } else {
+            map.value.fitBounds(bounds, { padding: [50, 50] });
+        }
     }, 100);
 };
 
@@ -439,6 +472,9 @@ const proceedToPayment = async () => {
         end_time: form.value.end_time,
         age: form.value.age,
         rentalCode: form.value.rentalCode,
+        dropoff_location_id: props.filters.dropoff_location_id,
+        where: props.filters.where,
+        dropoff_where: props.filters.dropoff_where,
     }), {
         onFinish: () => {
             isBooking.value = false;
@@ -964,7 +1000,7 @@ onBeforeUnmount(() => {
                                         <img :src="pickupLocationIcon" alt="Pickup" class="w-5 h-5 mt-1" loading="lazy" />
                                         <div class="flex-1">
                                             <span class="text-sm font-medium text-green-800">Pickup Location</span>
-                                            <p class="font-semibold text-green-900">{{ location?.address_1 }}</p>
+                                            <p class="font-semibold text-green-900">{{ filters.where || location?.address_1 }}</p>
                                             <p class="text-sm text-green-700">{{ location?.address_city }}</p>
                                             <p class="text-sm text-green-600 mt-1">{{ form.start_date }} at {{ form.start_time }}</p>
                                         </div>
@@ -973,8 +1009,8 @@ onBeforeUnmount(() => {
                                         <img :src="returnLocationIcon" alt="Return" class="w-5 h-5 mt-1" loading="lazy" />
                                         <div class="flex-1">
                                             <span class="text-sm font-medium text-blue-800">Return Location</span>
-                                            <p class="font-semibold text-blue-900">{{ location?.address_1 }}</p>
-                                            <p class="text-sm text-blue-700">{{ location?.address_city }}</p>
+                                            <p class="font-semibold text-blue-900">{{ dropoffLocation ? dropoffLocation.name : (filters.where || location?.name) }}</p>
+                                            <p class="text-sm text-blue-700">{{ dropoffLocation ? dropoffLocation.address_city : location?.address_city }}</p>
                                             <p class="text-sm text-blue-600 mt-1">{{ form.end_date }} at {{ form.end_time }}</p>
                                         </div>
                                     </div>
