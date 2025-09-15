@@ -297,12 +297,14 @@ const formatDate = (dateString) => {
   return date.toLocaleDateString('en-GB', { year: 'numeric', month: '2-digit', day: '2-digit' });
 };
 
-watch(pickupDate, (newValue) => {
-  if (newValue) {
-    form.value.date_from = newValue.toISOString().split('T')[0];
-    if (returnDate.value && newValue > returnDate.value) {
-      returnDate.value = null;
-      form.value.date_to = '';
+watch(pickupDate, (newPickupDate) => {
+  if (newPickupDate) {
+    form.value.date_from = newPickupDate.toISOString().split('T')[0];
+    const newReturnDate = new Date(newPickupDate);
+    newReturnDate.setDate(newReturnDate.getDate() + 1);
+    
+    if (!returnDate.value || newReturnDate > returnDate.value) {
+        returnDate.value = newReturnDate;
     }
   }
 }, { deep: true });
@@ -502,6 +504,16 @@ const closeSearchResults = (event) => {
 onMounted(async () => {
   document.addEventListener('click', closeSearchResults);
   fetchPopularPlaces();
+
+  // Set default dates if not prefilled
+  if (!props.prefill?.date_from) {
+    const today = new Date();
+    pickupDate.value = today;
+    const tomorrow = new Date(today);
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    returnDate.value = tomorrow;
+  }
+
   if (props.prefill) {
     form.value.where = props.prefill.where || '';
     if (props.prefill.date_from) {
