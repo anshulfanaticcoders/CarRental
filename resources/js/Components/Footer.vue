@@ -183,7 +183,7 @@ onMounted(async () => {
                         <ul class="flex flex-col gap-4 max-[768px]:text-[0.875rem]">
                             <li v-for="place in footerPlaces" :key="place.id" class="relative group">
                                 <Link
-                                    :href="`/${page.props.locale}/s?where=${encodeURIComponent(place.place_name + ', ' + place.city + ', ' + place.country)}&latitude=${place.latitude}&longitude=${place.longitude}&radius=10000`"
+                                    :href="`/${page.props.locale}/s?where=${encodeURIComponent(place.place_name)}`"
                                     @click="updateSearchUrl(place)"
                                     class="footer-link-underline">
                                 {{ place.place_name }}

@@ -44,7 +44,7 @@
             </div>
           </div>
 
-          <div class="col-span-2 flex items-center gap-4">
+          <div class="col-span-2 flex items-center gap-4 mr-4">
             <div class="flex flex-col">
               <label class="mb-2 inline-block text-customLightGrayColor font-medium">{{ _t('homepage', 'pickup_date_label') }}</label>
               <VueDatePicker v-model="pickupDate" :enable-time-picker="false" uid="pickup-date" auto-apply
@@ -52,7 +52,7 @@
             </div>
             <div class="flex flex-col">
               <label class="mb-2 inline-block text-customLightGrayColor font-medium">Start Time</label>
-              <input type="time" v-model="form.start_time" class="border-[2px] rounded border-[#ddd] text-gray-400 px-2 focus:outline-none w-full h-[38px]" />
+              <VueDatePicker v-model="startTime" time-picker auto-apply placeholder="Select time" uid="start-time" :minutes-increment="5" :minutes-grid-increment="5" />
             </div>
           </div>
 
@@ -64,7 +64,7 @@
             </div>
             <div class="flex flex-col">
               <label class="mb-2 inline-block text-customLightGrayColor font-medium">End Time</label>
-              <input type="time" v-model="form.end_time" class="border-[2px] rounded border-[#ddd] text-gray-400 px-2 focus:outline-none w-full h-[38px]" />
+              <VueDatePicker v-model="endTime" time-picker auto-apply placeholder="Select time" uid="end-time" :minutes-increment="5" :minutes-grid-increment="5" />
             </div>
           </div>
 
@@ -89,9 +89,10 @@
           <!-- Existing search results -->
           <div v-if="searchResults.length > 0">
             <div v-for="result in searchResults" :key="result.unified_location_id" @click="selectLocation(result)"
-              class="p-2 hover:bg-[#efefef4d] hover:text-customPrimaryColor cursor-pointer flex gap-3">
+              class="p-2 hover:bg-customPrimaryColor hover:text-white cursor-pointer flex gap-3 group rounded-[12px] hover:scale-[1.02] transition-transform">
               <div class="h-10 w-10 md:h-12 md:w-12 bg-gray-100 text-gray-300 rounded flex justify-center items-center">
-                <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" class="w-1/2 h-1/2">
+                <img :src="flighIcon" v-if="result.name.toLowerCase().includes('airport')" class="w-1/2 h-1/2" />
+                <svg v-else viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" class="w-1/2 h-1/2 group-hover:stroke-white">
                   <path clip-rule="evenodd"
                     d="M7.838 9.79c0 2.497 1.946 4.521 4.346 4.521 2.401 0 4.347-2.024 4.347-4.52 0-2.497-1.946-4.52-4.346-4.52-2.401 0-4.347 2.023-4.347 4.52Z"
                     stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path>
@@ -102,7 +103,7 @@
               </div>
               <div class="flex flex-col">
                 <div class="font-medium">{{ result.name }}</div>
-                <div class="text-sm text-gray-500">
+                <div class="text-sm text-gray-500 group-hover:text-white">
                   {{ [result.city, result.country].filter(Boolean).join(', ') }}
                 </div>
                 <div v-if="result.providers && result.providers.length" class="text-xs text-blue-500 capitalize">
@@ -121,9 +122,10 @@
           <div v-else-if="popularPlaces.length > 0 && !isSearching">
             <div class="text-sm font-medium mb-2 text-customPrimaryColor">{{ _t('homepage', 'popular_searches_header') }}</div>
             <div v-for="place in popularPlaces" :key="place.unified_location_id" @click="selectLocation(place)"
-              class="p-2 hover:bg-[#efefef4d] hover:text-customPrimaryColor cursor-pointer flex gap-3">
+              class="p-2 hover:bg-customPrimaryColor hover:text-white cursor-pointer flex gap-3 group rounded-[12px] hover:scale-[1.02] transition-transform">
               <div class="h-10 w-10 md:h-12 md:w-12 bg-gray-100 text-gray-300 rounded flex justify-center items-center max-[768px]:flex-[0.2]">
-                <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" class="w-1/2 h-1/2">
+                <img :src="flighIcon" v-if="place.name.toLowerCase().includes('airport')" class="w-1/2 h-1/2" />
+                <svg v-else viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" class="w-1/2 h-1/2 group-hover:stroke-white">
                   <path clip-rule="evenodd"
                     d="M7.838 9.79c0 2.497 1.946 4.521 4.346 4.521 2.401 0 4.347-2.024 4.347-4.52 0-2.497-1.946-4.52-4.346-4.52-2.401 0-4.347 2.023-4.347 4.52Z"
                     stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path>
@@ -134,7 +136,7 @@
               </div>
               <div class="flex flex-col max-[768px]:flex-1">
                 <div class="font-medium">{{ place.name }}</div>
-                <div class="text-sm text-gray-500">
+                <div class="text-sm text-gray-500 group-hover:text-white">
                   {{ [place.city, place.country].filter(Boolean).join(', ') }}
                 </div>
                  <div v-if="place.providers && place.providers.length" class="text-xs text-blue-500 capitalize">
@@ -149,9 +151,10 @@
         <div v-if="showDropoffSearchBox && dropoffSearchResults.length > 0"
           class="search-results absolute z-20 top-[105%] w-[50%] rounded-[12px] border-[1px] border-white left-[20%] p-5 bg-white text-customDarkBlackColor max-h-[400px] overflow-y-auto max-[768px]:w-full max-[768px]:top-[60%] max-[768px]:left-0">
             <div v-for="result in dropoffSearchResults" :key="result.unified_location_id" @click="selectDropoffLocation(result)"
-              class="p-2 hover:bg-[#efefef4d] hover:text-customPrimaryColor cursor-pointer flex gap-3">
+              class="p-2 hover:bg-customPrimaryColor hover:text-white cursor-pointer flex gap-3 group rounded-[12px] hover:scale-[1.02] transition-transform">
               <div class="h-10 w-10 md:h-12 md:w-12 bg-gray-100 text-gray-300 rounded flex justify-center items-center">
-                <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" class="w-1/2 h-1/2">
+                <img :src="flighIcon" v-if="result.name.toLowerCase().includes('airport')" class="w-1/2 h-1/2" />
+                <svg v-else viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" class="w-1/2 h-1/2 group-hover:stroke-white">
                   <path clip-rule="evenodd"
                     d="M7.838 9.79c0 2.497 1.946 4.521 4.346 4.521 2.401 0 4.347-2.024 4.347-4.52 0-2.497-1.946-4.52-4.346-4.52-2.401 0-4.347 2.023-4.347 4.52Z"
                     stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path>
@@ -162,7 +165,7 @@
               </div>
               <div class="flex flex-col">
                 <div class="font-medium">{{ result.name }}</div>
-                <div class="text-sm text-gray-500">
+                <div class="text-sm text-gray-500 group-hover:text-white">
                   {{ [result.city, result.country].filter(Boolean).join(', ') }}
                 </div>
               </div>
@@ -198,6 +201,7 @@ import VueDatePicker from '@vuepic/vue-datepicker';
 import '@vuepic/vue-datepicker/dist/main.css';
 import { Vue3Lottie } from 'vue3-lottie';
 import LoaderAnimation from '../../../public/animations/Loader-animation.json';
+import flighIcon from '../../assets/flighIcon.svg';
 
 const form = ref({
   where: "",
@@ -234,6 +238,8 @@ const props = defineProps({
 
 const pickupDate = ref(null);
 const returnDate = ref(null);
+const startTime = ref({ hours: 9, minutes: 0 });
+const endTime = ref({ hours: 9, minutes: 0 });
 const searchResults = ref([]);
 const dateError = ref(false);
 const isSearching = ref(false);
@@ -314,6 +320,22 @@ watch(returnDate, (newValue) => {
     form.value.date_to = newValue.toISOString().split('T')[0];
   }
 }, { deep: true });
+
+watch(startTime, (newTime) => {
+  if (newTime) {
+    const hours = newTime.hours.toString().padStart(2, '0');
+    const minutes = newTime.minutes.toString().padStart(2, '0');
+    form.value.start_time = `${hours}:${minutes}`;
+  }
+});
+
+watch(endTime, (newTime) => {
+  if (newTime) {
+    const hours = newTime.hours.toString().padStart(2, '0');
+    const minutes = newTime.minutes.toString().padStart(2, '0');
+    form.value.end_time = `${hours}:${minutes}`;
+  }
+});
 
 const handleSearchInput = () => {
   if (form.value.where.length === 0) {
@@ -532,6 +554,15 @@ onMounted(async () => {
     form.value.provider_pickup_id = props.prefill.provider_pickup_id || null;
     form.value.start_time = props.prefill.start_time || '09:00';
     form.value.end_time = props.prefill.end_time || '09:00';
+
+    if (props.prefill.start_time) {
+        const [hours, minutes] = props.prefill.start_time.split(':');
+        startTime.value = { hours: parseInt(hours), minutes: parseInt(minutes) };
+    }
+    if (props.prefill.end_time) {
+        const [hours, minutes] = props.prefill.end_time.split(':');
+        endTime.value = { hours: parseInt(hours), minutes: parseInt(minutes) };
+    }
     form.value.dropoff_location_id = props.prefill.dropoff_location_id || null;
     form.value.dropoff_where = props.prefill.dropoff_where || "";
 
@@ -601,6 +632,15 @@ const ErrorDialog = {
 </script>
 
 <style>
+.search-results::-webkit-scrollbar {
+  width: 0;
+  height: 0;
+}
+
+.search-results {
+  scrollbar-width: none; /* Firefox */
+}
+
 .search_bar {
   box-shadow: 5px 5px 10px rgba(0, 0, 0, 0.2);
 }

@@ -1006,6 +1006,44 @@ class GreenMotionController extends Controller
         return response()->json($dropoffLocations);
     }
 
+    public function checkAvailability(Request $request)
+    {
+        $validatedData = $request->validate([
+            'location_id' => 'required|string',
+            'start_date' => 'required|date_format:Y-m-d',
+            'start_time' => 'required|date_format:H:i',
+            'end_date' => 'required|date_format:Y-m-d',
+            'end_time' => 'required|date_format:H:i',
+            'age' => 'required|integer',
+            'vehicle_id' => 'required|string',
+        ]);
+
+        $xml = $this->greenMotionService->getVehicles(
+            $validatedData['location_id'],
+            $validatedData['start_date'],
+            $validatedData['start_time'],
+            $validatedData['end_date'],
+            $validatedData['end_time'],
+            $validatedData['age']
+        );
+
+        if (is_null($xml) || empty($xml)) {
+            return response()->json(['available' => false, 'error' => 'Failed to retrieve vehicle data.'], 500);
+        }
+
+        libxml_use_internal_errors(true);
+        $xmlObject = simplexml_load_string($xml);
+
+        if ($xmlObject === false) {
+            return response()->json(['available' => false, 'error' => 'Failed to parse XML response.'], 500);
+        }
+
+        $vehicles = $this->parseVehicles($xmlObject);
+        $isAvailable = collect($vehicles)->contains('id', $validatedData['vehicle_id']);
+
+        return response()->json(['available' => $isAvailable]);
+    }
+
     public function makeGreenMotionBooking(Request $request)
     {
         $validatedData = $request->validate([

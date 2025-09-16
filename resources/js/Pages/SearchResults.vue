@@ -167,6 +167,7 @@ const form = useForm({
     full_credit: usePage().props.filters?.full_credit || null,
     promocode: usePage().props.filters?.promocode || null,
     dropoff_location_id: usePage().props.filters?.dropoff_location_id || null,
+    dropoff_where: usePage().props.filters?.dropoff_where || "",
 });
 
 const submitFilters = debounce(() => {
@@ -419,8 +420,8 @@ const addMarkers = () => {
         }
 
         const primaryImage = vehicle.source === 'greenmotion' ? vehicle.image : (vehicle.images?.find((image) => image.image_type === 'primary')?.image_url || '/default-image.png');
-        const detailRoute = vehicle.source === 'greenmotion'
-            ? route('green-motion-car.show', { locale: page.props.locale, id: vehicle.id.replace('gm_', ''), ...form.data() })
+        const detailRoute = vehicle.source !== 'internal'
+            ? route(getProviderRoute(vehicle), { locale: page.props.locale, id: vehicle.id.substring(vehicle.id.indexOf('_') + 1), location_id: vehicle.provider_pickup_id, start_date: form.date_from, end_date: form.date_to, start_time: form.start_time, end_time: form.end_time, age: form.age, rentalCode: form.rentalCode, currency: form.currency, fuel: form.fuel, userid: form.userid, username: form.username, language: form.language, full_credit: form.full_credit, promocode: form.promocode, dropoff_location_id: form.dropoff_location_id, dropoff_where: form.dropoff_where, where: form.where })
             : route('vehicle.show', { locale: page.props.locale, id: vehicle.id, package: form.package_type, pickup_date: form.date_from, return_date: form.date_to });
 
         let popupPrice = "N/A";
@@ -789,6 +790,17 @@ const getStarAltText = (rating, starNumber) => {
     } else {
         return "Blank Star";
     }
+};
+
+const getProviderRoute = (vehicle) => {
+    if (vehicle.source === 'greenmotion') {
+        return 'green-motion-car.show';
+    }
+    // Add other providers here as needed
+    // if (vehicle.source === 'usave') {
+    //     return 'usave-car.show';
+    // }
+    return 'green-motion-car.show'; // Default for now
 };
 
 const showPriceSlider = ref(false);
@@ -1342,7 +1354,7 @@ watch(
                             </div>
                         </div>
                         <a
-                            :href="vehicle.source !== 'internal' ? route('green-motion-car.show', { locale: page.props.locale, id: vehicle.id.substring(vehicle.id.indexOf('_') + 1), location_id: vehicle.provider_pickup_id, start_date: form.date_from, end_date: form.date_to, start_time: form.start_time, end_time: form.end_time, age: form.age, rentalCode: form.rentalCode, currency: form.currency, fuel: form.fuel, userid: form.userid, username: form.username, language: form.language, full_credit: form.full_credit, promocode: form.promocode, dropoff_location_id: form.dropoff_location_id, dropoff_where: form.dropoff_where, where: form.where }) : route('vehicle.show', { locale: page.props.locale, id: vehicle.id, package: form.package_type, pickup_date: form.date_from, return_date: form.date_to })">
+                            :href="vehicle.source !== 'internal' ? route(getProviderRoute(vehicle), { locale: page.props.locale, id: vehicle.id.substring(vehicle.id.indexOf('_') + 1), location_id: vehicle.provider_pickup_id, start_date: form.date_from, end_date: form.date_to, start_time: form.start_time, end_time: form.end_time, age: form.age, rentalCode: form.rentalCode, currency: form.currency, fuel: form.fuel, userid: form.userid, username: form.username, language: form.language, full_credit: form.full_credit, promocode: form.promocode, dropoff_location_id: form.dropoff_location_id, dropoff_where: form.dropoff_where, where: form.where }) : route('vehicle.show', { locale: page.props.locale, id: vehicle.id, package: form.package_type, pickup_date: form.date_from, return_date: form.date_to })">
                             <div class="column flex flex-col gap-5 items-start">
                                 <img :src="vehicle.source !== 'internal' ? vehicle.image : (vehicle.images?.find(
                                     (image) =>

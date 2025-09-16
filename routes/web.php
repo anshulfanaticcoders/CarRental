@@ -515,6 +515,7 @@ Route::group([
     // GreenMotion Single Car Page
     Route::get('/green-motion-car/{id}', [GreenMotionController::class, 'showGreenMotionCar'])
         ->name('green-motion-car.show');
+    Route::post('/green-motion-car/check-availability', [GreenMotionController::class, 'checkAvailability'])->name('green-motion-car.check-availability');
    
 }); // End of locale group
 

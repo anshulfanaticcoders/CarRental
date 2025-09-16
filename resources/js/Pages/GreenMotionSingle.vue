@@ -291,6 +291,13 @@ const initMap = () => {
             `)
             .addTo(map.value);
         
+        L.polyline([pickupLatLng, dropoffLatLng], {
+            color: 'black',
+            weight: 2,
+            opacity: 0.7,
+            dashArray: '5, 10'
+        }).addTo(map.value);
+
         bounds.extend(dropoffLatLng);
         map.value.fitBounds(bounds, { padding: [50, 50] });
     }
@@ -441,7 +448,44 @@ const shareVehicle = async () => {
 
 // Booking
 const showWarningModal = ref(false);
+const availabilityChanged = ref(false);
+const isCheckingAvailability = ref(false);
+const availabilityError = ref(null);
+
+watch([() => form.value.start_date, () => form.value.end_date, () => form.value.start_time, () => form.value.end_time], () => {
+    availabilityChanged.value = true;
+});
+
+const checkAvailability = async () => {
+    isCheckingAvailability.value = true;
+    availabilityError.value = null;
+    try {
+        const response = await axios.post(route('green-motion-car.check-availability', { locale: page.props.locale }), {
+            ...form.value,
+            vehicle_id: props.vehicle.id,
+        });
+        if (response.data.available) {
+            // This is a simplified example. In a real app, you'd update the price and other details.
+            toast.success('Vehicle is available for the selected dates!');
+            availabilityChanged.value = false;
+        } else {
+            availabilityError.value = 'This vehicle is not available for the selected dates. Please try different dates.';
+            toast.error(availabilityError.value);
+        }
+    } catch (error) {
+        availabilityError.value = 'Failed to check availability. Please try again.';
+        toast.error(availabilityError.value);
+        console.error('Availability check error:', error);
+    } finally {
+        isCheckingAvailability.value = false;
+    }
+};
+
 const proceedToPayment = async () => {
+    if (availabilityChanged.value) {
+        toast.warning('Please check availability for the new dates before proceeding.');
+        return;
+    }
     if (!form.value.location_id || !form.value.start_date || !form.value.start_time || !form.value.end_date || !form.value.end_time || !form.value.age) {
         toast.error("Please fill all required rental details (Location ID, Dates, Times, Age).");
         return;
@@ -916,7 +960,7 @@ onBeforeUnmount(() => {
                             <div class="flex items-start gap-3">
                                 <img :src="locationPinIcon" alt="Location" class="w-6 h-6 text-red-600 mt-3" loading="lazy" />
                                 <div>
-                                    <h4 class="font-semibold text-red-900">{{ location?.name }}</h4>
+                                    <h5 class="font-semibold text-red-900">{{ location?.name }}</h5>
                                     <p class="text-red-800">{{ location?.address_1 }}, {{ location?.address_city }}, {{ location?.address_postcode }}</p>
                                 </div>
                             </div>
@@ -1106,8 +1150,16 @@ onBeforeUnmount(() => {
                                     </div>
                                 </div>
 
+                                <!-- Availability Check Button -->
+                                <Button v-if="availabilityChanged" @click="checkAvailability" :disabled="isCheckingAvailability" class="w-full bg-yellow-500 hover:bg-yellow-600 text-white py-3 font-semibold text-md rounded-xl shadow-lg transition-all duration-300">
+                                    <div class="flex items-center justify-center gap-2">
+                                        <span v-if="!isCheckingAvailability">Check Availability</span>
+                                        <span v-else>Checking...</span>
+                                    </div>
+                                </Button>
+
                                 <!-- Book Button -->
-                                <Button @click="proceedToPayment" :disabled="isBooking" class="w-full bg-gradient-to-r from-customPrimaryColor to-blue-700 hover:from-customPrimaryColor/90 hover:to-blue-700/90 text-white py-4 font-semibold text-lg rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-105">
+                                <Button @click="proceedToPayment" :disabled="isBooking || availabilityChanged" class="w-full bg-gradient-to-r from-customPrimaryColor to-blue-700 hover:from-customPrimaryColor/90 hover:to-blue-700/90 text-white py-4 font-semibold text-lg rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-105">
                                     <div class="flex items-center justify-center gap-2">
                                         <span>Reserve Now</span>
                                         <ChevronRight class="w-5 h-5" />
