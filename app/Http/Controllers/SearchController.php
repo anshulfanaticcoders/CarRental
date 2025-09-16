@@ -340,98 +340,123 @@ class SearchController extends Controller
         }
 
         if ($providerName && $providerName !== 'internal' && $providerLocationId && !empty($validated['date_from']) && !empty($validated['date_to'])) {
-            try {
-                $this->greenMotionService->setProvider($providerName);
-                $gmOptions = [
-                    'language' => $validated['language'] ?? app()->getLocale(),
-                    'rentalCode' => $validated['rentalCode'] ?? '1',
-                    'currency' => $validated['currency'] ?? null,
-                    'fuel' => $validated['fuel'] ?? null,
-                    'userid' => $validated['userid'] ?? null,
-                    'username' => $validated['username'] ?? null,
-                    'full_credit' => $validated['full_credit'] ?? null,
-                    'promocode' => $validated['promocode'] ?? null,
-                    'dropoff_location_id' => $validated['dropoff_location_id'] ?? null,
-                ];
-
-                $gmResponse = $this->greenMotionService->getVehicles(
-                    $providerLocationId,
-                    $validated['date_from'],
-                    $validated['start_time'] ?? '09:00',
-                    $validated['date_to'],
-                    $validated['end_time'] ?? '09:00',
-                    $validated['age'] ?? 35,
-                    array_filter($gmOptions)
-                );
-
-                if ($gmResponse) {
-                    libxml_use_internal_errors(true);
-                    $xmlObject = simplexml_load_string($gmResponse);
-                    if ($xmlObject !== false && isset($xmlObject->response->vehicles->vehicle)) {
-                        foreach ($xmlObject->response->vehicles->vehicle as $vehicle) {
-                            $products = [];
-                            if (isset($vehicle->product)) {
-                                foreach ($vehicle->product as $product) {
-                                    $products[] = [
-                                        'type' => (string) $product['type'],
-                                        'total' => (string) $product->total,
-                                        'currency' => (string) $product->total['currency'],
-                                        'deposit' => (string) $product->deposit,
-                                        'excess' => (string) $product->excess,
-                                        'fuelpolicy' => (string) $product->fuelpolicy,
-                                        'mileage' => (string) $product->mileage,
-                                        'costperextradistance' => (string) $product->costperextradistance,
-                                        'minage' => (string) $product->minage,
-                                        'excludedextras' => (string) $product->excludedextras,
-                                        'fasttrack' => (string) $product->fasttrack,
-                                        'oneway' => (string) $product->oneway,
-                                        'oneway_fee' => (string) $product->oneway_fee,
-                                        'cancellation_rules' => json_decode(json_encode($product->CancellationRules), true),
-                                    ];
-                                }
+            $providersToFetch = [];
+            if ($providerName === 'mixed') {
+                $allLocations = json_decode(file_get_contents(public_path('unified_locations.json')), true);
+                $matchedLocation = collect($allLocations)->first(function ($location) use ($providerLocationId) {
+                    if (isset($location['providers'])) {
+                        foreach ($location['providers'] as $provider) {
+                            if ($provider['pickup_id'] == $providerLocationId) {
+                                return true;
                             }
-
-                            $minDriverAge = !empty($products) ? (int)($products[0]['minage'] ?? 0) : 0;
-                            $fuelPolicy = !empty($products) ? ($products[0]['fuelpolicy'] ?? '') : '';
-                            $brandName = explode(' ', (string) $vehicle['name'])[0];
-
-                            $providerVehicles->push((object) [
-                                'id' => $providerName . '_' . (string) $vehicle['id'],
-                                'source' => $providerName,
-                                'brand' => $brandName,
-                                'model' => (string) $vehicle['name'],
-                                'image' => urldecode((string) $vehicle['image']),
-                                'price_per_day' => (isset($vehicle->total) && is_numeric((string)$vehicle->total)) ? (float) (string)$vehicle->total : 0.0,
-                                'price_per_week' => null,
-                                'price_per_month' => null,
-                                'currency' => (isset($vehicle->total['currency']) && !empty((string)$vehicle->total['currency'])) ? (string) $vehicle->total['currency'] : 'EUR',
-                                'transmission' => (string) $vehicle->transmission,
-                                'fuel' => (string) $vehicle->fuel,
-                                'seating_capacity' => (int) $vehicle->adults + (int) $vehicle->children,
-                                'mileage' => (string) $vehicle->mpg,
-                                'latitude' => (float) $locationLat,
-                                'longitude' => (float) $locationLng,
-                                'full_vehicle_address' => $locationAddress,
-                                'provider_pickup_id' => $providerLocationId,
-                                'benefits' => (object) [
-                                    'cancellation_available_per_day' => true,
-                                    'limited_km_per_day' => false,
-                                    'minimum_driver_age' => $minDriverAge,
-                                    'fuel_policy' => $fuelPolicy,
-                                ],
-                                'review_count' => 0,
-                                'average_rating' => 0,
-                                'products' => $products,
-                                'options' => [],
-                                'insurance_options' => [],
-                            ]);
                         }
-                    } else {
-                        Log::warning("{$providerName} API response for vehicles was empty or malformed for location ID: " . $providerLocationId, ['response' => $gmResponse]);
+                    }
+                    return false;
+                });
+
+                if ($matchedLocation && !empty($matchedLocation['providers'])) {
+                    foreach ($matchedLocation['providers'] as $provider) {
+                        $providersToFetch[] = $provider['provider'];
                     }
                 }
-            } catch (\Exception $e) {
-                Log::error("Error fetching {$providerName} vehicles: " . $e->getMessage());
+            } else {
+                $providersToFetch[] = $providerName;
+            }
+
+            foreach ($providersToFetch as $providerToFetch) {
+                try {
+                    $this->greenMotionService->setProvider($providerToFetch);
+                    $gmOptions = [
+                        'language' => $validated['language'] ?? app()->getLocale(),
+                        'rentalCode' => $validated['rentalCode'] ?? '1',
+                        'currency' => $validated['currency'] ?? null,
+                        'fuel' => $validated['fuel'] ?? null,
+                        'userid' => $validated['userid'] ?? null,
+                        'username' => $validated['username'] ?? null,
+                        'full_credit' => $validated['full_credit'] ?? null,
+                        'promocode' => $validated['promocode'] ?? null,
+                        'dropoff_location_id' => $validated['dropoff_location_id'] ?? null,
+                    ];
+
+                    $gmResponse = $this->greenMotionService->getVehicles(
+                        $providerLocationId,
+                        $validated['date_from'],
+                        $validated['start_time'] ?? '09:00',
+                        $validated['date_to'],
+                        $validated['end_time'] ?? '09:00',
+                        $validated['age'] ?? 35,
+                        array_filter($gmOptions)
+                    );
+
+                    if ($gmResponse) {
+                        libxml_use_internal_errors(true);
+                        $xmlObject = simplexml_load_string($gmResponse);
+                        if ($xmlObject !== false && isset($xmlObject->response->vehicles->vehicle)) {
+                            foreach ($xmlObject->response->vehicles->vehicle as $vehicle) {
+                                $products = [];
+                                if (isset($vehicle->product)) {
+                                    foreach ($vehicle->product as $product) {
+                                        $products[] = [
+                                            'type' => (string) $product['type'],
+                                            'total' => (string) $product->total,
+                                            'currency' => (string) $product->total['currency'],
+                                            'deposit' => (string) $product->deposit,
+                                            'excess' => (string) $product->excess,
+                                            'fuelpolicy' => (string) $product->fuelpolicy,
+                                            'mileage' => (string) $product->mileage,
+                                            'costperextradistance' => (string) $product->costperextradistance,
+                                            'minage' => (string) $product->minage,
+                                            'excludedextras' => (string) $product->excludedextras,
+                                            'fasttrack' => (string) $product->fasttrack,
+                                            'oneway' => (string) $product->oneway,
+                                            'oneway_fee' => (string) $product->oneway_fee,
+                                            'cancellation_rules' => json_decode(json_encode($product->CancellationRules), true),
+                                        ];
+                                    }
+                                }
+
+                                $minDriverAge = !empty($products) ? (int)($products[0]['minage'] ?? 0) : 0;
+                                $fuelPolicy = !empty($products) ? ($products[0]['fuelpolicy'] ?? '') : '';
+                                $brandName = explode(' ', (string) $vehicle['name'])[0];
+
+                                $providerVehicles->push((object) [
+                                    'id' => $providerToFetch . '_' . (string) $vehicle['id'],
+                                    'source' => $providerToFetch,
+                                    'brand' => $brandName,
+                                    'model' => (string) $vehicle['name'],
+                                    'image' => urldecode((string) $vehicle['image']),
+                                    'price_per_day' => (isset($vehicle->total) && is_numeric((string)$vehicle->total)) ? (float) (string)$vehicle->total : 0.0,
+                                    'price_per_week' => null,
+                                    'price_per_month' => null,
+                                    'currency' => (isset($vehicle->total['currency']) && !empty((string)$vehicle->total['currency'])) ? (string) $vehicle->total['currency'] : 'EUR',
+                                    'transmission' => (string) $vehicle->transmission,
+                                    'fuel' => (string) $vehicle->fuel,
+                                    'seating_capacity' => (int) $vehicle->adults + (int) $vehicle->children,
+                                    'mileage' => (string) $vehicle->mpg,
+                                    'latitude' => (float) $locationLat,
+                                    'longitude' => (float) $locationLng,
+                                    'full_vehicle_address' => $locationAddress,
+                                    'provider_pickup_id' => $providerLocationId,
+                                    'benefits' => (object) [
+                                        'cancellation_available_per_day' => true,
+                                        'limited_km_per_day' => false,
+                                        'minimum_driver_age' => $minDriverAge,
+                                        'fuel_policy' => $fuelPolicy,
+                                    ],
+                                    'review_count' => 0,
+                                    'average_rating' => 0,
+                                    'products' => $products,
+                                    'options' => [],
+                                    'insurance_options' => [],
+                                ]);
+                            }
+                        } else {
+                            Log::warning("{$providerToFetch} API response for vehicles was empty or malformed for location ID: " . $providerLocationId, ['response' => $gmResponse]);
+                        }
+                    }
+                } catch (\Exception $e) {
+                    Log::error("Error fetching {$providerToFetch} vehicles: " . $e->getMessage());
+                }
             }
         }
 

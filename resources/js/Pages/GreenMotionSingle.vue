@@ -128,7 +128,11 @@ const seoImageUrl = computed(() => {
 });
 
 const backToSearchUrl = computed(() => {
-    return route('green-motion-cars', { locale: page.props.locale, ...props.filters });
+    const searchUrl = sessionStorage.getItem('searchurl');
+    if (searchUrl) {
+        return searchUrl;
+    }
+    return route('search', { locale: page.props.locale, ...props.filters });
 });
 
 const vehicleProduct = computed(() => {
@@ -594,7 +598,7 @@ onBeforeUnmount(() => {
             <nav class="flex items-center gap-2 text-sm mb-8 p-4 bg-gray-50 rounded-lg">
                 <Link :href="`/${$page.props.locale}`" class="text-customPrimaryColor hover:underline font-medium">Home</Link>
                 <ChevronRight class="h-4 w-4 text-gray-400" />
-                <Link :href="backToSearchUrl" class="text-customPrimaryColor hover:underline font-medium">GreenMotion Vehicles</Link>
+                <Link :href="backToSearchUrl" class="text-customPrimaryColor hover:underline font-medium">Vehicles</Link>
                 <ChevronRight class="h-4 w-4 text-gray-400" />
                 <span class="text-gray-600">{{ vehicle?.name }}</span>
             </nav>
@@ -979,15 +983,15 @@ onBeforeUnmount(() => {
                     <div class="bg-gradient-to-r from-green-50 to-blue-50 rounded-2xl shadow-lg p-8 border border-green-200">
                         <h2 class="text-2xl font-bold text-gray-900 mb-6 flex items-center gap-3">
                            
-                            Our Rental Partner
+                            About Vrooem
                         </h2>
                         <div class="flex items-start gap-6">
                             <div class="w-20 h-20 bg-gradient-to-br from-green-400 to-blue-500 rounded-2xl flex items-center justify-center shadow-lg">
-                                <span class="text-white font-bold text-2xl">GM</span>
+                                <span class="text-white font-bold text-2xl">VR</span>
                             </div>
                             <div class="flex-1">
-                                <h4 class="text-2xl font-bold text-customPrimaryColor mb-2">GreenMotion</h4>
-                                <p class="text-gray-600 mb-4">Our trusted eco-friendly car rental partner committed to sustainable transportation solutions.</p>
+                                <h4 class="text-2xl font-bold text-customPrimaryColor mb-2">Vrooem</h4>
+                                <p class="text-gray-600 mb-4">Your trusted eco-friendly car rental company committed to sustainable transportation solutions.</p>
                                 <div class="flex items-center gap-4 text-sm">
                                     <div class="flex items-center gap-2 bg-green-100 px-3 py-1 rounded-full">
                                         <div class="w-2 h-2 bg-green-500 rounded-full"></div>
@@ -1019,7 +1023,7 @@ onBeforeUnmount(() => {
                                    
                                 </div>
                             </div>
-                            <p class="text-blue-100 text-sm">Powered by <span class="font-semibold text-white">GreenMotion</span></p>
+                            <p class="text-blue-100 text-sm">Powered by <span class="font-semibold text-white">Vrooem</span></p>
                         </div>
                         
                         <CardContent class="p-6">

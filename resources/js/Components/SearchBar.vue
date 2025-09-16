@@ -106,9 +106,6 @@
                 <div class="text-sm text-gray-500 group-hover:text-white">
                   {{ [result.city, result.country].filter(Boolean).join(', ') }}
                 </div>
-                <div v-if="result.providers && result.providers.length" class="text-xs text-blue-500 capitalize">
-                  Providers: {{ result.providers.map(p => p.provider).join(', ') }}
-                </div>
               </div>
             </div>
           </div>
@@ -138,9 +135,6 @@
                 <div class="font-medium">{{ place.name }}</div>
                 <div class="text-sm text-gray-500 group-hover:text-white">
                   {{ [place.city, place.country].filter(Boolean).join(', ') }}
-                </div>
-                 <div v-if="place.providers && place.providers.length" class="text-xs text-blue-500 capitalize">
-                  Providers: {{ place.providers.map(p => p.provider).join(', ') }}
                 </div>
               </div>
             </div>
@@ -174,19 +168,6 @@
 
          <!-- Error Dialog -->
          <ErrorDialog :show="errorMessage !== ''" :message="errorMessage" @close="clearError" />
-
-        <!-- Provider Selection Modal -->
-        <div v-if="showProviderSelection" class="fixed inset-0 flex items-center justify-center z-50 bg-black bg-opacity-50">
-            <div class="bg-white rounded-lg p-6 w-[90%] max-w-[400px] shadow-lg">
-                <h3 class="text-lg font-semibold mb-4">Select a Provider</h3>
-                <div class="space-y-2">
-                    <button v-for="provider in selectedLocationProviders" :key="provider.provider" @click="selectProvider(provider)"
-                        class="w-full text-left p-3 bg-gray-100 rounded-md hover:bg-customPrimaryColor hover:text-white transition-colors capitalize">
-                        {{ provider.provider }}
-                    </button>
-                </div>
-            </div>
-        </div>
       </div>
     </div>
   </section>
@@ -409,9 +390,13 @@ const selectLocation = (result) => {
       // If only one provider, select it automatically
       selectProvider(result.providers[0]);
     } else {
-      // If multiple providers, show selection UI
-      selectedLocationProviders.value = result.providers;
-      showProviderSelection.value = true; // We will need to create a UI for this
+      // If multiple providers, search for all of them
+      form.value.provider = 'mixed';
+      form.value.provider_pickup_id = result.providers[0].pickup_id; // Assuming same pickup_id
+      form.value.dropoff_where = form.value.where;
+      form.value.dropoff_location_id = result.providers[0].pickup_id;
+      isProviderLocation.value = false;
+      submit();
     }
   } else {
     // No providers and not an internal location, reset

@@ -880,6 +880,10 @@ onUnmounted(() => {
 const observer = ref(null);
 const vehiclesInView = ref(new Set()); // To track vehicles that have already animated
 
+const saveSearchUrl = () => {
+    sessionStorage.setItem('searchurl', window.location.href);
+};
+
 const setupIntersectionObserver = () => {
     if (observer.value) {
         observer.value.disconnect();
@@ -1336,8 +1340,6 @@ watch(
                         :data-vehicle-id="vehicle.id"
                         @mouseenter="highlightVehicleOnMap(vehicle)"
                         @mouseleave="unhighlightVehicleOnMap(vehicle)">
-                        <div class="green-corner-badge" v-if="vehicle.source === 'greenmotion'"></div>
-                        <div class="yellow-corner-badge" v-if="vehicle.source === 'usave'"></div>
                         <div class="flex justify-end mb-3 absolute right-3 topseas-3">
                             <div class="column flex justify-end">
                                 <button v-if="(!$page.props.auth?.user || isCustomer) && vehicle.source === 'internal'" @click.stop="toggleFavourite(vehicle)"
@@ -1354,6 +1356,7 @@ watch(
                             </div>
                         </div>
                         <a
+                            @click="saveSearchUrl"
                             :href="vehicle.source !== 'internal' ? route(getProviderRoute(vehicle), { locale: page.props.locale, id: vehicle.id.substring(vehicle.id.indexOf('_') + 1), location_id: vehicle.provider_pickup_id, start_date: form.date_from, end_date: form.date_to, start_time: form.start_time, end_time: form.end_time, age: form.age, rentalCode: form.rentalCode, currency: form.currency, fuel: form.fuel, userid: form.userid, username: form.username, language: form.language, full_credit: form.full_credit, promocode: form.promocode, dropoff_location_id: form.dropoff_location_id, dropoff_where: form.dropoff_where, where: form.where }) : route('vehicle.show', { locale: page.props.locale, id: vehicle.id, package: form.package_type, pickup_date: form.date_from, return_date: form.date_to })">
                             <div class="column flex flex-col gap-5 items-start">
                                 <img :src="vehicle.source !== 'internal' ? vehicle.image : (vehicle.images?.find(
@@ -1788,51 +1791,5 @@ select:focus+.caret-rotate {
     opacity: 1;
     transform: translateY(0);
     transition: opacity 0.6s ease-out, transform 0.6s ease-out;
-}
-
-.green-corner-badge {
-    position: absolute;
-    top: 0;
-    left: 0;
-    width: 0;
-    height: 0;
-    border-top: 90px solid #4CAF50; /* Green color */
-    border-right: 90px solid transparent;
-    z-index: 10;
-}
-
-.green-corner-badge::after {
-    content: "Green Motion";
-    position: absolute;
-    top: -41px; /* Adjust as needed */
-    left: 0px; /* Adjust as needed */
-    color: white;
-    font-size: 0.7rem;
-    font-weight: bold;
-    transform: rotate(-45deg);
-    transform-origin: 0% 0%;
-    white-space: nowrap;
-}
-
-.yellow-corner-badge {
-    position: absolute;
-    top: 0;
-    left: 0;
-    width: 0;
-    height: 0;
-    border-top: 90px solid #FFC107; /* Yellow color */
-    border-right: 90px solid transparent;
-    z-index: 10;
-}
-
-.yellow-corner-badge::after {
-    content: "U-SAVE";
-    position: absolute;
-    color: white;
-    font-size: 0.7rem;
-    font-weight: bold;
-    transform: rotate(-45deg);
-    transform-origin: -59px -37px;
-    white-space: nowrap;
 }
 </style>
