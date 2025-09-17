@@ -235,6 +235,7 @@ const dropoffSearchResults = ref([]);
 const showDropoffSearchBox = ref(false);
 const selectedLocationProviders = ref([]);
 const showProviderSelection = ref(false);
+const dropoffProvider = ref(null);
 
 
 // Compute error message to display in dialog
@@ -386,23 +387,21 @@ const selectLocation = (result) => {
 
   // If there are external providers
   if (result.providers && result.providers.length > 0) {
-    if (result.providers.length === 1) {
-      // If only one provider, select it automatically
-      selectProvider(result.providers[0]);
-    } else {
-      // If multiple providers, search for all of them
+    // For both single and multiple providers, we want to show the dropoff location.
+    // We'll use the first provider to fetch potential dropoff locations.
+    selectProvider(result.providers[0]);
+
+    // If there are multiple providers, we set the provider type to 'mixed' for the search query.
+    if (result.providers.length > 1) {
       form.value.provider = 'mixed';
-      form.value.provider_pickup_id = result.providers[0].pickup_id; // Assuming same pickup_id
-      form.value.dropoff_where = form.value.where;
-      form.value.dropoff_location_id = result.providers[0].pickup_id;
-      isProviderLocation.value = false;
-      submit();
+      dropoffProvider.value = result.providers[0].provider;
     }
   } else {
     // No providers and not an internal location, reset
     isProviderLocation.value = false;
     form.value.provider = null;
     form.value.provider_pickup_id = null;
+    dropoffProvider.value = null;
   }
 };
 
@@ -441,7 +440,9 @@ const selectDropoffLocation = (result) => {
   const locationName = result.name + (result.city ? `, ${result.city}` : '');
   form.value.dropoff_where = locationName;
   
-  const providerData = result.providers.find(p => p.provider === form.value.provider);
+  const providerToFind = form.value.provider === 'mixed' ? dropoffProvider.value : form.value.provider;
+  const providerData = result.providers.find(p => p.provider === providerToFind);
+
   if (providerData) {
     form.value.dropoff_location_id = providerData.pickup_id;
   } else {
@@ -450,7 +451,6 @@ const selectDropoffLocation = (result) => {
   }
   
   showDropoffSearchBox.value = false;
-  submit(); 
 };
 
 
