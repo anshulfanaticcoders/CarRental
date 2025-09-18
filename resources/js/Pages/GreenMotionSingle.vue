@@ -54,6 +54,32 @@ import universalLoader from '../../../public/animations/universal-loader.json';
 const isBooking = ref(false);
 const currencySymbols = ref({});
 
+const providerName = computed(() => {
+    const urlParams = new URLSearchParams(window.location.search);
+    const provider = urlParams.get('provider');
+    if (provider) {
+        if (provider.toLowerCase() === 'greenmotion') {
+            return 'GreenMotion';
+        }
+        if (provider.toLowerCase() === 'usave') {
+            return 'USave';
+        }
+        return provider.charAt(0).toUpperCase() + provider.slice(1);
+    }
+    return 'Vrooem'; // Default value
+});
+
+const providerLogoText = computed(() => {
+    const name = providerName.value;
+    if (name === 'GreenMotion') {
+        return 'GM';
+    }
+    if (name === 'USave') {
+        return 'US';
+    }
+    return 'VR'; // Default for Vrooem
+});
+
 onMounted(async () => {
     try {
         const response = await fetch('/currency.json');
@@ -318,13 +344,13 @@ const initMap = () => {
 
 // Form and Booking Data
 const form = ref({
-    location_id: props.filters.location_id || props.location?.id || 61627,
-    start_date: props.filters.start_date || '2032-01-06',
-    start_time: props.filters.start_time || '09:00',
-    end_date: props.filters.end_date || '2032-01-08',
-    end_time: props.filters.end_time || '09:00',
-    age: props.filters.age || 35,
-    rentalCode: props.filters.rentalCode || null,
+    location_id: props.filters?.location_id || props.location?.id || 61627,
+    start_date: props.filters?.start_date || '2032-01-06',
+    start_time: props.filters?.start_time || '09:00',
+    end_date: props.filters?.end_date || '2032-01-08',
+    end_time: props.filters?.end_time || '09:00',
+    age: props.filters?.age || 35,
+    rentalCode: props.filters?.rentalCode || null,
 });
 
 const selectedPackage = ref('day');
@@ -520,9 +546,9 @@ const proceedToPayment = async () => {
         end_time: form.value.end_time,
         age: form.value.age,
         rentalCode: form.value.rentalCode,
-        dropoff_location_id: props.filters.dropoff_location_id,
-        where: props.filters.where,
-        dropoff_where: props.filters.dropoff_where,
+        dropoff_location_id: props.filters?.dropoff_location_id,
+        where: props.filters?.where,
+        dropoff_where: props.filters?.dropoff_where,
     }), {
         onFinish: () => {
             isBooking.value = false;
@@ -983,14 +1009,14 @@ onBeforeUnmount(() => {
                     <div class="bg-gradient-to-r from-green-50 to-blue-50 rounded-2xl shadow-lg p-8 border border-green-200">
                         <h2 class="text-2xl font-bold text-gray-900 mb-6 flex items-center gap-3">
                            
-                            About Vrooem
+                            About {{ providerName }}
                         </h2>
                         <div class="flex items-start gap-6">
                             <div class="w-20 h-20 bg-gradient-to-br from-green-400 to-blue-500 rounded-2xl flex items-center justify-center shadow-lg">
-                                <span class="text-white font-bold text-2xl">VR</span>
+                                <span class="text-white font-bold text-2xl">{{ providerLogoText }}</span>
                             </div>
                             <div class="flex-1">
-                                <h4 class="text-2xl font-bold text-customPrimaryColor mb-2">Vrooem</h4>
+                                <h4 class="text-2xl font-bold text-customPrimaryColor mb-2">{{ providerName }}</h4>
                                 <p class="text-gray-600 mb-4">Your trusted eco-friendly car rental company committed to sustainable transportation solutions.</p>
                                 <div class="flex items-center gap-4 text-sm">
                                     <div class="flex items-center gap-2 bg-green-100 px-3 py-1 rounded-full">
@@ -1023,7 +1049,7 @@ onBeforeUnmount(() => {
                                    
                                 </div>
                             </div>
-                            <p class="text-blue-100 text-sm">Powered by <span class="font-semibold text-white">Vrooem</span></p>
+                            <p class="text-blue-100 text-sm">Powered by <span class="font-semibold text-white">{{ providerName }}</span></p>
                         </div>
                         
                         <CardContent class="p-6">
@@ -1073,13 +1099,13 @@ onBeforeUnmount(() => {
                                             <div class="flex items-center gap-3 px-6">
                                                 <img :src="carguaranteeIcon" alt="Guarantee" class="w-6 h-6 object-contain" loading="lazy" />
                                                 <p class="text-sm text-gray-800 font-medium">
-                                                    Vehicle Guarantee • <span class="text-blue-600 font-bold">Vrooem</span> ensures your reservation
+                                                    Vehicle Guarantee • <span class="text-blue-600 font-bold">{{ providerName }}</span> ensures your reservation
                                                 </p>
                                             </div>
                                             <div class="flex items-center gap-3 px-6">
                                                 <img :src="carguaranteeIcon" alt="Guarantee" class="w-6 h-6 object-contain" loading="lazy" />
                                                 <p class="text-sm text-gray-800 font-medium">
-                                                    Vehicle Guarantee • <span class="text-blue-600 font-bold">Vrooem</span> ensures your reservation
+                                                    Vehicle Guarantee • <span class="text-blue-600 font-bold">{{ providerName }}</span> ensures your reservation
                                                 </p>
                                             </div>
                                         </div>

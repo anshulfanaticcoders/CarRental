@@ -461,6 +461,15 @@ class GreenMotionController extends Controller
 
     public function showGreenMotionCar(Request $request, $locale, $id)
     {
+        $provider = $request->input('provider', 'greenmotion');
+        try {
+            $this->greenMotionService->setProvider($provider);
+        } catch (\Exception $e) {
+            return Inertia::render('GreenMotionSingle', [
+                'error' => "Invalid provider specified: {$provider}",
+                'locale' => $locale,
+            ]);
+        }
         $locationId = $request->input('location_id', 61627);
         $startDate = $request->input('start_date', '2032-01-06');
         $startTime = $request->input('start_time', '09:00');
