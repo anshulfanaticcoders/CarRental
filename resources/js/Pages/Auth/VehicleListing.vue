@@ -281,7 +281,7 @@
                             <div class="relative">
                                 <input type="number" v-model="form.horsepower" id="horsepower" required min="0" />
                                 <span
-                                    class="absolute bg-white text-[0.875rem] top-[50%] right-3 translate-y-[-50%] text-customLightGrayColor font-medium">hp</span>
+                                    class="absolute bg-white text-[0.875rem] top-[50%] right-3 translate-y-[-50%] text-customLightGrayColor font-medium">hp/km</span>
                             </div>
                             <span v-if="errors.horsepower" class="text-red-500 max-[768px]:text-[0.75rem] text-sm">{{
                                 errors.horsepower }}</span>

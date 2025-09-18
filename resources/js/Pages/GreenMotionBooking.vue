@@ -72,12 +72,12 @@ const selectedPackage = ref(null);
 const selectedOptionalExtras = ref([]);
 
 const form = ref({
-    location_id: props.filters.location_id || props.location?.id || 61627,
-    start_date: props.filters.start_date || '2032-01-06',
-    start_time: props.filters.start_time || '09:00',
-    end_date: props.filters.end_date || '2032-01-08',
-    end_time: props.filters.end_time || '09:00',
-    age: props.filters.age || 35,
+    location_id: props.filters?.location_id || props.location?.id || 61627,
+    start_date: props.filters?.start_date || '2032-01-06',
+    start_time: props.filters?.start_time || '09:00',
+    end_date: props.filters?.end_date || '2032-01-08',
+    end_time: props.filters?.end_time || '09:00',
+    age: props.filters?.age || 35,
     rentalCode: null,
     customer: {
         firstname: '',
@@ -117,8 +117,8 @@ const form = ref({
     currency: props.vehicle?.products?.[0]?.currency || '$',
     grand_total: 0,
     paymentHandlerRef: null,
-    quoteid: props.filters.quoteid || props.vehicle?.products?.[0]?.quoteid || 'dummy_quote_id',
-    dropoff_location_id: props.filters.dropoff_location_id || null,
+    quoteid: props.filters?.quoteid || props.vehicle?.products?.[0]?.quoteid || 'dummy_quote_id',
+    dropoff_location_id: props.filters?.dropoff_location_id || null,
     payment_type: 'POA',
     remarks: null,
     user_id: props.auth.user?.id || null, // Add user_id to form
@@ -277,7 +277,7 @@ onMounted(() => {
         sessionStorage.removeItem('greenMotionLocationId');
     }
 
-    console.log("Quote ID in GreenMotionBooking.vue props.filters:", props.filters.quoteid);
+    console.log("Quote ID in GreenMotionBooking.vue props.filters:", props.filters?.quoteid);
     console.log("Quote ID in GreenMotionBooking.vue form.value:", form.value.quoteid);
 });
 
@@ -308,7 +308,8 @@ const bookingDataForStripe = computed(() => {
         extras: form.value.extras,
         user_id: form.value.user_id, // Pass user_id
         vehicle_location: form.value.vehicle_location, // Pass vehicle_location
-        dropoff_location_id: props.filters.dropoff_location_id,
+        dropoff_location_id: props.filters?.dropoff_location_id,
+        provider: props.filters?.provider,
         // Fields below are not directly validated by backend but might be useful for logging/storage
         pickup_location: props.location?.name || '',
         return_location: props.dropoffLocation?.name || props.location?.name || '',

@@ -35,7 +35,7 @@ return [
     'step1_model_placeholder' => 'Introduce el modelo del vehículo',
     'step1_color_label' => 'Color:',
     'step1_color_placeholder' => 'Introduce el color del vehículo',
-    'step1_mileage_label' => 'Kilometraje:',
+    'step1_mileage_label' => 'Economía de combustible:',
     'step1_mileage_unit' => '(km/L)',
     'step1_transmission_label' => 'Transmisión:',
     'step1_transmission_placeholder' => 'Selecciona el tipo de transmisión',

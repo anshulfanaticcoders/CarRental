@@ -35,7 +35,7 @@ return [
     'step1_model_placeholder' => 'Voer het model van het voertuig in',
     'step1_color_label' => 'Kleur:',
     'step1_color_placeholder' => 'Voer de kleur van het voertuig in',
-    'step1_mileage_label' => 'Kilometerstand:',
+    'step1_mileage_label' => 'Brandstofverbruik:',
     'step1_mileage_unit' => '(km/L)',
     'step1_transmission_label' => 'Transmissie:',
     'step1_transmission_placeholder' => 'Selecteer het type transmissie',

@@ -35,7 +35,7 @@ return [
     'step1_model_placeholder' => 'أدخل موديل المركبة',
     'step1_color_label' => 'اللون:',
     'step1_color_placeholder' => 'أدخل لون المركبة',
-    'step1_mileage_label' => 'المسافة المقطوعة:',
+    'step1_mileage_label' => 'استهلاك الوقود:',
     'step1_mileage_unit' => '(كم/لتر)',
     'step1_transmission_label' => 'ناقل الحركة:',
     'step1_transmission_placeholder' => 'اختر نوع ناقل الحركة',

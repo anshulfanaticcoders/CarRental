@@ -23,6 +23,13 @@ class GreenMotionBookingController extends Controller
 
     public function processGreenMotionBookingPayment(Request $request)
     {
+        $provider = $request->input('provider', 'greenmotion');
+        try {
+            $this->greenMotionService->setProvider($provider);
+        } catch (\Exception $e) {
+            return response()->json(['error' => "Invalid provider specified: {$provider}"], 400);
+        }
+
         Stripe::setApiKey(config('stripe.secret'));
 
         $validatedData = $request->validate([
@@ -79,6 +86,7 @@ class GreenMotionBookingController extends Controller
             'remarks' => 'nullable|string|max:1000',
             'user_id' => 'nullable|exists:users,id', // Add user_id validation
             'vehicle_location' => 'nullable|string|max:255', // Add vehicle_location validation
+            'provider' => 'nullable|string',
         ]);
 
         $customerDetails = $validatedData['customer'];

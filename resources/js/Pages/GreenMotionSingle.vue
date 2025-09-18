@@ -549,6 +549,7 @@ const proceedToPayment = async () => {
         dropoff_location_id: props.filters?.dropoff_location_id,
         where: props.filters?.where,
         dropoff_where: props.filters?.dropoff_where,
+        provider: props.filters?.provider,
     }), {
         onFinish: () => {
             isBooking.value = false;
