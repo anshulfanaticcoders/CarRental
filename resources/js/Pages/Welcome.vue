@@ -234,9 +234,11 @@ const navigateToSearch = (place) => {
 };
 
 const updateSearchUrl = (place) => {
-    const location = unifiedLocations.value.find(l => l.label === place.place_name);
+    const location = unifiedLocations.value.find(l => l.name === place.place_name);
 
-    if (location && location.source === 'greenmotion') {
+    if (location && location.providers && location.providers.length > 0) {
+        const provider = location.providers[0];
+
         const today = new Date();
         const pickupDate = new Date(today);
         pickupDate.setDate(today.getDate() + 1);
@@ -246,16 +248,13 @@ const updateSearchUrl = (place) => {
         const formatDate = (date) => date.toISOString().split('T')[0];
 
         const params = {
-            where: location.label,
-            location: location.location,
+            where: location.name,
             latitude: location.latitude,
             longitude: location.longitude,
             city: location.city,
-            state: location.state,
             country: location.country,
-            matched_field: location.matched_field,
-            source: location.source,
-            greenmotion_location_id: location.greenmotion_location_id,
+            provider: provider.provider,
+            provider_pickup_id: provider.pickup_id,
             date_from: formatDate(pickupDate),
             date_to: formatDate(returnDate),
             start_time: '09:00',
