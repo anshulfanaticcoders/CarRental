@@ -114,4 +114,37 @@ class VendorBulkImageController extends Controller
 
         return response()->json(['message' => 'Image deleted successfully.']);
     }
+
+    /**
+     * Remove multiple specified resources from storage.
+     */
+    public function bulkDestroy(Request $request)
+    {
+        $request->validate([
+            'ids' => 'required|array',
+            'ids.*' => 'integer|exists:vendor_bulk_vehicle_images,id',
+        ]);
+
+        $user = Auth::user();
+        $imageIds = $request->input('ids');
+
+        // Eager load images to delete
+        $images = VendorBulkVehicleImage::where('user_id', $user->id)
+            ->whereIn('id', $imageIds)
+            ->get();
+
+        if ($images->isEmpty()) {
+            return response()->json(['message' => 'No images found to delete.'], 404);
+        }
+
+        // Delete images from storage
+        foreach ($images as $image) {
+            Storage::disk('upcloud')->delete($image->image_path);
+        }
+
+        // Delete from database
+        VendorBulkVehicleImage::whereIn('id', $images->pluck('id'))->delete();
+
+        return response()->json(['message' => 'Selected images deleted successfully.']);
+    }
 }

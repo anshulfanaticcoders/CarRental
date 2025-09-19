@@ -44,7 +44,7 @@
             </div>
           </div>
 
-          <div class="col-span-2 flex items-center gap-4 mr-4">
+          <div class="col-span-2 flex items-center gap-4 mr-4 max-[768px]:mr-0">
             <div class="flex flex-col">
               <label class="mb-2 inline-block text-customLightGrayColor font-medium">{{ _t('homepage', 'pickup_date_label') }}</label>
               <VueDatePicker v-model="pickupDate" :enable-time-picker="false" uid="pickup-date" auto-apply

@@ -4,6 +4,11 @@ import { Link, usePage, router } from "@inertiajs/vue3";
 import { computed, ref, watch } from "vue";
 import Dropdown from "@/Components/Dropdown.vue";
 import globeIcon from '../../assets/globe.svg';
+import flagEn from '../../assets/flag-en.svg';
+import flagFr from '../../assets/flag-fr.svg';
+import flagNl from '../../assets/flag-nl.svg';
+import flagEs from '../../assets/flag-es.svg';
+import flagAr from '../../assets/flag-ar.svg';
 // hamburgerIcon is not used from assets anymore, using SVG directly
 import {
     Sheet,
@@ -28,16 +33,30 @@ const isRegisterPage = computed(() => page.url.includes('/register'));
 const currentLocale = computed(() => page.props.locale || 'en');
 
 const availableLocales = {
-    en: 'En',
-    fr: 'Fr',
-    nl: 'Nl'
-    // Add more locales if your application supports them
+  en: { name: 'En', flag: flagEn },
+  fr: { name: 'Fr', flag: flagFr },
+  nl: { name: 'Nl', flag: flagNl },
+  es: { name: 'Es', flag: flagEs },
+  ar: { name: 'Ar', flag: flagAr },
 };
 
-const changeLanguage = (locale) => {
-    router.post(route('language.change'), { locale }, {
-        preserveState: false,
-        preserveScroll: true,
+const changeLanguage = (newLocale) => {
+    const currentUrl = new URL(window.location.href);
+    const pathParts = currentUrl.pathname.split('/');
+    pathParts[1] = newLocale;
+    const newPath = pathParts.join('/');
+
+    router.visit(newPath + currentUrl.search, {
+        onSuccess: () => {
+            router.post(route('language.change'), {
+                locale: newLocale,
+                _method: 'POST'
+            }, {
+                onSuccess: () => {
+                    window.location.reload();
+                }
+            });
+        }
     });
 };
 
@@ -76,21 +95,27 @@ watch(() => url.value, () => {
                     <!-- Language Switcher for Guests (Desktop) -->
                     <Dropdown align="right" width="48">
                         <template #trigger>
-                            <button type="button"
-                                class="inline-flex items-center px-3 py-2 text-sm font-medium text-gray-600 hover:text-gray-800 transition duration-150 ease-in-out">
-                                <img :src=globeIcon alt="" class="w-8 h-8">
-                                <span>{{ availableLocales[currentLocale] }}</span>
+                            <button 
+                            type="button" 
+                            class="inline-flex items-center px-3 py-2 text-sm font-medium text-gray-600 hover:text-gray-800 transition duration-150 ease-in-out"
+                            >
+                                <img :src="availableLocales[currentLocale].flag" :alt="availableLocales[currentLocale].name + ' Flag'" class="w-6 h-6 mr-2 rounded-full">
+                                <span>{{ availableLocales[currentLocale].name }}</span>
                                 <svg class="ml-1 w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                        d="M19 9l-7 7-7-7" />
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
                                 </svg>
                             </button>
                         </template>
                         <template #content>
-                            <div v-for="(language, code) in availableLocales" :key="code" @click="changeLanguage(code)"
-                                class="block w-full px-4 py-2 text-left text-sm leading-5 text-white hover:text-[#153B4F] hover:bg-gray-100 transition duration-150 ease-in-out cursor-pointer"
-                                :class="{ 'bg-gray-500': currentLocale === code }">
-                                {{ language }}
+                            <div 
+                                v-for="(language, code) in availableLocales" 
+                                :key="code"
+                                @click="changeLanguage(code)"
+                                class="flex items-center w-full px-4 py-2 text-left text-sm leading-5 text-white hover:text-[#153B4F] hover:bg-gray-100 transition duration-150 ease-in-out cursor-pointer"
+                                :class="{ 'bg-gray-500': currentLocale === code }"
+                            >
+                                <img :src="language.flag" :alt="language.name + ' Flag'" class="w-5 h-5 mr-2 rounded-full">
+                                {{ language.name }}
                             </div>
                         </template>
                     </Dropdown>
@@ -135,13 +160,17 @@ watch(() => url.value, () => {
 
                     <!-- Language Options -->
                     <div class="mt-3 pt-3 border-t border-gray-200">
-                        <div class="text-sm font-medium text-gray-600 mb-2">{{ _t('header', 'language') }}</div>
+                        <div class="text-sm font-medium text-gray-600 mb-2">Language</div>
                         <div class="grid grid-cols-3 gap-2">
-                            <button v-for="(language, code) in availableLocales" :key="code"
+                            <button 
+                                v-for="(language, code) in availableLocales" 
+                                :key="code"
                                 @click="changeLanguage(code)"
-                                class="text-center px-2 py-1 text-sm rounded-md transition-all duration-200 hover:bg-gray-200"
-                                :class="currentLocale === code ? 'bg-gray-200 font-medium' : 'bg-gray-100'">
-                                {{ language }}
+                                class="flex items-center justify-center px-2 py-1 text-sm rounded-md transition-all duration-200 hover:bg-gray-200"
+                                :class="currentLocale === code ? 'bg-gray-200 font-medium' : 'bg-gray-100'"
+                            >
+                                <img :src="language.flag" :alt="language.name + ' Flag'" class="w-5 h-5 mr-1 rounded-full">
+                                {{ language.name }}
                             </button>
                         </div>
                     </div>

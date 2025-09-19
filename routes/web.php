@@ -392,6 +392,7 @@ Route::group([
         Route::get('/bulk-vehicle-images', [VendorBulkImageController::class, 'index'])->name('vendor.bulk-vehicle-images.index');
         Route::post('/bulk-vehicle-images', [VendorBulkImageController::class, 'store'])->name('vendor.bulk-vehicle-images.store');
         Route::delete('/bulk-vehicle-images/{image}', [VendorBulkImageController::class, 'destroy'])->name('vendor.bulk-vehicle-images.destroy');
+        Route::post('/bulk-vehicle-images/bulk-destroy', [VendorBulkImageController::class, 'bulkDestroy'])->name('vendor.bulk-vehicle-images.bulk-destroy');
     });
 
     // Customer Routes

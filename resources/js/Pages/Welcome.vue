@@ -405,7 +405,7 @@ useScrollAnimation('.popular-places-trigger', '.popular-place-card', {
                                 <CarouselItem v-for="category in props.categories" :key="category.id"
                                     class="md:basis-1/2 lg:basis-1/3">
                                     <div class="p-1">
-                                        <Link :href="route('search.category', { locale: page.props.locale, category_slug: category.slug })" @click="updateCategorySearchUrl(category)">
+                                        <Link :href="route('search.category', { locale: page.props.locale, category_slug: category.slug })" @click="updateCategorySearchUrl(category)" class="category-card-hover">
                                         <Card class="bg-transparent shadow-none border-none">
                                             <CardContent
                                                 class="cardContent flex h-[515px] max-[768px]:h-[17rem] items-center justify-center p-6 relative">
@@ -776,5 +776,15 @@ useScrollAnimation('.popular-places-trigger', '.popular-place-card', {
 
 .anim-title-word {
     display: inline-block;
+}
+
+.category-card-hover {
+    display: block;
+    transition: all 0.3s ease-in-out;
+}
+
+.category-card-hover:hover {
+    transform: scale(1.01);
+    filter: brightness(0.8);
 }
 </style>

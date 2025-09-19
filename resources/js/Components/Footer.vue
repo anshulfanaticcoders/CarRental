@@ -57,15 +57,52 @@ const footerPlaces = ref([]);
 import { defineExpose } from 'vue';
 
 const footerCategories = ref([]);
+const unifiedLocations = ref([]);
+
+const navigateToSearch = (place) => {
+    updateSearchUrl(place);
+    const searchUrl = sessionStorage.getItem('searchurl');
+    if (searchUrl) {
+        window.location.href = `/${page.props.locale}${searchUrl}`;
+    }
+};
 
 const updateSearchUrl = (place) => {
-    const urlParams = new URLSearchParams({
-        where: `${place.place_name}, ${place.city}, ${place.country}`,
-        latitude: place.latitude,
-        longitude: place.longitude,
-        radius: 10000
-    }).toString();
-    sessionStorage.setItem('searchurl', `/s?${urlParams}`);
+    const location = unifiedLocations.value.find(l => l.name === place.place_name);
+
+    if (location && location.providers && location.providers.length > 0) {
+        const provider = location.providers[0];
+
+        const today = new Date();
+        const pickupDate = new Date(today);
+        pickupDate.setDate(today.getDate() + 1);
+        const returnDate = new Date(pickupDate);
+        returnDate.setDate(pickupDate.getDate() + 1);
+
+        const formatDate = (date) => date.toISOString().split('T')[0];
+
+        const params = {
+            where: location.name,
+            latitude: location.latitude,
+            longitude: location.longitude,
+            city: location.city,
+            country: location.country,
+            provider: provider.provider,
+            provider_pickup_id: provider.pickup_id,
+            date_from: formatDate(pickupDate),
+            date_to: formatDate(returnDate),
+            start_time: '09:00',
+            end_time: '09:00',
+            age: 35,
+        };
+        const urlParams = new URLSearchParams(params).toString();
+        sessionStorage.setItem('searchurl', `/s?${urlParams}`);
+    } else {
+        const urlParams = new URLSearchParams({
+            where: place.place_name,
+        }).toString();
+        sessionStorage.setItem('searchurl', `/s?${urlParams}`);
+    }
 };
 
 const updateCategorySearchUrl = (category) => {
@@ -74,18 +111,21 @@ const updateCategorySearchUrl = (category) => {
 
 defineExpose({
     updateSearchUrl,
-    updateCategorySearchUrl
+    updateCategorySearchUrl,
+    navigateToSearch
 });
 
 onMounted(async () => {
     try {
-        const [placesResponse, categoriesResponse] = await Promise.all([
+        const [placesResponse, categoriesResponse, locationsResponse] = await Promise.all([
             axios.get(`/${page.props.locale}/api/footer-places`),
             axios.get(`/${page.props.locale}/api/footer-categories`),
+            axios.get('/unified_locations.json')
         ]);
 
         footerPlaces.value = placesResponse.data;
         footerCategories.value = categoriesResponse.data;
+        unifiedLocations.value = locationsResponse.data;
     } catch (error) {
         console.error('Failed to fetch footer data:', error);
     }
@@ -182,12 +222,12 @@ onMounted(async () => {
                         <label for="" class="text-[1.25rem] font-medium max-[768px]:text-[1rem]">Location</label>
                         <ul class="flex flex-col gap-4 max-[768px]:text-[0.875rem]">
                             <li v-for="place in footerPlaces" :key="place.id" class="relative group">
-                                <Link
+                                <a
                                     :href="`/${page.props.locale}/s?where=${encodeURIComponent(place.place_name)}`"
-                                    @click="updateSearchUrl(place)"
+                                    @click.prevent="navigateToSearch(place)"
                                     class="footer-link-underline">
                                 {{ place.place_name }}
-                                </Link>
+                                </a>
                             </li>
                             <!-- Fallback if no places are selected -->
                             <li v-if="footerPlaces.length === 0" class="relative group">
