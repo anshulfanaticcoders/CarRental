@@ -22,6 +22,7 @@ use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Validator;
 use Inertia\Inertia;
+use Carbon\Carbon;
 
 class BulkVehicleUploadController extends Controller
 {
@@ -82,6 +83,17 @@ class BulkVehicleUploadController extends Controller
         $errorMessages = [];
 
         foreach ($vehiclesData as $index => $vehicleData) {
+            // Sanitize and format registration_date before validation
+            if (!empty($vehicleData['registration_date'])) {
+                try {
+                    // Attempt to parse the date with common formats and convert to Y-m-d
+                    $vehicleData['registration_date'] = Carbon::parse($vehicleData['registration_date'])->format('Y-m-d');
+                } catch (\Exception $e) {
+                    // If parsing fails, let the validator handle the invalid format error
+                    // You could also log this specific error for debugging
+                }
+            }
+
             $validator = Validator::make($vehicleData, [
                 'category_id' => 'required|exists:vehicle_categories,id',
                 'brand' => 'required|string|max:50',
@@ -175,27 +187,27 @@ class BulkVehicleUploadController extends Controller
                         'horsepower' => $vehicleData['horsepower'],
                         'co2' => $vehicleData['co2'],
                         'location' => $vehicleData['location'],
-                        'latitude' => $vehicleData['latitude'] ?? null,
-                        'longitude' => $vehicleData['longitude'] ?? null,
-                        'city' => $vehicleData['city'] ?? null,
-                        'state' => $vehicleData['state'] ?? null,
-                        'country' => $vehicleData['country'] ?? null,
+                        'latitude' => $vehicleData['latitude'] ?: null,
+                        'longitude' => $vehicleData['longitude'] ?: null,
+                        'city' => $vehicleData['city'] ?: null,
+                        'state' => $vehicleData['state'] ?: null,
+                        'country' => $vehicleData['country'] ?: null,
                         'full_vehicle_address' => $fullAddress,
                         'status' => $vehicleData['status'],
                         'features' => !empty($vehicleData['features']) ? json_encode(explode(',', $vehicleData['features'])) : null,
                         'featured' => filter_var($vehicleData['featured'], FILTER_VALIDATE_BOOLEAN),
                         'security_deposit' => $vehicleData['security_deposit'],
                         'payment_method' => !empty($vehicleData['payment_method']) ? json_encode(explode(',', $vehicleData['payment_method'])) : null,
-                        'guidelines' => $vehicleData['guidelines'],
-                        'price_per_day' => $vehicleData['price_per_day'] ?? null,
-                        'price_per_week' => $vehicleData['price_per_week'] ?? null,
-                        'weekly_discount' => $vehicleData['weekly_discount'] ?? null,
-                        'price_per_month' => $vehicleData['price_per_month'] ?? null,
-                        'monthly_discount' => $vehicleData['monthly_discount'] ?? null,
+                        'guidelines' => $vehicleData['guidelines'] ?: null,
+                        'price_per_day' => $vehicleData['price_per_day'] ?: null,
+                        'price_per_week' => $vehicleData['price_per_week'] ?: null,
+                        'weekly_discount' => $vehicleData['weekly_discount'] ?: null,
+                        'price_per_month' => $vehicleData['price_per_month'] ?: null,
+                        'monthly_discount' => $vehicleData['monthly_discount'] ?: null,
                         'preferred_price_type' => $vehicleData['preferred_price_type'],
                         'limited_km' => filter_var($vehicleData['limited_km'], FILTER_VALIDATE_BOOLEAN),
                         'cancellation_available' => filter_var($vehicleData['cancellation_available'], FILTER_VALIDATE_BOOLEAN),
-                        'price_per_km' => $vehicleData['price_per_km'] ?? null,
+                        'price_per_km' => $vehicleData['price_per_km'] ?: null,
                         'pickup_times' => !empty($vehicleData['pickup_times']) ? explode(',', $vehicleData['pickup_times']) : [],
                         'return_times' => !empty($vehicleData['return_times']) ? explode(',', $vehicleData['return_times']) : [],
                     ]);
@@ -205,19 +217,19 @@ class BulkVehicleUploadController extends Controller
                         'limited_km_per_day' => filter_var($vehicleData['limited_km_per_day'], FILTER_VALIDATE_BOOLEAN),
                         'limited_km_per_week' => filter_var($vehicleData['limited_km_per_week'], FILTER_VALIDATE_BOOLEAN),
                         'limited_km_per_month' => filter_var($vehicleData['limited_km_per_month'], FILTER_VALIDATE_BOOLEAN),
-                        'limited_km_per_day_range' => $vehicleData['limited_km_per_day_range'] === '' ? null : $vehicleData['limited_km_per_day_range'],
-                        'limited_km_per_week_range' => $vehicleData['limited_km_per_week_range'] === '' ? null : $vehicleData['limited_km_per_week_range'],
-                        'limited_km_per_month_range' => $vehicleData['limited_km_per_month_range'] === '' ? null : $vehicleData['limited_km_per_month_range'],
+                        'limited_km_per_day_range' => $vehicleData['limited_km_per_day_range'] ?: null,
+                        'limited_km_per_week_range' => $vehicleData['limited_km_per_week_range'] ?: null,
+                        'limited_km_per_month_range' => $vehicleData['limited_km_per_month_range'] ?: null,
                         'cancellation_available_per_day' => filter_var($vehicleData['cancellation_available_per_day'], FILTER_VALIDATE_BOOLEAN),
                         'cancellation_available_per_week' => filter_var($vehicleData['cancellation_available_per_week'], FILTER_VALIDATE_BOOLEAN),
                         'cancellation_available_per_month' => filter_var($vehicleData['cancellation_available_per_month'], FILTER_VALIDATE_BOOLEAN),
-                        'cancellation_available_per_day_date' => $vehicleData['cancellation_available_per_day_date'] === '' ? null : $vehicleData['cancellation_available_per_day_date'],
-                        'cancellation_available_per_week_date' => $vehicleData['cancellation_available_per_week_date'] === '' ? null : $vehicleData['cancellation_available_per_week_date'],
-                        'cancellation_available_per_month_date' => $vehicleData['cancellation_available_per_month_date'] === '' ? null : $vehicleData['cancellation_available_per_month_date'],
-                        'price_per_km_per_day' => $vehicleData['price_per_km_per_day'] === '' ? null : $vehicleData['price_per_km_per_day'],
-                        'price_per_km_per_week' => $vehicleData['price_per_km_per_week'] === '' ? null : $vehicleData['price_per_km_per_week'],
-                        'price_per_km_per_month' => $vehicleData['price_per_km_per_month'] === '' ? null : $vehicleData['price_per_km_per_month'],
-                        'minimum_driver_age' => $vehicleData['minimum_driver_age'] === '' ? null : $vehicleData['minimum_driver_age'],
+                        'cancellation_available_per_day_date' => $vehicleData['cancellation_available_per_day_date'] ?: null,
+                        'cancellation_available_per_week_date' => $vehicleData['cancellation_available_per_week_date'] ?: null,
+                        'cancellation_available_per_month_date' => $vehicleData['cancellation_available_per_month_date'] ?: null,
+                        'price_per_km_per_day' => $vehicleData['price_per_km_per_day'] ?: null,
+                        'price_per_km_per_week' => $vehicleData['price_per_km_per_week'] ?: null,
+                        'price_per_km_per_month' => $vehicleData['price_per_km_per_month'] ?: null,
+                        'minimum_driver_age' => $vehicleData['minimum_driver_age'] ?: null,
                     ]);
 
                     VehicleSpecification::create([
@@ -225,9 +237,9 @@ class BulkVehicleUploadController extends Controller
                         'registration_number' => $vehicleData['registration_number'],
                         'registration_country' => $vehicleData['registration_country'],
                         'registration_date' => $vehicleData['registration_date'],
-                        'gross_vehicle_mass' => $vehicleData['gross_vehicle_mass'] === '' ? null : $vehicleData['gross_vehicle_mass'],
-                        'vehicle_height' => $vehicleData['vehicle_height'] === '' ? null : $vehicleData['vehicle_height'],
-                        'dealer_cost' => $vehicleData['dealer_cost'] === '' ? null : $vehicleData['dealer_cost'],
+                        'gross_vehicle_mass' => $vehicleData['gross_vehicle_mass'] ?: null,
+                        'vehicle_height' => $vehicleData['vehicle_height'] ?: null,
+                        'dealer_cost' => $vehicleData['dealer_cost'] ?: null,
                         'phone_number' => $vehicleData['phone_number'],
                     ]);
 
@@ -304,14 +316,24 @@ class BulkVehicleUploadController extends Controller
             }
         }
 
-        // Send a single notification to the vendor after the loop
-        $user->notify(new BulkVehicleUploadNotification($createdVehicles, $user, $errorMessages));
+        // Send a single notification to the vendor after the loop, catching potential mail errors
+        try {
+            $user->notify(new BulkVehicleUploadNotification($createdVehicles, $user, $errorMessages));
+        } catch (\Exception $e) {
+            Log::error("Failed to send bulk vehicle upload notification to user {$user->email}: " . $e->getMessage());
+            // Don't block the process, just log the error
+        }
 
-        // Notify admin
-        $adminEmail = env('VITE_ADMIN_EMAIL', 'default@admin.com');
-        $admin = User::where('email', $adminEmail)->first();
-        if ($admin) {
-            $admin->notify(new BulkVehicleUploadAdminNotification($createdVehicles, $user, $errorMessages));
+        // Notify admin, catching potential mail errors
+        try {
+            $adminEmail = env('VITE_ADMIN_EMAIL', 'default@admin.com');
+            $admin = User::where('email', $adminEmail)->first();
+            if ($admin) {
+                $admin->notify(new BulkVehicleUploadAdminNotification($createdVehicles, $user, $errorMessages));
+            }
+        } catch (\Exception $e) {
+            Log::error("Failed to send bulk vehicle upload admin notification: " . $e->getMessage());
+            // Don't block the process, just log the error
         }
 
         $message = $createdVehicles->count() . " vehicles imported successfully.";

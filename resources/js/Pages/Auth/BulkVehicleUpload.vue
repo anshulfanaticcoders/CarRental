@@ -56,7 +56,7 @@
                             <h3 class="text-xl md:text-2xl font-semibold text-gray-800">Upload Vehicle Images</h3>
                         </div>
                         
-                        <p class="text-gray-600">First, upload all your vehicle images here. After uploading, you can copy their URLs to use in your CSV file.</p>
+                        <p class="text-gray-600">First, upload all your vehicle images here <span class="text-red-500 font-bold">(Each image size should be less than 2MB).</span> After uploading, you can copy their URLs to use in your CSV file.</p>
                         
                         <form @submit.prevent="uploadImage" class="space-y-4">
                             <div>
