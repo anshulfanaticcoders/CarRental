@@ -94,7 +94,7 @@ onMounted(async () => {
 });
 
 const getCurrencySymbol = (code) => {
-    return '$'; // Always return dollar for display on GreenMotionSingle page
+    return currencySymbols.value[code] || '$'; // Use fetched symbol or default to '$'
 };
 
 

@@ -42,7 +42,7 @@ onMounted(async () => {
 });
 
 const getCurrencySymbol = (code) => {
-    return '$';
+    return currencySymbols.value[code] || '$';
 };
 
 const getPackageFullName = (type) => {

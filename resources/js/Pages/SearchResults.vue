@@ -66,9 +66,7 @@ onMounted(async () => {
 });
 
 const getCurrencySymbol = (code) => {
-    // For GreenMotion, always return '$' as per requirement
-    // For internal vehicles, use the fetched symbol or default to '$'
-    return '$'; // Always return dollar for display on search results page
+    return currencySymbols.value[code] || '$'; // Use fetched symbol or default to '$'
 };
 
 const numberOfRentalDays = computed(() => {
@@ -291,17 +289,18 @@ const initMap = () => {
 };
 
 const createCustomIcon = (vehicle, isHighlighted = false) => {
-    let currency = '$';
+    let currencySymbol = '$';
     let priceToDisplay = "N/A";
     let priceValue = null;
 
     if (vehicle.source !== 'internal') {
-        currency = '$'; // Always dollar for providers
+        const currencyCode = vehicle.products[0]?.currency || 'USD';
+        currencySymbol = getCurrencySymbol(currencyCode);
         // Calculate price per day for provider vehicles
         const totalProviderPrice = parseFloat(vehicle.products[0]?.total || 0);
         priceValue = totalProviderPrice / numberOfRentalDays.value;
     } else {
-        currency = vehicle.vendor_profile?.currency || "$";
+        currencySymbol = vehicle.vendor_profile?.currency || "$";
         if (form.package_type === 'day' && vehicle.price_per_day) {
             priceValue = vehicle.price_per_day;
         } else if (form.package_type === 'week' && vehicle.price_per_week) {
@@ -321,7 +320,7 @@ const createCustomIcon = (vehicle, isHighlighted = false) => {
     }
 
     if (priceValue !== null && priceValue > 0) { // Ensure priceValue is greater than 0
-        priceToDisplay = `${currency}${parseFloat(priceValue).toFixed(2)}`;
+        priceToDisplay = `${currencySymbol}${parseFloat(priceValue).toFixed(2)}`;
     } else {
         priceToDisplay = "N/A"; // Explicitly set to N/A if price is 0 or null
     }
@@ -428,7 +427,8 @@ const addMarkers = () => {
         let popupCurrencySymbol = "$";
 
         if (vehicle.source !== 'internal' && vehicle.products && vehicle.products[0]?.total && vehicle.products[0].total > 0) {
-            popupCurrencySymbol = '$'; // Always dollar for providers
+            const currencyCode = vehicle.products[0]?.currency || 'USD';
+            popupCurrencySymbol = getCurrencySymbol(currencyCode);
             const totalProviderPrice = parseFloat(vehicle.products[0]?.total || 0);
             const pricePerDay = totalProviderPrice / numberOfRentalDays.value;
             popupPrice = `${popupCurrencySymbol}${pricePerDay.toFixed(2)}`; // Display price per day
@@ -1549,7 +1549,7 @@ watch(
                                             <div v-if="vehicle.source !== 'internal'">
                                                 <div v-if="vehicle.products && vehicle.products[0]?.total && vehicle.products[0].total > 0">
                                                     <span class="text-customPrimaryColor text-[1.875rem] font-medium max-[768px]:text-[1.3rem] max-[768px]:font-bold">
-                                                        ${{ (parseFloat(vehicle.products[0].total) / numberOfRentalDays).toFixed(2) }}
+                                                        {{ getCurrencySymbol(vehicle.products[0].currency) }}{{ (parseFloat(vehicle.products[0].total) / numberOfRentalDays).toFixed(2) }}
                                                     </span>
                                                     <span>/day</span>
                                                 </div>
@@ -1572,7 +1572,7 @@ watch(
                                             <template v-if="vehicle.source !== 'internal'">
                                                 <div v-if="vehicle.products && vehicle.products[0]?.total && vehicle.products[0].total > 0" class="flex items-baseline">
                                                     <span class="text-customPrimaryColor text-lg font-semibold">
-                                                        ${{ (parseFloat(vehicle.products[0].total) / numberOfRentalDays).toFixed(2) }}
+                                                        {{ getCurrencySymbol(vehicle.products[0].currency) }}{{ (parseFloat(vehicle.products[0].total) / numberOfRentalDays).toFixed(2) }}
                                                     </span>
                                                     <span class="text-xs text-gray-600 ml-1">/day</span>
                                                 </div>
