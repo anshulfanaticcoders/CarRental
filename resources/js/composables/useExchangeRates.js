@@ -529,12 +529,12 @@ export function useExchangeRates(options = {}) {
   }
 
   // Background refresh
-  let backgroundRefreshInterval = null
+  let refreshTimerId = null
 
   const startBackgroundRefresh = () => {
-    if (!enableBackgroundRefresh || backgroundRefreshInterval) return
+    if (!enableBackgroundRefresh || refreshTimerId) return
 
-    backgroundRefreshInterval = setInterval(async () => {
+    refreshTimerId = setInterval(async () => {
       if (!globalRatesCache.value.isRefreshing && !isCacheValid.value) {
         globalRatesCache.value.isRefreshing = true
         await fetchAllRates(baseCurrency.value, true)
@@ -544,9 +544,9 @@ export function useExchangeRates(options = {}) {
   }
 
   const stopBackgroundRefresh = () => {
-    if (backgroundRefreshInterval) {
-      clearInterval(backgroundRefreshInterval)
-      backgroundRefreshInterval = null
+    if (refreshTimerId) {
+      clearInterval(refreshTimerId)
+      refreshTimerId = null
     }
   }
 
@@ -578,7 +578,7 @@ export function useExchangeRates(options = {}) {
       lastUpdated: lastUpdated.value,
       requestCount: requestTracker.value.requestCount,
       backgroundRefreshEnabled: enableBackgroundRefresh,
-      backgroundRefreshActive: !!backgroundRefreshInterval
+      backgroundRefreshActive: !!refreshTimerId
     }
   }
 
