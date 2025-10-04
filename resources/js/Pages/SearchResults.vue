@@ -98,6 +98,37 @@ const convertPrice = async (amount, fromCurrency) => {
     }
 };
 
+// Synchronous conversion function for template usage with fallback
+const syncConvertPrice = (amount, fromCurrency) => {
+    // Validate input
+    if (!amount || amount === null || amount === undefined || isNaN(parseFloat(amount))) {
+        return 0;
+    }
+
+    const numericAmount = parseFloat(amount);
+
+    // Skip conversion if currencies are the same
+    if (fromCurrency === selectedCurrency.value) {
+        return numericAmount;
+    }
+
+    // Create cache key
+    const cacheKey = `${amount}-${fromCurrency}-${selectedCurrency.value}`;
+
+    // Check cache first
+    if (conversionCache.value.has(cacheKey)) {
+        return conversionCache.value.get(cacheKey);
+    }
+
+    // For synchronous calls, we can't wait for async conversion
+    // So we return the original amount and trigger async conversion in background
+    convertPrice(amount, fromCurrency).catch(error => {
+        console.warn('Background conversion failed:', error.message);
+    });
+
+    return numericAmount;
+};
+
 // Batch conversion for better performance
 const batchConvertPrices = async (priceList) => {
     const conversions = priceList.map(({ amount, fromCurrency }) => ({
@@ -1671,7 +1702,7 @@ watch(
                                             </div>
                                             <div v-else-if="vehicle[priceField] && vehicle[priceField] > 0">
                                                 <span class="text-customPrimaryColor text-[1.875rem] font-medium max-[768px]:text-[1.3rem] max-[768px]:font-bold">
-                                                    {{ getCurrencySymbol(selectedCurrency) }}{{ convertCurrency(vehicle[priceField], vehicle.vendor_profile?.currency).toFixed(2) }}
+                                                    {{ getCurrencySymbol(selectedCurrency) }}{{ syncConvertPrice(vehicle[priceField], vehicle.vendor_profile?.currency).toFixed(2) }}
                                                 </span>
                                                 <span>/{{ priceUnit }}</span>
                                             </div>
@@ -1684,7 +1715,7 @@ watch(
                                             <template v-if="vehicle.source !== 'internal'">
                                                 <div v-if="vehicle.products && vehicle.products[0]?.total && vehicle.products[0].total > 0" class="flex items-baseline">
                                                     <span class="text-customPrimaryColor text-lg font-semibold">
-                                                        {{ getCurrencySymbol(selectedCurrency) }}{{ convertCurrency((parseFloat(vehicle.products[0].total) / numberOfRentalDays), vehicle.products[0].currency).toFixed(2) }}
+                                                        {{ getCurrencySymbol(selectedCurrency) }}{{ syncConvertPrice((parseFloat(vehicle.products[0].total) / numberOfRentalDays), vehicle.products[0].currency).toFixed(2) }}
                                                     </span>
                                                     <span class="text-xs text-gray-600 ml-1">/day</span>
                                                 </div>
@@ -1695,19 +1726,19 @@ watch(
                                             <template v-else>
                                                 <div v-if="vehicle.price_per_day && vehicle.price_per_day > 0" class="flex items-baseline">
                                                     <span class="text-customPrimaryColor text-lg font-semibold">
-                                                        {{ getCurrencySymbol(selectedCurrency) }}{{ convertCurrency(vehicle.price_per_day, vehicle.vendor_profile?.currency).toFixed(2) }}
+                                                        {{ getCurrencySymbol(selectedCurrency) }}{{ syncConvertPrice(vehicle.price_per_day, vehicle.vendor_profile?.currency).toFixed(2) }}
                                                     </span>
                                                     <span class="text-xs text-gray-600 ml-1">/day</span>
                                                 </div>
                                                 <div v-if="vehicle.price_per_week && vehicle.price_per_week > 0" class="flex items-baseline mt-1">
                                                     <span class="text-customPrimaryColor text-lg font-semibold">
-                                                        {{ getCurrencySymbol(selectedCurrency) }}{{ convertCurrency(vehicle.price_per_week, vehicle.vendor_profile?.currency).toFixed(2) }}
+                                                        {{ getCurrencySymbol(selectedCurrency) }}{{ syncConvertPrice(vehicle.price_per_week, vehicle.vendor_profile?.currency).toFixed(2) }}
                                                     </span>
                                                     <span class="text-xs text-gray-600 ml-1">/week</span>
                                                 </div>
                                                 <div v-if="vehicle.price_per_month && vehicle.price_per_month > 0" class="flex items-baseline mt-1">
                                                     <span class="text-customPrimaryColor text-lg font-semibold">
-                                                        {{ getCurrencySymbol(selectedCurrency) }}{{ convertCurrency(vehicle.price_per_month, vehicle.vendor_profile?.currency).toFixed(2) }}
+                                                        {{ getCurrencySymbol(selectedCurrency) }}{{ syncConvertPrice(vehicle.price_per_month, vehicle.vendor_profile?.currency).toFixed(2) }}
                                                     </span>
                                                     <span class="text-xs text-gray-600 ml-1">/month</span>
                                                 </div>

@@ -413,15 +413,18 @@ export function useExchangeRates(options = {}) {
 
   // Convert currency amount
   const convertCurrency = async (amount, fromCurrency, toCurrency) => {
-    if (typeof amount !== 'number' || amount < 0) {
+    // Convert string amounts to numbers and validate
+    const numericAmount = parseFloat(amount);
+
+    if (isNaN(numericAmount) || numericAmount < 0) {
       throw new Error('Invalid amount for conversion')
     }
 
     if (fromCurrency === toCurrency) {
       return {
         success: true,
-        originalAmount: amount,
-        convertedAmount: amount,
+        originalAmount: numericAmount,
+        convertedAmount: numericAmount,
         fromCurrency,
         toCurrency,
         rate: 1.0,
@@ -440,7 +443,7 @@ export function useExchangeRates(options = {}) {
           'Content-Type': 'application/json'
         },
         body: JSON.stringify({
-          amount: amount.toString(),
+          amount: numericAmount.toString(),
           from: fromCurrency,
           to: toCurrency
         })
@@ -474,8 +477,8 @@ export function useExchangeRates(options = {}) {
       return {
         success: false,
         error: errorMessage,
-        originalAmount: amount,
-        convertedAmount: amount,
+        originalAmount: numericAmount,
+        convertedAmount: numericAmount,
         fromCurrency,
         toCurrency,
         rate: 1.0,
@@ -501,6 +504,22 @@ export function useExchangeRates(options = {}) {
 
       for (const conversion of conversions) {
         const { amount, from, to } = conversion
+
+        // Validate amount before conversion
+        if (amount === null || amount === undefined || isNaN(parseFloat(amount))) {
+          results.push({
+            success: false,
+            error: 'Invalid amount',
+            originalAmount: 0,
+            convertedAmount: 0,
+            fromCurrency: from,
+            toCurrency: to,
+            rate: 1.0,
+            conversionMethod: 'fallback'
+          })
+          continue
+        }
+
         const result = await convertCurrency(amount, from, to)
         results.push(result)
 
