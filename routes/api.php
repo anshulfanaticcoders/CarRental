@@ -49,6 +49,19 @@ Route::get('/vehicles', [VehicleController::class, 'showAllVendorVehicles']);
 
 Route::get('/popular-places', [PopularPlacesController::class, 'index']);
 
+// Currency API routes
+Route::prefix('currency')->group(function () {
+    Route::get('/', [CurrencyController::class, 'index'])->name('api.currency.index');
+    Route::get('/detect', [CurrencyController::class, 'detectCurrency'])->name('api.currency.detect');
+    Route::get('/detect-locale', [CurrencyController::class, 'detectCurrencyFromLocale'])->name('api.currency.detect-locale');
+    Route::post('/convert', [CurrencyController::class, 'convert'])->name('api.currency.convert');
+    Route::get('/exchange-rate', [CurrencyController::class, 'getExchangeRate'])->name('api.currency.exchange-rate');
+    Route::get('/exchange-rates', [CurrencyController::class, 'getAllExchangeRates'])->name('api.currency.exchange-rates');
+    Route::get('/health', [CurrencyController::class, 'health'])->name('api.currency.health');
+    Route::delete('/cache', [CurrencyController::class, 'clearCache'])->name('api.currency.clear-cache')
+        ->middleware('auth:sanctum');
+});
+
 Route::middleware('auth:sanctum')->get('/user-documents', [UserDocumentController::class, 'getUserDocuments']);
 
 

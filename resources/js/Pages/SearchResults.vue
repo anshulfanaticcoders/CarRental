@@ -32,72 +32,113 @@ import halfStar from "../../assets/halfstar.svg";
 import blankStar from "../../assets/blankstar.svg";
 import VueSlider from 'vue-slider-component';
 import 'vue-slider-component/theme/default.css';
+import { useCurrency } from '@/composables/useCurrency';
+import { useExchangeRates } from '@/composables/useExchangeRates';
+import PriceDisplay from '@/Components/PriceDisplay.vue';
 
-const selectedCurrency = ref(usePage().props.filters.currency || 'USD');
-const exchangeRates = ref(null);
-const supportedCurrencies = ref([
-    'USD', 'EUR', 'GBP', 'JPY', 'AUD', 'CAD', 'CHF', 'CNH', 'HKD', 'SGD', 
-    'SEK', 'KRW', 'NOK', 'NZD', 'INR', 'MXN', 'BRL', 'RUB', 'ZAR'
-]);
+// Enhanced currency management with composables
+const {
+    currentCurrency: selectedCurrency,
+    setCurrentCurrency,
+    getCurrencySymbol,
+    isLoading: isCurrencyLoading,
+    detectCurrency
+} = useCurrency(usePage().props.filters?.currency);
 
-const fetchExchangeRates = async () => {
+const {
+    convertCurrency,
+    isLoading: isConversionLoading,
+    error: conversionError
+} = useExchangeRates();
+
+// Reactive currency states
+const isCurrencyProcessing = computed(() =>
+    isCurrencyLoading.value || isConversionLoading.value
+);
+
+// Reactive conversion cache for performance
+const conversionCache = ref(new Map());
+
+// Currency conversion helper with enhanced error handling and caching
+const convertPrice = async (amount, fromCurrency) => {
     try {
-        const response = await fetch(`https://v6.exchangerate-api.com/v6/01b88ff6c6507396d707e4b6/latest/USD`);
-        const data = await response.json();
-        if (data.result === 'success') {
-            exchangeRates.value = data.conversion_rates;
-        } else {
-            console.error('Failed to fetch exchange rates:', data['error-type']);
+        if (!amount || isNaN(amount)) return 0;
+
+        // Create cache key
+        const cacheKey = `${amount}-${fromCurrency}-${selectedCurrency.value}`;
+
+        // Check cache first
+        if (conversionCache.value.has(cacheKey)) {
+            return conversionCache.value.get(cacheKey);
         }
+
+        // Skip conversion if currencies are the same
+        if (fromCurrency === selectedCurrency.value) {
+            const result = parseFloat(amount);
+            conversionCache.value.set(cacheKey, result);
+            return result;
+        }
+
+        const result = await convertCurrency(
+            parseFloat(amount),
+            fromCurrency,
+            selectedCurrency.value
+        );
+
+        const convertedAmount = result.success ? result.convertedAmount : parseFloat(amount);
+
+        // Cache the result
+        conversionCache.value.set(cacheKey, convertedAmount);
+
+        return convertedAmount;
     } catch (error) {
-        console.error('Error fetching exchange rates:', error);
+        console.warn('Currency conversion failed:', error.message);
+        return parseFloat(amount);
     }
 };
 
-const symbolToCodeMap = {
-    '$': 'USD',
-    '€': 'EUR',
-    '£': 'GBP',
-    '¥': 'JPY',
-    'A$': 'AUD',
-    'C$': 'CAD',
-    'Fr': 'CHF',
-    'HK$': 'HKD',
-    'S$': 'SGD',
-    'kr': 'SEK',
-    '₩': 'KRW',
-    'kr': 'NOK',
-    'NZ$': 'NZD',
-    '₹': 'INR',
-    'Mex$': 'MXN',
-    'R$': 'BRL',
-    '₽': 'RUB',
-    'R': 'ZAR',
-    'AED': 'AED'
-    // Add other symbol-to-code mappings as needed
+// Batch conversion for better performance
+const batchConvertPrices = async (priceList) => {
+    const conversions = priceList.map(({ amount, fromCurrency }) => ({
+        amount,
+        from: fromCurrency,
+        to: selectedCurrency.value
+    }));
+
+    try {
+        // For now, use individual conversions with caching
+        // In a future enhancement, we could implement a proper batch API endpoint
+        const results = await Promise.allSettled(
+            conversions.map(conv => convertPrice(conv.amount, conv.from))
+        );
+
+        return results.map((result, index) => ({
+            ...conversions[index],
+            convertedAmount: result.status === 'fulfilled' ? result.value : conversions[index].amount
+        }));
+    } catch (error) {
+        console.warn('Batch conversion failed:', error.message);
+        return priceList.map(item => ({ ...item, convertedAmount: item.amount }));
+    }
 };
 
-const convertCurrency = (price, fromCurrency) => {
-    const numericPrice = parseFloat(price);
-    if (isNaN(numericPrice)) {
-        return 0; // Return 0 if price is not a number
+// Enhanced onMounted with auto-detection
+onMounted(async () => {
+    // Auto-detect currency if no preference is saved
+    if (!localStorage.getItem('preferred_currency')) {
+        await detectCurrency({ showToast: false });
     }
+});
 
-    let fromCurrencyCode = fromCurrency;
-    if (symbolToCodeMap[fromCurrency]) {
-        fromCurrencyCode = symbolToCodeMap[fromCurrency];
-    }
+// Clear conversion cache when currency changes
+watch(selectedCurrency, () => {
+    conversionCache.value.clear();
+});
 
-    if (!exchangeRates.value || !fromCurrencyCode || !selectedCurrency.value) {
-        return numericPrice; // Return original price if rates not loaded or currencies are invalid
-    }
-    const rateFrom = exchangeRates.value[fromCurrencyCode];
-    const rateTo = exchangeRates.value[selectedCurrency.value];
-    if (rateFrom && rateTo) {
-        return (numericPrice / rateFrom) * rateTo;
-    }
-    return numericPrice; // Fallback to original price if conversion is not possible
-};
+// Cache cleanup on unmount
+onUnmounted(() => {
+    conversionCache.value.clear();
+});
 
 const props = defineProps({
     vehicles: Object,
@@ -115,26 +156,7 @@ const props = defineProps({
     locale: String, // Added locale prop
     greenMotionVehicles: Object, // New: GreenMotion vehicles data
 });
-// New: Currency symbols for GreenMotion vehicles
-const currencySymbols = ref({});
-
-onMounted(async () => {
-    fetchExchangeRates();
-    try {
-        const response = await fetch('/currency.json');
-        const data = await response.json();
-        currencySymbols.value = data.reduce((acc, curr) => {
-            acc[curr.code] = curr.symbol;
-            return acc;
-        }, {});
-    } catch (error) {
-        console.error("Error loading currency symbols:", error);
-    }
-});
-
-const getCurrencySymbol = (code) => {
-    return currencySymbols.value[code] || '$'; // Use fetched symbol or default to '$'
-};
+// Currency symbols are now handled by the useCurrency composable
 
 const numberOfRentalDays = computed(() => {
     if (form.date_from && form.date_to) {
