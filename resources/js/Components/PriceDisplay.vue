@@ -558,11 +558,11 @@ if (props.refreshInterval > 0) {
 }
 
 .price-display__conversion-rate {
-  @apply;
+  @apply text-xs text-gray-400;
 }
 
 .price-display__timestamp {
-  @apply;
+  @apply text-xs text-gray-400;
 }
 
 .price-display__currency-indicator {
