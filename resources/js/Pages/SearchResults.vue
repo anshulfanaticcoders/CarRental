@@ -41,6 +41,7 @@ const {
     currentCurrency: selectedCurrency,
     setCurrentCurrency,
     getCurrencySymbol,
+    supportedCurrencies,
     isLoading: isCurrencyLoading,
     detectCurrency
 } = useCurrency(usePage().props.filters?.currency);
@@ -1233,7 +1234,7 @@ watch(
                 <div class="relative w-48 filter-group">
                     <div class="text-xs font-medium text-gray-500 mb-1 ml-1">Currency</div>
                     <CustomDropdown v-model="selectedCurrency" unique-id="currency"
-                        :options="supportedCurrencies.map(c => ({ value: c, label: c }))"
+                        :options="(supportedCurrencies || []).map(c => ({ value: c.code || c, label: c.code || c }))"
                         placeholder="Select Currency" :left-icon="priceIcon" :right-icon="CaretDown"
                         class="hover:border-customPrimaryColor transition-all duration-300" />
                 </div>
