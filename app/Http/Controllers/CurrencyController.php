@@ -255,6 +255,149 @@ class CurrencyController extends Controller
     }
 
     /**
+     * Batch convert multiple amounts
+     */
+    public function batchConvert(Request $request): JsonResponse
+    {
+        try {
+            $validator = Validator::make($request->all(), [
+                'conversions' => 'required|array|min:1|max:50',
+                'conversions.*.amount' => 'required|numeric|min:0',
+                'conversions.*.from' => 'required|string|size:3|alpha',
+                'conversions.*.to' => 'required|string|size:3|alpha'
+            ]);
+
+            if ($validator->fails()) {
+                return response()->json([
+                    'success' => false,
+                    'error' => 'Validation failed',
+                    'messages' => $validator->errors()
+                ], 422);
+            }
+
+            $conversions = $request->input('conversions');
+            $results = [];
+
+            // Group conversions by currency pair to optimize API calls
+            $groupedConversions = [];
+            foreach ($conversions as $index => $conversion) {
+                $from = strtoupper($conversion['from']);
+                $to = strtoupper($conversion['to']);
+                $key = "{$from}_to_{$to}";
+
+                if (!isset($groupedConversions[$key])) {
+                    $groupedConversions[$key] = [
+                        'from' => $from,
+                        'to' => $to,
+                        'amounts' => [],
+                        'indices' => []
+                    ];
+                }
+
+                $groupedConversions[$key]['amounts'][] = $conversion['amount'];
+                $groupedConversions[$key]['indices'][] = $index;
+            }
+
+            // Process each currency pair group
+            foreach ($groupedConversions as $key => $group) {
+                try {
+                    // Get exchange rate once for the currency pair
+                    $result = $this->currencyConversionService->getExchangeRate($group['from'], $group['to']);
+
+                    if ($result['success'] && isset($result['rate'])) {
+                        $rate = $result['rate'];
+                        $timestamp = $result['timestamp'] ?? now()->timestamp;
+
+                        // Apply rate to all amounts in this group
+                        foreach ($group['indices'] as $i => $index) {
+                            $originalAmount = $group['amounts'][$i];
+                            $convertedAmount = $originalAmount * $rate;
+
+                            $results[$index] = [
+                                'success' => true,
+                                'original_amount' => $originalAmount,
+                                'converted_amount' => round($convertedAmount, 2),
+                                'from_currency' => $group['from'],
+                                'to_currency' => $group['to'],
+                                'rate' => $rate,
+                                'timestamp' => $timestamp,
+                                'conversion_method' => $result['provider'] ?? 'batch',
+                                'cache_hit' => $result['cache_hit'] ?? false
+                            ];
+                        }
+                    } else {
+                        // Fallback for failed rate lookup
+                        foreach ($group['indices'] as $i => $index) {
+                            $originalAmount = $group['amounts'][$i];
+                            $results[$index] = [
+                                'success' => false,
+                                'error' => $result['error'] ?? 'Failed to get exchange rate',
+                                'original_amount' => $originalAmount,
+                                'converted_amount' => $originalAmount,
+                                'from_currency' => $group['from'],
+                                'to_currency' => $group['to'],
+                                'rate' => 1.0,
+                                'conversion_method' => 'fallback'
+                            ];
+                        }
+                    }
+                } catch (Exception $e) {
+                    // Fallback for exceptions
+                    foreach ($group['indices'] as $i => $index) {
+                        $originalAmount = $group['amounts'][$i];
+                        $results[$index] = [
+                            'success' => false,
+                            'error' => $e->getMessage(),
+                            'original_amount' => $originalAmount,
+                            'converted_amount' => $originalAmount,
+                            'from_currency' => $group['from'],
+                            'to_currency' => $group['to'],
+                            'rate' => 1.0,
+                            'conversion_method' => 'fallback'
+                        ];
+                    }
+                }
+            }
+
+            // Sort results by original index to maintain order
+            ksort($results);
+
+            return response()->json([
+                'success' => true,
+                'data' => [
+                    'conversions' => array_values($results),
+                    'total_processed' => count($results),
+                    'unique_currency_pairs' => count($groupedConversions)
+                ]
+            ]);
+
+        } catch (Exception $e) {
+            Log::error('Batch currency conversion failed', [
+                'error' => $e->getMessage(),
+                'request_data' => $request->all()
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'error' => 'Batch conversion service unavailable',
+                'message' => config('app.debug') ? $e->getMessage() : 'Service temporarily unavailable',
+                'conversions' => array_map(function ($conversion) {
+                    return [
+                        'success' => false,
+                        'error' => 'Service temporarily unavailable',
+                        'original_amount' => $conversion['amount'],
+                        'converted_amount' => $conversion['amount'],
+                        'from_currency' => $conversion['from'],
+                        'to_currency' => $conversion['to'],
+                        'rate' => 1.0,
+                        'conversion_method' => 'fallback'
+                    ];
+                }, $request->input('conversions', []))
+            ], 503);
+        }
+    }
+
+    /**
      * Get exchange rate
      */
     public function getExchangeRate(Request $request): JsonResponse

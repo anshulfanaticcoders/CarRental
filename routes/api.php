@@ -55,6 +55,7 @@ Route::prefix('currency')->group(function () {
     Route::get('/detect', [CurrencyController::class, 'detectCurrency'])->name('api.currency.detect');
     Route::get('/detect-locale', [CurrencyController::class, 'detectCurrencyFromLocale'])->name('api.currency.detect-locale');
     Route::post('/convert', [CurrencyController::class, 'convert'])->name('api.currency.convert');
+    Route::post('/batch-convert', [CurrencyController::class, 'batchConvert'])->name('api.currency.batch-convert');
     Route::get('/exchange-rate', [CurrencyController::class, 'getExchangeRate'])->name('api.currency.exchange-rate');
     Route::get('/exchange-rates', [CurrencyController::class, 'getAllExchangeRates'])->name('api.currency.exchange-rates');
     Route::get('/health', [CurrencyController::class, 'health'])->name('api.currency.health');

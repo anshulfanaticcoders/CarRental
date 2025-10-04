@@ -569,6 +569,140 @@ export function useExchangeRates(options = {}) {
     }
   }
 
+  // Enhanced batch conversion with API endpoint and rate limiting
+  const batchConvertPricesWithApi = async (priceList) => {
+    if (!priceList || priceList.length === 0) {
+      return []
+    }
+
+    // Group conversions by currency pair to optimize API calls
+    const groupedConversions = {}
+    priceList.forEach((item, index) => {
+      const key = `${item.fromCurrency || 'USD'}_to_${selectedCurrency.value}`
+      if (!groupedConversions[key]) {
+        groupedConversions[key] = []
+      }
+      groupedConversions[key].push({
+        amount: item.amount,
+        from: item.fromCurrency || 'USD',
+        to: selectedCurrency.value,
+        index: index
+      })
+    })
+
+    // Prepare batch request data
+    const batchConversions = []
+    Object.values(groupedConversions).forEach(group => {
+      group.forEach(item => {
+        batchConversions.push({
+          amount: item.amount,
+          from: item.from,
+          to: item.to
+        })
+      })
+    })
+
+    try {
+      loadingStates.value.batch = true
+      errorStates.value.batch = null
+
+      // Call batch conversion API
+      const result = await makeRequest('/api/currency/batch-convert', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          conversions: batchConversions
+        })
+      })
+
+      if (result.data.success) {
+        const conversions = result.data.data.conversions
+
+        // Map results back to original items
+        return priceList.map((item, index) => {
+          const conversion = conversions[index]
+          return {
+            ...item,
+            convertedAmount: conversion.success ? conversion.converted_amount : item.amount,
+            originalAmount: conversion.original_amount,
+            fromCurrency: conversion.from_currency,
+            toCurrency: conversion.to_currency,
+            rate: conversion.rate,
+            success: conversion.success,
+            error: conversion.error || null
+          }
+        })
+      } else {
+        throw new Error(result.data.error || 'Batch conversion failed')
+      }
+
+    } catch (error) {
+      console.warn('Batch conversion failed:', error.message)
+      errorStates.value.batch = error.message
+
+      // Fallback to individual conversions
+      const fallbackResults = await Promise.allSettled(
+        batchConversions.map(conv => convertCurrency(conv.amount, conv.from, conv.to))
+      )
+
+      return priceList.map((item, index) => {
+        const result = fallbackResults[index]
+        if (result.status === 'fulfilled' && result.value.success) {
+          return {
+            ...item,
+            convertedAmount: result.value.convertedAmount,
+            success: true
+          }
+        } else {
+          return {
+            ...item,
+            convertedAmount: item.amount,
+            success: false,
+            error: 'Conversion failed'
+          }
+        }
+      })
+    } finally {
+      loadingStates.value.batch = false
+    }
+  }
+
+  // Debounced batch conversion to prevent API spam
+  let batchTimeoutId = null
+  const pendingConversions = ref([])
+
+  const queueBatchConversion = (priceList, immediate = false) => {
+    if (immediate) {
+      // Process immediately
+      pendingConversions.value = []
+      return batchConvertPricesWithApi(priceList)
+    }
+
+    // Add to pending queue
+    pendingConversions.value.push(...priceList)
+
+    // Clear existing timeout
+    if (batchTimeoutId) {
+      clearTimeout(batchTimeoutId)
+    }
+
+    // Set new timeout for batch processing
+    batchTimeoutId = setTimeout(async () => {
+      if (pendingConversions.value.length > 0) {
+        const conversionsToProcess = [...pendingConversions.value]
+        pendingConversions.value = []
+
+        try {
+          await batchConvertPricesWithApi(conversionsToProcess)
+        } catch (error) {
+          console.warn('Queued batch conversion failed:', error.message)
+        }
+      }
+    }, 500) // 500ms delay to batch multiple requests
+  }
+
   // Get operation loading state
   const isLoadingOperation = (operation) => {
     return loadingStates.value[operation] || false
@@ -652,6 +786,8 @@ export function useExchangeRates(options = {}) {
     fetchSingleRate,
     convertCurrency,
     batchConvert,
+    batchConvertPricesWithApi,
+    queueBatchConversion,
     clearCache,
     clearErrors,
     getStats,

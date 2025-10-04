@@ -48,6 +48,8 @@ const {
 
 const {
     convertCurrency,
+    batchConvertPricesWithApi,
+    queueBatchConversion,
     isLoading: isConversionLoading,
     error: conversionError
 } = useExchangeRates();
@@ -98,7 +100,7 @@ const convertPrice = async (amount, fromCurrency) => {
     }
 };
 
-// Synchronous conversion function for template usage with fallback
+// Enhanced synchronous conversion function with batch processing
 const syncConvertPrice = (amount, fromCurrency) => {
     // Validate input
     if (!amount || amount === null || amount === undefined || isNaN(parseFloat(amount))) {
@@ -120,39 +122,38 @@ const syncConvertPrice = (amount, fromCurrency) => {
         return conversionCache.value.get(cacheKey);
     }
 
-    // For synchronous calls, we can't wait for async conversion
-    // So we return the original amount and trigger async conversion in background
-    convertPrice(amount, fromCurrency).catch(error => {
-        console.warn('Background conversion failed:', error.message);
-    });
+    // Queue for batch conversion to prevent rate limiting
+    queueBatchConversion([{
+        amount: numericAmount,
+        fromCurrency: fromCurrency,
+        index: 0 // dummy index for single conversion
+    }]);
 
     return numericAmount;
 };
 
-// Batch conversion for better performance
-const batchConvertPrices = async (priceList) => {
-    const conversions = priceList.map(({ amount, fromCurrency }) => ({
-        amount,
-        from: fromCurrency,
-        to: selectedCurrency.value
-    }));
-
-    try {
-        // For now, use individual conversions with caching
-        // In a future enhancement, we could implement a proper batch API endpoint
-        const results = await Promise.allSettled(
-            conversions.map(conv => convertPrice(conv.amount, conv.from))
-        );
-
-        return results.map((result, index) => ({
-            ...conversions[index],
-            convertedAmount: result.status === 'fulfilled' ? result.value : conversions[index].amount
-        }));
-    } catch (error) {
-        console.warn('Batch conversion failed:', error.message);
-        return priceList.map(item => ({ ...item, convertedAmount: item.amount }));
+// Batch conversion helper for multiple prices (used by computed properties)
+const batchConvertPrices = (priceItems) => {
+    if (!priceItems || priceItems.length === 0) {
+        return []
     }
+
+    const conversionsToProcess = priceItems
+        .filter(item => item && item.amount !== null && item.amount !== undefined && !isNaN(parseFloat(item.amount)))
+        .map(item => ({
+            amount: parseFloat(item.amount),
+            fromCurrency: item.fromCurrency || 'USD',
+            index: item.index || 0
+        }))
+
+    if (conversionsToProcess.length > 0) {
+        queueBatchConversion(conversionsToProcess)
+    }
+
+    return priceItems
 };
+
+// Note: batchConvertPrices function is now defined above with enhanced batch processing
 
 // Enhanced onMounted with auto-detection
 onMounted(async () => {
