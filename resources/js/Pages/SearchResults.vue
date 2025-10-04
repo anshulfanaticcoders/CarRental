@@ -33,6 +33,72 @@ import blankStar from "../../assets/blankstar.svg";
 import VueSlider from 'vue-slider-component';
 import 'vue-slider-component/theme/default.css';
 
+const selectedCurrency = ref(usePage().props.filters.currency || 'USD');
+const exchangeRates = ref(null);
+const supportedCurrencies = ref([
+    'USD', 'EUR', 'GBP', 'JPY', 'AUD', 'CAD', 'CHF', 'CNH', 'HKD', 'SGD', 
+    'SEK', 'KRW', 'NOK', 'NZD', 'INR', 'MXN', 'BRL', 'RUB', 'ZAR'
+]);
+
+const fetchExchangeRates = async () => {
+    try {
+        const response = await fetch(`https://v6.exchangerate-api.com/v6/01b88ff6c6507396d707e4b6/latest/USD`);
+        const data = await response.json();
+        if (data.result === 'success') {
+            exchangeRates.value = data.conversion_rates;
+        } else {
+            console.error('Failed to fetch exchange rates:', data['error-type']);
+        }
+    } catch (error) {
+        console.error('Error fetching exchange rates:', error);
+    }
+};
+
+const symbolToCodeMap = {
+    '$': 'USD',
+    '€': 'EUR',
+    '£': 'GBP',
+    '¥': 'JPY',
+    'A$': 'AUD',
+    'C$': 'CAD',
+    'Fr': 'CHF',
+    'HK$': 'HKD',
+    'S$': 'SGD',
+    'kr': 'SEK',
+    '₩': 'KRW',
+    'kr': 'NOK',
+    'NZ$': 'NZD',
+    '₹': 'INR',
+    'Mex$': 'MXN',
+    'R$': 'BRL',
+    '₽': 'RUB',
+    'R': 'ZAR',
+    'AED': 'AED'
+    // Add other symbol-to-code mappings as needed
+};
+
+const convertCurrency = (price, fromCurrency) => {
+    const numericPrice = parseFloat(price);
+    if (isNaN(numericPrice)) {
+        return 0; // Return 0 if price is not a number
+    }
+
+    let fromCurrencyCode = fromCurrency;
+    if (symbolToCodeMap[fromCurrency]) {
+        fromCurrencyCode = symbolToCodeMap[fromCurrency];
+    }
+
+    if (!exchangeRates.value || !fromCurrencyCode || !selectedCurrency.value) {
+        return numericPrice; // Return original price if rates not loaded or currencies are invalid
+    }
+    const rateFrom = exchangeRates.value[fromCurrencyCode];
+    const rateTo = exchangeRates.value[selectedCurrency.value];
+    if (rateFrom && rateTo) {
+        return (numericPrice / rateFrom) * rateTo;
+    }
+    return numericPrice; // Fallback to original price if conversion is not possible
+};
+
 const props = defineProps({
     vehicles: Object,
     filters: Object,
@@ -53,6 +119,7 @@ const props = defineProps({
 const currencySymbols = ref({});
 
 onMounted(async () => {
+    fetchExchangeRates();
     try {
         const response = await fetch('/currency.json');
         const data = await response.json();
@@ -166,6 +233,10 @@ const form = useForm({
     promocode: usePage().props.filters?.promocode || null,
     dropoff_location_id: usePage().props.filters?.dropoff_location_id || null,
     dropoff_where: usePage().props.filters?.dropoff_where || "",
+});
+
+watch(selectedCurrency, (newCurrency) => {
+    form.currency = newCurrency;
 });
 
 const submitFilters = debounce(() => {
@@ -295,28 +366,30 @@ const createCustomIcon = (vehicle, isHighlighted = false) => {
 
     if (vehicle.source !== 'internal') {
         const currencyCode = vehicle.products[0]?.currency || 'USD';
-        currencySymbol = getCurrencySymbol(currencyCode);
         // Calculate price per day for provider vehicles
         const totalProviderPrice = parseFloat(vehicle.products[0]?.total || 0);
         priceValue = totalProviderPrice / numberOfRentalDays.value;
+        priceValue = convertCurrency(priceValue, currencyCode);
+        currencySymbol = getCurrencySymbol(selectedCurrency.value);
     } else {
-        currencySymbol = vehicle.vendor_profile?.currency || "$";
+        const originalCurrency = vehicle.vendor_profile?.currency || 'USD';
         if (form.package_type === 'day' && vehicle.price_per_day) {
-            priceValue = vehicle.price_per_day;
+            priceValue = convertCurrency(vehicle.price_per_day, originalCurrency);
         } else if (form.package_type === 'week' && vehicle.price_per_week) {
-            priceValue = vehicle.price_per_week;
+            priceValue = convertCurrency(vehicle.price_per_week, originalCurrency);
         } else if (form.package_type === 'month' && vehicle.price_per_month) {
-            priceValue = vehicle.price_per_month;
+            priceValue = convertCurrency(vehicle.price_per_month, originalCurrency);
         } else {
             // Fallback if no package_type is selected or price for selected type is null
             if (vehicle.price_per_day) {
-                priceValue = vehicle.price_per_day;
+                priceValue = convertCurrency(vehicle.price_per_day, originalCurrency);
             } else if (vehicle.price_per_week) {
-                priceValue = vehicle.price_per_week;
+                priceValue = convertCurrency(vehicle.price_per_week, originalCurrency);
             } else if (vehicle.price_per_month) {
-                priceValue = vehicle.price_per_month;
+                priceValue = convertCurrency(vehicle.price_per_month, originalCurrency);
             }
         }
+        currencySymbol = getCurrencySymbol(selectedCurrency.value);
     }
 
     if (priceValue !== null && priceValue > 0) { // Ensure priceValue is greater than 0
@@ -424,17 +497,18 @@ const addMarkers = () => {
             : route('vehicle.show', { locale: page.props.locale, id: vehicle.id, package: form.package_type, pickup_date: form.date_from, return_date: form.date_to });
 
         let popupPrice = "N/A";
-        let popupCurrencySymbol = "$";
+        let popupCurrencySymbol = getCurrencySymbol(selectedCurrency.value);
 
         if (vehicle.source !== 'internal' && vehicle.products && vehicle.products[0]?.total && vehicle.products[0].total > 0) {
             const currencyCode = vehicle.products[0]?.currency || 'USD';
-            popupCurrencySymbol = getCurrencySymbol(currencyCode);
             const totalProviderPrice = parseFloat(vehicle.products[0]?.total || 0);
             const pricePerDay = totalProviderPrice / numberOfRentalDays.value;
-            popupPrice = `${popupCurrencySymbol}${pricePerDay.toFixed(2)}`; // Display price per day
+            const convertedPrice = convertCurrency(pricePerDay, currencyCode);
+            popupPrice = `${popupCurrencySymbol}${convertedPrice.toFixed(2)}`; // Display price per day
         } else if (vehicle.source === 'internal' && vehicle.price_per_day && vehicle.price_per_day > 0) {
-            popupCurrencySymbol = vehicle.vendor_profile?.currency || "$";
-            popupPrice = `${popupCurrencySymbol}${vehicle.price_per_day}`;
+            const originalCurrency = vehicle.vendor_profile?.currency || 'USD';
+            const convertedPrice = convertCurrency(vehicle.price_per_day, originalCurrency);
+            popupPrice = `${popupCurrencySymbol}${convertedPrice.toFixed(2)}`;
         }
 
         const marker = L.marker([displayLat, displayLng], {
@@ -514,6 +588,12 @@ watch(
         }
     }
 );
+
+watch(selectedCurrency, () => {
+    if (map) {
+        addMarkers();
+    }
+});
 
 onMounted(() => {
     initMap();
@@ -1126,6 +1206,15 @@ watch(
                     ]" placeholder="Any Rate" :left-icon="priceperdayicon" :right-icon="CaretDown"
                     class="hover:border-customPrimaryColor bg-customPrimaryColor/5 transition-all duration-300" />
                 </div>
+                
+                <!-- Currency Filter -->
+                <div class="relative w-48 filter-group">
+                    <div class="text-xs font-medium text-gray-500 mb-1 ml-1">Currency</div>
+                    <CustomDropdown v-model="selectedCurrency" unique-id="currency"
+                        :options="supportedCurrencies.map(c => ({ value: c, label: c }))"
+                        placeholder="Select Currency" :left-icon="priceIcon" :right-icon="CaretDown"
+                        class="hover:border-customPrimaryColor transition-all duration-300" />
+                </div>
 
             </div>
         </form>
@@ -1559,7 +1648,7 @@ watch(
                                             </div>
                                             <div v-else-if="vehicle[priceField] && vehicle[priceField] > 0">
                                                 <span class="text-customPrimaryColor text-[1.875rem] font-medium max-[768px]:text-[1.3rem] max-[768px]:font-bold">
-                                                    {{ vehicle.vendor_profile?.currency || '$' }}{{ vehicle[priceField] }}
+                                                    {{ getCurrencySymbol(selectedCurrency) }}{{ convertCurrency(vehicle[priceField], vehicle.vendor_profile?.currency).toFixed(2) }}
                                                 </span>
                                                 <span>/{{ priceUnit }}</span>
                                             </div>
@@ -1572,7 +1661,7 @@ watch(
                                             <template v-if="vehicle.source !== 'internal'">
                                                 <div v-if="vehicle.products && vehicle.products[0]?.total && vehicle.products[0].total > 0" class="flex items-baseline">
                                                     <span class="text-customPrimaryColor text-lg font-semibold">
-                                                        {{ getCurrencySymbol(vehicle.products[0].currency) }}{{ (parseFloat(vehicle.products[0].total) / numberOfRentalDays).toFixed(2) }}
+                                                        {{ getCurrencySymbol(selectedCurrency) }}{{ convertCurrency((parseFloat(vehicle.products[0].total) / numberOfRentalDays), vehicle.products[0].currency).toFixed(2) }}
                                                     </span>
                                                     <span class="text-xs text-gray-600 ml-1">/day</span>
                                                 </div>
@@ -1583,19 +1672,19 @@ watch(
                                             <template v-else>
                                                 <div v-if="vehicle.price_per_day && vehicle.price_per_day > 0" class="flex items-baseline">
                                                     <span class="text-customPrimaryColor text-lg font-semibold">
-                                                        {{ vehicle.vendor_profile?.currency || '$' }}{{ vehicle.price_per_day }}
+                                                        {{ getCurrencySymbol(selectedCurrency) }}{{ convertCurrency(vehicle.price_per_day, vehicle.vendor_profile?.currency).toFixed(2) }}
                                                     </span>
                                                     <span class="text-xs text-gray-600 ml-1">/day</span>
                                                 </div>
                                                 <div v-if="vehicle.price_per_week && vehicle.price_per_week > 0" class="flex items-baseline mt-1">
                                                     <span class="text-customPrimaryColor text-lg font-semibold">
-                                                        {{ vehicle.vendor_profile?.currency || '$' }}{{ vehicle.price_per_week }}
+                                                        {{ getCurrencySymbol(selectedCurrency) }}{{ convertCurrency(vehicle.price_per_week, vehicle.vendor_profile?.currency).toFixed(2) }}
                                                     </span>
                                                     <span class="text-xs text-gray-600 ml-1">/week</span>
                                                 </div>
                                                 <div v-if="vehicle.price_per_month && vehicle.price_per_month > 0" class="flex items-baseline mt-1">
                                                     <span class="text-customPrimaryColor text-lg font-semibold">
-                                                        {{ vehicle.vendor_profile?.currency || '$' }}{{ vehicle.price_per_month }}
+                                                        {{ getCurrencySymbol(selectedCurrency) }}{{ convertCurrency(vehicle.price_per_month, vehicle.vendor_profile?.currency).toFixed(2) }}
                                                     </span>
                                                     <span class="text-xs text-gray-600 ml-1">/month</span>
                                                 </div>

@@ -489,26 +489,27 @@ watch([() => form.value.start_date, () => form.value.end_date, () => form.value.
 const checkAvailability = async () => {
     isCheckingAvailability.value = true;
     availabilityError.value = null;
-    try {
-        const response = await axios.post(route('green-motion-car.check-availability', { locale: page.props.locale }), {
-            ...form.value,
-            vehicle_id: props.vehicle.id,
-        });
-        if (response.data.available) {
-            // This is a simplified example. In a real app, you'd update the price and other details.
-            toast.success('Vehicle is available for the selected dates!');
+
+    // Combine existing filters with the updated form values.
+    // The form values (new dates/times) will overwrite the old ones in filters.
+    const newFilters = { ...props.filters, ...form.value };
+
+    router.get(route('green-motion-car.show', { locale: page.props.locale, id: props.vehicle.id, ...newFilters }), {}, {
+        preserveState: true,
+        preserveScroll: true,
+        onSuccess: () => {
             availabilityChanged.value = false;
-        } else {
-            availabilityError.value = 'This vehicle is not available for the selected dates. Please try different dates.';
+            toast.success('Vehicle availability and price updated!');
+        },
+        onError: (errors) => {
+            availabilityError.value = 'Failed to check availability. Please try again.';
             toast.error(availabilityError.value);
-        }
-    } catch (error) {
-        availabilityError.value = 'Failed to check availability. Please try again.';
-        toast.error(availabilityError.value);
-        console.error('Availability check error:', error);
-    } finally {
-        isCheckingAvailability.value = false;
-    }
+            console.error('Availability check error:', errors);
+        },
+        onFinish: () => {
+            isCheckingAvailability.value = false;
+        },
+    });
 };
 
 const proceedToPayment = async () => {
