@@ -21,27 +21,14 @@ class CurrencyConversionService
 
     public function __construct()
     {
+        // Optimized ExchangeRate-API configuration
         $this->exchangeRateProviders = [
             'primary' => [
                 'name' => 'ExchangeRate-API',
-                'url' => 'https://v6.exchangerate-api.com/v6/{api_key}/latest/{base}',
+                'url' => env('EXCHANGERATE_API_BASE_URL', 'https://v6.exchangerate-api.com') . '/v6/' . env('EXCHANGERATE_API_KEY') . '/latest/{base}',
                 'timeout' => 5,
                 'rate_limit' => 2000, // requests per hour
-                'requires_key' => true
-            ],
-            'secondary' => [
-                'name' => 'Open Exchange Rates',
-                'url' => 'https://openexchangerates.org/api/latest.json?app_id={api_key}&base={base}',
-                'timeout' => 5,
-                'rate_limit' => 1000,
-                'requires_key' => true
-            ],
-            'fallback' => [
-                'name' => 'CurrencyLayer',
-                'url' => 'https://api.currencylayer.com/live?access_key={api_key}&source={base}',
-                'timeout' => 5,
-                'rate_limit' => 1000,
-                'requires_key' => true
+                'requires_key' => false // Key is embedded in URL
             ]
         ];
 
@@ -57,6 +44,212 @@ class CurrencyConversionService
             'secondary' => ['failures' => 0, 'last_failure' => null, 'state' => 'closed'],
             'fallback' => ['failures' => 0, 'last_failure' => null, 'state' => 'closed']
         ];
+    }
+
+    /**
+     * Get all exchange rates for a base currency from ExchangeRate-API (Optimized)
+     * This fetches all rates in ONE request and caches them locally
+     */
+    public function getAllExchangeRates(string $baseCurrency = 'USD'): array
+    {
+        try {
+            $baseCurrency = strtoupper(trim($baseCurrency));
+
+            // Check cache first for all rates
+            $cacheKey = "exchange_rates_all_{$baseCurrency}";
+            if (Cache::has($cacheKey)) {
+                $cached = Cache::get($cacheKey);
+                return [
+                    'success' => true,
+                    'rates' => $cached['rates'],
+                    'timestamp' => $cached['timestamp'],
+                    'base_currency' => $baseCurrency,
+                    'provider' => 'cache',
+                    'cache_hit' => true
+                ];
+            }
+
+            // Fetch from ExchangeRate-API
+            $provider = $this->exchangeRateProviders['primary'];
+            $url = str_replace('{base}', $baseCurrency, $provider['url']);
+
+            $response = Http::timeout($provider['timeout'])
+                ->withHeaders([
+                    'User-Agent' => 'CarRental-Platform/1.0',
+                    'Accept' => 'application/json'
+                ])
+                ->get($url);
+
+            if (!$response->successful()) {
+                throw new Exception("API request failed with status: {$response->status()}");
+            }
+
+            $data = $response->json();
+
+            if ($data['result'] !== 'success') {
+                throw new Exception($data['error-type'] ?? 'API returned error');
+            }
+
+            // Extract conversion rates from ExchangeRate-API response
+            $rates = $data['conversion_rates'];
+            $timestamp = $data['time_last_update_unix'] ?? time();
+
+            // Cache all rates for 1 hour
+            Cache::put($cacheKey, [
+                'rates' => $rates,
+                'timestamp' => $timestamp
+            ], $this->cacheTtl);
+
+            return [
+                'success' => true,
+                'rates' => $rates,
+                'timestamp' => $timestamp,
+                'base_currency' => $baseCurrency,
+                'provider' => $provider['name'],
+                'cache_hit' => false,
+                'next_update' => $data['time_next_update_utc'] ?? null
+            ];
+
+        } catch (Exception $e) {
+            Log::error('Failed to fetch exchange rates', [
+                'base_currency' => $baseCurrency,
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+
+            return [
+                'success' => false,
+                'error' => $e->getMessage(),
+                'base_currency' => $baseCurrency
+            ];
+        }
+    }
+
+    /**
+     * Batch convert multiple amounts using locally cached rates (Optimized)
+     * This prevents rate limiting by using cached rates instead of individual API calls
+     */
+    public function batchConvert(array $conversions): array
+    {
+        try {
+            $results = [];
+            $requiredRatePairs = [];
+
+            // Group conversions by rate pairs to optimize fetching
+            foreach ($conversions as $index => $conversion) {
+                $from = strtoupper(trim($conversion['from_currency']));
+                $to = strtoupper(trim($conversion['to_currency']));
+
+                if ($from === $to) {
+                    // Same currency - no conversion needed
+                    $results[$index] = [
+                        'success' => true,
+                        'original_amount' => floatval($conversion['amount']),
+                        'converted_amount' => floatval($conversion['amount']),
+                        'from_currency' => $from,
+                        'to_currency' => $to,
+                        'rate' => 1.0,
+                        'conversion_method' => 'same_currency'
+                    ];
+                    continue;
+                }
+
+                $requiredRatePairs[] = "{$from}_{$to}";
+            }
+
+            // Get unique base currencies needed
+            $uniqueBases = array_unique(array_map(function($pair) {
+                return explode('_', $pair)[0];
+            }, $requiredRatePairs));
+
+            // Fetch all rates for each unique base currency (one API call per base)
+            $allRates = [];
+            foreach ($uniqueBases as $base) {
+                $rateData = $this->getAllExchangeRates($base);
+                if ($rateData['success']) {
+                    $allRates[$base] = $rateData['rates'];
+                } else {
+                    Log::warning("Failed to fetch rates for base currency: {$base}");
+                }
+            }
+
+            // Process conversions using cached rates
+            foreach ($conversions as $index => $conversion) {
+                $from = strtoupper(trim($conversion['from_currency']));
+                $to = strtoupper(trim($conversion['to_currency']));
+                $amount = floatval($conversion['amount']);
+
+                if ($from === $to) {
+                    continue; // Already handled above
+                }
+
+                // Calculate conversion using cached rates
+                if (isset($allRates[$from][$to])) {
+                    $rate = $allRates[$from][$to];
+                    $convertedAmount = round($amount * $rate, 2);
+
+                    $results[$index] = [
+                        'success' => true,
+                        'original_amount' => $amount,
+                        'converted_amount' => $convertedAmount,
+                        'from_currency' => $from,
+                        'to_currency' => $to,
+                        'rate' => $rate,
+                        'conversion_method' => 'cached_rates',
+                        'cache_hit' => true
+                    ];
+                } else {
+                    // Try reverse conversion (USD to EUR, but we have EUR to USD)
+                    if (isset($allRates[$to][$from])) {
+                        $rate = 1 / $allRates[$to][$from];
+                        $convertedAmount = round($amount * $rate, 2);
+
+                        $results[$index] = [
+                            'success' => true,
+                            'original_amount' => $amount,
+                            'converted_amount' => $convertedAmount,
+                            'from_currency' => $from,
+                            'to_currency' => $to,
+                            'rate' => $rate,
+                            'conversion_method' => 'reverse_cached_rates',
+                            'cache_hit' => true
+                        ];
+                    } else {
+                        // Rate not available
+                        $results[$index] = [
+                            'success' => false,
+                            'error' => "Exchange rate not available for {$from} to {$to}",
+                            'original_amount' => $amount,
+                            'from_currency' => $from,
+                            'to_currency' => $to,
+                            'fallback_used' => true,
+                            'converted_amount' => $amount
+                        ];
+                    }
+                }
+            }
+
+            return [
+                'success' => true,
+                'conversions' => $results,
+                'total_processed' => count($conversions),
+                'successful' => count(array_filter($results, fn($r) => $r['success'] ?? false)),
+                'method' => 'batch_cached_conversion'
+            ];
+
+        } catch (Exception $e) {
+            Log::error('Batch currency conversion failed', [
+                'conversions_count' => count($conversions),
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+
+            return [
+                'success' => false,
+                'error' => $e->getMessage(),
+                'conversions' => []
+            ];
+        }
     }
 
     /**

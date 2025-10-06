@@ -361,6 +361,9 @@ class VehicleController extends Controller
             'schema' => SchemaBuilder::singleVehicle($vehicle), // Add vehicle schema
             'appUrl' => env('APP_URL'),
             'locale' => app()->getLocale(),
+            'filters' => [
+                'currency' => $request->query('currency', 'USD'),
+            ],
         ]);
     }
 
@@ -381,6 +384,9 @@ class VehicleController extends Controller
             'plans' => $vehicle->vendorPlans,
             'addons' => $vehicle->addons,
             'query' => $request->all(),
+            'filters' => [
+                'currency' => $request->query('currency', 'USD'),
+            ],
         ]);
     }
 

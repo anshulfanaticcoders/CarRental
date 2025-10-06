@@ -73,12 +73,13 @@ export function useCurrency(initialCurrency = null) {
     return errorStates.value[operation] || null
   }
 
-  // Detect currency based on user's IP or locale
+  // Detect currency based on user's IP or locale (Enhanced with IPWHOIS.IO)
   const detectCurrency = async (options = {}) => {
     const {
       preferLocale = true,
       fallbackCurrency = 'USD',
-      showToast = true
+      showToast = true,
+      autoDetect = true // Use enhanced auto-detection by default
     } = options
 
     loadingStates.value.detection = true
@@ -87,7 +88,69 @@ export function useCurrency(initialCurrency = null) {
     try {
       let detectionResult = null
 
-      // Try IP-based detection first
+      // Try enhanced IP-based auto-detection first
+      if (!options.localeOnly && autoDetect) {
+        try {
+          const response = await fetch('/api/currency/auto-detect', {
+            method: 'GET',
+            headers: {
+              'Accept': 'application/json',
+              'X-Requested-With': 'XMLHttpRequest'
+            }
+          })
+
+          if (!response.ok) {
+            throw new Error(`HTTP ${response.status}: ${response.statusText}`)
+          }
+
+          const data = await response.json()
+
+          if (data.success || data.data) {
+            detectionResult = {
+              currency: data.data.detected_currency,
+              confidence: data.data.detection_info?.confidence || 'high',
+              method: data.data.detection_info?.method || 'ipwhois.io',
+              provider: data.data.detection_info?.provider || 'auto',
+              countryCode: data.data.user_location?.country_code,
+              country: data.data.user_location?.country,
+              city: data.data.user_location?.city,
+              userIp: data.data.user_location?.ip,
+              currencyInfo: data.data.currency_info,
+              locationDetected: true
+            }
+
+            // Store detection info for debugging/analytics
+            globalCurrencyState.value.detectionMethod = detectionResult.method
+            globalCurrencyState.value.detectionInfo = {
+              location: {
+                country: detectionResult.country,
+                city: detectionResult.city,
+                ip: detectionResult.userIp
+              },
+              detection: {
+                method: detectionResult.method,
+                confidence: detectionResult.confidence,
+                provider: detectionResult.provider
+              },
+              timestamp: new Date().toISOString()
+            }
+
+            if (showToast && detectionResult.locationDetected) {
+              toast.success(`Currency detected: ${detectionResult.currency} (${detectionResult.country})`, {
+                timeout: 3000,
+                closeOnClick: true
+              })
+            }
+
+            return detectionResult
+          }
+        } catch (error) {
+          console.warn('Enhanced IP-based detection failed, falling back to legacy:', error.message)
+          // Fall back to the legacy method
+        }
+      }
+
+      // Fallback to legacy IP-based detection
       if (!options.localeOnly) {
         try {
           const response = await fetch('/api/currency/detect', {
@@ -109,18 +172,20 @@ export function useCurrency(initialCurrency = null) {
               currency: data.data.currency,
               confidence: data.data.confidence,
               method: data.data.detection_method,
-              countryCode: data.data.country_code
+              countryCode: data.data.country_code,
+              locationDetected: false
             }
           } else if (data.fallback_currency) {
             detectionResult = {
               currency: data.fallback_currency,
-              confidence: data.confidence,
-              method: data.detection_method,
-              fallback: true
+              confidence: 'low',
+              method: 'fallback',
+              fallback: true,
+              locationDetected: false
             }
           }
         } catch (error) {
-          console.warn('IP-based detection failed:', error.message)
+          console.warn('Legacy IP-based detection failed:', error.message)
 
           if (preferLocale) {
             // Try locale-based detection as fallback
@@ -450,6 +515,19 @@ export function useCurrency(initialCurrency = null) {
     }
   })
 
+  // Get detection information for debugging/analytics
+  const getDetectionInfo = () => {
+    return globalCurrencyState.value.detectionInfo || {
+      location: null,
+      detection: {
+        method: 'unknown',
+        confidence: 'unknown',
+        provider: 'unknown'
+      },
+      timestamp: null
+    }
+  }
+
   // Watch for global changes
   watch(() => globalCurrencyState.value.selectedCurrency, (newCurrency) => {
     selectedCurrency.value = newCurrency
@@ -483,6 +561,7 @@ export function useCurrency(initialCurrency = null) {
     isValidCurrencyCode,
     clearErrors,
     getServiceHealth,
+    getDetectionInfo,
 
     // Constants
     RETRY_CONFIG

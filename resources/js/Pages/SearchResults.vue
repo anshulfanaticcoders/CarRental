@@ -32,146 +32,72 @@ import halfStar from "../../assets/halfstar.svg";
 import blankStar from "../../assets/blankstar.svg";
 import VueSlider from 'vue-slider-component';
 import 'vue-slider-component/theme/default.css';
-import { useCurrency } from '@/composables/useCurrency';
-import { useExchangeRates } from '@/composables/useExchangeRates';
-import PriceDisplay from '@/Components/PriceDisplay.vue';
 
-// Enhanced currency management with composables
-const {
-    currentCurrency: selectedCurrency,
-    setCurrentCurrency,
-    getCurrencySymbol,
-    supportedCurrencies,
-    isLoading: isCurrencyLoading,
-    detectCurrency
-} = useCurrency(usePage().props.filters?.currency);
+const selectedCurrency = ref(usePage().props.filters.currency || 'USD');
+const exchangeRates = ref(null);
+const supportedCurrencies = ref([
+    'USD', 'EUR', 'GBP', 'JPY', 'AUD', 'CAD', 'CHF', 'CNH', 'HKD', 'SGD', 
+    'SEK', 'KRW', 'NOK', 'NZD', 'INR', 'MXN', 'BRL', 'RUB', 'ZAR'
+]);
 
-const {
-    convertCurrency,
-    batchConvertPricesWithApi,
-    queueBatchConversion,
-    isLoading: isConversionLoading,
-    error: conversionError
-} = useExchangeRates();
-
-// Reactive currency states
-const isCurrencyProcessing = computed(() =>
-    isCurrencyLoading.value || isConversionLoading.value
-);
-
-// Reactive conversion cache for performance
-const conversionCache = ref(new Map());
-
-// Currency conversion helper with enhanced error handling and caching
-const convertPrice = async (amount, fromCurrency) => {
+const fetchExchangeRates = async () => {
     try {
-        if (!amount || isNaN(amount)) return 0;
-
-        // Create cache key
-        const cacheKey = `${amount}-${fromCurrency}-${selectedCurrency.value}`;
-
-        // Check cache first
-        if (conversionCache.value.has(cacheKey)) {
-            return conversionCache.value.get(cacheKey);
+        const response = await fetch(`https://v6.exchangerate-api.com/v6/01b88ff6c6507396d707e4b6/latest/USD`);
+        const data = await response.json();
+        if (data.result === 'success') {
+            exchangeRates.value = data.conversion_rates;
+        } else {
+            console.error('Failed to fetch exchange rates:', data['error-type']);
         }
-
-        // Skip conversion if currencies are the same
-        if (fromCurrency === selectedCurrency.value) {
-            const result = parseFloat(amount);
-            conversionCache.value.set(cacheKey, result);
-            return result;
-        }
-
-        const result = await convertCurrency(
-            parseFloat(amount),
-            fromCurrency,
-            selectedCurrency.value
-        );
-
-        const convertedAmount = result.success ? result.convertedAmount : parseFloat(amount);
-
-        // Cache the result
-        conversionCache.value.set(cacheKey, convertedAmount);
-
-        return convertedAmount;
     } catch (error) {
-        console.warn('Currency conversion failed:', error.message);
-        return parseFloat(amount);
+        console.error('Error fetching exchange rates:', error);
     }
 };
 
-// Enhanced synchronous conversion function with batch processing
-const syncConvertPrice = (amount, fromCurrency) => {
-    // Validate input
-    if (!amount || amount === null || amount === undefined || isNaN(parseFloat(amount))) {
-        return 0;
-    }
-
-    const numericAmount = parseFloat(amount);
-
-    // Skip conversion if currencies are the same
-    if (fromCurrency === selectedCurrency.value) {
-        return numericAmount;
-    }
-
-    // Create cache key
-    const cacheKey = `${amount}-${fromCurrency}-${selectedCurrency.value}`;
-
-    // Check cache first
-    if (conversionCache.value.has(cacheKey)) {
-        return conversionCache.value.get(cacheKey);
-    }
-
-    // Queue for batch conversion to prevent rate limiting
-    queueBatchConversion([{
-        amount: numericAmount,
-        fromCurrency: fromCurrency,
-        index: 0 // dummy index for single conversion
-    }]);
-
-    return numericAmount;
+const symbolToCodeMap = {
+    '$': 'USD',
+    '€': 'EUR',
+    '£': 'GBP',
+    '¥': 'JPY',
+    'A$': 'AUD',
+    'C$': 'CAD',
+    'Fr': 'CHF',
+    'HK$': 'HKD',
+    'S$': 'SGD',
+    'kr': 'SEK',
+    '₩': 'KRW',
+    'kr': 'NOK',
+    'NZ$': 'NZD',
+    '₹': 'INR',
+    'Mex$': 'MXN',
+    'R$': 'BRL',
+    '₽': 'RUB',
+    'R': 'ZAR',
+    'AED': 'AED'
+    // Add other symbol-to-code mappings as needed
 };
 
-// Batch conversion helper for multiple prices (used by computed properties)
-const batchConvertPrices = (priceItems) => {
-    if (!priceItems || priceItems.length === 0) {
-        return []
+const convertCurrency = (price, fromCurrency) => {
+    const numericPrice = parseFloat(price);
+    if (isNaN(numericPrice)) {
+        return 0; // Return 0 if price is not a number
     }
 
-    const conversionsToProcess = priceItems
-        .filter(item => item && item.amount !== null && item.amount !== undefined && !isNaN(parseFloat(item.amount)))
-        .map(item => ({
-            amount: parseFloat(item.amount),
-            fromCurrency: item.fromCurrency || 'USD',
-            index: item.index || 0
-        }))
-
-    if (conversionsToProcess.length > 0) {
-        queueBatchConversion(conversionsToProcess)
+    let fromCurrencyCode = fromCurrency;
+    if (symbolToCodeMap[fromCurrency]) {
+        fromCurrencyCode = symbolToCodeMap[fromCurrency];
     }
 
-    return priceItems
+    if (!exchangeRates.value || !fromCurrencyCode || !selectedCurrency.value) {
+        return numericPrice; // Return original price if rates not loaded or currencies are invalid
+    }
+    const rateFrom = exchangeRates.value[fromCurrencyCode];
+    const rateTo = exchangeRates.value[selectedCurrency.value];
+    if (rateFrom && rateTo) {
+        return (numericPrice / rateFrom) * rateTo;
+    }
+    return numericPrice; // Fallback to original price if conversion is not possible
 };
-
-// Note: batchConvertPrices function is now defined above with enhanced batch processing
-
-// Enhanced onMounted with auto-detection
-onMounted(async () => {
-    // Auto-detect currency if no preference is saved
-    if (!localStorage.getItem('preferred_currency')) {
-        await detectCurrency({ showToast: false });
-    }
-});
-
-// Clear conversion cache when currency changes
-watch(selectedCurrency, () => {
-    conversionCache.value.clear();
-});
-
-// Cache cleanup on unmount
-onUnmounted(() => {
-    conversionCache.value.clear();
-});
 
 const props = defineProps({
     vehicles: Object,
@@ -189,7 +115,26 @@ const props = defineProps({
     locale: String, // Added locale prop
     greenMotionVehicles: Object, // New: GreenMotion vehicles data
 });
-// Currency symbols are now handled by the useCurrency composable
+// New: Currency symbols for GreenMotion vehicles
+const currencySymbols = ref({});
+
+onMounted(async () => {
+    fetchExchangeRates();
+    try {
+        const response = await fetch('/currency.json');
+        const data = await response.json();
+        currencySymbols.value = data.reduce((acc, curr) => {
+            acc[curr.code] = curr.symbol;
+            return acc;
+        }, {});
+    } catch (error) {
+        console.error("Error loading currency symbols:", error);
+    }
+});
+
+const getCurrencySymbol = (code) => {
+    return currencySymbols.value[code] || '$'; // Use fetched symbol or default to '$'
+};
 
 const numberOfRentalDays = computed(() => {
     if (form.date_from && form.date_to) {
@@ -549,7 +494,7 @@ const addMarkers = () => {
         const primaryImage = vehicle.source === 'greenmotion' ? vehicle.image : (vehicle.images?.find((image) => image.image_type === 'primary')?.image_url || '/default-image.png');
         const detailRoute = vehicle.source !== 'internal'
             ? route(getProviderRoute(vehicle), { locale: page.props.locale, id: vehicle.id.substring(vehicle.id.indexOf('_') + 1), location_id: vehicle.provider_pickup_id, start_date: form.date_from, end_date: form.date_to, start_time: form.start_time, end_time: form.end_time, age: form.age, rentalCode: form.rentalCode, currency: form.currency, fuel: form.fuel, userid: form.userid, username: form.username, language: form.language, full_credit: form.full_credit, promocode: form.promocode, dropoff_location_id: form.dropoff_location_id, dropoff_where: form.dropoff_where, where: form.where, provider: vehicle.source })
-            : route('vehicle.show', { locale: page.props.locale, id: vehicle.id, package: form.package_type, pickup_date: form.date_from, return_date: form.date_to });
+            : route('vehicle.show', { locale: page.props.locale, id: vehicle.id, package: form.package_type, pickup_date: form.date_from, return_date: form.date_to, currency: form.currency });
 
         let popupPrice = "N/A";
         let popupCurrencySymbol = getCurrencySymbol(selectedCurrency.value);
@@ -1266,7 +1211,7 @@ watch(
                 <div class="relative w-48 filter-group">
                     <div class="text-xs font-medium text-gray-500 mb-1 ml-1">Currency</div>
                     <CustomDropdown v-model="selectedCurrency" unique-id="currency"
-                        :options="(supportedCurrencies || []).map(c => ({ value: c.code || c, label: c.code || c }))"
+                        :options="supportedCurrencies.map(c => ({ value: c, label: c }))"
                         placeholder="Select Currency" :left-icon="priceIcon" :right-icon="CaretDown"
                         class="hover:border-customPrimaryColor transition-all duration-300" />
                 </div>
@@ -1501,7 +1446,7 @@ watch(
                         </div>
                         <a
                             @click="saveSearchUrl"
-                            :href="vehicle.source !== 'internal' ? route(getProviderRoute(vehicle), { locale: page.props.locale, id: vehicle.id.substring(vehicle.id.indexOf('_') + 1), location_id: vehicle.provider_pickup_id, start_date: form.date_from, end_date: form.date_to, start_time: form.start_time, end_time: form.end_time, age: form.age, rentalCode: form.rentalCode, currency: form.currency, fuel: form.fuel, userid: form.userid, username: form.username, language: form.language, full_credit: form.full_credit, promocode: form.promocode, dropoff_location_id: form.dropoff_location_id, dropoff_where: form.dropoff_where, where: form.where, provider: vehicle.source }) : route('vehicle.show', { locale: page.props.locale, id: vehicle.id, package: form.package_type, pickup_date: form.date_from, return_date: form.date_to })">
+                            :href="vehicle.source !== 'internal' ? route(getProviderRoute(vehicle), { locale: page.props.locale, id: vehicle.id.substring(vehicle.id.indexOf('_') + 1), location_id: vehicle.provider_pickup_id, start_date: form.date_from, end_date: form.date_to, start_time: form.start_time, end_time: form.end_time, age: form.age, rentalCode: form.rentalCode, currency: form.currency, fuel: form.fuel, userid: form.userid, username: form.username, language: form.language, full_credit: form.full_credit, promocode: form.promocode, dropoff_location_id: form.dropoff_location_id, dropoff_where: form.dropoff_where, where: form.where, provider: vehicle.source }) : route('vehicle.show', { locale: page.props.locale, id: vehicle.id, package: form.package_type, pickup_date: form.date_from, return_date: form.date_to, currency: form.currency })">
                             <div class="column flex flex-col gap-5 items-start">
                                 <img :src="vehicle.source !== 'internal' ? vehicle.image : (vehicle.images?.find(
                                     (image) =>
@@ -1703,7 +1648,7 @@ watch(
                                             </div>
                                             <div v-else-if="vehicle[priceField] && vehicle[priceField] > 0">
                                                 <span class="text-customPrimaryColor text-[1.875rem] font-medium max-[768px]:text-[1.3rem] max-[768px]:font-bold">
-                                                    {{ getCurrencySymbol(selectedCurrency) }}{{ syncConvertPrice(vehicle[priceField], vehicle.vendor_profile?.currency).toFixed(2) }}
+                                                    {{ getCurrencySymbol(selectedCurrency) }}{{ convertCurrency(vehicle[priceField], vehicle.vendor_profile?.currency).toFixed(2) }}
                                                 </span>
                                                 <span>/{{ priceUnit }}</span>
                                             </div>
@@ -1716,7 +1661,7 @@ watch(
                                             <template v-if="vehicle.source !== 'internal'">
                                                 <div v-if="vehicle.products && vehicle.products[0]?.total && vehicle.products[0].total > 0" class="flex items-baseline">
                                                     <span class="text-customPrimaryColor text-lg font-semibold">
-                                                        {{ getCurrencySymbol(selectedCurrency) }}{{ syncConvertPrice((parseFloat(vehicle.products[0].total) / numberOfRentalDays), vehicle.products[0].currency).toFixed(2) }}
+                                                        {{ getCurrencySymbol(selectedCurrency) }}{{ convertCurrency((parseFloat(vehicle.products[0].total) / numberOfRentalDays), vehicle.products[0].currency).toFixed(2) }}
                                                     </span>
                                                     <span class="text-xs text-gray-600 ml-1">/day</span>
                                                 </div>
@@ -1727,19 +1672,19 @@ watch(
                                             <template v-else>
                                                 <div v-if="vehicle.price_per_day && vehicle.price_per_day > 0" class="flex items-baseline">
                                                     <span class="text-customPrimaryColor text-lg font-semibold">
-                                                        {{ getCurrencySymbol(selectedCurrency) }}{{ syncConvertPrice(vehicle.price_per_day, vehicle.vendor_profile?.currency).toFixed(2) }}
+                                                        {{ getCurrencySymbol(selectedCurrency) }}{{ convertCurrency(vehicle.price_per_day, vehicle.vendor_profile?.currency).toFixed(2) }}
                                                     </span>
                                                     <span class="text-xs text-gray-600 ml-1">/day</span>
                                                 </div>
                                                 <div v-if="vehicle.price_per_week && vehicle.price_per_week > 0" class="flex items-baseline mt-1">
                                                     <span class="text-customPrimaryColor text-lg font-semibold">
-                                                        {{ getCurrencySymbol(selectedCurrency) }}{{ syncConvertPrice(vehicle.price_per_week, vehicle.vendor_profile?.currency).toFixed(2) }}
+                                                        {{ getCurrencySymbol(selectedCurrency) }}{{ convertCurrency(vehicle.price_per_week, vehicle.vendor_profile?.currency).toFixed(2) }}
                                                     </span>
                                                     <span class="text-xs text-gray-600 ml-1">/week</span>
                                                 </div>
                                                 <div v-if="vehicle.price_per_month && vehicle.price_per_month > 0" class="flex items-baseline mt-1">
                                                     <span class="text-customPrimaryColor text-lg font-semibold">
-                                                        {{ getCurrencySymbol(selectedCurrency) }}{{ syncConvertPrice(vehicle.price_per_month, vehicle.vendor_profile?.currency).toFixed(2) }}
+                                                        {{ getCurrencySymbol(selectedCurrency) }}{{ convertCurrency(vehicle.price_per_month, vehicle.vendor_profile?.currency).toFixed(2) }}
                                                     </span>
                                                     <span class="text-xs text-gray-600 ml-1">/month</span>
                                                 </div>

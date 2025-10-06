@@ -16,6 +16,32 @@ import Footer from "@/Components/Footer.vue";
 import StripeCheckout from "@/Components/StripeCheckout.vue";
 import loader from "../../assets/loader.gif";
 import { ChevronRight } from 'lucide-vue-next';
+
+// Currency conversion variables
+const exchangeRates = ref(null);
+const selectedCurrency = ref(usePage().props.filters?.currency || 'USD');
+const currencySymbols = ref({});
+
+const symbolToCodeMap = {
+    '$': 'USD',
+    '€': 'EUR',
+    '£': 'GBP',
+    '¥': 'JPY',
+    'A$': 'AUD',
+    'C$': 'CAD',
+    'Fr': 'CHF',
+    'HK$': 'HKD',
+    'S$': 'SGD',
+    'kr': 'SEK',
+    '₩': 'KRW',
+    'kr': 'NOK',
+    'NZ$': 'NZD',
+    '₹': 'INR',
+    'Mex$': 'MXN',
+    'R': 'ZAR',
+    'AED': 'AED'
+    // Add other symbol-to-code mappings as needed
+};
 import {
     Dialog,
     DialogContent,
@@ -279,6 +305,24 @@ const loadSavedDriverInfo = () => {
 };
 
 onMounted(async () => {
+    // Initialize currency conversion
+    fetchExchangeRates();
+
+    // Load currency symbols
+    try {
+        fetch('/currency.json')
+            .then(response => response.json())
+            .then(data => {
+                currencySymbols.value = data.reduce((acc, curr) => {
+                    acc[curr.code] = curr.symbol;
+                    return acc;
+                }, {});
+            })
+            .catch(error => console.error("Error loading currency symbols:", error));
+    } catch (error) {
+        console.error("Error loading currency symbols:", error);
+    }
+
     // Load main booking details from 'bookingDetails' session item
     const bookingDetailsString = sessionStorage.getItem('bookingDetails');
     if (bookingDetailsString) {
@@ -372,9 +416,52 @@ let cardCvc;
 
 // The loadSessionData function is removed as its logic is integrated into the main onMounted hook.
 
+// Currency conversion functions
+const fetchExchangeRates = async () => {
+    try {
+        const response = await fetch(`https://v6.exchangerate-api.com/v6/01b88ff6c6507396d707e4b6/latest/USD`);
+        const data = await response.json();
+        if (data.result === 'success') {
+            exchangeRates.value = data.conversion_rates;
+        } else {
+            console.error('Failed to fetch exchange rates:', data['error-type']);
+        }
+    } catch (error) {
+        console.error('Error fetching exchange rates:', error);
+    }
+};
+
+const convertCurrency = (price, fromCurrency) => {
+    const numericPrice = parseFloat(price);
+    if (isNaN(numericPrice)) {
+        return 0; // Return 0 if price is not a number
+    }
+
+    let fromCurrencyCode = fromCurrency;
+    if (symbolToCodeMap[fromCurrency]) {
+        fromCurrencyCode = symbolToCodeMap[fromCurrency];
+    }
+
+    if (!exchangeRates.value || !fromCurrencyCode || !selectedCurrency.value) {
+        return numericPrice; // Return original price if rates not loaded or currencies are invalid
+    }
+    const rateFrom = exchangeRates.value[fromCurrencyCode];
+    const rateTo = exchangeRates.value[selectedCurrency.value];
+    if (rateFrom && rateTo) {
+        return (numericPrice / rateFrom) * rateTo;
+    }
+    return numericPrice; // Fallback to original price if conversion is not possible
+};
+
+const getCurrencySymbol = (code) => {
+    return currencySymbols.value[code] || '$'; // Use fetched symbol or default to '$'
+};
+
 const formatPrice = (price) => {
-    const currencySymbol = vehicle.value.vendor_profile.currency;
-    return `${currencySymbol}${price}`;
+    const originalCurrency = vehicle.value.vendor_profile?.currency || 'USD';
+    const convertedPrice = convertCurrency(price, originalCurrency);
+    const currencySymbol = getCurrencySymbol(selectedCurrency.value);
+    return `${currencySymbol}${convertedPrice.toFixed(2)}`;
 };
 
 
@@ -977,6 +1064,31 @@ const bookingData = computed(() => {
 
 
                     </div>
+
+                    <!-- Currency Selector -->
+                    <div class="flex items-center justify-end gap-2 mb-4">
+                        <label class="text-sm font-medium text-gray-700">Currency:</label>
+                        <select v-model="selectedCurrency"
+                            class="px-3 py-1 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+                            <option value="USD">USD ($)</option>
+                            <option value="EUR">EUR (€)</option>
+                            <option value="GBP">GBP (£)</option>
+                            <option value="JPY">JPY (¥)</option>
+                            <option value="AUD">AUD (A$)</option>
+                            <option value="CAD">CAD (C$)</option>
+                            <option value="CHF">CHF (Fr)</option>
+                            <option value="HKD">HKD (HK$)</option>
+                            <option value="SGD">SGD (S$)</option>
+                            <option value="SEK">SEK (kr)</option>
+                            <option value="NOK">NOK (kr)</option>
+                            <option value="NZD">NZD (NZ$)</option>
+                            <option value="INR">INR (₹)</option>
+                            <option value="MXN">MXN (Mex$)</option>
+                            <option value="ZAR">ZAR (R)</option>
+                            <option value="AED">AED</option>
+                        </select>
+                    </div>
+
                     <h3 class="text-[2rem] font-medium max-[768px]:text-[1.2rem] max-[768px]:mt-4">Pay Now to Lock in
                         this Deal</h3>
 

@@ -27,8 +27,69 @@ const showMobileBookingSummary = ref(false);
 const isSubmitting = ref(false);
 
 const currencySymbols = ref({});
+const exchangeRates = ref(null);
+const selectedCurrency = ref(usePage().props.filters?.currency || 'USD');
+
+const symbolToCodeMap = {
+    '$': 'USD',
+    '€': 'EUR',
+    '£': 'GBP',
+    '¥': 'JPY',
+    'A$': 'AUD',
+    'C$': 'CAD',
+    'Fr': 'CHF',
+    'HK$': 'HKD',
+    'S$': 'SGD',
+    'kr': 'SEK',
+    '₩': 'KRW',
+    'kr': 'NOK',
+    'NZ$': 'NZD',
+    '₹': 'INR',
+    'Mex$': 'MXN',
+    'R': 'ZAR',
+    'AED': 'AED'
+    // Add other symbol-to-code mappings as needed
+};
+
+const fetchExchangeRates = async () => {
+    try {
+        const response = await fetch(`https://v6.exchangerate-api.com/v6/01b88ff6c6507396d707e4b6/latest/USD`);
+        const data = await response.json();
+        if (data.result === 'success') {
+            exchangeRates.value = data.conversion_rates;
+        } else {
+            console.error('Failed to fetch exchange rates:', data['error-type']);
+        }
+    } catch (error) {
+        console.error('Error fetching exchange rates:', error);
+    }
+};
+
+const convertCurrency = (price, fromCurrency) => {
+    const numericPrice = parseFloat(price);
+    if (isNaN(numericPrice)) {
+        return 0; // Return 0 if price is not a number
+    }
+
+    let fromCurrencyCode = fromCurrency;
+    if (symbolToCodeMap[fromCurrency]) {
+        fromCurrencyCode = symbolToCodeMap[fromCurrency];
+    }
+
+    if (!exchangeRates.value || !fromCurrencyCode || !selectedCurrency.value) {
+        return numericPrice; // Return original price if rates not loaded or currencies are invalid
+    }
+    const rateFrom = exchangeRates.value[fromCurrencyCode];
+    const rateTo = exchangeRates.value[selectedCurrency.value];
+    if (rateFrom && rateTo) {
+        return (numericPrice / rateFrom) * rateTo;
+    }
+    return numericPrice; // Fallback to original price if conversion is not possible
+};
 
 onMounted(async () => {
+    fetchExchangeRates();
+
     try {
         const response = await fetch('/currency.json');
         const data = await response.json();
@@ -43,6 +104,13 @@ onMounted(async () => {
 
 const getCurrencySymbol = (code) => {
     return currencySymbols.value[code] || '$';
+};
+
+// Helper function to format converted prices
+const formatPrice = (price, fromCurrency) => {
+    const convertedPrice = convertCurrency(price, fromCurrency);
+    const currencySymbol = getCurrencySymbol(selectedCurrency.value);
+    return `${currencySymbol}${convertedPrice.toFixed(2)}`;
 };
 
 const getPackageFullName = (type) => {
@@ -114,7 +182,7 @@ const form = ref({
     extras: [],
     vehicle_id: props.vehicle?.id,
     vehicle_total: 0,
-    currency: props.vehicle?.products?.[0]?.currency || '$',
+    currency: props.filters?.currency || props.vehicle?.products?.[0]?.currency || '$',
     grand_total: 0,
     paymentHandlerRef: null,
     quoteid: props.filters?.quoteid || props.vehicle?.products?.[0]?.quoteid || 'dummy_quote_id',
@@ -469,15 +537,15 @@ const bookingDataForStripe = computed(() => {
                                         <div class="space-y-2">
                                             <div class="flex justify-between">
                                                 <span class="text-gray-600">Total Price</span>
-                                                <span class="font-semibold">{{ getCurrencySymbol(pkg.currency) }}{{ pkg.total }}</span>
+                                                <span class="font-semibold">{{ formatPrice(pkg.total, pkg.currency) }}</span>
                                             </div>
                                             <div class="flex justify-between">
                                                 <span class="text-gray-600">Deposit</span>
-                                                <span class="font-semibold">{{ getCurrencySymbol(pkg.currency) }}{{ pkg.deposit }}</span>
+                                                <span class="font-semibold">{{ formatPrice(pkg.deposit, pkg.currency) }}</span>
                                             </div>
                                             <div class="flex justify-between">
                                                 <span class="text-gray-600">Excess</span>
-                                                <span class="font-semibold">{{ getCurrencySymbol(pkg.currency) }}{{ pkg.excess }}</span>
+                                                <span class="font-semibold">{{ formatPrice(pkg.excess, pkg.currency) }}</span>
                                             </div>
                                             <div class="flex justify-between">
                                                 <span class="text-gray-600">Fuel Policy</span>
@@ -526,7 +594,7 @@ const bookingDataForStripe = computed(() => {
                                                 <h4 class="font-semibold text-gray-900 text-[1.5rem]">{{ extra.Name }}</h4>
                                                 <p class="text-gray-600 text-sm">{{ extra.Description }}</p>
                                                 <p class="text-primary font-semibold mt-1">
-                                                    {{ getCurrencySymbol(extra.Daily_rate_currency) }}{{ extra.Daily_rate }}/day
+                                                    {{ formatPrice(extra.Daily_rate, extra.Daily_rate_currency) }}/day
                                                 </p>
                                             </div>
                                         </div>
@@ -714,6 +782,29 @@ const bookingDataForStripe = computed(() => {
 
                     <!-- Step 3: Payment -->
                     <div v-show="currentStep === 3" class="space-y-8">
+                        <!-- Currency Selector -->
+                        <div class="flex items-center justify-end gap-2">
+                            <label class="text-sm font-medium text-gray-700">Currency:</label>
+                            <select v-model="selectedCurrency"
+                                class="px-3 py-1 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+                                <option value="USD">USD ($)</option>
+                                <option value="EUR">EUR (€)</option>
+                                <option value="GBP">GBP (£)</option>
+                                <option value="JPY">JPY (¥)</option>
+                                <option value="AUD">AUD (A$)</option>
+                                <option value="CAD">CAD (C$)</option>
+                                <option value="CHF">CHF (Fr)</option>
+                                <option value="HKD">HKD (HK$)</option>
+                                <option value="SGD">SGD (S$)</option>
+                                <option value="SEK">SEK (kr)</option>
+                                <option value="NOK">NOK (kr)</option>
+                                <option value="NZD">NZD (NZ$)</option>
+                                <option value="INR">INR (₹)</option>
+                                <option value="MXN">MXN (Mex$)</option>
+                                <option value="ZAR">ZAR (R)</option>
+                                <option value="AED">AED</option>
+                            </select>
+                        </div>
                         <div class="bg-white rounded-2xl shadow-sm border border-gray-100">
                             <div class="p-6 border-b bg-gradient-to-r from-gray-50 to-white">
                                 <h3 class="text-xl font-bold text-gray-900 mb-2">Complete Your Payment</h3>
@@ -808,7 +899,7 @@ const bookingDataForStripe = computed(() => {
                                     <div v-if="selectedPackage" class="space-y-2">
                                         <div class="flex justify-between">
                                             <span class="text-gray-600">{{ selectedPackage.type }}</span>
-                                            <span class="font-medium">{{ getCurrencySymbol(selectedPackage.currency) }}{{ selectedPackage.total }}</span>
+                                            <span class="font-medium">{{ formatPrice(selectedPackage.total, selectedPackage.currency) }}</span>
                                         </div>
                                     </div>
                                     <p v-else class="text-gray-500 italic">No package selected</p>
@@ -821,7 +912,7 @@ const bookingDataForStripe = computed(() => {
                                         <div v-for="extra in selectedOptionalExtras" :key="extra.optionID" 
                                              class="flex justify-between text-sm">
                                             <span class="text-gray-600">{{ extra.Name }}</span>
-                                            <span class="font-medium">{{ getCurrencySymbol(extra.Daily_rate_currency) }}{{ extra.Daily_rate }}/day</span>
+                                            <span class="font-medium">{{ formatPrice(extra.Daily_rate, extra.Daily_rate_currency) }}/day</span>
                                         </div>
                                     </div>
                                 </div>
@@ -830,7 +921,7 @@ const bookingDataForStripe = computed(() => {
                                 <div class="pt-4 border-t border-gray-200">
                                     <div class="flex justify-between items-center">
                                         <span class="text-xl font-bold text-gray-900">Total</span>
-                                        <span class="text-2xl font-bold text-primary">{{ getCurrencySymbol(form.currency) }}{{ form.grand_total.toFixed(2) }}</span>
+                                        <span class="text-2xl font-bold text-primary">{{ formatPrice(form.grand_total, form.currency) }}</span>
                                     </div>
                                 </div>
 

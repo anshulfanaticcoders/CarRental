@@ -200,6 +200,12 @@ class GreenMotionBookingController extends Controller
                 'sessionId' => $session->id,
             ]);
 
+        } catch (\Stripe\Exception\ApiConnectionException $e) {
+            Log::error('Stripe API Connection Error: ' . $e->getMessage(), [
+                'exception' => $e,
+                'request_data' => $request->all(),
+            ]);
+            return response()->json(['error' => 'Could not connect to the payment gateway. Please check your server\'s network connection and firewall settings. It seems there is an issue connecting to Stripe.'], 500);
         } catch (\Exception $e) {
             Log::error('Error in GreenMotionBookingController::processGreenMotionBookingPayment: ' . $e->getMessage(), [
                 'exception' => $e,

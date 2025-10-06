@@ -25,6 +25,8 @@ import partnersIcon from "../../assets/partners.svg";
 import offerIcon from "../../assets/percentage-tag.svg";
 import { Head, Link } from "@inertiajs/vue3";
 import { computed, ref, watch } from "vue";
+import axios from "axios";
+import { router } from "@inertiajs/vue3";
 import AuthenticatedHeaderLayout from "@/Layouts/AuthenticatedHeaderLayout.vue";
 import { Vue3Lottie } from 'vue3-lottie';
 import universalLoader from '../../../public/animations/universal-loader.json';
@@ -32,6 +34,32 @@ import { Skeleton } from '@/Components/ui/skeleton';
 import '@vuepic/vue-datepicker/dist/main.css';
 import VueDatepicker from '@vuepic/vue-datepicker';
 import { useToast } from 'vue-toastification';
+
+// Currency conversion variables
+const exchangeRates = ref(null);
+const selectedCurrency = ref(usePage().props.filters?.currency || 'USD');
+const currencySymbols = ref({});
+
+const symbolToCodeMap = {
+    '$': 'USD',
+    '€': 'EUR',
+    '£': 'GBP',
+    '¥': 'JPY',
+    'A$': 'AUD',
+    'C$': 'CAD',
+    'Fr': 'CHF',
+    'HK$': 'HKD',
+    'S$': 'SGD',
+    'kr': 'SEK',
+    '₩': 'KRW',
+    'kr': 'NOK',
+    'NZ$': 'NZD',
+    '₹': 'INR',
+    'Mex$': 'MXN',
+    'R': 'ZAR',
+    'AED': 'AED'
+    // Add other symbol-to-code mappings as needed
+};
 
 
 import {
@@ -242,6 +270,47 @@ import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
 import { onMounted } from 'vue'
 
+// Currency conversion functions
+const fetchExchangeRates = async () => {
+    try {
+        const response = await fetch(`https://v6.exchangerate-api.com/v6/01b88ff6c6507396d707e4b6/latest/USD`);
+        const data = await response.json();
+        if (data.result === 'success') {
+            exchangeRates.value = data.conversion_rates;
+        } else {
+            console.error('Failed to fetch exchange rates:', data['error-type']);
+        }
+    } catch (error) {
+        console.error('Error fetching exchange rates:', error);
+    }
+};
+
+const convertCurrency = (price, fromCurrency) => {
+    const numericPrice = parseFloat(price);
+    if (isNaN(numericPrice)) {
+        return 0; // Return 0 if price is not a number
+    }
+
+    let fromCurrencyCode = fromCurrency;
+    if (symbolToCodeMap[fromCurrency]) {
+        fromCurrencyCode = symbolToCodeMap[fromCurrency];
+    }
+
+    if (!exchangeRates.value || !fromCurrencyCode || !selectedCurrency.value) {
+        return numericPrice; // Return original price if rates not loaded or currencies are invalid
+    }
+    const rateFrom = exchangeRates.value[fromCurrencyCode];
+    const rateTo = exchangeRates.value[selectedCurrency.value];
+    if (rateFrom && rateTo) {
+        return (numericPrice / rateFrom) * rateTo;
+    }
+    return numericPrice; // Fallback to original price if conversion is not possible
+};
+
+const getCurrencySymbol = (code) => {
+    return currencySymbols.value[code] || '$'; // Use fetched symbol or default to '$'
+};
+
 // Add this after your existing vehicle ref declaration
 let map = null
 
@@ -300,10 +369,25 @@ const initMap = () => {
 onMounted(() => {
     initMap();
     fetchAllVehicleFeatures();
+    fetchExchangeRates();
+
+    // Load currency symbols
+    try {
+        fetch('/currency.json')
+            .then(response => response.json())
+            .then(data => {
+                currencySymbols.value = data.reduce((acc, curr) => {
+                    acc[curr.code] = curr.symbol;
+                    return acc;
+                }, {});
+            })
+            .catch(error => console.error("Error loading currency symbols:", error));
+    } catch (error) {
+        console.error("Error loading currency symbols:", error);
+    }
 });
 
-import axios from "axios";
-import { router } from "@inertiajs/vue3";
+
 import Faq from "@/Components/Faq.vue";
 import Footer from "@/Components/Footer.vue";
 const form = ref({
@@ -554,8 +638,10 @@ const discountAmount = computed(() => {
 
 
 const formatPrice = (price) => {
-    const currencySymbol = vehicle.value.vendor_profile.currency;
-    return `${currencySymbol}${price}`;
+    const originalCurrency = vehicle.value.vendor_profile?.currency || 'USD';
+    const convertedPrice = convertCurrency(price, originalCurrency);
+    const currencySymbol = getCurrencySymbol(selectedCurrency.value);
+    return `${currencySymbol}${convertedPrice.toFixed(2)}`;
 };
 
 
@@ -931,8 +1017,7 @@ watch([() => form.value.date_from, () => form.value.date_to], () => {
 watch([
     selectedPackage,
     () => form.value.date_from,
-    () => form.value.date_to,
-    calculateTotalPrice
+    () => form.value.date_to
 ], () => {
     if (form.value.date_from && form.value.date_to && !dateError.value) {
         storeRentalData();
@@ -1001,8 +1086,8 @@ const proceedToPayment = async () => { // Make the function async
         sessionStorage.setItem('bookingDetails', JSON.stringify(bookingDataForSession));
         console.log('Booking details stored in session storage:', bookingDataForSession); // Optional: for debugging
 
-        // Proceed to payment page without query parameters
-        router.get(route('booking.show', { id: vehicle.value.id }), {
+        // Proceed to payment page with currency parameter
+        router.get(route('booking.show', { id: vehicle.value.id, currency: selectedCurrency.value }), {
             onFinish: () => {
                 isBooking.value = false;
             },
@@ -1588,8 +1673,32 @@ const searchUrl = computed(() => {
                                                         Pay <span class="text-green-500">{{ paymentPercentage }}%</span> now and rest pay later
                                                     </p>
                                                     </div>
-                                                    <CardTitle class="inline-block text-[1rem]">Choose Your Rental
-                                                        Package</CardTitle>
+                                                    <div class="flex items-center justify-between mb-4">
+                                                        <CardTitle class="inline-block text-[1rem]">Choose Your Rental
+                                                            Package</CardTitle>
+                                                        <div class="flex items-center gap-2">
+                                                            <label class="text-sm font-medium text-gray-700">Currency:</label>
+                                                            <select v-model="selectedCurrency"
+                                                                class="px-3 py-1 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+                                                                <option value="USD">USD ($)</option>
+                                                                <option value="EUR">EUR (€)</option>
+                                                                <option value="GBP">GBP (£)</option>
+                                                                <option value="JPY">JPY (¥)</option>
+                                                                <option value="AUD">AUD (A$)</option>
+                                                                <option value="CAD">CAD (C$)</option>
+                                                                <option value="CHF">CHF (Fr)</option>
+                                                                <option value="HKD">HKD (HK$)</option>
+                                                                <option value="SGD">SGD (S$)</option>
+                                                                <option value="SEK">SEK (kr)</option>
+                                                                <option value="NOK">NOK (kr)</option>
+                                                                <option value="NZD">NZD (NZ$)</option>
+                                                                <option value="INR">INR (₹)</option>
+                                                                <option value="MXN">MXN (Mex$)</option>
+                                                                <option value="ZAR">ZAR (R)</option>
+                                                                <option value="AED">AED</option>
+                                                            </select>
+                                                        </div>
+                                                    </div>
                                                     <div
                                                         class="relative overflow-hidden h-10 mb-4 rounded-lg bg-white shadow-sm max-[768px]:mt-[2rem]">
                                                         <!-- Left gradient fade -->
@@ -1661,7 +1770,7 @@ const searchUrl = computed(() => {
                                                                     pkg.priceLabel }}</span>
                                                             </p>
                                                             <p v-if="pkg.discount" class="text-sm text-green-600">
-                                                                Discount: {{ pkg.discount }}
+                                                                Discount: {{ formatPrice(pkg.discount) }}
                                                             </p>
                                                         </div>
                                                     </div>

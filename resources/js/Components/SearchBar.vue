@@ -517,6 +517,11 @@ onMounted(async () => {
   document.addEventListener('click', closeSearchResults);
   fetchPopularPlaces();
 
+  // Set default currency if not already set
+  if (!form.value.currency) {
+    form.value.currency = 'USD';
+  }
+
   // Set default dates if not prefilled
   if (!props.prefill?.date_from) {
     const today = new Date();

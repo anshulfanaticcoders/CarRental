@@ -16,21 +16,28 @@ class CurrencyDetectionService
 
     public function __construct()
     {
+        // Enhanced geolocation providers with IPWHOIS.IO as primary
         $this->ipGeolocationProviders = [
             'primary' => [
-                'url' => 'https://ipapi.co/{ip}/json/',
+                'name' => 'IPWHOIS.IO',
+                'url' => 'https://ipwho.is/{ip}?objects=currency',
                 'timeout' => 5,
-                'rate_limit' => 1000 // requests per hour
+                'rate_limit' => 10000, // generous free tier
+                'provides_currency' => true // Direct currency information
             ],
             'secondary' => [
-                'url' => 'https://ipinfo.io/{ip}/json',
+                'name' => 'apip.cc',
+                'url' => 'https://apip.cc/json/{ip}',
                 'timeout' => 5,
-                'rate_limit' => 1000
+                'rate_limit' => 1000,
+                'provides_currency' => true // Direct currency information
             ],
-            'tertiary' => [
-                'url' => 'https://api.ipify.org?format=json',
-                'timeout' => 3,
-                'rate_limit' => 1000
+            'fallback' => [
+                'name' => 'ipapi.co',
+                'url' => 'https://ipapi.co/{ip}/json/',
+                'timeout' => 5,
+                'rate_limit' => 1000,
+                'provides_currency' => false // Requires country-to-currency mapping
             ]
         ];
 
@@ -154,7 +161,7 @@ class CurrencyDetectionService
      */
     private function tryGeolocationProviders(string $ip): array
     {
-        $providers = ['primary', 'secondary', 'tertiary'];
+        $providers = ['primary', 'secondary', 'fallback'];
 
         foreach ($providers as $provider) {
             try {
@@ -203,39 +210,124 @@ class CurrencyDetectionService
     }
 
     /**
-     * Parse geolocation response based on provider
+     * Parse geolocation response from different providers
      */
     private function parseGeolocationResponse(array $data, string $provider): array
     {
-        $countryCode = null;
+        $config = $this->ipGeolocationProviders[$provider];
+        $providerName = $config['name'];
+        $providesCurrency = $config['provides_currency'] ?? false;
 
-        switch ($provider) {
-            case 'primary': // ipapi.co
-                $countryCode = $data['country_code'] ?? null;
-                break;
-            case 'secondary': // ipinfo.io
-                $countryCode = $data['country'] ?? null;
-                break;
-            case 'tertiary': // ipify (only provides IP, use fallback)
-                return $this->buildFallbackResponse('IP-only provider, using fallback');
+        try {
+            switch ($provider) {
+                case 'primary': // IPWHOIS.IO - Direct currency support
+                    return $this->parseIpWhoIsResponse($data);
+
+                case 'secondary': // apip.cc - Direct currency support
+                    return $this->parseApipCcResponse($data);
+
+                case 'fallback': // ipapi.co - Requires country mapping
+                    return $this->parseIpapiCoResponse($data);
+
+                default:
+                    throw new Exception("Unknown provider: {$provider}");
+            }
+        } catch (Exception $e) {
+            Log::warning("Failed to parse response from {$providerName}", [
+                'error' => $e->getMessage(),
+                'provider' => $providerName,
+                'data_keys' => array_keys($data)
+            ]);
+            throw $e;
+        }
+    }
+
+    /**
+     * Parse IPWHOIS.IO response with direct currency information
+     */
+    private function parseIpWhoIsResponse(array $data): array
+    {
+        if (!isset($data['success']) || !$data['success']) {
+            throw new Exception($data['message'] ?? 'IPWHOIS.IO API error');
         }
 
+        if (!isset($data['currency']['code'])) {
+            throw new Exception('Currency information not available in IPWHOIS.IO response');
+        }
+
+        $currency = $data['currency']['code'];
+        $countryCode = $data['country_code'] ?? null;
+
+        return [
+            'success' => true,
+            'currency' => $currency,
+            'country_code' => $countryCode,
+            'country' => $data['country'] ?? null,
+            'city' => $data['city'] ?? null,
+            'detection_method' => 'ipwhois.io',
+            'confidence' => 'high',
+            'currency_info' => [
+                'name' => $data['currency']['name'] ?? null,
+                'symbol' => $data['currency']['symbol'] ?? null,
+                'exchange_rate' => $data['currency']['exchange_rate'] ?? 1.0
+            ],
+            'raw_response' => $data
+        ];
+    }
+
+    /**
+     * Parse apip.cc response with direct currency information
+     */
+    private function parseApipCcResponse(array $data): array
+    {
+        if (!isset($data['currency_code'])) {
+            throw new Exception('Currency information not available in apip.cc response');
+        }
+
+        $currency = $data['currency_code'];
+        $countryCode = $data['country_code'] ?? null;
+
+        return [
+            'success' => true,
+            'currency' => $currency,
+            'country_code' => $countryCode,
+            'country' => $data['country_name'] ?? null,
+            'city' => $data['city'] ?? null,
+            'detection_method' => 'apip.cc',
+            'confidence' => 'high',
+            'currency_info' => [
+                'name' => $data['currency_name'] ?? null,
+                'symbol' => $data['currency_symbol'] ?? null
+            ],
+            'raw_response' => $data
+        ];
+    }
+
+    /**
+     * Parse ipapi.co response (fallback - requires country mapping)
+     */
+    private function parseIpapiCoResponse(array $data): array
+    {
+        $countryCode = $data['country_code'] ?? null;
+
         if (!$countryCode || strlen($countryCode) !== 2) {
-            throw new Exception('Invalid country code in response');
+            throw new Exception('Invalid country code in ipapi.co response');
         }
 
         $currency = $this->getCurrencyByCountry($countryCode);
 
         if (!$currency) {
-            return $this->buildFallbackResponse('Country not supported');
+            throw new Exception("Country {$countryCode} not supported in currency mapping");
         }
 
         return [
             'success' => true,
             'currency' => $currency,
             'country_code' => $countryCode,
-            'detection_method' => "ip_{$provider}",
-            'confidence' => 'high',
+            'country' => $data['country'] ?? null,
+            'city' => $data['city'] ?? null,
+            'detection_method' => 'ipapi.co',
+            'confidence' => 'medium',
             'raw_response' => $data
         ];
     }
