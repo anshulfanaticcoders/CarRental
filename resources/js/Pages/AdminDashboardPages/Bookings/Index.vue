@@ -43,7 +43,10 @@
                             <TableHead>Brand</TableHead>
                             <TableHead>Date</TableHead>
                             <TableHead>Total Days</TableHead>
+                            <TableHead>Currency</TableHead>
                             <TableHead>Total Amount</TableHead>
+                            <TableHead>Amount Paid</TableHead>
+                            <TableHead>Pending Amount</TableHead>
                             <TableHead>Payment Status</TableHead>
                             <TableHead>Booking Status</TableHead>
                             <TableHead class="text-right">Actions</TableHead>
@@ -60,7 +63,15 @@
                             <TableCell>{{ user.vehicle.brand }}</TableCell>
                             <TableCell>{{ formatDate(user.vehicle.created_at) }}</TableCell>
                             <TableCell>{{ user.total_days }}</TableCell>
-                            <TableCell>{{ user.total_amount }}</TableCell>
+                            <TableCell>
+                                <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium"
+                                    :class="getCurrencyBadgeClass(user.booking_currency || 'USD')">
+                                    {{ user.booking_currency || 'USD' }}
+                                </span>
+                            </TableCell>
+                            <TableCell>{{ formatCurrency(user.total_amount, user.booking_currency || 'USD') }}</TableCell>
+                            <TableCell class="text-green-600 font-medium">{{ formatCurrency(user.amount_paid || 0, user.booking_currency || 'USD') }}</TableCell>
+                            <TableCell class="text-yellow-600 font-medium">{{ formatCurrency(user.pending_amount || 0, user.booking_currency || 'USD') }}</TableCell>
                             <TableCell>
                                 <span v-if="user.payments?.length > 0" :class="{
                                     'px-2 py-1 text-xs font-semibold rounded-full': true,
@@ -192,6 +203,67 @@ const getStatusBadgeBooking = (status) => {
 const formatDate = (dateStr) => {
     const date = new Date(dateStr);
     return `${String(date.getDate()).padStart(2, '0')}/${String(date.getMonth() + 1).padStart(2, '0')}/${date.getFullYear()}`;
+};
+
+// Currency symbol function
+const getCurrencySymbol = (currency) => {
+    const symbols = {
+        'USD': '$',
+        'EUR': '€',
+        'GBP': '£',
+        'JPY': '¥',
+        'AUD': 'A$',
+        'CAD': 'C$',
+        'CHF': 'Fr',
+        'HKD': 'HK$',
+        'SGD': 'S$',
+        'SEK': 'kr',
+        'KRW': '₩',
+        'NOK': 'kr',
+        'NZD': 'NZ$',
+        'INR': '₹',
+        'MXN': 'Mex$',
+        'ZAR': 'R',
+        'AED': 'AED'
+    };
+    return symbols[currency] || '$';
+};
+
+// Format number function
+const formatNumber = (number) => {
+    return new Intl.NumberFormat('en-US', {
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2
+    }).format(number);
+};
+
+// Format currency with symbol
+const formatCurrency = (amount, currency) => {
+    return `${getCurrencySymbol(currency)}${formatNumber(amount)}`;
+};
+
+// Currency badge class
+const getCurrencyBadgeClass = (currency) => {
+    const classes = {
+        'USD': 'bg-green-100 text-green-800',
+        'EUR': 'bg-blue-100 text-blue-800',
+        'GBP': 'bg-purple-100 text-purple-800',
+        'JPY': 'bg-red-100 text-red-800',
+        'AUD': 'bg-yellow-100 text-yellow-800',
+        'CAD': 'bg-orange-100 text-orange-800',
+        'CHF': 'bg-pink-100 text-pink-800',
+        'HKD': 'bg-teal-100 text-teal-800',
+        'SGD': 'bg-indigo-100 text-indigo-800',
+        'SEK': 'bg-gray-100 text-gray-800',
+        'KRW': 'bg-red-200 text-red-900',
+        'NOK': 'bg-blue-200 text-blue-900',
+        'NZD': 'bg-green-200 text-green-900',
+        'INR': 'bg-orange-200 text-orange-900',
+        'MXN': 'bg-yellow-200 text-yellow-900',
+        'ZAR': 'bg-purple-200 text-purple-900',
+        'AED': 'bg-cyan-100 text-cyan-900'
+    };
+    return classes[currency] || 'bg-gray-100 text-gray-800';
 };
 </script>
 
