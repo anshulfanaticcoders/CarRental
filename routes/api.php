@@ -102,8 +102,4 @@ Route::get('/{provider}/dropoff-locations/{location_id}', [GreenMotionController
 // Route for unified location search
 Route::get('/unified-locations', [App\Http\Controllers\SearchController::class, 'searchUnifiedLocations'])->name('api.unified-locations.search');
 
-// Vendor API routes
-Route::middleware('auth:sanctum')->get('/vendor/booking-details-with-revenue', [VendorOverviewController::class, 'getBookingDetailsWithRevenue'])->name('api.vendor.booking-details-with-revenue');
-
-// Debug endpoint to check vendor payments
-Route::middleware('auth:sanctum')->get('/vendor/debug-payments', [VendorOverviewController::class, 'debugVendorPayments'])->name('api.vendor.debug-payments');
+// Vendor API routes - Note: Moved to web.php for proper authentication

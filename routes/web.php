@@ -344,6 +344,7 @@ Route::group([
         // Vendor Payments
         Route::get('/vendor/payments', [BookingController::class, 'getVendorPaymentHistory'])->name('vendor.payments');
 
+    
         // Vendor Vehicles
         Route::resource('current-vendor-vehicles', VendorVehicleController::class);
         Route::post('current-vendor-vehicles/bulk-destroy', [VendorVehicleController::class, 'bulkDestroy'])->name('current-vendor-vehicles.bulk-destroy');
