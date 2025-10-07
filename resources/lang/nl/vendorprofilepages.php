@@ -361,4 +361,18 @@ return [
         'edit_plan_add_feature_button' => 'Kenmerk toevoegen',
         'edit_plan_cancel_button' => 'Annuleren',
         'edit_plan_save_button' => 'Opslaan',
+
+        // Revenue Modal Translations
+        'revenue_details_modal_title' => 'Inkomsten Details',
+        'revenue_summary_title' => 'Inkomsten Overzicht',
+        'total_revenue_label' => 'Totale Inkomsten',
+        'total_bookings_label' => 'Totaal Reserveringen',
+        'booking_details_title' => 'Reservering Details',
+        'table_booking_number_header' => 'Reservering #',
+        'table_booking_currency_header' => 'Valuta',
+        'table_amount_paid_header' => 'Betaald Bedrag',
+        'table_total_amount_header' => 'Totaal Bedrag',
+        'table_pending_amount_header' => 'Openstaand Bedrag',
+        'currency_breakdown_title' => 'Inkomsten per Valuta',
+        'close_button' => 'Sluiten',
 ];

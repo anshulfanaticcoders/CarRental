@@ -364,4 +364,18 @@ return [
         'edit_plan_add_feature_button' => 'Ajouter une caractéristique',
         'edit_plan_cancel_button' => 'Annuler',
         'edit_plan_save_button' => 'Enregistrer',
+
+        // Revenue Modal Translations
+        'revenue_details_modal_title' => 'Détails des revenus',
+        'revenue_summary_title' => 'Résumé des revenus',
+        'total_revenue_label' => 'Revenu total',
+        'total_bookings_label' => 'Total des réservations',
+        'booking_details_title' => 'Détails de la réservation',
+        'table_booking_number_header' => 'Réservation #',
+        'table_booking_currency_header' => 'Devise',
+        'table_amount_paid_header' => 'Montant payé',
+        'table_total_amount_header' => 'Montant total',
+        'table_pending_amount_header' => 'Montant en attente',
+        'currency_breakdown_title' => 'Revenus par devise',
+        'close_button' => 'Fermer',
 ];

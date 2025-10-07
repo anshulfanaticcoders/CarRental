@@ -357,4 +357,18 @@ return [
     'edit_plan_add_feature_button' => 'إضافة ميزة',
     'edit_plan_cancel_button' => 'إلغاء',
     'edit_plan_save_button' => 'حفظ',
+
+    // Revenue Modal Translations
+    'revenue_details_modal_title' => 'تفاصيل الإيرادات',
+    'revenue_summary_title' => 'ملخص الإيرادات',
+    'total_revenue_label' => 'إجمالي الإيرادات',
+    'total_bookings_label' => 'إجمالي الحجوزات',
+    'booking_details_title' => 'تفاصيل الحجز',
+    'table_booking_number_header' => 'رقم الحجز',
+    'table_booking_currency_header' => 'العملة',
+    'table_amount_paid_header' => 'المبلغ المدفوع',
+    'table_total_amount_header' => 'المبلغ الإجمالي',
+    'table_pending_amount_header' => 'المبلغ المتبقي',
+    'currency_breakdown_title' => 'الإيرادات حسب العملة',
+    'close_button' => 'إغلاق',
 ];

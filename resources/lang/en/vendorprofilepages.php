@@ -370,4 +370,18 @@ return [
     'edit_plan_add_feature_button' => 'Add Feature',
     'edit_plan_cancel_button' => 'Cancel',
     'edit_plan_save_button' => 'Save',
+
+    // Vendor/Overview Revenue Modal
+    'revenue_details_modal_title' => 'Revenue Details',
+    'revenue_summary_title' => 'Revenue Summary',
+    'total_revenue_label' => 'Total Revenue',
+    'total_bookings_label' => 'Total Bookings',
+    'booking_details_title' => 'Booking Details',
+    'table_booking_number_header' => 'Booking #',
+    'table_booking_currency_header' => 'Currency',
+    'table_amount_paid_header' => 'Amount Paid',
+    'table_total_amount_header' => 'Total Amount',
+    'table_pending_amount_header' => 'Pending Amount',
+    'currency_breakdown_title' => 'Revenue by Currency',
+    'close_button' => 'Close',
 ];

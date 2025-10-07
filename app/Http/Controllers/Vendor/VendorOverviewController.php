@@ -7,6 +7,7 @@ use App\Models\Booking;
 use App\Models\BookingPayment;
 use App\Models\Vehicle;
 use Carbon\Carbon;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
 
@@ -130,6 +131,52 @@ class VendorOverviewController extends Controller
         return $revenueData->reverse()->values()->all();
     }
 
+    /**
+     * Get booking details with revenue data for the modal
+     */
+    public function getBookingDetailsWithRevenue(Request $request)
+    {
+        $vendorId = auth()->id();
 
-    
+        // Get bookings for this vendor with their relationships
+        $bookings = Booking::with(['customer', 'vehicle'])
+            ->whereHas('vehicle', function ($query) use ($vendorId) {
+                $query->where('vendor_id', $vendorId);
+            })
+            ->whereNotNull('booking_currency')
+            ->orderBy('created_at', 'desc')
+            ->get()
+            ->map(function ($booking) {
+                return [
+                    'id' => $booking->id,
+                    'booking_number' => $booking->booking_number,
+                    'customer' => [
+                        'first_name' => $booking->customer?->first_name,
+                        'last_name' => $booking->customer?->last_name,
+                    ],
+                    'vehicle' => [
+                        'brand' => $booking->vehicle?->brand,
+                        'model' => $booking->vehicle?->model,
+                    ],
+                    'booking_currency' => $booking->booking_currency,
+                    'amount_paid' => $booking->amount_paid,
+                    'total_amount' => $booking->total_amount,
+                    'pending_amount' => $booking->pending_amount,
+                    'booking_status' => $booking->booking_status,
+                ];
+            });
+
+        // Calculate currency breakdown
+        $currencyBreakdown = $bookings
+            ->groupBy('booking_currency')
+            ->map(function ($bookingsByCurrency, $currency) {
+                return $bookingsByCurrency->sum('amount_paid');
+            })
+            ->toArray();
+
+        return response()->json([
+            'bookings' => $bookings,
+            'currencyBreakdown' => $currencyBreakdown,
+        ]);
+    }
 }
