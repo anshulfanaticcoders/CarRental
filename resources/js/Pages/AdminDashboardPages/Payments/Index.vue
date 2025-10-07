@@ -19,7 +19,7 @@
                     <h3 class="text-gray-500 text-sm">Total Amount</h3>
                     <p class="text-2xl font-bold">
                         <span v-if="stats.currency_symbol === 'Mixed'">{{ formatNumber(stats.total_amount) }} (Mixed)</span>
-                        <span v-else>{{ stats.currency_symbol }}{{ formatNumber(stats.total_amount) }}</span>
+                        <span v-else>{{ formatCurrency(stats.total_amount, stats.currency_symbol) }}</span>
                     </p>
                 </div>
             </div>
@@ -58,6 +58,9 @@
                                 Transaction ID
                             </th>
                             <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                Currency
+                            </th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                                 Amount
                             </th>
                             <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -80,7 +83,13 @@
                                 {{ payment.transaction_id }}
                             </td>
                             <td class="px-6 py-4 whitespace-nowrap">
-                                {{ payment.currency }}{{ formatNumber(payment.amount) }}
+                                <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium"
+                                    :class="getCurrencyBadgeClass(payment.currency)">
+                                    {{ payment.currency }}
+                                </span>
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap">
+                                {{ formatCurrency(payment.amount, payment.currency) }}
                             </td>
                             <td class="px-6 py-4 whitespace-nowrap">
                                 {{ payment.payment_method }}
@@ -152,6 +161,59 @@ const formatNumber = (number) => {
         maximumFractionDigits: 2
     }).format(number)
 }
+
+// Currency symbol function
+const getCurrencySymbol = (currency) => {
+    const symbols = {
+        'USD': '$',
+        'EUR': '€',
+        'GBP': '£',
+        'JPY': '¥',
+        'AUD': 'A$',
+        'CAD': 'C$',
+        'CHF': 'Fr',
+        'HKD': 'HK$',
+        'SGD': 'S$',
+        'SEK': 'kr',
+        'KRW': '₩',
+        'NOK': 'kr',
+        'NZD': 'NZ$',
+        'INR': '₹',
+        'MXN': 'Mex$',
+        'ZAR': 'R',
+        'AED': 'AED'
+    };
+    return symbols[currency] || '$';
+}
+
+// Format currency with symbol
+const formatCurrency = (amount, currency) => {
+    return `${getCurrencySymbol(currency)}${formatNumber(amount)}`;
+}
+
+// Currency badge class
+const getCurrencyBadgeClass = (currency) => {
+    const classes = {
+        'USD': 'bg-green-100 text-green-800',
+        'EUR': 'bg-blue-100 text-blue-800',
+        'GBP': 'bg-purple-100 text-purple-800',
+        'JPY': 'bg-red-100 text-red-800',
+        'AUD': 'bg-yellow-100 text-yellow-800',
+        'CAD': 'bg-orange-100 text-orange-800',
+        'CHF': 'bg-pink-100 text-pink-800',
+        'HKD': 'bg-teal-100 text-teal-800',
+        'SGD': 'bg-indigo-100 text-indigo-800',
+        'SEK': 'bg-gray-100 text-gray-800',
+        'KRW': 'bg-red-200 text-red-900',
+        'NOK': 'bg-blue-200 text-blue-900',
+        'NZD': 'bg-green-200 text-green-900',
+        'INR': 'bg-orange-200 text-orange-900',
+        'MXN': 'bg-yellow-200 text-yellow-900',
+        'ZAR': 'bg-purple-200 text-purple-900',
+        'AED': 'bg-cyan-100 text-cyan-900'
+    };
+    return classes[currency] || 'bg-gray-100 text-gray-800';
+};
 
 const formatDate = (dateStr) => {
     const date = new Date(dateStr);

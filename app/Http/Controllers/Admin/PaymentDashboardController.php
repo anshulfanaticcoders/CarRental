@@ -11,7 +11,7 @@ class PaymentDashboardController extends Controller
 {
     public function index(Request $request)
     {
-        $paymentsQuery = BookingPayment::with('booking.vehicle.vendorProfile')
+        $paymentsQuery = BookingPayment::with('booking')
             ->when($request->search, function ($query, $search) {
                 $query->where('transaction_id', 'like', "%{$search}%")
                     ->orWhere('payment_method', 'like', "%{$search}%")
@@ -22,8 +22,8 @@ class PaymentDashboardController extends Controller
                 $query->where('payment_status', $status);
             })
             ->when($request->currency && $request->currency !== 'all', function ($query) use ($request) {
-                $query->whereHas('booking.vehicle.vendorProfile', function ($subQuery) use ($request) {
-                    $subQuery->where('currency', $request->currency);
+                $query->whereHas('booking', function ($subQuery) use ($request) {
+                    $subQuery->where('booking_currency', $request->currency);
                 });
             })
             ->when($request->sort, function ($query, $sort) {
@@ -36,27 +36,28 @@ class PaymentDashboardController extends Controller
         $payments = $paymentsQuery->paginate(7)->withQueryString();
 
         $payments->getCollection()->transform(function ($payment) {
-            $payment->currency = optional($payment->booking?->vehicle?->vendorProfile)->currency ?? '€'; // Default to EUR
+            $payment->currency = $payment->booking?->booking_currency ?? 'USD'; // Use booking_currency with fallback
             return $payment;
         });
 
-        // Get all available currencies
-        $availableCurrencies = BookingPayment::with('booking.vehicle.vendorProfile')
+        // Get all available currencies from booking_currency field
+        $availableCurrencies = BookingPayment::with('booking')
             ->get()
             ->map(function ($payment) {
-                return optional($payment->booking?->vehicle?->vendorProfile)->currency ?? '€';
+                return $payment->booking?->booking_currency ?? 'USD';
             })
             ->unique()
             ->filter()
+            ->sort()
             ->values();
 
         // Calculate stats based on selected currency
         $selectedCurrency = $request->currency ?? 'all';
-        
+
         $statsBaseQuery = BookingPayment::query();
         if ($selectedCurrency !== 'all') {
-            $statsBaseQuery->whereHas('booking.vehicle.vendorProfile', function ($query) use ($selectedCurrency) {
-                $query->where('currency', $selectedCurrency);
+            $statsBaseQuery->whereHas('booking', function ($query) use ($selectedCurrency) {
+                $query->where('booking_currency', $selectedCurrency);
             });
         }
 
