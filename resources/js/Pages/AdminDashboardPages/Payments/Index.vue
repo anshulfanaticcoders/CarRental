@@ -61,7 +61,16 @@
                                 Currency
                             </th>
                             <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                Amount
+                                Total Amount
+                            </th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                Payment Amount
+                            </th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                Amount Paid
+                            </th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                Pending Amount
                             </th>
                             <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                                 Payment Method
@@ -89,7 +98,16 @@
                                 </span>
                             </td>
                             <td class="px-6 py-4 whitespace-nowrap">
+                                {{ formatCurrency(payment.booking?.total_amount || 0, payment.currency) }}
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap">
                                 {{ formatCurrency(payment.amount, payment.currency) }}
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap text-green-600 font-medium">
+                                {{ formatCurrency(payment.booking?.amount_paid || 0, payment.currency) }}
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap text-yellow-600 font-medium">
+                                {{ formatCurrency(payment.booking?.pending_amount || 0, payment.currency) }}
                             </td>
                             <td class="px-6 py-4 whitespace-nowrap">
                                 {{ payment.payment_method }}

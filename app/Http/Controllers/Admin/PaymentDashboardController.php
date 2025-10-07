@@ -11,7 +11,7 @@ class PaymentDashboardController extends Controller
 {
     public function index(Request $request)
     {
-        $paymentsQuery = BookingPayment::with('booking')
+        $paymentsQuery = BookingPayment::with(['booking'])
             ->when($request->search, function ($query, $search) {
                 $query->where('transaction_id', 'like', "%{$search}%")
                     ->orWhere('payment_method', 'like', "%{$search}%")
