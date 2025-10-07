@@ -139,14 +139,16 @@ class VendorOverviewController extends Controller
         $vendorId = auth()->id();
 
         // Get bookings for this vendor with their relationships
-        $bookings = Booking::with(['customer', 'vehicle'])
+        $bookings = Booking::with(['customer', 'vehicle.vendorProfile'])
             ->whereHas('vehicle', function ($query) use ($vendorId) {
                 $query->where('vendor_id', $vendorId);
             })
-            ->whereNotNull('booking_currency')
             ->orderBy('created_at', 'desc')
             ->get()
             ->map(function ($booking) {
+                // Use vendor profile currency as fallback if booking_currency is null
+                $currency = $booking->booking_currency ?? $booking->vehicle?->vendorProfile?->currency ?? 'USD';
+
                 return [
                     'id' => $booking->id,
                     'booking_number' => $booking->booking_number,
@@ -158,12 +160,16 @@ class VendorOverviewController extends Controller
                         'brand' => $booking->vehicle?->brand,
                         'model' => $booking->vehicle?->model,
                     ],
-                    'booking_currency' => $booking->booking_currency,
-                    'amount_paid' => $booking->amount_paid,
-                    'total_amount' => $booking->total_amount,
-                    'pending_amount' => $booking->pending_amount,
+                    'booking_currency' => $currency,
+                    'amount_paid' => (float) $booking->amount_paid,
+                    'total_amount' => (float) $booking->total_amount,
+                    'pending_amount' => (float) $booking->pending_amount,
                     'booking_status' => $booking->booking_status,
                 ];
+            })
+            ->filter(function ($booking) {
+                // Only include bookings that have some amount paid
+                return $booking['amount_paid'] > 0;
             });
 
         // Calculate currency breakdown

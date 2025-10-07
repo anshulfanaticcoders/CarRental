@@ -95,7 +95,20 @@
                         <!-- Booking Details Table -->
                         <div class="space-y-2">
                             <h3 class="text-lg font-semibold">{{ _t('vendorprofilepages', 'booking_details_title') }}</h3>
-                            <div class="overflow-x-auto">
+
+                            <!-- No bookings message -->
+                            <div v-if="!isLoading && (!bookingDetails || bookingDetails.length === 0)"
+                                 class="bg-gray-50 p-4 rounded-lg text-center">
+                                <p class="text-gray-600">No booking details available</p>
+                            </div>
+
+                            <!-- Loading state -->
+                            <div v-else-if="isLoading" class="bg-gray-50 p-4 rounded-lg text-center">
+                                <p class="text-gray-600">Loading booking details...</p>
+                            </div>
+
+                            <!-- Bookings table -->
+                            <div v-else class="overflow-x-auto">
                                 <table class="w-full border-collapse">
                                     <thead>
                                         <tr class="bg-gray-100">
@@ -206,10 +219,16 @@ const fetchBookingDetails = async () => {
     try {
         const response = await fetch(`/api/vendor/booking-details-with-revenue?locale=${usePage().props.locale}`);
         const data = await response.json();
-        bookingDetails.value = data.bookings;
-        currencyBreakdown.value = data.currencyBreakdown;
+
+        console.log('API Response:', data); // Debug log
+        console.log('Bookings count:', data.bookings?.length || 0); // Debug log
+
+        bookingDetails.value = data.bookings || [];
+        currencyBreakdown.value = data.currencyBreakdown || {};
     } catch (error) {
         console.error('Error fetching booking details:', error);
+        bookingDetails.value = [];
+        currencyBreakdown.value = {};
     } finally {
         isLoading.value = false;
     }
