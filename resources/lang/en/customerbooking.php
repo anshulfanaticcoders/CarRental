@@ -8,9 +8,8 @@ return [
     'seats_suffix' => 'Seats',
     'from_label' => 'From:',
     'to_label' => 'To:',
-    'price_per_day_suffix' => '/day',
-    'price_per_week_suffix' => '/week',
-    'price_per_month_suffix' => '/month',
+    'paid_amount_text' => 'Paid',
+    'total_amount_text' => 'Total Amount',
     'view_booking_details_link' => 'View Booking Details',
     'chat_with_owner_link' => 'Chat with owner',
     'not_applicable' => 'N/A', // General N/A, if needed for other booking pages

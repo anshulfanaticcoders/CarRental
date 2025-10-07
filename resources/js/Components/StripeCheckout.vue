@@ -43,33 +43,80 @@ const initiateCheckout = async () => {
   // errorMessage.value = ''; // No longer needed
 
   try {
+    console.log('🚀 Starting checkout process...');
+    console.log('📋 Booking Data:', JSON.stringify(props.bookingData, null, 2));
+
     // Load Stripe.js dynamically
+    console.log('💳 Loading Stripe with key:', import.meta.env.VITE_STRIPE_KEY ? 'Key found' : 'Key missing');
     const stripe = await loadStripe(import.meta.env.VITE_STRIPE_KEY);
     if (!stripe) {
       throw new Error('Failed to load Stripe.js');
     }
+    console.log('✅ Stripe loaded successfully');
+
+    // Validate required booking data fields
+    const requiredFields = ['customer', 'vehicle_id', 'pickup_date', 'return_date', 'total_amount'];
+    const missingFields = requiredFields.filter(field => !props.bookingData[field]);
+    if (missingFields.length > 0) {
+      throw new Error(`Missing required fields: ${missingFields.join(', ')}`);
+    }
+
+    // Validate customer sub-fields
+    if (!props.bookingData.customer.email || !props.bookingData.customer.first_name || !props.bookingData.customer.last_name) {
+      throw new Error('Customer information is incomplete (email, first name, and last name are required)');
+    }
+
+    // Validate amounts
+    if (props.bookingData.total_amount <= 0) {
+      throw new Error('Total amount must be greater than 0');
+    }
+
+    if (props.bookingData.amount_paid <= 0) {
+      throw new Error('Amount paid must be greater than 0');
+    }
+
+    // Validate dates
+    const pickupDate = new Date(props.bookingData.pickup_date);
+    const returnDate = new Date(props.bookingData.return_date);
+    if (pickupDate >= returnDate) {
+      throw new Error('Return date must be after pickup date');
+    }
+
+    console.log('✅ Booking data validation passed');
 
     // Save important data to session storage before redirecting to Stripe
     if (window.sessionStorage) {
       sessionStorage.setItem('pendingBookingData', JSON.stringify(props.bookingData));
+      console.log('💾 Booking data saved to session storage');
     }
 
+    const paymentUrl = `/${page.props.locale}/payment/charge`;
+    console.log('🌐 Sending request to payment.charge endpoint:', paymentUrl);
     // Create Checkout Session
-    const response = await axios.post(route('payment.charge'), {
+    const response = await axios.post(paymentUrl, {
       bookingData: props.bookingData,
     });
 
+    console.log('📨 Payment response:', response.data);
     const { sessionId } = response.data;
     if (!sessionId) {
       throw new Error('Failed to create Checkout Session');
     }
+    console.log('✅ Checkout session created:', sessionId);
 
     // Redirect to Stripe Checkout
+    console.log('🔄 Redirecting to Stripe Checkout...');
     const { error } = await stripe.redirectToCheckout({ sessionId });
     if (error) {
       throw new Error(error.message);
     }
   } catch (err) {
+    console.error('❌ Checkout error:', err);
+    console.error('❌ Error details:', {
+      message: err.message,
+      stack: err.stack,
+      bookingData: props.bookingData
+    });
     // Emit the error to the parent component
     emit('error', err.message || 'An error occurred. Please try again.');
     isLoading.value = false;

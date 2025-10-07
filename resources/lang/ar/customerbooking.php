@@ -8,9 +8,8 @@ return [
     'seats_suffix' => 'مقاعد',
     'from_label' => 'من:',
     'to_label' => 'إلى:',
-    'price_per_day_suffix' => '/يوم',
-    'price_per_week_suffix' => '/أسبوع',
-    'price_per_month_suffix' => '/شهر',
+    'paid_amount_text' => 'مدفوع',
+    'total_amount_text' => 'المبلغ الإجمالي',
     'view_booking_details_link' => 'عرض تفاصيل الحجز',
     'chat_with_owner_link' => 'الدردشة مع المالك',
     'not_applicable' => 'غير متوفر', // General N/A, if needed for other booking pages

@@ -68,13 +68,9 @@
             </div>
             <div class='flex justify-between items-center'>
               <div>
-                  <strong class="text-[1.5rem] font-medium" v-if="booking.preferred_day === 'day'">{{
-                    formatPrice(booking.vehicle.price_per_day, booking.vehicle) }}{{ _t('customerbooking', 'price_per_day_suffix') }}</strong>
-                  <strong class="text-[1.5rem] font-medium" v-if="booking.preferred_day === 'week'">{{
-                    formatPrice(booking.vehicle.price_per_week, booking.vehicle) }}{{ _t('customerbooking', 'price_per_week_suffix') }}</strong>
-                  <strong class="text-[1.5rem] font-medium" v-if="booking.preferred_day === 'month'">{{
-                    formatPrice(booking.vehicle.price_per_month, booking.vehicle) }}{{ _t('customerbooking', 'price_per_month_suffix') }}</strong>
-                </div>
+                  <strong class="text-[1.5rem] font-medium">{{ getCurrencySymbol(booking.booking_currency) }}{{ formatNumber(booking.amount_paid) }} {{ _t('customerbooking', 'paid_amount_text') }}</strong>
+                  <div class="text-gray-600 text-sm mt-1">{{ _t('customerbooking', 'total_amount_text') }}: {{ getCurrencySymbol(booking.booking_currency) }}{{ formatNumber(booking.total_amount) }}</div>
+                  </div>
               <div>
                 <button v-if="!booking.review" @click="openReviewModal(booking)"
                   class="button-primary px-[1.5rem] py-[0.75rem] max-[768px]:text-[0.75rem]">
@@ -219,9 +215,34 @@ onMounted(() => {
   }
 });
 
-const formatPrice = (price, vehicle) => {
-  const currencySymbol = vehicle?.vendor_profile?.currency ?? '$'; // Default to '$' if missing
-  return `${currencySymbol}${price}`;
+const getCurrencySymbol = (currency) => {
+  const symbols = {
+    'USD': '$',
+    'EUR': '€',
+    'GBP': '£',
+    'JPY': '¥',
+    'AUD': 'A$',
+    'CAD': 'C$',
+    'CHF': 'Fr',
+    'HKD': 'HK$',
+    'SGD': 'S$',
+    'SEK': 'kr',
+    'KRW': '₩',
+    'NOK': 'kr',
+    'NZD': 'NZ$',
+    'INR': '₹',
+    'MXN': 'Mex$',
+    'ZAR': 'R',
+    'AED': 'AED'
+  };
+  return symbols[currency] || '$';
+};
+
+const formatNumber = (number) => {
+  return new Intl.NumberFormat('en-US', {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2
+  }).format(number);
 };
 
 

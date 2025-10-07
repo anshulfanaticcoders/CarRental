@@ -115,12 +115,44 @@ onMounted(async () => {
   }
 });
 
+// Get currency symbol
+const getCurrencySymbol = (currency) => {
+  const symbols = {
+    'USD': '$',
+    'EUR': '€',
+    'GBP': '£',
+    'JPY': '¥',
+    'AUD': 'A$',
+    'CAD': 'C$',
+    'CHF': 'Fr',
+    'HKD': 'HK$',
+    'SGD': 'S$',
+    'SEK': 'kr',
+    'KRW': '₩',
+    'NOK': 'kr',
+    'NZD': 'NZ$',
+    'INR': '₹',
+    'MXN': 'Mex$',
+    'ZAR': 'R',
+    'AED': 'AED'
+  };
+  return symbols[currency] || '$';
+};
+
 // Format currency
 const formatCurrency = (amount) => {
   return new Intl.NumberFormat('en-US', {
     style: 'currency',
     currency: 'EUR'
   }).format(amount);
+};
+
+// Format number with proper decimal places
+const formatNumber = (number) => {
+  return new Intl.NumberFormat('en-US', {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2
+  }).format(number);
 };
 
 const formatDate = (dateStr) => {
@@ -193,21 +225,15 @@ const formatDate = (dateStr) => {
               </tr>
               <tr class="border-b">
                 <td class="text-customDarkBlackColor py-2">Total Amount</td>
-                <td class="text-customPrimaryColor font-medium text-right py-2">{{ vendorProfile.currency }}{{
-                  booking.total_amount
-                }}</td>
+                <td class="text-customPrimaryColor font-medium text-right py-2">{{ getCurrencySymbol(booking.booking_currency) }}{{ formatNumber(booking.total_amount) }}</td>
               </tr>
               <tr class="border-b">
                 <td class="text-customDarkBlackColor py-2">Amount Paid</td>
-                <td class="text-customPrimaryColor font-medium text-right py-2 text-green-600">{{ vendorProfile.currency
-                }}{{ booking.amount_paid
-                  }}</td>
+                <td class="text-customPrimaryColor font-medium text-right py-2 text-green-600">{{ getCurrencySymbol(booking.booking_currency) }}{{ formatNumber(booking.amount_paid) }}</td>
               </tr>
               <tr class="border-b">
                 <td class="text-customDarkBlackColor py-2">Pending Amount</td>
-                <td class="text-customPrimaryColor font-medium text-right py-2 text-yellow-600">{{
-                  vendorProfile.currency }}{{ booking.pending_amount
-                  }}</td>
+                <td class="text-customPrimaryColor font-medium text-right py-2 text-yellow-600">{{ getCurrencySymbol(booking.booking_currency) }}{{ formatNumber(booking.pending_amount) }}</td>
               </tr>
             </table>
           </div>
@@ -230,9 +256,7 @@ const formatDate = (dateStr) => {
               </tr>
               <tr class="border-b">
                 <td class="text-customDarkBlackColor py-2">Amount Paid</td>
-                <td class="text-customPrimaryColor font-medium text-right py-2">{{ vendorProfile.currency }}{{
-                  payment.amount }}
-                </td>
+                <td class="text-customPrimaryColor font-medium text-right py-2">{{ getCurrencySymbol(booking.booking_currency) }}{{ formatNumber(payment.amount) }}</td>
               </tr>
             </table>
           </div>
@@ -279,23 +303,18 @@ const formatDate = (dateStr) => {
                 <span class="capitalize">{{ booking.preferred_day }} Price</span>
                 <div>
                   <strong class="text-[1.5rem] font-medium max-[768px]:text-[0.875rem]"
-                    v-if="booking.preferred_day === 'day'">{{ vendorProfile.currency }}{{ vehicle.price_per_day
-                    }}</strong>
+                    v-if="booking.preferred_day === 'day'">{{ getCurrencySymbol(booking.booking_currency) }}{{ formatNumber(vehicle.price_per_day) }}</strong>
                   <strong class="text-[1.5rem] font-medium max-[768px]:text-[0.875rem]"
-                    v-if="booking.preferred_day === 'week'">{{ vendorProfile.currency }}{{ vehicle.price_per_week
-                    }}</strong>
+                    v-if="booking.preferred_day === 'week'">{{ getCurrencySymbol(booking.booking_currency) }}{{ formatNumber(vehicle.price_per_week) }}</strong>
                   <strong class="text-[1.5rem] font-medium max-[768px]:text-[0.875rem]"
-                    v-if="booking.preferred_day === 'month'">{{ vendorProfile.currency }}{{ vehicle.price_per_month
-                    }}</strong>
+                    v-if="booking.preferred_day === 'month'">{{ getCurrencySymbol(booking.booking_currency) }}{{ formatNumber(vehicle.price_per_month) }}</strong>
                 </div>
               </div>
               <div v-if="booking.discount_amount"
                 class="flex justify-between items-center text-[1.1rem] mt-[0rem] border-b-[1px] pb-[0.5rem] max-[768px]:mt-0">
                 <span class="capitalize">Discount Price</span>
-                <strong v-if="booking.discount_amount > 1" class="text-[1.1rem] font-medium text-green-400">- {{
-                  vendorProfile.currency }}{{ booking.discount_amount }}</strong>
-                <strong v-else class="text-[1.1rem] font-medium text-red-500">- {{ vendorProfile.currency
-                }}{{ booking.discount_amount }}</strong>
+                <strong v-if="booking.discount_amount > 1" class="text-[1.1rem] font-medium text-green-400">- {{ getCurrencySymbol(booking.booking_currency) }}{{ formatNumber(booking.discount_amount) }}</strong>
+                <strong v-else class="text-[1.1rem] font-medium text-red-500">- {{ getCurrencySymbol(booking.booking_currency) }}{{ formatNumber(booking.discount_amount) }}</strong>
               </div>
 
               <div class="flex justify-between">
@@ -311,27 +330,26 @@ const formatDate = (dateStr) => {
                     {{ booking.total_days }} days
                   </template>
                 </span>
-                <strong class="text-[1.1rem] font-medium">{{ vendorProfile.currency }}{{ booking.base_price }}</strong>
+                <strong class="text-[1.1rem] font-medium">{{ getCurrencySymbol(booking.booking_currency) }}{{ formatNumber(booking.base_price) }}</strong>
               </div>
               <span class="text-[1.5rem]">Extras</span>
               <div class="">
                 <ul class="list-none pl-0">
                   <li v-for="extra in booking.extras" :key="extra.id" class="flex justify-between">
-                    <span>{{ extra.extra_name }}({{ extra.quantity }}) {{ vendorProfile.currency }}{{ extra.price }}
+                    <span>{{ extra.extra_name }}({{ extra.quantity }}) {{ getCurrencySymbol(booking.booking_currency) }}{{ formatNumber(extra.price) }}
                       <strong class="text-green-400">x {{ booking.total_days }}</strong></span>
-                    <span class="text-[1.1rem] font-medium">+ {{ vendorProfile.currency }}{{ extra.price *
-                      booking.total_days }}</span>
+                    <span class="text-[1.1rem] font-medium">+ {{ getCurrencySymbol(booking.booking_currency) }}{{ formatNumber(extra.price * booking.total_days) }}</span>
                   </li>
                 </ul>
               </div>
 
               <div>
                 <div v-if="booking.plan_price > 0" class="flex justify-between gap-2">
-                  <span>{{ booking.plan }} {{ vendorProfile.currency }}{{ booking.plan_price }} <strong
+                  <span>{{ booking.plan }} {{ getCurrencySymbol(booking.booking_currency) }}{{ formatNumber(booking.plan_price) }} <strong
                       class="text-green-400">x {{
                       booking.total_days }}</strong> </span>
                   <span class="text-[1.1rem] font-medium">
-                    + {{ vendorProfile.currency }}{{ booking.plan_price * booking.total_days }}
+                    + {{ getCurrencySymbol(booking.booking_currency) }}{{ formatNumber(booking.plan_price * booking.total_days) }}
                   </span>
                 </div>
                 <div v-else>
@@ -348,8 +366,7 @@ const formatDate = (dateStr) => {
                 <img :src="infoIcon" alt="" class="w-[25px] h[25px] max-[768px]:w-[20px] max-[768px]:h-[20px]" />
               </p>
               <span class="relative text-customPrimaryColor text-[1.5rem] font-medium max-[768px]:text-[1.2rem]">{{
-                vendorProfile.currency }}{{ booking.total_amount
-                }}
+                getCurrencySymbol(booking.booking_currency) }}{{ formatNumber(booking.total_amount) }}
                 <span class="absolute left-0 top-[50%] w-full bg-red-600 h-[3px] -rotate-6"></span>
               </span>
             </div>
@@ -357,8 +374,7 @@ const formatDate = (dateStr) => {
               <span class="text-[1.25rem] font-medium max-[768px]:text-[0.875rem]">
                 After paying 30% amount
               </span>
-              <span class="text-customPrimaryColor text-[1.5rem] font-medium text-green-600">{{ vendorProfile.currency
-              }}{{ booking.amount_paid }}</span>
+              <span class="text-customPrimaryColor text-[1.5rem] font-medium text-green-600">{{ getCurrencySymbol(booking.booking_currency) }}{{ formatNumber(booking.amount_paid) }}</span>
             </div>
           </div>
         </div>

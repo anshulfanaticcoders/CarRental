@@ -32,6 +32,7 @@ class Booking extends Model
         'total_amount',
         'pending_amount',
         'amount_paid',
+        'booking_currency',
         'payment_status',
         'booking_status',
         'booking_reference',

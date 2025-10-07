@@ -458,27 +458,42 @@ const getCurrencySymbol = (code) => {
 };
 
 const formatPrice = (price) => {
-    const originalCurrency = vehicle.value.vendor_profile?.currency || 'USD';
-    const convertedPrice = convertCurrency(price, originalCurrency);
+    // If the price is already converted (from calculateTotal), just format it
+    const currencySymbol = getCurrencySymbol(selectedCurrency.value);
+    return `${currencySymbol}${Number(price).toFixed(2)}`;
+};
+
+// Function to format individual item prices (needs conversion)
+const formatItemPrice = (price) => {
+    const convertedPrice = getConvertedPrice(price);
     const currencySymbol = getCurrencySymbol(selectedCurrency.value);
     return `${currencySymbol}${convertedPrice.toFixed(2)}`;
 };
 
 
+// Helper function to get converted price
+const getConvertedPrice = (price) => {
+    const originalCurrency = vehicle.value.vendor_profile?.currency || 'USD';
+    return convertCurrency(price, originalCurrency);
+};
+
 // Update your total calculation
 const calculateTotal = computed(() => {
     let total = 0;
 
-    total += Number(totalPrice.value);
+    total += getConvertedPrice(totalPrice.value);
     // Add plan value
-    total += Number(selectedPlan.value?.price || 0) * totalDays.value;
+    total += getConvertedPrice(Number(selectedPlan.value?.price || 0)) * totalDays.value;
 
     // Add extras with quantity multiplication
     bookingExtras.value.forEach((extra) => {
         if (extra.quantity > 0) {
-            total += Number(extra.price) * Number(extra.quantity) * totalDays.value;
+            total += getConvertedPrice(Number(extra.price)) * Number(extra.quantity) * totalDays.value;
         }
     });
+
+    // Subtract discount (converted)
+    total -= getConvertedPrice(Number(discountAmount.value));
 
     return total;
 });
@@ -689,6 +704,8 @@ const handleStripeError = (message) => {
 
 
 const bookingData = computed(() => {
+    console.log('🔍 Computing booking data...');
+
     const pickupDateObj = new Date(dateFrom.value);
     const returnDateObj = new Date(dateTo.value);
     const totalDaysCalc = Math.ceil((returnDateObj - pickupDateObj) / (1000 * 3600 * 24));
@@ -703,20 +720,26 @@ const bookingData = computed(() => {
             price: Number(extra.price)
         }));
 
-    // Log the extras data for debugging
-    console.log('Booking Data Extras Before Sending:', JSON.stringify(extrasData, null, 2));
-
     // Calculate extra charges
     extrasData.forEach((extra) => {
         extraCharges += extra.price * extra.quantity;
     });
 
-    return {
+    // Get location with proper fallback
+    const pickupLocation = sessionBookingDetails.value?.vehicleDetails?.full_vehicle_address ||
+                           vehicle.value?.full_vehicle_address ||
+                           'Location not specified';
+
+    const returnLocation = sessionBookingDetails.value?.vehicleDetails?.full_vehicle_address ||
+                           vehicle.value?.full_vehicle_address ||
+                           'Location not specified';
+
+    const finalBookingData = {
         customer: customer.value,
         pickup_date: dateFrom.value,
         return_date: dateTo.value,
-        pickup_location: sessionBookingDetails.value?.vehicleDetails?.full_vehicle_address || vehicle.value?.full_vehicle_address || null,
-        return_location: sessionBookingDetails.value?.vehicleDetails?.full_vehicle_address || vehicle.value?.full_vehicle_address || null,
+        pickup_location: pickupLocation,
+        return_location: returnLocation,
         pickup_time: timeFrom.value,
         return_time: timeTo.value,
         total_days: totalDaysCalc,
@@ -731,7 +754,29 @@ const bookingData = computed(() => {
         plan_price: selectedPlan.value ? Number(selectedPlan.value.price) : 0,
         extras: extrasData,
         vehicle_id: vehicle.value?.id,
+        // Add currency for payment processing
+        currency: selectedCurrency.value,
     };
+
+    console.log('📋 Final booking data computed:', JSON.stringify(finalBookingData, null, 2));
+    console.log('💰 Pricing details:', {
+        total_amount: finalBookingData.total_amount,
+        amount_paid: finalBookingData.amount_paid,
+        currency: finalBookingData.currency
+    });
+
+    // Log potential issues without throwing errors in computed property
+    if (!finalBookingData.vehicle_id) {
+        console.warn('⚠️ Warning: Vehicle ID is missing');
+    }
+    if (!finalBookingData.pickup_date || !finalBookingData.return_date) {
+        console.warn('⚠️ Warning: Pickup or return dates are missing');
+    }
+    if (!finalBookingData.customer?.email) {
+        console.warn('⚠️ Warning: Customer email is missing');
+    }
+
+    return finalBookingData;
 });
 
 </script>
@@ -895,7 +940,7 @@ const bookingData = computed(() => {
                                         <div class="col flex-[0.5]">
                                             <span
                                                 class="text-[1.25rem] text-customPrimaryColor font-bold max-[768px]:text-[0.95rem]">
-                                                {{ formatPrice(extra.price) }} Per day
+                                                {{ formatItemPrice(extra.price) }} Per day
                                             </span>
                                         </div>
 
@@ -1209,7 +1254,7 @@ const bookingData = computed(() => {
 
                                         <span>Price ( package type ({{ packageType }}) )</span>
                                         <strong class="text-[1.5rem] font-medium max-[768px]:text-[1.1rem]">
-                                            {{ formatPrice(totalPrice) }} </strong>
+                                            {{ formatItemPrice(totalPrice) }} </strong>
 
                                     </div>
                                     <!-- Selected Plan -->
@@ -1221,11 +1266,11 @@ const bookingData = computed(() => {
                                         <div>
                                             <div class="flex items-center gap-1">
                                                 <span>
-                                                    {{ formatPrice(selectedPlan.price) }} * {{ totalDays }} days =
+                                                    {{ formatItemPrice(selectedPlan.price) }} * {{ totalDays }} days =
                                                 </span>
 
                                                 <strong class="text-[1.5rem] font-medium max-[768px]:text-[1.1rem]">{{
-                                                    formatPrice(selectedPlan.price * totalDays)
+                                                    formatItemPrice(selectedPlan.price) * totalDays
                                                     }}</strong>
                                             </div>
 
@@ -1243,11 +1288,11 @@ const bookingData = computed(() => {
                                             }}</span>
                                         <div class="flex items-center gap-1">
                                             <span>
-                                                {{ formatPrice(extra.price * extra.quantity) }} * {{ totalDays }} days
+                                                {{ formatItemPrice(extra.price * extra.quantity) }} * {{ totalDays }} days
                                                 =
                                             </span>
                                             <strong class="text-[1.5rem] font-medium max-[768px]:text-[1.1rem]">
-                                                {{ formatPrice(extra.price * extra.quantity * totalDays) }}</strong>
+                                                {{ formatItemPrice(extra.price * extra.quantity * totalDays) }}</strong>
 
                                         </div>
                                     </div>
@@ -1271,14 +1316,14 @@ const bookingData = computed(() => {
                                             <div
                                                 class="flex justify-between text-[1.15rem] max-[768px]:text-[0.875rem]">
                                                 <span>Base Price</span>
-                                                <p class="font-medium">{{ formatPrice(totalPrice + discountAmount) }}
+                                                <p class="font-medium">{{ formatItemPrice(totalPrice + discountAmount) }}
                                                 </p>
                                             </div>
 
                                             <div v-if="selectedPlan"
                                                 class="flex justify-between text-[1.15rem] max-[768px]:text-[0.875rem]">
                                                 <span>Plan: {{ selectedPlan.plan_type }}</span>
-                                                <p class="font-medium">{{ formatPrice(selectedPlan.price * totalDays) }}
+                                                <p class="font-medium">{{ formatItemPrice(selectedPlan.price) * totalDays }}
                                                 </p>
                                             </div>
 
@@ -1287,7 +1332,7 @@ const bookingData = computed(() => {
                                                 class="flex justify-between text-[1.15rem] max-[768px]:text-[0.875rem]">
                                                 <span>{{ extra.extra_name }} {{ extra.quantity > 1 ?
                                                     `(x${extra.quantity})` : "" }}</span>
-                                                <p class="font-medium">{{ formatPrice(extra.price * extra.quantity *
+                                                <p class="font-medium">{{ formatItemPrice(extra.price * extra.quantity *
                                                     totalDays) }}
                                                 </p>
                                             </div>
@@ -1295,7 +1340,7 @@ const bookingData = computed(() => {
                                             <div
                                                 class="flex justify-between text-[1.25rem] font-bold border-t pt-3 mt-3 max-[768px]:text-[0.875rem]">
                                                 <span>Total (incl. VAT)</span>
-                                                <p class="font-medium">{{ formatPrice(calculateTotal + discountAmount)
+                                                <p class="font-medium">{{ formatPrice(calculateTotal)
                                                     }}
                                                 </p>
                                             </div>
@@ -1304,8 +1349,8 @@ const bookingData = computed(() => {
                                                 <span>Discount</span>
                                                 <div class="flex flex-col items-end">
                                                     <p class="border-b-2 mb-1 text-red-500 font-medium">-{{
-                                                        formatPrice(discountAmount) }}</p>
-                                                    <strong class="text-[1.3rem]">{{ formatPrice(calculateTotal)
+                                                        formatItemPrice(discountAmount) }}</p>
+                                                    <strong class="text-[1.3rem]">{{ formatPrice(calculateTotal + getConvertedPrice(discountAmount))
                                                     }}</strong>
                                                 </div>
                                             </div>

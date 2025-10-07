@@ -43,4 +43,9 @@ return [
         'url' => env('USAVE_URL'),
     ],
 
+    'proxy' => [
+        'http' => env('PROXY_HTTP'),
+        'https' => env('PROXY_HTTPS'),
+    ],
+
 ];

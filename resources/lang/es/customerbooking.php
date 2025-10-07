@@ -8,9 +8,8 @@ return [
     'seats_suffix' => 'Asientos',
     'from_label' => 'Desde:',
     'to_label' => 'Hasta:',
-    'price_per_day_suffix' => '/día',
-    'price_per_week_suffix' => '/semana',
-    'price_per_month_suffix' => '/mes',
+    'paid_amount_text' => 'Pagado',
+    'total_amount_text' => 'Importe Total',
     'view_booking_details_link' => 'Ver Detalles de la Reserva',
     'chat_with_owner_link' => 'Chatear con el propietario',
     'not_applicable' => 'N/A', // General N/A, if needed for other booking pages

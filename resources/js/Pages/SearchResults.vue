@@ -36,8 +36,8 @@ import 'vue-slider-component/theme/default.css';
 const selectedCurrency = ref(usePage().props.filters.currency || 'USD');
 const exchangeRates = ref(null);
 const supportedCurrencies = ref([
-    'USD', 'EUR', 'GBP', 'JPY', 'AUD', 'CAD', 'CHF', 'CNH', 'HKD', 'SGD', 
-    'SEK', 'KRW', 'NOK', 'NZD', 'INR', 'MXN', 'BRL', 'RUB', 'ZAR'
+    'USD', 'EUR', 'GBP', 'JPY', 'AUD', 'CAD', 'CHF', 'CNH', 'HKD', 'SGD',
+    'SEK', 'KRW', 'NOK', 'NZD', 'INR', 'MXN', 'BRL', 'RUB', 'ZAR', 'AED'
 ]);
 
 const fetchExchangeRates = async () => {
