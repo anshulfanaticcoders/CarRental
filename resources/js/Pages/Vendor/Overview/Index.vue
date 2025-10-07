@@ -113,6 +113,7 @@
                                     <thead>
                                         <tr class="bg-gray-100">
                                             <th class="border border-gray-300 px-4 py-2 text-left">{{ _t('vendorprofilepages', 'table_booking_number_header') }}</th>
+                                            <th class="border border-gray-300 px-4 py-2 text-left">{{ _t('vendorprofilepages', 'table_transaction_id_header') }}</th>
                                             <th class="border border-gray-300 px-4 py-2 text-left">{{ _t('vendorprofilepages', 'table_customer_header') }}</th>
                                             <th class="border border-gray-300 px-4 py-2 text-left">{{ _t('vendorprofilepages', 'table_vehicle_header') }}</th>
                                             <th class="border border-gray-300 px-4 py-2 text-left">{{ _t('vendorprofilepages', 'table_booking_currency_header') }}</th>
@@ -125,8 +126,16 @@
                                     <tbody>
                                         <tr v-for="booking in bookingDetails" :key="booking.id" class="hover:bg-gray-50">
                                             <td class="border border-gray-300 px-4 py-2">{{ booking.booking_number }}</td>
-                                            <td class="border border-gray-300 px-4 py-2">{{ booking.customer?.first_name }} {{ booking.customer?.last_name }}</td>
-                                            <td class="border border-px-4 py-2">{{ booking.vehicle?.brand }} {{ booking.vehicle?.model }}</td>
+                                            <td class="border border-gray-300 px-4 py-2">
+                                                <span class="text-sm font-medium text-gray-900">{{ booking.transaction_id || 'N/A' }}</span>
+                                            </td>
+                                            <td class="border border-gray-300 px-4 py-2">
+                                                <span class="text-sm text-gray-900 mr-2">{{ booking.customer?.first_name || 'N/A' }}</span>
+                                                <span class="text-sm text-gray-900">{{ booking.customer?.last_name || 'N/A' }}</span>
+                                            </td>
+                                            <td class="border border-gray-300 px-4 py-2">
+                                                <span class="text-sm text-gray-900">{{ booking.vehicle?.brand || 'N/A' }} {{ booking.vehicle?.model || 'N/A' }}</span>
+                                            </td>
                                             <td class="border border-gray-300 px-4 py-2">
                                                 <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium"
                                                     :class="getCurrencyBadgeClass(booking.booking_currency)">

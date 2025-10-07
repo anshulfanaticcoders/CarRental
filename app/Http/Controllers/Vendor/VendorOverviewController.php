@@ -138,39 +138,47 @@ class VendorOverviewController extends Controller
     {
         $vendorId = auth()->id();
 
-        // Get bookings for this vendor with their relationships
-        $bookings = Booking::with(['customer', 'vehicle.vendorProfile'])
-            ->whereHas('vehicle', function ($query) use ($vendorId) {
-                $query->where('vendor_id', $vendorId);
-            })
-            ->orderBy('created_at', 'desc')
-            ->get()
-            ->map(function ($booking) {
-                // Use vendor profile currency as fallback if booking_currency is null
-                $currency = $booking->booking_currency ?? $booking->vehicle?->vendorProfile?->currency ?? 'USD';
+        // Get payments for this vendor's bookings (same as Vendor Payments page)
+        $payments = BookingPayment::with(['booking.customer', 'booking.vehicle'])
+            ->join('bookings', 'booking_payments.booking_id', '=', 'bookings.id')
+            ->join('vehicles', 'bookings.vehicle_id', '=', 'vehicles.id')
+            ->where('vehicles.vendor_id', $vendorId)
+            ->select('booking_payments.*')
+            ->orderBy('booking_payments.created_at', 'desc')
+            ->get();
 
-                return [
-                    'id' => $booking->id,
-                    'booking_number' => $booking->booking_number,
-                    'customer' => [
-                        'first_name' => $booking->customer?->first_name,
-                        'last_name' => $booking->customer?->last_name,
-                    ],
-                    'vehicle' => [
-                        'brand' => $booking->vehicle?->brand,
-                        'model' => $booking->vehicle?->model,
-                    ],
-                    'booking_currency' => $currency,
-                    'amount_paid' => (float) $booking->amount_paid,
-                    'total_amount' => (float) $booking->total_amount,
-                    'pending_amount' => (float) $booking->pending_amount,
-                    'booking_status' => $booking->booking_status,
-                ];
-            })
-            ->filter(function ($booking) {
-                // Only include bookings that have some amount paid
-                return $booking['amount_paid'] > 0;
-            });
+        // Transform payments to booking details structure
+        $bookings = $payments->map(function ($payment) {
+            $booking = $payment->booking;
+
+            // Use vendor profile currency as fallback if booking_currency is null
+            $currency = $booking->booking_currency ?? $booking->vehicle?->vendorProfile?->currency ?? 'USD';
+
+            return [
+                'id' => $booking->id,
+                'booking_number' => $booking->booking_number,
+                'customer' => [
+                    'first_name' => $booking->customer?->first_name ?? 'N/A',
+                    'last_name' => $booking->customer?->last_name ?? 'N/A',
+                ],
+                'vehicle' => [
+                    'brand' => $booking->vehicle?->brand ?? 'N/A',
+                    'model' => $booking->vehicle?->model ?? 'N/A',
+                ],
+                'booking_currency' => $currency,
+                'amount_paid' => (float) ($booking->amount_paid ?? 0),
+                'total_amount' => (float) ($booking->total_amount ?? 0),
+                'pending_amount' => (float) ($booking->pending_amount ?? 0),
+                'booking_status' => $booking->booking_status ?? 'unknown',
+                'transaction_id' => $payment->transaction_id,
+                'payment_method' => $payment->payment_method,
+                'payment_status' => $payment->payment_status,
+                'payment_date' => $payment->created_at,
+            ];
+        })->filter(function ($booking) {
+            // Only include bookings that have some amount paid
+            return $booking['amount_paid'] > 0;
+        })->unique('id'); // Remove duplicates if multiple payments per booking
 
         // Calculate currency breakdown
         $currencyBreakdown = $bookings
@@ -181,7 +189,7 @@ class VendorOverviewController extends Controller
             ->toArray();
 
         return response()->json([
-            'bookings' => $bookings,
+            'bookings' => $bookings->values()->toArray(), // Re-index array
             'currencyBreakdown' => $currencyBreakdown,
         ]);
     }
