@@ -477,15 +477,46 @@ const getConvertedPrice = (price) => {
     return convertCurrency(price, originalCurrency);
 };
 
+// Get the correct unit price based on package type, CONVERTED to booking currency
+const getVehicleUnitPrice = () => {
+    if (!vehicle.value) return 0;
+
+    // Get original price in vendor currency
+    let originalPrice = 0;
+    switch (packageType.value) {
+        case 'day':
+            originalPrice = Number(vehicle.value.price_per_day) || 0;
+            break;
+        case 'week':
+            originalPrice = Number(vehicle.value.price_per_week) || 0;
+            break;
+        case 'month':
+            originalPrice = Number(vehicle.value.price_per_month) || 0;
+            break;
+        default:
+            originalPrice = Number(vehicle.value.price_per_day) || 0;
+    }
+
+    // Convert to booking currency if conversion is available
+    const originalCurrency = vehicle.value.vendor_profile?.currency || 'USD';
+    if (originalCurrency !== selectedCurrency.value && exchangeRates.value) {
+        return convertCurrency(originalPrice, originalCurrency);
+    }
+
+    return originalPrice;
+};
+
 // Update your total calculation
 const calculateTotal = computed(() => {
     let total = 0;
 
-    total += getConvertedPrice(totalPrice.value);
-    // Add plan value
+    // Use converted base price × total_days
+    total += getVehicleUnitPrice() * totalDays.value;
+
+    // Add plan value (already converted)
     total += getConvertedPrice(Number(selectedPlan.value?.price || 0)) * totalDays.value;
 
-    // Add extras with quantity multiplication
+    // Add extras with quantity multiplication (already converted)
     bookingExtras.value.forEach((extra) => {
         if (extra.quantity > 0) {
             total += getConvertedPrice(Number(extra.price)) * Number(extra.quantity) * totalDays.value;
@@ -717,12 +748,12 @@ const bookingData = computed(() => {
             extra_type: extra.extra_type || 'unknown', // Fallback to avoid null
             extra_name: extra.extra_name || 'unknown',
             quantity: Number(extra.quantity),
-            price: Number(extra.price)
+            price: getConvertedPrice(Number(extra.price)) // ✅ FIXED: Use converted price
         }));
 
-    // Calculate extra charges
+    // Calculate extra charges - Use converted prices × quantity × total_days
     extrasData.forEach((extra) => {
-        extraCharges += extra.price * extra.quantity;
+        extraCharges += extra.price * extra.quantity * totalDaysCalc;
     });
 
     // Get location with proper fallback
@@ -743,7 +774,7 @@ const bookingData = computed(() => {
         pickup_time: timeFrom.value,
         return_time: timeTo.value,
         total_days: totalDaysCalc,
-        base_price: Number(totalPrice.value),
+        base_price: getVehicleUnitPrice(),  // ✅ FIXED - now stores unit price
         preferred_day: packageType.value,
         extra_charges: extraCharges > 0 ? extraCharges : null,
         total_amount: calculateTotal.value,
@@ -760,9 +791,20 @@ const bookingData = computed(() => {
 
     console.log('📋 Final booking data computed:', JSON.stringify(finalBookingData, null, 2));
     console.log('💰 Pricing details:', {
+        base_price: finalBookingData.base_price,
         total_amount: finalBookingData.total_amount,
         amount_paid: finalBookingData.amount_paid,
-        currency: finalBookingData.currency
+        currency: finalBookingData.currency,
+        extra_charges: finalBookingData.extra_charges,
+        extras: finalBookingData.extras,
+        total_days: finalBookingData.total_days,
+        vendor_original_currency: vehicle.value?.vendor_profile?.currency,
+        selected_currency: selectedCurrency.value,
+        extras_converted_prices: finalBookingData.extras.map(e => ({
+            name: e.extra_name,
+            original_price: e.price,
+            converted_price: e.price
+        }))
     });
 
     // Log potential issues without throwing errors in computed property

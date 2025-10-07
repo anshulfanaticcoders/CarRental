@@ -82,17 +82,14 @@
                             <td class="px-4 py-2 text-sm text-gray-700 whitespace-nowrap">{{
                                 booking.pickup_location }}</td>
                             <td class="px-4 py-2 text-sm text-gray-700 whitespace-nowrap">{{
-                                booking.vendor_profile?.currency }} {{ booking.total_amount || _t('vendorprofilepages',
-                                'not_applicable_text') }}</td>
+                                getCurrencySymbol(booking.booking_currency || 'USD') }}{{ formatNumber(booking.total_amount || 0) }}</td>
                             <td class="px-4 py-2 text-sm text-green-600 whitespace-nowrap font-medium">{{
                                 booking.payments[0]?.payment_status === 'pending' ? 'Nil' :
-                                    `${booking.vendor_profile?.currency} ${booking.amount_paid || _t('vendorprofilepages',
-                                'not_applicable_text')}`
+                                    `${getCurrencySymbol(booking.booking_currency || 'USD')}${formatNumber(booking.amount_paid || 0)}`
                                 }}</td>
                             <td class="px-4 py-2 text-sm text-yellow-600 whitespace-nowrap font-medium">{{
                                 booking.payments[0]?.payment_status === 'pending' ? 'Nil' :
-                                    `${booking.vendor_profile?.currency} ${booking.pending_amount ||
-                                _t('vendorprofilepages', 'not_applicable_text')}`
+                                    `${getCurrencySymbol(booking.booking_currency || 'USD')}${formatNumber(booking.pending_amount || 0)}`
                                 }}</td>
                             <td class="px-4 py-2 text-sm capitalize">
                                 <span :class="{
@@ -285,6 +282,37 @@ const formatDate = (dateStr) => {
     }
     const date = new Date(dateStr);
     return `${String(date.getDate()).padStart(2, '0')}/${String(date.getMonth() + 1).padStart(2, '0')}/${date.getFullYear()}`;
+};
+
+// Get currency symbol
+const getCurrencySymbol = (currency) => {
+    const symbols = {
+        'USD': '$',
+        'EUR': '€',
+        'GBP': '£',
+        'JPY': '¥',
+        'AUD': 'A$',
+        'CAD': 'C$',
+        'CHF': 'Fr',
+        'HKD': 'HK$',
+        'SGD': 'S$',
+        'SEK': 'kr',
+        'KRW': '₩',
+        'NOK': 'kr',
+        'NZD': 'NZ$',
+        'INR': '₹',
+        'MXN': 'Mex$',
+        'ZAR': 'R',
+        'AED': 'AED'
+    };
+    return symbols[currency] || '$';
+};
+
+const formatNumber = (number) => {
+    return new Intl.NumberFormat('en-US', {
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2
+    }).format(number);
 };
 
 const updateStatus = async (booking) => {

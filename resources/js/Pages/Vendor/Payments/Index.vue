@@ -33,7 +33,13 @@
                 {{ _t('vendorprofilepages', 'table_vehicle_header') }}
               </th>
               <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                {{ _t('vendorprofilepages', 'table_amount_header') }}
+                Amount Paid
+              </th>
+              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                Total Amount
+              </th>
+              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                Pending Amount
               </th>
               <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                 {{ _t('vendorprofilepages', 'table_payment_method_header') }}
@@ -60,7 +66,13 @@
                 <span class="text-sm text-gray-900">{{ payment.booking?.vehicle?.brand || _t('vendorprofilepages', 'not_applicable_text') }}</span>
               </td>
               <td class="px-6 py-4 whitespace-nowrap">
-                <span class="text-sm font-medium text-gray-900">€{{ Number(payment.amount).toFixed(2) }}</span>
+                <span class="text-sm font-medium text-green-600">{{ getCurrencySymbol(payment.booking?.booking_currency || 'USD') }}{{ formatNumber(payment.booking?.amount_paid || 0) }}</span>
+              </td>
+              <td class="px-6 py-4 whitespace-nowrap">
+                <span class="text-sm font-medium text-gray-900">{{ getCurrencySymbol(payment.booking?.booking_currency || 'USD') }}{{ formatNumber(payment.booking?.total_amount || 0) }}</span>
+              </td>
+              <td class="px-6 py-4 whitespace-nowrap">
+                <span class="text-sm font-medium text-yellow-600">{{ getCurrencySymbol(payment.booking?.booking_currency || 'USD') }}{{ formatNumber(payment.booking?.pending_amount || 0) }}</span>
               </td>
               <td class="px-6 py-4 whitespace-nowrap">
                 <span class="text-sm text-gray-900 capitalize">{{ payment.payment_method }}</span>
@@ -126,6 +138,37 @@ const formatDate = (date) => {
     minute: '2-digit'
   })
 }
+
+// Get currency symbol
+const getCurrencySymbol = (currency) => {
+  const symbols = {
+    'USD': '$',
+    'EUR': '€',
+    'GBP': '£',
+    'JPY': '¥',
+    'AUD': 'A$',
+    'CAD': 'C$',
+    'CHF': 'Fr',
+    'HKD': 'HK$',
+    'SGD': 'S$',
+    'SEK': 'kr',
+    'KRW': '₩',
+    'NOK': 'kr',
+    'NZD': 'NZ$',
+    'INR': '₹',
+    'MXN': 'Mex$',
+    'ZAR': 'R',
+    'AED': 'AED'
+  };
+  return symbols[currency] || '$';
+};
+
+const formatNumber = (number) => {
+  return new Intl.NumberFormat('en-US', {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2
+  }).format(number);
+};
 
 const handlePageChange = (page) => {
   router.get(route('vendor.payments'), { ...props.filters, page }, { preserveState: true, preserveScroll: true });
