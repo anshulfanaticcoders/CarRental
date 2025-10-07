@@ -104,3 +104,6 @@ Route::get('/unified-locations', [App\Http\Controllers\SearchController::class, 
 
 // Vendor API routes
 Route::middleware('auth:sanctum')->get('/vendor/booking-details-with-revenue', [VendorOverviewController::class, 'getBookingDetailsWithRevenue'])->name('api.vendor.booking-details-with-revenue');
+
+// Debug endpoint to check vendor payments
+Route::middleware('auth:sanctum')->get('/vendor/debug-payments', [VendorOverviewController::class, 'debugVendorPayments'])->name('api.vendor.debug-payments');

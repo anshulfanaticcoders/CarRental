@@ -147,6 +147,13 @@ class VendorOverviewController extends Controller
             ->orderBy('booking_payments.created_at', 'desc')
             ->get();
 
+        // Debug log
+        \Log::info('Vendor Overview Debug', [
+            'vendor_id' => $vendorId,
+            'payments_count' => $payments->count(),
+            'payments_data' => $payments->take(3)->toArray() // Log first 3 payments
+        ]);
+
         // Transform payments to booking details structure
         $bookings = $payments->map(function ($payment) {
             $booking = $payment->booking;
@@ -191,6 +198,48 @@ class VendorOverviewController extends Controller
         return response()->json([
             'bookings' => $bookings->values()->toArray(), // Re-index array
             'currencyBreakdown' => $currencyBreakdown,
+        ]);
+    }
+
+    /**
+     * Debug method to check vendor's payment data
+     */
+    public function debugVendorPayments(Request $request)
+    {
+        $vendorId = auth()->id();
+
+        // Check if vendor has any vehicles
+        $vehicles = Vehicle::where('vendor_id', $vendorId)->get(['id', 'brand', 'model']);
+
+        // Check if vendor has any bookings
+        $bookings = Booking::whereHas('vehicle', function ($query) use ($vendorId) {
+            $query->where('vendor_id', $vendorId);
+        })->get(['id', 'booking_number', 'amount_paid', 'total_amount', 'booking_currency']);
+
+        // Check if vendor has any payments
+        $payments = BookingPayment::with(['booking'])
+            ->join('bookings', 'booking_payments.booking_id', '=', 'bookings.id')
+            ->join('vehicles', 'bookings.vehicle_id', '=', 'vehicles.id')
+            ->where('vehicles.vendor_id', $vendorId)
+            ->select('booking_payments.*')
+            ->get(['booking_payments.id', 'booking_payments.amount', 'booking_payments.booking_id']);
+
+        return response()->json([
+            'vendor_id' => $vendorId,
+            'vehicles_count' => $vehicles->count(),
+            'bookings_count' => $bookings->count(),
+            'payments_count' => $payments->count(),
+            'vehicles' => $vehicles,
+            'bookings' => $bookings,
+            'payments' => $payments->map(function ($payment) {
+                return [
+                    'id' => $payment->id,
+                    'amount' => $payment->amount,
+                    'booking_id' => $payment->booking_id,
+                    'booking_number' => $payment->booking?->booking_number,
+                    'booking_amount_paid' => $payment->booking?->amount_paid,
+                ];
+            }),
         ]);
     }
 }
