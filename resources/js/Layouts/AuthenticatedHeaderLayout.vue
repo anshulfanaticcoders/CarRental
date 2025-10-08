@@ -14,12 +14,13 @@ import flagFr from '../../assets/flag-fr.svg';
 import flagNl from '../../assets/flag-nl.svg';
 import flagEs from '../../assets/flag-es.svg';
 import flagAr from '../../assets/flag-ar.svg';
+import moneyExchangeSymbol from '../../assets/money-exchange-symbol.svg';
 import loaderVariant from '../../assets/loader-variant.svg'; // Import loader for potential use
 
 // Get page properties
 const page = usePage();
 const { url, props } = page;
-const { selectedCurrency, supportedCurrencies, changeCurrency } = useCurrency();
+const { selectedCurrency, supportedCurrencies, changeCurrency, loading: currencyLoading } = useCurrency();
 const showingNavigationDropdown = ref(false);
 const showingNotificationDropdown = ref(false);
 const mobileNotificationsOpen = ref(false);
@@ -188,6 +189,67 @@ const handleNotificationClick = async (notification) => {
   showingNotificationDropdown.value = false; // Close dropdown after click
 };
 
+// Currency names mapping for better display
+const currencyNames = {
+  'USD': 'United States Dollar',
+  'EUR': 'Euro',
+  'GBP': 'British Pound Sterling',
+  'JPY': 'Japanese Yen',
+  'AUD': 'Australian Dollar',
+  'CAD': 'Canadian Dollar',
+  'CHF': 'Swiss Franc',
+  'CNH': 'Chinese Yuan',
+  'HKD': 'Hong Kong Dollar',
+  'SGD': 'Singapore Dollar',
+  'SEK': 'Swedish Krona',
+  'KRW': 'South Korean Won',
+  'NOK': 'Norwegian Krone',
+  'NZD': 'New Zealand Dollar',
+  'INR': 'Indian Rupee',
+  'MXN': 'Mexican Peso',
+  'BRL': 'Brazilian Real',
+  'RUB': 'Russian Ruble',
+  'ZAR': 'South African Rand',
+  'AED': 'United Arab Emirates Dirham'
+};
+
+// Currency symbols mapping
+const currencySymbols = {
+  'USD': '$',
+  'EUR': '€',
+  'GBP': '£',
+  'JPY': '¥',
+  'AUD': 'A$',
+  'CAD': 'C$',
+  'CHF': 'Fr',
+  'CNH': '¥',
+  'HKD': 'HK$',
+  'SGD': 'S$',
+  'SEK': 'kr',
+  'KRW': '₩',
+  'NOK': 'kr',
+  'NZD': 'NZ$',
+  'INR': '₹',
+  'MXN': '$',
+  'BRL': 'R$',
+  'RUB': '₽',
+  'ZAR': 'R',
+  'AED': 'د.إ'
+};
+
+// Function to format currency display
+const formatCurrencyDisplay = (currency) => {
+  const name = currencyNames[currency] || currency;
+  const symbol = currencySymbols[currency] || '';
+  return `${currency}(${name})${symbol}`;
+};
+
+// Function to format currency display for the trigger
+const formatCurrencyTriggerDisplay = (currency) => {
+  const symbol = currencySymbols[currency] || '';
+  return `${currency}(${symbol})`;
+};
+
 // Computed properties
 const vendorStatus = computed(() => page.props.vendorStatus);
 const currentLocale = computed(() => page.props.locale || 'en');
@@ -324,30 +386,39 @@ watch(() => url.value, () => {
           </div>
 
           <!-- Currency Switcher -->
-          <Dropdown align="right" width="48">
-            <template #trigger>
-              <button
-                type="button"
-                class="inline-flex items-center px-3 py-2 text-sm font-medium text-gray-600 hover:text-gray-800 transition duration-150 ease-in-out"
-              >
-                <span>{{ selectedCurrency }}</span>
-                <svg class="ml-1 w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
-                </svg>
-              </button>
-            </template>
+          <div class="relative">
+            <div v-if="currencyLoading" class="absolute inset-0 flex items-center justify-center bg-white bg-opacity-50">
+                <img :src="loaderVariant" alt="Loading..." class="w-6 h-6" />
+            </div>
+            <Dropdown align="right" width="max">
+              <template #trigger>
+                <button
+                  type="button"
+                  class="inline-flex items-center px-3 py-2 text-sm font-medium text-gray-600 hover:text-gray-800 transition duration-150 ease-in-out"
+                  :disabled="currencyLoading"
+                >
+                  <img :src="moneyExchangeSymbol" alt="Currency" class="w-6 h-6 mr-2">
+                  <span>{{ formatCurrencyTriggerDisplay(selectedCurrency) }}</span>
+                  <svg class="ml-1 w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+                  </svg>
+                </button>
+              </template>
             <template #content>
-              <div
-                v-for="currency in supportedCurrencies"
-                :key="currency"
-                @click="changeCurrency(currency)"
-                class="flex items-center w-full px-4 py-2 text-left text-sm leading-5 text-white hover:text-[#153B4F] hover:bg-gray-100 transition duration-150 ease-in-out cursor-pointer"
-                :class="{ 'bg-gray-500': selectedCurrency === currency }"
-              >
-                {{ currency }}
+              <div class="max-h-64 overflow-y-auto currency-scrollbar">
+                <div
+                  v-for="currency in supportedCurrencies"
+                  :key="currency"
+                  @click="changeCurrency(currency)"
+                  class="flex min-w-max items-center px-4 py-2 text-left text-sm leading-5 text-white hover:text-white hover:bg-gray-600 transition duration-150 ease-in-out cursor-pointer"
+                  :class="{ 'bg-white text-[#153B4F]': selectedCurrency === currency }"
+                >
+                  {{ formatCurrencyDisplay(currency) }}
+                </div>
               </div>
             </template>
-          </Dropdown>
+            </Dropdown>
+          </div>
 
           <!-- Language Switcher -->
           <Dropdown align="right" width="48">
@@ -475,6 +546,38 @@ watch(() => url.value, () => {
           >
             {{ _t('header', 'create_account') }}
           </Link>
+          
+          <!-- Currency Switcher -->
+          <div class="relative">
+            <Dropdown align="right" width="max">
+              <template #trigger>
+                <button
+                  type="button"
+                  class="inline-flex items-center px-3 py-2 text-sm font-medium text-gray-600 hover:text-gray-800 transition duration-150 ease-in-out"
+                  :disabled="currencyLoading"
+                >
+                  <img :src="moneyExchangeSymbol" alt="Currency" class="w-6 h-6 mr-2">
+                  <span>{{ formatCurrencyTriggerDisplay(selectedCurrency) }}</span>
+                  <svg class="ml-1 w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+                  </svg>
+                </button>
+              </template>
+            <template #content>
+              <div class="max-h-64 overflow-y-auto currency-scrollbar">
+                <div
+                  v-for="currency in supportedCurrencies"
+                  :key="currency"
+                  @click="changeCurrency(currency)"
+                  class="flex min-w-max items-center px-4 py-2 text-left text-sm leading-5 text-white hover:text-white hover:bg-gray-600 transition duration-150 ease-in-out cursor-pointer"
+                  :class="{ 'bg-white text-[#153B4F]': selectedCurrency === currency }"
+                >
+                  {{ formatCurrencyDisplay(currency) }}
+                </div>
+              </div>
+            </template>
+            </Dropdown>
+          </div>
           
           <!-- Language Switcher for Guests -->
           <Dropdown align="right" width="48">
@@ -652,6 +755,20 @@ watch(() => url.value, () => {
           >
             Create an Account
           </Link>
+
+          <!-- Currency Options -->
+            <div class="mt-3 px-4 py-2 border-t border-gray-200">
+              <div class="text-sm font-medium text-gray-600 mb-2">Currency</div>
+                <select
+                    v-model="selectedCurrency"
+                    @change="changeCurrency($event.target.value)"
+                    class="block w-full px-2 py-1 text-sm rounded-md border-gray-300 focus:border-blue-300 focus:ring focus:ring-blue-200 focus:ring-opacity-50"
+                >
+                    <option v-for="currency in supportedCurrencies" :key="currency" :value="currency">
+                        {{ formatCurrencyDisplay(currency) }}
+                    </option>
+                </select>
+            </div>
           
           <!-- Language Options -->
           <div class="mt-3 pt-3 border-t border-gray-200">
@@ -676,6 +793,11 @@ watch(() => url.value, () => {
     <!-- Animated Flag Overlay -->
     <div v-if="animatedFlagUrl" class="fixed inset-0 z-[100] flex items-center justify-center bg-white bg-opacity-70">
       <img :src="animatedFlagUrl" alt="Flag" class="animated-flag" />
+    </div>
+
+    <!-- Full-screen loader for currency change -->
+    <div v-if="currencyLoading" class="fixed inset-0 z-[100] flex items-center justify-center bg-white bg-opacity-70">
+        <img :src="moneyExchangeSymbol" alt="Loading..." class="w-16 h-16 animate-spin" />
     </div>
 
     <!-- Full-screen notification component -->
@@ -767,6 +889,24 @@ header {
 
 .ripple-effect {
   animation: ripple 1.5s infinite;
+}
+
+/* Custom scrollbar for currency dropdown */
+.currency-scrollbar::-webkit-scrollbar {
+  width: 6px;
+}
+
+.currency-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.currency-scrollbar::-webkit-scrollbar-thumb {
+  background: #d1d5db;
+  border-radius: 3px;
+}
+
+.currency-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: #9ca3af;
 }
 
 /* Flag animation styles */

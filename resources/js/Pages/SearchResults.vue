@@ -32,10 +32,74 @@ import halfStar from "../../assets/halfstar.svg";
 import blankStar from "../../assets/blankstar.svg";
 import VueSlider from 'vue-slider-component';
 import 'vue-slider-component/theme/default.css';
+import Dropdown from "@/Components/Dropdown.vue";
+import moneyExchangeSymbol from '../../assets/money-exchange-symbol.svg';
 
 import { useCurrency } from '@/composables/useCurrency';
 
-const { selectedCurrency, supportedCurrencies, changeCurrency } = useCurrency();
+const { selectedCurrency, supportedCurrencies, changeCurrency, loading: currencyLoading } = useCurrency();
+
+// Currency names mapping for better display
+const currencyNames = {
+  'USD': 'United States Dollar',
+  'EUR': 'Euro',
+  'GBP': 'British Pound Sterling',
+  'JPY': 'Japanese Yen',
+  'AUD': 'Australian Dollar',
+  'CAD': 'Canadian Dollar',
+  'CHF': 'Swiss Franc',
+  'CNH': 'Chinese Yuan',
+  'HKD': 'Hong Kong Dollar',
+  'SGD': 'Singapore Dollar',
+  'SEK': 'Swedish Krona',
+  'KRW': 'South Korean Won',
+  'NOK': 'Norwegian Krone',
+  'NZD': 'New Zealand Dollar',
+  'INR': 'Indian Rupee',
+  'MXN': 'Mexican Peso',
+  'BRL': 'Brazilian Real',
+  'RUB': 'Russian Ruble',
+  'ZAR': 'South African Rand',
+  'AED': 'United Arab Emirates Dirham'
+};
+
+// Currency symbols mapping
+const currencySymbols = {
+  'USD': '$',
+  'EUR': '€',
+  'GBP': '£',
+  'JPY': '¥',
+  'AUD': 'A$',
+  'CAD': 'C$',
+  'CHF': 'Fr',
+  'CNH': '¥',
+  'HKD': 'HK$',
+  'SGD': 'S$',
+  'SEK': 'kr',
+  'KRW': '₩',
+  'NOK': 'kr',
+  'NZD': 'NZ$',
+  'INR': '₹',
+  'MXN': '$',
+  'BRL': 'R$',
+  'RUB': '₽',
+  'ZAR': 'R',
+  'AED': 'د.إ'
+};
+
+// Function to format currency display
+const formatCurrencyDisplay = (currency) => {
+  const name = currencyNames[currency] || currency;
+  const symbol = currencySymbols[currency] || '';
+  return `${currency}(${name})${symbol}`;
+};
+
+// Function to format currency display for the trigger
+const formatCurrencyTriggerDisplay = (currency) => {
+  const symbol = currencySymbols[currency] || '';
+  return `${currency}(${symbol})`;
+};
+
 const exchangeRates = ref(null);
 
 const fetchExchangeRates = async () => {
@@ -113,8 +177,6 @@ const props = defineProps({
     locale: String, // Added locale prop
     greenMotionVehicles: Object, // New: GreenMotion vehicles data
 });
-// New: Currency symbols for GreenMotion vehicles
-const currencySymbols = ref({});
 
 onMounted(async () => {
     fetchExchangeRates();
@@ -131,6 +193,9 @@ onMounted(async () => {
 });
 
 const getCurrencySymbol = (code) => {
+    if (!currencySymbols.value) {
+        return '$';
+    }
     return currencySymbols.value[code] || '$'; // Use fetched symbol or default to '$'
 };
 
@@ -1037,6 +1102,9 @@ watch(
         <meta name="twitter:image" :content="seoImageUrl" />
     </Head>
     <AuthenticatedHeaderLayout />
+    <div v-if="currencyLoading" class="fixed inset-0 z-[100] flex items-center justify-center bg-white bg-opacity-70">
+        <img :src="moneyExchangeSymbol" alt="Loading..." class="w-16 h-16 animate-spin" />
+    </div>
     <SchemaInjector v-if="schema" :schema="schema" />
     <section class="bg-customPrimaryColor py-customVerticalSpacing">
         <div class="">
@@ -1050,12 +1118,39 @@ watch(
     <section>
     <div id="filter-section" class="full-w-container py-8">
         <!-- Mobile filter button (visible only on mobile, hidden when fixed button appears) -->
-        <div class="md:hidden mb-4" v-if="!showFixedMobileFilterButton">
+        <div class="md:hidden mb-4 flex items-center justify-between gap-2" v-if="!showFixedMobileFilterButton">
             <button @click="showMobileFilters = true"
-                class="flex items-center justify-center gap-3 p-3 w-full bg-white rounded-lg shadow-md hover:shadow-lg transition-all duration-300">
+                class="flex flex-1 items-center justify-center gap-3 p-3 w-full bg-white rounded-lg shadow-md hover:shadow-lg transition-all duration-300">
                 <img :src="filterIcon" alt="Filter" class="w-5 h-5" loading="lazy" />
-                <span class="text-lg font-medium">Find Your Perfect Car</span>
+                <span class="text-lg font-medium">Filter</span>
             </button>
+            <div class="relative flex-1">
+                <Dropdown align="right" width="max">
+                    <template #trigger>
+                        <button
+                            type="button"
+                            class="flex px-5 items-center justify-center gap-3 p-3 w-full bg-white rounded-lg shadow-md hover:shadow-lg transition-all duration-300"
+                            :disabled="currencyLoading"
+                        >
+                            <img :src="moneyExchangeSymbol" alt="Currency" class="w-5 h-5">
+                            <span class="text-lg font-medium">Currency</span>
+                        </button>
+                    </template>
+                    <template #content>
+                        <div class="max-h-64 overflow-y-auto currency-scrollbar">
+                            <div
+                                v-for="currency in supportedCurrencies"
+                                :key="currency"
+                                @click="changeCurrency(currency)"
+                                class="flex items-center min-w-max px-4 py-2 text-left text-sm leading-5 text-white hover:text-white hover:bg-gray-600 transition duration-150 ease-in-out cursor-pointer"
+                                :class="{ 'bg-white text-[#153B4F]': selectedCurrency === currency }"
+                            >
+                                {{ formatCurrencyDisplay(currency) }}
+                            </div>
+                        </div>
+                    </template>
+                </Dropdown>
+            </div>
         </div>
 
         <!-- Desktop filter header (hidden on mobile) -->

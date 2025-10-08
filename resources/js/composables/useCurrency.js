@@ -1,8 +1,9 @@
-import { computed } from 'vue';
+import { computed, ref } from 'vue';
 import { usePage, router } from '@inertiajs/vue3';
 
 export function useCurrency() {
     const page = usePage();
+    const loading = ref(false);
 
     const selectedCurrency = computed(() => page.props.currency);
 
@@ -12,11 +13,15 @@ export function useCurrency() {
     ];
 
     const changeCurrency = (newCurrency) => {
+        loading.value = true;
         router.post(route('currency.update'), { currency: newCurrency }, {
             preserveState: true,
             preserveScroll: true,
             onSuccess: () => {
                 window.location.reload();
+            },
+            onFinish: () => {
+                loading.value = false;
             }
         });
     };
@@ -25,5 +30,6 @@ export function useCurrency() {
         selectedCurrency,
         supportedCurrencies,
         changeCurrency,
+        loading,
     };
 }
