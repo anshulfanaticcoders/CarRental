@@ -61,12 +61,18 @@ class PaymentDashboardController extends Controller
             });
         }
 
+        // For total_amount, use booking totals instead of payment amounts
+        $bookingTotalQuery = \App\Models\Booking::query();
+        if ($selectedCurrency !== 'all') {
+            $bookingTotalQuery->where('booking_currency', $selectedCurrency);
+        }
+
         $stats = [
             'total_payments' => (clone $statsBaseQuery)->count(),
             'successful_payments' => (clone $statsBaseQuery)->where('payment_status', 'succeeded')->count(),
             'pending_payments' => (clone $statsBaseQuery)->where('payment_status', 'pending')->count(),
             'failed_payments' => (clone $statsBaseQuery)->where('payment_status', 'failed')->count(),
-            'total_amount' => (clone $statsBaseQuery)->where('payment_status', 'succeeded')->sum('amount'),
+            'total_amount' => (clone $bookingTotalQuery)->sum('total_amount'),
             'currency_symbol' => $selectedCurrency === 'all' ? 'Mixed' : $selectedCurrency,
         ];
 

@@ -13,6 +13,7 @@ class Blog extends Model
     protected $fillable = [
         'slug',
         'image',
+        'countries',
         'is_published'
     ];
 
@@ -62,4 +63,8 @@ class Blog extends Model
     {
         return $this->translations()->where('locale', $locale)->value('content');
     }
+
+    protected $casts = [
+        'countries' => 'array',
+    ];
 }

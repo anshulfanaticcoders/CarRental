@@ -18,6 +18,7 @@ import {
     AlertDialogTrigger,
 } from '@/Components/ui/alert-dialog';
 import { Toaster } from '@/Components/ui/toast';
+import CountrySelector from '@/Components/CountrySelector.vue';
 import loaderVariant from '../../../../assets/loader-variant.svg';
 
 const toast = useToast();
@@ -48,6 +49,7 @@ const form = useForm({
     translations: JSON.parse(JSON.stringify(initialTranslations)),
     image: null,
     is_published: true,
+    countries: ['us'], // Default to US
     seo_title: '',
     canonical_url: '',
     seo_image_url: '',
@@ -283,6 +285,15 @@ watch(() => form.errors, (newErrors) => {
                       class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-customPrimaryColor focus:border-customPrimaryColor transition-colors duration-200 bg-gray-50 focus:bg-white"
                     />
                     <p v-if="form.errors.image" class="mt-2 text-sm text-red-600">{{ form.errors.image }}</p>
+                  </div>
+
+                  <!-- Country Selection -->
+                  <div>
+                    <CountrySelector
+                      v-model="form.countries"
+                      :error="form.errors.countries"
+                    />
+                    <p v-if="form.errors.countries" class="mt-2 text-sm text-red-600">{{ form.errors.countries }}</p>
                   </div>
                 </div>
               </div>

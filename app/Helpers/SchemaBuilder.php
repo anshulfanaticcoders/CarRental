@@ -170,27 +170,77 @@ class SchemaBuilder
      * @param string $pageTitle The title of the page listing the blogs.
      * @return array
      */
-    public static function blogList(\Illuminate\Database\Eloquent\Collection $blogs, string $pageTitle = 'Blog Posts'): array
+    // public static function blogList(\Illuminate\Database\Eloquent\Collection $blogs, string $pageTitle = 'Blog Posts'): array
+    // {
+    //     $items = [];
+    //     foreach ($blogs as $index => $blog) {
+    //         $items[] = [
+    //             '@type' => 'ListItem',
+    //             'position' => $index + 1,
+    //             'item' => [
+    //                 '@type' => 'BlogPosting',
+    //                 '@id' => route('blog.show', ['locale' => app()->getLocale(), 'blog' => $blog->getTranslation(app()->getLocale())?->slug]),
+    //                 'headline' => $blog->title,
+    //                 'url' => route('blog.show', ['locale' => app()->getLocale(), 'blog' => $blog->getTranslation(app()->getLocale())?->slug]),
+    //                 'image' => $blog->image_url ?? asset('default-blog-image.jpg'),
+    //                 'datePublished' => $blog->published_at ? $blog->published_at->toIso8601String() : ($blog->created_at ? $blog->created_at->toIso8601String() : now()->toIso8601String()),
+    //                 'author' => [
+    //                     '@type' => 'Person', // Or 'Organization'
+    //                     'name' => $blog->author->name ?? config('app.name', 'Your Site Name'),
+    //                 ],
+    //                 // Add a short description if available
+    //                 'description' => $blog->meta_description ?? substr(strip_tags($blog->content), 0, 100) . '...',
+    //             ]
+    //         ];
+    //     }
+
+    //     return [
+    //         '@context' => 'https://schema.org',
+    //         '@type' => 'ItemList',
+    //         'name' => $pageTitle,
+    //         'itemListElement' => $items,
+    //         // Optionally, describe what the list is about
+    //         // 'description' => 'A list of the latest blog posts.',
+    //     ];
+    // }
+public static function blogList(\Illuminate\Database\Eloquent\Collection $blogs, string $pageTitle = 'Blog Posts', ?string $country = null): array
     {
+        $locale = app()->getLocale();
         $items = [];
+
         foreach ($blogs as $index => $blog) {
+            // Take first country from blog or fallback
+            $blogCountry = $country ?? strtolower($blog->countries[0] ?? 'us');
+            $slug = $blog->getTranslation($locale)?->slug ?? $blog->slug;
+
             $items[] = [
                 '@type' => 'ListItem',
                 'position' => $index + 1,
                 'item' => [
                     '@type' => 'BlogPosting',
-                    '@id' => route('blog.show', ['locale' => app()->getLocale(), 'blog' => $blog->getTranslation(app()->getLocale())?->slug]),
+                    '@id' => route('blog.show', [
+                        'locale' => $locale,
+                        'country' => $blogCountry,
+                        'blog' => $slug,
+                    ]),
                     'headline' => $blog->title,
-                    'url' => route('blog.show', ['locale' => app()->getLocale(), 'blog' => $blog->getTranslation(app()->getLocale())?->slug]),
+                    'url' => route('blog.show', [
+                        'locale' => $locale,
+                        'country' => $blogCountry,
+                        'blog' => $slug,
+                    ]),
                     'image' => $blog->image_url ?? asset('default-blog-image.jpg'),
-                    'datePublished' => $blog->published_at ? $blog->published_at->toIso8601String() : ($blog->created_at ? $blog->created_at->toIso8601String() : now()->toIso8601String()),
+                    'datePublished' => $blog->published_at
+                        ? $blog->published_at->toIso8601String()
+                        : ($blog->created_at
+                            ? $blog->created_at->toIso8601String()
+                            : now()->toIso8601String()),
                     'author' => [
-                        '@type' => 'Person', // Or 'Organization'
+                        '@type' => 'Person',
                         'name' => $blog->author->name ?? config('app.name', 'Your Site Name'),
                     ],
-                    // Add a short description if available
                     'description' => $blog->meta_description ?? substr(strip_tags($blog->content), 0, 100) . '...',
-                ]
+                ],
             ];
         }
 
@@ -199,8 +249,6 @@ class SchemaBuilder
             '@type' => 'ItemList',
             'name' => $pageTitle,
             'itemListElement' => $items,
-            // Optionally, describe what the list is about
-            // 'description' => 'A list of the latest blog posts.',
         ];
     }
 

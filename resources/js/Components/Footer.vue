@@ -18,6 +18,17 @@ const isInstagramHovered = ref(false);
 const page = usePage();
 const pages = computed(() => page.props.pages);
 
+const props = defineProps({
+    locale: {
+        type: String,
+        default: 'en',
+    },
+    country: {
+        type: String,
+        default: 'us',
+    },
+});
+
 
 const getTranslatedSlug = (pageSlug) => {
     let targetPage = null;
@@ -185,7 +196,7 @@ onMounted(async () => {
                                 About Us</Link>
                             </li>
                             <li class="relative group">
-                                <Link :href="route('blog', { locale: page.props.locale })"
+                                <Link :href="route('blog', { locale: locale || 'en', country: country || 'us'  })"
                                     class="footer-link-underline">Blogs</Link>
                             </li>
                             <li class="relative group">

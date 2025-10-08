@@ -38,6 +38,7 @@ class Kernel extends HttpKernel
             \Illuminate\Routing\Middleware\SubstituteBindings::class,
             \App\Http\Middleware\HandleInertiaRequests::class,
             \Illuminate\Http\Middleware\AddLinkHeadersForPreloadedAssets::class,
+            \App\Http\Middleware\ShareCountryFromUrl::class, // Add country detection to all web requests
         ],
 
         'api' => [
@@ -67,6 +68,8 @@ class Kernel extends HttpKernel
         'throttle' => \Illuminate\Routing\Middleware\ThrottleRequests::class,
         'verified' => \Illuminate\Auth\Middleware\EnsureEmailIsVerified::class,
         'set_locale' => \App\Http\Middleware\SetLocale::class,
+         'redirect.country' => \App\Http\Middleware\RedirectCountry::class,
+         'share.country' => \App\Http\Middleware\ShareCountryFromUrl::class,
     ];
 
     protected $routeMiddleware = [

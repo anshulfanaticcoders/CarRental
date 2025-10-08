@@ -69,6 +69,7 @@ use App\Http\Controllers\VehicleController;
 use App\Http\Controllers\GreenMotionController;
 use App\Http\Controllers\GreenMotionBookingController; // Import the new GreenMotionBookingController
 use App\Http\Controllers\AdminProfileController; // Import the AdminProfileController
+use Stevebauman\Location\Facades\Location;
 
 /*
 |--------------------------------------------------------------------------
@@ -226,7 +227,7 @@ Route::middleware(['auth', 'role:admin'])->group(function () {
 Route::group([
     'prefix' => '{locale}',
     'where' => ['locale' => '(en|fr|nl|es|ar)'],
-    'middleware' => 'set_locale'
+    'middleware' => ['set_locale', 'share.country']
 ], function () {
     Route::get('/', function () {
         return Inertia::render('Welcome', [
@@ -302,7 +303,7 @@ Route::group([
     Route::get('/search/category/{category_slug?}', [SearchController::class, 'searchByCategory'])->name('search.category');
     Route::get('/api/geocoding/autocomplete', [GeocodingController::class, 'autocomplete']);
     Route::get('/api/geocoding/reverse', [GeocodingController::class, 'reverse']);
-    Route::get('/blog', [BlogController::class, 'showBlogPage'])->name('blog');
+    // Route::get('/blog', [BlogController::class, 'showBlogPage'])->name('blog');
     Route::get('/page/{slug}', [PageController::class, 'showPublic'])->name('pages.show');
     Route::get('/faq', [FaqController::class, 'showPublicFaqPage'])->name('faq.show');
     Route::post('/validate-email', [EmailValidationController::class, 'validateEmail'])->name('validate-email');
@@ -313,11 +314,196 @@ Route::group([
 
     // Show Blogs on Home page
     Route::get('/', [BlogController::class, 'homeBlogs'])->name('welcome');
-    Route::get('/blog/{blog:slug}', [BlogController::class, 'show'])->name('blog.show');
+    // Route::get('/blog/{blog:slug}', [BlogController::class, 'show'])->name('blog.show');
     Route::get('/vehicle/{id}', [VehicleController::class, 'show'])->name('vehicle.show');
     Route::get('/api/footer-places', [PopularPlacesController::class, 'getFooterPlaces']);
     Route::get('/api/footer-categories', [VehicleCategoriesController::class, 'getFooterCategories']);
     Route::get('/api/vehicles/search-locations', [VehicleController::class, 'searchLocations']);
+
+    // Test route to manually set country for testing
+    Route::get('/set-country/{country}', function ($country) {
+        session(['country' => strtolower($country)]);
+
+        return response()->json([
+            'message' => "Country set to: " . strtolower($country),
+            'session_country' => session('country'),
+            'all_session_data' => session()->all()
+        ]);
+    });
+
+    // Test route to check blog filtering
+    Route::get('/debug-blog-filtering', function () {
+        $currentCountry = session('country', 'not set');
+
+        // Test the exact query used in controllers
+        $blogsQuery = \App\Models\Blog::with('translations')
+            ->where('is_published', true)
+            ->where(function($query) use ($currentCountry) {
+                $query->whereJsonContains('countries', $currentCountry)
+                      ->orWhereNull('countries');
+            });
+
+        $allBlogs = \App\Models\Blog::with('translations')
+            ->where('is_published', true)
+            ->get();
+
+        $filteredBlogs = $blogsQuery->get();
+
+        $blogDetails = [];
+        foreach ($allBlogs as $blog) {
+            $blogDetails[] = [
+                'id' => $blog->id,
+                'title' => $blog->title,
+                'countries' => $blog->countries,
+                'should_show' => $filteredBlogs->contains($blog),
+                'contains_country' => $blog->countries ? in_array($currentCountry, $blog->countries) : false,
+                'is_global' => is_null($blog->countries)
+            ];
+        }
+
+        return response()->json([
+            'current_country' => $currentCountry,
+            'total_published_blogs' => $allBlogs->count(),
+            'filtered_blogs_count' => $filteredBlogs->count(),
+            'blog_details' => $blogDetails,
+            'sql_query' => $blogsQuery->toSql(),
+            'session_data' => session()->all()
+        ]);
+    });
+
+    // Debug route to test geolocation
+    Route::get('/test-location', function () {
+        $request = request();
+
+        // Test our new GeoLocationService
+        $detectedCountry = \App\Services\GeoLocationService::detectCountry($request);
+
+        // Test old Stevebauman Location
+        try {
+            $oldPosition = \Stevebauman\Location\Facades\Location::get();
+            $oldCountry = strtolower($oldPosition->countryCode ?? 'NULL');
+        } catch (\Exception $e) {
+            $oldCountry = 'ERROR: ' . $e->getMessage();
+        }
+
+        return response()->json([
+            'real_ip' => \App\Services\GeoLocationService::getUserRealIp($request),
+            'new_service_country' => $detectedCountry,
+            'old_stevebauman_country' => $oldCountry,
+            'session_country' => session('country'),
+            'all_session_data' => session()->all(),
+            'testing_info' => 'This shows if our new dynamic detection works vs old hardcoded system'
+        ]);
+    });
+
+    // Debug route to test geolocation
+    Route::get('/debug-location', function () {
+        $request = request();
+
+        // Get real IP like our middleware does
+        $ipKeys = [
+            'HTTP_CF_CONNECTING_IP',
+            'HTTP_X_FORWARDED_FOR',
+            'HTTP_X_REAL_IP',
+            'HTTP_X_FORWARDED',
+            'HTTP_X_CLUSTER_CLIENT_IP',
+            'HTTP_CLIENT_IP',
+            'REMOTE_ADDR'
+        ];
+
+        $realIp = null;
+        $allIps = [];
+        foreach ($ipKeys as $key) {
+            if ($request->server($key) && !empty($request->server($key))) {
+                $ips = explode(',', $request->server($key));
+                $ip = trim($ips[0]);
+                $allIps[$key] = $ip;
+
+                if (!$realIp && filter_var($ip, FILTER_VALIDATE_IP, FILTER_FLAG_NO_PRIV_RANGE | FILTER_FLAG_NO_RES_RANGE)) {
+                    $realIp = $ip;
+                }
+            }
+        }
+
+        if (!$realIp) {
+            $realIp = $request->ip();
+        }
+
+        try {
+            $position = \Stevebauman\Location\Facades\Location::get($realIp);
+            $detectedCountry = strtolower($position->countryCode ?? null);
+            $locationError = null;
+        } catch (\Exception $e) {
+            $position = null;
+            $detectedCountry = null;
+            $locationError = $e->getMessage();
+        }
+
+        $sessionCountry = session('country', 'not set');
+
+        return response()->json([
+            'request_ip' => $request->ip(),
+            'real_ip' => $realIp,
+            'all_detected_ips' => $allIps,
+            'detected_country' => $detectedCountry,
+            'session_country' => $sessionCountry,
+            'position_data' => $position,
+            'location_error' => $locationError,
+            'location_config_testing' => config('location.testing.enabled'),
+            'location_driver' => config('location.driver'),
+            'all_session_data' => session()->all()
+        ]);
+    });
+
+    Route::get('/blog', function ($locale) {
+        try {
+            $position = Location::get();
+            if ($position && $position->countryCode) {
+                $country = strtolower($position->countryCode);
+                return redirect("/{$locale}/{$country}/blog");
+            }
+        } catch (\Exception $e) {
+            \Log::error('Location detection failed in blog redirect: ' . $e->getMessage());
+        }
+        // Fallback to session country if available
+        $country = session('country');
+        if ($country) {
+            return redirect("/{$locale}/{$country}/blog");
+        }
+        // If no country detected, show error page or handle appropriately
+        return redirect("/{$locale}")->with('error', 'Could not detect your location for blog content');
+    });
+
+    Route::get('/blog/{slug}', function ($locale, $slug) {
+        try {
+            $position = Location::get();
+            if ($position && $position->countryCode) {
+                $country = strtolower($position->countryCode);
+                return redirect("/{$locale}/{$country}/blog/{$slug}");
+            }
+        } catch (\Exception $e) {
+            \Log::error('Location detection failed in blog slug redirect: ' . $e->getMessage());
+        }
+        // Fallback to session country if available
+        $country = session('country');
+        if ($country) {
+            return redirect("/{$locale}/{$country}/blog/{$slug}");
+        }
+        // If no country detected, show error page or handle appropriately
+        return redirect("/{$locale}")->with('error', 'Could not detect your location for blog content');
+    });
+
+    Route::middleware(['redirect.country'])->group(function () {
+
+        Route::get('/{country}/blog', [BlogController::class, 'showBlogPage'])
+            ->where('country', '[a-zA-Z]{2}')
+            ->name('blog');
+
+        Route::get('/{country}/blog/{blog:slug}', [BlogController::class, 'show'])
+            ->where('country', '[a-zA-Z]{2}')
+            ->name('blog.show');
+        
+    });
 
     // Stripe Routes
     Route::get('/payment', [PaymentController::class, 'index'])->name('payment.index');

@@ -18,6 +18,7 @@ import {
     AlertDialogTrigger,
 } from '@/Components/ui/alert-dialog';
 import { Toaster } from '@/Components/ui/toast';
+import CountrySelector from '@/Components/CountrySelector.vue';
 import loaderVariant from '../../../../assets/loader-variant.svg';
 
 const toast = useToast();
@@ -66,6 +67,7 @@ const form = useForm({
     translations: JSON.parse(JSON.stringify(initialFormTranslations)),
     image: null,
     is_published: props.blog.is_published,
+    countries: props.blog.countries || [],
     seo_title: props.seoMeta?.seo_title || (initialFormTranslations.en?.title || ''),
     canonical_url: props.seoMeta?.canonical_url || '',
     seo_image_url: props.seoMeta?.seo_image_url || '',
@@ -309,6 +311,15 @@ const submitForm = () => {
                       alt="Current blog image"
                       class="mt-2 h-32 object-cover rounded-lg"
                     />
+                  </div>
+
+                  <!-- Country Selection -->
+                  <div>
+                    <CountrySelector
+                      v-model="form.countries"
+                      :error="form.errors.countries"
+                    />
+                    <p v-if="form.errors.countries" class="mt-2 text-sm text-red-600">{{ form.errors.countries }}</p>
                   </div>
                 </div>
               </div>
