@@ -5,6 +5,7 @@ import AuthenticatedHeaderLayout from "@/Layouts/AuthenticatedHeaderLayout.vue";
 import Footer from "@/Components/Footer.vue";
 import { useToast } from 'vue-toastification';
 import GreenMotionStripeCheckout from "@/Components/GreenMotionStripeCheckout.vue";
+import { useCurrency } from '@/composables/useCurrency';
 
 const props = defineProps({
     vehicle: Object,
@@ -28,7 +29,7 @@ const isSubmitting = ref(false);
 
 const currencySymbols = ref({});
 const exchangeRates = ref(null);
-const selectedCurrency = ref(usePage().props.filters?.currency || 'USD');
+const { selectedCurrency, supportedCurrencies, changeCurrency } = useCurrency();
 
 const symbolToCodeMap = {
     '$': 'USD',

@@ -3,6 +3,7 @@ import ApplicationLogo from "@/Components/ApplicationLogo.vue";
 import { Link, usePage, router } from "@inertiajs/vue3";
 import { computed, ref, watch } from "vue";
 import Dropdown from "@/Components/Dropdown.vue";
+import { useCurrency } from '@/composables/useCurrency';
 import globeIcon from '../../assets/globe.svg';
 import flagEn from '../../assets/flag-en.svg';
 import flagFr from '../../assets/flag-fr.svg';
@@ -23,6 +24,8 @@ import {
 
 const page = usePage();
 const { url } = page; // for watch
+
+const { selectedCurrency, supportedCurrencies, changeCurrency } = useCurrency();
 
 const showingNavigationDropdown = ref(false);
 
@@ -91,6 +94,32 @@ watch(() => url.value, () => {
                         class="button-secondary py-2 px-4 text-sm font-medium rounded-md transition-all duration-200 hover:shadow-md">
                     {{ _t('header', 'create_account') }}
                     </Link>
+
+                    <!-- Currency Switcher -->
+                    <Dropdown align="right" width="48">
+                        <template #trigger>
+                            <button
+                                type="button"
+                                class="inline-flex items-center px-3 py-2 text-sm font-medium text-gray-600 hover:text-gray-800 transition duration-150 ease-in-out"
+                            >
+                                <span>{{ selectedCurrency }}</span>
+                                <svg class="ml-1 w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+                                </svg>
+                            </button>
+                        </template>
+                        <template #content>
+                            <div
+                                v-for="currency in supportedCurrencies"
+                                :key="currency"
+                                @click="changeCurrency(currency)"
+                                class="flex items-center w-full px-4 py-2 text-left text-sm leading-5 text-white hover:text-[#153B4F] hover:bg-gray-100 transition duration-150 ease-in-out cursor-pointer"
+                                :class="{ 'bg-gray-500': selectedCurrency === currency }"
+                            >
+                                {{ currency }}
+                            </div>
+                        </template>
+                    </Dropdown>
 
                     <!-- Language Switcher for Guests (Desktop) -->
                     <Dropdown align="right" width="48">

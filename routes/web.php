@@ -36,6 +36,7 @@ use App\Http\Controllers\ContactFormController;
 use App\Http\Controllers\FavoriteController;
 use App\Http\Controllers\FrontendPageController;
 use App\Http\Controllers\GeocodingController;
+use App\Http\Controllers\CurrencyController;
 use App\Http\Controllers\LanguageController;
 use App\Http\Controllers\MessageController;
 use App\Http\Controllers\NotificationController;
@@ -88,6 +89,8 @@ Route::post('/admin/logout', [AuthenticatedSessionController::class, 'destroy'])
     ->name('admin.logout');
 
 Route::post('/language/change', [LanguageController::class, 'change'])->name('language.change');
+
+Route::post('/currency', [CurrencyController::class, 'update'])->name('currency.update');
 
 Route::get('/', function () {
     $locale = session('locale', config('app.fallback_locale', 'en'));

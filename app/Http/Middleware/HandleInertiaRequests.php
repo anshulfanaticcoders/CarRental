@@ -79,6 +79,8 @@ class HandleInertiaRequests extends Middleware
             ]);
         }
 
+        $sharedData['currency'] = session('currency', 'USD');
+
         return $sharedData;
     }
 }

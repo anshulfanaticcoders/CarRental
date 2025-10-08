@@ -50,11 +50,12 @@ import Lightbox from "@/Components/Lightbox.vue";
 import AuthenticatedHeaderLayout from "@/Layouts/AuthenticatedHeaderLayout.vue";
 import { Vue3Lottie } from 'vue3-lottie';
 import universalLoader from '../../../public/animations/universal-loader.json';
+import { useCurrency } from '@/composables/useCurrency';
 
 const isBooking = ref(false);
 const currencySymbols = ref({});
 const exchangeRates = ref(null);
-const selectedCurrency = ref(usePage().props.filters?.currency || 'USD');
+const { selectedCurrency, supportedCurrencies, changeCurrency } = useCurrency();
 
 const symbolToCodeMap = {
     '$': 'USD',
@@ -1233,29 +1234,6 @@ onBeforeUnmount(() => {
                                     </div>
                                 </div>
 
-                                <!-- Currency Selector -->
-                                <div class="flex items-center justify-end gap-2 mb-4">
-                                    <label class="text-sm font-medium text-gray-700">Currency:</label>
-                                    <select v-model="selectedCurrency"
-                                        class="px-3 py-1 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
-                                        <option value="USD">USD ($)</option>
-                                        <option value="EUR">EUR (€)</option>
-                                        <option value="GBP">GBP (£)</option>
-                                        <option value="JPY">JPY (¥)</option>
-                                        <option value="AUD">AUD (A$)</option>
-                                        <option value="CAD">CAD (C$)</option>
-                                        <option value="CHF">CHF (Fr)</option>
-                                        <option value="HKD">HKD (HK$)</option>
-                                        <option value="SGD">SGD (S$)</option>
-                                        <option value="SEK">SEK (kr)</option>
-                                        <option value="NOK">NOK (kr)</option>
-                                        <option value="NZD">NZD (NZ$)</option>
-                                        <option value="INR">INR (₹)</option>
-                                        <option value="MXN">MXN (Mex$)</option>
-                                        <option value="ZAR">ZAR (R)</option>
-                                        <option value="AED">AED</option>
-                                    </select>
-                                </div>
 
                                 <!-- Price Summary -->
                                 <div v-if="form.start_date && form.end_date" class="p-6 bg-gradient-to-r from-green-50 to-blue-50 rounded-xl border border-green-200">

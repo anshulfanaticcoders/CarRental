@@ -3,16 +3,17 @@
 namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Storage;
 
 class CurrencyController extends Controller
 {
-    public function index()
+    public function update(Request $request)
     {
-        // Load the currencies.json file from storage
-        $currenciesJson = Storage::disk('public')->get('currencies.json');
+        $request->validate([
+            'currency' => 'required|string|in:USD,EUR,GBP,JPY,AUD,CAD,CHF,CNH,HKD,SGD,SEK,KRW,NOK,NZD,INR,MXN,BRL,RUB,ZAR,AED',
+        ]);
 
-        // Return the JSON response
-        return response()->json(json_decode($currenciesJson));
+        session(['currency' => $request->currency]);
+
+        return back();
     }
 }

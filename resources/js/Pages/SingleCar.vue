@@ -34,10 +34,11 @@ import { Skeleton } from '@/Components/ui/skeleton';
 import '@vuepic/vue-datepicker/dist/main.css';
 import VueDatepicker from '@vuepic/vue-datepicker';
 import { useToast } from 'vue-toastification';
+import { useCurrency } from '@/composables/useCurrency';
 
 // Currency conversion variables
+const { selectedCurrency, supportedCurrencies, changeCurrency } = useCurrency();
 const exchangeRates = ref(null);
-const selectedCurrency = ref(usePage().props.filters?.currency || 'USD');
 const currencySymbols = ref({});
 
 const symbolToCodeMap = {
@@ -1676,28 +1677,6 @@ const searchUrl = computed(() => {
                                                     <div class="flex items-center justify-between mb-4">
                                                         <CardTitle class="inline-block text-[1rem]">Choose Your Rental
                                                             Package</CardTitle>
-                                                        <div class="flex items-center gap-2">
-                                                            <label class="text-sm font-medium text-gray-700">Currency:</label>
-                                                            <select v-model="selectedCurrency"
-                                                                class="px-3 py-1 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
-                                                                <option value="USD">USD ($)</option>
-                                                                <option value="EUR">EUR (€)</option>
-                                                                <option value="GBP">GBP (£)</option>
-                                                                <option value="JPY">JPY (¥)</option>
-                                                                <option value="AUD">AUD (A$)</option>
-                                                                <option value="CAD">CAD (C$)</option>
-                                                                <option value="CHF">CHF (Fr)</option>
-                                                                <option value="HKD">HKD (HK$)</option>
-                                                                <option value="SGD">SGD (S$)</option>
-                                                                <option value="SEK">SEK (kr)</option>
-                                                                <option value="NOK">NOK (kr)</option>
-                                                                <option value="NZD">NZD (NZ$)</option>
-                                                                <option value="INR">INR (₹)</option>
-                                                                <option value="MXN">MXN (Mex$)</option>
-                                                                <option value="ZAR">ZAR (R)</option>
-                                                                <option value="AED">AED</option>
-                                                            </select>
-                                                        </div>
                                                     </div>
                                                     <div
                                                         class="relative overflow-hidden h-10 mb-4 rounded-lg bg-white shadow-sm max-[768px]:mt-[2rem]">

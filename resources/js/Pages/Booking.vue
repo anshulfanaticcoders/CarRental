@@ -16,10 +16,11 @@ import Footer from "@/Components/Footer.vue";
 import StripeCheckout from "@/Components/StripeCheckout.vue";
 import loader from "../../assets/loader.gif";
 import { ChevronRight } from 'lucide-vue-next';
+import { useCurrency } from '@/composables/useCurrency';
 
 // Currency conversion variables
+const { selectedCurrency, supportedCurrencies, changeCurrency } = useCurrency();
 const exchangeRates = ref(null);
-const selectedCurrency = ref(usePage().props.filters?.currency || 'USD');
 const currencySymbols = ref({});
 
 const symbolToCodeMap = {
@@ -920,7 +921,7 @@ const bookingData = computed(() => {
                                     </span>
 
                                     <strong class="text-[3rem] font-medium text-center max-[768px]:text-[1.25rem]">
-                                        {{ formatPrice(plan.price) }}
+                                        {{ formatItemPrice(plan.price) }}
                                     </strong>
 
                                     <p class="text-[1.25rem] text-[#2B2B2B] text-center max-[768px]:text-[0.95rem]">
@@ -1152,29 +1153,6 @@ const bookingData = computed(() => {
 
                     </div>
 
-                    <!-- Currency Selector -->
-                    <div class="flex items-center justify-end gap-2 mb-4">
-                        <label class="text-sm font-medium text-gray-700">Currency:</label>
-                        <select v-model="selectedCurrency"
-                            class="px-3 py-1 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
-                            <option value="USD">USD ($)</option>
-                            <option value="EUR">EUR (€)</option>
-                            <option value="GBP">GBP (£)</option>
-                            <option value="JPY">JPY (¥)</option>
-                            <option value="AUD">AUD (A$)</option>
-                            <option value="CAD">CAD (C$)</option>
-                            <option value="CHF">CHF (Fr)</option>
-                            <option value="HKD">HKD (HK$)</option>
-                            <option value="SGD">SGD (S$)</option>
-                            <option value="SEK">SEK (kr)</option>
-                            <option value="NOK">NOK (kr)</option>
-                            <option value="NZD">NZD (NZ$)</option>
-                            <option value="INR">INR (₹)</option>
-                            <option value="MXN">MXN (Mex$)</option>
-                            <option value="ZAR">ZAR (R)</option>
-                            <option value="AED">AED</option>
-                        </select>
-                    </div>
 
                     <h3 class="text-[2rem] font-medium max-[768px]:text-[1.2rem] max-[768px]:mt-4">Pay Now to Lock in
                         this Deal</h3>
@@ -1312,7 +1290,7 @@ const bookingData = computed(() => {
                                                 </span>
 
                                                 <strong class="text-[1.5rem] font-medium max-[768px]:text-[1.1rem]">{{
-                                                    formatItemPrice(selectedPlan.price) * totalDays
+                                                    formatPrice(getConvertedPrice(selectedPlan.price) * totalDays)
                                                     }}</strong>
                                             </div>
 
@@ -1365,7 +1343,7 @@ const bookingData = computed(() => {
                                             <div v-if="selectedPlan"
                                                 class="flex justify-between text-[1.15rem] max-[768px]:text-[0.875rem]">
                                                 <span>Plan: {{ selectedPlan.plan_type }}</span>
-                                                <p class="font-medium">{{ formatItemPrice(selectedPlan.price) * totalDays }}
+                                                <p class="font-medium">{{ formatPrice(getConvertedPrice(selectedPlan.price) * totalDays) }}
                                                 </p>
                                             </div>
 

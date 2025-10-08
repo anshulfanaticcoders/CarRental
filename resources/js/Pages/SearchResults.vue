@@ -33,12 +33,10 @@ import blankStar from "../../assets/blankstar.svg";
 import VueSlider from 'vue-slider-component';
 import 'vue-slider-component/theme/default.css';
 
-const selectedCurrency = ref(usePage().props.filters.currency || 'USD');
+import { useCurrency } from '@/composables/useCurrency';
+
+const { selectedCurrency, supportedCurrencies, changeCurrency } = useCurrency();
 const exchangeRates = ref(null);
-const supportedCurrencies = ref([
-    'USD', 'EUR', 'GBP', 'JPY', 'AUD', 'CAD', 'CHF', 'CNH', 'HKD', 'SGD',
-    'SEK', 'KRW', 'NOK', 'NZD', 'INR', 'MXN', 'BRL', 'RUB', 'ZAR', 'AED'
-]);
 
 const fetchExchangeRates = async () => {
     try {
@@ -235,9 +233,6 @@ const form = useForm({
     dropoff_where: usePage().props.filters?.dropoff_where || "",
 });
 
-watch(selectedCurrency, (newCurrency) => {
-    form.currency = newCurrency;
-});
 
 const submitFilters = debounce(() => {
     const dataToSend = { ...form.data() };
@@ -504,10 +499,12 @@ const addMarkers = () => {
             const totalProviderPrice = parseFloat(vehicle.products[0]?.total || 0);
             const pricePerDay = totalProviderPrice / numberOfRentalDays.value;
             const convertedPrice = convertCurrency(pricePerDay, currencyCode);
+            popupCurrencySymbol = getCurrencySymbol(selectedCurrency.value);
             popupPrice = `${popupCurrencySymbol}${convertedPrice.toFixed(2)}`; // Display price per day
         } else if (vehicle.source === 'internal' && vehicle.price_per_day && vehicle.price_per_day > 0) {
             const originalCurrency = vehicle.vendor_profile?.currency || 'USD';
             const convertedPrice = convertCurrency(vehicle.price_per_day, originalCurrency);
+            popupCurrencySymbol = getCurrencySymbol(selectedCurrency.value);
             popupPrice = `${popupCurrencySymbol}${convertedPrice.toFixed(2)}`;
         }
 
@@ -1207,15 +1204,6 @@ watch(
                     class="hover:border-customPrimaryColor bg-customPrimaryColor/5 transition-all duration-300" />
                 </div>
                 
-                <!-- Currency Filter -->
-                <div class="relative w-48 filter-group">
-                    <div class="text-xs font-medium text-gray-500 mb-1 ml-1">Currency</div>
-                    <CustomDropdown v-model="selectedCurrency" unique-id="currency"
-                        :options="supportedCurrencies.map(c => ({ value: c, label: c }))"
-                        placeholder="Select Currency" :left-icon="priceIcon" :right-icon="CaretDown"
-                        class="hover:border-customPrimaryColor transition-all duration-300" />
-                </div>
-
             </div>
         </form>
 
