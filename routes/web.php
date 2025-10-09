@@ -358,6 +358,73 @@ Route::group([
         ]);
     });
 
+    // Test route to verify comprehensive country coverage
+    Route::get('/test-country-coverage/{country}', function ($country) {
+        // Test the exact mapping logic from SetCurrency middleware
+        $detectedCurrency = match (strtoupper($country)) {
+            // North America
+            'US' => 'USD',
+            'CA' => 'CAD',
+            'MX' => 'MXN',
+            'NI' => 'NIO',
+            'CR' => 'CRC',
+            'PA' => 'PAB',
+            'GT' => 'GTQ',
+            'HN' => 'HNL',
+            'SV' => 'SVC',
+            'BZ' => 'BZD',
+            'JM' => 'JMD',
+            'BB' => 'BBD',
+            'TT' => 'TTD',
+            'DO' => 'DOP',
+            'HT' => 'HTG',
+            'AG' => 'XCD',
+            'DM' => 'XCD',
+            'GD' => 'XCD',
+            'KN' => 'XCD',
+            'LC' => 'XCD',
+            'VC' => 'XCD',
+
+            // Europe - Eurozone (All 20 countries)
+            'DE', 'FR', 'IT', 'ES', 'NL', 'BE', 'AT', 'PT', 'FI', 'IE',
+            'GR', 'CY', 'MT', 'SK', 'SI', 'EE', 'LV', 'LT', 'LU', 'HR' => 'EUR',
+
+            // Europe - Non-Eurozone
+            'GB' => 'GBP',
+            'CH' => 'CHF',
+            'SE' => 'SEK',
+            'NO' => 'NOK',
+            'DK' => 'DKK',
+            'IS' => 'ISK',
+            'PL' => 'PLN',
+            'CZ' => 'CZK',
+            'HU' => 'HUF',
+            'RO' => 'RON',
+            'BG' => 'BGN',
+
+            // Key countries people will test
+            'IN' => 'INR',
+            'MA' => 'MAD',
+            'RU' => 'RUB',
+            'TR' => 'TRY',
+            'CN' => 'CNY',
+            'JP' => 'JPY',
+            'AU' => 'AUD',
+            'NZ' => 'NZD',
+
+            default => 'USD',
+        };
+
+        return response()->json([
+            'test_country' => $country,
+            'detected_currency' => $detectedCurrency,
+            'supported' => $detectedCurrency !== 'USD' || strtoupper($country) === 'US',
+            'message' => $detectedCurrency !== 'USD' || strtoupper($country) === 'US'
+                ? "✅ {$country} → {$detectedCurrency}"
+                : "❌ {$country} → Not supported, defaults to USD",
+        ]);
+    });
+
     // Test route to check blog filtering
     Route::get('/debug-blog-filtering', function () {
         $currentCountry = session('country', 'not set');

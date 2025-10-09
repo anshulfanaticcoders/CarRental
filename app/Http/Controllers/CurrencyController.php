@@ -11,9 +11,27 @@ class CurrencyController extends Controller
         return response()->json([
             'current_currency' => session('currency', 'USD'),
             'supported_currencies' => [
-                'USD', 'EUR', 'GBP', 'JPY', 'AUD', 'CAD', 'CHF', 'CNH', 'HKD', 'SGD',
+                'USD', 'EUR', 'GBP', 'JPY', 'AUD', 'CAD', 'CHF', 'CNY', 'HKD', 'SGD',
                 'SEK', 'KRW', 'NOK', 'NZD', 'INR', 'MXN', 'BRL', 'RUB', 'ZAR', 'AED',
-                'MAD', 'TRY', 'JOD', 'ISK', 'AZN', 'MYR', 'OMR', 'UGX', 'NIO'
+                'MAD', 'TRY', 'JOD', 'ISK', 'AZN', 'MYR', 'OMR', 'UGX', 'NIO',
+                // North America
+                'CRC', 'PAB', 'GTQ', 'HNL', 'SVC', 'BZD', 'JMD', 'BBD', 'TTD', 'DOP', 'HTG', 'XCD',
+                // Europe
+                'PLN', 'CZK', 'HUF', 'RON', 'BGN',
+                // Asia Pacific
+                'IDR', 'THB', 'PHP', 'VND', 'TWD', 'BDT', 'PKR', 'LKR', 'MMK', 'KHR', 'LAK', 'NPR', 'BTN',
+                // Oceania
+                'FJD', 'PGK', 'SBD', 'VUV', 'WST', 'TOP', 'KID',
+                // Middle East & Africa
+                'SAR', 'ILS', 'QAR', 'KWD', 'BHD', 'LBP', 'SYP', 'IQD', 'IRR', 'AFN', 'EGP', 'LYD', 'TND', 'DZD', 'SDG', 'YER',
+                'NGN', 'GHS', 'TZS', 'ZMW', 'ZWL', 'MWK', 'MZN', 'AOA', 'BWP', 'NAD', 'SZL', 'LSL', 'LRD', 'SLL', 'GNF',
+                'XOF', 'XAF', 'CDF', 'RWF', 'BIF', 'DJF', 'ERN', 'ETB', 'SOS', 'GMD', 'CVE', 'STN', 'SHP', 'SCR', 'MUR', 'MGA', 'KMF',
+                // South America
+                'ARS', 'CLP', 'COP', 'PEN', 'VES', 'UYU', 'PYG', 'BOB', 'GYD', 'SRD',
+                // Former Soviet Union
+                'UAH', 'BYN', 'MDL', 'GEL', 'AMD', 'KZT', 'KGS', 'UZS', 'TJS', 'TMT',
+                // Others
+                'CUP', 'ANG', 'AWG', 'CWG', 'BMD', 'KYD', 'BYN', 'MVR'
             ]
         ]);
     }
@@ -21,7 +39,7 @@ class CurrencyController extends Controller
     public function update(Request $request)
     {
         $request->validate([
-            'currency' => 'required|string|in:USD,EUR,GBP,JPY,AUD,CAD,CHF,CNH,HKD,SGD,SEK,KRW,NOK,NZD,INR,MXN,BRL,RUB,ZAR,AED,MAD,TRY,JOD,ISK,AZN,MYR,OMR,UGX,NIO',
+            'currency' => 'required|string|in:USD,EUR,GBP,JPY,AUD,CAD,CHF,CNY,HKD,SGD,SEK,KRW,NOK,NZD,INR,MXN,BRL,RUB,ZAR,AED,MAD,TRY,JOD,ISK,AZN,MYR,OMR,UGX,NIO,CRC,PAB,GTQ,HNL,SVC,BZD,JMD,BBD,TTD,DOP,HTG,XCD,PLN,CZK,HUF,RON,BGN,IDR,THB,PHP,VND,TWD,BDT,PKR,LKR,MMK,KHR,LAK,NPR,BTN,FJD,PGK,SBD,VUV,WST,TOP,KID,SAR,ILS,QAR,KWD,BHD,LBP,SYP,IQD,IRR,AFN,EGP,LYD,TND,DZD,SDG,YER,NGN,GHS,TZS,ZMW,ZWL,MWK,MZN,AOA,BWP,NAD,SZL,LSL,LRD,SLL,GNF,XOF,XAF,CDF,RWF,BIF,DJF,ERN,ETB,SOS,GMD,CVE,STN,SHP,SCR,MUR,MGA,KMF,ARS,CLP,COP,PEN,VES,UYU,PYG,BOB,GYD,SRD,UAH,BYN,MDL,GEL,AMD,KZT,KGS,UZS,TJS,TMT,CUP,ANG,AWG,CWG,BMD,KYD,MVR',
         ]);
 
         $previousCurrency = session('currency', 'USD');
