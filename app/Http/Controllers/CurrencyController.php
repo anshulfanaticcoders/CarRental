@@ -27,7 +27,8 @@ class CurrencyController extends Controller
         $previousCurrency = session('currency', 'USD');
 
         session(['currency' => $request->currency]);
-        // Mark when user manually changed currency to prevent automatic detection for 1 hour
+        // Track manual change time to respect user selection for 30 minutes
+        session(['currency_manual_change_time' => time()]);
         session(['currency_detection_time' => time()]);
 
         \Log::info('Currency manually updated via dropdown:', [
@@ -35,7 +36,8 @@ class CurrencyController extends Controller
             'new_currency' => $request->currency,
             'user_agent' => $request->userAgent(),
             'ip' => $request->ip(),
-            'manual_selection' => true
+            'manual_selection' => true,
+            'auto_update_paused_for_minutes' => 30
         ]);
 
         return back();

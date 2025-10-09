@@ -26,10 +26,10 @@ return [
     */
 
     'fallbacks' => [
-        Stevebauman\Location\Drivers\Ip2locationio::class,
-        Stevebauman\Location\Drivers\IpInfo::class,
-        Stevebauman\Location\Drivers\GeoPlugin::class,
-        Stevebauman\Location\Drivers\MaxMind::class,
+        Stevebauman\Location\Drivers\IpInfo::class,    // Primary - uses your API key
+        Stevebauman\Location\Drivers\GeoPlugin::class,  // Fallback - no API key required
+        Stevebauman\Location\Drivers\Ip2locationio::class, // Additional fallback
+        Stevebauman\Location\Drivers\MaxMind::class,   // Last resort
     ],
 
     /*
