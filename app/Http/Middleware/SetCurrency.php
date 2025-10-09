@@ -16,12 +16,16 @@ class SetCurrency
      */
     public function handle(Request $request, Closure $next): Response
     {
-        if (session()->has('currency')) {
-            return $next($request);
-        }
+        // Always detect location and update currency if it changes
+        // This ensures currency updates when user travels to different countries
 
         try {
             $location = Location::get();
+
+            // If location fails on localhost, use a fallback method
+            if (!$location && app()->environment('local')) {
+                $location = $this->getLocationFallback($request);
+            }
 
             $currency = 'USD'; // Default currency
 
@@ -104,8 +108,17 @@ class SetCurrency
                 \Log::warning('Location detection failed - location is null');
             }
 
-            // Store currency in session
-            session(['currency' => $currency]);
+            // Update currency only if it's different from current session currency
+            $currentCurrency = session('currency');
+            if ($currentCurrency !== $currency) {
+                session(['currency' => $currency]);
+
+                \Log::info('Currency updated:', [
+                    'old_currency' => $currentCurrency,
+                    'new_currency' => $currency,
+                    'detected_country' => $location->countryCode ?? 'Unknown'
+                ]);
+            }
 
             \Log::info('Currency set based on location:', [
                 'currency' => $currency,
@@ -120,5 +133,47 @@ class SetCurrency
         }
 
         return $next($request);
+    }
+
+    /**
+     * Fallback method for localhost development
+     */
+    private function getLocationFallback(Request $request)
+    {
+        // Known IP mappings for testing
+        $knownIps = [
+            '49.43.142.103' => ['countryCode' => 'IN', 'countryName' => 'India', 'cityName' => 'Shimla'],
+            '8.8.8.8' => ['countryCode' => 'US', 'countryName' => 'United States', 'cityName' => 'Mountain View'],
+            '8.8.4.4' => ['countryCode' => 'GB', 'countryName' => 'United Kingdom', 'cityName' => 'London'],
+            '8.8.8.1' => ['countryCode' => 'JP', 'countryName' => 'Japan', 'cityName' => 'Tokyo'],
+            '8.8.8.2' => ['countryCode' => 'DE', 'countryName' => 'Germany', 'cityName' => 'Frankfurt'],
+            '8.8.8.3' => ['countryCode' => 'AU', 'countryName' => 'Australia', 'cityName' => 'Sydney'],
+        ];
+
+        // Try to get real external IP for localhost
+        if ($request->ip() === '127.0.0.1' || $request->ip() === '::1') {
+            try {
+                $externalIp = file_get_contents('https://ipinfo.io/json');
+                if ($externalIp) {
+                    $ipData = json_decode($externalIp, true);
+                    if ($ipData && isset($ipData['country'])) {
+                        return (object) [
+                            'ip' => $ipData['ip'] ?? '127.0.0.1',
+                            'countryCode' => $ipData['country'] ?? 'US',
+                            'countryName' => $ipData['country'] ?? 'Unknown',
+                            'cityName' => $ipData['city'] ?? 'Unknown',
+                        ];
+                    }
+                }
+            } catch (\Exception $e) {
+                \Log::warning('External IP detection failed: ' . $e->getMessage());
+            }
+
+            // Fallback to known IP (your India IP for testing)
+            \Log::info('Using fallback IP for localhost testing');
+            return (object) $knownIps['49.43.142.103'];
+        }
+
+        return null;
     }
 }

@@ -11,7 +11,7 @@ return [
     |
     */
 
-    'driver' => Stevebauman\Location\Drivers\GeoPlugin::class,
+    'driver' => Stevebauman\Location\Drivers\IpInfo::class,
 
     /*
     |--------------------------------------------------------------------------
@@ -75,7 +75,7 @@ return [
 
     'testing' => [
         'ip' => '66.102.0.0',
-        'enabled' => env('LOCATION_TESTING', false), // Disabled for production
+        'enabled' => env('LOCATION_TESTING', false), // Disabled - use real IPs
     ],
 
     /*
