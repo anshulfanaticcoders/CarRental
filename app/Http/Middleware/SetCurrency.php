@@ -25,7 +25,8 @@ class SetCurrency
             $lastDetectedIP = session('last_detected_ip', '');
 
             // Detect location on every request to check for changes
-            $location = Location::get();
+            $realIP = $this->getRealIP($request);
+            $location = Location::get($realIP);
             if (!$location) {
                 $location = $this->getLocationFallback($request);
             }
@@ -179,10 +180,69 @@ class SetCurrency
     }
 
     /**
+     * Get the real visitor IP address from proxy headers
+     * This is essential for Coolify deployments behind reverse proxies
+     */
+    private function getRealIP(Request $request): string
+    {
+        // Check various proxy headers for the real IP
+        $ipHeaders = [
+            'CF-Connecting-IP',        // Cloudflare
+            'X-Forwarded-For',         // Standard proxy header
+            'X-Real-IP',               // nginx
+            'HTTP_X_FORWARDED_FOR',    // Alternative header format
+            'HTTP_CLIENT_IP',          // Client IP header
+            'HTTP_X_REAL_IP',          // Alternative real IP header
+        ];
+
+        foreach ($ipHeaders as $header) {
+            $ip = $request->header($header);
+            if ($ip) {
+                // X-Forwarded-For can contain multiple IPs, get the first one
+                if (strpos($ip, ',') !== false) {
+                    $ip = trim(explode(',', $ip)[0]);
+                }
+
+                // Validate that it's a public IP address
+                if ($this->isValidPublicIP($ip)) {
+                    \Log::info("Real IP detected from {$header}: {$ip}");
+                    return $ip;
+                }
+            }
+        }
+
+        // Fallback to default IP detection
+        $defaultIP = $request->ip();
+        \Log::info("Using default IP (no proxy headers found): {$defaultIP}");
+        return $defaultIP;
+    }
+
+    /**
+     * Check if the IP address is a valid public IP
+     */
+    private function isValidPublicIP(string $ip): bool
+    {
+        // Basic IP validation
+        if (!filter_var($ip, FILTER_VALIDATE_IP, FILTER_FLAG_IPV4 | FILTER_FLAG_IPV6)) {
+            return false;
+        }
+
+        // Exclude private IP ranges
+        if (filter_var($ip, FILTER_VALIDATE_IP, FILTER_FLAG_NO_PRIV_RANGE | FILTER_FLAG_NO_RES_RANGE)) {
+            return true;
+        }
+
+        return false;
+    }
+
+    /**
      * Fallback method for location detection when primary service fails
      */
     private function getLocationFallback(Request $request)
     {
+        // Get the real IP address first
+        $realIP = $this->getRealIP($request);
+
         // Known IP mappings for testing (works on both local and live)
         $knownIps = [
             '49.43.142.103' => ['countryCode' => 'IN', 'countryName' => 'India', 'cityName' => 'Shimla'],
@@ -194,13 +254,13 @@ class SetCurrency
         ];
 
         // Check if current IP matches any known test IPs
-        if (isset($knownIps[$request->ip()])) {
-            \Log::info('Using known test IP mapping', ['ip' => $request->ip()]);
-            return (object) $knownIps[$request->ip()];
+        if (isset($knownIps[$realIP])) {
+            \Log::info('Using known test IP mapping', ['ip' => $realIP]);
+            return (object) $knownIps[$realIP];
         }
 
         // For localhost, try to get real external IP using IPInfo API
-        if ($request->ip() === '127.0.0.1' || $request->ip() === '::1') {
+        if ($realIP === '127.0.0.1' || $realIP === '::1') {
             try {
                 // Use your IPInfo API key to get real external IP
                 $apiKey = env('IPINFO_TOKEN');
@@ -229,13 +289,13 @@ class SetCurrency
         // For live server: try alternative IP detection methods
         try {
             // Method 1: Try IPInfo without token (limited but works)
-            $ipData = @file_get_contents("https://ipinfo.io/{$request->ip()}/json");
+            $ipData = @file_get_contents("https://ipinfo.io/{$realIP}/json");
             if ($ipData) {
                 $data = json_decode($ipData, true);
                 if ($data && isset($data['country'])) {
-                    \Log::info('Location detected via IPInfo fallback', ['country' => $data['country']]);
+                    \Log::info('Location detected via IPInfo fallback', ['country' => $data['country'], 'ip' => $realIP]);
                     return (object) [
-                        'ip' => $request->ip(),
+                        'ip' => $realIP,
                         'countryCode' => $data['country'],
                         'countryName' => $data['country'] ?? 'Unknown',
                         'cityName' => $data['city'] ?? 'Unknown',
@@ -244,13 +304,13 @@ class SetCurrency
             }
 
             // Method 2: Try ip-api.com (free, no API key required)
-            $ipData = @file_get_contents("http://ip-api.com/json/{$request->ip()}");
+            $ipData = @file_get_contents("http://ip-api.com/json/{$realIP}");
             if ($ipData) {
                 $data = json_decode($ipData, true);
                 if ($data && $data['status'] === 'success' && isset($data['countryCode'])) {
-                    \Log::info('Location detected via ip-api.com fallback', ['country' => $data['countryCode']]);
+                    \Log::info('Location detected via ip-api.com fallback', ['country' => $data['countryCode'], 'ip' => $realIP]);
                     return (object) [
-                        'ip' => $request->ip(),
+                        'ip' => $realIP,
                         'countryCode' => $data['countryCode'],
                         'countryName' => $data['country'] ?? 'Unknown',
                         'cityName' => $data['city'] ?? 'Unknown',
