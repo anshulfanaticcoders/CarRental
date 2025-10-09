@@ -92,6 +92,17 @@ Route::post('/language/change', [LanguageController::class, 'change'])->name('la
 
 Route::post('/currency', [CurrencyController::class, 'update'])->name('currency.update');
 
+// Test route to force automatic detection (clears detection time)
+Route::get('/force-currency-detection', function () {
+    session()->forget('currency');
+    session()->forget('currency_detection_time');
+
+    return response()->json([
+        'message' => 'Currency detection forced. Refresh page to see automatic detection.',
+        'session_cleared' => true
+    ]);
+});
+
 Route::get('/', function () {
     $locale = session('locale', config('app.fallback_locale', 'en'));
     return redirect($locale);

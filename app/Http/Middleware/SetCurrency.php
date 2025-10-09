@@ -16,120 +16,149 @@ class SetCurrency
      */
     public function handle(Request $request, Closure $next): Response
     {
-        // Always detect location and update currency if it changes
-        // This ensures currency updates when user travels to different countries
-
         try {
-            $location = Location::get();
+            $currentCurrency = session('currency');
+            $lastDetectionTime = session('currency_detection_time', 0);
+            $currentTime = time();
 
-            // If location fails on localhost, use a fallback method
-            if (!$location && app()->environment('local')) {
-                $location = $this->getLocationFallback($request);
-            }
+            // Check if we should run automatic detection:
+            // 1. No currency in session (brand new session), OR
+            // 2. It's been more than 1 hour since last detection (new browser session)
+            // 3. User hasn't manually changed currency in the last hour
+            $shouldRunDetection = !$currentCurrency || ($currentTime - $lastDetectionTime > 3600);
 
-            $currency = 'USD'; // Default currency
-
-            // Log for debugging
-            if ($location) {
-                \Log::info('Location detected:', [
-                    'country_code' => $location->countryCode,
-                    'country_name' => $location->countryName ?? 'Unknown',
-                    'city' => $location->cityName ?? 'Unknown',
-                    'ip' => $location->ip ?? 'Unknown'
+            if ($shouldRunDetection) {
+                \Log::info('Running automatic currency detection:', [
+                    'reason' => !$currentCurrency ? 'no_currency_in_session' : 'hour_since_last_detection',
+                    'current_currency' => $currentCurrency ?? 'none',
+                    'time_since_detection' => $currentTime - $lastDetectionTime
                 ]);
 
-                if ($location->countryCode) {
-                    $currency = match ($location->countryCode) {
-                        // North America
-                        'US' => 'USD',
-                        'CA' => 'CAD',
-                        'MX' => 'MXN',
-                        'NI' => 'NIO',
+                // Automatic detection based on location
+                $location = Location::get();
 
-                        // Europe - Eurozone
-                        'FR', 'DE', 'IT', 'ES', 'NL', 'BE', 'AT', 'PT', 'FI', 'IE', 'GR', 'CY', 'MT', 'SK', 'SI', 'EE', 'LV', 'LT' => 'EUR',
+                // If location fails on localhost, use a fallback method
+                if (!$location && app()->environment('local')) {
+                    $location = $this->getLocationFallback($request);
+                }
 
-                        // Europe - Non-Eurozone
-                        'GB' => 'GBP',
-                        'CH' => 'CHF',
-                        'SE' => 'SEK',
-                        'NO' => 'NOK',
-                        'DK' => 'DKK',
-                        'IS' => 'ISK',
+                $detectedCurrency = 'USD'; // Default currency
 
-                        // Asia Pacific
-                        'JP' => 'JPY',
-                        'AU' => 'AUD',
-                        'NZ' => 'NZD',
-                        'CN' => 'CNH',
-                        'HK' => 'HKD',
-                        'SG' => 'SGD',
-                        'KR' => 'KRW',
-                        'IN' => 'INR',
-                        'MY' => 'MYR',
-                        'TH' => 'THB',
-                        'ID' => 'IDR',
-                        'PH' => 'PHP',
-                        'VN' => 'VND',
+                // Log for debugging
+                if ($location) {
+                    \Log::info('Location detected:', [
+                        'country_code' => $location->countryCode,
+                        'country_name' => $location->countryName ?? 'Unknown',
+                        'city' => $location->cityName ?? 'Unknown',
+                        'ip' => $location->ip ?? 'Unknown'
+                    ]);
 
-                        // Middle East & Africa
-                        'AE' => 'AED',
-                        'SA' => 'SAR',
-                        'IL' => 'ILS',
-                        'ZA' => 'ZAR',
-                        'MA' => 'MAD',
-                        'EG' => 'EGP',
-                        'NG' => 'NGN',
-                        'KE' => 'KES',
-                        'UG' => 'UGX',
+                    if ($location->countryCode) {
+                        $detectedCurrency = match ($location->countryCode) {
+                            // North America
+                            'US' => 'USD',
+                            'CA' => 'CAD',
+                            'MX' => 'MXN',
+                            'NI' => 'NIO',
 
-                        // South America
-                        'BR' => 'BRL',
-                        'AR' => 'ARS',
-                        'CL' => 'CLP',
-                        'CO' => 'COP',
-                        'PE' => 'PEN',
-                        'VE' => 'VES',
+                            // Europe - Eurozone
+                            'FR', 'DE', 'IT', 'ES', 'NL', 'BE', 'AT', 'PT', 'FI', 'IE', 'GR', 'CY', 'MT', 'SK', 'SI', 'EE', 'LV', 'LT' => 'EUR',
 
-                        // Others
-                        'RU' => 'RUB',
-                        'TR' => 'TRY',
-                        'JO' => 'JOD',
-                        'AZ' => 'AZN',
-                        'OM' => 'OMR',
-                        'BH' => 'BHD',
-                        'QA' => 'QAR',
-                        'KW' => 'KWD',
+                            // Europe - Non-Eurozone
+                            'GB' => 'GBP',
+                            'CH' => 'CHF',
+                            'SE' => 'SEK',
+                            'NO' => 'NOK',
+                            'DK' => 'DKK',
+                            'IS' => 'ISK',
 
-                        default => 'USD',
-                    };
+                            // Asia Pacific
+                            'JP' => 'JPY',
+                            'AU' => 'AUD',
+                            'NZ' => 'NZD',
+                            'CN' => 'CNH',
+                            'HK' => 'HKD',
+                            'SG' => 'SGD',
+                            'KR' => 'KRW',
+                            'IN' => 'INR',
+                            'MY' => 'MYR',
+                            'TH' => 'THB',
+                            'ID' => 'IDR',
+                            'PH' => 'PHP',
+                            'VN' => 'VND',
+
+                            // Middle East & Africa
+                            'AE' => 'AED',
+                            'SA' => 'SAR',
+                            'IL' => 'ILS',
+                            'ZA' => 'ZAR',
+                            'MA' => 'MAD',
+                            'EG' => 'EGP',
+                            'NG' => 'NGN',
+                            'KE' => 'KES',
+                            'UG' => 'UGX',
+
+                            // South America
+                            'BR' => 'BRL',
+                            'AR' => 'ARS',
+                            'CL' => 'CLP',
+                            'CO' => 'COP',
+                            'PE' => 'PEN',
+                            'VE' => 'VES',
+
+                            // Others
+                            'RU' => 'RUB',
+                            'TR' => 'TRY',
+                            'JO' => 'JOD',
+                            'AZ' => 'AZN',
+                            'OM' => 'OMR',
+                            'BH' => 'BHD',
+                            'QA' => 'QAR',
+                            'KW' => 'KWD',
+
+                            default => 'USD',
+                        };
+                    }
+                } else {
+                    \Log::warning('Location detection failed - location is null');
+                }
+
+                // Only update currency if it's different from current
+                // This respects manual user selection
+                if ($currentCurrency !== $detectedCurrency) {
+                    session(['currency' => $detectedCurrency]);
+                    session(['currency_detection_time' => $currentTime]);
+
+                    \Log::info('Currency automatically set based on location:', [
+                        'currency' => $detectedCurrency,
+                        'detected_from' => $location ? 'IP detection' : 'default',
+                        'country' => $location->countryCode ?? 'Unknown',
+                        'previous_currency' => $currentCurrency ?? 'none'
+                    ]);
+                } else {
+                    // Update detection time even if currency didn't change
+                    session(['currency_detection_time' => $currentTime]);
+                    \Log::info('Location detected but currency unchanged:', [
+                        'currency' => $currentCurrency,
+                        'country' => $location->countryCode ?? 'Unknown'
+                    ]);
                 }
             } else {
-                \Log::warning('Location detection failed - location is null');
-            }
-
-            // Update currency only if it's different from current session currency
-            $currentCurrency = session('currency');
-            if ($currentCurrency !== $currency) {
-                session(['currency' => $currency]);
-
-                \Log::info('Currency updated:', [
-                    'old_currency' => $currentCurrency,
-                    'new_currency' => $currency,
-                    'detected_country' => $location->countryCode ?? 'Unknown'
+                \Log::info('Using existing currency from session:', [
+                    'currency' => $currentCurrency,
+                    'source' => 'user_selection_or_recent_detection',
+                    'time_since_detection' => $currentTime - $lastDetectionTime
                 ]);
             }
-
-            \Log::info('Currency set based on location:', [
-                'currency' => $currency,
-                'detected_from' => $location ? 'IP detection' : 'default'
-            ]);
 
         } catch (\Exception $e) {
             \Log::error('Location detection error: ' . $e->getMessage());
 
-            // Fallback to USD if location detection fails
-            session(['currency' => 'USD']);
+            // Only fallback to USD if no currency is set
+            if (!session('currency')) {
+                session(['currency' => 'USD']);
+                session(['currency_detection_time' => time()]);
+            }
         }
 
         return $next($request);
