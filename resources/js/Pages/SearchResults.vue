@@ -60,7 +60,16 @@ const currencyNames = {
   'BRL': 'Brazilian Real',
   'RUB': 'Russian Ruble',
   'ZAR': 'South African Rand',
-  'AED': 'United Arab Emirates Dirham'
+  'AED': 'United Arab Emirates Dirham',
+  'MAD': 'Moroccan Dirham',
+  'TRY': 'Turkish Lira',
+  'JOD': 'Jordanian Dinar',
+  'ISK': 'Iceland Krona',
+  'AZN': 'Azerbaijanian Manat',
+  'MYR': 'Malaysian Ringgit',
+  'OMR': 'Rial Omani',
+  'UGX': 'Uganda Shilling',
+  'NIO': 'Nicaragua Cordoba Oro'
 };
 
 // Currency symbols mapping
@@ -84,7 +93,16 @@ const currencySymbols = {
   'BRL': 'R$',
   'RUB': '₽',
   'ZAR': 'R',
-  'AED': 'د.إ'
+  'AED': 'د.إ',
+  'MAD': 'د.م.‏',
+  'TRY': '₺',
+  'JOD': 'د.ا.‏',
+  'ISK': 'kr.',
+  'AZN': '₼',
+  'MYR': 'RM',
+  'OMR': '﷼',
+  'UGX': 'USh',
+  'NIO': 'C$'
 };
 
 // Function to format currency display
@@ -178,25 +196,46 @@ const props = defineProps({
     greenMotionVehicles: Object, // New: GreenMotion vehicles data
 });
 
-onMounted(async () => {
-    fetchExchangeRates();
+// Initialize map immediately for fast loading, then update when currency data loads
+onMounted(() => {
+    // Initialize map immediately with default currency
+    setTimeout(() => {
+        initMap();
+    }, 50);
+
+    // Load currency data in background and update map when ready
+    loadCurrencyData();
+});
+
+const loadCurrencyData = async () => {
+    await fetchExchangeRates();
     try {
         const response = await fetch('/currency.json');
         const data = await response.json();
-        currencySymbols.value = data.reduce((acc, curr) => {
+        const fetchedSymbols = data.reduce((acc, curr) => {
             acc[curr.code] = curr.symbol;
             return acc;
         }, {});
+        // Merge with existing currencySymbols, overriding any duplicates
+        Object.assign(currencySymbols, fetchedSymbols);
+
+        // Update map markers with correct currency once data is loaded
+        if (map) {
+            addMarkers();
+        }
+        if (mobileMap) {
+            addMobileMarkers();
+        }
     } catch (error) {
         console.error("Error loading currency symbols:", error);
     }
-});
+};
 
 const getCurrencySymbol = (code) => {
-    if (!currencySymbols.value) {
+    if (!currencySymbols) {
         return '$';
     }
-    return currencySymbols.value[code] || '$'; // Use fetched symbol or default to '$'
+    return currencySymbols[code] || '$'; // Use fetched symbol or default to '$'
 };
 
 const numberOfRentalDays = computed(() => {
@@ -330,7 +369,9 @@ watch(
     { deep: true }
 );
 let map = null;
+let mobileMap = null;
 let markers = [];
+let mobileMarkers = [];
 
 const allVehiclesForMap = computed(() => {
     const internal = props.vehicles.data || [];
@@ -413,6 +454,82 @@ const initMap = () => {
                     }
                 } else if (!map.getCenter() || (map.getCenter().lat === 20 && map.getCenter().lng === 0 && map.getZoom() === 2) ) {
                     map.setView([20,0],2);
+                }
+            }
+        }
+    }, 200);
+};
+
+const initMobileMap = () => {
+    const getValidVehicleCoords = () => {
+        if (!allVehiclesForMap.value || allVehiclesForMap.value.length === 0) return [];
+        return allVehiclesForMap.value
+            .map(vehicle =>
+                (isValidCoordinate(vehicle.latitude) && isValidCoordinate(vehicle.longitude))
+                ? [parseFloat(vehicle.latitude), parseFloat(vehicle.longitude)]
+                : null
+            )
+            .filter(coord => coord !== null);
+    };
+
+    let vehicleCoords = getValidVehicleCoords();
+
+    if (mobileMap) {
+        mobileMap.remove();
+        mobileMap = null;
+    }
+
+    mobileMap = L.map("mobile-map", {
+        zoomControl: true,
+        maxZoom: 18,
+        minZoom: 3,
+        zoomSnap: 0.25,
+        markerZoomAnimation: false,
+        preferCanvas: true,
+    });
+
+    if (vehicleCoords.length === 0) {
+        console.warn("No vehicles with valid coordinates to initialize mobile map view. Setting default view.");
+        mobileMap.setView([20, 0], 2);
+    } else {
+        const bounds = L.latLngBounds(vehicleCoords);
+        if (bounds.isValid()) {
+             if (vehicleCoords.length === 1) {
+                mobileMap.setView(bounds.getCenter(), 13);
+            } else {
+                mobileMap.fitBounds(bounds, { padding: [50, 50] });
+            }
+        } else {
+            mobileMap.setView([20,0],2);
+        }
+    }
+
+    L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+        attribution: "© OpenStreetMap contributors",
+    }).addTo(mobileMap);
+
+    mobileMap.createPane("markers");
+    mobileMap.getPane("markers").style.zIndex = 1000;
+
+    addMobileMarkers();
+
+    setTimeout(() => {
+        if (mobileMap) {
+            mobileMap.invalidateSize();
+            if (allVehiclesForMap.value && allVehiclesForMap.value.length > 0) {
+                const currentCoords = getValidVehicleCoords();
+                if (currentCoords.length > 0) {
+                    const currentBounds = L.latLngBounds(currentCoords);
+                    if (currentBounds.isValid()) {
+                        if (currentCoords.length === 1) {
+                           if(mobileMap.getZoom() < 10) mobileMap.setView(currentBounds.getCenter(), 13);
+                           else mobileMap.panTo(currentBounds.getCenter());
+                        } else {
+                           mobileMap.fitBounds(currentBounds, { padding: [50, 50] });
+                        }
+                    }
+                } else if (!mobileMap.getCenter() || (mobileMap.getCenter().lat === 20 && mobileMap.getCenter().lng === 0 && mobileMap.getZoom() === 2) ) {
+                    mobileMap.setView([20,0],2);
                 }
             }
         }
@@ -617,6 +734,114 @@ const addMarkers = () => {
     }
 };
 
+const addMobileMarkers = () => {
+    mobileMarkers.forEach((marker) => marker.remove());
+    mobileMarkers = [];
+
+    if (!allVehiclesForMap.value || allVehiclesForMap.value.length === 0) {
+        return;
+    }
+
+    const coordData = new Map();
+
+    allVehiclesForMap.value.forEach((vehicle) => {
+        if (!isValidCoordinate(vehicle.latitude) || !isValidCoordinate(vehicle.longitude)) {
+            console.warn(`Skipping vehicle ID ${vehicle.id} with invalid coordinates: Lat=${vehicle.latitude}, Lng=${vehicle.longitude}`);
+            return;
+        }
+
+        const lat = parseFloat(vehicle.latitude);
+        const lng = parseFloat(vehicle.longitude);
+        const coordKey = `${lat.toFixed(5)}_${lng.toFixed(5)}`;
+
+        if (!coordData.has(coordKey)) {
+            coordData.set(coordKey, { count: 0, originalLat: lat, originalLng: lng });
+        }
+        const dataAtCoord = coordData.get(coordKey);
+        dataAtCoord.count += 1;
+
+        let displayLat = lat;
+        let displayLng = lng;
+        const occurrence = dataAtCoord.count;
+
+        if (occurrence > 1) {
+            const K_MAX_MARKERS_PER_RING = 8;
+            const ringNum = Math.floor((occurrence - 2) / K_MAX_MARKERS_PER_RING);
+            const indexInRing = (occurrence - 2) % K_MAX_MARKERS_PER_RING;
+
+            const angle = indexInRing * (2 * Math.PI / K_MAX_MARKERS_PER_RING);
+            const baseEffectiveRadius = 0.00030;
+            const effectiveRadius = baseEffectiveRadius * (1 + ringNum * 0.65);
+
+            displayLat = lat + effectiveRadius * Math.sin(angle);
+            displayLng = lng + effectiveRadius * Math.cos(angle);
+        }
+
+        const primaryImage = vehicle.source === 'greenmotion' ? vehicle.image : (vehicle.images?.find((image) => image.image_type === 'primary')?.image_url || '/default-image.png');
+        const detailRoute = vehicle.source !== 'internal'
+            ? route(getProviderRoute(vehicle), { locale: page.props.locale, id: vehicle.id.substring(vehicle.id.indexOf('_') + 1), location_id: vehicle.provider_pickup_id, start_date: form.date_from, end_date: form.date_to, start_time: form.start_time, end_time: form.end_time, age: form.age, rentalCode: form.rentalCode, currency: form.currency, fuel: form.fuel, userid: form.userid, username: form.username, language: form.language, full_credit: form.full_credit, promocode: form.promocode, dropoff_location_id: form.dropoff_location_id, dropoff_where: form.dropoff_where, where: form.where, provider: vehicle.source })
+            : route('vehicle.show', { locale: page.props.locale, id: vehicle.id, package: form.package_type, pickup_date: form.date_from, return_date: form.date_to, currency: form.currency });
+
+        let popupPrice = "N/A";
+        let popupCurrencySymbol = getCurrencySymbol(selectedCurrency.value);
+
+        if (vehicle.source !== 'internal' && vehicle.products && vehicle.products[0]?.total && vehicle.products[0].total > 0) {
+            const currencyCode = vehicle.products[0]?.currency || 'USD';
+            const totalProviderPrice = parseFloat(vehicle.products[0]?.total || 0);
+            const pricePerDay = totalProviderPrice / numberOfRentalDays.value;
+            const convertedPrice = convertCurrency(pricePerDay, currencyCode);
+            popupCurrencySymbol = getCurrencySymbol(selectedCurrency.value);
+            popupPrice = `${popupCurrencySymbol}${convertedPrice.toFixed(2)}`;
+        } else if (vehicle.source === 'internal' && vehicle.price_per_day && vehicle.price_per_day > 0) {
+            const originalCurrency = vehicle.vendor_profile?.currency || 'USD';
+            const convertedPrice = convertCurrency(vehicle.price_per_day, originalCurrency);
+            popupCurrencySymbol = getCurrencySymbol(selectedCurrency.value);
+            popupPrice = `${popupCurrencySymbol}${convertedPrice.toFixed(2)}`;
+        }
+
+        const marker = L.marker([displayLat, displayLng], {
+            icon: createCustomIcon(vehicle),
+            pane: "markers",
+        }).bindPopup(`
+            <div class="text-center popup-content">
+                <img src="${primaryImage}" alt="${vehicle.brand} ${vehicle.model}" class="popup-image !w-40 !h-20" />
+                <p class="rating !w-40">${vehicle.average_rating ? vehicle.average_rating.toFixed(1) : '0.0'} ★ (${vehicle.review_count} reviews)</p>
+                <p class="font-semibold !w-40">${vehicle.brand} ${vehicle.model}</p>
+                <p class="!w-40">${vehicle.full_vehicle_address || ''}</p>
+                <p class="!w-40">Price: ${popupPrice}</p>
+                <a href="${detailRoute}"
+                   class="text-blue-500 hover:text-blue-700"
+                   onclick="event.preventDefault(); window.location.href = this.href;">
+                    View Details
+                </a>
+            </div>
+        `);
+
+        mobileMap.addLayer(marker);
+        mobileMarkers.push(marker);
+    });
+
+    const validCoords = allVehiclesForMap.value
+        .filter(v => isValidCoordinate(v.latitude) && isValidCoordinate(v.longitude))
+        .map(v => [parseFloat(v.latitude), parseFloat(v.longitude)]);
+
+    if (validCoords.length > 0) {
+        const allVehicleBounds = L.latLngBounds(validCoords);
+        if (allVehicleBounds.isValid()) {
+            if (validCoords.length === 1) {
+                mobileMap.setView(allVehicleBounds.getCenter(), 13);
+            } else {
+                mobileMap.fitBounds(allVehicleBounds, { padding: [50, 50] });
+            }
+        }
+    } else {
+        if (mobileMap && (!mobileMap.getCenter() || (mobileMap.getCenter().lat === 20 && mobileMap.getCenter().lng === 0 && mobileMap.getZoom() === 2))) {
+             mobileMap.setView([20,0],2);
+        }
+        console.warn("No vehicles with valid coordinates to fit mobile map bounds after adding markers.");
+    }
+};
+
 
 watch(
     () => props.vehicles.data,
@@ -624,6 +849,11 @@ watch(
         if (map) {
             if (JSON.stringify(newVehicles) !== JSON.stringify(oldVehicles)) {
                  addMarkers();
+            }
+        }
+        if (mobileMap) {
+            if (JSON.stringify(newVehicles) !== JSON.stringify(oldVehicles)) {
+                 addMobileMarkers();
             }
         }
     },
@@ -636,6 +866,11 @@ watch(
         if (map) {
             if (JSON.stringify(newVehicles) !== JSON.stringify(oldVehicles)) {
                  addMarkers();
+            }
+        }
+        if (mobileMap) {
+            if (JSON.stringify(newVehicles) !== JSON.stringify(oldVehicles)) {
+                 addMobileMarkers();
             }
         }
     },
@@ -655,11 +890,14 @@ watch(selectedCurrency, () => {
     if (map) {
         addMarkers();
     }
+    if (mobileMap) {
+        addMobileMarkers();
+    }
 });
 
-onMounted(() => {
-    initMap();
-});
+// Exchange rates watch is no longer needed since we call addMarkers() directly in loadCurrencyData()
+
+// This onMounted is now handled in the async function above to ensure proper loading order
 
 const vehicleMarkers = ref({}); // To store vehicle.id -> marker mapping
 
@@ -687,6 +925,24 @@ const unhighlightVehicleOnMap = (vehicle) => {
 
 
 const showMap = ref(true);
+const showMobileMapModal = ref(false);
+
+// Watch for mobile map modal
+watch(showMobileMapModal, (newValue) => {
+    if (newValue) {
+        // Initialize mobile map when modal opens
+        setTimeout(() => {
+            initMobileMap();
+        }, 100);
+    } else {
+        // Clean up mobile map when modal closes
+        if (mobileMap) {
+            mobileMap.remove();
+            mobileMap = null;
+            mobileMarkers = [];
+        }
+    }
+});
 
 const handleMapToggle = (value) => {
     showMap.value = value;
@@ -1060,7 +1316,6 @@ const setupIntersectionObserver = () => {
 
 onMounted(() => {
     window.addEventListener('scroll', handleScroll);
-    initMap();
     if (page.props.auth?.user) {
         fetchFavoriteStatus();
     }
@@ -1151,6 +1406,15 @@ watch(
                     </template>
                 </Dropdown>
             </div>
+            <!-- Mobile Map Button -->
+            <button @click="showMobileMapModal = true"
+                class="flex flex-1 items-center justify-center gap-3 p-3 w-full bg-customPrimaryColor text-white rounded-lg shadow-md hover:shadow-lg transition-all duration-300">
+                <!-- Map Icon (SVG) -->
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7"/>
+                </svg>
+                <span class="text-lg font-medium">Map</span>
+            </button>
         </div>
 
         <!-- Desktop filter header (hidden on mobile) -->
@@ -1793,6 +2057,30 @@ watch(
                 <div class="bg-white h-full">
                     <div id="map" class="h-full rounded-lg"></div>
                 </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Mobile Map Modal -->
+    <div v-if="showMobileMapModal" class="fixed inset-0 z-[9999] md:hidden">
+        <!-- Full-screen overlay with map -->
+        <div class="relative w-full h-full bg-white">
+            <!-- Close Button Header -->
+            <div class="absolute top-0 left-0 right-0 z-[10000] bg-white shadow-md">
+                <div class="flex items-center justify-between p-4">
+                    <h2 class="text-xl font-semibold text-customPrimaryColor">Vehicle Map</h2>
+                    <button @click="showMobileMapModal = false"
+                        class="p-2 rounded-full bg-gray-100 hover:bg-gray-200 transition-colors duration-200">
+                        <svg class="w-6 h-6 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                        </svg>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Map Container -->
+            <div class="w-full h-full pt-16">
+                <div id="mobile-map" class="w-full h-full"></div>
             </div>
         </div>
     </div>

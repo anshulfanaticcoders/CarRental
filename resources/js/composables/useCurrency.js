@@ -9,7 +9,8 @@ export function useCurrency() {
 
     const supportedCurrencies = [
         'USD', 'EUR', 'GBP', 'JPY', 'AUD', 'CAD', 'CHF', 'CNH', 'HKD', 'SGD',
-        'SEK', 'KRW', 'NOK', 'NZD', 'INR', 'MXN', 'BRL', 'RUB', 'ZAR', 'AED'
+        'SEK', 'KRW', 'NOK', 'NZD', 'INR', 'MXN', 'BRL', 'RUB', 'ZAR', 'AED',
+        'MAD', 'TRY', 'JOD', 'ISK', 'AZN', 'MYR', 'OMR', 'UGX', 'NIO'
     ];
 
     const changeCurrency = (newCurrency) => {

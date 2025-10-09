@@ -1,0 +1,9 @@
+<svg version="1.2" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24">
+	<title>gps-navigation</title>
+	<defs>
+		<image  width="24" height="24" id="img1" href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABgAAAAYAQMAAADaua+7AAAAAXNSR0IB2cksfwAAAAZQTFRFAAAAFTtPZVtrbQAAAAJ0Uk5TAP9bkSK1AAAATklEQVR4nE3JMRWAIBiF0fctskkEopDFCCaAKiaxihFkQ8/BX44sDne6SDNSRDzIVRR3ZIarjXA0Um6Yrk/KBX+W/l3chvC3IL92ZZjuF6W2HRSvf6yjAAAAAElFTkSuQmCC"/>
+	</defs>
+	<style>
+	</style>
+	<use id="Background" href="#img1" x="0" y="0"/>
+</svg>

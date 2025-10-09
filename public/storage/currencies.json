@@ -1,0 +1,27 @@
+[
+    {
+        "code": "USD",
+        "name": "United States Dollar",
+        "symbol": "$"
+    },
+    {
+        "code": "INR",
+        "name": "Indian Rupee",
+        "symbol": "₹"
+    },
+    {
+        "code": "EUR",
+        "name": "Euro",
+        "symbol": "€"
+    },
+    {
+        "code": "GBP",
+        "name": "British Pound",
+        "symbol": "£"
+    },
+    {
+        "code": "AUD",
+        "name": "Australian Dollar",
+        "symbol": "A$"
+    }
+]

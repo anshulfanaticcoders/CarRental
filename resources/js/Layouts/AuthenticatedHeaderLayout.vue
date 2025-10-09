@@ -210,7 +210,16 @@ const currencyNames = {
   'BRL': 'Brazilian Real',
   'RUB': 'Russian Ruble',
   'ZAR': 'South African Rand',
-  'AED': 'United Arab Emirates Dirham'
+  'AED': 'United Arab Emirates Dirham',
+  'MAD': 'Moroccan Dirham',
+  'TRY': 'Turkish Lira',
+  'JOD': 'Jordanian Dinar',
+  'ISK': 'Iceland Krona',
+  'AZN': 'Azerbaijanian Manat',
+  'MYR': 'Malaysian Ringgit',
+  'OMR': 'Rial Omani',
+  'UGX': 'Uganda Shilling',
+  'NIO': 'Nicaragua Cordoba Oro'
 };
 
 // Currency symbols mapping
@@ -234,7 +243,16 @@ const currencySymbols = {
   'BRL': 'R$',
   'RUB': '₽',
   'ZAR': 'R',
-  'AED': 'د.إ'
+  'AED': 'د.إ',
+  'MAD': 'د.م.‏',
+  'TRY': '₺',
+  'JOD': 'د.ا.‏',
+  'ISK': 'kr.',
+  'AZN': '₼',
+  'MYR': 'RM',
+  'OMR': '﷼',
+  'UGX': 'USh',
+  'NIO': 'C$'
 };
 
 // Function to format currency display
