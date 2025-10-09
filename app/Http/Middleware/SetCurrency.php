@@ -137,6 +137,9 @@ class SetCurrency
                 $updateReason = 'manual_change_expired';
             }
 
+            // IMPORTANT: Always set country in session for blog filtering
+            session(['country' => strtolower($detectedCountry)]);
+
             // Update currency if conditions are met and detected currency is different
             if ($shouldUpdateCurrency && $currentCurrency !== $detectedCurrency) {
                 session(['currency' => $detectedCurrency]);
@@ -144,7 +147,7 @@ class SetCurrency
                 session(['last_detected_ip' => $currentIP]);
                 session(['last_detected_country' => $detectedCountry]);
 
-                \Log::info('Currency updated based on location:', [
+                \Log::info('Currency and country updated based on location:', [
                     'reason' => $updateReason,
                     'new_currency' => $detectedCurrency,
                     'previous_currency' => $currentCurrency ?? 'none',
@@ -157,10 +160,10 @@ class SetCurrency
                 session(['last_detected_ip' => $currentIP]);
                 session(['last_detected_country' => $detectedCountry]);
 
-                \Log::info('Using existing currency:', [
+                \Log::info('Using existing data:', [
                     'currency' => $currentCurrency,
                     'detected_currency' => $detectedCurrency,
-                    'country' => $detectedCountry,
+                    'country' => strtolower($detectedCountry),
                     'ip' => $currentIP,
                     'manual_change_minutes_ago' => ($currentTime - $lastManualChangeTime) / 60
                 ]);
@@ -169,10 +172,14 @@ class SetCurrency
         } catch (\Exception $e) {
             \Log::error('Location detection error: ' . $e->getMessage());
 
-            // Only fallback to USD if no currency is set
+            // Fallback to USD and US if no currency/country is set
             if (!session('currency')) {
                 session(['currency' => 'USD']);
                 session(['currency_detection_time' => time()]);
+            }
+            if (!session('country')) {
+                session(['country' => 'us']);
+                \Log::info('Set fallback country to US');
             }
         }
 
