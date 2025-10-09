@@ -719,7 +719,104 @@ Route::group([
     Route::get('/green-motion-car/{id}', [GreenMotionController::class, 'showGreenMotionCar'])
         ->name('green-motion-car.show');
     Route::post('/green-motion-car/check-availability', [GreenMotionController::class, 'checkAvailability'])->name('green-motion-car.check-availability');
-   
+
+    // Debug route for live server troubleshooting
+    Route::get('/debug-currency-detection', function () {
+        $request = request();
+        $currentIP = $request->ip();
+
+        // Test all location detection methods
+        $results = [];
+
+        // Test 1: Stevebauman Location (primary)
+        try {
+            $location = \Stevebauman\Location\Facades\Location::get();
+            $results['stevebauman'] = [
+                'success' => $location && $location->countryCode ? true : false,
+                'country' => $location->countryCode ?? 'null',
+                'country_name' => $location->countryName ?? 'null',
+                'city' => $location->cityName ?? 'null',
+                'error' => null
+            ];
+        } catch (\Exception $e) {
+            $results['stevebauman'] = [
+                'success' => false,
+                'error' => $e->getMessage()
+            ];
+        }
+
+        // Test 2: IPInfo with API key
+        try {
+            $apiKey = env('IPINFO_TOKEN');
+            if ($apiKey) {
+                $ipData = @file_get_contents("https://ipinfo.io/{$currentIP}/json?token={$apiKey}");
+                if ($ipData) {
+                    $data = json_decode($ipData, true);
+                    $results['ipinfo_with_token'] = [
+                        'success' => $data && isset($data['country']) ? true : false,
+                        'country' => $data['country'] ?? 'null',
+                        'city' => $data['city'] ?? 'null',
+                        'api_key_set' => !empty($apiKey)
+                    ];
+                } else {
+                    $results['ipinfo_with_token'] = ['success' => false, 'error' => 'No response'];
+                }
+            } else {
+                $results['ipinfo_with_token'] = ['success' => false, 'error' => 'No API key configured'];
+            }
+        } catch (\Exception $e) {
+            $results['ipinfo_with_token'] = ['success' => false, 'error' => $e->getMessage()];
+        }
+
+        // Test 3: IPInfo without token
+        try {
+            $ipData = @file_get_contents("https://ipinfo.io/{$currentIP}/json");
+            if ($ipData) {
+                $data = json_decode($ipData, true);
+                $results['ipinfo_no_token'] = [
+                    'success' => $data && isset($data['country']) ? true : false,
+                    'country' => $data['country'] ?? 'null',
+                    'city' => $data['city'] ?? 'null'
+                ];
+            } else {
+                $results['ipinfo_no_token'] = ['success' => false, 'error' => 'No response'];
+            }
+        } catch (\Exception $e) {
+            $results['ipinfo_no_token'] = ['success' => false, 'error' => $e->getMessage()];
+        }
+
+        // Test 4: ip-api.com
+        try {
+            $ipData = @file_get_contents("http://ip-api.com/json/{$currentIP}");
+            if ($ipData) {
+                $data = json_decode($ipData, true);
+                $results['ip_api_com'] = [
+                    'success' => $data && $data['status'] === 'success' ? true : false,
+                    'country' => $data['countryCode'] ?? 'null',
+                    'city' => $data['city'] ?? 'null',
+                    'status' => $data['status'] ?? 'unknown'
+                ];
+            } else {
+                $results['ip_api_com'] = ['success' => false, 'error' => 'No response'];
+            }
+        } catch (\Exception $e) {
+            $results['ip_api_com'] = ['success' => false, 'error' => $e->getMessage()];
+        }
+
+        return response()->json([
+            'current_ip' => $currentIP,
+            'server_info' => [
+                'environment' => app()->environment(),
+                'ipinfo_token_set' => !empty(env('IPINFO_TOKEN')),
+                'currency_session' => session('currency'),
+                'last_detected_ip' => session('last_detected_ip'),
+                'last_detected_country' => session('last_detected_country')
+            ],
+            'location_tests' => $results,
+            'working_methods' => array_keys(array_filter($results, fn($r) => $r['success']))
+        ]);
+    });
+
 }); // End of locale group
 
     Route::get('/green-motion-vehicles', [GreenMotionController::class, 'getGreenMotionVehicles'])->name('green-motion-vehicles');

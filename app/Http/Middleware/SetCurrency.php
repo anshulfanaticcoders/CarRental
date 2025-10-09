@@ -26,7 +26,7 @@ class SetCurrency
 
             // Detect location on every request to check for changes
             $location = Location::get();
-            if (!$location && app()->environment('local')) {
+            if (!$location) {
                 $location = $this->getLocationFallback($request);
             }
 
@@ -179,11 +179,11 @@ class SetCurrency
     }
 
     /**
-     * Fallback method for localhost development
+     * Fallback method for location detection when primary service fails
      */
     private function getLocationFallback(Request $request)
     {
-        // Known IP mappings for testing
+        // Known IP mappings for testing (works on both local and live)
         $knownIps = [
             '49.43.142.103' => ['countryCode' => 'IN', 'countryName' => 'India', 'cityName' => 'Shimla'],
             '8.8.8.8' => ['countryCode' => 'US', 'countryName' => 'United States', 'cityName' => 'Mountain View'],
@@ -193,30 +193,75 @@ class SetCurrency
             '8.8.8.3' => ['countryCode' => 'AU', 'countryName' => 'Australia', 'cityName' => 'Sydney'],
         ];
 
-        // Try to get real external IP for localhost
+        // Check if current IP matches any known test IPs
+        if (isset($knownIps[$request->ip()])) {
+            \Log::info('Using known test IP mapping', ['ip' => $request->ip()]);
+            return (object) $knownIps[$request->ip()];
+        }
+
+        // For localhost, try to get real external IP using IPInfo API
         if ($request->ip() === '127.0.0.1' || $request->ip() === '::1') {
             try {
-                $externalIp = file_get_contents('https://ipinfo.io/json');
-                if ($externalIp) {
-                    $ipData = json_decode($externalIp, true);
-                    if ($ipData && isset($ipData['country'])) {
-                        return (object) [
-                            'ip' => $ipData['ip'] ?? '127.0.0.1',
-                            'countryCode' => $ipData['country'] ?? 'US',
-                            'countryName' => $ipData['country'] ?? 'Unknown',
-                            'cityName' => $ipData['city'] ?? 'Unknown',
-                        ];
+                // Use your IPInfo API key to get real external IP
+                $apiKey = env('IPINFO_TOKEN');
+                if ($apiKey) {
+                    $externalIp = file_get_contents("https://ipinfo.io/json?token={$apiKey}");
+                    if ($externalIp) {
+                        $ipData = json_decode($externalIp, true);
+                        if ($ipData && isset($ipData['country'])) {
+                            return (object) [
+                                'ip' => $ipData['ip'] ?? '127.0.0.1',
+                                'countryCode' => $ipData['country'] ?? 'US',
+                                'countryName' => $ipData['country'] ?? 'Unknown',
+                                'cityName' => $ipData['city'] ?? 'Unknown',
+                            ];
+                        }
                     }
                 }
             } catch (\Exception $e) {
                 \Log::warning('External IP detection failed: ' . $e->getMessage());
             }
 
-            // Fallback to known IP (your India IP for testing)
-            \Log::info('Using fallback IP for localhost testing');
-            return (object) $knownIps['49.43.142.103'];
+            \Log::info('Using default fallback for localhost');
+            return (object) $knownIps['49.43.142.103']; // India for testing
         }
 
+        // For live server: try alternative IP detection methods
+        try {
+            // Method 1: Try IPInfo without token (limited but works)
+            $ipData = @file_get_contents("https://ipinfo.io/{$request->ip()}/json");
+            if ($ipData) {
+                $data = json_decode($ipData, true);
+                if ($data && isset($data['country'])) {
+                    \Log::info('Location detected via IPInfo fallback', ['country' => $data['country']]);
+                    return (object) [
+                        'ip' => $request->ip(),
+                        'countryCode' => $data['country'],
+                        'countryName' => $data['country'] ?? 'Unknown',
+                        'cityName' => $data['city'] ?? 'Unknown',
+                    ];
+                }
+            }
+
+            // Method 2: Try ip-api.com (free, no API key required)
+            $ipData = @file_get_contents("http://ip-api.com/json/{$request->ip()}");
+            if ($ipData) {
+                $data = json_decode($ipData, true);
+                if ($data && $data['status'] === 'success' && isset($data['countryCode'])) {
+                    \Log::info('Location detected via ip-api.com fallback', ['country' => $data['countryCode']]);
+                    return (object) [
+                        'ip' => $request->ip(),
+                        'countryCode' => $data['countryCode'],
+                        'countryName' => $data['country'] ?? 'Unknown',
+                        'cityName' => $data['city'] ?? 'Unknown',
+                    ];
+                }
+            }
+        } catch (\Exception $e) {
+            \Log::error('All fallback methods failed: ' . $e->getMessage());
+        }
+
+        \Log::warning('All location detection methods failed, using default US');
         return null;
     }
 }
