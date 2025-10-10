@@ -176,7 +176,7 @@ watch(() => url.value, () => {
                     </Link>
 
                     <!-- Currency Switcher -->
-                    <div class="relative">
+                    <div class="relative bg-[#efefef] hover:bg-[#d6d6d6] focus:bg-[#d6d6d6] rounded-full">
                         <Dropdown align="right" width="max">
                             <template #trigger>
                                 <button
@@ -209,7 +209,7 @@ watch(() => url.value, () => {
                     </div>
 
                     <!-- Language Switcher for Guests (Desktop) -->
-                    <Dropdown align="right" width="48">
+                    <Dropdown align="right" width="48" class="bg-[#efefef] hover:bg-[#d6d6d6] focus:bg-[#d6d6d6] rounded-full">
                         <template #trigger>
                             <button 
                             type="button" 

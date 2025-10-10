@@ -567,7 +567,7 @@ watch(() => url.value, () => {
           </Link>
           
           <!-- Currency Switcher -->
-          <div class="relative">
+          <div class="relative bg-[#efefef] hover:bg-[#d6d6d6] focus:bg-[#d6d6d6] rounded-full">
             <Dropdown align="right" width="max">
               <template #trigger>
                 <button
@@ -589,7 +589,7 @@ watch(() => url.value, () => {
                   :key="currency"
                   @click="changeCurrency(currency)"
                   class="flex min-w-max items-center px-4 py-2 text-left text-sm leading-5 text-white hover:text-white hover:bg-gray-600 transition duration-150 ease-in-out cursor-pointer"
-                  :class="{ 'bg-white text-[#153B4F]': selectedCurrency === currency }"
+                  :class="{ 'bg-white !text-[#153B4F] font-bold': selectedCurrency === currency }"
                 >
                   <span v-if="selectedCurrency === currency" class="w-2 h-2 bg-green-500 rounded-full mr-2"></span>
                   {{ formatCurrencyDisplay(currency) }}
@@ -600,7 +600,7 @@ watch(() => url.value, () => {
           </div>
           
           <!-- Language Switcher for Guests -->
-          <Dropdown align="right" width="48">
+          <Dropdown align="right" width="48" class="bg-[#efefef] hover:bg-[#d6d6d6] focus:bg-[#d6d6d6] rounded-full">
             <template #trigger>
               <button 
               type="button" 
