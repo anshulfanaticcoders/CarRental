@@ -25,7 +25,20 @@
 
     <div class="py-customVerticalSpacing full-w-container flex max-[768px]:flex-col">
         <div id="blog-list-container" class="w-3/4 pr-8 max-[768px]:w-full max-[768px]:pr-0">
-            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            <div v-if="isLoading" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                <div v-for="n in 6" :key="n" class="rounded-lg overflow-hidden shadow-md">
+                    <Skeleton class="w-full h-48" />
+                    <div class="p-6">
+                        <Skeleton class="h-4 w-1/2 mb-2" />
+                        <Skeleton class="h-6 w-3/4 mb-4" />
+                        <Skeleton class="h-4 w-full mb-1" />
+                        <Skeleton class="h-4 w-full mb-1" />
+                        <Skeleton class="h-4 w-3/4 mb-4" />
+                        <Skeleton class="h-8 w-1/3" />
+                    </div>
+                </div>
+            </div>
+            <div v-else-if="blogs.data.length > 0" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 <div v-for="blog in blogs.data" :key="blog.id" class="rounded-lg overflow-hidden shadow-md hover:scale-[1.03] transition-transform duration-300 ease-in-out">
                     <Link :href="route('blog.show', { locale: page.props.locale, country: page.props.country || 'us', blog: blog.translated_slug })">
                         <img :src="blog.image" :alt="blog.title" class="w-full h-48 object-cover" loading="lazy">
@@ -43,6 +56,9 @@
                     </Link>
                 </div>
             </div>
+            <div v-else class="text-center py-10">
+                <p class="text-xl text-gray-500">Coming Soon</p>
+            </div>
 
             <div class="mt-8 flex justify-center">
                 <Pagination
@@ -57,21 +73,35 @@
         <aside class="w-1/3 max-[768px]:w-full max-[768px]:mt-10">
             <div class="sticky top-8 shadow-md rounded-sm p-4 max-[768px]:static">
                 <h3 class="text-lg font-semibold mb-4">Recent Posts</h3>
-                <ul class="space-y-4">
-                    <li v-for="recentBlog in recentBlogs" :key="recentBlog.id" class="flex items-start">
-                        <img :src="recentBlog.image" :alt="recentBlog.title" class="w-20 h-20 object-cover rounded mr-4" loading="lazy">
-                        <div>
+                <div v-if="isRecentLoading" class="space-y-4">
+                    <div v-for="n in 5" :key="n" class="flex items-start">
+                        <Skeleton class="w-20 h-20 rounded mr-4" />
+                        <div class="flex-1">
+                            <Skeleton class="h-5 w-3/4 mb-2" />
+                            <Skeleton class="h-4 w-1/2" />
+                        </div>
+                    </div>
+                </div>
+                <ul v-else-if="recentBlogs.length > 0" class="space-y-4">
+                    <li v-for="recentBlog in recentBlogs" :key="recentBlog.id" class="flex items-start gap-4">
+                        <Link :href="route('blog.show', { locale: page.props.locale, country: page.props.country || 'us', blog: recentBlog.translated_slug })" class="flex-shrink-0">
+                            <img :src="recentBlog.image" :alt="recentBlog.title" class="w-20 h-20 object-cover rounded" loading="lazy">
+                        </Link>
+                        <div class="flex-grow min-w-0">
                             <Link :href="route('blog.show', { locale: page.props.locale, country: page.props.country || 'us', blog: recentBlog.translated_slug })"
                                 class="font-medium text-gray-800 hover:underline">
                                 {{ recentBlog.title }}
                             </Link>
-                            <p class="text-sm text-gray-500 mt-1 flex gap-2">
-                                <img :src=calendarIcon alt="" loading="lazy">
+                            <p class="text-sm text-gray-500 mt-1 flex items-center gap-2">
+                                <img :src=calendarIcon alt="" class="w-4 h-4" loading="lazy">
                                 {{ formatDate(recentBlog.created_at) }}
                             </p>
                         </div>
                     </li>
                 </ul>
+                <div v-else>
+                    <p class="text-gray-500">No recent blogs</p>
+                </div>
             </div>
         </aside>
     </div>
@@ -88,6 +118,7 @@ import blogbgimage from '../../assets/blogpagebgimage.jpg'
 import { ref, onMounted, nextTick, computed } from 'vue';
 import Footer from '@/Components/Footer.vue';
 import Pagination from '@/Components/ReusableComponents/Pagination.vue';
+import { Skeleton } from '@/Components/ui/skeleton';
 
 const props = defineProps({
     blogs: Object,
@@ -98,6 +129,8 @@ const props = defineProps({
 
 const page = usePage();
 const recentBlogs = ref([]);
+const isLoading = ref(true);
+const isRecentLoading = ref(true);
 const currentUrl = computed(() => window.location.href);
 
 const seoTranslation = computed(() => {
@@ -112,6 +145,11 @@ const canonicalUrl = computed(() => props.seoMeta?.canonical_url || window.locat
 const seoImageUrl = computed(() => props.seoMeta?.seo_image_url || '');
 
 onMounted(async () => {
+    // Simulate loading for the main blog list (as it's passed via props)
+    setTimeout(() => {
+        isLoading.value = false;
+    }, 500); // Adjust timing as needed
+
     try {
         const currentLocale = page.props.locale || 'en';
         const currentCountry = page.props.country || 'us';
@@ -119,6 +157,8 @@ onMounted(async () => {
         recentBlogs.value = response.data;
     } catch (error) {
         console.error("Error fetching recent blogs:", error);
+    } finally {
+        isRecentLoading.value = false;
     }
 });
 

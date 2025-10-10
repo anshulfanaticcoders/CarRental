@@ -404,7 +404,7 @@ watch(() => url.value, () => {
           </div>
 
           <!-- Currency Switcher -->
-          <div class="relative">
+          <div class="relative bg-[#efefef] hover:bg-[#d6d6d6] focus:bg-[#d6d6d6] rounded-full">
             <div v-if="currencyLoading" class="absolute inset-0 flex items-center justify-center bg-white bg-opacity-50">
                 <img :src="loaderVariant" alt="Loading..." class="w-6 h-6" />
             </div>
@@ -423,14 +423,15 @@ watch(() => url.value, () => {
                 </button>
               </template>
             <template #content>
-              <div class="max-h-64 overflow-y-auto currency-scrollbar">
+              <div class="max-h-80 overflow-y-auto currency-scrollbar">
                 <div
                   v-for="currency in supportedCurrencies"
                   :key="currency"
                   @click="changeCurrency(currency)"
                   class="flex min-w-max items-center px-4 py-2 text-left text-sm leading-5 text-white hover:text-white hover:bg-gray-600 transition duration-150 ease-in-out cursor-pointer"
-                  :class="{ 'bg-white text-[#153B4F]': selectedCurrency === currency }"
+                  :class="{ 'bg-white !text-[#153B4F] font-bold': selectedCurrency === currency }"
                 >
+                  <span v-if="selectedCurrency === currency" class="w-2 h-2 bg-green-500 rounded-full mr-2"></span>
                   {{ formatCurrencyDisplay(currency) }}
                 </div>
               </div>
@@ -439,7 +440,7 @@ watch(() => url.value, () => {
           </div>
 
           <!-- Language Switcher -->
-          <Dropdown align="right" width="48">
+          <Dropdown align="right" width="48" class="bg-[#efefef] hover:bg-[#d6d6d6] focus:bg-[#d6d6d6] rounded-full">
             <template #trigger>
               <button 
                 type="button" 
@@ -590,6 +591,7 @@ watch(() => url.value, () => {
                   class="flex min-w-max items-center px-4 py-2 text-left text-sm leading-5 text-white hover:text-white hover:bg-gray-600 transition duration-150 ease-in-out cursor-pointer"
                   :class="{ 'bg-white text-[#153B4F]': selectedCurrency === currency }"
                 >
+                  <span v-if="selectedCurrency === currency" class="w-2 h-2 bg-green-500 rounded-full mr-2"></span>
                   {{ formatCurrencyDisplay(currency) }}
                 </div>
               </div>

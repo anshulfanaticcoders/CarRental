@@ -198,8 +198,9 @@ watch(() => url.value, () => {
                                     :key="currency"
                                     @click="changeCurrency(currency)"
                                     class="flex items-center min-w-max px-4 py-2 text-left text-sm leading-5 text-white hover:text-white hover:bg-gray-600 transition duration-150 ease-in-out cursor-pointer"
-                                    :class="{ 'bg-white text-[#153B4F]': selectedCurrency === currency }"
+                                    :class="{ 'bg-white !text-[#153B4F]': selectedCurrency === currency }"
                                 >
+                                    <span v-if="selectedCurrency === currency" class="w-2 h-2 bg-green-500 rounded-full mr-2"></span>
                                     {{ formatCurrencyDisplay(currency) }}
                                  </div>
                             </div>

@@ -663,21 +663,26 @@ public function show($locale, $country, $slug)
             App::setLocale($request->input('locale'));
         }
 
-        // Always get country from session (set by middleware)
-        $country = session('country');
-        $country = strtolower($country);
+        // Prioritize country from request, fallback to session
+        $country = $request->input('country', session('country'));
+        if ($country) {
+            $country = strtolower($country);
+        }
 
         \Log::info('getRecentBlogs: Using country - ' . $country . ' | Request country param: ' . $request->input('country'));
 
-        $recentBlogs = Blog::with('translations')
-            ->where('is_published', true)
-            ->where(function($query) use ($country) {
+        $query = Blog::with('translations')
+            ->where('is_published', true);
+
+        if ($country) {
+            $query->where(function($query) use ($country) {
                 $query->whereJsonContains('countries', $country)
                       ->orWhereNull('countries');
-            })
-            ->latest()
-            ->take(5)
-            ->get();
+            });
+        }
+
+        $recentBlogs = $query->latest()->offset(1)->take(5)->get();
+
 
         \Log::info('getRecentBlogs: Found ' . $recentBlogs->count() . ' recent blogs for country ' . $country);
 
