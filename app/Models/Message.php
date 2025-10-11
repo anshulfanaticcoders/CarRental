@@ -54,6 +54,11 @@ class Message extends Model
         return $this->hasMany(Message::class, 'parent_id');
     }
 
+    public function readReceipts()
+    {
+        return $this->hasMany(MessageReadReceipt::class);
+    }
+
     // Accessor for file_url
     public function getFileUrlAttribute()
     {

@@ -9,6 +9,7 @@ import { usePage } from '@inertiajs/vue3';
 import searchIcon from '../../assets/MagnifyingGlass.svg';
 import recordingStartSound from '../../assets/sounds/recording_start.mp3';
 import arrowBackIcon from '../../assets/arrowBack.svg';
+import doubleTickIcon from '../../assets/double-tick.svg';
 
 const props = defineProps({
     bookingId: [String, Number],
@@ -17,6 +18,10 @@ const props = defineProps({
     showBackButton: {
         type: Boolean,
         default: false
+    },
+    bookingDetails: {
+        type: Object,
+        default: null
     }
 });
 
@@ -32,6 +37,7 @@ const isLoading = ref(false);
 const error = ref(null);
 const showOptions = ref(null);
 const isSearchVisible = ref(false);
+const showBookingDetails = ref(false);
 
 // Voice Note State
 const isRecording = ref(false);
@@ -44,6 +50,16 @@ const fileExtension = ref('webm');
 const recordingPulse = ref(false);
 let recordingInterval = null;
 let recordingStartAudio = null;
+
+// Typing Indicator State
+const isTyping = ref(false);
+const typingUsers = ref([]);
+let typingTimeout = null;
+const isAnyoneTyping = computed(() => typingUsers.value.length > 0);
+
+// Enhanced Read Receipts State
+const readReceipts = ref({});
+const enhancedReadStatus = ref({});
 
 const page = usePage();
 const userRole = computed(() => page.props.auth.user.role);
@@ -325,12 +341,102 @@ const toggleSearch = () => {
     }
 };
 
+const toggleBookingDetails = () => {
+    showBookingDetails.value = !showBookingDetails.value;
+};
+
+const formatBookingDate = (dateString) => {
+    const date = new Date(dateString);
+    return date.toLocaleDateString('en-US', {
+        year: 'numeric',
+        month: 'short',
+        day: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit'
+    });
+};
+
+const getBookingStatusColor = (status) => {
+    switch (status) {
+        case 'pending': return 'bg-yellow-100 text-yellow-800';
+        case 'confirmed': return 'bg-green-100 text-green-800';
+        case 'completed': return 'bg-blue-100 text-blue-800';
+        case 'cancelled': return 'bg-red-100 text-red-800';
+        default: return 'bg-gray-100 text-gray-800';
+    }
+};
+
+const getBookingStatusIcon = (status) => {
+    switch (status) {
+        case 'pending': return '🕐';
+        case 'confirmed': return '✅';
+        case 'completed': return '🎉';
+        case 'cancelled': return '❌';
+        default: return '📅';
+    }
+};
+
 const getProfileImage = (user) => {
     return user?.profile?.avatar ? `${user.profile.avatar}` : '/storage/avatars/default-avatar.svg';
 };
 
 const goBack = () => {
     emit('back');
+};
+
+// Typing Indicator Functions
+const startTyping = async () => {
+    if (!props.bookingId || isTyping.value) return;
+
+    try {
+        isTyping.value = true;
+        await axios.post(route('messages.typing.start', { locale: usePage().props.locale }), {
+            booking_id: props.bookingId
+        });
+    } catch (error) {
+        // Silently fail - typing indicator is not critical functionality
+    }
+};
+
+const stopTyping = async () => {
+    if (!props.bookingId || !isTyping.value) return;
+
+    try {
+        isTyping.value = false;
+        await axios.post(route('messages.typing.stop', { locale: usePage().props.locale }), {
+            booking_id: props.bookingId
+        });
+    } catch (error) {
+        // Silently fail - typing indicator is not critical functionality
+    }
+};
+
+const handleTyping = () => {
+    if (!newMessage.value.trim()) return;
+
+    startTyping();
+
+    // Clear existing timeout
+    if (typingTimeout) {
+        clearTimeout(typingTimeout);
+    }
+
+    // Set new timeout to stop typing after 3 seconds of inactivity
+    typingTimeout = setTimeout(() => {
+        stopTyping();
+    }, 3000);
+};
+
+// Enhanced Read Receipts Functions
+const getEnhancedReadStatus = (message) => {
+    if (!message || message.sender_id !== page.props.auth.user.id) return null;
+
+    return {
+        isDelivered: true, // If message exists, it's delivered
+        isRead: message.read_at !== null,
+        readAt: message.read_at,
+        readByAll: false // This would be calculated based on read receipts
+    };
 };
 
 const lastSeenText = computed(() => {
@@ -407,12 +513,66 @@ onMounted(() => {
                 messageList.value[messageIndex] = e.message;
             }
         });
+
+        // Listen for typing indicators
+        channel.listen('typing.indicator', (e) => {
+            if (e.user_id !== page.props.auth.user.id && e.booking_id == props.bookingId) {
+                if (e.is_typing) {
+                    // Add user to typing list
+                    if (!typingUsers.value.some(user => user.user_id === e.user_id)) {
+                        typingUsers.value.push({
+                            user_id: e.user_id,
+                            user_name: e.user_name,
+                            timestamp: new Date(e.timestamp)
+                        });
+                    }
+                } else {
+                    // Remove user from typing list
+                    typingUsers.value = typingUsers.value.filter(user => user.user_id !== e.user_id);
+                }
+
+                // Auto-remove typing indicators after 10 seconds
+                setTimeout(() => {
+                    typingUsers.value = typingUsers.value.filter(user =>
+                        user.user_id !== e.user_id ||
+                        new Date() - new Date(user.timestamp) < 10000
+                    );
+                }, 10000);
+            }
+        });
+
+        // Listen for enhanced read receipts
+        channel.listen('message.read', (e) => {
+            if (e.user_id !== page.props.auth.user.id && e.booking_id == props.bookingId) {
+                // Update message read status
+                const messageIndex = messageList.value.findIndex(msg => msg.id === e.message_id);
+                if (messageIndex !== -1) {
+                    messageList.value[messageIndex].read_at = e.read_at;
+                }
+
+                // Update enhanced read receipts
+                readReceipts.value[e.message_id] = {
+                    ...readReceipts.value[e.message_id],
+                    [e.user_id]: {
+                        read_at: e.read_at,
+                        user_name: e.user_name
+                    }
+                };
+            }
+        });
     }
 });
 
 onUnmounted(() => {
     if (props.bookingId) {
         window.Echo.leave(`chat.${props.bookingId}`);
+        // Stop typing when component unmounts
+        stopTyping();
+    }
+
+    // Clear typing timeout
+    if (typingTimeout) {
+        clearTimeout(typingTimeout);
     }
 });
 </script>
@@ -440,9 +600,17 @@ onUnmounted(() => {
                 <p class="text-sm text-gray-500">{{ lastSeenText }}</p>
             </div>
 
-            <button @click="toggleSearch" 
+            <button @click="toggleSearch"
                 class="p-2 rounded-full hover:bg-gray-100 transition-colors duration-200">
                 <img :src="searchIcon" alt="Search" class="w-5 h-5" />
+            </button>
+
+            <button v-if="bookingDetails" @click="toggleBookingDetails"
+                class="p-2 rounded-full hover:bg-gray-100 transition-colors duration-200"
+                title="View Booking Details">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                </svg>
             </button>
         </div>
 
@@ -455,6 +623,71 @@ onUnmounted(() => {
                 <img :src="searchIcon" alt="Search"
                     class="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
             </div>
+        </div>
+
+        <!-- Booking Details Panel -->
+        <div v-if="showBookingDetails && bookingDetails" class="bg-gradient-to-r from-blue-50 to-indigo-50 border-b border-gray-200 p-4">
+            <div class="flex items-start justify-between mb-3">
+                <div class="flex items-center gap-2">
+                    <span class="text-lg font-semibold text-gray-800">Booking Details</span>
+                    <span :class="`px-2 py-1 rounded-full text-xs font-medium ${getBookingStatusColor(bookingDetails.status)}`">
+                        {{ getBookingStatusIcon(bookingDetails.status) }} {{ bookingDetails.status.charAt(0).toUpperCase() + bookingDetails.status.slice(1) }}
+                    </span>
+                </div>
+                <button @click="toggleBookingDetails" class="text-gray-400 hover:text-gray-600">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                    </svg>
+                </button>
+            </div>
+
+            <!-- Vehicle Information -->
+            <div v-if="bookingDetails.vehicle" class="bg-white rounded-lg p-3 mb-3 shadow-sm">
+                <div class="flex items-center gap-3">
+                    <div v-if="bookingDetails.vehicle.image" class="flex-shrink-0">
+                        <img :src="bookingDetails.vehicle.image" :alt="bookingDetails.vehicle.name"
+                            class="w-16 h-16 object-cover rounded-lg" />
+                    </div>
+                    <div class="flex-grow">
+                        <h4 class="font-semibold text-gray-800">{{ bookingDetails.vehicle.name }}</h4>
+                        <p class="text-sm text-gray-600">
+                            {{ bookingDetails.vehicle.brand }} {{ bookingDetails.vehicle.model }}
+                        </p>
+                        <p v-if="bookingDetails.vehicle.category" class="text-xs text-gray-500">
+                            {{ bookingDetails.vehicle.category }}
+                        </p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Booking Dates and Times -->
+            <div class="bg-white rounded-lg p-3 shadow-sm">
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <p class="text-xs text-gray-500 uppercase tracking-wide">Pickup</p>
+                        <p class="text-sm font-medium text-gray-800">{{ formatBookingDate(bookingDetails.pickup_date) }}</p>
+                        <p v-if="bookingDetails.pickup_time" class="text-xs text-gray-600">{{ bookingDetails.pickup_time }}</p>
+                    </div>
+                    <div>
+                        <p class="text-xs text-gray-500 uppercase tracking-wide">Return</p>
+                        <p class="text-sm font-medium text-gray-800">{{ formatBookingDate(bookingDetails.return_date) }}</p>
+                        <p v-if="bookingDetails.return_time" class="text-xs text-gray-600">{{ bookingDetails.return_time }}</p>
+                    </div>
+                </div>
+
+                <!-- Pricing Information -->
+                <div v-if="bookingDetails.total_amount" class="mt-3 pt-3 border-t border-gray-100">
+                    <div class="flex justify-between items-center">
+                        <span class="text-sm text-gray-600">Total Amount:</span>
+                        <span class="text-lg font-semibold text-gray-800">${{ bookingDetails.total_amount }}</span>
+                    </div>
+                    <div v-if="bookingDetails.amount_paid" class="flex justify-between items-center mt-1">
+                        <span class="text-xs text-gray-500">Amount Paid:</span>
+                        <span class="text-sm text-gray-600">${{ bookingDetails.amount_paid }}</span>
+                    </div>
+                </div>
+
+              </div>
         </div>
 
         <!-- Messages - Scrollable -->
@@ -532,22 +765,27 @@ onUnmounted(() => {
                         </template>
                     </div>
 
-                    <!-- Read Status -->
-                    <div v-if="message.sender_id === page.props.auth.user.id && !message.deleted_at" 
+                    <!-- Enhanced Read Status -->
+                    <div v-if="message.sender_id === page.props.auth.user.id && !message.deleted_at"
                         class="text-right mt-2">
-                        <span v-if="!message.read_at" class="text-xs opacity-60">
-                            <svg class="w-4 h-4 inline" fill="currentColor" viewBox="0 0 20 20">
-                                <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"></path>
-                            </svg>
-                        </span>
-                        <span v-else class="text-xs text-blue-300">
-                            <svg class="w-4 h-4 inline" fill="currentColor" viewBox="0 0 20 20">
-                                <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"></path>
-                            </svg>
-                            <svg class="w-4 h-4 inline -ml-2" fill="currentColor" viewBox="0 0 20 20">
-                                <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"></path>
-                            </svg>
-                        </span>
+                        <div class="flex items-center justify-end gap-1">
+                            <!-- Single checkmark for delivered (shown when not read) -->
+                            <span v-if="!message.read_at" class="text-xs text-gray-400">
+                                <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
+                                    <path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/>
+                                </svg>
+                            </span>
+
+                            <!-- Double checkmark for read (shown only when read) -->
+                            <span v-else class="text-xs text-blue-500">
+                                <img :src="doubleTickIcon" alt="Read" class="w-4 h-4" />
+                            </span>
+
+                            <!-- Read timestamp (shown on hover for better UX) -->
+                            <span v-if="message.read_at" class="text-xs text-gray-400 opacity-0 group-hover:opacity-100 transition-opacity duration-200" :title="`Read at ${formatTime(message.read_at)}`">
+                                {{ formatTime(message.read_at) }}
+                            </span>
+                        </div>
                     </div>
 
                     <!-- Undo Delete Button -->
@@ -568,6 +806,19 @@ onUnmounted(() => {
                         Delete Message
                     </button>
                 </div>
+            </div>
+        </div>
+
+        <!-- Typing Indicator -->
+        <div v-if="isAnyoneTyping" class="px-4 py-2 bg-white border-t border-gray-100">
+            <div class="flex items-center gap-2 text-sm text-gray-500">
+                <div class="flex gap-1">
+                    <div class="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style="animation-delay: 0ms"></div>
+                    <div class="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style="animation-delay: 150ms"></div>
+                    <div class="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style="animation-delay: 300ms"></div>
+                </div>
+                <span v-if="typingUsers.length === 1">{{ typingUsers[0].user_name }} is typing...</span>
+                <span v-else>{{ typingUsers.map(u => u.user_name).join(', ') }} are typing...</span>
             </div>
         </div>
 
@@ -666,8 +917,10 @@ onUnmounted(() => {
                 <div class="flex-1 flex">
                     <textarea v-model="newMessage" placeholder="Type your message..."
                         class="w-full p-3 rounded-2xl border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none min-h-[44px] max-h-32 transition-all duration-200 bg-gray-50"
-                        :disabled="isRecording || audioUrl" 
+                        :disabled="isRecording || audioUrl"
                         @keydown.enter.exact.prevent="sendMessage"
+                        @input="handleTyping"
+                        @blur="stopTyping"
                         rows="1" />
                 </div>
                 
@@ -683,7 +936,7 @@ onUnmounted(() => {
                 </button>
                 
                 <!-- Send Message Button -->
-                <button v-else @click="sendMessage" 
+                <button v-else @click="sendMessage"
                     :disabled="isLoading || (!newMessage.trim() && !selectedFile)"
                     class="p-3 rounded-full bg-customPrimaryColor hover:bg-blue-700 text-white transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed">
                     <img :src="sendIcon" alt="Send" class="w-5 h-5" v-if="!isLoading" />

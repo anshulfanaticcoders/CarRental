@@ -299,6 +299,11 @@ Route::group([
         Route::post('/messages/{id}/restore', [MessageController::class, 'restore'])->name('messages.restore');
         Route::post('/messages/{booking}/mark-as-read', [MessageController::class, 'markMessagesAsRead'])->name('messages.mark-as-read');
 
+        // Typing indicator routes
+        Route::post('/messages/typing', [MessageController::class, 'startTyping'])->name('messages.typing.start');
+        Route::post('/messages/stop-typing', [MessageController::class, 'stopTyping'])->name('messages.typing.stop');
+        Route::get('/messages/{booking}/typing-users', [MessageController::class, 'getTypingUsers'])->name('messages.typing.users');
+
         // Notification routes
         Route::get('/notifications', [NotificationController::class, 'index'])->name('notifications.index');
         Route::post('/notifications/mark-read/{id}', [NotificationController::class, 'markAsRead'])->name('notifications.mark-read');
