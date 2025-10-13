@@ -196,7 +196,7 @@ onMounted(async () => {
                                 About Us</Link>
                             </li>
                             <li class="relative group">
-                                <Link :href="route('blog', { locale: locale || 'en', country: country || 'us'  })"
+                                <Link :href="route('blog', { locale: page.props.locale, country: page.props.country || 'us' })"
                                     class="footer-link-underline">Blogs</Link>
                             </li>
                             <li class="relative group">
