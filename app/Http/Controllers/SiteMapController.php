@@ -70,7 +70,7 @@ class SiteMapController extends Controller
         foreach ($locales as $locale) {
             foreach ($countries as $country) {
                 $country = strtolower($country);
-                $url = url("/blog/{$locale}/{$country}");
+                $url = url("{$locale}/{$country}/blog");
 
                 $content .= '<url>';
                 $content .= '<loc>' . htmlspecialchars($url) . '</loc>';
@@ -101,7 +101,7 @@ class SiteMapController extends Controller
 
         // Add blog listing page for this country
         foreach ($locales as $locale) {
-            $url = url("/blog/{$locale}/{$country}");
+            $url = url("{$locale}/{$country}/blog");
             $content .= '<url>';
             $content .= '<loc>' . htmlspecialchars($url) . '</loc>';
             $content .= '<lastmod>' . now()->toAtomString() . '</lastmod>';
@@ -124,7 +124,7 @@ class SiteMapController extends Controller
             foreach ($locales as $locale) {
                 $translation = $blog->translations->firstWhere('locale', $locale);
                 if ($translation) {
-                    $url = url("/blog/{$locale}/{$country}/{$translation->slug}");
+                    $url = url("{$locale}/{$country}/blog/{$translation->slug}");
                     $lastMod = $blog->updated_at->toAtomString();
 
                     $content .= '<url>';
@@ -174,7 +174,7 @@ class SiteMapController extends Controller
 
                 foreach ($countries as $country) {
                     $country = strtolower($country);
-                    $url = url("/blog/{$locale}/{$country}/{$translation->slug}");
+                    $url = url("{$locale}/{$country}/blog/{$translation->slug}");
                     $lastMod = $blog->updated_at->toAtomString();
 
                     $content .= '<url>';
