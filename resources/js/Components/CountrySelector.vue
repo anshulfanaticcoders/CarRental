@@ -13,31 +13,15 @@
         :class="{ 'ring-2 ring-customPrimaryColor border-customPrimaryColor': isOpen }"
       >
         <div class="flex items-center justify-between">
-          <div class="flex flex-wrap items-center gap-2 flex-1">
+          <div class="flex-1">
             <div v-if="selectedCountries.length === 0" class="text-gray-500">
               Select countries...
             </div>
-            <div
-              v-for="country in selectedCountries"
-              :key="country.code"
-              class="inline-flex items-center gap-1 px-2 py-1 bg-customPrimaryColor text-white text-sm rounded-md"
-            >
-              <span>{{ country.flag }} {{ country.name }}</span>
-              <button
-                type="button"
-                @click.stop="removeCountry(country.code)"
-                class="ml-1 hover:bg-customPrimaryColor/80 rounded-full p-0.5 transition-colors"
-              >
-                <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
-                </svg>
-              </button>
+            <div v-else class="text-gray-800">
+              {{ selectedCountries.length }} {{ selectedCountries.length === 1 ? 'country' : 'countries' }} selected
             </div>
           </div>
           <div class="flex items-center gap-2">
-            <span v-if="selectedCountries.length > 0" class="text-sm text-gray-500">
-              {{ selectedCountries.length }} selected
-            </span>
             <svg
               class="w-5 h-5 text-gray-400 transition-transform duration-200"
               :class="{ 'rotate-180': isOpen }"
@@ -55,7 +39,7 @@
     <!-- Dropdown Menu -->
     <div
       v-if="isOpen"
-      class="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-lg shadow-lg max-h-64 overflow-y-auto"
+      class="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-lg shadow-lg max-h-96 overflow-y-auto"
       @click.stop
     >
       <!-- Search Box -->
@@ -133,16 +117,25 @@
     </p>
 
     <!-- Selected Countries Display -->
-    <div v-if="selectedCountries.length > 0" class="mt-3 p-3 bg-gray-50 rounded-lg">
+    <div v-if="selectedCountries.length > 0" class="mt-3 p-3 bg-gray-50 rounded-lg max-h-96 overflow-y-auto">
       <div class="text-sm font-medium text-gray-700 mb-2">Selected Countries ({{ selectedCountries.length }}):</div>
       <div class="flex flex-wrap gap-2">
-        <span
+        <div
           v-for="country in selectedCountries"
           :key="country.code"
-          class="inline-flex items-center gap-1 px-2 py-1 bg-white border border-gray-300 rounded-md text-sm"
+          class="inline-flex items-center gap-1 px-2 py-1 bg-customPrimaryColor text-white text-sm rounded-md"
         >
-          {{ country.flag }} {{ country.name }}
-        </span>
+          <span>{{ country.flag }} {{ country.name }}</span>
+          <button
+            type="button"
+            @click.stop="removeCountry(country.code)"
+            class="ml-1 hover:bg-customPrimaryColor/80 rounded-full p-0.5 transition-colors"
+          >
+            <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+            </svg>
+          </button>
+        </div>
       </div>
     </div>
   </div>
