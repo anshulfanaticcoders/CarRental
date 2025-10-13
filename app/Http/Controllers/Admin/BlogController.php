@@ -589,7 +589,7 @@ class BlogController extends Controller
                   ->orWhereNull('countries');
             })
             ->latest()
-            ->paginate(9);
+            ->paginate(1);
 
         $pages = \App\Models\Page::with('translations')->get()->keyBy('slug');
 

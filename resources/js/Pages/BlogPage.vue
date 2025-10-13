@@ -171,7 +171,7 @@ const formatDate = (date) => {
 };
 
 const handlePageChange = (pageNumber) => {
-    router.visit(route('blog', { page: pageNumber }), {
+    router.visit(route('blog', { locale: props.locale, country: props.country, page: pageNumber }), {
         onSuccess: () => {
             nextTick(() => {
                 setTimeout(() => {
