@@ -112,6 +112,7 @@
             type="checkbox"
             :checked="isCountrySelected(country.code)"
             class="w-4 h-4 text-customPrimaryColor border-gray-300 rounded focus:ring-customPrimaryColor"
+            @change="toggleCountry(country)"
             @click.stop
           />
           <span class="text-lg">{{ country.flag }}</span>
