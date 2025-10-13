@@ -258,6 +258,8 @@ Route::group([
     Route::get('/sitemap_en_blogs.xml', [App\Http\Controllers\SiteMapController::class, 'blogsEn']);
     Route::get('/sitemap_fr_blogs.xml', [App\Http\Controllers\SiteMapController::class, 'blogsFr']);
     Route::get('/sitemap_nl_blogs.xml', [App\Http\Controllers\SiteMapController::class, 'blogsNl']);
+    Route::get('/sitemap_es_blogs.xml', [App\Http\Controllers\SiteMapController::class, 'blogsEs']);
+    Route::get('/sitemap_ar_blogs.xml', [App\Http\Controllers\SiteMapController::class, 'blogsAr']);
 
     // Sitemap Routes for Vehicles
     Route::get('/sitemap_en_vehicles.xml', [App\Http\Controllers\SiteMapController::class, 'vehiclesEn']);
@@ -814,6 +816,61 @@ Route::group([
     Route::get('/green-motion-regions', [GreenMotionController::class, 'getGreenMotionRegions'])->name('green-motion-regions');
     Route::get('/green-motion-service-areas', [GreenMotionController::class, 'getGreenMotionServiceAreas'])->name('green-motion-service-areas');
     Route::post('/green-motion-booking', [GreenMotionController::class, 'makeGreenMotionBooking'])->name('green-motion-booking');
+
+// Global Sitemap Routes (outside locale prefix)
+Route::get('/sitemap.xml', function () {
+    $content = '<?xml version="1.0" encoding="UTF-8"?>';
+    $content .= '<sitemapindex xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">';
+
+    // Blog sitemaps for all locales
+    $locales = ['en', 'fr', 'nl', 'es', 'ar'];
+    foreach ($locales as $locale) {
+        $content .= '<sitemap>';
+        $content .= '<loc>' . url("/sitemap_{$locale}_blogs.xml") . '</loc>';
+        $content .= '<lastmod>' . now()->toAtomString() . '</lastmod>';
+        $content .= '</sitemap>';
+    }
+
+    // Add blog listings sitemap
+    $content .= '<sitemap>';
+    $content .= '<loc>' . url("/sitemap-blog-listings.xml") . '</loc>';
+    $content .= '<lastmod>' . now()->toAtomString() . '</lastmod>';
+    $content .= '</sitemap>';
+
+    // Get unique countries from blogs for country-specific sitemaps
+    $countries = \App\Models\Blog::where('is_published', true)
+        ->whereNotNull('countries')
+        ->pluck('countries')
+        ->flatten()
+        ->unique()
+        ->toArray();
+
+    if (empty($countries)) {
+        $countries = ['us'];
+    }
+
+    // Add country-specific sitemaps
+    foreach ($countries as $country) {
+        $country = strtolower($country);
+        $content .= '<sitemap>';
+        $content .= '<loc>' . url("/sitemap-blogs-{$country}.xml") . '</loc>';
+        $content .= '<lastmod>' . now()->toAtomString() . '</lastmod>';
+        $content .= '</sitemap>';
+    }
+
+    $content .= '</sitemapindex>';
+
+    return Response::make($content, 200, [
+        'Content-Type' => 'application/xml'
+    ]);
+});
+
+// Country-specific blog sitemap routes
+Route::get('/sitemap-blogs-{country}.xml', [App\Http\Controllers\SiteMapController::class, 'blogsByCountry'])
+    ->where('country', '[a-zA-Z]{2}');
+
+// Blog listings sitemap
+Route::get('/sitemap-blog-listings.xml', [App\Http\Controllers\SiteMapController::class, 'blogListings']);
 
 Route::fallback(function () {
     return inertia('Error', ['status' => 404]);
