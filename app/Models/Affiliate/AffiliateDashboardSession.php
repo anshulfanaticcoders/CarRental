@@ -185,7 +185,7 @@ class AffiliateDashboardSession extends Model
             'session_token' => 'SESSION-' . strtoupper(uniqid()) . '-' . bin2hex(random_bytes(16)),
             'ip_address' => $request->ip(),
             'user_agent' => $request->userAgent(),
-            'device_type' => $this->detectDeviceType($request),
+            'device_type' => static::detectDeviceType($request),
             'expires_at' => now()->addDays(30),
         ]);
     }

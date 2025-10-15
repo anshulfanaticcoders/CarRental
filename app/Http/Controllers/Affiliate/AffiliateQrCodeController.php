@@ -144,26 +144,41 @@ class AffiliateQrCodeController extends Controller
         //     abort(403, 'Business must be active and verified to access this feature');
         // }
 
-        // Validate with more explicit error handling
-        try {
-            $validated = $request->validate([
-                'location_id' => 'nullable|exists:affiliate_business_locations,id',
-                'usage_limit' => 'nullable|integer|min:1|max:100000',
-                'daily_usage_limit' => 'nullable|integer|min:1|max:10000',
-                'monthly_usage_limit' => 'nullable|integer|min:1|max:100000',
-                'valid_until' => 'nullable|date|after:today',
-                'geo_restriction_enabled' => 'required|boolean',
-                'max_distance_km' => 'nullable|numeric|min:0.1|max:100',
-                'customer_restriction' => 'nullable|in:all,new_customers,returning_customers',
-                'min_customer_age' => 'nullable|integer|min:18|max:100',
-                'allowed_countries' => 'nullable|array',
-                'allowed_countries.*' => 'string|size:2',
-                'security_level' => 'nullable|in:basic,standard,high',
-            ], [
-                'geo_restriction_enabled.required' => 'The geo restriction field is required.',
-            ]);
+        // Extract location_id from new_location_data if present
+        $locationData = [];
+        if ($request->has('new_location_data') && is_array($request->input('new_location_data'))) {
+            $locationId = $request->input('new_location_data.id');
+            if ($locationId) {
+                $locationData['location_id'] = $locationId;
+            }
+        }
 
-            \Log::info('Validation passed', ['validated_data' => $validated]);
+        // Validate the extracted location_id
+        try {
+            $validated = [];
+
+            if (!empty($locationData['location_id'])) {
+                $validated = $request->validate([
+                    'new_location_data.id' => [
+                        'required',
+                        'exists:affiliate_business_locations,id',
+                        // Custom rule to prevent duplicate QR codes for the same location
+                        function ($attribute, $value, $fail) use ($business) {
+                            // Check if QR code already exists for this location and business
+                            $existingQrCode = AffiliateQrCode::where('business_id', $business->id)
+                                                          ->where('location_id', $value)
+                                                          ->where('status', '!=', 'suspended')
+                                                          ->first();
+
+                            if ($existingQrCode) {
+                                $fail('A QR code already exists for this location. Each location can only have one active QR code.');
+                            }
+                        },
+                    ],
+                ]);
+            }
+
+            \Log::info('Validation passed', ['validated_data' => $validated, 'location_data' => $locationData]);
 
         } catch (\Illuminate\Validation\ValidationException $e) {
             \Log::error('Validation failed', [
@@ -173,14 +188,11 @@ class AffiliateQrCodeController extends Controller
             throw $e;
         }
 
-        // Set default values
-        $validated['max_distance_km'] = $validated['max_distance_km'] ?? 1.00;
-        $validated['customer_restriction'] = $validated['customer_restriction'] ?? 'all';
-        $validated['security_level'] = $validated['security_level'] ?? 'standard';
+        // Set default values - none needed now
 
         try {
-            \Log::info('Attempting to generate QR code', ['business_id' => $business->id, 'validated' => $validated]);
-            $qrCode = $this->qrCodeService->generateQrCode($business, $validated);
+            \Log::info('Attempting to generate QR code', ['business_id' => $business->id, 'location_data' => $locationData]);
+            $qrCode = $this->qrCodeService->generateQrCode($business, $locationData);
 
             \Log::info('QR code generated successfully', ['qr_code_id' => $qrCode->id]);
 
@@ -348,18 +360,7 @@ class AffiliateQrCodeController extends Controller
         $qrCode = $business->qrCodes()->findOrFail($qrCodeId);
 
         $validated = $request->validate([
-            'usage_limit' => 'nullable|integer|min:1|max:100000',
-            'daily_usage_limit' => 'nullable|integer|min:1|max:10000',
-            'monthly_usage_limit' => 'nullable|integer|min:1|max:100000',
-            'valid_until' => 'nullable|date|after:today',
             'status' => 'required|in:active,inactive,expired,suspended,pending',
-            'geo_restriction_enabled' => 'boolean',
-            'max_distance_km' => 'nullable|numeric|min:0.1|max:100',
-            'customer_restriction' => 'nullable|in:all,new_customers,returning_customers',
-            'min_customer_age' => 'nullable|integer|min:18|max:100',
-            'allowed_countries' => 'nullable|array',
-            'allowed_countries.*' => 'string|size:2',
-            'security_level' => 'nullable|in:basic,standard,high',
         ]);
 
         $qrCode->update($validated);
@@ -414,13 +415,23 @@ class AffiliateQrCodeController extends Controller
      */
     public function destroy($token, $qrCodeId)
     {
-        $session = AffiliateDashboardSession::findByToken($token);
+        // Extract the actual dashboard token from the URL
+        // The URL structure is: /{locale}/business/qr-codes/{token}/{qrCodeId}
+        $segments = request()->segments();
 
-        if (!$session || !$session->isValid()) {
-            abort(403, 'Invalid or expired dashboard access token');
+        // The token is at index 3: ['en', 'business', 'qr-codes', 'TOKEN', 'ID']
+        $actualToken = $segments[3] ?? $token;
+
+        // Fallback: if last segment looks like a locale, use the route parameter
+        if (in_array($actualToken, ['en', 'fr', 'nl', 'es', 'ar'])) {
+            $actualToken = $token;
         }
 
-        $business = $session->business;
+        $business = AffiliateBusiness::where('dashboard_access_token', $actualToken)->first();
+
+        if (!$business) {
+            abort(403, 'Invalid or expired dashboard access token');
+        }
         $qrCode = $business->qrCodes()->findOrFail($qrCodeId);
 
         // Delete QR code image from storage
@@ -438,8 +449,62 @@ class AffiliateQrCodeController extends Controller
         // Delete QR code record (will cascade delete customer scans)
         $qrCode->delete();
 
-        return redirect()->route('affiliate.qr-codes.index', ['token' => $token])
+        return redirect()->route('affiliate.qr-codes.index', ['token' => $actualToken])
             ->with('success', 'QR code deleted successfully!');
+    }
+
+    /**
+     * Bulk delete QR codes.
+     */
+    public function bulkDestroy(Request $request, $token)
+    {
+        // Extract the actual dashboard token from the URL
+        // The URL structure is: /{locale}/business/qr-codes/bulk-delete/{token}
+        $segments = request()->segments();
+        $actualToken = end($segments); // Get the last segment (actual token)
+
+        // Fallback: if last segment looks like a locale, use the route parameter
+        if (in_array($actualToken, ['en', 'fr', 'nl', 'es', 'ar'])) {
+            $actualToken = $token;
+        }
+
+        $business = AffiliateBusiness::where('dashboard_access_token', $actualToken)->first();
+
+        if (!$business) {
+            abort(403, 'Invalid or expired dashboard access token');
+        }
+
+        $validated = $request->validate([
+            'qr_code_ids' => 'required|array',
+            'qr_code_ids.*' => 'integer|exists:affiliate_qr_codes,id',
+        ]);
+
+        $qrCodes = $business->qrCodes()->whereIn('id', $validated['qr_code_ids'])->get();
+
+        $deletedCount = 0;
+        foreach ($qrCodes as $qrCode) {
+            // Delete QR code image from storage
+            try {
+                if ($qrCode->qr_image_path) {
+                    Storage::disk('upcloud')->delete($qrCode->qr_image_path);
+                }
+                if ($qrCode->qr_pdf_path) {
+                    Storage::disk('upcloud')->delete($qrCode->qr_pdf_path);
+                }
+            } catch (\Exception $e) {
+                \Log::error('Failed to delete QR code image: ' . $e->getMessage());
+            }
+
+            // Delete QR code record (will cascade delete customer scans)
+            $qrCode->delete();
+            $deletedCount++;
+        }
+
+        return response()->json([
+            'success' => true,
+            'message' => "Successfully deleted {$deletedCount} QR code(s)!",
+            'deleted_count' => $deletedCount,
+        ]);
     }
 
     /**

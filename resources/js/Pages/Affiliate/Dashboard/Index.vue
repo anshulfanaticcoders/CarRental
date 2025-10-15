@@ -50,14 +50,21 @@ const formattedPendingCommissions = computed(() => {
     return `${formattedCurrency.value}${props.pendingCommissions.toFixed(2)}`;
 });
 
+// Sort QR codes by creation date (ascending)
+const sortedQrCodes = computed(() => {
+    return [...props.qrCodes].sort((a, b) => {
+        return new Date(a.created_at) - new Date(b.created_at);
+    });
+});
+
 const commissionRate = computed(() => {
     if (!props.businessModel) return '0%';
-    return `${props.businessModel.customer_discount_rate}%`;
+    return `${props.businessModel.commission_rate || 0}%`;
 });
 
 const discountRate = computed(() => {
     if (!props.businessModel) return '0%';
-    return `${props.businessModel.customer_discount_rate}%`;
+    return `${props.businessModel.discount_value || 0}%`;
 });
 
 const formatDate = (dateString) => {
@@ -71,12 +78,13 @@ const formatDate = (dateString) => {
 };
 
 const getQrCodeStatus = (qrCode) => {
-    const now = new Date();
-    const expiresAt = new Date(qrCode.expires_at);
-
-    if (qrCode.is_revoked) return { text: 'Revoked', class: 'bg-red-100 text-red-800' };
-    if (now > expiresAt) return { text: 'Expired', class: 'bg-gray-100 text-gray-800' };
-    if (qrCode.usage_count >= qrCode.usage_limit) return { text: 'Limit Reached', class: 'bg-yellow-100 text-yellow-800' };
+    // Check status from database or use default active status
+    if (qrCode.status === 'suspended' || qrCode.status === 'revoked') {
+        return { text: 'Suspended', class: 'bg-red-100 text-red-800' };
+    }
+    if (qrCode.status === 'inactive') {
+        return { text: 'Inactive', class: 'bg-gray-100 text-gray-800' };
+    }
     return { text: 'Active', class: 'bg-green-100 text-green-800' };
 };
 
@@ -134,6 +142,12 @@ const getQrCodeImageUrl = (qrCode) => {
 
     return `https://my-public-bucket.4tcl8.upcloudobjects.com/${imagePath}`;
 };
+
+const getLocationDisplayName = (qrCode) => {
+    // The controller loads the location relationship, so we can trust the accessor
+    return qrCode.location_name;
+};
+
 
 const refreshDashboard = async () => {
     refreshing.value = true;
@@ -403,19 +417,24 @@ onMounted(() => {
 
                     <!-- QR Codes Tab -->
                     <div v-if="activeTab === 'qr-codes'" class="space-y-6">
+                        <!-- Header with Bulk Actions -->
                         <div class="flex justify-between items-center">
                             <h3 class="text-lg font-medium text-gray-900">Your QR Codes</h3>
-                            <button
-                                @click="generateNewQrCode"
-                                class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-                            >
-                                <svg class="mr-2 h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
-                                </svg>
-                                Generate QR Code
-                            </button>
+                            <div class="flex items-center space-x-3">
+                                <!-- Generate QR Code Button -->
+                                <button
+                                    @click="generateNewQrCode"
+                                    class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                                >
+                                    <svg class="mr-2 h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+                                    </svg>
+                                    Generate QR Code
+                                </button>
+                            </div>
                         </div>
 
+  
                         <div v-if="qrCodes.length === 0" class="text-center py-12">
                             <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h.01M5 8h2a1 1 0 001-1V5a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1zm12 0h2a1 1 0 001-1V5a1 1 0 00-1-1h-2a1 1 0 00-1 1v2a1 1 0 001 1zM5 20h2a1 1 0 001-1v-2a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1z" />
@@ -425,10 +444,15 @@ onMounted(() => {
                         </div>
 
                         <div v-else class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                            <div v-for="qrCode in qrCodes" :key="qrCode.id" class="bg-white border rounded-lg p-6">
+                            <div v-for="(qrCode, index) in sortedQrCodes" :key="qrCode.id" class="bg-white border rounded-lg p-6 relative transition-all">
                                 <div class="flex justify-between items-start mb-4">
-                                    <div>
-                                        <h4 class="text-lg font-medium text-gray-900">{{ qrCode.location_name || 'QR Code ' + qrCode.id }}</h4>
+                                    <div class="flex-1">
+                                        <div class="flex items-center gap-2 mb-1">
+                                            <h4 class="text-lg font-medium text-gray-900">{{ getLocationDisplayName(qrCode) }}</h4>
+                                            <span v-if="index === 0" class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                                                Main Location
+                                            </span>
+                                        </div>
                                         <p class="text-sm text-gray-500">{{ qrCode.location_address }}</p>
                                     </div>
                                     <span :class="getQrCodeStatus(qrCode).class" class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium">
@@ -439,15 +463,19 @@ onMounted(() => {
                                 <div class="space-y-3">
                                     <div class="flex justify-between text-sm">
                                         <span class="text-gray-500">Scans:</span>
-                                        <span class="font-medium">{{ qrCode.usage_count }}</span>
+                                        <span class="font-medium">{{ qrCode.total_scans || 0 }}</span>
                                     </div>
                                     <div class="flex justify-between text-sm">
-                                        <span class="text-gray-500">Limit:</span>
-                                        <span class="font-medium">{{ qrCode.usage_limit || 'Unlimited' }}</span>
+                                        <span class="text-gray-500">Conversions:</span>
+                                        <span class="font-medium">{{ qrCode.conversion_count || 0 }}</span>
                                     </div>
                                     <div class="flex justify-between text-sm">
-                                        <span class="text-gray-500">Expires:</span>
-                                        <span class="font-medium">{{ formatDate(qrCode.expires_at) }}</span>
+                                        <span class="text-gray-500">Revenue:</span>
+                                        <span class="font-medium">{{ formattedCurrency }}{{ parseFloat(qrCode.total_revenue_generated || 0).toFixed(2) }}</span>
+                                    </div>
+                                    <div class="flex justify-between text-sm">
+                                        <span class="text-gray-500">Created:</span>
+                                        <span class="font-medium">{{ formatDate(qrCode.created_at) }}</span>
                                     </div>
                                 </div>
 
@@ -508,9 +536,8 @@ onMounted(() => {
                     </div>
                 </div>
             </div>
-        </main>
 
-        <!-- QR Code Modal -->
+            <!-- QR Code Modal -->
         <div v-if="showQrModal" class="fixed inset-0 z-50 overflow-y-auto" @click="closeQrModal">
             <div class="flex items-center justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
                 <!-- Background overlay -->
@@ -533,7 +560,7 @@ onMounted(() => {
                                 <div v-if="selectedQrCode" class="space-y-4">
                                     <!-- QR Code Info -->
                                     <div class="bg-gray-50 rounded-lg p-4">
-                                        <h4 class="font-medium text-gray-900 mb-2">{{ selectedQrCode.location_name || 'QR Code ' + selectedQrCode.id }}</h4>
+                                        <h4 class="font-medium text-gray-900 mb-2">{{ getLocationDisplayName(selectedQrCode) }}</h4>
                                         <p class="text-sm text-gray-500">{{ selectedQrCode.location_address }}</p>
 
                                         <div class="mt-3 grid grid-cols-2 gap-4 text-sm">
@@ -552,14 +579,15 @@ onMounted(() => {
 
                                     <!-- QR Code Image -->
                                     <div class="flex justify-center">
-                                        <div class="bg-white p-4 border-2 border-gray-200 rounded-lg">
+                                        <div class="bg-white p-6 border-2 border-gray-200 rounded-lg shadow-sm">
                                             <img
                                                 v-if="getQrCodeImageUrl(selectedQrCode)"
                                                 :src="getQrCodeImageUrl(selectedQrCode)"
                                                 :alt="'QR Code for ' + (selectedQrCode.location_name || 'QR Code ' + selectedQrCode.id)"
-                                                class="w-64 h-64 object-contain"
+                                                class="w-80 h-80 object-contain"
+                                                style="image-rendering: -webkit-optimize-contrast; image-rendering: crisp-edges; image-rendering: pixelated;"
                                             />
-                                            <div v-else class="w-64 h-64 flex items-center justify-center bg-gray-100">
+                                            <div v-else class="w-80 h-80 flex items-center justify-center bg-gray-100">
                                                 <div class="text-center">
                                                     <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h.01M5 8h2a1 1 0 001-1V5a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1zm12 0h2a1 1 0 001-1V5a1 1 0 00-1-1h-2a1 1 0 00-1 1v2a1 1 0 001 1zM5 20h2a1 1 0 001-1v-2a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1z" />
@@ -575,20 +603,24 @@ onMounted(() => {
                                         <h5 class="font-medium text-blue-900 mb-2">QR Code Details</h5>
                                         <div class="space-y-2 text-sm">
                                             <div class="flex justify-between">
-                                                <span class="text-blue-700">Scans:</span>
-                                                <span class="font-medium text-blue-900">{{ selectedQrCode.usage_count || 0 }}</span>
+                                                <span class="text-blue-700">Total Scans:</span>
+                                                <span class="font-medium text-blue-900">{{ selectedQrCode.total_scans || 0 }}</span>
                                             </div>
                                             <div class="flex justify-between">
-                                                <span class="text-blue-700">Limit:</span>
-                                                <span class="font-medium text-blue-900">{{ selectedQrCode.usage_limit || 'Unlimited' }}</span>
+                                                <span class="text-blue-700">Conversions:</span>
+                                                <span class="font-medium text-blue-900">{{ selectedQrCode.conversion_count || 0 }}</span>
                                             </div>
                                             <div class="flex justify-between">
-                                                <span class="text-blue-700">Expires:</span>
-                                                <span class="font-medium text-blue-900">{{ formatDate(selectedQrCode.expires_at) }}</span>
+                                                <span class="text-blue-700">Revenue Generated:</span>
+                                                <span class="font-medium text-blue-900">{{ formattedCurrency }}{{ parseFloat(selectedQrCode.total_revenue_generated || 0).toFixed(2) }}</span>
                                             </div>
                                             <div class="flex justify-between">
                                                 <span class="text-blue-700">Created:</span>
                                                 <span class="font-medium text-blue-900">{{ formatDate(selectedQrCode.created_at) }}</span>
+                                            </div>
+                                            <div class="flex justify-between">
+                                                <span class="text-blue-700">Last Scanned:</span>
+                                                <span class="font-medium text-blue-900">{{ selectedQrCode.last_scanned_at ? formatDate(selectedQrCode.last_scanned_at) : 'Never' }}</span>
                                             </div>
                                         </div>
                                     </div>
@@ -616,5 +648,7 @@ onMounted(() => {
                 </div>
             </div>
         </div>
+
+          </main>
     </div>
 </template>

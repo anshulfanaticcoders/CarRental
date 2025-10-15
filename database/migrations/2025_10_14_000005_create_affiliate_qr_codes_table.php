@@ -33,28 +33,8 @@ return new class extends Migration
             $table->decimal('min_booking_amount', 10, 2)->nullable();
             $table->decimal('max_discount_amount', 10, 2)->nullable();
 
-            // Validity Period
-            $table->timestamp('valid_from')->useCurrent();
-            $table->timestamp('valid_until')->nullable();
-
-            // Usage Limits
-            $table->integer('usage_limit')->nullable();
-            $table->integer('daily_usage_limit')->nullable();
-            $table->integer('monthly_usage_limit')->nullable();
-            $table->integer('current_usage')->default(0);
-
-            // Geographic Restrictions
-            $table->boolean('geo_restriction_enabled')->default(false);
-            $table->decimal('max_distance_km', 5, 2)->default(1.00);
-
-            // Targeting Configuration
-            $table->enum('customer_restriction', ['all', 'new_customers', 'returning_customers'])->default('all');
-            $table->integer('min_customer_age')->nullable();
-            $table->json('allowed_countries')->nullable();
-
-            // Status & Security
+            // Status
             $table->enum('status', ['active', 'inactive', 'expired', 'suspended', 'pending'])->default('active');
-            $table->enum('security_level', ['basic', 'standard', 'high'])->default('standard');
 
             // Tracking
             $table->integer('total_scans')->default(0);
@@ -65,7 +45,6 @@ return new class extends Migration
             // Timestamps
             $table->timestamps();
             $table->timestamp('last_scanned_at')->nullable();
-            $table->timestamp('expires_at')->nullable();
             $table->softDeletes();
 
             // Foreign Keys
@@ -81,7 +60,6 @@ return new class extends Migration
             $table->index('short_code');
             $table->index('qr_url');
             $table->index('status');
-            $table->index(['valid_from', 'valid_until'], 'aff_qr_validity_idx');
 
             // Constraints
         });

@@ -370,7 +370,8 @@ Route::group([
         Route::put('/qr-codes/{token}/{qrCodeId}', [AffiliateQrCodeController::class, 'update'])->name('qr-codes.update');
         Route::post('/qr-codes/revoke/{token}/{qrCodeId}', [AffiliateQrCodeController::class, 'revoke'])->name('qr-codes.revoke');
         Route::post('/qr-codes/reactivate/{token}/{qrCodeId}', [AffiliateQrCodeController::class, 'reactivate'])->name('qr-codes.reactivate');
-        Route::delete('/qr-codes/{token}/{qrCodeId}', [AffiliateQrCodeController::class, 'destroy'])->name('qr-codes.destroy');
+        Route::delete('/qr-codes/{token}/{qrCodeId}', [AffiliateQrCodeController::class, 'destroy'])->name('qr-codes.destroy')->withoutMiddleware(['web']);
+        Route::delete('/qr-codes/bulk-delete/{token}', [AffiliateQrCodeController::class, 'bulkDestroy'])->name('qr-codes.bulk-destroy')->withoutMiddleware(['web']);
         Route::get('/qr-codes/analytics/{token}/{qrCodeId}', [AffiliateQrCodeController::class, 'analytics'])->name('qr-codes.analytics');
 
         // Admin-only routes (will be protected by middleware)
@@ -385,10 +386,7 @@ Route::group([
         Route::get('/debug-token/{token}', [AffiliateBusinessController::class, 'debugToken'])->name('debug.token');
     });
 
-    // Public QR Code Tracking Routes (outside locale prefix for easy scanning)
-    Route::get('/affiliate/track/{trackingData}', [AffiliateQrCodeController::class, 'track'])->name('affiliate.qr.track');
-    Route::get('/affiliate/qr/{shortCode}', [AffiliateQrCodeController::class, 'qrLanding'])->name('affiliate.qr.landing');
-
+  
     // Show Blogs on Home page
     Route::get('/', [BlogController::class, 'homeBlogs'])->name('welcome');
     // Route::get('/blog/{blog:slug}', [BlogController::class, 'show'])->name('blog.show');
@@ -396,6 +394,11 @@ Route::group([
     Route::get('/api/footer-places', [PopularPlacesController::class, 'getFooterPlaces']);
     Route::get('/api/footer-categories', [VehicleCategoriesController::class, 'getFooterCategories']);
     Route::get('/api/vehicles/search-locations', [VehicleController::class, 'searchLocations']);
+
+    
+    // Public QR Code Tracking Routes (with locale prefix)
+    Route::get('/affiliate/track/{trackingData}', [AffiliateQrCodeController::class, 'track'])->name('affiliate.qr.track');
+    Route::get('/affiliate/qr/{shortCode}', [AffiliateQrCodeController::class, 'qrLanding'])->name('affiliate.qr.landing');
 
     // Test route to manually set country for testing
     Route::get('/set-country/{country}', function ($country) {
@@ -877,6 +880,10 @@ Route::group([
         ->name('ok-mobility-booking.checkout');
    
 }); // End of locale group
+
+// Public QR Code Tracking Routes (outside locale prefix for backward compatibility)
+Route::get('/affiliate/track/{trackingData}', [AffiliateQrCodeController::class, 'track'])->name('affiliate.qr.track.legacy');
+Route::get('/affiliate/qr/{shortCode}', [AffiliateQrCodeController::class, 'qrLanding'])->name('affiliate.qr.landing.legacy');
 
     Route::get('/green-motion-vehicles', [GreenMotionController::class, 'getGreenMotionVehicles'])->name('green-motion-vehicles');
     Route::get('/green-motion-countries', [GreenMotionController::class, 'getGreenMotionCountries'])->name('green-motion-countries');

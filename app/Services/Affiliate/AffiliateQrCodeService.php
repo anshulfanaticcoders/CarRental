@@ -49,19 +49,7 @@ class AffiliateQrCodeService
             'discount_value' => $businessModel['discount_value'],
             'min_booking_amount' => $businessModel['min_booking_amount'],
             'max_discount_amount' => $businessModel['max_discount_amount'],
-            'valid_from' => now(),
-            'valid_until' => now()->addDays(365),
-            'usage_limit' => $locationData['usage_limit'] ?? null,
-            'daily_usage_limit' => $locationData['daily_usage_limit'] ?? null,
-            'monthly_usage_limit' => $locationData['monthly_usage_limit'] ?? null,
-            'geo_restriction_enabled' => $locationData['geo_restriction_enabled'] ?? false,
-            'max_distance_km' => $locationData['max_distance_km'] ?? 1.00,
-            'customer_restriction' => $locationData['customer_restriction'] ?? 'all',
-            'min_customer_age' => $locationData['min_customer_age'] ?? null,
-            'allowed_countries' => $locationData['allowed_countries'] ?? null,
             'status' => 'active',
-            'security_level' => $locationData['security_level'] ?? 'standard',
-            'expires_at' => now()->addDays(365),
         ]);
     }
 
@@ -79,7 +67,7 @@ class AffiliateQrCodeService
             'version' => '1.0',
         ];
 
-        // Create a short, scannable URL that contains the tracking data
+        // Create a short, scannable URL that contains the tracking data (without locale for backward compatibility)
         $trackingUrl = url('/affiliate/track/' . $this->encodeTrackingData($trackingData));
 
         return $trackingUrl;
@@ -91,17 +79,17 @@ class AffiliateQrCodeService
     private function generateQrImage(string $data): string
     {
         try {
-            // Try GD backend first (more commonly available)
+            // Generate high-resolution QR code with improved quality settings
             $qrCode = QrCode::format('png')
-                ->size(300)
-                ->errorCorrection('H')
-                ->margin(2)
+                ->size(800)           // Increased from 300 to 800 for high resolution
+                ->errorCorrection('H') // Highest error correction for better scanning
+                ->margin(4)           // Increased margin for better scanning
                 ->encoding('UTF-8')
                 ->generate($data);
 
             return $qrCode;
         } catch (\Exception $e) {
-            // If GD fails, try SVG format as fallback
+            // If PNG fails, try SVG format as fallback with high quality
             \Log::warning('PNG QR code generation failed, trying SVG fallback', [
                 'error' => $e->getMessage(),
                 'data_length' => strlen($data),
@@ -109,14 +97,12 @@ class AffiliateQrCodeService
 
             try {
                 $qrCode = QrCode::format('svg')
-                    ->size(300)
-                    ->errorCorrection('H')
-                    ->margin(2)
+                    ->size(800)           // High resolution SVG
+                    ->errorCorrection('H') // Highest error correction
+                    ->margin(4)           // Increased margin
                     ->encoding('UTF-8')
                     ->generate($data);
 
-                // Convert SVG to PNG using a simple method if possible
-                // For now, return the SVG content and handle conversion elsewhere
                 return $qrCode;
             } catch (\Exception $svgException) {
                 \Log::error('Both PNG and SVG QR code generation failed', [
@@ -193,10 +179,30 @@ class AffiliateQrCodeService
             return null;
         }
 
-        // Find the QR code by hash or short code
-        $qrCode = AffiliateQrCode::where('qr_hash', hash('sha256', $trackingData))
-                               ->orWhere('short_code', $decodedData['qr_id'] ?? null)
-                               ->first();
+        // Find the QR code by hash first (most reliable)
+        $qrHash = hash('sha256', $trackingData);
+        $qrCode = AffiliateQrCode::where('qr_hash', $qrHash)->first();
+
+        // If not found by hash, try to find by qr_id in tracking data
+        if (!$qrCode && isset($decodedData['qr_id'])) {
+            // Check if this qr_id matches any existing QR code's qr_hash
+            $qrCode = AffiliateQrCode::where('qr_hash', hash('sha256', json_encode([
+                'type' => 'affiliate_qr',
+                'business_id' => $decodedData['business_id'],
+                'location_id' => $decodedData['location_id'] ?? null,
+                'qr_id' => $decodedData['qr_id'],
+                'timestamp' => $decodedData['timestamp'],
+                'version' => '1.0'
+            ])))->first();
+        }
+
+        // If still not found, try to find by business and location combination
+        if (!$qrCode && isset($decodedData['business_id'], $decodedData['location_id'])) {
+            $qrCode = AffiliateQrCode::where('business_id', $decodedData['business_id'])
+                                   ->where('location_id', $decodedData['location_id'])
+                                   ->where('status', 'active')
+                                   ->first();
+        }
 
         if (!$qrCode || !$qrCode->isValid()) {
             return null;
@@ -385,26 +391,12 @@ class AffiliateQrCodeService
     }
 
     /**
-     * Validate QR code usage limits.
+     * Validate QR code status.
      */
     public function validateQrCodeUsage(AffiliateQrCode $qrCode): bool
     {
-        // Check if QR code is valid (includes status and expiration checks)
-        if (!$qrCode->isValid()) {
-            return false;
-        }
-
-        // Check daily usage limit
-        if ($qrCode->hasReachedDailyUsageLimit()) {
-            return false;
-        }
-
-        // Check monthly usage limit
-        if ($qrCode->hasReachedMonthlyUsageLimit()) {
-            return false;
-        }
-
-        return true;
+        // Check if QR code is valid (includes status checks)
+        return $qrCode->isValid();
     }
 
     /**
