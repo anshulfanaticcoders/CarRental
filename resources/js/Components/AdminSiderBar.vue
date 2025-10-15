@@ -46,7 +46,8 @@ import {
   Star,
   CameraIcon,
   ShieldPlusIcon,
-  Target
+  Target,
+  Building
 } from 'lucide-vue-next'
 import { onMounted, ref } from 'vue';
 import ApplicationLogo from "./ApplicationLogo.vue";
@@ -105,6 +106,17 @@ const data = {
         {
           title: 'Users Documents',
           url: '/admin/user-documents',
+        },
+      ],
+    },
+    {
+      title: 'Business Model',
+      url: '#',
+      icon: Building,
+      items: [
+        {
+          title: 'Affiliate Business Model',
+          url: '/admin/affiliate/business-model',
         },
       ],
     },

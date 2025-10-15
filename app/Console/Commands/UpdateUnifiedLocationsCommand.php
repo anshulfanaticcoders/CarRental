@@ -21,12 +21,14 @@ class UpdateUnifiedLocationsCommand extends Command
     protected $description = 'Updates the unified_locations.json file with data from internal vehicles and GreenMotion API.';
 
     protected $greenMotionService;
+    protected $okMobilityService;
     protected $locationSearchService;
 
-    public function __construct(\App\Services\GreenMotionService $greenMotionService, \App\Services\LocationSearchService $locationSearchService)
+    public function __construct(\App\Services\GreenMotionService $greenMotionService, \App\Services\OkMobilityService $okMobilityService, \App\Services\LocationSearchService $locationSearchService)
     {
         parent::__construct();
         $this->greenMotionService = $greenMotionService;
+        $this->okMobilityService = $okMobilityService;
         $this->locationSearchService = $locationSearchService;
     }
 
@@ -46,7 +48,10 @@ class UpdateUnifiedLocationsCommand extends Command
         $usaveLocations = $this->fetchProviderLocations('usave');
         $this->info('Fetched ' . count($usaveLocations) . ' U-SAVE locations.');
 
-        $unifiedLocations = $this->mergeAndNormalizeLocations($internalLocations, $greenMotionLocations, $usaveLocations);
+        $okMobilityLocations = $this->fetchOkMobilityLocations();
+        $this->info('Fetched ' . count($okMobilityLocations) . ' OK Mobility locations.');
+
+        $unifiedLocations = $this->mergeAndNormalizeLocations($internalLocations, $greenMotionLocations, $usaveLocations, $okMobilityLocations);
         $this->info('Merged into ' . count($unifiedLocations) . ' unique unified locations.');
 
         $this->saveUnifiedLocations(array_values($unifiedLocations));
@@ -300,5 +305,43 @@ class UpdateUnifiedLocationsCommand extends Command
     {
         $filePath = public_path('unified_locations.json');
         \Illuminate\Support\Facades\File::put($filePath, json_encode($locations, JSON_PRETTY_PRINT));
+    }
+
+    private function fetchOkMobilityLocations(): array
+    {
+        $this->info('Fetching OK Mobility locations...');
+        $xmlResponse = $this->okMobilityService->getStations();
+
+        if (!$xmlResponse) {
+            $this->error('Failed to retrieve locations from OK Mobility API.');
+            return [];
+        }
+
+        $locations = [];
+        $xmlObject = simplexml_load_string($xmlResponse);
+        if ($xmlObject !== false) {
+            $xmlObject->registerXPathNamespace('get', 'http://www.OKGroup.es/RentaCarWebService/getWSDL');
+            $stations = $xmlObject->xpath('//get:RentalStation');
+
+            foreach ($stations as $station) {
+                $stationData = json_decode(json_encode($station), true);
+                $locations[] = [
+                    'id' => 'okmobility_' . $stationData['StationID'],
+                    'label' => $stationData['Station'],
+                    'below_label' => implode(', ', array_filter([$stationData['City'], $stationData['CountryID']])),
+                    'location' => $stationData['Station'],
+                    'city' => $stationData['City'],
+                    'state' => null,
+                    'country' => $stationData['CountryID'],
+                    'latitude' => (float) ($stationData['Latitude'] ?? 0),
+                    'longitude' => (float) ($stationData['Longitude'] ?? 0),
+                    'source' => 'okmobility',
+                    'matched_field' => 'location',
+                    'provider_location_id' => $stationData['StationID'],
+                ];
+            }
+        }
+
+        return $locations;
     }
 }

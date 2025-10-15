@@ -225,6 +225,9 @@ onMounted(async () => {
                                 Terms & Conditions</Link>
                             </li>
                             <li class="relative group">
+                                <Link :href="`/${$page.props.locale}/business/register`" class="footer-link-underline">Business</Link>
+                            </li>
+                            <li class="relative group">
                                 <a href="https://vrooem.tapfiliate.com" class="footer-link-underline">Became a Affiliate</a>
                             </li>
                         </ul>

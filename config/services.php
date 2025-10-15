@@ -43,6 +43,12 @@ return [
         'url' => env('USAVE_URL'),
     ],
 
+    'okmobility' => [
+        'url' => env('OK_MOBILITY_URL'),
+        'customer_code' => env('OK_MOBILITY_CUSTOMER_CODE'),
+        'company_code' => env('OK_MOBILITY_COMPANY_CODE'),
+    ],
+
     'proxy' => [
         'http' => env('PROXY_HTTP'),
         'https' => env('PROXY_HTTPS'),

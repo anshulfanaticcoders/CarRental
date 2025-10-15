@@ -7,8 +7,10 @@
     "require": {
         "php": "^8.1",
         "aws/aws-sdk-php": "^3.341",
+        "dompdf/dompdf": "^3.1",
         "guzzlehttp/guzzle": "^7.2",
         "inertiajs/inertia-laravel": "^0.6.8",
+        "intervention/image": "^3.11",
         "laravel/breeze": "^1.29",
         "laravel/framework": "^10.10",
         "laravel/sanctum": "^3.2",
@@ -16,6 +18,7 @@
         "league/flysystem-aws-s3-v3": "^3.29",
         "propaganistas/laravel-phone": "^5.3",
         "pusher/pusher-php-server": "^7.2",
+        "simplesoftwareio/simple-qrcode": "^4.2",
         "stevebauman/location": "^7.6",
         "stripe/stripe-php": "^16.4",
         "tapfiliate/sdk-php": "^0.1.0",

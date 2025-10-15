@@ -194,6 +194,7 @@ const props = defineProps({
     seoMeta: Object, // Added seoMeta prop
     locale: String, // Added locale prop
     greenMotionVehicles: Object, // New: GreenMotion vehicles data
+    okMobilityVehicles: Object, // New: OK Mobility vehicles data
 });
 
 // Initialize map immediately for fast loading, then update when currency data loads
@@ -376,7 +377,8 @@ let mobileMarkers = [];
 const allVehiclesForMap = computed(() => {
     const internal = props.vehicles.data || [];
     const greenMotion = props.greenMotionVehicles?.data || [];
-    return [...internal, ...greenMotion];
+    const okMobility = props.okMobilityVehicles?.data || [];
+    return [...internal, ...greenMotion, ...okMobility];
 });
 
 const isValidCoordinate = (coord) => {
@@ -1193,6 +1195,9 @@ const getStarAltText = (rating, starNumber) => {
 const getProviderRoute = (vehicle) => {
     if (vehicle.source === 'greenmotion') {
         return 'green-motion-car.show';
+    }
+    if (vehicle.source === 'okmobility') {
+        return 'ok-mobility-car.show';
     }
     // Add other providers here as needed
     // if (vehicle.source === 'usave') {
