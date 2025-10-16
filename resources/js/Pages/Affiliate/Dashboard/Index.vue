@@ -44,11 +44,13 @@ const formattedCurrency = computed(() => {
 });
 
 const formattedTotalCommissions = computed(() => {
-    return `${formattedCurrency.value}${props.totalCommissions.toFixed(2)}`;
+    const amount = Number(props.totalCommissions) || 0;
+    return `${formattedCurrency.value}${amount.toFixed(2)}`;
 });
 
 const formattedPendingCommissions = computed(() => {
-    return `${formattedCurrency.value}${props.pendingCommissions.toFixed(2)}`;
+    const amount = Number(props.pendingCommissions) || 0;
+    return `${formattedCurrency.value}${amount.toFixed(2)}`;
 });
 
 // Sort QR codes by creation date (ascending)
@@ -492,8 +494,8 @@ onMounted(() => {
                                         <span class="font-medium">{{ qrCode.conversion_count || 0 }}</span>
                                     </div>
                                     <div class="flex justify-between text-sm">
-                                        <span class="text-gray-500">Revenue:</span>
-                                        <span class="font-medium">{{ formattedCurrency }}{{ parseFloat(qrCode.total_revenue_generated || 0).toFixed(2) }}</span>
+                                        <span class="text-gray-500">Commission Earned:</span>
+                                        <span class="font-medium">{{ formattedCurrency }}{{ parseFloat(qrCode.total_commission_earned || 0).toFixed(2) }}</span>
                                     </div>
                                     <div class="flex justify-between text-sm">
                                         <span class="text-gray-500">Created:</span>
@@ -638,8 +640,8 @@ onMounted(() => {
                                                 <span class="font-medium text-blue-900">{{ selectedQrCode.conversion_count || 0 }}</span>
                                             </div>
                                             <div class="flex justify-between">
-                                                <span class="text-blue-700">Revenue Generated:</span>
-                                                <span class="font-medium text-blue-900">{{ formattedCurrency }}{{ parseFloat(selectedQrCode.total_revenue_generated || 0).toFixed(2) }}</span>
+                                                <span class="text-blue-700">Commission Earned:</span>
+                                                <span class="font-medium text-blue-900">{{ formattedCurrency }}{{ parseFloat(selectedQrCode.total_commission_earned || 0).toFixed(2) }}</span>
                                             </div>
                                             <div class="flex justify-between">
                                                 <span class="text-blue-700">Created:</span>

@@ -25,6 +25,10 @@ use App\Models\Vehicle;
 use Illuminate\Support\Facades\Session as LaravelSession;
 use App\Models\Message; // Added for sending messages
 use App\Events\NewMessage; // Added for broadcasting new messages
+use App\Models\Affiliate\AffiliateCommission;
+use App\Models\Affiliate\AffiliateCustomerScan;
+use App\Models\Affiliate\AffiliateQrCode;
+use App\Services\Affiliate\AffiliateQrCodeService;
 
 class PaymentController extends Controller
 {
@@ -212,6 +216,136 @@ class PaymentController extends Controller
         }
     }
 
+    /**
+     * Create affiliate commission record if booking came from affiliate QR code
+     */
+    private function createAffiliateCommission(Booking $booking, Customer $customer): void
+    {
+        try {
+            // Get affiliate data from session
+            $affiliateData = session('affiliate_data');
+
+            if (!$affiliateData || !isset($affiliateData['customer_scan_id'])) {
+                Log::info('PaymentController::createAffiliateCommission - No affiliate data found');
+                return;
+            }
+
+            // Get the customer scan record
+            $customerScan = AffiliateCustomerScan::find($affiliateData['customer_scan_id']);
+            if (!$customerScan) {
+                Log::warning('PaymentController::createAffiliateCommission - Customer scan not found', [
+                    'customer_scan_id' => $affiliateData['customer_scan_id']
+                ]);
+                return;
+            }
+
+            // Get QR code and business details
+            $qrCode = AffiliateQrCode::find($customerScan->qr_code_id);
+            if (!$qrCode) {
+                Log::warning('PaymentController::createAffiliateCommission - QR code not found', [
+                    'qr_code_id' => $customerScan->qr_code_id
+                ]);
+                return;
+            }
+
+            $business = $qrCode->business;
+            if (!$business) {
+                Log::warning('PaymentController::createAffiliateCommission - Business not found', [
+                    'business_id' => $qrCode->business_id
+                ]);
+                return;
+            }
+
+            // Get business model for commission calculation
+            $businessModel = $business->getEffectiveBusinessModel();
+
+            // Calculate commission
+            $bookingAmount = $booking->total_amount;
+            $discountAmount = $affiliateData['discount_amount'] ?? 0;
+            $commissionableAmount = $bookingAmount;
+
+            $commissionAmount = 0;
+            $commissionRate = $businessModel['commission_rate'] ?? 0;
+            $commissionType = $businessModel['commission_type'] ?? 'percentage';
+
+            if ($commissionType === 'percentage') {
+                $commissionAmount = ($commissionableAmount * $commissionRate) / 100;
+            } else {
+                $commissionAmount = min($commissionRate, $commissionableAmount);
+            }
+
+            // Update customer scan record with booking completion
+            $customerScan->update([
+                'booking_completed' => true,
+                'booking_id' => $booking->id,
+                'booking_type' => 'platform',
+                'conversion_time_minutes' => $customerScan->created_at->diffInMinutes(now()),
+                'discount_applied' => $discountAmount,
+                'discount_percentage' => $affiliateData['discount_rate'] ?? 0,
+            ]);
+
+            // Update QR code conversion tracking
+            $qrCode->update([
+                'conversion_count' => $qrCode->conversion_count + 1,
+                'total_revenue_generated' => $qrCode->total_revenue_generated + $bookingAmount,
+                'last_scanned_at' => now(),
+            ]);
+
+            // Create commission record
+            $commission = AffiliateCommission::create([
+                'uuid' => Str::uuid(),
+                'business_id' => $business->id,
+                'location_id' => $qrCode->location_id,
+                'booking_id' => $booking->id,
+                'customer_id' => $customer->user_id,
+                'qr_scan_id' => $customerScan->id,
+                'booking_amount' => $bookingAmount,
+                'commissionable_amount' => $commissionableAmount,
+                'commission_rate' => $commissionRate,
+                'commission_amount' => $commissionAmount,
+                'discount_amount' => $discountAmount,
+                'tax_amount' => 0, // Can be calculated based on business location
+                'net_commission' => $commissionAmount, // Net commission after tax
+                'booking_type' => 'platform',
+                'commission_type' => $commissionType,
+                'status' => 'pending', // Requires admin approval
+                'scheduled_payout_date' => now()->addDays(30), // Default 30 days
+                'audit_log' => [
+                    [
+                        'action' => 'created',
+                        'data' => [
+                            'booking_id' => $booking->id,
+                            'customer_scan_id' => $customerScan->id,
+                            'qr_code_id' => $qrCode->id,
+                            'created_by' => 'system',
+                            'timestamp' => now()->toISOString(),
+                        ]
+                    ]
+                ],
+                'compliance_checked' => false,
+                'fraud_review_required' => false,
+            ]);
+
+            Log::info('PaymentController::createAffiliateCommission - Commission created successfully', [
+                'commission_id' => $commission->id,
+                'business_id' => $business->id,
+                'booking_id' => $booking->id,
+                'commission_amount' => $commissionAmount,
+                'commission_rate' => $commissionRate,
+                'commission_type' => $commissionType,
+            ]);
+
+        } catch (\Exception $e) {
+            Log::error('PaymentController::createAffiliateCommission - Error creating commission', [
+                'error' => $e->getMessage(),
+                'booking_id' => $booking->id,
+                'customer_id' => $customer->id,
+                'trace' => $e->getTraceAsString(),
+            ]);
+            // Don't throw here - commission creation failure shouldn't break the booking
+        }
+    }
+
 
     public function success(Request $request)
 {
@@ -342,6 +476,9 @@ class PaymentController extends Controller
 
                 Log::info('PaymentController::success - Payment record created', ['payment_id' => $payment->id]);
 
+                // Create affiliate commission if applicable
+                $this->createAffiliateCommission($booking, $customer);
+
                 // Send notifications (non-blocking)
                 $this->sendBookingNotifications($booking, $customer);
 
@@ -367,7 +504,7 @@ class PaymentController extends Controller
         $vendorProfile = VendorProfile::where('user_id', $booking->vehicle->vendor_id)->first();
 
         // Clear session storage
-        session()->forget(['pending_booking_id', 'driverInfo', 'rentalDates', 'selectionData']);
+        session()->forget(['pending_booking_id', 'driverInfo', 'rentalDates', 'selectionData', 'affiliate_data']);
         LaravelSession::forget('can_access_booking_page');
 
         Log::info('PaymentController::success - Showing success page', [

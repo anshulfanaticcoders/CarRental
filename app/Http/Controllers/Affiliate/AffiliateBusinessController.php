@@ -140,16 +140,24 @@ class AffiliateBusinessController extends Controller
         // Get business data
         $businessModel = $business->getEffectiveBusinessModel();
 
-        // Get QR codes with proper relationship loading
+        // Get QR codes with proper relationship loading and commission calculations
         $qrCodes = $business->qrCodes()
-            ->with(['location'])
+            ->with(['location', 'commissions' => function($query) {
+                $query->where('status', '!=', 'cancelled');
+            }])
             ->latest()
             ->get();
 
+        // Calculate commission earned per QR code
+        $qrCodes->each(function($qrCode) {
+            $totalCommission = $qrCode->commissions->sum('net_commission');
+            $qrCode->total_commission_earned = (float) $totalCommission;
+        });
+
         // Get customer scans and commissions statistics
         $totalScans = $business->customerScans()->count();
-        $totalCommissions = $business->commissions()->where('status', '!=', 'cancelled')->sum('net_commission');
-        $pendingCommissions = $business->commissions()->pending()->sum('net_commission');
+        $totalCommissions = (float) $business->commissions()->where('status', '!=', 'cancelled')->sum('net_commission');
+        $pendingCommissions = (float) $business->commissions()->pending()->sum('net_commission');
 
         return Inertia::render('Affiliate/Dashboard/Index', [
             'business' => $business,
