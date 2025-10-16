@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Auth;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Auth\LoginRequest;
 use App\Providers\RouteServiceProvider;
+use App\Services\Affiliate\AffiliateQrCodeService;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
@@ -36,26 +37,32 @@ class AuthenticatedSessionController extends Controller
      * Handle an incoming authentication request.
      */
     public function store(LoginRequest $request): Response
-{
-    $request->authenticate();
-    $request->session()->regenerate();
+    {
+        $request->authenticate();
+        $request->session()->regenerate();
 
-    $user = Auth::user();
+        $user = Auth::user();
 
-    // Update last_login_at *after* successful authentication
-    if ($user) {
-        $user->last_login_at = Carbon::now();
-        $user->save();
+        // Update last_login_at *after* successful authentication
+        if ($user) {
+            $user->last_login_at = Carbon::now();
+            $user->save();
+        }
+
+        // Update affiliate customer scan with customer_id if affiliate data exists in session
+        if ($user) {
+            $affiliateService = new AffiliateQrCodeService();
+            $affiliateService->updateCustomerInAffiliateScans($user->id);
+        }
+
+        // Redirect based on role
+        if ($user->role === 'admin') {
+            return Inertia::location('/admin-dashboard');
+        }
+
+        // Use the intended URL, falling back to the HOME constant.
+        return Inertia::location(session()->pull('url.intended', RouteServiceProvider::HOME));
     }
-
-    // Redirect based on role
-    if ($user->role === 'admin') {
-        return Inertia::location('/admin-dashboard');
-    }
-
-    // Use the intended URL, falling back to the HOME constant.
-    return Inertia::location(session()->pull('url.intended', RouteServiceProvider::HOME));
-}
 
     /**
      * Destroy an authenticated session.

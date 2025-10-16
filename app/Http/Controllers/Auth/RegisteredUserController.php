@@ -9,6 +9,7 @@ use App\Models\UserProfile;
 use App\Notifications\AccountCreatedNotification;
 use App\Notifications\AccountCreatedUserConfirmation;
 use App\Providers\RouteServiceProvider;
+use App\Services\Affiliate\AffiliateQrCodeService;
 use Illuminate\Auth\Events\Registered;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -82,6 +83,10 @@ class RegisteredUserController extends Controller
         event(new Registered($user));
 
         Auth::login($user);
+
+        // Update affiliate customer scan with customer_id if affiliate data exists in session
+        $affiliateService = new AffiliateQrCodeService();
+        $affiliateService->updateCustomerInAffiliateScans($user->id);
 
         // Log the activity
         ActivityLogHelper::logActivity('create', 'New User Created', $user, $request);

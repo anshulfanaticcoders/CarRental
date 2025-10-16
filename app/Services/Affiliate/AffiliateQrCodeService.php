@@ -211,11 +211,14 @@ class AffiliateQrCodeService
         // Get or create customer session
         $sessionToken = $this->getOrCreateCustomerSession($request);
 
+        // Get current user ID (null if not logged in)
+        $currentCustomerId = auth()->id();
+
         // Create customer scan record
         $customerScan = \App\Models\Affiliate\AffiliateCustomerScan::create([
             'uuid' => Str::uuid(),
             'qr_code_id' => $qrCode->id,
-            'customer_id' => auth()->id(), // null if not logged in
+            'customer_id' => $currentCustomerId, // Save customer_id if logged in, null otherwise
             'session_id' => $sessionToken,
             'scan_token' => $this->generateScanToken(),
             'tracking_url' => url('/affiliate/track/' . $trackingData),
@@ -236,7 +239,7 @@ class AffiliateQrCodeService
         $qrCode->incrementUsage();
 
         // Store affiliate information in session for later use in booking
-        $this->storeAffiliateDataInSession($qrCode, $customerScan);
+        $this->storeAffiliateDataInSession($qrCode, $customerScan, $currentCustomerId);
 
         $businessModel = $qrCode->business->getEffectiveBusinessModel();
 
@@ -355,23 +358,29 @@ class AffiliateQrCodeService
     /**
      * Store affiliate data in session for booking flow.
      */
-    private function storeAffiliateDataInSession(AffiliateQrCode $qrCode, \App\Models\Affiliate\AffiliateCustomerScan $customerScan): void
+    private function storeAffiliateDataInSession(AffiliateQrCode $qrCode, \App\Models\Affiliate\AffiliateCustomerScan $customerScan, ?int $customerId = null): void
     {
         $businessModel = $qrCode->business->getEffectiveBusinessModel();
 
-        session([
-            'affiliate_data' => [
-                'business_id' => $qrCode->business_id,
-                'qr_code_id' => $qrCode->id,
-                'customer_scan_id' => $customerScan->id,
-                'scan_token' => $customerScan->scan_token,
-                'discount_type' => $businessModel['discount_type'],
-                'discount_value' => $businessModel['discount_value'],
-                'discount_rate' => $businessModel['discount_value'], // For backward compatibility
-                'business_name' => $qrCode->business->name,
-                'scanned_at' => now()->toISOString(),
-            ]
-        ]);
+        $sessionData = [
+            'business_id' => $qrCode->business_id,
+            'qr_code_id' => $qrCode->id,
+            'customer_scan_id' => $customerScan->id,
+            'scan_token' => $customerScan->scan_token,
+            'discount_type' => $businessModel['discount_type'],
+            'discount_value' => $businessModel['discount_value'],
+            'discount_rate' => $businessModel['discount_value'], // For backward compatibility
+            'business_name' => $qrCode->business->name,
+            'scanned_at' => now()->toISOString(),
+        ];
+
+        // Add customer_id if user is logged in
+        if ($customerId) {
+            $sessionData['customer_id'] = $customerId;
+            $sessionData['identified_at'] = now()->toISOString();
+        }
+
+        session(['affiliate_data' => $sessionData]);
     }
 
     /**
@@ -388,6 +397,44 @@ class AffiliateQrCodeService
     public function clearAffiliateSessionData(): void
     {
         session()->forget('affiliate_data');
+    }
+
+    /**
+     * Update customer_id in affiliate scans when user logs in or registers.
+     */
+    public function updateCustomerInAffiliateScans(int $customerId): void
+    {
+        $affiliateData = $this->getAffiliateSessionData();
+
+        if (!$affiliateData) {
+            return;
+        }
+
+        try {
+            // Update the customer scan record with the new customer_id
+            \App\Models\Affiliate\AffiliateCustomerScan::where('id', $affiliateData['customer_scan_id'])
+                ->update(['customer_id' => $customerId]);
+
+            // Update the session data to reflect the customer is now identified
+            session([
+                'affiliate_data' => array_merge($affiliateData, [
+                    'customer_id' => $customerId,
+                    'identified_at' => now()->toISOString(),
+                ])
+            ]);
+
+            \Log::info('Affiliate customer scan updated with customer_id', [
+                'customer_id' => $customerId,
+                'customer_scan_id' => $affiliateData['customer_scan_id'],
+                'business_id' => $affiliateData['business_id'],
+            ]);
+        } catch (\Exception $e) {
+            \Log::error('Failed to update customer_id in affiliate scan', [
+                'customer_id' => $customerId,
+                'customer_scan_id' => $affiliateData['customer_scan_id'] ?? null,
+                'error' => $e->getMessage(),
+            ]);
+        }
     }
 
     /**
