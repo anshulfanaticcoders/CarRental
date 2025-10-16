@@ -1,6 +1,16 @@
 <script setup>
 import { Head, Link, router } from '@inertiajs/vue3';
 import { ref, computed, onMounted } from 'vue';
+import {
+    Table,
+    TableBody,
+    TableCaption,
+    TableCell,
+    TableFooter,
+    TableHead,
+    TableHeader,
+    TableRow,
+} from '@/Components/ui/table';
 
 const props = defineProps({
     business: {
@@ -51,6 +61,15 @@ const formattedTotalCommissions = computed(() => {
 const formattedPendingCommissions = computed(() => {
     const amount = Number(props.pendingCommissions) || 0;
     return `${formattedCurrency.value}${amount.toFixed(2)}`;
+});
+
+// Calculate total paid amount from QR codes
+const totalPaidAmount = computed(() => {
+    return props.qrCodes.reduce((total, qrCode) => total + (parseFloat(qrCode.total_amount_paid) || 0), 0);
+});
+
+const formattedTotalPaid = computed(() => {
+    return `${formattedCurrency.value}${totalPaidAmount.value.toFixed(2)}`;
 });
 
 // Sort QR codes by creation date (ascending)
@@ -170,6 +189,46 @@ const getQrCodeImageUrl = (qrCode) => {
 const getLocationDisplayName = (qrCode) => {
     // The controller loads the location relationship, so we can trust the accessor
     return qrCode.location_name;
+};
+
+// Analytics computed properties
+const totalConmissions = computed(() => {
+    return props.qrCodes.reduce((total, qrCode) => total + (qrCode.conversion_count || 0), 0);
+});
+
+const overallConversionRate = computed(() => {
+    if (props.totalScans === 0) return 0;
+    return ((totalConmissions.value / props.totalScans) * 100).toFixed(1);
+});
+
+const averageCommissionPerQr = computed(() => {
+    if (props.qrCodes.length === 0) return 0;
+    return props.totalCommissions / props.qrCodes.length;
+});
+
+const topPerformingQrCode = computed(() => {
+    if (props.qrCodes.length === 0) return null;
+    return props.qrCodes.reduce((top, current) => {
+        const topCommission = parseFloat(top.total_commission_earned || 0);
+        const currentCommission = parseFloat(current.total_commission_earned || 0);
+        return currentCommission > topCommission ? current : top;
+    });
+});
+
+// Helper functions for analytics
+const getConversionRate = (qrCode) => {
+    const scans = qrCode.total_scans || 0;
+    const conversions = qrCode.conversion_count || 0;
+    if (scans === 0) return 0;
+    return ((conversions / scans) * 100).toFixed(1);
+};
+
+const formatDateShort = (dateString) => {
+    return new Date(dateString).toLocaleDateString('en-US', {
+        month: 'short',
+        day: 'numeric',
+        year: 'numeric'
+    });
 };
 
 
@@ -531,12 +590,246 @@ onMounted(() => {
 
                     <!-- Analytics Tab -->
                     <div v-if="activeTab === 'analytics'" class="space-y-6">
-                        <div class="text-center py-12">
-                            <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
-                            </svg>
-                            <h3 class="mt-2 text-sm font-medium text-gray-900">Analytics Coming Soon</h3>
-                            <p class="mt-1 text-sm text-gray-500">Detailed analytics and reporting will be available soon.</p>
+                        <!-- Analytics Header -->
+                        <div class="flex justify-between items-center">
+                            <div>
+                                <h3 class="text-lg font-medium text-gray-900">QR Code Performance Analytics</h3>
+                                <p class="text-sm text-gray-500 mt-1">Track earnings and performance for each QR code</p>
+                            </div>
+                            <button
+                                @click="refreshDashboard"
+                                :disabled="refreshing"
+                                class="inline-flex items-center px-3 py-2 border border-gray-300 text-sm leading-4 font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50"
+                            >
+                                <svg v-if="refreshing" class="animate-spin -ml-1 mr-2 h-4 w-4 text-gray-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                </svg>
+                                <svg v-else class="mr-2 h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                                </svg>
+                                Refresh Data
+                            </button>
+                        </div>
+
+                        <!-- Analytics Summary Cards -->
+                        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+                            <div class="bg-white border rounded-lg p-4">
+                                <div class="flex items-center">
+                                    <div class="w-8 h-8 bg-blue-500 rounded-md flex items-center justify-center mr-3">
+                                        <svg class="w-4 h-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                        </svg>
+                                    </div>
+                                    <div>
+                                        <p class="text-sm font-medium text-gray-500">Total Revenue</p>
+                                        <p class="text-lg font-semibold text-gray-900">{{ formattedTotalCommissions }}</p>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="bg-white border rounded-lg p-4">
+                                <div class="flex items-center">
+                                    <div class="w-8 h-8 bg-green-500 rounded-md flex items-center justify-center mr-3">
+                                        <svg class="w-4 h-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                                        </svg>
+                                    </div>
+                                    <div>
+                                        <p class="text-sm font-medium text-gray-500">Total Scans</p>
+                                        <p class="text-lg font-semibold text-gray-900">{{ totalScans.toLocaleString() }}</p>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="bg-white border rounded-lg p-4">
+                                <div class="flex items-center">
+                                    <div class="w-8 h-8 bg-purple-500 rounded-md flex items-center justify-center mr-3">
+                                        <svg class="w-4 h-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                        </svg>
+                                    </div>
+                                    <div>
+                                        <p class="text-sm font-medium text-gray-500">Active QR Codes</p>
+                                        <p class="text-lg font-semibold text-gray-900">{{ qrCodes.length }}</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- QR Code Analytics Table -->
+                        <div class="bg-white rounded-lg border">
+                            <div v-if="qrCodes.length === 0" class="text-center py-12">
+                                <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                                </svg>
+                                <h3 class="mt-2 text-sm font-medium text-gray-900">No analytics data available</h3>
+                                <p class="mt-1 text-sm text-gray-500">Create QR codes to start tracking performance analytics.</p>
+                                <button
+                                    @click="activeTab = 'qr-codes'"
+                                    class="mt-4 inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-blue-700 bg-blue-100 hover:bg-blue-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                                >
+                                    Create QR Codes
+                                </button>
+                            </div>
+
+                            <div v-else class="overflow-x-auto">
+                                <Table>
+                                    <TableHeader>
+                                        <TableRow>
+                                            <TableHead class="w-[180px]">Location</TableHead>
+                                            <TableHead>Short Code</TableHead>
+                                            <TableHead class="text-center">Status</TableHead>
+                                            <TableHead class="text-center">Scans</TableHead>
+                                            <TableHead class="text-center">Conversions</TableHead>
+                                            <TableHead class="text-center">Conversion Rate</TableHead>
+                                            <TableHead class="text-right">Commission Earned</TableHead>
+                                            <TableHead class="text-right">Amount Paid</TableHead>
+                                            <TableHead class="text-center">Created</TableHead>
+                                            <TableHead class="text-center">Last Activity</TableHead>
+                                        </TableRow>
+                                    </TableHeader>
+                                    <TableBody>
+                                        <TableRow v-for="qrCode in sortedQrCodes" :key="qrCode.id" class="hover:bg-gray-50">
+                                            <TableCell class="font-medium">
+                                                <div>
+                                                    <div class="text-sm font-medium text-gray-900">
+                                                        {{ getLocationDisplayName(qrCode) }}
+                                                    </div>
+                                                    <div class="text-xs text-gray-500 truncate max-w-[160px]">
+                                                        {{ qrCode.location_address }}
+                                                    </div>
+                                                </div>
+                                            </TableCell>
+                                            <TableCell>
+                                                <span class="inline-flex items-center px-2 py-1 rounded-md text-xs font-mono bg-gray-100 text-gray-800">
+                                                    {{ qrCode.short_code }}
+                                                </span>
+                                            </TableCell>
+                                            <TableCell class="text-center">
+                                                <span :class="getQrCodeStatus(qrCode).class" class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium">
+                                                    {{ getQrCodeStatus(qrCode).text }}
+                                                </span>
+                                            </TableCell>
+                                            <TableCell class="text-center">
+                                                <div class="flex flex-col items-center">
+                                                    <span class="text-sm font-medium">{{ qrCode.total_scans || 0 }}</span>
+                                                    <span class="text-xs text-gray-500">scans</span>
+                                                </div>
+                                            </TableCell>
+                                            <TableCell class="text-center">
+                                                <div class="flex flex-col items-center">
+                                                    <span class="text-sm font-medium">{{ qrCode.conversion_count || 0 }}</span>
+                                                    <span class="text-xs text-gray-500">bookings</span>
+                                                </div>
+                                            </TableCell>
+                                            <TableCell class="text-center">
+                                                <div class="flex flex-col items-center">
+                                                    <span class="text-sm font-medium">
+                                                        {{ getConversionRate(qrCode) }}%
+                                                    </span>
+                                                    <div class="w-full max-w-[60px] bg-gray-200 rounded-full h-1.5 mt-1">
+                                                        <div
+                                                            class="bg-blue-600 h-1.5 rounded-full transition-all duration-300"
+                                                            :style="{ width: `${Math.min(getConversionRate(qrCode), 100)}%` }"
+                                                        ></div>
+                                                    </div>
+                                                </div>
+                                            </TableCell>
+                                            <TableCell class="text-right">
+                                                <div class="flex flex-col items-end">
+                                                    <span class="text-sm font-semibold text-green-600">
+                                                        {{ formattedCurrency }}{{ parseFloat(qrCode.total_commission_earned || 0).toFixed(2) }}
+                                                    </span>
+                                                    <span class="text-xs text-gray-500">earned</span>
+                                                </div>
+                                            </TableCell>
+                                            <TableCell class="text-right">
+                                                <div class="flex flex-col items-end">
+                                                    <span class="text-sm font-semibold text-blue-600">
+                                                        {{ formattedCurrency }}{{ parseFloat(qrCode.total_amount_paid || 0).toFixed(2) }}
+                                                    </span>
+                                                    <span class="text-xs text-gray-500">paid</span>
+                                                </div>
+                                            </TableCell>
+                                            <TableCell class="text-center">
+                                                <div class="text-xs text-gray-500">
+                                                    {{ formatDateShort(qrCode.created_at) }}
+                                                </div>
+                                            </TableCell>
+                                            <TableCell class="text-center">
+                                                <div class="text-xs text-gray-500">
+                                                    {{ qrCode.last_scanned_at ? formatDateShort(qrCode.last_scanned_at) : 'Never' }}
+                                                </div>
+                                            </TableCell>
+                                        </TableRow>
+                                    </TableBody>
+                                    <TableFooter>
+                                        <TableRow>
+                                            <TableCell colspan="3" class="font-semibold">
+                                                Total Summary
+                                            </TableCell>
+                                            <TableCell class="text-center font-medium">
+                                                {{ totalScans.toLocaleString() }}
+                                            </TableCell>
+                                            <TableCell class="text-center font-medium">
+                                                {{ totalConmissions.toLocaleString() }}
+                                            </TableCell>
+                                            <TableCell class="text-center">
+                                                <span class="text-sm font-medium">
+                                                    {{ overallConversionRate }}%
+                                                </span>
+                                            </TableCell>
+                                            <TableCell class="text-right font-semibold text-green-600">
+                                                {{ formattedTotalCommissions }}
+                                            </TableCell>
+                                            <TableCell class="text-right font-semibold text-blue-600">
+                                                {{ formattedTotalPaid }}
+                                            </TableCell>
+                                            <TableCell colspan="2" class="text-center text-gray-500">
+                                                All time
+                                            </TableCell>
+                                        </TableRow>
+                                    </TableFooter>
+                                </Table>
+                            </div>
+                        </div>
+
+                        <!-- Performance Insights -->
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <div class="bg-blue-50 border border-blue-200 rounded-lg p-6">
+                                <h4 class="text-lg font-medium text-blue-900 mb-3">Top Performing QR Code</h4>
+                                <div v-if="topPerformingQrCode" class="space-y-2">
+                                    <div class="text-sm font-medium text-blue-800">
+                                        {{ topPerformingQrCode.location_name || 'Unknown Location' }}
+                                    </div>
+                                    <div class="text-sm text-blue-700">
+                                        Commission: {{ formattedCurrency }}{{ parseFloat(topPerformingQrCode.total_commission_earned || 0).toFixed(2) }}
+                                    </div>
+                                    <div class="text-sm text-blue-600">
+                                        Conversion Rate: {{ getConversionRate(topPerformingQrCode) }}%
+                                    </div>
+                                </div>
+                                <div v-else class="text-sm text-blue-600">
+                                    No QR codes have generated commissions yet.
+                                </div>
+                            </div>
+
+                            <div class="bg-green-50 border border-green-200 rounded-lg p-6">
+                                <h4 class="text-lg font-medium text-green-900 mb-3">Conversion Insights</h4>
+                                <div class="space-y-2">
+                                    <div class="text-sm text-green-800">
+                                        Overall Conversion Rate: <span class="font-semibold">{{ overallConversionRate }}%</span>
+                                    </div>
+                                    <div class="text-sm text-green-700">
+                                        Total Bookings from QR: <span class="font-semibold">{{ totalConmissions }}</span>
+                                    </div>
+                                    <div class="text-sm text-green-600">
+                                        Avg. Commission per QR: <span class="font-semibold">
+                                            {{ formattedCurrency }}{{ averageCommissionPerQr.toFixed(2) }}
+                                        </span>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
                     </div>
 
