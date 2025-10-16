@@ -85,6 +85,7 @@ const vehicle = ref(props.vehicle);
 const user = ref(null);
 const reviews = ref([]);
 const paymentPercentage = ref(0.00); // New ref for payment percentage
+const affiliateData = ref(props.affiliate_data || null); // Affiliate data from session
 
 const metaTitle = computed(() => {
   return `Rent ${vehicle.value.brand} ${vehicle.value.model} - ${vehicle.value.full_vehicle_address} - ${vehicle.value.id} - Vrooem`;
@@ -629,12 +630,75 @@ const calculateTotalPrice = computed(() => {
             totalPrice = duration * vehicle.value.price_per_day;
     }
 
+    // Apply affiliate discount if available
+    if (affiliateData.value && totalPrice > 0) {
+        const discountType = affiliateData.value.discount_type || 'percentage';
+        const discountValue = affiliateData.value.discount_value || 0;
+
+        if (discountType === 'fixed_amount') {
+            totalPrice = Math.max(0, totalPrice - discountValue);
+        } else {
+            // Percentage discount
+            totalPrice = totalPrice * (1 - discountValue / 100);
+        }
+    }
+
     return totalPrice;
 });
 
 const discountAmount = computed(() => {
     const packageDetails = pricingPackages.value.find(pkg => pkg.id === selectedPackage.value);
     return Number(packageDetails?.discount || 0);
+});
+
+// Calculate original price before affiliate discount
+const originalTotalPrice = computed(() => {
+    if (!form.value.date_from || !form.value.date_to) return 0;
+
+    const duration = rentalDuration.value;
+    let totalPrice = 0;
+
+    switch (selectedPackage.value) {
+        case 'week':
+            totalPrice = (duration / 7) * vehicle.value.price_per_week;
+            if (vehicle.value.weekly_discount) {
+                totalPrice = totalPrice - vehicle.value.weekly_discount;
+            }
+            break;
+        case 'month':
+            totalPrice = vehicle.value.price_per_month;
+            if (vehicle.value.monthly_discount) {
+                totalPrice = totalPrice - vehicle.value.monthly_discount;
+            }
+            break;
+        default:
+            totalPrice = duration * vehicle.value.price_per_day;
+    }
+
+    return totalPrice;
+});
+
+// Calculate affiliate discount amount
+const affiliateDiscountAmount = computed(() => {
+    if (!affiliateData.value) return 0;
+
+    const originalPrice = originalTotalPrice.value;
+    if (originalPrice <= 0) return 0;
+
+    const discountType = affiliateData.value.discount_type || 'percentage';
+    const discountValue = affiliateData.value.discount_value || 0;
+
+    if (discountType === 'fixed_amount') {
+        return Math.min(discountValue, originalPrice);
+    } else {
+        // Percentage discount
+        return originalPrice * (discountValue / 100);
+    }
+});
+
+// Check if user has affiliate discount
+const hasAffiliateDiscount = computed(() => {
+    return affiliateData.value && affiliateData.value.discount_value > 0;
 });
 
 
@@ -1820,6 +1884,7 @@ const searchUrl = computed(() => {
                                                     <!-- Show Total Price -->
                                                     <div v-if="form.date_from && form.date_to && !dateError"
                                                         class="mt-6 p-4 bg-blue-50 rounded-lg">
+                                                        <!-- Regular pricing -->
                                                         <p class="text-lg max-[768px]:text-[1rem] font-semibold">
                                                             Current Price: {{formatPrice(pricingPackages.find(pkg =>
                                                                 pkg.id === selectedPackage).price)}}
@@ -1829,8 +1894,32 @@ const searchUrl = computed(() => {
                                                             Discount: -{{formatPrice(pricingPackages.find(pkg => pkg.id
                                                                 === selectedPackage).discount)}}
                                                         </p>
+
+                                                        <!-- Affiliate Discount Section -->
+                                                        <div v-if="hasAffiliateDiscount" class="border-t border-blue-200 mt-3 pt-3">
+                                                            <div class="flex items-center gap-2 mb-2">
+                                                                <div class="w-2 h-2 bg-green-500 rounded-full"></div>
+                                                                <p class="text-sm font-semibold text-green-700">
+                                                                    🎉 Special Affiliate Discount Applied!
+                                                                </p>
+                                                            </div>
+                                                            <div class="space-y-1">
+                                                                <p class="text-sm text-gray-600">
+                                                                    Original Price: <span class="line-through">{{ formatPrice(originalTotalPrice) }}</span>
+                                                                </p>
+                                                                <p class="text-sm text-green-600 font-semibold">
+                                                                    Affiliate Discount ({{ affiliateData.discount_type === 'percentage' ? affiliateData.discount_value + '%' : formatPrice(affiliateData.discount_value) }}):
+                                                                    -{{ formatPrice(affiliateDiscountAmount) }}
+                                                                </p>
+                                                                <p class="text-sm text-gray-500">
+                                                                    From: {{ affiliateData.business_name }}
+                                                                </p>
+                                                            </div>
+                                                        </div>
+
+                                                        <!-- Final Total Price -->
                                                         <p
-                                                            class="text-[1.75rem] max-[768px]:text-[1.5rem] font-semibold">
+                                                            class="text-[1.75rem] max-[768px]:text-[1.5rem] font-semibold mt-3 pt-3 border-t border-blue-200">
                                                             Total Price: {{ formatPrice(calculateTotalPrice) }}
                                                         </p>
                                                         <p class="text-sm text-gray-600">

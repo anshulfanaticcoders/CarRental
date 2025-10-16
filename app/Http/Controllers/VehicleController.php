@@ -24,10 +24,11 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Facades\Storage;
 use Inertia\Inertia;
-use Illuminate\Support\Facades\Session; 
-use Illuminate\Support\Facades\Redirect; 
+use Illuminate\Support\Facades\Session;
+use Illuminate\Support\Facades\Redirect;
 use App\Helpers\SchemaBuilder; // Import SchemaBuilder
 use App\Services\LocationSearchService;
+use App\Services\Affiliate\AffiliateQrCodeService;
 
 class VehicleController extends Controller
 {
@@ -344,8 +345,13 @@ class VehicleController extends Controller
             }
         ])->findOrFail($id);
 
+        // Get affiliate data if available
+        $affiliateService = new AffiliateQrCodeService();
+        $affiliateData = $affiliateService->getAffiliateSessionData();
+
         return Inertia::render('SingleCar', [
             'vehicle' => $vehicle,
+            'affiliate_data' => $affiliateData, // Pass affiliate data to the view
             'booked_dates' => $vehicle->bookings->map(function ($booking) {
                 return [
                     'pickup_date' => $booking->pickup_date ? $booking->pickup_date->format('Y-m-d') : null,
@@ -379,10 +385,15 @@ class VehicleController extends Controller
         $vehicle = Vehicle::with(['specifications', 'images', 'category', 'user', 'vendorProfile', 'benefits', 'vendorPlans', 'addons', 'vendorProfileData'])
             ->findOrFail($id);
 
+        // Get affiliate data if available
+        $affiliateService = new AffiliateQrCodeService();
+        $affiliateData = $affiliateService->getAffiliateSessionData();
+
         return Inertia::render('Booking', [
             'vehicle' => $vehicle,
             'plans' => $vehicle->vendorPlans,
             'addons' => $vehicle->addons,
+            'affiliate_data' => $affiliateData, // Pass affiliate data to booking view
             'query' => $request->all(),
             'filters' => [
                 'currency' => $request->query('currency', 'USD'),

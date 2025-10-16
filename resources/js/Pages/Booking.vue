@@ -511,8 +511,8 @@ const getVehicleUnitPrice = () => {
 const calculateTotal = computed(() => {
     let total = 0;
 
-    // Use converted base price × total_days
-    total += getVehicleUnitPrice() * totalDays.value;
+    // Use the already discounted base price from SingleCar page
+    total += getConvertedPrice(totalPrice.value);
 
     // Add plan value (already converted)
     total += getConvertedPrice(Number(selectedPlan.value?.price || 0)) * totalDays.value;
