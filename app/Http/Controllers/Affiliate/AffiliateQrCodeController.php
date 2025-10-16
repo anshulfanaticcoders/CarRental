@@ -298,16 +298,65 @@ class AffiliateQrCodeController extends Controller
     /**
      * Download QR code image.
      */
-    public function download($token, $qrCodeId)
+    public function download($locale, $token, $qrCodeId)
     {
-        $session = AffiliateDashboardSession::findByToken($token);
+        try {
+            \Log::info('QR Code download started', [
+                'token' => $token,
+                'qrCodeId' => $qrCodeId,
+                'url' => request()->fullUrl(),
+                'segments' => request()->segments(),
+            ]);
 
-        if (!$session || !$session->isValid()) {
-            abort(403, 'Invalid or expired dashboard access token');
+            // Extract the actual dashboard token from the URL
+            // The URL structure is: /{locale}/business/qr-codes/download/{token}/{qrCodeId}
+            $segments = request()->segments();
+            $actualToken = $segments[4] ?? $token; // Index 4: ['en', 'business', 'qr-codes', 'download', 'TOKEN', 'ID']
+
+            // Fallback: if token looks like a locale, use the route parameter
+            if (in_array($actualToken, ['en', 'fr', 'nl', 'es', 'ar'])) {
+                $actualToken = $token;
+            }
+
+            \Log::info('Token extraction', [
+                'route_token' => $token,
+                'extracted_token' => $actualToken,
+                'segments' => $segments,
+            ]);
+
+            // Try both session and direct token approach
+            $session = AffiliateDashboardSession::findByToken($actualToken);
+            if (!$session || !$session->isValid()) {
+                // Fallback to direct business lookup
+                $business = AffiliateBusiness::where('dashboard_access_token', $actualToken)->first();
+                if (!$business) {
+                    \Log::error('Business not found', [
+                        'actualToken' => $actualToken,
+                        'routeToken' => $token,
+                    ]);
+                    abort(403, 'Invalid or expired dashboard access token');
+                }
+                \Log::info('Business found directly', ['business_id' => $business->id]);
+            } else {
+                $business = $session->business;
+                \Log::info('Business found via session', ['business_id' => $business->id]);
+            }
+
+            $qrCode = $business->qrCodes()->findOrFail($qrCodeId);
+
+            \Log::info('QR Code found', [
+                'qr_code_id' => $qrCode->id,
+                'image_path' => $qrCode->qr_image_path,
+            ]);
+
+        } catch (\Exception $e) {
+            \Log::error('QR Code download preparation failed: ' . $e->getMessage(), [
+                'token' => $token,
+                'qrCodeId' => $qrCodeId,
+                'exception' => $e->getTraceAsString(),
+            ]);
+            throw $e;
         }
-
-        $business = $session->business;
-        $qrCode = $business->qrCodes()->findOrFail($qrCodeId);
 
         try {
             // Check if QR code has an image path
@@ -327,10 +376,41 @@ class AffiliateQrCodeController extends Controller
                 abort(404, 'QR code image content could not be read');
             }
 
-            $filename = 'qr-code-' . ($qrCode->short_code ?: $qrCode->id) . '.png';
+            // Debug logging to see what we're working with
+            \Log::info('QR Code download debug', [
+                'qr_code_id' => $qrCode->id,
+                'image_path' => $qrCode->qr_image_path,
+                'file_exists' => $disk->exists($qrCode->qr_image_path),
+                'content_length' => strlen($qrImageContent),
+                'starts_with_xml' => str_starts_with($qrImageContent, '<?xml'),
+            ]);
+
+            // Determine file extension and content type based on actual file
+            $extension = strtolower(pathinfo($qrCode->qr_image_path, PATHINFO_EXTENSION));
+
+            // Additional check: if content starts with XML, it's SVG regardless of extension
+            if (str_starts_with($qrImageContent, '<?xml')) {
+                $extension = 'svg';
+            }
+
+            $contentType = match ($extension) {
+                'png' => 'image/png',
+                'jpg', 'jpeg' => 'image/jpeg',
+                'svg' => 'image/svg+xml',
+                default => 'image/png',
+            };
+
+            // Use a user-friendly filename with the correct extension
+            $filename = 'qr-code-' . ($qrCode->short_code ?: $qrCode->id) . '.' . $extension;
+
+            \Log::info('QR Code download final', [
+                'detected_extension' => $extension,
+                'content_type' => $contentType,
+                'filename' => $filename,
+            ]);
 
             return Response::make($qrImageContent)
-                ->header('Content-Type', 'image/png')
+                ->header('Content-Type', $contentType)
                 ->header('Content-Disposition', 'attachment; filename="' . $filename . '"')
                 ->header('Cache-Control', 'no-cache, no-store, must-revalidate')
                 ->header('Pragma', 'no-cache')
@@ -561,11 +641,9 @@ class AffiliateQrCodeController extends Controller
             $result = $this->qrCodeService->processQrScan($trackingData, $request);
 
             if (!$result) {
-                // Invalid QR code or tracking data
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Invalid or expired QR code',
-                ], 404);
+                // Invalid QR code or tracking data - redirect to homepage with error
+                return redirect()->route('welcome', ['locale' => app()->getLocale()])
+                    ->with('error', 'Invalid or expired QR code');
             }
 
             // Store affiliate data in session
@@ -582,24 +660,15 @@ class AffiliateQrCodeController extends Controller
             session(['affiliate_data' => $affiliateData]);
 
             // Redirect to main website with affiliate discount applied
-            $redirectUrl = route('welcome', ['locale' => app()->getLocale()]);
+            return redirect()->route('welcome', ['locale' => app()->getLocale()])
+                ->with('success', 'QR code scanned successfully! You now have access to exclusive discounts from ' . $result['business']->name . '.');
 
-            return response()->json([
-                'success' => true,
-                'message' => 'QR code scanned successfully!',
-                'data' => [
-                    'business_name' => $result['business']->name,
-                    'discount_rate' => $result['discount_rate'],
-                    'redirect_url' => $redirectUrl,
-                ],
-            ]);
         } catch (\Exception $e) {
             \Log::error('QR code tracking failed: ' . $e->getMessage());
 
-            return response()->json([
-                'success' => false,
-                'message' => 'An error occurred while processing the QR code',
-            ], 500);
+            // Redirect to homepage with error message
+            return redirect()->route('welcome', ['locale' => app()->getLocale()])
+                ->with('error', 'An error occurred while processing the QR code');
         }
     }
 

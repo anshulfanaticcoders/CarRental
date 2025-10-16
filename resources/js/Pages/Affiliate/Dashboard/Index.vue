@@ -37,6 +37,7 @@ const activeTab = ref('overview');
 const refreshing = ref(false);
 const showQrModal = ref(false);
 const selectedQrCode = ref(null);
+const downloadingQrCodeIds = ref(new Set()); // Track which QR codes are being downloaded
 
 const formattedCurrency = computed(() => {
     return props.business.currency === 'EUR' ? '€' : props.business.currency || '$';
@@ -113,16 +114,37 @@ const downloadQrCode = (qrCode) => {
         return;
     }
 
+    // Add to downloading set to show loader
+    downloadingQrCodeIds.value.add(qrCode.id);
+
     // Construct download URL
     const downloadUrl = `/${props.locale}/business/qr-codes/download/${token}/${qrCode.id}`;
+
+    // Extract the actual file extension from the image path
+    const imagePath = qrCode.qr_image_path;
+    let extension = 'png'; // default fallback
+    if (imagePath) {
+        const detectedExt = imagePath.toLowerCase().split('.').pop();
+        if (['svg', 'png', 'jpg', 'jpeg'].includes(detectedExt)) {
+            extension = detectedExt;
+        }
+    }
+
+    // Generate user-friendly filename with correct extension
+    const filename = `qr-code-${qrCode.short_code || qrCode.id}.${extension}`;
 
     // Create temporary link to trigger download
     const link = document.createElement('a');
     link.href = downloadUrl;
-    link.download = `qr-code-${qrCode.short_code || qrCode.id}.png`;
+    link.download = filename;
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
+
+    // Remove from downloading set after a short delay
+    setTimeout(() => {
+        downloadingQrCodeIds.value.delete(qrCode.id);
+    }, 3000); // 2 seconds should be enough for the download to start
 };
 
 const viewQrCode = (qrCode) => {
@@ -488,9 +510,14 @@ onMounted(() => {
                                     </button>
                                     <button
                                         @click="downloadQrCode(qrCode)"
-                                        class="flex-1 inline-flex items-center justify-center px-3 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50"
+                                        :disabled="downloadingQrCodeIds.has(qrCode.id)"
+                                        class="flex-1 inline-flex items-center justify-center px-3 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                                     >
-                                        Download
+                                        <svg v-if="downloadingQrCodeIds.has(qrCode.id)" class="animate-spin -ml-1 mr-2 h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                        </svg>
+                                        {{ downloadingQrCodeIds.has(qrCode.id) ? 'Downloading...' : 'Download' }}
                                     </button>
                                     <button class="flex-1 inline-flex items-center justify-center px-3 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50">
                                         Stats
@@ -632,10 +659,15 @@ onMounted(() => {
                         <button
                             v-if="selectedQrCode"
                             @click="downloadQrCode(selectedQrCode)"
+                            :disabled="downloadingQrCodeIds.has(selectedQrCode.id)"
                             type="button"
-                            class="w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-blue-600 text-base font-medium text-white hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 sm:ml-3 sm:w-auto sm:text-sm"
+                            class="w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-blue-600 text-base font-medium text-white hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 sm:ml-3 sm:w-auto sm:text-sm disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                         >
-                            Download QR Code
+                            <svg v-if="downloadingQrCodeIds.has(selectedQrCode.id)" class="animate-spin -ml-1 mr-2 h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                            </svg>
+                            {{ downloadingQrCodeIds.has(selectedQrCode.id) ? 'Downloading...' : 'Download QR Code' }}
                         </button>
                         <button
                             @click="closeQrModal"
