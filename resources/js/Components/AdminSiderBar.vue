@@ -115,7 +115,31 @@ const data = {
       icon: Building,
       items: [
         {
-          title: 'Affiliate Business Model',
+          title: 'Business Statistics',
+          url: '/admin/affiliate/business-statistics',
+        },
+        {
+          title: 'Business Verification',
+          url: '/admin/affiliate/business-verification',
+        },
+        {
+          title: 'Payment Tracking',
+          url: '/admin/affiliate/payment-tracking',
+        },
+        {
+          title: 'Business Details',
+          url: '/admin/affiliate/business-details',
+        },
+        {
+          title: 'Commission Management',
+          url: '/admin/affiliate/commission-management',
+        },
+        {
+          title: 'QR Code Analytics',
+          url: '/admin/affiliate/qr-analytics',
+        },
+        {
+          title: 'Business Model Settings',
           url: '/admin/affiliate/business-model',
         },
       ],

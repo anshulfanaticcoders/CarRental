@@ -249,6 +249,33 @@ Route::middleware(['auth', 'role:admin'])->group(function () {
     Route::delete('/admin/affiliate/businesses/{businessId}/model', [AffiliateBusinessModelController::class, 'deleteBusinessModel'])->name('admin.affiliate.businesses.model.delete');
     Route::get('/admin/affiliate/statistics', [AffiliateBusinessModelController::class, 'getBusinessStatistics'])->name('admin.affiliate.statistics');
     Route::get('/admin/affiliate/businesses/{businessId}/preview', [AffiliateBusinessModelController::class, 'previewBusinessRates'])->name('admin.affiliate.businesses.preview');
+
+    // Business Model Dashboard Routes
+    Route::get('/admin/affiliate/business-statistics', [AffiliateBusinessModelController::class, 'businessStatistics'])->name('admin.affiliate.business-statistics');
+    Route::get('/admin/affiliate/business-verification', [AffiliateBusinessModelController::class, 'businessVerification'])->name('admin.affiliate.business-verification');
+    Route::get('/admin/affiliate/payment-tracking', [AffiliateBusinessModelController::class, 'paymentTracking'])->name('admin.affiliate.payment-tracking');
+    Route::get('/admin/affiliate/business-details/{businessId?}', [AffiliateBusinessModelController::class, 'businessDetails'])->name('admin.affiliate.business-details');
+    Route::get('/admin/affiliate/commission-management', [AffiliateBusinessModelController::class, 'commissionManagement'])->name('admin.affiliate.commission-management');
+    Route::get('/admin/affiliate/qr-analytics', [AffiliateBusinessModelController::class, 'qrAnalytics'])->name('admin.affiliate.qr-analytics');
+
+    // Commission Management API Routes
+    Route::get('/admin/affiliate/commissions-data', [AffiliateBusinessModelController::class, 'getCommissionsData'])->name('admin.affiliate.commissions-data');
+    Route::get('/admin/affiliate/commission-statistics', [AffiliateBusinessModelController::class, 'getCommissionStatistics'])->name('admin.affiliate.commission-statistics');
+    Route::patch('/admin/affiliate/commissions/{commissionId}/status', [AffiliateBusinessModelController::class, 'updateCommissionStatus'])->name('admin.affiliate.commissions.status.update');
+    Route::post('/admin/affiliate/commissions/{commissionId}/pay', [AffiliateBusinessModelController::class, 'processCommissionPayment'])->name('admin.affiliate.commissions.pay');
+    Route::get('/admin/affiliate/commissions-export', [AffiliateBusinessModelController::class, 'exportCommissions'])->name('admin.affiliate.commissions-export');
+
+    // QR Analytics API Routes
+    Route::get('/admin/affiliate/qr-analytics-data', [AffiliateBusinessModelController::class, 'getQrAnalyticsData'])->name('admin.affiliate.qr-analytics-data');
+    Route::get('/admin/affiliate/qr-analytics-export', [AffiliateBusinessModelController::class, 'exportQrAnalytics'])->name('admin.affiliate.qr-analytics-export');
+
+    // Business Verification Actions
+    Route::post('/admin/affiliate/businesses/{businessId}/verify', [AffiliateBusinessModelController::class, 'verifyBusiness'])->name('admin.affiliate.businesses.verify');
+    Route::post('/admin/affiliate/businesses/{businessId}/reject', [AffiliateBusinessModelController::class, 'rejectBusiness'])->name('admin.affiliate.businesses.reject');
+    Route::post('/admin/affiliate/businesses/{businessId}/suspend', [AffiliateBusinessModelController::class, 'suspendBusiness'])->name('admin.affiliate.businesses.suspend');
+    Route::post('/admin/affiliate/businesses/{businessId}/activate', [AffiliateBusinessModelController::class, 'activateBusiness'])->name('admin.affiliate.businesses.activate');
+    Route::post('/admin/affiliate/businesses/bulk-verify', [AffiliateBusinessModelController::class, 'bulkVerifyBusinesses'])->name('admin.affiliate.businesses.bulk-verify');
+    Route::post('/admin/affiliate/businesses/bulk-reject', [AffiliateBusinessModelController::class, 'bulkRejectBusinesses'])->name('admin.affiliate.businesses.bulk-reject');
 });
 
 // Locale-prefixed routes (for customer and vendor)
