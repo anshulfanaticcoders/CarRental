@@ -524,8 +524,8 @@ const calculateTotal = computed(() => {
         }
     });
 
-    // Subtract discount (converted)
-    total -= getConvertedPrice(Number(discountAmount.value));
+    // NOTE: No need to subtract discount here because totalPrice from SingleCar page
+    // is already the discounted price. Subtracting discount again would double-discount.
 
     return total;
 });
@@ -1217,7 +1217,7 @@ const bookingData = computed(() => {
                         <div class="max-[768px]:text-[0.85rem] max-[768px]:mt-2">
                             <span>Hosted by
                                 <span class="vendorName uppercase">
-                                    {{ vehicle?.vendor_profile_data.company_name }}
+                                    {{ vehicle?.vendor_profile?.company_name || vehicle?.vendor_profile_data?.company_name }}
 
                                 </span></span>
                         </div>
@@ -1335,9 +1335,8 @@ const bookingData = computed(() => {
 
                                             <div
                                                 class="flex justify-between text-[1.15rem] max-[768px]:text-[0.875rem]">
-                                                <span>Base Price</span>
-                                                <p class="font-medium">{{ formatItemPrice(totalPrice + discountAmount) }}
-                                                </p>
+                                                <span>Base Price ({{ packageType }})</span>
+                                                <p class="font-medium">{{ formatItemPrice(totalPrice) }} </p>
                                             </div>
 
                                             <div v-if="selectedPlan"
@@ -1357,22 +1356,25 @@ const bookingData = computed(() => {
                                                 </p>
                                             </div>
 
+                                            <div v-if="discountAmount"
+                                                class="flex justify-between text-[1.15rem] max-[768px]:text-[0.875rem]">
+                                                <span>Original Price</span>
+                                                <p class="font-medium">{{ formatItemPrice(totalPrice + discountAmount) }}</p>
+                                            </div>
+
+                                            <div v-if="discountAmount"
+                                                class="flex justify-between text-[1.15rem] max-[768px]:text-[0.875rem]">
+                                                <span>Discount</span>
+                                                <p class="border-b-2 mb-1 text-red-500 font-medium">-{{
+                                                    formatItemPrice(discountAmount) }}</p>
+                                            </div>
+
                                             <div
                                                 class="flex justify-between text-[1.25rem] font-bold border-t pt-3 mt-3 max-[768px]:text-[0.875rem]">
                                                 <span>Total (incl. VAT)</span>
-                                                <p class="font-medium">{{ formatPrice(calculateTotal)
+                                                <p class="font-medium text-blue-600">{{ formatPrice(calculateTotal)
                                                     }}
                                                 </p>
-                                            </div>
-                                            <div v-if="discountAmount"
-                                                class="mt-[-1rem] flex justify-between text-[1.15rem]">
-                                                <span>Discount</span>
-                                                <div class="flex flex-col items-end">
-                                                    <p class="border-b-2 mb-1 text-red-500 font-medium">-{{
-                                                        formatItemPrice(discountAmount) }}</p>
-                                                    <strong class="text-[1.3rem]">{{ formatPrice(calculateTotal + getConvertedPrice(discountAmount))
-                                                    }}</strong>
-                                                </div>
                                             </div>
                                         </div>
                                     </DialogContent>

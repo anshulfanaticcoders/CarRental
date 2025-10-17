@@ -29,6 +29,7 @@ use App\Models\Affiliate\AffiliateCommission;
 use App\Models\Affiliate\AffiliateCustomerScan;
 use App\Models\Affiliate\AffiliateQrCode;
 use App\Services\Affiliate\AffiliateQrCodeService;
+use App\Services\CurrencyConversionService;
 
 class PaymentController extends Controller
 {
@@ -274,6 +275,98 @@ class PaymentController extends Controller
                 $commissionAmount = min($commissionRate, $commissionableAmount);
             }
 
+            // Convert commission amounts to business currency
+            $businessCurrency = $business->currency ?? 'EUR';
+            $bookingCurrency = $booking->booking_currency ?? 'EUR';
+
+            // Debug logging to check currency values
+            Log::info('PaymentController::createAffiliateCommission - Currency debug BEFORE conversion', [
+                'business_id' => $business->id,
+                'business_name' => $business->name,
+                'business_currency_from_db' => $business->currency,
+                'business_currency_used' => $businessCurrency,
+                'booking_currency_from_db' => $booking->booking_currency,
+                'booking_currency_used' => $bookingCurrency,
+                'currencies_different' => $bookingCurrency !== $businessCurrency,
+                'original_booking_amount' => $bookingAmount,
+                'calculated_commission_before_conversion' => $commissionAmount,
+                'commission_rate' => $commissionRate,
+                'commission_type' => $commissionType,
+            ]);
+
+            // TEMPORARY: Force conversion for testing - Remove this after fixing
+            $forceConversion = true;
+            if ($forceConversion || $bookingCurrency !== $businessCurrency) {
+                Log::info('PaymentController::createAffiliateCommission - Starting currency conversion', [
+                    'from' => $bookingCurrency,
+                    'to' => $businessCurrency,
+                    'commission_to_convert' => $commissionAmount,
+                ]);
+                try {
+                    $currencyService = new CurrencyConversionService();
+
+                    // Convert booking amount
+                    $bookingConversion = $currencyService->convert($bookingAmount, $bookingCurrency, $businessCurrency);
+                    $convertedBookingAmount = $bookingConversion['success'] ? $bookingConversion['converted_amount'] : $bookingAmount;
+
+                    // Convert commission amount
+                    $commissionConversion = $currencyService->convert($commissionAmount, $bookingCurrency, $businessCurrency);
+                    Log::info('PaymentController::createAffiliateCommission - Commission conversion result', [
+                        'original_commission' => $commissionAmount,
+                        'from_currency' => $bookingCurrency,
+                        'to_currency' => $businessCurrency,
+                        'conversion_success' => $commissionConversion['success'],
+                        'conversion_rate' => $commissionConversion['rate'] ?? 'N/A',
+                        'converted_commission_amount' => $commissionConversion['converted_amount'] ?? 'N/A',
+                        'full_conversion_response' => $commissionConversion,
+                    ]);
+                    $convertedCommissionAmount = $commissionConversion['success'] ? $commissionConversion['converted_amount'] : $commissionAmount;
+
+                    // Convert discount amount
+                    $discountConversion = $currencyService->convert($discountAmount, $bookingCurrency, $businessCurrency);
+                    $convertedDiscountAmount = $discountConversion['success'] ? $discountConversion['converted_amount'] : $discountAmount;
+
+                    // Update amounts for commission record
+                    $bookingAmount = $convertedBookingAmount;
+                    $commissionAmount = $convertedCommissionAmount;
+                    $discountAmount = $convertedDiscountAmount;
+                    $commissionableAmount = $convertedBookingAmount;
+
+                    Log::info('PaymentController::createAffiliateCommission - Amounts updated after conversion', [
+                        'final_booking_amount' => $bookingAmount,
+                        'final_commission_amount' => $commissionAmount,
+                        'final_discount_amount' => $discountAmount,
+                    ]);
+
+                    Log::info('PaymentController::createAffiliateCommission - Currency conversion performed', [
+                        'from_currency' => $bookingCurrency,
+                        'to_currency' => $businessCurrency,
+                        'original_booking_amount' => $booking->total_amount,
+                        'converted_booking_amount' => $convertedBookingAmount,
+                        'original_commission_amount' => ($commissionableAmount * $commissionRate) / 100,
+                        'converted_commission_amount' => $convertedCommissionAmount,
+                        'conversion_rate_used' => $bookingConversion['rate'] ?? 1.0,
+                    ]);
+
+                } catch (\Exception $e) {
+                    Log::error('PaymentController::createAffiliateCommission - Currency conversion failed', [
+                        'error' => $e->getMessage(),
+                        'from_currency' => $bookingCurrency,
+                        'to_currency' => $businessCurrency,
+                        'original_amount' => $commissionAmount,
+                    ]);
+                    // Keep original amounts if conversion fails
+                }
+            } else {
+                // Log when currencies are the same - no conversion needed
+                Log::info('PaymentController::createAffiliateCommission - No currency conversion needed', [
+                    'reason' => 'Currencies are the same',
+                    'booking_currency' => $bookingCurrency,
+                    'business_currency' => $businessCurrency,
+                    'final_commission_amount' => $commissionAmount,
+                ]);
+            }
+
             // Update customer scan record with booking completion
             $customerScan->update([
                 'booking_completed' => true,
@@ -292,6 +385,14 @@ class PaymentController extends Controller
             ]);
 
             // Create commission record
+            Log::info('PaymentController::createAffiliateCommission - ABOUT TO SAVE COMMISSION TO DATABASE', [
+                'final_commission_amount_to_save' => $commissionAmount,
+                'final_booking_amount_to_save' => $bookingAmount,
+                'business_currency' => $businessCurrency,
+                'booking_currency' => $bookingCurrency,
+                'expected_inr_amount' => $businessCurrency === 'INR' ? 'Should be INR amount' : 'Different currency',
+            ]);
+
             $commission = AffiliateCommission::create([
                 'uuid' => Str::uuid(),
                 'business_id' => $business->id,
@@ -319,6 +420,15 @@ class PaymentController extends Controller
                             'qr_code_id' => $qrCode->id,
                             'created_by' => 'system',
                             'timestamp' => now()->toISOString(),
+                            'currency_conversion' => [
+                                'from_currency' => $bookingCurrency,
+                                'to_currency' => $businessCurrency,
+                                'conversion_performed' => $bookingCurrency !== $businessCurrency,
+                                'original_booking_amount' => $booking->total_amount,
+                                'converted_booking_amount' => $bookingAmount,
+                                'original_commission_amount' => ($booking->total_amount * $commissionRate) / 100,
+                                'converted_commission_amount' => $commissionAmount,
+                            ]
                         ]
                     ]
                 ],

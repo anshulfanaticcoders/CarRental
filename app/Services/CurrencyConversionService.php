@@ -137,8 +137,9 @@ class CurrencyConversionService
 
             // Group conversions by rate pairs to optimize fetching
             foreach ($conversions as $index => $conversion) {
-                $from = strtoupper(trim($conversion['from_currency']));
-                $to = strtoupper(trim($conversion['to_currency']));
+                // Normalize currency codes (convert symbols to ISO codes)
+                $from = $this->normalizeCurrencyCode($conversion['from_currency']);
+                $to = $this->normalizeCurrencyCode($conversion['to_currency']);
 
                 if ($from === $to) {
                     // Same currency - no conversion needed
@@ -175,8 +176,9 @@ class CurrencyConversionService
 
             // Process conversions using cached rates
             foreach ($conversions as $index => $conversion) {
-                $from = strtoupper(trim($conversion['from_currency']));
-                $to = strtoupper(trim($conversion['to_currency']));
+                // Normalize currency codes (convert symbols to ISO codes)
+                $from = $this->normalizeCurrencyCode($conversion['from_currency']);
+                $to = $this->normalizeCurrencyCode($conversion['to_currency']);
                 $amount = floatval($conversion['amount']);
 
                 if ($from === $to) {
@@ -253,6 +255,70 @@ class CurrencyConversionService
     }
 
     /**
+     * Convert currency symbols to ISO codes
+     */
+    private function normalizeCurrencyCode(string $currency): string
+    {
+        // Map common currency symbols to ISO codes
+        $symbolToCode = [
+            '$' => 'USD',
+            '€' => 'EUR',
+            '£' => 'GBP',
+            '¥' => 'JPY',
+            '₹' => 'INR',
+            '₽' => 'RUB',
+            '₩' => 'KRW',
+            '₺' => 'TRY',
+            '₨' => 'PKR',
+            '₦' => 'NGN',
+            '₡' => 'CRC',
+            '₴' => 'UAH',
+            '₫' => 'VND',
+            '₭' => 'LAK',
+            '₮' => 'MNT',
+            '₲' => 'PYG',
+            '₱' => 'PHP',
+            '﷼' => 'IRR',
+            '៛' => 'KHR',
+            '₪' => 'ILS',
+            '؋' => 'AFN',
+            '₸' => 'KZT',
+            '₼' => 'AZN',
+            '€' => 'EUR',
+            // Common currency code variations
+            'R' => 'ZAR', // South African Rand
+            'RM' => 'MYR', // Malaysian Ringgit
+            'C$' => 'CAD', // Canadian Dollar
+            'A$' => 'AUD', // Australian Dollar
+            'HK$' => 'HKD', // Hong Kong Dollar
+            'S$' => 'SGD', // Singapore Dollar
+            'NZ$' => 'NZD', // New Zealand Dollar
+            'Fr' => 'CHF', // Swiss Franc
+        ];
+
+        // Remove whitespace and convert to uppercase
+        $currency = trim($currency);
+
+        // Check if it's already a valid 3-letter ISO code
+        if (strlen($currency) === 3 && ctype_alpha($currency)) {
+            return strtoupper($currency);
+        }
+
+        // Check if it's a known symbol
+        if (isset($symbolToCode[$currency])) {
+            return $symbolToCode[$currency];
+        }
+
+        // Log warning for unknown currency
+        Log::warning('Unknown currency symbol, defaulting to USD', [
+            'original_currency' => $currency,
+            'normalized_currency' => 'USD'
+        ]);
+
+        return 'USD'; // Default fallback
+    }
+
+    /**
      * Convert amount from one currency to another
      */
     public function convert(float $amount, string $from, string $to): array
@@ -262,6 +328,10 @@ class CurrencyConversionService
             if ($amount < 0) {
                 throw new Exception('Amount cannot be negative');
             }
+
+            // Normalize currency codes (convert symbols to ISO codes)
+            $from = $this->normalizeCurrencyCode($from);
+            $to = $this->normalizeCurrencyCode($to);
 
             if ($from === $to) {
                 return [
@@ -322,9 +392,9 @@ class CurrencyConversionService
     public function getExchangeRate(string $from, string $to): array
     {
         try {
-            // Normalize currency codes
-            $from = strtoupper(trim($from));
-            $to = strtoupper(trim($to));
+            // Normalize currency codes (convert symbols to ISO codes)
+            $from = $this->normalizeCurrencyCode($from);
+            $to = $this->normalizeCurrencyCode($to);
 
             if (!$this->isValidCurrencyCode($from) || !$this->isValidCurrencyCode($to)) {
                 throw new Exception('Invalid currency code');
@@ -373,55 +443,7 @@ class CurrencyConversionService
         }
     }
 
-    /**
-     * Get all exchange rates for a base currency
-     */
-    public function getAllExchangeRates(string $base = 'USD'): array
-    {
-        try {
-            $base = strtoupper(trim($base));
-
-            if (!$this->isValidCurrencyCode($base)) {
-                throw new Exception('Invalid base currency');
-            }
-
-            $cacheKey = "all_exchange_rates_{$base}";
-            if (Cache::has($cacheKey)) {
-                return [
-                    'success' => true,
-                    'rates' => Cache::get($cacheKey),
-                    'base_currency' => $base,
-                    'timestamp' => now()->timestamp,
-                    'provider' => 'cache',
-                    'cache_hit' => true
-                ];
-            }
-
-            $result = $this->fetchAllRatesFromProviders($base);
-
-            if ($result['success']) {
-                Cache::put($cacheKey, $result['rates'], $this->cacheTtl);
-            }
-
-            return $result;
-
-        } catch (Exception $e) {
-            Log::error('Failed to get all exchange rates', [
-                'base' => $base,
-                'error' => $e->getMessage()
-            ]);
-
-            return [
-                'success' => false,
-                'error' => $e->getMessage(),
-                'rates' => [],
-                'base_currency' => $base,
-                'timestamp' => null,
-                'provider' => null
-            ];
-        }
-    }
-
+  
     /**
      * Fetch exchange rate from available providers
      */
