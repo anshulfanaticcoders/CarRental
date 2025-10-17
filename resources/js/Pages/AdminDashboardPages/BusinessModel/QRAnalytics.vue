@@ -27,6 +27,34 @@ import {
   Monitor,
   Tablet
 } from 'lucide-vue-next'
+import { Line, Bar, Doughnut, Pie } from 'vue-chartjs'
+import {
+  Chart as ChartJS,
+  CategoryScale,
+  LinearScale,
+  PointElement,
+  LineElement,
+  BarElement,
+  Title,
+  Tooltip,
+  Legend,
+  ArcElement,
+  Filler
+} from 'chart.js'
+
+// Register Chart.js components
+ChartJS.register(
+  CategoryScale,
+  LinearScale,
+  PointElement,
+  LineElement,
+  BarElement,
+  Title,
+  Tooltip,
+  Legend,
+  ArcElement,
+  Filler
+)
 
 // Reactive data
 const loading = ref(true)
@@ -42,6 +70,191 @@ const selectedBusiness = ref('all')
 const searchQuery = ref('')
 const qrCodes = ref([])
 const analyticsChart = ref(null)
+
+// Chart data
+const scanTrendChart = ref(null)
+const deviceUsageChart = ref(null)
+const locationPerformanceChart = ref(null)
+const conversionRateChart = ref(null)
+
+// Chart options
+const chartOptions = {
+  responsive: true,
+  maintainAspectRatio: false,
+  plugins: {
+    legend: {
+      position: 'top',
+    },
+    tooltip: {
+      mode: 'index',
+      intersect: false,
+    },
+  },
+}
+
+// Scan trend chart data
+const scanTrendChartData = computed(() => ({
+  labels: scanTrendChart.value?.labels || [],
+  datasets: [
+    {
+      label: 'Total Scans',
+      data: scanTrendChart.value?.total_scans || [],
+      borderColor: 'rgb(59, 130, 246)',
+      backgroundColor: 'rgba(59, 130, 246, 0.1)',
+      tension: 0.4,
+      fill: true,
+    },
+    {
+      label: 'Unique Scans',
+      data: scanTrendChart.value?.unique_scans || [],
+      borderColor: 'rgb(16, 185, 129)',
+      backgroundColor: 'rgba(16, 185, 129, 0.1)',
+      tension: 0.4,
+      fill: true,
+    },
+    {
+      label: 'Conversions',
+      data: scanTrendChart.value?.conversions || [],
+      borderColor: 'rgb(139, 92, 246)',
+      backgroundColor: 'rgba(139, 92, 246, 0.1)',
+      tension: 0.4,
+      fill: true,
+    }
+  ]
+}))
+
+const scanTrendChartOptions = {
+  ...chartOptions,
+  scales: {
+    x: {
+      display: true,
+      title: {
+        display: true,
+        text: 'Date'
+      }
+    },
+    y: {
+      display: true,
+      title: {
+        display: true,
+        text: 'Count'
+      },
+      beginAtZero: true
+    }
+  }
+}
+
+// Device usage chart data
+const deviceUsageChartData = computed(() => ({
+  labels: deviceUsageChart.value?.labels || ['Mobile', 'Desktop', 'Tablet', 'Other'],
+  datasets: [
+    {
+      data: deviceUsageChart.value?.data || [65, 25, 8, 2],
+      backgroundColor: [
+        'rgba(59, 130, 246, 0.8)',
+        'rgba(16, 185, 129, 0.8)',
+        'rgba(139, 92, 246, 0.8)',
+        'rgba(156, 163, 175, 0.8)'
+      ],
+      borderColor: [
+        'rgb(59, 130, 246)',
+        'rgb(16, 185, 129)',
+        'rgb(139, 92, 246)',
+        'rgb(156, 163, 175)'
+      ],
+      borderWidth: 1
+    }
+  ]
+}))
+
+const deviceUsageChartOptions = {
+  ...chartOptions,
+  plugins: {
+    ...chartOptions.plugins,
+    legend: {
+      display: false
+    }
+  }
+}
+
+// Location performance chart data
+const locationPerformanceChartData = computed(() => ({
+  labels: locationPerformanceChart.value?.labels || [],
+  datasets: [
+    {
+      label: 'Scans',
+      data: locationPerformanceChart.value?.scans || [],
+      backgroundColor: 'rgba(245, 158, 11, 0.8)',
+      borderColor: 'rgb(245, 158, 11)',
+      borderWidth: 1
+    },
+    {
+      label: 'Conversions',
+      data: locationPerformanceChart.value?.conversions || [],
+      backgroundColor: 'rgba(239, 68, 68, 0.8)',
+      borderColor: 'rgb(239, 68, 68)',
+      borderWidth: 1
+    }
+  ]
+}))
+
+const locationPerformanceChartOptions = {
+  ...chartOptions,
+  scales: {
+    x: {
+      display: true,
+      title: {
+        display: true,
+        text: 'Location'
+      }
+    },
+    y: {
+      display: true,
+      title: {
+        display: true,
+        text: 'Count'
+      },
+      beginAtZero: true
+    }
+  }
+}
+
+// Conversion rate chart data
+const conversionRateChartData = computed(() => ({
+  labels: conversionRateChart.value?.labels || [],
+  datasets: [
+    {
+      label: 'Conversion Rate (%)',
+      data: conversionRateChart.value?.rates || [],
+      borderColor: 'rgb(34, 197, 94)',
+      backgroundColor: 'rgba(34, 197, 94, 0.1)',
+      tension: 0.4,
+      fill: true,
+    }
+  ]
+}))
+
+const conversionRateChartOptions = {
+  ...chartOptions,
+  scales: {
+    x: {
+      display: true,
+      title: {
+        display: true,
+        text: 'Date'
+      }
+    },
+    y: {
+      display: true,
+      title: {
+        display: true,
+        text: 'Conversion Rate (%)'
+      },
+      beginAtZero: true,
+      max: 100
+    }
+  }
+}
 
 // Computed properties
 const formattedStats = computed(() => {
@@ -90,11 +303,53 @@ const loadAnalytics = async () => {
 
     qrData.value = response.data
     qrCodes.value = response.data.qr_codes || []
+
+    // Load chart data (mock data for now)
+    loadChartData()
   } catch (error) {
     console.error('Error loading QR analytics:', error)
     showNotification('Error loading QR analytics', 'error')
   } finally {
     loading.value = false
+  }
+}
+
+// Load chart data
+const loadChartData = () => {
+  // Mock data for charts - in real implementation, this would come from API
+  const days = dateRange.value === '7d' ? 7 : dateRange.value === '30d' ? 30 : dateRange.value === '90d' ? 90 : 30
+  const labels = Array.from({length: Math.min(days, 7)}, (_, i) => {
+    const date = new Date()
+    date.setDate(date.getDate() - (days - i - 1))
+    return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+  })
+
+  // Scan trend chart data
+  scanTrendChart.value = {
+    labels,
+    total_scans: Array.from({length: labels.length}, () => Math.floor(Math.random() * 500) + 100),
+    unique_scans: Array.from({length: labels.length}, () => Math.floor(Math.random() * 300) + 50),
+    conversions: Array.from({length: labels.length}, () => Math.floor(Math.random() * 50) + 10)
+  }
+
+  // Device usage chart data
+  deviceUsageChart.value = {
+    labels: ['Mobile', 'Desktop', 'Tablet', 'Other'],
+    data: [65, 25, 8, 2]
+  }
+
+  // Location performance chart data
+  const locations = ['New York', 'London', 'Paris', 'Tokyo', 'Sydney']
+  locationPerformanceChart.value = {
+    labels: locations,
+    scans: [1250, 980, 750, 1100, 890],
+    conversions: [145, 112, 89, 134, 98]
+  }
+
+  // Conversion rate chart data
+  conversionRateChart.value = {
+    labels,
+    rates: Array.from({length: labels.length}, () => Math.random() * 15 + 5)
   }
 }
 
@@ -508,15 +763,64 @@ onMounted(() => {
           </div>
         </div>
 
-        <!-- Analytics Chart Placeholder -->
+        <!-- Scan Trends Over Time -->
         <div class="chart-section">
           <div class="chart-header">
             <h3>Scan Trends Over Time</h3>
             <PieChart class="chart-icon" />
           </div>
-          <div class="chart-placeholder">
-            <p>Analytics chart will be displayed here</p>
-            <small>Integration with charting library needed (Chart.js, D3.js, etc.)</small>
+          <div class="chart-wrapper">
+            <Line
+              :data="scanTrendChartData"
+              :options="scanTrendChartOptions"
+              v-if="!loading"
+            />
+          </div>
+        </div>
+
+        <!-- Device Analytics and Conversion Charts -->
+        <div class="analytics-grid">
+          <div class="analytics-card">
+            <div class="card-header">
+              <h3>Device Usage Distribution</h3>
+              <Smartphone class="card-icon" />
+            </div>
+            <div class="chart-wrapper">
+              <Doughnut
+                :data="deviceUsageChartData"
+                :options="deviceUsageChartOptions"
+                v-if="!loading"
+              />
+            </div>
+          </div>
+
+          <div class="analytics-card">
+            <div class="card-header">
+              <h3>Conversion Rate Trends</h3>
+              <TrendingUp class="card-icon" />
+            </div>
+            <div class="chart-wrapper">
+              <Line
+                :data="conversionRateChartData"
+                :options="conversionRateChartOptions"
+                v-if="!loading"
+              />
+            </div>
+          </div>
+        </div>
+
+        <!-- Location Performance Chart -->
+        <div class="chart-section">
+          <div class="chart-header">
+            <h3>Location Performance</h3>
+            <MapPin class="chart-icon" />
+          </div>
+          <div class="chart-wrapper">
+            <Bar
+              :data="locationPerformanceChartData"
+              :options="locationPerformanceChartOptions"
+              v-if="!loading"
+            />
           </div>
         </div>
       </div>
@@ -1029,6 +1333,12 @@ onMounted(() => {
   background: #f9fafb;
   border-radius: 8px;
   color: #6b7280;
+}
+
+.chart-wrapper {
+  height: 300px;
+  position: relative;
+  width: 100%;
 }
 
 .chart-placeholder small {

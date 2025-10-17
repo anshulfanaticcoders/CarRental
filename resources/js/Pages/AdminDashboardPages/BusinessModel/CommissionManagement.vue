@@ -27,6 +27,34 @@ import {
   BarChart3,
   PieChart
 } from 'lucide-vue-next'
+import { Line, Bar, Doughnut, Pie } from 'vue-chartjs'
+import {
+  Chart as ChartJS,
+  CategoryScale,
+  LinearScale,
+  PointElement,
+  LineElement,
+  BarElement,
+  Title,
+  Tooltip,
+  Legend,
+  ArcElement,
+  Filler
+} from 'chart.js'
+
+// Register Chart.js components
+ChartJS.register(
+  CategoryScale,
+  LinearScale,
+  PointElement,
+  LineElement,
+  BarElement,
+  Title,
+  Tooltip,
+  Legend,
+  ArcElement,
+  Filler
+)
 
 // Reactive data
 const loading = ref(true)
@@ -40,6 +68,154 @@ const statusFilter = ref('all')
 const searchQuery = ref('')
 const selectedCommission = ref(null)
 const showDetailsModal = ref(false)
+
+// Chart data
+const commissionTrendChart = ref(null)
+const commissionStatusChart = ref(null)
+const topAffiliatesChart = ref(null)
+
+// Chart options
+const chartOptions = {
+  responsive: true,
+  maintainAspectRatio: false,
+  plugins: {
+    legend: {
+      position: 'top',
+    },
+    tooltip: {
+      mode: 'index',
+      intersect: false,
+    },
+  },
+}
+
+// Commission trend chart data
+const commissionTrendChartData = computed(() => ({
+  labels: commissionTrendChart.value?.labels || [],
+  datasets: [
+    {
+      label: 'Commission Amount',
+      data: commissionTrendChart.value?.amounts || [],
+      borderColor: 'rgb(59, 130, 246)',
+      backgroundColor: 'rgba(59, 130, 246, 0.1)',
+      tension: 0.4,
+      fill: true,
+    },
+    {
+      label: 'Number of Commissions',
+      data: commissionTrendChart.value?.counts || [],
+      borderColor: 'rgb(16, 185, 129)',
+      backgroundColor: 'rgba(16, 185, 129, 0.1)',
+      tension: 0.4,
+      fill: true,
+      yAxisID: 'y1',
+    }
+  ]
+}))
+
+const commissionTrendChartOptions = {
+  ...chartOptions,
+  scales: {
+    x: {
+      display: true,
+      title: {
+        display: true,
+        text: 'Date'
+      }
+    },
+    y: {
+      type: 'linear',
+      display: true,
+      position: 'left',
+      title: {
+        display: true,
+        text: 'Amount (€)'
+      },
+      beginAtZero: true
+    },
+    y1: {
+      type: 'linear',
+      display: true,
+      position: 'right',
+      title: {
+        display: true,
+        text: 'Count'
+      },
+      beginAtZero: true,
+      grid: {
+        drawOnChartArea: false,
+      },
+    }
+  }
+}
+
+// Commission status chart data
+const commissionStatusChartData = computed(() => ({
+  labels: commissionStatusChart.value?.labels || ['Pending', 'Approved', 'Paid', 'Rejected'],
+  datasets: [
+    {
+      data: commissionStatusChart.value?.data || [30, 45, 100, 15],
+      backgroundColor: [
+        'rgba(245, 158, 11, 0.8)',
+        'rgba(59, 130, 246, 0.8)',
+        'rgba(16, 185, 129, 0.8)',
+        'rgba(239, 68, 68, 0.8)'
+      ],
+      borderColor: [
+        'rgb(245, 158, 11)',
+        'rgb(59, 130, 246)',
+        'rgb(16, 185, 129)',
+        'rgb(239, 68, 68)'
+      ],
+      borderWidth: 1
+    }
+  ]
+}))
+
+const commissionStatusChartOptions = {
+  ...chartOptions,
+  plugins: {
+    ...chartOptions.plugins,
+    legend: {
+      display: false
+    }
+  }
+}
+
+// Top affiliates chart data
+const topAffiliatesChartData = computed(() => ({
+  labels: topAffiliatesChart.value?.labels || [],
+  datasets: [
+    {
+      label: 'Commission Earned',
+      data: topAffiliatesChart.value?.commissions || [],
+      backgroundColor: 'rgba(139, 92, 246, 0.8)',
+      borderColor: 'rgb(139, 92, 246)',
+      borderWidth: 1
+    }
+  ]
+}))
+
+const topAffiliatesChartOptions = {
+  ...chartOptions,
+  scales: {
+    x: {
+      display: true,
+      title: {
+        display: true,
+        text: 'Affiliate'
+      }
+    },
+    y: {
+      display: true,
+      title: {
+        display: true,
+        text: 'Commission (€)'
+      },
+      beginAtZero: true
+    }
+  }
+}
 
 // Pagination
 const pagination = ref({
@@ -114,9 +290,43 @@ const loadStatistics = async () => {
       params: { date_range: dateRange.value }
     })
     statistics.value = response.data
+
+    // Load chart data (mock data for now)
+    loadChartData()
   } catch (error) {
     console.error('Error loading statistics:', error)
     showNotification('Error loading statistics', 'error')
+  }
+}
+
+// Load chart data
+const loadChartData = () => {
+  // Mock data for charts - in real implementation, this would come from API
+  const days = dateRange.value === '7d' ? 7 : dateRange.value === '30d' ? 30 : dateRange.value === '90d' ? 90 : 30
+  const labels = Array.from({length: Math.min(days, 7)}, (_, i) => {
+    const date = new Date()
+    date.setDate(date.getDate() - (days - i - 1))
+    return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+  })
+
+  // Commission trend chart data
+  commissionTrendChart.value = {
+    labels,
+    amounts: Array.from({length: labels.length}, () => Math.floor(Math.random() * 2000) + 500),
+    counts: Array.from({length: labels.length}, () => Math.floor(Math.random() * 20) + 5)
+  }
+
+  // Commission status chart data
+  commissionStatusChart.value = {
+    labels: ['Pending', 'Approved', 'Paid', 'Rejected'],
+    data: [30, 45, 100, 15]
+  }
+
+  // Top affiliates chart data
+  const topAffiliates = ['John Doe', 'Jane Smith', 'Bob Johnson', 'Alice Brown', 'Charlie Wilson']
+  topAffiliatesChart.value = {
+    labels: topAffiliates,
+    commissions: [2500, 1800, 1200, 800, 600]
   }
 }
 
@@ -371,6 +581,52 @@ onMounted(() => {
           </div>
         </div>
 
+        <!-- Charts Section -->
+        <div class="charts-section">
+          <div class="chart-container">
+            <div class="chart-header">
+              <h3>Commission Trends</h3>
+              <BarChart3 class="chart-icon" />
+            </div>
+            <div class="chart-wrapper">
+              <Line
+                :data="commissionTrendChartData"
+                :options="commissionTrendChartOptions"
+                v-if="!loading"
+              />
+            </div>
+          </div>
+
+          <div class="chart-container">
+            <div class="chart-header">
+              <h3>Commission Status Distribution</h3>
+              <PieChart class="chart-icon" />
+            </div>
+            <div class="chart-wrapper">
+              <Doughnut
+                :data="commissionStatusChartData"
+                :options="commissionStatusChartOptions"
+                v-if="!loading"
+              />
+            </div>
+          </div>
+        </div>
+
+        <!-- Top Affiliates Chart -->
+        <div class="chart-section">
+          <div class="chart-header">
+            <h3>Top Performing Affiliates</h3>
+            <TrendingUp class="chart-icon" />
+          </div>
+          <div class="chart-wrapper">
+            <Bar
+              :data="topAffiliatesChartData"
+              :options="topAffiliatesChartOptions"
+              v-if="!loading"
+            />
+          </div>
+        </div>
+
         <!-- Commissions Table -->
         <div class="commissions-table-section">
           <div class="table-header">
@@ -579,6 +835,40 @@ onMounted(() => {
   padding: 2rem;
   max-width: 1400px;
   margin: 0 auto;
+}
+
+.chart-wrapper {
+  height: 300px;
+  position: relative;
+  width: 100%;
+}
+
+.chart-section {
+  background: white;
+  border-radius: 12px;
+  padding: 1.5rem;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+  border: 1px solid #e5e7eb;
+  margin-bottom: 2rem;
+}
+
+.chart-section .chart-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1.5rem;
+  padding-bottom: 1rem;
+  border-bottom: 1px solid #f3f4f6;
+}
+
+.chart-section .chart-header h3 {
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: #1f2937;
+}
+
+.chart-section .chart-icon {
+  color: #6b7280;
 }
 
 .header {

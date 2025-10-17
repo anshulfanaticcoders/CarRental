@@ -22,6 +22,34 @@ import {
   PieChart,
   Eye
 } from 'lucide-vue-next'
+import { Line, Bar, Doughnut, Pie } from 'vue-chartjs'
+import {
+  Chart as ChartJS,
+  CategoryScale,
+  LinearScale,
+  PointElement,
+  LineElement,
+  BarElement,
+  Title,
+  Tooltip,
+  Legend,
+  ArcElement,
+  Filler
+} from 'chart.js'
+
+// Register Chart.js components
+ChartJS.register(
+  CategoryScale,
+  LinearScale,
+  PointElement,
+  LineElement,
+  BarElement,
+  Title,
+  Tooltip,
+  Legend,
+  ArcElement,
+  Filler
+)
 
 // Reactive data
 const loading = ref(true)
@@ -32,6 +60,192 @@ const statistics = ref({
 })
 const dateRange = ref('7d')
 const selectedBusiness = ref('all')
+
+// Chart data
+const revenueChart = ref(null)
+const conversionChart = ref(null)
+const businessGrowthChart = ref(null)
+const qrPerformanceChart = ref(null)
+
+// Chart options
+const chartOptions = {
+  responsive: true,
+  maintainAspectRatio: false,
+  plugins: {
+    legend: {
+      position: 'top',
+    },
+    tooltip: {
+      mode: 'index',
+      intersect: false,
+    },
+  },
+}
+
+// Revenue chart data and options
+const revenueChartData = computed(() => ({
+  labels: revenueChart.value?.labels || [],
+  datasets: [
+    {
+      label: 'Revenue',
+      data: revenueChart.value?.revenue || [],
+      borderColor: 'rgb(59, 130, 246)',
+      backgroundColor: 'rgba(59, 130, 246, 0.1)',
+      tension: 0.4,
+      fill: true,
+    },
+    {
+      label: 'Commissions',
+      data: revenueChart.value?.commissions || [],
+      borderColor: 'rgb(16, 185, 129)',
+      backgroundColor: 'rgba(16, 185, 129, 0.1)',
+      tension: 0.4,
+      fill: true,
+    }
+  ]
+}))
+
+const revenueChartOptions = {
+  ...chartOptions,
+  scales: {
+    x: {
+      display: true,
+      title: {
+        display: true,
+        text: 'Date'
+      }
+    },
+    y: {
+      display: true,
+      title: {
+        display: true,
+        text: 'Amount (€)'
+      },
+      beginAtZero: true
+    }
+  }
+}
+
+// Conversion rate chart data
+const conversionChartData = computed(() => ({
+  labels: conversionChart.value?.labels || [],
+  datasets: [
+    {
+      label: 'Conversion Rate (%)',
+      data: conversionChart.value?.rates || [],
+      borderColor: 'rgb(139, 92, 246)',
+      backgroundColor: 'rgba(139, 92, 246, 0.1)',
+      tension: 0.4,
+      fill: true,
+    }
+  ]
+}))
+
+const conversionChartOptions = {
+  ...chartOptions,
+  scales: {
+    x: {
+      display: true,
+      title: {
+        display: true,
+        text: 'Date'
+      }
+    },
+    y: {
+      display: true,
+      title: {
+        display: true,
+        text: 'Conversion Rate (%)'
+      },
+      beginAtZero: true,
+      max: 100
+    }
+  }
+}
+
+// Business growth chart data
+const businessGrowthChartData = computed(() => ({
+  labels: businessGrowthChart.value?.labels || [],
+  datasets: [
+    {
+      label: 'New Businesses',
+      data: businessGrowthChart.value?.new_businesses || [],
+      backgroundColor: 'rgba(34, 197, 94, 0.8)',
+      borderColor: 'rgb(34, 197, 94)',
+      borderWidth: 1
+    },
+    {
+      label: 'Active Businesses',
+      data: businessGrowthChart.value?.active_businesses || [],
+      backgroundColor: 'rgba(59, 130, 246, 0.8)',
+      borderColor: 'rgb(59, 130, 246)',
+      borderWidth: 1
+    }
+  ]
+}))
+
+const businessGrowthChartOptions = {
+  ...chartOptions,
+  scales: {
+    x: {
+      display: true,
+      title: {
+        display: true,
+        text: 'Month'
+      }
+    },
+    y: {
+      display: true,
+      title: {
+        display: true,
+        text: 'Number of Businesses'
+      },
+      beginAtZero: true
+    }
+  }
+}
+
+// QR performance chart data
+const qrPerformanceChartData = computed(() => ({
+  labels: qrPerformanceChart.value?.labels || [],
+  datasets: [
+    {
+      label: 'Total Scans',
+      data: qrPerformanceChart.value?.scans || [],
+      backgroundColor: 'rgba(245, 158, 11, 0.8)',
+      borderColor: 'rgb(245, 158, 11)',
+      borderWidth: 1
+    },
+    {
+      label: 'Conversions',
+      data: qrPerformanceChart.value?.conversions || [],
+      backgroundColor: 'rgba(239, 68, 68, 0.8)',
+      borderColor: 'rgb(239, 68, 68)',
+      borderWidth: 1
+    }
+  ]
+}))
+
+const qrPerformanceChartOptions = {
+  ...chartOptions,
+  scales: {
+    x: {
+      display: true,
+      title: {
+        display: true,
+        text: 'QR Code'
+      }
+    },
+    y: {
+      display: true,
+      title: {
+        display: true,
+        text: 'Count'
+      },
+      beginAtZero: true
+    }
+  }
+}
 
 // Computed properties
 const formattedStats = computed(() => {
@@ -62,11 +276,54 @@ const loadStatistics = async () => {
       }
     })
     statistics.value = response.data
+
+    // Load chart data (mock data for now)
+    loadChartData()
   } catch (error) {
     console.error('Error loading statistics:', error)
     showNotification('Error loading statistics', 'error')
   } finally {
     loading.value = false
+  }
+}
+
+// Load chart data
+const loadChartData = () => {
+  // Mock data for charts - in real implementation, this would come from API
+  const days = dateRange.value === '7d' ? 7 : dateRange.value === '30d' ? 30 : dateRange.value === '90d' ? 90 : 30
+  const labels = Array.from({length: Math.min(days, 7)}, (_, i) => {
+    const date = new Date()
+    date.setDate(date.getDate() - (days - i - 1))
+    return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+  })
+
+  // Revenue chart data
+  revenueChart.value = {
+    labels,
+    revenue: Array.from({length: labels.length}, () => Math.floor(Math.random() * 5000) + 1000),
+    commissions: Array.from({length: labels.length}, () => Math.floor(Math.random() * 1000) + 200)
+  }
+
+  // Conversion chart data
+  conversionChart.value = {
+    labels,
+    rates: Array.from({length: labels.length}, () => Math.random() * 15 + 5)
+  }
+
+  // Business growth chart data
+  const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun']
+  businessGrowthChart.value = {
+    labels: months,
+    new_businesses: [5, 8, 12, 7, 15, 10],
+    active_businesses: [20, 28, 40, 47, 62, 72]
+  }
+
+  // QR performance chart data
+  const topQrCodes = ['QR001', 'QR002', 'QR003', 'QR004', 'QR005']
+  qrPerformanceChart.value = {
+    labels: topQrCodes,
+    scans: [450, 380, 290, 210, 180],
+    conversions: [45, 32, 28, 18, 15]
   }
 }
 
@@ -94,6 +351,17 @@ const getTrendIcon = (trend) => {
 // Get trend color
 const getTrendColor = (trend) => {
   return trend > 0 ? 'text-green-600' : 'text-red-600'
+}
+
+// Get activity icon
+const getActivityIcon = (type) => {
+  const icons = {
+    success: CheckCircle,
+    warning: AlertCircle,
+    error: XCircle,
+    info: Clock
+  }
+  return icons[type] || AlertCircle
 }
 
 // Show notification
@@ -272,9 +540,12 @@ onMounted(() => {
               <h3>Revenue Overview</h3>
               <BarChart3 class="chart-icon" />
             </div>
-            <div class="chart-placeholder">
-              <p>Revenue chart will be displayed here</p>
-              <small>Integration with charting library needed</small>
+            <div class="chart-wrapper">
+              <Line
+                :data="revenueChartData"
+                :options="revenueChartOptions"
+                v-if="!loading"
+              />
             </div>
           </div>
 
@@ -283,10 +554,28 @@ onMounted(() => {
               <h3>Conversion Rates</h3>
               <PieChart class="chart-icon" />
             </div>
-            <div class="chart-placeholder">
-              <p>Conversion analytics will be displayed here</p>
-              <small>Average: {{ formatPercentage(formattedStats.avgConversionRate) }}</small>
+            <div class="chart-wrapper">
+              <Line
+                :data="conversionChartData"
+                :options="conversionChartOptions"
+                v-if="!loading"
+              />
             </div>
+          </div>
+        </div>
+
+        <!-- Business Growth Chart -->
+        <div class="chart-section">
+          <div class="chart-header">
+            <h3>Business Growth Trends</h3>
+            <TrendingUp class="chart-icon" />
+          </div>
+          <div class="chart-wrapper">
+            <Bar
+              :data="businessGrowthChartData"
+              :options="businessGrowthChartOptions"
+              v-if="!loading"
+            />
           </div>
         </div>
 
@@ -327,6 +616,21 @@ onMounted(() => {
             <div v-if="formattedStats.topPerformers.length === 0" class="no-data">
               <p>No performance data available</p>
             </div>
+          </div>
+        </div>
+
+        <!-- QR Performance Chart -->
+        <div class="chart-section">
+          <div class="chart-header">
+            <h3>Top QR Codes Performance</h3>
+            <QrCode class="chart-icon" />
+          </div>
+          <div class="chart-wrapper">
+            <Bar
+              :data="qrPerformanceChartData"
+              :options="qrPerformanceChartOptions"
+              v-if="!loading"
+            />
           </div>
         </div>
 
@@ -541,20 +845,38 @@ onMounted(() => {
   color: #6b7280;
 }
 
-.chart-placeholder {
-  height: 200px;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  background: #f9fafb;
-  border-radius: 8px;
-  color: #6b7280;
+.chart-wrapper {
+  height: 300px;
+  position: relative;
+  width: 100%;
 }
 
-.chart-placeholder small {
-  margin-top: 0.5rem;
-  color: #9ca3af;
+.chart-section {
+  background: white;
+  border-radius: 12px;
+  padding: 1.5rem;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+  border: 1px solid #e5e7eb;
+  margin-bottom: 2rem;
+}
+
+.chart-section .chart-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1.5rem;
+  padding-bottom: 1rem;
+  border-bottom: 1px solid #f3f4f6;
+}
+
+.chart-section .chart-header h3 {
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: #1f2937;
+}
+
+.chart-section .chart-icon {
+  color: #6b7280;
 }
 
 .performers-section, .activity-section {
