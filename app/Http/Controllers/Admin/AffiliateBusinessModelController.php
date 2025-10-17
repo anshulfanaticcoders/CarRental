@@ -265,4 +265,710 @@ class AffiliateBusinessModelController extends Controller
             ], 500);
         }
     }
+
+    /**
+     * Display business statistics dashboard
+     */
+    public function businessStatistics()
+    {
+        return Inertia::render('AdminDashboardPages/BusinessModel/Statistics');
+    }
+
+    /**
+     * Display business verification management page
+     */
+    public function businessVerification()
+    {
+        return Inertia::render('AdminDashboardPages/BusinessModel/Verification');
+    }
+
+    /**
+     * Display payment tracking page
+     */
+    public function paymentTracking()
+    {
+        return Inertia::render('AdminDashboardPages/BusinessModel/PaymentTracking');
+    }
+
+    /**
+     * Display business details page
+     */
+    public function businessDetails($businessId = null)
+    {
+        return Inertia::render('AdminDashboardPages/BusinessModel/Details', [
+            'businessId' => $businessId
+        ]);
+    }
+
+    /**
+     * Display commission management page
+     */
+    public function commissionManagement()
+    {
+        return Inertia::render('AdminDashboardPages/BusinessModel/CommissionManagement');
+    }
+
+    /**
+     * Display QR analytics page
+     */
+    public function qrAnalytics()
+    {
+        return Inertia::render('AdminDashboardPages/BusinessModel/QRAnalytics');
+    }
+
+    /**
+     * Get commissions data for the commission management page
+     */
+    public function getCommissionsData(Request $request): JsonResponse
+    {
+        try {
+            $query = \App\Models\Affiliate\AffiliateCommission::with(['business', 'affiliate'])
+                ->orderBy('created_at', 'desc');
+
+            // Apply filters
+            if ($request->filled('status')) {
+                $query->where('status', $request->status);
+            }
+
+            if ($request->filled('search')) {
+                $search = $request->search;
+                $query->where(function ($q) use ($search) {
+                    $q->whereHas('business', function ($subQ) use ($search) {
+                        $subQ->where('name', 'like', "%{$search}%");
+                    })
+                    ->orWhereHas('affiliate', function ($subQ) use ($search) {
+                        $subQ->where('name', 'like', "%{$search}%")
+                           ->orWhere('email', 'like', "%{$search}%");
+                    })
+                    ->orWhere('qr_code_id', 'like', "%{$search}%");
+                });
+            }
+
+            // Date range filtering
+            if ($request->filled('date_range')) {
+                $dateRange = $request->date_range;
+                $now = now();
+                switch ($dateRange) {
+                    case '7d':
+                        $query->where('created_at', '>=', $now->copy()->subDays(7));
+                        break;
+                    case '30d':
+                        $query->where('created_at', '>=', $now->copy()->subDays(30));
+                        break;
+                    case '90d':
+                        $query->where('created_at', '>=', $now->copy()->subDays(90));
+                        break;
+                    case '1y':
+                        $query->where('created_at', '>=', $now->copy()->subYear());
+                        break;
+                }
+            }
+
+            $perPage = $request->get('per_page', 15);
+            $commissions = $query->paginate($perPage);
+
+            $formattedCommissions = $commissions->getCollection()->map(function ($commission) {
+                return [
+                    'id' => $commission->id,
+                    'business_name' => $commission->business->name ?? 'N/A',
+                    'business_type' => $commission->business->business_type ?? 'N/A',
+                    'affiliate_name' => $commission->affiliate->name ?? 'N/A',
+                    'affiliate_email' => $commission->affiliate->email ?? 'N/A',
+                    'qr_code_id' => $commission->qr_code_id,
+                    'amount' => $commission->commission_amount,
+                    'currency' => $commission->currency ?? 'EUR',
+                    'status' => $commission->status,
+                    'created_at' => $commission->created_at->toISOString(),
+                ];
+            });
+
+            return response()->json([
+                'data' => $formattedCommissions,
+                'pagination' => [
+                    'current_page' => $commissions->currentPage(),
+                    'last_page' => $commissions->lastPage(),
+                    'per_page' => $commissions->perPage(),
+                    'total' => $commissions->total(),
+                ]
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Error fetching commissions: ' . $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    /**
+     * Get commission statistics
+     */
+    public function getCommissionStatistics(Request $request): JsonResponse
+    {
+        try {
+            $dateRange = $request->get('date_range', '30d');
+            $now = now();
+            $startDate = match ($dateRange) {
+                '7d' => $now->copy()->subDays(7),
+                '30d' => $now->copy()->subDays(30),
+                '90d' => $now->copy()->subDays(90),
+                '1y' => $now->copy()->subYear(),
+                default => $now->copy()->subDays(30),
+            };
+
+            $commissions = \App\Models\Affiliate\AffiliateCommission::where('created_at', '>=', $startDate);
+
+            $stats = [
+                'overview' => [
+                    'total_commissions' => $commissions->count(),
+                    'pending_commissions' => $commissions->where('status', 'pending')->count(),
+                    'approved_commissions' => $commissions->where('status', 'approved')->count(),
+                    'paid_commissions' => $commissions->where('status', 'paid')->count(),
+                    'total_amount' => $commissions->sum('commission_amount'),
+                    'average_commission' => $commissions->avg('commission_amount') ?? 0,
+                ],
+                'top_affiliates' => $this->getTopAffiliates($startDate),
+                'monthly_growth' => $this->calculateMonthlyGrowth($startDate),
+            ];
+
+            return response()->json($stats);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Error fetching commission statistics: ' . $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    /**
+     * Update commission status
+     */
+    public function updateCommissionStatus(Request $request, $commissionId): JsonResponse
+    {
+        try {
+            $commission = \App\Models\Affiliate\AffiliateCommission::findOrFail($commissionId);
+
+            $data = $request->validate([
+                'status' => 'required|in:pending,approved,paid,rejected'
+            ]);
+
+            $commission->update(['status' => $data['status']]);
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Commission status updated successfully'
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Error updating commission status: ' . $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    /**
+     * Process commission payment
+     */
+    public function processCommissionPayment($commissionId): JsonResponse
+    {
+        try {
+            $commission = \App\Models\Affiliate\AffiliateCommission::findOrFail($commissionId);
+
+            if ($commission->status !== 'approved') {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Commission must be approved before payment can be processed'
+                ], 422);
+            }
+
+            $commission->update(['status' => 'paid', 'paid_at' => now()]);
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Payment processed successfully'
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Error processing payment: ' . $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    /**
+     * Export commissions data
+     */
+    public function exportCommissions(Request $request)
+    {
+        try {
+            $commissions = \App\Models\Affiliate\AffiliateCommission::with(['business', 'affiliate'])
+                ->orderBy('created_at', 'desc');
+
+            // Apply filters
+            if ($request->filled('status')) {
+                $commissions->where('status', $request->status);
+            }
+
+            if ($request->filled('date_range')) {
+                $dateRange = $request->date_range;
+                $now = now();
+                switch ($dateRange) {
+                    case '7d':
+                        $commissions->where('created_at', '>=', $now->copy()->subDays(7));
+                        break;
+                    case '30d':
+                        $commissions->where('created_at', '>=', $now->copy()->subDays(30));
+                        break;
+                    case '90d':
+                        $commissions->where('created_at', '>=', $now->copy()->subDays(90));
+                        break;
+                    case '1y':
+                        $commissions->where('created_at', '>=', $now->copy()->subYear());
+                        break;
+                }
+            }
+
+            $data = $commissions->get()->map(function ($commission) {
+                return [
+                    'ID' => $commission->id,
+                    'Business Name' => $commission->business->name ?? 'N/A',
+                    'Business Type' => $commission->business->business_type ?? 'N/A',
+                    'Affiliate Name' => $commission->affiliate->name ?? 'N/A',
+                    'Affiliate Email' => $commission->affiliate->email ?? 'N/A',
+                    'QR Code ID' => $commission->qr_code_id,
+                    'Amount' => $commission->commission_amount,
+                    'Currency' => $commission->currency ?? 'EUR',
+                    'Status' => $commission->status,
+                    'Created Date' => $commission->created_at->format('Y-m-d H:i:s'),
+                    'Paid Date' => $commission->paid_at?->format('Y-m-d H:i:s') ?? 'N/A',
+                ];
+            });
+
+            $filename = 'commissions-export-' . date('Y-m-d') . '.csv';
+            $headers = [
+                'Content-Type' => 'text/csv',
+                'Content-Disposition' => "attachment; filename=\"$filename\"",
+            ];
+
+            $callback = function () use ($data) {
+                $file = fopen('php://output', 'w');
+
+                // Header row
+                if ($data->isNotEmpty()) {
+                    fputcsv($file, array_keys($data->first()));
+                }
+
+                // Data rows
+                foreach ($data as $row) {
+                    fputcsv($file, $row);
+                }
+
+                fclose($file);
+            };
+
+            return response()->stream($callback, 200, $headers);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Error exporting commissions: ' . $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    /**
+     * Get QR analytics data
+     */
+    public function getQrAnalyticsData(Request $request): JsonResponse
+    {
+        try {
+            $dateRange = $request->get('date_range', '30d');
+            $now = now();
+            $startDate = match ($dateRange) {
+                '7d' => $now->copy()->subDays(7),
+                '30d' => $now->copy()->subDays(30),
+                '90d' => $now->copy()->subDays(90),
+                '1y' => $now->copy()->subYear(),
+                default => $now->copy()->subDays(30),
+            };
+
+            $qrCodes = \App\Models\Affiliate\AffiliateQrCode::with(['business'])
+                ->where('created_at', '>=', $startDate);
+
+            if ($request->filled('business_id') && $request->business_id !== 'all') {
+                $qrCodes->where('business_id', $request->business_id);
+            }
+
+            $qrCodes = $qrCodes->get();
+
+            $analytics = [
+                'overview' => [
+                    'total_qr_codes' => $qrCodes->count(),
+                    'total_scans' => $qrCodes->sum('total_scans'),
+                    'unique_scans' => $qrCodes->sum('unique_scans'),
+                    'conversion_rate' => $qrCodes->avg('conversion_rate') ?? 0,
+                    'active_qr_codes' => $qrCodes->where('status', 'active')->count(),
+                    'avg_scans_per_qr' => $qrCodes->count() > 0 ? $qrCodes->sum('total_scans') / $qrCodes->count() : 0,
+                    'recent_growth' => $this->calculateQrGrowth($startDate),
+                ],
+                'top_performers' => $qrCodes->sortByDesc('total_scans')->take(10)->map(function ($qr) {
+                    return [
+                        'id' => $qr->id,
+                        'qr_code_id' => $qr->qr_code_id,
+                        'business_name' => $qr->business->name ?? 'N/A',
+                        'total_scans' => $qr->total_scans,
+                        'unique_scans' => $qr->unique_scans,
+                        'conversions' => $qr->conversions,
+                        'conversion_rate' => $qr->conversion_rate,
+                        'performance' => $this->getPerformanceLevel($qr->conversion_rate),
+                    ];
+                })->values(),
+                'device_stats' => $this->getDeviceStats($startDate),
+                'location_stats' => $this->getLocationStats($startDate),
+                'qr_codes' => $qrCodes->map(function ($qr) {
+                    return [
+                        'id' => $qr->id,
+                        'qr_code_id' => $qr->qr_code_id,
+                        'business_name' => $qr->business->name ?? 'N/A',
+                        'business_type' => $qr->business->business_type ?? 'N/A',
+                        'total_scans' => $qr->total_scans,
+                        'unique_scans' => $qr->unique_scans,
+                        'conversions' => $qr->conversions,
+                        'conversion_rate' => $qr->conversion_rate,
+                        'status' => $qr->status,
+                        'performance' => $this->getPerformanceLevel($qr->conversion_rate),
+                        'created_at' => $qr->created_at->toISOString(),
+                    ];
+                }),
+            ];
+
+            return response()->json($analytics);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Error fetching QR analytics: ' . $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    /**
+     * Export QR analytics data
+     */
+    public function exportQrAnalytics(Request $request)
+    {
+        try {
+            $qrCodes = \App\Models\Affiliate\AffiliateQrCode::with(['business']);
+
+            if ($request->filled('business_id') && $request->business_id !== 'all') {
+                $qrCodes->where('business_id', $request->business_id);
+            }
+
+            $data = $qrCodes->get()->map(function ($qr) {
+                return [
+                    'QR Code ID' => $qr->qr_code_id,
+                    'Business Name' => $qr->business->name ?? 'N/A',
+                    'Business Type' => $qr->business->business_type ?? 'N/A',
+                    'Total Scans' => $qr->total_scans,
+                    'Unique Scans' => $qr->unique_scans,
+                    'Conversions' => $qr->conversions,
+                    'Conversion Rate' => number_format($qr->conversion_rate * 100, 2) . '%',
+                    'Status' => $qr->status,
+                    'Created Date' => $qr->created_at->format('Y-m-d H:i:s'),
+                ];
+            });
+
+            $filename = 'qr-analytics-export-' . date('Y-m-d') . '.csv';
+            $headers = [
+                'Content-Type' => 'text/csv',
+                'Content-Disposition' => "attachment; filename=\"$filename\"",
+            ];
+
+            $callback = function () use ($data) {
+                $file = fopen('php://output', 'w');
+
+                // Header row
+                if ($data->isNotEmpty()) {
+                    fputcsv($file, array_keys($data->first()));
+                }
+
+                // Data rows
+                foreach ($data as $row) {
+                    fputcsv($file, $row);
+                }
+
+                fclose($file);
+            };
+
+            return response()->stream($callback, 200, $headers);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Error exporting QR analytics: ' . $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    // Helper methods
+    private function getTopAffiliates($startDate)
+    {
+        return \App\Models\Affiliate\AffiliateCommission::where('created_at', '>=', $startDate)
+            ->with(['affiliate'])
+            ->selectRaw('affiliate_id, SUM(commission_amount) as total_commissions, COUNT(*) as total_transactions')
+            ->groupBy('affiliate_id')
+            ->orderBy('total_commissions', 'desc')
+            ->take(10)
+            ->get()
+            ->map(function ($item, $index) {
+                $affiliate = $item->affiliate;
+                return [
+                    'id' => $affiliate->id ?? null,
+                    'rank' => $index + 1,
+                    'name' => $affiliate->name ?? 'N/A',
+                    'email' => $affiliate->email ?? 'N/A',
+                    'total_commissions' => $item->total_commissions,
+                    'total_transactions' => $item->total_transactions,
+                    'conversion_rate' => $item->total_transactions > 0 ? ($item->total_transactions / $item->total_transactions) : 0,
+                ];
+            })
+            ->values();
+    }
+
+    private function calculateMonthlyGrowth($startDate)
+    {
+        $currentPeriod = \App\Models\Affiliate\AffiliateCommission::where('created_at', '>=', $startDate);
+        $previousPeriod = \App\Models\Affiliate\AffiliateCommission::where('created_at', '>=', $startDate->copy()->subDays($startDate->diffInDays(now())))
+            ->where('created_at', '<', $startDate);
+
+        $currentCount = $currentPeriod->count();
+        $previousCount = $previousPeriod->count();
+
+        if ($previousCount === 0) {
+            return $currentCount > 0 ? 100 : 0;
+        }
+
+        return (($currentCount - $previousCount) / $previousCount) * 100;
+    }
+
+    private function calculateQrGrowth($startDate)
+    {
+        $currentPeriod = \App\Models\Affiliate\AffiliateQrCode::where('created_at', '>=', $startDate);
+        $previousPeriod = \App\Models\Affiliate\AffiliateQrCode::where('created_at', '>=', $startDate->copy()->subDays($startDate->diffInDays(now())))
+            ->where('created_at', '<', $startDate);
+
+        $currentCount = $currentPeriod->count();
+        $previousCount = $previousPeriod->count();
+
+        return [
+            'qr_codes' => $previousCount > 0 ? (($currentCount - $previousCount) / $previousCount) * 100 : 0,
+            'scans' => $this->calculateScanGrowth($startDate),
+            'avg_scans' => $this->calculateAvgScanGrowth($startDate),
+        ];
+    }
+
+    private function calculateScanGrowth($startDate)
+    {
+        $currentPeriod = \App\Models\Affiliate\AffiliateQrCode::where('created_at', '>=', $startDate);
+        $previousPeriod = \App\Models\Affiliate\AffiliateQrCode::where('created_at', '>=', $startDate->copy()->subDays($startDate->diffInDays(now())))
+            ->where('created_at', '<', $startDate);
+
+        $currentScans = $currentPeriod->sum('total_scans');
+        $previousScans = $previousPeriod->sum('total_scans');
+
+        return $previousScans > 0 ? (($currentScans - $previousScans) / $previousScans) * 100 : 0;
+    }
+
+    private function calculateAvgScanGrowth($startDate)
+    {
+        $currentPeriod = \App\Models\Affiliate\AffiliateQrCode::where('created_at', '>=', $startDate);
+        $previousPeriod = \App\Models\Affiliate\AffiliateQrCode::where('created_at', '>=', $startDate->copy()->subDays($startDate->diffInDays(now())))
+            ->where('created_at', '<', $startDate);
+
+        $currentAvg = $currentPeriod->avg('total_scans') ?? 0;
+        $previousAvg = $previousPeriod->avg('total_scans') ?? 0;
+
+        return $previousAvg > 0 ? (($currentAvg - $previousAvg) / $previousAvg) * 100 : 0;
+    }
+
+    private function getDeviceStats($startDate)
+    {
+        // This would typically come from analytics tracking
+        // For now, return mock data
+        return [
+            'mobile' => 65,
+            'desktop' => 25,
+            'tablet' => 8,
+            'other' => 2,
+        ];
+    }
+
+    private function getLocationStats($startDate)
+    {
+        // This would typically come from analytics tracking with real location data
+        // For now, return mock data
+        return [
+            [
+                'location' => 'New York',
+                'country' => 'United States',
+                'scans' => 1250,
+                'unique_scans' => 980,
+                'conversions' => 145,
+            ],
+            [
+                'location' => 'London',
+                'country' => 'United Kingdom',
+                'scans' => 980,
+                'unique_scans' => 750,
+                'conversions' => 112,
+            ],
+            [
+                'location' => 'Paris',
+                'country' => 'France',
+                'scans' => 750,
+                'unique_scans' => 620,
+                'conversions' => 89,
+            ],
+        ];
+    }
+
+    private function getPerformanceLevel($conversionRate)
+    {
+        if ($conversionRate >= 0.15) return 'excellent';
+        if ($conversionRate >= 0.10) return 'good';
+        if ($conversionRate >= 0.05) return 'average';
+        return 'poor';
+    }
+
+    /**
+     * Verify a business
+     */
+    public function verifyBusiness($businessId): JsonResponse
+    {
+        try {
+            $business = \App\Models\Affiliate\AffiliateBusiness::findOrFail($businessId);
+            $business->update(['verification_status' => 'verified']);
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Business verified successfully'
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Error verifying business: ' . $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    /**
+     * Reject a business
+     */
+    public function rejectBusiness($businessId): JsonResponse
+    {
+        try {
+            $business = \App\Models\Affiliate\AffiliateBusiness::findOrFail($businessId);
+            $business->update(['verification_status' => 'rejected']);
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Business rejected successfully'
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Error rejecting business: ' . $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    /**
+     * Suspend a business
+     */
+    public function suspendBusiness($businessId): JsonResponse
+    {
+        try {
+            $business = \App\Models\Affiliate\AffiliateBusiness::findOrFail($businessId);
+            $business->update(['status' => 'suspended']);
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Business suspended successfully'
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Error suspending business: ' . $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    /**
+     * Activate a business
+     */
+    public function activateBusiness($businessId): JsonResponse
+    {
+        try {
+            $business = \App\Models\Affiliate\AffiliateBusiness::findOrFail($businessId);
+            $business->update(['status' => 'active']);
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Business activated successfully'
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Error activating business: ' . $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    /**
+     * Bulk verify businesses
+     */
+    public function bulkVerifyBusinesses(Request $request): JsonResponse
+    {
+        try {
+            $data = $request->validate([
+                'business_ids' => 'required|array',
+                'business_ids.*' => 'required|integer'
+            ]);
+
+            $updated = \App\Models\Affiliate\AffiliateBusiness::whereIn('id', $data['business_ids'])
+                ->update(['verification_status' => 'verified']);
+
+            return response()->json([
+                'success' => true,
+                'message' => "{$updated} businesses verified successfully"
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Error bulk verifying businesses: ' . $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    /**
+     * Bulk reject businesses
+     */
+    public function bulkRejectBusinesses(Request $request): JsonResponse
+    {
+        try {
+            $data = $request->validate([
+                'business_ids' => 'required|array',
+                'business_ids.*' => 'required|integer'
+            ]);
+
+            $updated = \App\Models\Affiliate\AffiliateBusiness::whereIn('id', $data['business_ids'])
+                ->update(['verification_status' => 'rejected']);
+
+            return response()->json([
+                'success' => true,
+                'message' => "{$updated} businesses rejected successfully"
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Error bulk rejecting businesses: ' . $e->getMessage(),
+            ], 500);
+        }
+    }
 }
