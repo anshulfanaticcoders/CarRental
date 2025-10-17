@@ -1,8 +1,18 @@
 <script setup>
 import AuthenticatedHeaderLayout from '@/Layouts/AuthenticatedHeaderLayout.vue';
 import { Head, Link, useForm } from '@inertiajs/vue3';
-import { ref, computed, nextTick } from 'vue';
+import { ref, computed, nextTick, onMounted, watch } from 'vue';
+import axios from 'axios';
 import ApplicationLogo from '@/Components/ApplicationLogo.vue';
+import {
+    Select,
+    SelectContent,
+    SelectGroup,
+    SelectItem,
+    SelectLabel,
+    SelectTrigger,
+    SelectValue
+} from '@/Components/ui/select';
 
 const props = defineProps({
     locale: {
@@ -23,6 +33,7 @@ const form = useForm({
     state: '',
     country: '',
     postal_code: '',
+    currency: '',
     business_registration_number: '',
     tax_id: '',
     description: '',
@@ -36,6 +47,30 @@ const emailInvalid = ref(false);
 const focusedField = ref('');
 const fieldErrors = ref({});
 
+// Currency loading and selection
+const currencies = ref([]);
+const selectedCurrency = computed({
+    get() {
+        const currency = currencies.value.find(c => c.symbol === form.currency);
+        return currency ? currency.code : '';
+    },
+    set(newValue) {
+        const currency = currencies.value.find(c => c.code === newValue);
+        form.currency = currency ? currency.symbol : '';
+    }
+});
+
+const fetchCurrencies = async () => {
+    try {
+        const response = await fetch('/currency.json'); // Ensure it's in /public
+        currencies.value = await response.json();
+    } catch (error) {
+        console.error("Error loading currencies:", error);
+    }
+};
+
+onMounted(fetchCurrencies);
+
 // Enhanced business types with descriptions
 const businessTypes = [
     { value: 'hotel', label: 'Hotel', description: 'Individual hotel or accommodation' },
@@ -47,32 +82,58 @@ const businessTypes = [
     { value: 'tourism_board', label: 'Tourism Board', description: 'Regional tourism authority' },
 ];
 
-const countries = [
-    { value: 'US', label: 'United States' },
-    { value: 'CA', label: 'Canada' },
-    { value: 'GB', label: 'United Kingdom' },
-    { value: 'FR', label: 'France' },
-    { value: 'DE', label: 'Germany' },
-    { value: 'IT', label: 'Italy' },
-    { value: 'ES', label: 'Spain' },
-    { value: 'NL', label: 'Netherlands' },
-    { value: 'BE', label: 'Belgium' },
-    { value: 'CH', label: 'Switzerland' },
-    { value: 'AT', label: 'Austria' },
-    { value: 'IE', label: 'Ireland' },
-    { value: 'PT', label: 'Portugal' },
-    { value: 'SE', label: 'Sweden' },
-    { value: 'NO', label: 'Norway' },
-    { value: 'DK', label: 'Denmark' },
-    { value: 'FI', label: 'Finland' },
-    { value: 'PL', label: 'Poland' },
-    { value: 'CZ', label: 'Czech Republic' },
-    { value: 'HU', label: 'Hungary' },
-    { value: 'AU', label: 'Australia' },
-    { value: 'NZ', label: 'New Zealand' },
-    { value: 'JP', label: 'Japan' },
-    { value: 'SG', label: 'Singapore' },
-];
+const countries = ref([]);
+const phoneNumberOnly = ref('');
+
+const fetchCountries = async () => {
+    try {
+        const response = await fetch('/countries.json'); // Ensure it's in /public
+        countries.value = await response.json();
+    } catch (error) {
+        console.error("Error loading countries:", error);
+    }
+};
+
+onMounted(fetchCountries);
+
+// Get flag URL
+const getFlagUrl = (countryCode) => {
+    return `https://flagcdn.com/w40/${countryCode.toLowerCase()}.png`;
+};
+
+// Get country code from countries data
+const getCountryCode = (countryCode) => {
+    const country = countries.value.find(c => c.code === countryCode);
+    return country ? country.phone_code : '+1';
+};
+
+// Watch for country changes and update phone number
+watch(() => form.country, (newCountry) => {
+    if (newCountry) {
+        const countryCode = getCountryCode(form.country);
+
+        // Update phone number with new country code
+        if (phoneNumberOnly.value) {
+            form.contact_phone = countryCode + phoneNumberOnly.value;
+        } else {
+            form.contact_phone = countryCode;
+        }
+
+        // Initialize phone number only if empty
+        if (!phoneNumberOnly.value) {
+            phoneNumberOnly.value = '';
+        }
+    }
+});
+
+// Update contact phone when phone number only changes
+const updateContactPhone = () => {
+    if (form.country) {
+        const countryCode = getCountryCode(form.country);
+        form.contact_phone = countryCode + phoneNumberOnly.value;
+    }
+};
+
 
 // Enhanced validation rules
 const validationRules = {
@@ -221,11 +282,7 @@ const clearFocus = (fieldName) => {
     }
 };
 
-// Enhanced phone formatting
-const formatPhoneNumber = (event) => {
-    let value = event.target.value.replace(/[^\d\+]/g, '');
-    form.contact_phone = value;
-};
+// Enhanced phone formatting - now handled by updateContactPhone function
 
 // Enhanced website formatting
 const formatWebsite = (event) => {
@@ -270,7 +327,7 @@ const submit = async () => {
 // Enhanced form validation
 const isFormValid = computed(() => {
     // Check all required fields
-    const requiredFields = ['business_type', 'name', 'contact_email', 'contact_phone', 'legal_address', 'city', 'country', 'postal_code'];
+    const requiredFields = ['business_type', 'name', 'contact_email', 'contact_phone', 'legal_address', 'city', 'country', 'postal_code', 'currency'];
 
     for (const field of requiredFields) {
         if (!form[field] || !form[field].trim()) {
@@ -300,7 +357,7 @@ const isFormValid = computed(() => {
 const formProgress = computed(() => {
     const fields = [
         'business_type', 'name', 'contact_email', 'contact_phone',
-        'legal_address', 'city', 'country', 'postal_code', 'accept_terms'
+        'legal_address', 'city', 'country', 'postal_code', 'currency', 'accept_terms'
     ];
 
     const filledFields = fields.filter(field => {
@@ -447,6 +504,38 @@ const formProgress = computed(() => {
                                 </p>
                             </div>
 
+                            <!-- Currency Selection -->
+                            <div>
+                                <label for="currency" class="block text-sm font-semibold text-gray-700 mb-2">
+                                    Business Currency <span class="text-red-500">*</span>
+                                </label>
+                                <Select v-model="selectedCurrency">
+                                    <SelectTrigger class="w-full p-[1.7rem] border-2 rounded-lg transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                                        <SelectValue placeholder="Select your preferred currency" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        <SelectGroup>
+                                            <SelectLabel>Business Currency</SelectLabel>
+                                            <SelectItem v-for="currency in currencies" :key="currency.code" :value="currency.code">
+                                                <div class="flex items-center gap-2">
+                                                    <span class="font-medium">{{ currency.code }}</span>
+                                                    <span class="text-gray-500">({{ currency.symbol }})</span>
+                                                </div>
+                                            </SelectItem>
+                                        </SelectGroup>
+                                    </SelectContent>
+                                </Select>
+                                <p class="mt-2 text-sm text-gray-500">
+                                    Select the currency you want to use for commission payments and financial reporting
+                                </p>
+                                <p v-if="fieldErrors.currency" class="mt-2 text-sm text-red-600 flex items-center">
+                                    <svg class="w-4 h-4 mr-1" fill="currentColor" viewBox="0 0 20 20">
+                                        <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clip-rule="evenodd" />
+                                    </svg>
+                                    {{ fieldErrors.currency }}
+                                </p>
+                            </div>
+
                             <!-- Contact Email -->
                             <div>
                                 <label for="contact_email" class="block text-sm font-semibold text-gray-700 mb-2">
@@ -502,42 +591,75 @@ const formProgress = computed(() => {
                                 </p>
                             </div>
 
-                            <!-- Contact Phone -->
+                            <!-- Country Selection -->
+                            <div>
+                                <label for="country" class="block text-sm font-semibold text-gray-700 mb-2">
+                                    Country <span class="text-red-500">*</span>
+                                </label>
+                                <Select v-model="form.country">
+                                    <SelectTrigger class="w-full p-[1.7rem] border-2 rounded-lg transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                                        <SelectValue placeholder="Select a country" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        <SelectGroup>
+                                            <SelectLabel>Country</SelectLabel>
+                                            <SelectItem v-for="country in countries" :key="country.code" :value="country.code">
+                                                <div class="flex items-center gap-2">
+                                                    <img :src="getFlagUrl(country.code)" :alt="`${country.name} flag`"
+                                                         class="w-[1.5rem] h-[1rem] rounded-sm" />
+                                                    {{ country.name }}
+                                                </div>
+                                            </SelectItem>
+                                        </SelectGroup>
+                                    </SelectContent>
+                                </Select>
+                                <p v-if="fieldErrors.country" class="mt-2 text-sm text-red-600">
+                                    {{ fieldErrors.country }}
+                                </p>
+                            </div>
+
+                            <!-- Contact Phone with Country Code -->
                             <div>
                                 <label for="contact_phone" class="block text-sm font-semibold text-gray-700 mb-2">
                                     Contact Phone <span class="text-red-500">*</span>
                                 </label>
                                 <div class="relative">
-                                    <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                                        <svg class="w-5 h-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
-                                        </svg>
+                                    <div class="flex">
+                                        <!-- Country Code Prefix (Non-editable) -->
+                                        <div class="inline-flex items-center px-3 border border-r-0 border-gray-300 bg-gray-50 text-gray-500 rounded-l-md">
+                                            <span class="text-sm font-medium">{{ getCountryCode(form.country) }}</span>
+                                        </div>
+                                        <!-- Phone Number Input -->
+                                        <input
+                                            type="tel"
+                                            v-model="phoneNumberOnly"
+                                            @focus="setFocus('contact_phone')"
+                                            @blur="clearFocus('contact_phone')"
+                                            @input="updateContactPhone"
+                                            :disabled="!form.country"
+                                            :class="[
+                                                'block w-full flex-1 px-3 py-3 border-2 rounded-r-md transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent',
+                                                focusedField === 'contact_phone'
+                                                    ? 'border-blue-500 bg-blue-50'
+                                                    : fieldErrors.contact_phone
+                                                        ? 'border-red-500 bg-red-50'
+                                                        : 'border-gray-300 hover:border-gray-400',
+                                                !form.country ? 'bg-gray-100 cursor-not-allowed' : ''
+                                            ]"
+                                            placeholder="1234567890"
+                                            required
+                                        />
                                     </div>
-                                    <input
-                                        id="contact_phone"
-                                        v-model="form.contact_phone"
-                                        type="tel"
-                                        @focus="setFocus('contact_phone')"
-                                        @blur="clearFocus('contact_phone')"
-                                        @input="formatPhoneNumber"
-                                        :class="[
-                                            'w-full pl-10 py-3 border-2 rounded-lg transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent',
-                                            focusedField === 'contact_phone'
-                                                ? 'border-blue-500 bg-blue-50'
-                                                : fieldErrors.contact_phone
-                                                    ? 'border-red-500 bg-red-50'
-                                                    : 'border-gray-300 hover:border-gray-400'
-                                        ]"
-                                        placeholder="+1 (555) 123-4567"
-                                        required
-                                    />
+                                    <p v-if="!form.country" class="mt-1 text-sm text-gray-500">
+                                        Please select a country first
+                                    </p>
+                                    <p v-if="fieldErrors.contact_phone" class="mt-2 text-sm text-red-600 flex items-center">
+                                        <svg class="w-4 h-4 mr-1" fill="currentColor" viewBox="0 0 20 20">
+                                            <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clip-rule="evenodd" />
+                                        </svg>
+                                        {{ fieldErrors.contact_phone }}
+                                    </p>
                                 </div>
-                                <p v-if="fieldErrors.contact_phone" class="mt-2 text-sm text-red-600 flex items-center">
-                                    <svg class="w-4 h-4 mr-1" fill="currentColor" viewBox="0 0 20 20">
-                                        <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clip-rule="evenodd" />
-                                    </svg>
-                                    {{ fieldErrors.contact_phone }}
-                                </p>
                             </div>
 
                             <!-- Website -->
@@ -696,36 +818,7 @@ const formProgress = computed(() => {
                                 </p>
                             </div>
 
-                            <!-- Country -->
-                            <div>
-                                <label for="country" class="block text-sm font-semibold text-gray-700 mb-2">
-                                    Country <span class="text-red-500">*</span>
-                                </label>
-                                <select
-                                    id="country"
-                                    v-model="form.country"
-                                    @focus="setFocus('country')"
-                                    @blur="clearFocus('country')"
-                                    :class="[
-                                        'w-full px-4 py-3 border-2 rounded-lg transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent',
-                                        focusedField === 'country'
-                                            ? 'border-blue-500 bg-blue-50'
-                                            : fieldErrors.country
-                                                ? 'border-red-500 bg-red-50'
-                                                : 'border-gray-300 hover:border-gray-400'
-                                    ]"
-                                    required
-                                >
-                                    <option value="">Select a country</option>
-                                    <option v-for="country in countries" :key="country.value" :value="country.value">
-                                        {{ country.label }}
-                                    </option>
-                                </select>
-                                <p v-if="fieldErrors.country" class="mt-2 text-sm text-red-600">
-                                    {{ fieldErrors.country }}
-                                </p>
-                            </div>
-
+  
                             <!-- Postal Code -->
                             <div>
                                 <label for="postal_code" class="block text-sm font-semibold text-gray-700 mb-2">
