@@ -248,6 +248,7 @@ Route::middleware(['auth', 'role:admin'])->group(function () {
     Route::post('/admin/affiliate/businesses/{businessId}/model', [AffiliateBusinessModelController::class, 'updateBusinessModel'])->name('admin.affiliate.businesses.model.update');
     Route::delete('/admin/affiliate/businesses/{businessId}/model', [AffiliateBusinessModelController::class, 'deleteBusinessModel'])->name('admin.affiliate.businesses.model.delete');
     Route::get('/admin/affiliate/statistics', [AffiliateBusinessModelController::class, 'getBusinessStatistics'])->name('admin.affiliate.statistics');
+  Route::get('/admin/affiliate/statistics-data', [AffiliateBusinessModelController::class, 'getBusinessStatisticsData'])->name('admin.affiliate.statistics-data');
     Route::get('/admin/affiliate/businesses/{businessId}/preview', [AffiliateBusinessModelController::class, 'previewBusinessRates'])->name('admin.affiliate.businesses.preview');
 
     // Business Model Dashboard Routes

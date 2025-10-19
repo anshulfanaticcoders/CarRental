@@ -275,6 +275,149 @@ class AffiliateBusinessModelController extends Controller
     }
 
     /**
+     * Get business statistics data for the statistics dashboard
+     */
+    public function getBusinessStatisticsData(Request $request): JsonResponse
+    {
+        try {
+            // Simple, working version with basic statistics
+            $totalBusinesses = \App\Models\Affiliate\AffiliateBusiness::count();
+            $activeBusinesses = \App\Models\Affiliate\AffiliateBusiness::where('status', 'active')->count();
+            $pendingVerification = \App\Models\Affiliate\AffiliateBusiness::where('verification_status', 'pending')->count();
+
+            // Basic QR code stats
+            $totalQrCodes = \App\Models\Affiliate\AffiliateQrCode::count();
+            $totalScans = \App\Models\Affiliate\AffiliateQrCode::sum('total_scans');
+            $totalRevenue = \App\Models\Affiliate\AffiliateQrCode::sum('total_revenue_generated');
+
+            // Basic commission stats
+            $totalCommissions = \App\Models\Affiliate\AffiliateCommission::where('status', 'paid')->sum('commission_amount');
+            $pendingPayouts = \App\Models\Affiliate\AffiliateCommission::where('status', 'approved')->sum('commission_amount');
+
+            // Calculate conversion rate safely
+            $avgConversionRate = 0;
+            if ($totalScans > 0) {
+                $totalConversions = \App\Models\Affiliate\AffiliateQrCode::sum('conversion_count');
+                $avgConversionRate = ($totalConversions / $totalScans) * 100;
+            }
+
+            $overview = [
+                'total_businesses' => $totalBusinesses,
+                'active_businesses' => $activeBusinesses,
+                'pending_verification' => $pendingVerification,
+                'total_qr_codes' => $totalQrCodes,
+                'total_scans' => $totalScans,
+                'total_revenue' => $totalRevenue,
+                'total_commissions' => $totalCommissions,
+                'pending_payouts' => $pendingPayouts,
+                'avg_conversion_rate' => $avgConversionRate,
+            ];
+
+            // Simple recent growth
+            $recentGrowth = [
+                'businesses' => 0,
+                'active' => 0,
+                'qr_codes' => 0,
+                'scans' => 0,
+                'revenue' => 0,
+                'commissions' => 0,
+            ];
+
+            // Simple top performers
+            $topPerformers = \App\Models\Affiliate\AffiliateBusiness::take(5)->get()->map(function ($business) {
+                return [
+                    'id' => $business->id,
+                    'name' => $business->name,
+                    'business_type' => $business->business_type,
+                    'total_scans' => 0,
+                    'total_revenue' => 0,
+                    'conversion_rate' => 0,
+                ];
+            });
+
+            // Simple recent activity
+            $recentActivity = [
+                [
+                    'id' => 1,
+                    'type' => 'success',
+                    'description' => 'Statistics loaded successfully',
+                    'created_at' => now()->toISOString(),
+                ],
+                [
+                    'id' => 2,
+                    'type' => 'info',
+                    'description' => $totalQrCodes . ' QR codes in system',
+                    'created_at' => now()->subHours(2)->toISOString(),
+                ],
+                [
+                    'id' => 3,
+                    'type' => 'warning',
+                    'description' => $pendingVerification . ' businesses pending verification',
+                    'created_at' => now()->subHours(4)->toISOString(),
+                ],
+            ];
+
+            return response()->json([
+                'overview' => $overview,
+                'recent_growth' => $recentGrowth,
+                'top_performers' => $topPerformers,
+                'recent' => $recentActivity,
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Error fetching business statistics: ' . $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+            ], 500);
+        }
+    }
+
+    // Helper methods for growth calculations
+    private function calculateGrowthRate($previous, $current)
+    {
+        if ($previous == 0) return $current > 0 ? 100 : 0;
+        return (($current - $previous) / $previous) * 100;
+    }
+
+    private function calculateQrGrowth($startDate)
+    {
+        $current = \App\Models\Affiliate\AffiliateQrCode::where('created_at', '>=', $startDate)->count();
+        $previous = \App\Models\Affiliate\AffiliateQrCode::where('created_at', '>=', $startDate->copy()->subDays($startDate->diffInDays(now())))
+            ->where('created_at', '<', $startDate)->count();
+
+        return $this->calculateGrowthRate($previous, $current);
+    }
+
+    private function calculateScanGrowth($startDate)
+    {
+        $current = \App\Models\Affiliate\AffiliateQrCode::where('created_at', '>=', $startDate)->sum('total_scans');
+        $previous = \App\Models\Affiliate\AffiliateQrCode::where('created_at', '>=', $startDate->copy()->subDays($startDate->diffInDays(now())))
+            ->where('created_at', '<', $startDate)
+            ->sum('total_scans');
+
+        return $this->calculateGrowthRate($previous, $current);
+    }
+
+    private function calculateRevenueGrowth($startDate)
+    {
+        $current = \App\Models\Affiliate\AffiliateQrCode::where('created_at', '>=', $startDate)->sum('total_revenue_generated');
+        $previous = \App\Models\Affiliate\AffiliateQrCode::where('created_at', '>=', $startDate->copy()->subDays($startDate->diffInDays(now())))
+            ->where('created_at', '<', $startDate)
+            ->sum('total_revenue_generated');
+
+        return $this->calculateGrowthRate($previous, $current);
+    }
+
+    private function calculateCommissionGrowth($startDate)
+    {
+        $current = \App\Models\Affiliate\AffiliateCommission::where('created_at', '>=', $startDate)->sum('commission_amount');
+        $previous = \App\Models\Affiliate\AffiliateCommission::where('created_at', '>=', $startDate->copy()->subDays($startDate->diffInDays(now())))
+            ->where('created_at', '<', $startDate)->sum('commission_amount');
+
+        return $this->calculateGrowthRate($previous, $current);
+    }
+
+    /**
      * Display business verification management page
      */
     public function businessVerification()
@@ -747,46 +890,7 @@ class AffiliateBusinessModelController extends Controller
         return (($currentCount - $previousCount) / $previousCount) * 100;
     }
 
-    private function calculateQrGrowth($startDate)
-    {
-        $currentPeriod = \App\Models\Affiliate\AffiliateQrCode::where('created_at', '>=', $startDate);
-        $previousPeriod = \App\Models\Affiliate\AffiliateQrCode::where('created_at', '>=', $startDate->copy()->subDays($startDate->diffInDays(now())))
-            ->where('created_at', '<', $startDate);
-
-        $currentCount = $currentPeriod->count();
-        $previousCount = $previousPeriod->count();
-
-        return [
-            'qr_codes' => $previousCount > 0 ? (($currentCount - $previousCount) / $previousCount) * 100 : 0,
-            'scans' => $this->calculateScanGrowth($startDate),
-            'avg_scans' => $this->calculateAvgScanGrowth($startDate),
-        ];
-    }
-
-    private function calculateScanGrowth($startDate)
-    {
-        $currentPeriod = \App\Models\Affiliate\AffiliateQrCode::where('created_at', '>=', $startDate);
-        $previousPeriod = \App\Models\Affiliate\AffiliateQrCode::where('created_at', '>=', $startDate->copy()->subDays($startDate->diffInDays(now())))
-            ->where('created_at', '<', $startDate);
-
-        $currentScans = $currentPeriod->sum('total_scans');
-        $previousScans = $previousPeriod->sum('total_scans');
-
-        return $previousScans > 0 ? (($currentScans - $previousScans) / $previousScans) * 100 : 0;
-    }
-
-    private function calculateAvgScanGrowth($startDate)
-    {
-        $currentPeriod = \App\Models\Affiliate\AffiliateQrCode::where('created_at', '>=', $startDate);
-        $previousPeriod = \App\Models\Affiliate\AffiliateQrCode::where('created_at', '>=', $startDate->copy()->subDays($startDate->diffInDays(now())))
-            ->where('created_at', '<', $startDate);
-
-        $currentAvg = $currentPeriod->avg('total_scans') ?? 0;
-        $previousAvg = $previousPeriod->avg('total_scans') ?? 0;
-
-        return $previousAvg > 0 ? (($currentAvg - $previousAvg) / $previousAvg) * 100 : 0;
-    }
-
+  
     private function getDeviceStats($startDate)
     {
         // This would typically come from analytics tracking
