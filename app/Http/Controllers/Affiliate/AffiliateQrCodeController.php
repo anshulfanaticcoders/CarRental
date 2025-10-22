@@ -257,7 +257,29 @@ class AffiliateQrCodeController extends Controller
         try {
             // Check if QR code has an image path
             if (!$qrCode->qr_image_path) {
-                abort(404, 'QR code image not found - no image path stored');
+                // Generate QR code on-demand if no image exists
+                $qrData = [
+                    'type' => 'affiliate_qr',
+                    'business_id' => $business->id,
+                    'location_id' => $qrCode->location_id,
+                    'qr_id' => uniqid('qr_', true),
+                    'timestamp' => now()->timestamp,
+                    'version' => '1.0',
+                ];
+
+                $qrUrl = url('/affiliate/track/' . base64_encode(json_encode($qrData)));
+                $qrImage = \SimpleSoftwareIO\QrCode\Facades\QrCode::format('png')
+                    ->size(800)
+                    ->errorCorrection('H')
+                    ->margin(4)
+                    ->encoding('UTF-8')
+                    ->generate($qrUrl);
+
+                // Generate QR code image in memory and return as response
+                return Response::make($qrImage)
+                    ->header('Content-Type', 'image/png')
+                    ->header('Cache-Control', 'public, max-age=3600')
+                    ->header('Expires', now()->addHour()->toRfc1123String());
             }
 
             // Try to get image from storage

@@ -280,24 +280,54 @@ class AffiliateBusinessModelController extends Controller
     public function getBusinessStatisticsData(Request $request): JsonResponse
     {
         try {
-            // Simple, working version with basic statistics
-            $totalBusinesses = \App\Models\Affiliate\AffiliateBusiness::count();
-            $activeBusinesses = \App\Models\Affiliate\AffiliateBusiness::where('status', 'active')->count();
-            $pendingVerification = \App\Models\Affiliate\AffiliateBusiness::where('verification_status', 'pending')->count();
+            $dateRange = $request->get('date_range', '30d');
+            $now = now();
+            $startDate = match ($dateRange) {
+                '7d' => $now->copy()->subDays(7),
+                '30d' => $now->copy()->subDays(30),
+                '90d' => $now->copy()->subDays(90),
+                '1y' => $now->copy()->subYear(),
+                default => $now->copy()->subDays(30),
+            };
 
-            // Basic QR code stats
-            $totalQrCodes = \App\Models\Affiliate\AffiliateQrCode::count();
-            $totalScans = \App\Models\Affiliate\AffiliateQrCode::sum('total_scans');
-            $totalRevenue = \App\Models\Affiliate\AffiliateQrCode::sum('total_revenue_generated');
+            // Get businesses with their relationships for comprehensive statistics
+            $businessesQuery = \App\Models\Affiliate\AffiliateBusiness::with(['qrCodes', 'commissions', 'customerScans']);
 
-            // Basic commission stats
-            $totalCommissions = \App\Models\Affiliate\AffiliateCommission::where('status', 'paid')->sum('commission_amount');
-            $pendingPayouts = \App\Models\Affiliate\AffiliateCommission::where('status', 'approved')->sum('commission_amount');
+            // Apply date filtering for the relevant data
+            $businesses = $businessesQuery->get();
+
+            // Calculate overview statistics
+            $totalBusinesses = $businesses->count();
+            $activeBusinesses = $businesses->where('status', 'active')->count();
+            $pendingVerification = $businesses->where('verification_status', 'pending')->count();
+
+            // Aggregate data across all businesses
+            $totalQrCodes = $businesses->sum(function ($business) use ($startDate) {
+                return $business->qrCodes()->where('created_at', '>=', $startDate)->count();
+            });
+
+            $totalScans = $businesses->sum(function ($business) use ($startDate) {
+                return $business->qrCodes()->where('created_at', '>=', $startDate)->sum('total_scans');
+            });
+
+            $totalRevenue = $businesses->sum(function ($business) use ($startDate) {
+                return $business->qrCodes()->where('created_at', '>=', $startDate)->sum('total_revenue_generated');
+            });
+
+            $totalCommissions = $businesses->sum(function ($business) use ($startDate) {
+                return $business->commissions()->where('created_at', '>=', $startDate)->sum('commission_amount');
+            });
+
+            $pendingPayouts = $businesses->sum(function ($business) {
+                return $business->commissions()->where('status', 'approved')->sum('commission_amount');
+            });
 
             // Calculate conversion rate safely
             $avgConversionRate = 0;
             if ($totalScans > 0) {
-                $totalConversions = \App\Models\Affiliate\AffiliateQrCode::sum('conversion_count');
+                $totalConversions = $businesses->sum(function ($business) use ($startDate) {
+                    return $business->qrCodes()->where('created_at', '>=', $startDate)->sum('conversion_count');
+                });
                 $avgConversionRate = ($totalConversions / $totalScans) * 100;
             }
 
@@ -310,58 +340,128 @@ class AffiliateBusinessModelController extends Controller
                 'total_revenue' => $totalRevenue,
                 'total_commissions' => $totalCommissions,
                 'pending_payouts' => $pendingPayouts,
-                'avg_conversion_rate' => $avgConversionRate,
+                'avg_conversion_rate' => round($avgConversionRate, 2),
             ];
 
-            // Simple recent growth
+            // Generate time-series data for charts
+            $chartLabels = $this->generateChartLabels($startDate, $now);
+            $revenueData = $this->getRevenueTimeSeries($startDate, $now, $businesses);
+            $commissionData = $this->getCommissionTimeSeries($startDate, $now, $businesses);
+            $qrCodeData = $this->getQrCodeTimeSeries($startDate, $now, $businesses);
+            $conversionData = $this->getConversionTimeSeries($startDate, $now, $businesses);
+
+            // Calculate growth comparisons
+            $previousStartDate = $startDate->copy()->subDays($startDate->diffInDays($now));
             $recentGrowth = [
-                'businesses' => 0,
-                'active' => 0,
-                'qr_codes' => 0,
-                'scans' => 0,
-                'revenue' => 0,
-                'commissions' => 0,
+                'businesses' => $this->calculateGrowthRate(
+                    $this->getBusinessCountInPeriod($previousStartDate, $startDate),
+                    $this->getBusinessCountInPeriod($startDate, $now)
+                ),
+                'active' => $this->calculateGrowthRate(
+                    $businesses->where('status', 'active')->where('created_at', '<', $startDate)->count(),
+                    $businesses->where('status', 'active')->where('created_at', '>=', $startDate)->count()
+                ),
+                'qr_codes' => $this->calculateGrowthRate(
+                    $businesses->sum(function ($business) use ($previousStartDate, $startDate) {
+                        return $business->qrCodes()->where('created_at', '>=', $previousStartDate)
+                            ->where('created_at', '<', $startDate)->count();
+                    }),
+                    $totalQrCodes
+                ),
+                'scans' => $this->calculateGrowthRate(
+                    $businesses->sum(function ($business) use ($previousStartDate, $startDate) {
+                        return $business->qrCodes()->where('created_at', '>=', $previousStartDate)
+                            ->where('created_at', '<', $startDate)->sum('total_scans');
+                    }),
+                    $totalScans
+                ),
+                'revenue' => $this->calculateGrowthRate(
+                    $businesses->sum(function ($business) use ($previousStartDate, $startDate) {
+                        return $business->qrCodes()->where('created_at', '>=', $previousStartDate)
+                            ->where('created_at', '<', $startDate)->sum('total_revenue_generated');
+                    }),
+                    $totalRevenue
+                ),
+                'commissions' => $this->calculateGrowthRate(
+                    $businesses->sum(function ($business) use ($previousStartDate, $startDate) {
+                        return $business->commissions()->where('created_at', '>=', $previousStartDate)
+                            ->where('created_at', '<', $startDate)->sum('commission_amount');
+                    }),
+                    $totalCommissions
+                ),
             ];
 
-            // Simple top performers
-            $topPerformers = \App\Models\Affiliate\AffiliateBusiness::take(5)->get()->map(function ($business) {
+            // Get top performing businesses
+            $topPerformers = $businesses->sortByDesc(function ($business) use ($startDate) {
+                return $business->qrCodes()->where('created_at', '>=', $startDate)->sum('total_scans');
+            })->take(5)->map(function ($business) use ($startDate) {
+                $qrCodes = $business->qrCodes()->where('created_at', '>=', $startDate)->get();
+                $totalScans = $qrCodes->sum('total_scans');
+                $totalRevenue = $qrCodes->sum('total_revenue_generated');
+                $conversionRate = 0;
+
+                if ($totalScans > 0) {
+                    $totalConversions = $qrCodes->sum('conversion_count');
+                    $conversionRate = ($totalConversions / $totalScans) * 100;
+                }
+
                 return [
                     'id' => $business->id,
                     'name' => $business->name,
                     'business_type' => $business->business_type,
-                    'total_scans' => 0,
-                    'total_revenue' => 0,
-                    'conversion_rate' => 0,
+                    'total_scans' => $totalScans,
+                    'total_revenue' => $totalRevenue,
+                    'conversion_rate' => round($conversionRate, 2),
                 ];
-            });
+            })->values();
 
-            // Simple recent activity
+            // Generate recent activity feed
             $recentActivity = [
                 [
                     'id' => 1,
                     'type' => 'success',
-                    'description' => 'Statistics loaded successfully',
+                    'description' => $totalQrCodes . ' QR codes generated in selected period',
                     'created_at' => now()->toISOString(),
                 ],
                 [
                     'id' => 2,
                     'type' => 'info',
-                    'description' => $totalQrCodes . ' QR codes in system',
-                    'created_at' => now()->subHours(2)->toISOString(),
+                    'description' => '€' . number_format($totalRevenue, 2) . ' revenue generated',
+                    'created_at' => now()->subMinutes(30)->toISOString(),
                 ],
                 [
                     'id' => 3,
                     'type' => 'warning',
                     'description' => $pendingVerification . ' businesses pending verification',
+                    'created_at' => now()->subHours(2)->toISOString(),
+                ],
+                [
+                    'id' => 4,
+                    'type' => 'success',
+                    'description' => round($avgConversionRate, 1) . '% average conversion rate',
                     'created_at' => now()->subHours(4)->toISOString(),
+                ],
+                [
+                    'id' => 5,
+                    'type' => 'info',
+                    'description' => $activeBusinesses . ' active businesses in platform',
+                    'created_at' => now()->subHours(6)->toISOString(),
                 ],
             ];
 
             return response()->json([
-                'overview' => $overview,
-                'recent_growth' => $recentGrowth,
-                'top_performers' => $topPerformers,
-                'recent' => $recentActivity,
+                'success' => true,
+                'data' => [
+                    'overview' => $overview,
+                    'chart_labels' => $chartLabels,
+                    'revenue_data' => $revenueData,
+                    'commission_data' => $commissionData,
+                    'qr_code_data' => $qrCodeData,
+                    'conversion_data' => $conversionData,
+                    'recent_growth' => $recentGrowth,
+                    'top_performers' => $topPerformers,
+                    'recent' => $recentActivity,
+                ],
             ]);
         } catch (\Exception $e) {
             return response()->json([
@@ -372,49 +472,274 @@ class AffiliateBusinessModelController extends Controller
         }
     }
 
-    // Helper methods for growth calculations
-    private function calculateGrowthRate($previous, $current)
+    /**
+     * Helper methods for statistics and chart data generation
+     */
+    private function calculateGrowthRate($previous, $current): float
     {
         if ($previous == 0) return $current > 0 ? 100 : 0;
         return (($current - $previous) / $previous) * 100;
     }
 
-    private function calculateQrGrowth($startDate)
+    private function getBusinessCountInPeriod($startDate, $endDate): int
     {
-        $current = \App\Models\Affiliate\AffiliateQrCode::where('created_at', '>=', $startDate)->count();
-        $previous = \App\Models\Affiliate\AffiliateQrCode::where('created_at', '>=', $startDate->copy()->subDays($startDate->diffInDays(now())))
-            ->where('created_at', '<', $startDate)->count();
-
-        return $this->calculateGrowthRate($previous, $current);
+        return \App\Models\Affiliate\AffiliateBusiness::where('created_at', '>=', $startDate)
+            ->where('created_at', '<', $endDate)
+            ->count();
     }
 
-    private function calculateScanGrowth($startDate)
+    /**
+     * Generate chart labels based on date range
+     */
+    private function generateChartLabels($startDate, $endDate): array
     {
-        $current = \App\Models\Affiliate\AffiliateQrCode::where('created_at', '>=', $startDate)->sum('total_scans');
-        $previous = \App\Models\Affiliate\AffiliateQrCode::where('created_at', '>=', $startDate->copy()->subDays($startDate->diffInDays(now())))
-            ->where('created_at', '<', $startDate)
-            ->sum('total_scans');
+        $labels = [];
+        $current = $startDate->copy();
+        $totalDays = $startDate->diffInDays($endDate);
 
-        return $this->calculateGrowthRate($previous, $current);
+        if ($totalDays <= 31) {
+            // Daily labels for periods up to a month
+            while ($current <= $endDate) {
+                $labels[] = $current->format('M j');
+                $current->addDay();
+            }
+        } elseif ($totalDays <= 90) {
+            // Weekly labels for up to 3 months
+            while ($current <= $endDate) {
+                $labels[] = $current->format('M j');
+                $current->addWeek();
+            }
+        } else {
+            // Monthly labels for longer periods
+            while ($current <= $endDate) {
+                $labels[] = $current->format('M Y');
+                $current->addMonth();
+            }
+        }
+
+        return $labels;
     }
 
-    private function calculateRevenueGrowth($startDate)
+    /**
+     * Generate time-series data for revenue
+     */
+    private function getRevenueTimeSeries($startDate, $endDate, $businesses): array
     {
-        $current = \App\Models\Affiliate\AffiliateQrCode::where('created_at', '>=', $startDate)->sum('total_revenue_generated');
-        $previous = \App\Models\Affiliate\AffiliateQrCode::where('created_at', '>=', $startDate->copy()->subDays($startDate->diffInDays(now())))
-            ->where('created_at', '<', $startDate)
-            ->sum('total_revenue_generated');
+        $data = [];
+        $current = $startDate->copy();
+        $totalDays = $startDate->diffInDays($endDate);
 
-        return $this->calculateGrowthRate($previous, $current);
+        if ($totalDays <= 31) {
+            // Daily data
+            while ($current <= $endDate) {
+                $dayRevenue = $businesses->sum(function ($business) use ($current) {
+                    return $business->qrCodes()
+                        ->whereDate('created_at', $current->toDateString())
+                        ->sum('total_revenue_generated');
+                });
+                $data[] = $dayRevenue;
+                $current->addDay();
+            }
+        } elseif ($totalDays <= 90) {
+            // Weekly data
+            while ($current <= $endDate) {
+                $weekEnd = $current->copy()->addDays(6)->min($endDate);
+                $weekRevenue = $businesses->sum(function ($business) use ($current, $weekEnd) {
+                    return $business->qrCodes()
+                        ->whereBetween('created_at', [$current, $weekEnd])
+                        ->sum('total_revenue_generated');
+                });
+                $data[] = $weekRevenue;
+                $current->addWeek();
+            }
+        } else {
+            // Monthly data
+            while ($current <= $endDate) {
+                $monthEnd = $current->copy()->addMonth()->subDay()->min($endDate);
+                $monthRevenue = $businesses->sum(function ($business) use ($current, $monthEnd) {
+                    return $business->qrCodes()
+                        ->whereBetween('created_at', [$current, $monthEnd])
+                        ->sum('total_revenue_generated');
+                });
+                $data[] = $monthRevenue;
+                $current->addMonth();
+            }
+        }
+
+        return $data;
     }
 
-    private function calculateCommissionGrowth($startDate)
+    /**
+     * Generate time-series data for commissions
+     */
+    private function getCommissionTimeSeries($startDate, $endDate, $businesses): array
     {
-        $current = \App\Models\Affiliate\AffiliateCommission::where('created_at', '>=', $startDate)->sum('commission_amount');
-        $previous = \App\Models\Affiliate\AffiliateCommission::where('created_at', '>=', $startDate->copy()->subDays($startDate->diffInDays(now())))
-            ->where('created_at', '<', $startDate)->sum('commission_amount');
+        $data = [];
+        $current = $startDate->copy();
+        $totalDays = $startDate->diffInDays($endDate);
 
-        return $this->calculateGrowthRate($previous, $current);
+        if ($totalDays <= 31) {
+            // Daily data
+            while ($current <= $endDate) {
+                $dayCommissions = $businesses->sum(function ($business) use ($current) {
+                    return $business->commissions()
+                        ->whereDate('created_at', $current->toDateString())
+                        ->sum('commission_amount');
+                });
+                $data[] = $dayCommissions;
+                $current->addDay();
+            }
+        } elseif ($totalDays <= 90) {
+            // Weekly data
+            while ($current <= $endDate) {
+                $weekEnd = $current->copy()->addDays(6)->min($endDate);
+                $weekCommissions = $businesses->sum(function ($business) use ($current, $weekEnd) {
+                    return $business->commissions()
+                        ->whereBetween('created_at', [$current, $weekEnd])
+                        ->sum('commission_amount');
+                });
+                $data[] = $weekCommissions;
+                $current->addWeek();
+            }
+        } else {
+            // Monthly data
+            while ($current <= $endDate) {
+                $monthEnd = $current->copy()->addMonth()->subDay()->min($endDate);
+                $monthCommissions = $businesses->sum(function ($business) use ($current, $monthEnd) {
+                    return $business->commissions()
+                        ->whereBetween('created_at', [$current, $monthEnd])
+                        ->sum('commission_amount');
+                });
+                $data[] = $monthCommissions;
+                $current->addMonth();
+            }
+        }
+
+        return $data;
+    }
+
+    /**
+     * Generate time-series data for QR codes
+     */
+    private function getQrCodeTimeSeries($startDate, $endDate, $businesses): array
+    {
+        $data = [];
+        $current = $startDate->copy();
+        $totalDays = $startDate->diffInDays($endDate);
+
+        if ($totalDays <= 31) {
+            // Daily data
+            while ($current <= $endDate) {
+                $dayQrCodes = $businesses->sum(function ($business) use ($current) {
+                    return $business->qrCodes()
+                        ->whereDate('created_at', $current->toDateString())
+                        ->count();
+                });
+                $data[] = $dayQrCodes;
+                $current->addDay();
+            }
+        } elseif ($totalDays <= 90) {
+            // Weekly data
+            while ($current <= $endDate) {
+                $weekEnd = $current->copy()->addDays(6)->min($endDate);
+                $weekQrCodes = $businesses->sum(function ($business) use ($current, $weekEnd) {
+                    return $business->qrCodes()
+                        ->whereBetween('created_at', [$current, $weekEnd])
+                        ->count();
+                });
+                $data[] = $weekQrCodes;
+                $current->addWeek();
+            }
+        } else {
+            // Monthly data
+            while ($current <= $endDate) {
+                $monthEnd = $current->copy()->addMonth()->subDay()->min($endDate);
+                $monthQrCodes = $businesses->sum(function ($business) use ($current, $monthEnd) {
+                    return $business->qrCodes()
+                        ->whereBetween('created_at', [$current, $monthEnd])
+                        ->count();
+                });
+                $data[] = $monthQrCodes;
+                $current->addMonth();
+            }
+        }
+
+        return $data;
+    }
+
+    /**
+     * Generate time-series data for conversion rates
+     */
+    private function getConversionTimeSeries($startDate, $endDate, $businesses): array
+    {
+        $data = [];
+        $current = $startDate->copy();
+        $totalDays = $startDate->diffInDays($endDate);
+
+        if ($totalDays <= 31) {
+            // Daily data
+            while ($current <= $endDate) {
+                $dayScans = $businesses->sum(function ($business) use ($current) {
+                    return $business->qrCodes()
+                        ->whereDate('created_at', $current->toDateString())
+                        ->sum('total_scans');
+                });
+
+                $dayConversions = $businesses->sum(function ($business) use ($current) {
+                    return $business->qrCodes()
+                        ->whereDate('created_at', $current->toDateString())
+                        ->sum('conversion_count');
+                });
+
+                $conversionRate = $dayScans > 0 ? ($dayConversions / $dayScans) * 100 : 0;
+                $data[] = round($conversionRate, 2);
+                $current->addDay();
+            }
+        } elseif ($totalDays <= 90) {
+            // Weekly data
+            while ($current <= $endDate) {
+                $weekEnd = $current->copy()->addDays(6)->min($endDate);
+
+                $weekScans = $businesses->sum(function ($business) use ($current, $weekEnd) {
+                    return $business->qrCodes()
+                        ->whereBetween('created_at', [$current, $weekEnd])
+                        ->sum('total_scans');
+                });
+
+                $weekConversions = $businesses->sum(function ($business) use ($current, $weekEnd) {
+                    return $business->qrCodes()
+                        ->whereBetween('created_at', [$current, $weekEnd])
+                        ->sum('conversion_count');
+                });
+
+                $conversionRate = $weekScans > 0 ? ($weekConversions / $weekScans) * 100 : 0;
+                $data[] = round($conversionRate, 2);
+                $current->addWeek();
+            }
+        } else {
+            // Monthly data
+            while ($current <= $endDate) {
+                $monthEnd = $current->copy()->addMonth()->subDay()->min($endDate);
+
+                $monthScans = $businesses->sum(function ($business) use ($current, $monthEnd) {
+                    return $business->qrCodes()
+                        ->whereBetween('created_at', [$current, $monthEnd])
+                        ->sum('total_scans');
+                });
+
+                $monthConversions = $businesses->sum(function ($business) use ($current, $monthEnd) {
+                    return $business->qrCodes()
+                        ->whereBetween('created_at', [$current, $monthEnd])
+                        ->sum('conversion_count');
+                });
+
+                $conversionRate = $monthScans > 0 ? ($monthConversions / $monthScans) * 100 : 0;
+                $data[] = round($conversionRate, 2);
+                $current->addMonth();
+            }
+        }
+
+        return $data;
     }
 
     /**
@@ -431,6 +756,157 @@ class AffiliateBusinessModelController extends Controller
     public function paymentTracking()
     {
         return Inertia::render('AdminDashboardPages/BusinessModel/PaymentTracking');
+    }
+
+    /**
+     * Get business details for API
+     */
+    public function getBusinessDetails($businessId): JsonResponse
+    {
+        try {
+            $business = \App\Models\Affiliate\AffiliateBusiness::with([
+                'qrCodes',
+                'commissions',
+                'customerScans',
+                'locations'
+            ])->findOrFail($businessId);
+
+            // Calculate statistics
+            $statistics = [
+                'total_scans' => $business->qrCodes->sum('total_scans'),
+                'unique_scans' => $business->qrCodes->sum('unique_scans'),
+                'total_revenue' => $business->qrCodes->sum('total_revenue_generated'),
+                'conversion_rate' => $business->qrCodes->avg('conversion_rate') ?? 0,
+            ];
+
+            // Get recent activity
+            $recentActivity = [
+                [
+                    'id' => 1,
+                    'type' => 'success',
+                    'description' => $business->qrCodes->count() . ' QR codes generated',
+                    'created_at' => $business->created_at->toISOString(),
+                ],
+                [
+                    'id' => 2,
+                    'type' => 'info',
+                    'description' => '€' . number_format($statistics['total_revenue'], 2) . ' total revenue generated',
+                    'created_at' => $business->updated_at->toISOString(),
+                ],
+            ];
+
+            return response()->json([
+                'success' => true,
+                'business' => $business,
+                'locations' => $business->locations ?? [],
+                'qr_codes' => $business->qrCodes ?? [],
+                'commissions' => $business->commissions ?? [],
+                'statistics' => $statistics,
+                'recent_activity' => $recentActivity,
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Error fetching business details: ' . $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    /**
+     * Update business details
+     */
+    public function updateBusinessDetails(Request $request, $businessId): JsonResponse
+    {
+        try {
+            $business = \App\Models\Affiliate\AffiliateBusiness::findOrFail($businessId);
+
+            $data = $request->validate([
+                'name' => 'nullable|string|max:255',
+                'contact_email' => 'nullable|email|max:255',
+                'contact_phone' => 'nullable|string|max:20',
+                'website' => 'nullable|url|max:255',
+                'legal_address' => 'nullable|string',
+                'billing_address' => 'nullable|string',
+            ]);
+
+            $business->update($data);
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Business updated successfully',
+                'business' => $business->fresh(),
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Error updating business: ' . $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    /**
+     * Export business data
+     */
+    public function exportBusinessData($businessId)
+    {
+        try {
+            $business = \App\Models\Affiliate\AffiliateBusiness::with([
+                'qrCodes',
+                'commissions'
+            ])->findOrFail($businessId);
+
+            $data = [
+                [
+                    'Business Name',
+                    'Business Type',
+                    'Contact Email',
+                    'Contact Phone',
+                    'Status',
+                    'Verification Status',
+                    'Created Date',
+                    'Total QR Codes',
+                    'Total Scans',
+                    'Total Revenue',
+                    'Total Commissions'
+                ],
+                [
+                    $business->name,
+                    $business->business_type,
+                    $business->contact_email,
+                    $business->contact_phone,
+                    $business->status,
+                    $business->verification_status,
+                    $business->created_at->format('Y-m-d H:i:s'),
+                    $business->qrCodes->count(),
+                    $business->qrCodes->sum('total_scans'),
+                    $business->qrCodes->sum('total_revenue_generated'),
+                    $business->commissions->sum('commission_amount'),
+                ]
+            ];
+
+            $filename = 'business-' . $business->name . '-' . date('Y-m-d') . '.csv';
+            $headers = [
+                'Content-Type' => 'text/csv',
+                'Content-Disposition' => "attachment; filename=\"$filename\"",
+            ];
+
+            $callback = function () use ($data) {
+                $file = fopen('php://output', 'w');
+
+                foreach ($data as $row) {
+                    fputcsv($file, $row);
+                }
+
+                fclose($file);
+            };
+
+            return response()->stream($callback, 200, $headers);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Error exporting business data: ' . $e->getMessage(),
+            ], 500);
+        }
     }
 
     /**

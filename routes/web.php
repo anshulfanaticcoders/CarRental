@@ -250,6 +250,9 @@ Route::middleware(['auth', 'role:admin'])->group(function () {
     Route::get('/admin/affiliate/statistics', [AffiliateBusinessModelController::class, 'getBusinessStatistics'])->name('admin.affiliate.statistics');
   Route::get('/admin/affiliate/statistics-data', [AffiliateBusinessModelController::class, 'getBusinessStatisticsData'])->name('admin.affiliate.statistics-data');
     Route::get('/admin/affiliate/businesses/{businessId}/preview', [AffiliateBusinessModelController::class, 'previewBusinessRates'])->name('admin.affiliate.businesses.preview');
+    Route::get('/admin/affiliate/businesses/{businessId}', [AffiliateBusinessModelController::class, 'getBusinessDetails'])->name('admin.affiliate.businesses.show');
+    Route::put('/admin/affiliate/businesses/{businessId}', [AffiliateBusinessModelController::class, 'updateBusinessDetails'])->name('admin.affiliate.businesses.update');
+    Route::get('/admin/affiliate/businesses/{businessId}/export', [AffiliateBusinessModelController::class, 'exportBusinessData'])->name('admin.affiliate.businesses.export');
 
     // Business Model Dashboard Routes
     Route::get('/admin/affiliate/business-statistics', [AffiliateBusinessModelController::class, 'businessStatistics'])->name('admin.affiliate.business-statistics');

@@ -42,7 +42,8 @@ const processing = ref(new Set())
 
 // Computed properties
 const filteredBusinesses = computed(() => {
-  let filtered = businesses.value
+  // Create a copy to avoid reactivity issues
+  let filtered = [...businesses.value]
 
   // Filter by status
   if (statusFilter.value !== 'all') {
@@ -52,33 +53,42 @@ const filteredBusinesses = computed(() => {
   // Filter by search term
   if (searchTerm.value) {
     const term = searchTerm.value.toLowerCase()
-    filtered = filtered.filter(b =>
-      b.name.toLowerCase().includes(term) ||
-      b.contact_email.toLowerCase().includes(term) ||
-      b.contact_phone.toLowerCase().includes(term) ||
-      b.business_type.toLowerCase().includes(term) ||
-      b.city.toLowerCase().includes(term)
-    )
+    filtered = filtered.filter(b => {
+      const name = b.name || ''
+      const email = b.contact_email || ''
+      const phone = b.contact_phone || ''
+      const businessType = b.business_type || ''
+      const city = b.city || ''
+      const country = b.country || ''
+
+      return name.toLowerCase().includes(term) ||
+             email.toLowerCase().includes(term) ||
+             phone.toLowerCase().includes(term) ||
+             businessType.toLowerCase().includes(term) ||
+             city.toLowerCase().includes(term) ||
+             country.toLowerCase().includes(term)
+    })
   }
 
-  // Sort
-  filtered.sort((a, b) => {
-    let aVal = a[sortBy.value]
-    let bVal = b[sortBy.value]
+  // Sort using a non-reactive copy
+  const sortField = sortBy.value
+  const sortOrderValue = sortOrder.value
 
-    if (sortBy.value === 'created_at' || sortBy.value === 'verified_at') {
-      aVal = new Date(aVal)
-      bVal = new Date(bVal)
+  return filtered.sort((a, b) => {
+    let aVal = a[sortField]
+    let bVal = b[sortField]
+
+    if (sortField === 'created_at' || sortField === 'verified_at') {
+      aVal = aVal ? new Date(aVal).getTime() : 0
+      bVal = bVal ? new Date(bVal).getTime() : 0
     }
 
-    if (sortOrder.value === 'asc') {
+    if (sortOrderValue === 'asc') {
       return aVal > bVal ? 1 : -1
     } else {
       return aVal < bVal ? 1 : -1
     }
   })
-
-  return filtered
 })
 
 const stats = computed(() => {
@@ -200,13 +210,26 @@ const getStatusColor = (status) => {
 // Format date
 const formatDate = (dateString) => {
   if (!dateString) return 'N/A'
-  return new Date(dateString).toLocaleDateString('en-US', {
-    year: 'numeric',
-    month: 'short',
-    day: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit'
-  })
+
+  try {
+    const date = new Date(dateString)
+
+    // Check if date is valid
+    if (isNaN(date.getTime())) {
+      return 'N/A'
+    }
+
+    return date.toLocaleDateString('en-US', {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    })
+  } catch (error) {
+    console.warn('Date formatting error:', error)
+    return 'N/A'
+  }
 }
 
 // Show notification
@@ -495,7 +518,7 @@ onMounted(() => {
             <div class="table-cell date-cell">
               <div class="date-info">
                 <Calendar class="icon" />
-                <span>{{ formatDate(business.created_at) }}</span>
+                <span>{{ formatDate(business.applied_at || business.created_at) }}</span>
               </div>
             </div>
 
@@ -536,14 +559,13 @@ onMounted(() => {
                 </template>
 
                 <template v-else>
-                  <a
-                    :href="`/business/${business.dashboard_access_token}/dashboard`"
-                    target="_blank"
+                  <Link
+                    :href="`/admin/affiliate/business-details/${business.id}`"
                     class="btn-external"
                   >
                     <ExternalLink />
                     Dashboard
-                  </a>
+                  </Link>
                 </template>
               </div>
             </div>

@@ -5,6 +5,8 @@ namespace App\Models\Affiliate;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\Log;
 
 class AffiliateQrCode extends Model
 {
@@ -146,12 +148,26 @@ class AffiliateQrCode extends Model
      */
     public function getImageUrlAttribute(): ?string
     {
-        if (!$this->qr_image_path) {
+        try {
+            // If QR code has a stored image path, return the storage URL
+            if ($this->qr_image_path) {
+                return \Storage::disk('upcloud')->url($this->qr_image_path);
+            }
+
+            // Generate QR code URL on-demand if no image exists
+            if (!$this->business || !$this->business->dashboard_access_token) {
+                \Log::error('QR code image generation failed: No business or dashboard access token');
+                return null;
+            }
+
+            return route('qr-codes.image', [
+                'token' => $this->business->dashboard_access_token,
+                'qrCodeId' => $this->id,
+            ]);
+        } catch (\Exception $e) {
+            \Log::error('QR code image URL generation failed: ' . $e->getMessage());
             return null;
         }
-
-        // Just return the path since frontend will construct the full URL
-        return $this->qr_image_path;
     }
 
     /**

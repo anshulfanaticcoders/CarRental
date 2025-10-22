@@ -30,7 +30,8 @@ import {
   Shield,
   Settings,
   RefreshCw,
-  Camera
+  Camera,
+  DollarSign
 } from 'lucide-vue-next'
 
 // Props
@@ -169,6 +170,22 @@ const getStatusColor = (status) => {
       return 'text-red-600 bg-red-100'
     default:
       return 'text-gray-600 bg-gray-100'
+  }
+}
+
+// Get activity icon
+const getActivityIcon = (type) => {
+  switch (type) {
+    case 'success':
+      return CheckCircle
+    case 'info':
+      return FileText
+    case 'warning':
+      return AlertCircle
+    case 'error':
+      return XCircle
+    default:
+      return FileText
   }
 }
 
@@ -566,10 +583,13 @@ onMounted(() => {
                 </div>
               </div>
               <div class="qr-actions">
-                <a :href="qrCode.qr_code_url" target="_blank" class="btn-view">
+                <a v-if="qrCode.image_url" :href="qrCode.image_url" target="_blank" class="btn-view">
                   <Camera />
                   View QR Code
                 </a>
+                <div v-else class="no-qr-code">
+                  <p>No QR code image available</p>
+                </div>
               </div>
             </div>
 
@@ -1188,6 +1208,14 @@ onMounted(() => {
   text-align: center;
   padding: 2rem;
   color: #6b7280;
+  font-style: italic;
+}
+
+.no-qr-code {
+  text-align: center;
+  padding: 1rem;
+  color: #6b7280;
+  font-size: 0.875rem;
   font-style: italic;
 }
 
