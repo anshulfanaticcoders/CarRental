@@ -21,11 +21,10 @@ class ShareCountryFromUrl
         // If country is in URL, store it and use it
         if ($country) {
             session(['country' => strtolower($country)]);
-            \Log::info('Country from URL stored in session: ' . strtolower($country));
+            // Country from URL stored in session
         } else {
             // Always try to detect from IP using Stevebauman Location
-            \Log::info('No country in URL, attempting dynamic IP detection with Stevebauman...');
-
+            // Always try to detect from IP using Stevebauman Location
             try {
                 $position = \Stevebauman\Location\Facades\Location::get();
 
@@ -33,31 +32,22 @@ class ShareCountryFromUrl
                     $detectedCountry = strtolower($position->countryCode);
                     session(['country' => $detectedCountry]);
                     $country = $detectedCountry;
-                    \Log::info('✅ SUCCESS: Stevebauman detected country: ' . $detectedCountry . ' from IP: ' . $position->ip);
                 } else {
-                    \Log::error('❌ FAILED: Stevebauman returned false or no country code');
-
                     // Default to US if no country detected and no session country
                     if (!session('country')) {
                         $country = 'us';
                         session(['country' => $country]);
-                        \Log::info('🇺🇸 DEFAULT: Setting US as default country');
                     } else {
                         $country = session('country');
-                        \Log::info('Using existing session country: ' . $country);
                     }
                 }
             } catch (\Exception $e) {
-                \Log::error('❌ ERROR: Stevebauman Location failed: ' . $e->getMessage());
-
                 // Default to US if no country detected and no session country
                 if (!session('country')) {
                     $country = 'us';
                     session(['country' => $country]);
-                    \Log::info('🇺🇸 DEFAULT: Setting US as default country (exception case)');
                 } else {
                     $country = session('country');
-                    \Log::info('Using existing session country: ' . $country);
                 }
             }
         }
@@ -66,7 +56,7 @@ class ShareCountryFromUrl
         if (!$country) {
             $country = 'us';
             session(['country' => $country]);
-            \Log::info('🇺🇸 FINAL FALLBACK: Setting US as final default country');
+            // Final fallback - Setting US as final default country
         }
 
         // Ensure country is lowercase and stored in session
@@ -78,7 +68,7 @@ class ShareCountryFromUrl
         // Share country with all views
         view()->share('country', $country);
         inertia()->share('country', $country);
-        \Log::info('Final country result: ' . ($country ?: 'NULL') . ' | Session country: ' . session('country'));
+        // Final country determined and shared with views
 
         return $next($request);
     }

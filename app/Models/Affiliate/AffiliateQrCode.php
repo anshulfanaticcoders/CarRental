@@ -44,7 +44,8 @@ class AffiliateQrCode extends Model
         'location_name',
         'location_address',
         'is_revoked',
-        'image_url'
+        'image_url',
+        'conversion_rate'
     ];
 
     protected $casts = [
@@ -271,5 +272,13 @@ class AffiliateQrCode extends Model
     public function getIsRevokedAttribute(): bool
     {
         return $this->status === 'suspended' || $this->status === 'revoked';
+    }
+
+    /**
+     * Get conversion_rate accessor for compatibility.
+     */
+    public function getConversionRateAttribute(): float
+    {
+        return $this->getConversionRate();
     }
 }

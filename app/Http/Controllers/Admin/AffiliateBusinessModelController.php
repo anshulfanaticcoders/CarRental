@@ -7,6 +7,7 @@ use App\Services\Affiliate\AffiliateBusinessModelService;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Support\Facades\Log;
 
 class AffiliateBusinessModelController extends Controller
 {
@@ -118,8 +119,13 @@ class AffiliateBusinessModelController extends Controller
                 'name' => $business->name,
                 'business_type' => $business->business_type,
                 'contact_email' => $business->contact_email,
+                'contact_phone' => $business->contact_phone,
+                'city' => $business->city,
+                'country' => $business->country,
                 'status' => $business->status,
                 'verification_status' => $business->verification_status,
+                'created_at' => $business->created_at,
+                'applied_at' => $business->created_at,
                 'business_model' => $business->businessModel ? [
                     'discount_type' => $business->businessModel->discount_type,
                     'discount_value' => $business->businessModel->discount_value,
@@ -764,19 +770,38 @@ class AffiliateBusinessModelController extends Controller
     public function getBusinessDetails($businessId): JsonResponse
     {
         try {
-            $business = \App\Models\Affiliate\AffiliateBusiness::with([
-                'qrCodes',
-                'commissions',
-                'customerScans',
-                'locations'
-            ])->findOrFail($businessId);
+            // Load business without problematic relationships first
+            $business = \App\Models\Affiliate\AffiliateBusiness::findOrFail($businessId);
 
-            // Calculate statistics
+            // Load relationships separately to isolate any issues
+            try {
+                $qrCodes = $business->qrCodes()->get();
+            } catch (\Exception $e) {
+                $qrCodes = collect([]);
+            }
+
+            try {
+                $commissions = $business->commissions()->get();
+            } catch (\Exception $e) {
+                $commissions = collect([]);
+            }
+
+            try {
+                $locations = $business->locations()->get();
+            } catch (\Exception $e) {
+                $locations = collect([]);
+            }
+
+            // Calculate statistics safely
+            $totalScans = $qrCodes->sum('total_scans');
+            $totalConversions = $qrCodes->sum('conversion_count');
+            $conversionRate = $totalScans > 0 ? ($totalConversions / $totalScans) * 100 : 0;
+
             $statistics = [
-                'total_scans' => $business->qrCodes->sum('total_scans'),
-                'unique_scans' => $business->qrCodes->sum('unique_scans'),
-                'total_revenue' => $business->qrCodes->sum('total_revenue_generated'),
-                'conversion_rate' => $business->qrCodes->avg('conversion_rate') ?? 0,
+                'total_scans' => $totalScans,
+                'unique_scans' => $qrCodes->sum('unique_scans'),
+                'total_revenue' => $qrCodes->sum('total_revenue_generated'),
+                'conversion_rate' => round($conversionRate, 2),
             ];
 
             // Get recent activity
@@ -784,7 +809,7 @@ class AffiliateBusinessModelController extends Controller
                 [
                     'id' => 1,
                     'type' => 'success',
-                    'description' => $business->qrCodes->count() . ' QR codes generated',
+                    'description' => $qrCodes->count() . ' QR codes generated',
                     'created_at' => $business->created_at->toISOString(),
                 ],
                 [
@@ -798,9 +823,9 @@ class AffiliateBusinessModelController extends Controller
             return response()->json([
                 'success' => true,
                 'business' => $business,
-                'locations' => $business->locations ?? [],
-                'qr_codes' => $business->qrCodes ?? [],
-                'commissions' => $business->commissions ?? [],
+                'locations' => $locations,
+                'qr_codes' => $qrCodes,
+                'commissions' => $commissions,
                 'statistics' => $statistics,
                 'recent_activity' => $recentActivity,
             ]);
@@ -808,6 +833,7 @@ class AffiliateBusinessModelController extends Controller
             return response()->json([
                 'success' => false,
                 'message' => 'Error fetching business details: ' . $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
             ], 500);
         }
     }
@@ -941,26 +967,13 @@ class AffiliateBusinessModelController extends Controller
     public function getCommissionsData(Request $request): JsonResponse
     {
         try {
-            $query = \App\Models\Affiliate\AffiliateCommission::with(['business', 'affiliate'])
+            // Start with basic query
+            $query = \App\Models\Affiliate\AffiliateCommission::with(['business', 'customer', 'booking.customer'])
                 ->orderBy('created_at', 'desc');
 
             // Apply filters
             if ($request->filled('status')) {
                 $query->where('status', $request->status);
-            }
-
-            if ($request->filled('search')) {
-                $search = $request->search;
-                $query->where(function ($q) use ($search) {
-                    $q->whereHas('business', function ($subQ) use ($search) {
-                        $subQ->where('name', 'like', "%{$search}%");
-                    })
-                    ->orWhereHas('affiliate', function ($subQ) use ($search) {
-                        $subQ->where('name', 'like', "%{$search}%")
-                           ->orWhere('email', 'like', "%{$search}%");
-                    })
-                    ->orWhere('qr_code_id', 'like', "%{$search}%");
-                });
             }
 
             // Date range filtering
@@ -983,21 +996,65 @@ class AffiliateBusinessModelController extends Controller
                 }
             }
 
-            $perPage = $request->get('per_page', 15);
+            // Apply search filter if present
+            if ($request->filled('search') && strlen(trim($request->search)) > 0) {
+                $search = trim($request->search);
+
+                // Optimized search using direct field matches first (faster than subqueries)
+                $query->where(function ($q) use ($search) {
+                    // Direct commission table searches (fastest)
+                    $q->where('affiliate_commissions.uuid', 'like', "%{$search}%")
+                      ->orWhere('affiliate_commissions.qr_scan_id', 'like', "%{$search}%")
+                      ->orWhere('affiliate_commissions.booking_id', 'like', "%{$search}%");
+                })
+                // Only use subquery for business name if needed
+                ->orWhereHas('business', function ($businessQuery) use ($search) {
+                    $businessQuery->where('name', 'like', "%{$search}%");
+                });
+            }
+
+            $perPage = $request->get('per_page', 5);
             $commissions = $query->paginate($perPage);
 
             $formattedCommissions = $commissions->getCollection()->map(function ($commission) {
+                // Get business currency or default to EUR
+                $currency = $commission->business ? $commission->business->currency : 'EUR';
+
+                // Handle customer data - try to get from customer relationship, then from booking, then fallback
+                $customerName = 'N/A';
+                $customerEmail = 'N/A';
+
+                if ($commission->customer) {
+                    // User model has first_name and last_name fields, not name
+                    $firstName = $commission->customer->first_name;
+                    $lastName = $commission->customer->last_name;
+                    $customerName = trim(($firstName ?? '') . ' ' . ($lastName ?? '')) ?: 'N/A';
+                    $customerEmail = $commission->customer->email;
+                } elseif ($commission->booking && $commission->booking->customer) {
+                    // Try to get name from booking's customer relationship
+                    $firstName = $commission->booking->customer->first_name ?? null;
+                    $lastName = $commission->booking->customer->last_name ?? null;
+                    $customerName = trim(($firstName ?? '') . ' ' . ($lastName ?? '')) ?: 'N/A';
+                    $customerEmail = $commission->booking->customer->email ?? 'N/A';
+                }
+
                 return [
                     'id' => $commission->id,
-                    'business_name' => $commission->business->name ?? 'N/A',
-                    'business_type' => $commission->business->business_type ?? 'N/A',
-                    'affiliate_name' => $commission->affiliate->name ?? 'N/A',
-                    'affiliate_email' => $commission->affiliate->email ?? 'N/A',
-                    'qr_code_id' => $commission->qr_code_id,
+                    'business_name' => $commission->business ? $commission->business->name : 'N/A',
+                    'business_type' => $commission->business ? $commission->business->business_type : 'N/A',
+                    'affiliate_name' => $customerName,
+                    'affiliate_email' => $customerEmail,
+                    'qr_code_id' => $commission->qr_scan_id,
+                    'booking_reference' => $commission->booking && $commission->booking->booking_reference
+                        ? $commission->booking->booking_reference
+                        : 'QR-' . $commission->qr_scan_id,
+                    'booking_amount' => $commission->booking_amount ?: 0,
                     'amount' => $commission->commission_amount,
-                    'currency' => $commission->currency ?? 'EUR',
+                    'currency' => $currency,
                     'status' => $commission->status,
                     'created_at' => $commission->created_at->toISOString(),
+                    'paid_at' => $commission->paid_at ? $commission->paid_at->toISOString() : null,
+                    'scheduled_payout_date' => $commission->scheduled_payout_date ?: null,
                 ];
             });
 
@@ -1034,7 +1091,15 @@ class AffiliateBusinessModelController extends Controller
                 default => $now->copy()->subDays(30),
             };
 
-            $commissions = \App\Models\Affiliate\AffiliateCommission::where('created_at', '>=', $startDate);
+            $commissions = \App\Models\Affiliate\AffiliateCommission::with(['business', 'customer'])
+                ->where('created_at', '>=', $startDate);
+
+            $totalCommissions = $commissions->sum('commission_amount');
+            $pendingCommissions = $commissions->where('status', 'pending')->sum('commission_amount');
+            $approvedCommissions = $commissions->where('status', 'approved')->sum('commission_amount');
+            $paidCommissions = $commissions->where('status', 'paid')->sum('commission_amount');
+            $disputedCommissions = $commissions->where('status', 'disputed')->sum('commission_amount');
+            $rejectedCommissions = $commissions->where('status', 'rejected')->sum('commission_amount');
 
             $stats = [
                 'overview' => [
@@ -1042,11 +1107,28 @@ class AffiliateBusinessModelController extends Controller
                     'pending_commissions' => $commissions->where('status', 'pending')->count(),
                     'approved_commissions' => $commissions->where('status', 'approved')->count(),
                     'paid_commissions' => $commissions->where('status', 'paid')->count(),
-                    'total_amount' => $commissions->sum('commission_amount'),
+                    'disputed_commissions' => $commissions->where('status', 'disputed')->count(),
+                    'rejected_commissions' => $commissions->where('status', 'rejected')->count(),
+                    'total_amount' => $totalCommissions,
+                    'pending_amount' => $pendingCommissions,
+                    'approved_amount' => $approvedCommissions,
+                    'paid_amount' => $paidCommissions,
+                    'disputed_amount' => $disputedCommissions,
+                    'rejected_amount' => $rejectedCommissions,
                     'average_commission' => $commissions->avg('commission_amount') ?? 0,
+                    'conversion_rate' => $commissions->count() > 0 ? round(($commissions->where('status', 'paid')->count() / $commissions->count()) * 100, 2) : 0,
                 ],
                 'top_affiliates' => $this->getTopAffiliates($startDate),
+                'top_businesses' => $this->getTopBusinesses($startDate),
                 'monthly_growth' => $this->calculateMonthlyGrowth($startDate),
+                'status_distribution' => [
+                    'pending' => $commissions->where('status', 'pending')->count(),
+                    'approved' => $commissions->where('status', 'approved')->count(),
+                    'paid' => $commissions->where('status', 'paid')->count(),
+                    'disputed' => $commissions->where('status', 'disputed')->count(),
+                    'rejected' => $commissions->where('status', 'rejected')->count(),
+                ],
+                'currency_breakdown' => $this->getCurrencyBreakdown($startDate),
             ];
 
             return response()->json($stats);
@@ -1119,7 +1201,7 @@ class AffiliateBusinessModelController extends Controller
     public function exportCommissions(Request $request)
     {
         try {
-            $commissions = \App\Models\Affiliate\AffiliateCommission::with(['business', 'affiliate'])
+            $commissions = \App\Models\Affiliate\AffiliateCommission::with(['business', 'customer'])
                 ->orderBy('created_at', 'desc');
 
             // Apply filters
@@ -1151,8 +1233,8 @@ class AffiliateBusinessModelController extends Controller
                     'ID' => $commission->id,
                     'Business Name' => $commission->business->name ?? 'N/A',
                     'Business Type' => $commission->business->business_type ?? 'N/A',
-                    'Affiliate Name' => $commission->affiliate->name ?? 'N/A',
-                    'Affiliate Email' => $commission->affiliate->email ?? 'N/A',
+                    'Affiliate Name' => $commission->customer->name ?? 'N/A',
+                    'Affiliate Email' => $commission->customer->email ?? 'N/A',
                     'QR Code ID' => $commission->qr_code_id,
                     'Amount' => $commission->commission_amount,
                     'Currency' => $commission->currency ?? 'EUR',
@@ -1223,26 +1305,28 @@ class AffiliateBusinessModelController extends Controller
                     'total_qr_codes' => $qrCodes->count(),
                     'total_scans' => $qrCodes->sum('total_scans'),
                     'unique_scans' => $qrCodes->sum('unique_scans'),
-                    'conversion_rate' => $qrCodes->avg('conversion_rate') ?? 0,
+                    'conversion_rate' => $qrCodes->sum('total_scans') > 0 ? round(($qrCodes->sum('conversion_count') / $qrCodes->sum('total_scans')) * 100, 2) : 0,
                     'active_qr_codes' => $qrCodes->where('status', 'active')->count(),
                     'avg_scans_per_qr' => $qrCodes->count() > 0 ? $qrCodes->sum('total_scans') / $qrCodes->count() : 0,
                     'recent_growth' => $this->calculateQrGrowth($startDate),
                 ],
                 'top_performers' => $qrCodes->sortByDesc('total_scans')->take(10)->map(function ($qr) {
+                    $conversionRate = $qr->total_scans > 0 ? ($qr->conversion_count / $qr->total_scans) * 100 : 0;
                     return [
                         'id' => $qr->id,
                         'qr_code_id' => $qr->qr_code_id,
                         'business_name' => $qr->business->name ?? 'N/A',
                         'total_scans' => $qr->total_scans,
                         'unique_scans' => $qr->unique_scans,
-                        'conversions' => $qr->conversions,
-                        'conversion_rate' => $qr->conversion_rate,
-                        'performance' => $this->getPerformanceLevel($qr->conversion_rate),
+                        'conversions' => $qr->conversion_count,
+                        'conversion_rate' => round($conversionRate, 2),
+                        'performance' => $this->getPerformanceLevel($conversionRate / 100),
                     ];
                 })->values(),
                 'device_stats' => $this->getDeviceStats($startDate),
                 'location_stats' => $this->getLocationStats($startDate),
                 'qr_codes' => $qrCodes->map(function ($qr) {
+                    $conversionRate = $qr->total_scans > 0 ? ($qr->conversion_count / $qr->total_scans) * 100 : 0;
                     return [
                         'id' => $qr->id,
                         'qr_code_id' => $qr->qr_code_id,
@@ -1250,10 +1334,10 @@ class AffiliateBusinessModelController extends Controller
                         'business_type' => $qr->business->business_type ?? 'N/A',
                         'total_scans' => $qr->total_scans,
                         'unique_scans' => $qr->unique_scans,
-                        'conversions' => $qr->conversions,
-                        'conversion_rate' => $qr->conversion_rate,
+                        'conversions' => $qr->conversion_count,
+                        'conversion_rate' => round($conversionRate, 2),
                         'status' => $qr->status,
-                        'performance' => $this->getPerformanceLevel($qr->conversion_rate),
+                        'performance' => $this->getPerformanceLevel($conversionRate / 100),
                         'created_at' => $qr->created_at->toISOString(),
                     ];
                 }),
@@ -1281,14 +1365,15 @@ class AffiliateBusinessModelController extends Controller
             }
 
             $data = $qrCodes->get()->map(function ($qr) {
+                $conversionRate = $qr->total_scans > 0 ? ($qr->conversion_count / $qr->total_scans) * 100 : 0;
                 return [
                     'QR Code ID' => $qr->qr_code_id,
                     'Business Name' => $qr->business->name ?? 'N/A',
                     'Business Type' => $qr->business->business_type ?? 'N/A',
                     'Total Scans' => $qr->total_scans,
                     'Unique Scans' => $qr->unique_scans,
-                    'Conversions' => $qr->conversions,
-                    'Conversion Rate' => number_format($qr->conversion_rate * 100, 2) . '%',
+                    'Conversions' => $qr->conversion_count,
+                    'Conversion Rate' => number_format($conversionRate, 2) . '%',
                     'Status' => $qr->status,
                     'Created Date' => $qr->created_at->format('Y-m-d H:i:s'),
                 ];
@@ -1329,25 +1414,97 @@ class AffiliateBusinessModelController extends Controller
     private function getTopAffiliates($startDate)
     {
         return \App\Models\Affiliate\AffiliateCommission::where('created_at', '>=', $startDate)
-            ->with(['affiliate'])
-            ->selectRaw('affiliate_id, SUM(commission_amount) as total_commissions, COUNT(*) as total_transactions')
-            ->groupBy('affiliate_id')
+            ->with(['customer'])
+            ->selectRaw('customer_id, SUM(commission_amount) as total_commissions, COUNT(*) as total_transactions')
+            ->groupBy('customer_id')
             ->orderBy('total_commissions', 'desc')
             ->take(10)
             ->get()
             ->map(function ($item, $index) {
-                $affiliate = $item->affiliate;
+                $customer = $item->customer;
                 return [
-                    'id' => $affiliate->id ?? null,
+                    'id' => $customer->id ?? null,
                     'rank' => $index + 1,
-                    'name' => $affiliate->name ?? 'N/A',
-                    'email' => $affiliate->email ?? 'N/A',
+                    'name' => $customer->name ?? 'N/A',
+                    'email' => $customer->email ?? 'N/A',
                     'total_commissions' => $item->total_commissions,
                     'total_transactions' => $item->total_transactions,
                     'conversion_rate' => $item->total_transactions > 0 ? ($item->total_transactions / $item->total_transactions) : 0,
                 ];
             })
             ->values();
+    }
+
+    private function getTopBusinesses($startDate)
+    {
+        return \App\Models\Affiliate\AffiliateCommission::where('created_at', '>=', $startDate)
+            ->with(['business'])
+            ->selectRaw('business_id, SUM(commission_amount) as total_commissions, COUNT(*) as total_transactions')
+            ->groupBy('business_id')
+            ->orderBy('total_commissions', 'desc')
+            ->take(10)
+            ->get()
+            ->map(function ($item, $index) {
+                $business = $item->business;
+                return [
+                    'id' => $business->id ?? null,
+                    'rank' => $index + 1,
+                    'name' => $business->name ?? 'N/A',
+                    'business_type' => $business->business_type ?? 'N/A',
+                    'total_commissions' => $item->total_commissions,
+                    'total_transactions' => $item->total_transactions,
+                    'average_commission' => $item->total_transactions > 0 ? $item->total_commissions / $item->total_transactions : 0,
+                ];
+            })
+            ->values();
+    }
+
+    private function getCurrencyBreakdown($startDate)
+    {
+        try {
+            $commissions = \App\Models\Affiliate\AffiliateCommission::with(['business'])
+                ->where('created_at', '>=', $startDate)
+                ->get();
+
+            $currencyBreakdown = [];
+            foreach ($commissions as $commission) {
+                $currency = $commission->business->currency ?? 'EUR';
+                if (!isset($currencyBreakdown[$currency])) {
+                    $currencyBreakdown[$currency] = [
+                        'total_amount' => 0,
+                        'count' => 0
+                    ];
+                }
+                $currencyBreakdown[$currency]['total_amount'] += $commission->commission_amount;
+                $currencyBreakdown[$currency]['count']++;
+            }
+
+            // Convert to array and sort by total amount
+            $sortedBreakdown = collect($currencyBreakdown)
+                ->map(function ($amount, $currency) {
+                    return [
+                        'currency' => $currency,
+                        'total_amount' => $amount,
+                        'count' => $currencyBreakdown[$currency]['count'],
+                        'percentage' => 0, // Will be calculated in frontend
+                    ];
+                })
+                ->sortByDesc('total_amount')
+                ->values()
+                ->toArray();
+
+            return $sortedBreakdown;
+        } catch (\Exception $e) {
+            // Return empty array if there's an error
+            return [
+                [
+                    'currency' => 'EUR',
+                    'total_amount' => 0,
+                    'count' => 0,
+                    'percentage' => 0,
+                ]
+            ];
+        }
     }
 
     private function calculateMonthlyGrowth($startDate)

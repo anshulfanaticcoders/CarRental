@@ -1,5 +1,5 @@
 <script setup>
-import { ref, onMounted, computed } from 'vue'
+import { ref, onMounted, computed, watch } from 'vue'
 import { Head, Link } from '@inertiajs/vue3'
 import axios from 'axios'
 import AdminDashboardLayout from '@/Layouts/AdminDashboardLayout.vue'
@@ -26,7 +26,8 @@ import {
   BarChart3,
   ArrowUpRight,
   ArrowDownRight,
-  Wallet
+  Wallet,
+  X
 } from 'lucide-vue-next'
 
 // Reactive data
@@ -42,25 +43,14 @@ const currentPage = ref(1)
 const totalPages = ref(1)
 const processing = ref(new Set())
 
+// Modal state
+const showDetailsModal = ref(false)
+const selectedCommission = ref(null)
+
 // Computed properties
 const filteredPayments = computed(() => {
-  let filtered = payments.value
-
-  // Filter by status
-  if (statusFilter.value !== 'all') {
-    filtered = filtered.filter(p => p.status === statusFilter.value)
-  }
-
-  // Filter by search term
-  if (searchTerm.value) {
-    const term = searchTerm.value.toLowerCase()
-    filtered = filtered.filter(p =>
-      p.business_name.toLowerCase().includes(term) ||
-      p.booking_reference.toLowerCase().includes(term) ||
-      p.customer_email.toLowerCase().includes(term) ||
-      p.currency.toLowerCase().includes(term)
-    )
-  }
+  // Only sort, don't filter on client side - server handles filtering
+  let filtered = [...payments.value]
 
   // Sort
   filtered.sort((a, b) => {
@@ -86,26 +76,31 @@ const filteredPayments = computed(() => {
 })
 
 const stats = computed(() => {
-  const total = payments.value.reduce((sum, p) => sum + parseFloat(p.net_commission || 0), 0)
-  const pending = payments.value.filter(p => p.status === 'pending').reduce((sum, p) => sum + parseFloat(p.net_commission || 0), 0)
-  const approved = payments.value.filter(p => p.status === 'approved').reduce((sum, p) => sum + parseFloat(p.net_commission || 0), 0)
-  const paid = payments.value.filter(p => p.status === 'paid').reduce((sum, p) => sum + parseFloat(p.net_commission || 0), 0)
-  const disputed = payments.value.filter(p => p.status === 'disputed').reduce((sum, p) => sum + parseFloat(p.net_commission || 0), 0)
-
+  // Use real statistics from API
   return {
-    total,
-    pending,
-    approved,
-    paid,
-    disputed,
+    total: statistics.value.overview?.total_amount || 0,
+    pending: statistics.value.overview?.pending_amount || 0,
+    approved: statistics.value.overview?.approved_amount || 0,
+    paid: statistics.value.overview?.paid_amount || 0,
+    disputed: statistics.value.overview?.disputed_amount || 0,
     count: {
-      total: payments.value.length,
-      pending: payments.value.filter(p => p.status === 'pending').length,
-      approved: payments.value.filter(p => p.status === 'approved').length,
-      paid: payments.value.filter(p => p.status === 'paid').length,
-      disputed: payments.value.filter(p => p.status === 'disputed').length,
+      total: statistics.value.overview?.total_commissions || 0,
+      pending: statistics.value.overview?.pending_commissions || 0,
+      approved: statistics.value.overview?.approved_commissions || 0,
+      paid: statistics.value.overview?.paid_commissions || 0,
+      disputed: statistics.value.overview?.disputed_commissions || 0,
     }
   }
+})
+
+// Chart data for simple bar chart
+const chartData = computed(() => {
+  return [
+    { label: 'Pending', value: stats.value.pending },
+    { label: 'Approved', value: stats.value.approved },
+    { label: 'Paid', value: stats.value.paid },
+    { label: 'Disputed', value: stats.value.disputed }
+  ]
 })
 
 // Load payments
@@ -113,21 +108,22 @@ const loadPayments = async () => {
   loading.value = true
   try {
     const [paymentsResponse, statsResponse] = await Promise.all([
-      axios.get('/admin/affiliate/commissions', {
+      axios.get('/admin/affiliate/commissions-data', {
         params: {
           page: currentPage.value,
           date_range: dateRange.value,
-          include: 'business,booking,customer'
+          status: statusFilter.value === 'all' ? null : statusFilter.value,
+          search: searchTerm.value
         }
       }),
-      axios.get('/admin/affiliate/payment-statistics', {
+      axios.get('/admin/affiliate/commission-statistics', {
         params: { date_range: dateRange.value }
       })
     ])
 
     payments.value = paymentsResponse.data.data || []
     statistics.value = statsResponse.data || {}
-    totalPages.value = paymentsResponse.data.last_page || 1
+    totalPages.value = paymentsResponse.data.pagination?.last_page || 1
   } catch (error) {
     console.error('Error loading payments:', error)
     showNotification('Error loading payments', 'error')
@@ -136,11 +132,17 @@ const loadPayments = async () => {
   }
 }
 
+// Watch for search changes and reload
+const handleSearch = () => {
+  currentPage.value = 1 // Reset to first page when searching
+  loadPayments()
+}
+
 // Approve payment
 const approvePayment = async (paymentId) => {
   processing.value.add(paymentId)
   try {
-    await axios.post(`/admin/affiliate/commissions/${paymentId}/approve`)
+    await axios.patch(`/admin/affiliate/commissions/${paymentId}/status`, { status: 'approved' })
     showNotification('Payment approved successfully', 'success')
     await loadPayments()
   } catch (error) {
@@ -155,7 +157,7 @@ const approvePayment = async (paymentId) => {
 const markAsPaid = async (paymentId) => {
   processing.value.add(paymentId)
   try {
-    await axios.post(`/admin/affiliate/commissions/${paymentId}/mark-paid`)
+    await axios.post(`/admin/affiliate/commissions/${paymentId}/pay`)
     showNotification('Payment marked as paid', 'success')
     await loadPayments()
   } catch (error) {
@@ -170,7 +172,7 @@ const markAsPaid = async (paymentId) => {
 const rejectPayment = async (paymentId, reason = 'Payment rejected by admin') => {
   processing.value.add(paymentId)
   try {
-    await axios.post(`/admin/affiliate/commissions/${paymentId}/reject`, { reason })
+    await axios.patch(`/admin/affiliate/commissions/${paymentId}/status`, { status: 'rejected' })
     showNotification('Payment rejected', 'success')
     await loadPayments()
   } catch (error) {
@@ -179,6 +181,18 @@ const rejectPayment = async (paymentId, reason = 'Payment rejected by admin') =>
   } finally {
     processing.value.delete(paymentId)
   }
+}
+
+// View commission details
+const viewDetails = (payment) => {
+  selectedCommission.value = payment
+  showDetailsModal.value = true
+}
+
+// Close details modal
+const closeDetailsModal = () => {
+  showDetailsModal.value = false
+  selectedCommission.value = null
 }
 
 // Get status icon
@@ -217,15 +231,51 @@ const getStatusColor = (status) => {
   }
 }
 
-// Format currency
+// Currency symbol to code mapping
+const currencySymbolToCode = {
+  '₹': 'INR',
+  '€': 'EUR',
+  '£': 'GBP',
+  '$': 'USD',
+  '¥': 'JPY',
+  '¥': 'CNY', // Chinese Yuan
+  '₩': 'KRW', // South Korean Won
+  '₽': 'TRY', // Turkish Lira
+  '₼': 'RUB', // Russian Ruble
+  'R$': 'ZAR', // South African Rand
+  'A$': 'AUD', // Australian Dollar
+  'C$': 'CAD', // Canadian Dollar
+  'CHF': 'CHF', // Swiss Franc
+  '₡': 'NOK', // Norwegian Krone
+  'kr': 'SEK', // Swedish Krona
+  '₪': 'ILS', // Israeli New Shekel
+  '₫': 'BGN', // Bulgarian Lev
+  '₭': 'RON', // Romanian Leu
+  '₺': 'HRK', // Croatian Kuna
+  '₸': 'CZK', // Czech Koruna
+  'Ft': 'HUF', // Hungarian Forint
+  'zł': 'PLN', // Polish Zloty
+  ' Kč': 'CZK' // Czech Koruna (alternative)
+}
+
+// Format currency with symbol-to-code conversion
 const formatCurrency = (amount, currency = 'EUR') => {
-  const formatter = new Intl.NumberFormat('en-US', {
-    style: 'currency',
-    currency: currency,
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2
-  })
-  return formatter.format(amount)
+  // Convert currency symbol to code if needed
+  const currencyCode = currencySymbolToCode[currency] || currency || 'EUR'
+
+  try {
+    const formatter = new Intl.NumberFormat('en-US', {
+      style: 'currency',
+      currency: currencyCode,
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2
+    })
+    return formatter.format(amount)
+  } catch (error) {
+    // Fallback to simple formatting if Intl.NumberFormat fails
+    const symbol = Object.keys(currencySymbolToCode).find(code => currencySymbolToCode[code] === currencyCode) ? currency : '€'
+    return `${symbol}${amount.toFixed(2)}`
+  }
 }
 
 // Format date
@@ -272,10 +322,17 @@ const sort = (field) => {
   }
 }
 
+// Chart helper method
+const getBarHeight = (value) => {
+  const maxValue = Math.max(...chartData.value.map(stat => stat.value))
+  const percentage = maxValue > 0 ? (value / maxValue) * 100 : 0
+  return Math.max(percentage, 2) + '%'
+}
+
 // Export data
 const exportData = async () => {
   try {
-    const response = await axios.get('/admin/affiliate/commissions/export', {
+    const response = await axios.get('/admin/affiliate/commissions-export', {
       params: {
         status: statusFilter.value,
         date_range: dateRange.value,
@@ -298,6 +355,16 @@ const exportData = async () => {
     showNotification('Error exporting data', 'error')
   }
 }
+
+// Watch for search and filter changes
+watch([searchTerm, statusFilter, dateRange], () => {
+  handleSearch()
+})
+
+// Watch for pagination changes
+watch(currentPage, () => {
+  loadPayments()
+})
 
 // Load on mount
 onMounted(() => {
@@ -391,9 +458,14 @@ onMounted(() => {
           <h3>Payment Overview</h3>
           <BarChart3 class="chart-icon" />
         </div>
-        <div class="chart-placeholder">
-          <p>Payment analytics chart will be displayed here</p>
-          <small>Integration with charting library needed</small>
+        <div class="chart-container">
+          <div class="chart-bars">
+            <div class="bar-item" v-for="(stat, index) in chartData" :key="index" :style="{ height: getBarHeight(stat.value) }">
+              <div class="bar-label">{{ stat.label }}</div>
+              <div class="bar-value">{{ formatCurrency(stat.value) }}</div>
+              <div class="bar-fill" :style="{ height: getBarHeight(stat.value) }"></div>
+            </div>
+          </div>
         </div>
       </div>
 
@@ -446,7 +518,7 @@ onMounted(() => {
         <div class="table-header">
           <div class="table-actions">
             <button @click="sort('created_at')" class="sort-btn" :class="{ active: sortBy === 'created_at' }">
-              Date
+              Date Created
               <span v-if="sortBy === 'created_at'" class="sort-indicator">
                 {{ sortOrder === 'asc' ? '↑' : '↓' }}
               </span>
@@ -461,7 +533,14 @@ onMounted(() => {
             </button>
           </div>
           <div class="table-info">Booking</div>
-          <div class="table-info">Customer</div>
+          <div class="table-actions">
+            <button @click="sort('affiliate_name')" class="sort-btn" :class="{ active: sortBy === 'affiliate_name' }">
+              Customer
+              <span v-if="sortBy === 'affiliate_name'" class="sort-indicator">
+                {{ sortOrder === 'asc' ? '↑' : '↓' }}
+              </span>
+            </button>
+          </div>
           <div class="table-actions">
             <button @click="sort('net_commission')" class="sort-btn" :class="{ active: sortBy === 'net_commission' }">
               Commission
@@ -503,8 +582,8 @@ onMounted(() => {
 
             <div class="table-cell booking-cell">
               <div class="booking-info">
-                <span class="booking-ref">#{{ payment.booking_reference }}</span>
-                <span class="booking-amount">{{ formatCurrency(payment.booking_amount, payment.currency) }}</span>
+                <span class="booking-ref">{{ payment.booking_reference || 'N/A' }}</span>
+                <span class="booking-amount">{{ formatCurrency(payment.booking_amount || 0, payment.currency) }}</span>
               </div>
             </div>
 
@@ -512,19 +591,19 @@ onMounted(() => {
               <div class="customer-info">
                 <div class="customer-item">
                   <User class="icon" />
-                  <span>{{ payment.customer_name }}</span>
+                  <span>{{ payment.affiliate_name }}</span>
                 </div>
                 <div class="customer-item">
                   <FileText class="icon" />
-                  <span>{{ payment.customer_email }}</span>
+                  <span>{{ payment.affiliate_email }}</span>
                 </div>
               </div>
             </div>
 
             <div class="table-cell amount-cell">
               <div class="amount-info">
-                <span class="amount">{{ formatCurrency(payment.net_commission, payment.currency) }}</span>
-                <span class="rate">{{ payment.commission_rate }}%{{ payment.commission_type === 'fixed' ? ' fixed' : '' }}</span>
+                <span class="amount">{{ formatCurrency(payment.amount, payment.currency) }}</span>
+                <span class="rate">Commission</span>
               </div>
             </div>
 
@@ -541,7 +620,7 @@ onMounted(() => {
 
             <div class="table-cell actions-cell">
               <div class="action-buttons">
-                <button class="btn-view">
+                <button @click="viewDetails(payment)" class="btn-view">
                   <Eye />
                   Details
                 </button>
@@ -612,6 +691,99 @@ onMounted(() => {
         >
           Next
         </button>
+      </div>
+    </div>
+
+    <!-- Commission Details Modal -->
+    <div v-if="showDetailsModal" class="modal-overlay" @click="closeDetailsModal">
+      <div class="modal-content" @click.stop>
+        <div class="modal-header">
+          <h3>Commission Details</h3>
+          <button @click="closeDetailsModal" class="modal-close">
+            <X />
+          </button>
+        </div>
+
+        <div class="modal-body" v-if="selectedCommission">
+          <div class="detail-section">
+            <h4>Commission Information</h4>
+            <div class="detail-grid">
+              <div class="detail-item">
+                <label>Commission ID:</label>
+                <span>{{ selectedCommission.id }}</span>
+              </div>
+              <div class="detail-item">
+                <label>Amount:</label>
+                <span>{{ formatCurrency(selectedCommission.amount, selectedCommission.currency) }}</span>
+              </div>
+              <div class="detail-item">
+                <label>Status:</label>
+                <span class="status-badge" :class="getStatusColor(selectedCommission.status)">
+                  <component :is="getStatusIcon(selectedCommission.status)" />
+                  {{ selectedCommission.status }}
+                </span>
+              </div>
+              <div class="detail-item">
+                <label>Created Date:</label>
+                <span>{{ formatDate(selectedCommission.created_at) }}</span>
+              </div>
+              <div class="detail-item" v-if="selectedCommission.paid_at">
+                <label>Paid Date:</label>
+                <span>{{ formatDate(selectedCommission.paid_at) }}</span>
+              </div>
+              <div class="detail-item" v-if="selectedCommission.scheduled_payout_date">
+                <label>Scheduled Payout:</label>
+                <span>{{ selectedCommission.scheduled_payout_date }}</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="detail-section">
+            <h4>Business Information</h4>
+            <div class="detail-grid">
+              <div class="detail-item">
+                <label>Business Name:</label>
+                <span>{{ selectedCommission.business_name }}</span>
+              </div>
+              <div class="detail-item">
+                <label>Business Type:</label>
+                <span>{{ selectedCommission.business_type }}</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="detail-section">
+            <h4>Customer Information</h4>
+            <div class="detail-grid">
+              <div class="detail-item">
+                <label>Customer Name:</label>
+                <span>{{ selectedCommission.affiliate_name }}</span>
+              </div>
+              <div class="detail-item">
+                <label>Customer Email:</label>
+                <span>{{ selectedCommission.affiliate_email }}</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="detail-section">
+            <h4>Booking Information</h4>
+            <div class="detail-grid">
+              <div class="detail-item">
+                <label>Booking Reference:</label>
+                <span>{{ selectedCommission.booking_reference }}</span>
+              </div>
+              <div class="detail-item">
+                <label>QR Code ID:</label>
+                <span>{{ selectedCommission.qr_code_id }}</span>
+              </div>
+              <div class="detail-item">
+                <label>Booking Amount:</label>
+                <span>{{ formatCurrency(selectedCommission.booking_amount || 0, selectedCommission.currency) }}</span>
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   </AdminDashboardLayout>
@@ -782,20 +954,83 @@ onMounted(() => {
   color: #6b7280;
 }
 
-.chart-placeholder {
+.chart-container {
   height: 200px;
+  background: #f9fafb;
+  border-radius: 8px;
+  padding: 1rem;
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-around;
+}
+
+.chart-bars {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-around;
+  width: 100%;
+  height: 100%;
+}
+
+.bar-item {
+  position: relative;
+  width: 80px;
   display: flex;
   flex-direction: column;
   align-items: center;
-  justify-content: center;
-  background: #f9fafb;
-  border-radius: 8px;
-  color: #6b7280;
+  justify-content: flex-end;
+  height: 100%;
 }
 
-.chart-placeholder small {
-  margin-top: 0.5rem;
-  color: #9ca3af;
+.bar-label {
+  font-size: 0.75rem;
+  color: #374151;
+  margin-bottom: 0.5rem;
+  text-align: center;
+  font-weight: 500;
+  position: relative;
+  z-index: 2;
+  background: rgba(255, 255, 255, 0.9);
+  padding: 2px 4px;
+  border-radius: 4px;
+}
+
+.bar-value {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: #374151;
+  margin-bottom: 0.5rem;
+  text-align: center;
+  position: relative;
+  z-index: 2;
+  background: rgba(255, 255, 255, 0.9);
+  padding: 2px 4px;
+  border-radius: 4px;
+}
+
+.bar-fill {
+  position: absolute;
+  bottom: 0;
+  width: 60px;
+  background: linear-gradient(to top, #3b82f6, #1d4ed8);
+  border-radius: 4px 4px 0 0;
+  transition: height 0.3s ease;
+  min-height: 4px;
+  z-index: 1;
+  left: 50%;
+  transform: translateX(-50%);
+}
+
+.bar-item:nth-child(2) .bar-fill {
+  background: linear-gradient(to top, #10b981, #059669);
+}
+
+.bar-item:nth-child(3) .bar-fill {
+  background: linear-gradient(to top, #f59e0b, #d97706);
+}
+
+.bar-item:nth-child(4) .bar-fill {
+  background: linear-gradient(to top, #ef4444, #dc2626);
 }
 
 .filters-section {
@@ -885,6 +1120,7 @@ onMounted(() => {
   font-weight: 600;
   color: #374151;
   font-size: 0.875rem;
+  white-space: nowrap;
 }
 
 .sort-btn {
@@ -913,8 +1149,7 @@ onMounted(() => {
 }
 
 .table-body {
-  max-height: 600px;
-  overflow-y: auto;
+  overflow-x: auto;
 }
 
 .table-row {
@@ -934,12 +1169,14 @@ onMounted(() => {
 .table-cell {
   display: flex;
   align-items: center;
+  white-space: nowrap;
 }
 
 .date-info, .customer-info {
   display: flex;
   flex-direction: column;
   gap: 0.25rem;
+  white-space: nowrap;
 }
 
 .date-info, .customer-item, .payout-date {
@@ -974,6 +1211,7 @@ onMounted(() => {
   display: flex;
   flex-direction: column;
   gap: 0.25rem;
+  white-space: nowrap;
 }
 
 .booking-ref {
@@ -991,6 +1229,7 @@ onMounted(() => {
   display: flex;
   flex-direction: column;
   gap: 0.25rem;
+  white-space: nowrap;
 }
 
 .amount {
@@ -1145,6 +1384,110 @@ onMounted(() => {
 .pagination-info {
   color: #6b7280;
   font-size: 0.875rem;
+}
+
+/* Modal Styles */
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 9999;
+  padding: 2rem;
+}
+
+.modal-content {
+  background: white;
+  border-radius: 12px;
+  max-width: 600px;
+  width: 100%;
+  max-height: 90vh;
+  overflow-y: auto;
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+}
+
+.modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1.5rem;
+  border-bottom: 1px solid #e5e7eb;
+  position: sticky;
+  top: 0;
+  background: white;
+  z-index: 10;
+}
+
+.modal-header h3 {
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: #1f2937;
+  margin: 0;
+}
+
+.modal-close {
+  background: none;
+  border: none;
+  padding: 0.5rem;
+  border-radius: 6px;
+  cursor: pointer;
+  color: #6b7280;
+  transition: all 0.2s;
+}
+
+.modal-close:hover {
+  background: #f3f4f6;
+  color: #374151;
+}
+
+.modal-body {
+  padding: 1.5rem;
+}
+
+.detail-section {
+  margin-bottom: 2rem;
+}
+
+.detail-section:last-child {
+  margin-bottom: 0;
+}
+
+.detail-section h4 {
+  font-size: 1rem;
+  font-weight: 600;
+  color: #374151;
+  margin-bottom: 1rem;
+  padding-bottom: 0.5rem;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.detail-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: 1rem;
+}
+
+.detail-item {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.detail-item label {
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: #6b7280;
+}
+
+.detail-item span {
+  font-size: 0.875rem;
+  color: #1f2937;
+  font-weight: 500;
 }
 
 @media (max-width: 768px) {

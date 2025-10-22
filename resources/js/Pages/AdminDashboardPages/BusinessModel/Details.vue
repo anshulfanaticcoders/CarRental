@@ -191,15 +191,77 @@ const getActivityIcon = (type) => {
   }
 }
 
-// Format currency
-const formatCurrency = (amount, currency = 'EUR') => {
-  const formatter = new Intl.NumberFormat('en-US', {
-    style: 'currency',
-    currency: currency,
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2
-  })
-  return formatter.format(amount)
+// Map currency symbols to proper currency codes
+const getValidCurrencyCode = (currency) => {
+  // Map common symbols to 3-letter currency codes
+  const symbolToCode = {
+    '₹': 'INR',    // Indian Rupee
+    '$': 'USD',    // US Dollar
+    '€': 'EUR',    // Euro
+    '£': 'GBP',    // British Pound
+    '¥': 'JPY',    // Japanese Yen
+    '₩': 'KRW',    // Korean Won
+    '₽': 'RUB',    // Russian Ruble
+    '₪': 'ILS',    // Israeli Shekel
+    '₺': 'TRY',    // Turkish Lira
+    '₴': 'UAH',    // Ukrainian Hryvnia
+    '₦': 'NGN',    // Nigerian Naira
+    '₨': 'PKR',    // Pakistani Rupee
+    '฿': 'THB',    // Thai Baht
+    '₡': 'CRC',    // Costa Rican Colón
+    '₲': 'PYG',    // Paraguayan Guaraní
+    '₱': 'PHP',    // Philippine Peso
+    '﷼': 'IRR',    // Iranian Rial
+    '៛': 'KHR',    // Cambodian Riel
+    '₫': 'VND',    // Vietnamese Đồng
+    '₸': 'KZT',    // Kazakhstani Tenge
+    '₼': 'AZN',    // Azerbaijani Manat
+    '₾': 'GEL',    // Georgian Lari
+    '₿': 'BTC'     // Bitcoin (symbolic)
+  }
+
+  // If it's already a valid 3-letter code, use it
+  if (currency && /^[A-Z]{3}$/.test(currency.toUpperCase())) {
+    return currency.toUpperCase()
+  }
+
+  // If it's a symbol, map it to the code
+  if (currency && symbolToCode[currency]) {
+    return symbolToCode[currency]
+  }
+
+  // Default to EUR if no valid currency found
+  return 'EUR'
+}
+
+// Format currency - uses business currency dynamically
+const formatCurrency = (amount, currency = null) => {
+  const targetCurrency = getValidCurrencyCode(currency || business.value?.currency)
+
+  try {
+    const formatter = new Intl.NumberFormat('en-US', {
+      style: 'currency',
+      currency: targetCurrency,
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2
+    })
+    return formatter.format(amount)
+  } catch (error) {
+    // Fallback to USD if currency formatting fails
+    console.warn(`Currency formatting failed for ${targetCurrency}, falling back to USD:`, error)
+    try {
+      const fallbackFormatter = new Intl.NumberFormat('en-US', {
+        style: 'currency',
+        currency: 'USD',
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2
+      })
+      return fallbackFormatter.format(amount)
+    } catch (fallbackError) {
+      // Final fallback - just format as number with 2 decimal places
+      return `$${amount.toFixed(2)}`
+    }
+  }
 }
 
 // Format date

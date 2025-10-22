@@ -55,11 +55,11 @@ const filteredBusinesses = computed(() => {
     const term = searchTerm.value.toLowerCase()
     filtered = filtered.filter(b => {
       const name = b.name || ''
-      const email = b.contact_email || ''
-      const phone = b.contact_phone || ''
+      const email = b.contact_email || b.email || ''
+      const phone = b.contact_phone || b.phone || ''
       const businessType = b.business_type || ''
-      const city = b.city || ''
-      const country = b.country || ''
+      const city = b.city || b.location_city || ''
+      const country = b.country || b.location_country || ''
 
       return name.toLowerCase().includes(term) ||
              email.toLowerCase().includes(term) ||
@@ -497,11 +497,11 @@ onMounted(() => {
               <div class="contact-info">
                 <div class="contact-item">
                   <Mail class="icon" />
-                  <span>{{ business.contact_email }}</span>
+                  <span>{{ business.contact_email || 'N/A' }}</span>
                 </div>
                 <div class="contact-item">
                   <Phone class="icon" />
-                  <span>{{ business.contact_phone }}</span>
+                  <span>{{ business.contact_phone || business.phone || 'N/A' }}</span>
                 </div>
               </div>
             </div>
@@ -510,7 +510,7 @@ onMounted(() => {
               <div class="location-info">
                 <div class="location-item">
                   <MapPin class="icon" />
-                  <span>{{ business.city }}, {{ business.country }}</span>
+                  <span>{{ business.city || business.location_city || 'N/A' }}, {{ business.country || business.location_country || 'N/A' }}</span>
                 </div>
               </div>
             </div>
@@ -949,6 +949,7 @@ onMounted(() => {
   display: flex;
   flex-direction: column;
   gap: 0.25rem;
+  min-width: 0;
 }
 
 .contact-item, .location-item {
@@ -957,6 +958,12 @@ onMounted(() => {
   gap: 0.25rem;
   font-size: 0.75rem;
   color: #6b7280;
+}
+
+.contact-item span, .location-item span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .icon {

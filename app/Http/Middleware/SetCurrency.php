@@ -261,15 +261,7 @@ class SetCurrency
                     default => 'USD',
                 };
 
-                \Log::info('Location detected:', [
-                    'country_code' => $location->countryCode,
-                    'country_name' => $location->countryName ?? 'Unknown',
-                    'city' => $location->cityName ?? 'Unknown',
-                    'ip' => $location->ip ?? $currentIP,
-                    'detected_currency' => $detectedCurrency
-                ]);
-            } else {
-                \Log::warning('Location detection failed - location is null');
+                // Location detected silently
             }
 
             // Check if we should update currency:
@@ -307,30 +299,16 @@ class SetCurrency
                 session(['last_detected_ip' => $currentIP]);
                 session(['last_detected_country' => $detectedCountry]);
 
-                \Log::info('Currency and country updated based on location:', [
-                    'reason' => $updateReason,
-                    'new_currency' => $detectedCurrency,
-                    'previous_currency' => $currentCurrency ?? 'none',
-                    'country' => $detectedCountry,
-                    'ip' => $currentIP,
-                    'previous_ip' => $lastDetectedIP
-                ]);
+                // Currency and country updated based on location
             } else {
                 // Update tracking data even if currency didn't change
                 session(['last_detected_ip' => $currentIP]);
                 session(['last_detected_country' => $detectedCountry]);
 
-                \Log::info('Using existing data:', [
-                    'currency' => $currentCurrency,
-                    'detected_currency' => $detectedCurrency,
-                    'country' => strtolower($detectedCountry),
-                    'ip' => $currentIP,
-                    'manual_change_minutes_ago' => ($currentTime - $lastManualChangeTime) / 60
-                ]);
+              // Using existing data
             }
 
         } catch (\Exception $e) {
-            \Log::error('Location detection error: ' . $e->getMessage());
 
             // Fallback to USD and US if no currency/country is set
             if (!session('currency')) {
@@ -339,7 +317,7 @@ class SetCurrency
             }
             if (!session('country')) {
                 session(['country' => 'us']);
-                \Log::info('Set fallback country to US');
+                // Set fallback country to US
             }
         }
 
@@ -372,7 +350,7 @@ class SetCurrency
 
                 // Validate that it's a public IP address
                 if ($this->isValidPublicIP($ip)) {
-                    \Log::info("Real IP detected from {$header}: {$ip}");
+                  // Real IP detected from {$header}: {$ip}
                     return $ip;
                 }
             }
@@ -380,7 +358,7 @@ class SetCurrency
 
         // Fallback to default IP detection
         $defaultIP = $request->ip();
-        \Log::info("Using default IP (no proxy headers found): {$defaultIP}");
+        // Using default IP (no proxy headers found): {$defaultIP}
         return $defaultIP;
     }
 
@@ -422,7 +400,7 @@ class SetCurrency
 
         // Check if current IP matches any known test IPs
         if (isset($knownIps[$realIP])) {
-            \Log::info('Using known test IP mapping', ['ip' => $realIP]);
+            // Using known test IP mapping
             return (object) $knownIps[$realIP];
         }
 
@@ -446,10 +424,9 @@ class SetCurrency
                     }
                 }
             } catch (\Exception $e) {
-                \Log::warning('External IP detection failed: ' . $e->getMessage());
             }
 
-            \Log::info('Using default fallback for localhost');
+            // Using default fallback for localhost
             return (object) $knownIps['49.43.142.103']; // India for testing
         }
 
@@ -460,7 +437,7 @@ class SetCurrency
             if ($ipData) {
                 $data = json_decode($ipData, true);
                 if ($data && isset($data['country'])) {
-                    \Log::info('Location detected via IPInfo fallback', ['country' => $data['country'], 'ip' => $realIP]);
+                    // Location detected via IPInfo fallback
                     return (object) [
                         'ip' => $realIP,
                         'countryCode' => $data['country'],
@@ -475,7 +452,7 @@ class SetCurrency
             if ($ipData) {
                 $data = json_decode($ipData, true);
                 if ($data && $data['status'] === 'success' && isset($data['countryCode'])) {
-                    \Log::info('Location detected via ip-api.com fallback', ['country' => $data['countryCode'], 'ip' => $realIP]);
+                    // Location detected via ip-api.com fallback
                     return (object) [
                         'ip' => $realIP,
                         'countryCode' => $data['countryCode'],
@@ -485,10 +462,9 @@ class SetCurrency
                 }
             }
         } catch (\Exception $e) {
-            \Log::error('All fallback methods failed: ' . $e->getMessage());
         }
 
-        \Log::warning('All location detection methods failed, using default US');
+        // All location detection methods failed, using default US
         return null;
     }
 }
