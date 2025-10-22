@@ -52,6 +52,8 @@ const commissions = ref([])
 const recentActivity = ref([])
 const editingBusiness = ref(false)
 const businessForm = ref({})
+const showQrModal = ref(false)
+const selectedQrCode = ref(null)
 
 // Computed properties
 const isVerified = computed(() => business.value?.verification_status === 'verified')
@@ -210,6 +212,45 @@ const formatDate = (dateString) => {
     hour: '2-digit',
     minute: '2-digit'
   })
+}
+
+// QR Modal functions
+const viewQrCode = (qrCode) => {
+  selectedQrCode.value = qrCode
+  showQrModal.value = true
+}
+
+const closeQrModal = () => {
+  showQrModal.value = false
+  selectedQrCode.value = null
+}
+
+const getQrCodeImageUrl = (qrCode) => {
+  // Just construct full URL from path
+  const imagePath = qrCode.qr_image_path
+  if (!imagePath) return null
+
+  return `https://my-public-bucket.4tcl8.upcloudobjects.com/${imagePath}`
+}
+
+const getQrCodeStatus = (qrCode) => {
+  // Check status from database or use default active status
+  if (qrCode.status === 'suspended' || qrCode.status === 'revoked') {
+    return { text: 'Suspended', class: 'bg-red-100 text-red-800' }
+  }
+  if (qrCode.status === 'inactive') {
+    return { text: 'Inactive', class: 'bg-gray-100 text-gray-800' }
+  }
+  return { text: 'Active', class: 'bg-green-100 text-green-800' }
+}
+
+const getLocationDisplayName = (qrCode) => {
+  // The controller loads location relationship, so we can trust accessor
+  return qrCode.location_name || qrCode.location?.name || 'General QR Code'
+}
+
+const getLocationAddress = (qrCode) => {
+  return qrCode.location_address || 'Online'
 }
 
 // Show notification
@@ -583,11 +624,11 @@ onMounted(() => {
                 </div>
               </div>
               <div class="qr-actions">
-                <a v-if="qrCode.image_url" :href="qrCode.image_url" target="_blank" class="btn-view">
+                <button @click="viewQrCode(qrCode)" class="btn-view">
                   <Camera />
                   View QR Code
-                </a>
-                <div v-else class="no-qr-code">
+                </button>
+                <div v-if="!getQrCodeImageUrl(qrCode)" class="no-qr-code">
                   <p>No QR code image available</p>
                 </div>
               </div>
@@ -617,6 +658,111 @@ onMounted(() => {
 
             <div v-if="recentActivity.length === 0" class="no-data">
               <p>No recent activity</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- QR Code Modal -->
+      <div v-if="showQrModal" class="fixed inset-0 z-50 overflow-y-auto" @click="closeQrModal">
+        <div class="flex items-center justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
+          <!-- Background overlay -->
+          <div class="fixed inset-0 transition-opacity" aria-hidden="true">
+            <div class="absolute inset-0 bg-gray-500 opacity-75"></div>
+          </div>
+
+          <!-- Center modal -->
+          <span class="hidden sm:inline-block sm:align-middle sm:h-screen" aria-hidden="true">&#8203;</span>
+
+          <!-- Modal panel -->
+          <div class="inline-block align-bottom bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full" @click.stop>
+            <div class="bg-white px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
+              <div class="sm:flex sm:items-start">
+                <div class="mt-3 text-center sm:mt-0 sm:text-left w-full">
+                  <h3 class="text-lg leading-6 font-medium text-gray-900 mb-4">
+                    QR Code Preview
+                  </h3>
+
+                  <div v-if="selectedQrCode" class="space-y-4">
+                    <!-- QR Code Info -->
+                    <div class="bg-gray-50 rounded-lg p-4">
+                      <h4 class="font-medium text-gray-900 mb-2">{{ getLocationDisplayName(selectedQrCode) }}</h4>
+                      <p class="text-sm text-gray-500">{{ getLocationAddress(selectedQrCode) }}</p>
+
+                      <div class="mt-3 grid grid-cols-2 gap-4 text-sm">
+                        <div>
+                          <span class="text-gray-500">Short Code:</span>
+                          <span class="ml-2 font-medium">{{ selectedQrCode.short_code }}</span>
+                        </div>
+                        <div>
+                          <span class="text-gray-500">Status:</span>
+                          <span :class="getQrCodeStatus(selectedQrCode).class" class="ml-2 inline-flex items-center px-2 py-1 rounded-full text-xs font-medium">
+                            {{ getQrCodeStatus(selectedQrCode).text }}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+
+                    <!-- QR Code Image -->
+                    <div class="flex justify-center">
+                      <div class="bg-white p-6 border-2 border-gray-200 rounded-lg shadow-sm">
+                        <img
+                          v-if="getQrCodeImageUrl(selectedQrCode)"
+                          :src="getQrCodeImageUrl(selectedQrCode)"
+                          :alt="'QR Code for ' + (getLocationDisplayName(selectedQrCode) || 'QR Code ' + selectedQrCode.id)"
+                          class="w-80 h-80 object-contain"
+                          style="image-rendering: -webkit-optimize-contrast; image-rendering: crisp-edges; image-rendering: pixelated;"
+                        />
+                        <div v-else class="w-80 h-80 flex items-center justify-center bg-gray-100">
+                          <div class="text-center">
+                            <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h.01M5 8h2a1 1 0 001-1V5a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1zm12 0h2a1 1 0 001-1V5a1 1 0 00-1-1h-2a1 1 0 00-1 1v2a1 1 0 001 1zM5 20h2a1 1 0 001-1v-2a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1z" />
+                            </svg>
+                            <p class="mt-2 text-sm text-gray-500">QR Code Image</p>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    <!-- QR Code Details -->
+                    <div class="bg-blue-50 rounded-lg p-4">
+                      <h5 class="font-medium text-blue-900 mb-2">QR Code Details</h5>
+                      <div class="space-y-2 text-sm">
+                        <div class="flex justify-between">
+                          <span class="text-blue-700">Total Scans:</span>
+                          <span class="font-medium text-blue-900">{{ selectedQrCode.total_scans || 0 }}</span>
+                        </div>
+                        <div class="flex justify-between">
+                          <span class="text-blue-700">Conversions:</span>
+                          <span class="font-medium text-blue-900">{{ selectedQrCode.conversion_count || 0 }}</span>
+                        </div>
+                        <div class="flex justify-between">
+                          <span class="text-blue-700">Revenue Generated:</span>
+                          <span class="font-medium text-blue-900">{{ formatCurrency(selectedQrCode.total_revenue_generated || 0) }}</span>
+                        </div>
+                        <div class="flex justify-between">
+                          <span class="text-blue-700">Created:</span>
+                          <span class="font-medium text-blue-900">{{ formatDate(selectedQrCode.created_at) }}</span>
+                        </div>
+                        <div class="flex justify-between">
+                          <span class="text-blue-700">Last Scanned:</span>
+                          <span class="font-medium text-blue-900">{{ selectedQrCode.last_scanned_at ? formatDate(selectedQrCode.last_scanned_at) : 'Never' }}</span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <div class="bg-gray-50 px-4 py-3 sm:px-6 sm:flex sm:flex-row-reverse">
+                <button
+                  v-if="selectedQrCode"
+                  @click="closeQrModal"
+                  type="button"
+                  class="w-full inline-flex justify-center rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 sm:ml-3 sm:w-auto sm:text-sm"
+                >
+                  Close
+                </button>
+              </div>
             </div>
           </div>
         </div>
