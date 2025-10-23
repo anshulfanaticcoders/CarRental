@@ -149,27 +149,75 @@ const scanTrendChartOptions = {
 }
 
 // Device usage chart data
-const deviceUsageChartData = computed(() => ({
-  labels: deviceUsageChart.value?.labels || ['Mobile', 'Desktop', 'Tablet', 'Other'],
-  datasets: [
-    {
-      data: deviceUsageChart.value?.data || [0, 0, 0, 0],
-      backgroundColor: [
-        'rgba(59, 130, 246, 0.8)',
-        'rgba(16, 185, 129, 0.8)',
-        'rgba(139, 92, 246, 0.8)',
-        'rgba(156, 163, 175, 0.8)'
-      ],
-      borderColor: [
-        'rgb(59, 130, 246)',
-        'rgb(16, 185, 129)',
-        'rgb(139, 92, 246)',
-        'rgb(156, 163, 175)'
-      ],
-      borderWidth: 1
-    }
+const deviceUsageChartData = computed(() => {
+  const chartData = deviceUsageChart.value?.data || [0, 0, 0, 0]
+  const chartLabels = deviceUsageChart.value?.labels || ['Mobile', 'Desktop', 'Tablet', 'Other']
+
+  console.log('🔵 Device Usage Chart data:', chartData)
+  console.log('🏷️ Device Usage Chart labels:', chartLabels)
+  console.log('📊 Device Usage Chart total:', chartData.reduce((a, b) => a + b, 0))
+
+  // Filter out zero values to avoid Chart.js rendering issues
+  const filteredData = []
+  const filteredLabels = []
+  const filteredColors = []
+  const filteredBorders = []
+
+  const colors = [
+    'rgba(59, 130, 246, 0.8)', // Mobile - blue
+    'rgba(16, 185, 129, 0.8)', // Desktop - green
+    'rgba(139, 92, 246, 0.8)', // Tablet - purple
+    'rgba(156, 163, 175, 0.8)'  // Other - gray
   ]
-}))
+
+  const borders = [
+    'rgb(59, 130, 246)',   // Mobile - blue
+    'rgb(16, 185, 129)',   // Desktop - green
+    'rgb(139, 92, 246)',   // Tablet - purple
+    'rgb(156, 163, 175)'    // Other - gray
+  ]
+
+  // Only include devices with non-zero values
+  chartData.forEach((value, index) => {
+    if (value > 0) {
+      filteredData.push(value)
+      filteredLabels.push(chartLabels[index])
+      filteredColors.push(colors[index])
+      filteredBorders.push(borders[index])
+    }
+  })
+
+  // If all values are zero, show a fallback
+  if (filteredData.length === 0) {
+    console.log('⚠️ All device values are zero, showing fallback chart')
+    return {
+      labels: ['No Data'],
+      datasets: [
+        {
+          data: [1],
+          backgroundColor: ['rgba(156, 163, 175, 0.8)'],
+          borderColor: ['rgb(156, 163, 175)'],
+          borderWidth: 1
+        }
+      ]
+    }
+  }
+
+  console.log('✅ Filtered Device Usage Chart data:', filteredData)
+  console.log('✅ Filtered Device Usage Chart labels:', filteredLabels)
+
+  return {
+    labels: filteredLabels,
+    datasets: [
+      {
+        data: filteredData,
+        backgroundColor: filteredColors,
+        borderColor: filteredBorders,
+        borderWidth: 1
+      }
+    ]
+  }
+})
 
 const deviceUsageChartOptions = {
   ...chartOptions,

@@ -1421,44 +1421,65 @@ class AffiliateBusinessModelController extends Controller
                 $qrCodes = $qrCodes->where('business_id', $request->business_id);
             }
 
+            // Use single source of truth: AffiliateCustomerScan real-time data for ALL analytics
+            $realtimeScans = \App\Models\Affiliate\AffiliateCustomerScan::where('created_at', '>=', $startDate)->get();
+            $totalScans = $realtimeScans->count();
+            $uniqueScans = $realtimeScans->whereNotNull('customer_id')->unique('customer_id')->count();
+            $totalConversions = $realtimeScans->where('booking_completed', true)->whereNotNull('booking_id')->count();
+
             $analytics = [
                 'overview' => [
                     'total_qr_codes' => $qrCodes->count(),
-                    'total_scans' => $qrCodes->sum('total_scans'),
-                    'unique_scans' => \App\Models\Affiliate\AffiliateCustomerScan::where('created_at', '>=', $startDate)
-                        ->whereNotNull('customer_id')
-                        ->distinct('customer_id')
-                        ->count('customer_id'),
-                    'conversion_rate' => $qrCodes->sum('total_scans') > 0 ? round(($qrCodes->sum('conversion_count') / $qrCodes->sum('total_scans')) * 100, 2) : 0,
+                    'total_scans' => $totalScans,
+                    'unique_scans' => $uniqueScans,
+                    'conversion_rate' => $totalScans > 0 ? round(($totalConversions / $totalScans) * 100, 2) : 0,
                     'active_qr_codes' => $qrCodes->where('status', 'active')->count(),
-                    'avg_scans_per_qr' => $qrCodes->count() > 0 ? $qrCodes->sum('total_scans') / $qrCodes->count() : 0,
+                    'avg_scans_per_qr' => $qrCodes->count() > 0 ? round($totalScans / $qrCodes->count(), 2) : 0,
                     'recent_growth' => $this->calculateQrGrowth($startDate),
                 ],
-                'top_performers' => $qrCodes->sortByDesc('total_scans')->take(10)->map(function ($qr) {
-                    $conversionRate = $qr->total_scans > 0 ? ($qr->conversion_count / $qr->total_scans) * 100 : 0;
+                'top_performers' => $qrCodes->map(function ($qr) use ($startDate) {
+                    // Get real-time scan data for this QR code
+                    $qrScanData = \App\Models\Affiliate\AffiliateCustomerScan::where('qr_code_id', $qr->id)
+                        ->where('created_at', '>=', $startDate)
+                        ->get();
+
+                    $realTotalScans = $qrScanData->count();
+                    $realUniqueScans = $qrScanData->whereNotNull('customer_id')->unique('customer_id')->count();
+                    $realConversions = $qrScanData->where('booking_completed', true)->whereNotNull('booking_id')->count();
+                    $conversionRate = $realTotalScans > 0 ? ($realConversions / $realTotalScans) * 100 : 0;
+
                     return [
                         'id' => $qr->id,
                         'qr_code_id' => $qr->qr_code_value ?: $qr->short_code ?: 'QR-' . $qr->id,
                         'business_name' => $qr->business->name ?? 'N/A',
-                        'total_scans' => $qr->total_scans,
-                        'unique_scans' => $qr->unique_scans,
-                        'conversions' => $qr->conversion_count,
+                        'total_scans' => $realTotalScans,
+                        'unique_scans' => $realUniqueScans,
+                        'conversions' => $realConversions,
                         'conversion_rate' => round($conversionRate, 2),
                         'performance' => $this->getPerformanceLevel($conversionRate / 100),
                     ];
-                })->values(),
+                })->sortByDesc('total_scans')->take(10)->values(),
                 'device_stats' => $this->getDeviceStats($startDate),
                 'location_stats' => $this->getLocationStats($startDate),
-                'qr_codes' => $qrCodes->map(function ($qr) {
-                    $conversionRate = $qr->total_scans > 0 ? ($qr->conversion_count / $qr->total_scans) * 100 : 0;
+                'qr_codes' => $qrCodes->map(function ($qr) use ($startDate) {
+                    // Get real-time scan data for this QR code
+                    $qrScanData = \App\Models\Affiliate\AffiliateCustomerScan::where('qr_code_id', $qr->id)
+                        ->where('created_at', '>=', $startDate)
+                        ->get();
+
+                    $realTotalScans = $qrScanData->count();
+                    $realUniqueScans = $qrScanData->whereNotNull('customer_id')->unique('customer_id')->count();
+                    $realConversions = $qrScanData->where('booking_completed', true)->whereNotNull('booking_id')->count();
+                    $conversionRate = $realTotalScans > 0 ? ($realConversions / $realTotalScans) * 100 : 0;
+
                     return [
                         'id' => $qr->id,
                         'qr_code_id' => $qr->qr_code_value ?: $qr->short_code ?: 'QR-' . $qr->id,
                         'business_name' => $qr->business->name ?? 'N/A',
                         'business_type' => $qr->business->business_type ?? 'N/A',
-                        'total_scans' => $qr->total_scans,
-                        'unique_scans' => $qr->unique_scans,
-                        'conversions' => $qr->conversion_count,
+                        'total_scans' => $realTotalScans,
+                        'unique_scans' => $realUniqueScans,
+                        'conversions' => $realConversions,
                         'conversion_rate' => round($conversionRate, 2),
                         'status' => $qr->status,
                         'performance' => $this->getPerformanceLevel($conversionRate / 100),
@@ -1667,12 +1688,15 @@ class AffiliateBusinessModelController extends Controller
             \Log::info('Device stats query for date range: ' . $startDate->toDateString());
             \Log::info('Device stats results: ', $deviceStats);
 
+            // Handle both 'unknown' and 'other' device types for compatibility
+            $unknownCount = ($deviceStats['unknown'] ?? 0) + ($deviceStats['other'] ?? 0);
+
             // Return actual counts, not percentages (frontend will calculate percentages)
             return [
                 'mobile' => $deviceStats['mobile'] ?? 0,
                 'desktop' => $deviceStats['desktop'] ?? 0,
                 'tablet' => $deviceStats['tablet'] ?? 0,
-                'other' => $deviceStats['unknown'] ?? 0,
+                'other' => $unknownCount, // Combine both unknown and other device types
             ];
         } catch (\Exception $e) {
             \Log::error('Error in getDeviceStats: ' . $e->getMessage());
@@ -1689,38 +1713,35 @@ class AffiliateBusinessModelController extends Controller
     private function getLocationStats($startDate)
     {
         try {
-            // First, let's try to get location data from the business itself if no location matching is available
+            // Get location statistics directly from customer scans - single source of truth
+            // Simple aggregation without complex joins that could miss locations
             $locationStats = \App\Models\Affiliate\AffiliateCustomerScan::where('affiliate_customer_scans.created_at', '>=', $startDate)
-                ->leftJoin('affiliate_business_locations', 'affiliate_customer_scans.matched_location_id', '=', 'affiliate_business_locations.id')
-                ->leftJoin('affiliate_businesses', 'affiliate_business_locations.business_id', '=', 'affiliate_businesses.id')
+                ->leftJoin('affiliate_qr_codes', 'affiliate_customer_scans.qr_code_id', '=', 'affiliate_qr_codes.id')
+                ->leftJoin('affiliate_businesses', 'affiliate_qr_codes.business_id', '=', 'affiliate_businesses.id')
                 ->selectRaw("
-                    COALESCE(affiliate_business_locations.city, affiliate_businesses.city, 'Unknown Location') as location,
-                    COALESCE(affiliate_business_locations.country, affiliate_businesses.country, 'Unknown') as country,
+                    COALESCE(affiliate_businesses.city, 'Unknown Location') as location,
+                    COALESCE(affiliate_businesses.country, 'Unknown') as country,
                     COUNT(*) as scans,
-                    COUNT(DISTINCT affiliate_customer_scans.customer_id) as unique_scans,
+                    COUNT(DISTINCT CASE WHEN affiliate_customer_scans.customer_id IS NOT NULL THEN affiliate_customer_scans.customer_id END) as unique_scans,
                     SUM(CASE WHEN affiliate_customer_scans.booking_completed = true THEN 1 ELSE 0 END) as conversions
                 ")
-                ->groupBy('affiliate_business_locations.city', 'affiliate_business_locations.country', 'affiliate_businesses.city', 'affiliate_businesses.country')
+                ->groupBy('location', 'country')
                 ->orderByDesc('scans')
                 ->take(10)
                 ->get();
 
-            // Log for debugging - remove in production
+            // Log for debugging
             \Log::info('Location stats query for date range: ' . $startDate->toDateString());
-            \Log::info('Location stats results count: ' . $locationStats->count());
+            \Log::info('Location stats raw results: ' . json_encode($locationStats->toArray()));
 
-            // If no location data found, return empty array
-            if ($locationStats->isEmpty()) {
-                return [];
-            }
-
+            // Return mapped results with proper data types
             return $locationStats->map(function ($stat) {
                 return [
                     'location' => $stat->location,
                     'country' => $stat->country,
                     'scans' => (int) $stat->scans,
                     'unique_scans' => (int) $stat->unique_scans,
-                    'conversions' => (int) $stat->conversions,
+                    'conversions' => (int) ($stat->conversions ?? 0),
                 ];
             })->toArray();
         } catch (\Exception $e) {
