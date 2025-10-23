@@ -1414,19 +1414,21 @@ class AffiliateBusinessModelController extends Controller
             };
 
             $qrCodes = \App\Models\Affiliate\AffiliateQrCode::with(['business'])
-                ->where('created_at', '>=', $startDate);
+                ->where('created_at', '>=', $startDate)
+                ->get(); // FIX: Add get() to execute the query
 
             if ($request->filled('business_id') && $request->business_id !== 'all') {
-                $qrCodes->where('business_id', $request->business_id);
+                $qrCodes = $qrCodes->where('business_id', $request->business_id);
             }
-
-            $qrCodes = $qrCodes->get();
 
             $analytics = [
                 'overview' => [
                     'total_qr_codes' => $qrCodes->count(),
                     'total_scans' => $qrCodes->sum('total_scans'),
-                    'unique_scans' => $qrCodes->sum('unique_scans'),
+                    'unique_scans' => \App\Models\Affiliate\AffiliateCustomerScan::where('created_at', '>=', $startDate)
+                        ->whereNotNull('customer_id')
+                        ->distinct('customer_id')
+                        ->count('customer_id'),
                     'conversion_rate' => $qrCodes->sum('total_scans') > 0 ? round(($qrCodes->sum('conversion_count') / $qrCodes->sum('total_scans')) * 100, 2) : 0,
                     'active_qr_codes' => $qrCodes->where('status', 'active')->count(),
                     'avg_scans_per_qr' => $qrCodes->count() > 0 ? $qrCodes->sum('total_scans') / $qrCodes->count() : 0,
@@ -1436,7 +1438,7 @@ class AffiliateBusinessModelController extends Controller
                     $conversionRate = $qr->total_scans > 0 ? ($qr->conversion_count / $qr->total_scans) * 100 : 0;
                     return [
                         'id' => $qr->id,
-                        'qr_code_id' => $qr->qr_code_id,
+                        'qr_code_id' => $qr->qr_code_value ?: $qr->short_code ?: 'QR-' . $qr->id,
                         'business_name' => $qr->business->name ?? 'N/A',
                         'total_scans' => $qr->total_scans,
                         'unique_scans' => $qr->unique_scans,
@@ -1451,7 +1453,7 @@ class AffiliateBusinessModelController extends Controller
                     $conversionRate = $qr->total_scans > 0 ? ($qr->conversion_count / $qr->total_scans) * 100 : 0;
                     return [
                         'id' => $qr->id,
-                        'qr_code_id' => $qr->qr_code_id,
+                        'qr_code_id' => $qr->qr_code_value ?: $qr->short_code ?: 'QR-' . $qr->id,
                         'business_name' => $qr->business->name ?? 'N/A',
                         'business_type' => $qr->business->business_type ?? 'N/A',
                         'total_scans' => $qr->total_scans,
@@ -1463,6 +1465,11 @@ class AffiliateBusinessModelController extends Controller
                         'created_at' => $qr->created_at->toISOString(),
                     ];
                 }),
+                // Add time-series data for charts
+                'scan_trends_data' => $this->getScanTrendsData($startDate, now()),
+                'device_trends_data' => $this->getDeviceTrendsData($startDate, now()),
+                'location_trends_data' => $this->getLocationTrendsData($startDate, now()),
+                'conversion_trends_data' => $this->getConversionTrendsData($startDate, now()),
             ];
 
             return response()->json($analytics);
@@ -1489,7 +1496,7 @@ class AffiliateBusinessModelController extends Controller
             $data = $qrCodes->get()->map(function ($qr) {
                 $conversionRate = $qr->total_scans > 0 ? ($qr->conversion_count / $qr->total_scans) * 100 : 0;
                 return [
-                    'QR Code ID' => $qr->qr_code_id,
+                    'QR Code ID' => $qr->qr_code_value ?: $qr->short_code ?: 'QR-' . $qr->id,
                     'Business Name' => $qr->business->name ?? 'N/A',
                     'Business Type' => $qr->business->business_type ?? 'N/A',
                     'Total Scans' => $qr->total_scans,
@@ -1648,43 +1655,79 @@ class AffiliateBusinessModelController extends Controller
   
     private function getDeviceStats($startDate)
     {
-        // This would typically come from analytics tracking
-        // For now, return mock data
-        return [
-            'mobile' => 65,
-            'desktop' => 25,
-            'tablet' => 8,
-            'other' => 2,
-        ];
+        try {
+            // Get device statistics from customer scans - use whereDate to ensure proper date filtering
+            $deviceStats = \App\Models\Affiliate\AffiliateCustomerScan::whereDate('created_at', '>=', $startDate)
+                ->selectRaw('device_type, COUNT(*) as count')
+                ->groupBy('device_type')
+                ->pluck('count', 'device_type')
+                ->toArray();
+
+            // Log for debugging - remove in production
+            \Log::info('Device stats query for date range: ' . $startDate->toDateString());
+            \Log::info('Device stats results: ', $deviceStats);
+
+            // Return actual counts, not percentages (frontend will calculate percentages)
+            return [
+                'mobile' => $deviceStats['mobile'] ?? 0,
+                'desktop' => $deviceStats['desktop'] ?? 0,
+                'tablet' => $deviceStats['tablet'] ?? 0,
+                'other' => $deviceStats['unknown'] ?? 0,
+            ];
+        } catch (\Exception $e) {
+            \Log::error('Error in getDeviceStats: ' . $e->getMessage());
+            // Return fallback data if there's an error
+            return [
+                'mobile' => 0,
+                'desktop' => 0,
+                'tablet' => 0,
+                'other' => 0,
+            ];
+        }
     }
 
     private function getLocationStats($startDate)
     {
-        // This would typically come from analytics tracking with real location data
-        // For now, return mock data
-        return [
-            [
-                'location' => 'New York',
-                'country' => 'United States',
-                'scans' => 1250,
-                'unique_scans' => 980,
-                'conversions' => 145,
-            ],
-            [
-                'location' => 'London',
-                'country' => 'United Kingdom',
-                'scans' => 980,
-                'unique_scans' => 750,
-                'conversions' => 112,
-            ],
-            [
-                'location' => 'Paris',
-                'country' => 'France',
-                'scans' => 750,
-                'unique_scans' => 620,
-                'conversions' => 89,
-            ],
-        ];
+        try {
+            // Get location statistics from customer scans joined with business locations
+            $locationStats = \App\Models\Affiliate\AffiliateCustomerScan::where('affiliate_customer_scans.created_at', '>=', $startDate)
+                ->leftJoin('affiliate_business_locations', 'affiliate_customer_scans.matched_location_id', '=', 'affiliate_business_locations.id')
+                ->leftJoin('affiliate_businesses', 'affiliate_business_locations.business_id', '=', 'affiliate_businesses.id')
+                ->selectRaw("
+                    COALESCE(affiliate_business_locations.city, 'Unknown') as location,
+                    COALESCE(affiliate_business_locations.country, 'Unknown') as country,
+                    COUNT(*) as scans,
+                    COUNT(DISTINCT affiliate_customer_scans.customer_id) as unique_scans,
+                    SUM(CASE WHEN affiliate_customer_scans.booking_completed = true THEN 1 ELSE 0 END) as conversions
+                ")
+                ->groupBy('affiliate_business_locations.city', 'affiliate_business_locations.country')
+                ->orderByDesc('scans')
+                ->take(10)
+                ->get();
+
+            // Log for debugging - remove in production
+            \Log::info('Location stats query for date range: ' . $startDate->toDateString());
+            \Log::info('Location stats results count: ' . $locationStats->count());
+
+            // If no location data found, return empty array
+            if ($locationStats->isEmpty()) {
+                return [];
+            }
+
+            return $locationStats->map(function ($stat) {
+                return [
+                    'location' => $stat->location,
+                    'country' => $stat->country,
+                    'scans' => (int) $stat->scans,
+                    'unique_scans' => (int) $stat->unique_scans,
+                    'conversions' => (int) $stat->conversions,
+                ];
+            })->toArray();
+        } catch (\Exception $e) {
+            \Log::error('Error in getLocationStats: ' . $e->getMessage());
+            // Return empty array if there's an error
+            return [];
+        }
     }
 
     private function getPerformanceLevel($conversionRate)
@@ -1693,6 +1736,236 @@ class AffiliateBusinessModelController extends Controller
         if ($conversionRate >= 0.10) return 'good';
         if ($conversionRate >= 0.05) return 'average';
         return 'poor';
+    }
+
+    /**
+     * Calculate QR code growth rate
+     */
+    private function calculateQrGrowth($startDate)
+    {
+        try {
+            $currentPeriod = \App\Models\Affiliate\AffiliateQrCode::where('created_at', '>=', $startDate);
+            $previousPeriod = \App\Models\Affiliate\AffiliateQrCode::where('created_at', '>=', $startDate->copy()->subDays($startDate->diffInDays(now())))
+                ->where('created_at', '<', $startDate);
+
+            $currentCount = $currentPeriod->count();
+            $previousCount = $previousPeriod->count();
+
+            if ($previousCount === 0) {
+                return $currentCount > 0 ? 100 : 0;
+            }
+
+            return (($currentCount - $previousCount) / $previousCount) * 100;
+        } catch (\Exception $e) {
+            return 0;
+        }
+    }
+
+    /**
+     * Get scan trends data for time-series charts
+     */
+    private function getScanTrendsData($startDate, $endDate): array
+    {
+        try {
+            $current = $startDate->copy();
+            $totalDays = $startDate->diffInDays($endDate);
+
+            $labels = [];
+            $totalScansData = [];
+            $uniqueScansData = [];
+            $conversionsData = [];
+
+            // Generate data for each day in the period
+            while ($current <= $endDate) {
+                $dateString = $current->toDateString();
+                $labels[] = $current->format('M j');
+
+                // Get total scans for this date
+                $dayTotalScans = \App\Models\Affiliate\AffiliateCustomerScan::whereDate('created_at', $dateString)
+                    ->count();
+
+                // Get unique scans for this date
+                $dayUniqueScans = \App\Models\Affiliate\AffiliateCustomerScan::whereDate('created_at', $dateString)
+                    ->whereNotNull('customer_id')
+                    ->distinct('customer_id')
+                    ->count('customer_id');
+
+                // Get conversions for this date
+                $dayConversions = \App\Models\Affiliate\AffiliateCustomerScan::whereDate('created_at', $dateString)
+                    ->where('booking_completed', true)
+                    ->whereNotNull('booking_id')
+                    ->count();
+
+                $totalScansData[] = $dayTotalScans;
+                $uniqueScansData[] = $dayUniqueScans;
+                $conversionsData[] = $dayConversions;
+
+                $current->addDay();
+            }
+
+            return [
+                'labels' => $labels,
+                'total_scans' => $totalScansData,
+                'unique_scans' => $uniqueScansData,
+                'conversions' => $conversionsData,
+            ];
+        } catch (\Exception $e) {
+            // Return empty data on error
+            return [
+                'labels' => [],
+                'total_scans' => [],
+                'unique_scans' => [],
+                'conversions' => [],
+            ];
+        }
+    }
+
+    /**
+     * Get device trends data over time
+     */
+    private function getDeviceTrendsData($startDate, $endDate): array
+    {
+        try {
+            $current = $startDate->copy();
+            $totalDays = $startDate->diffInDays($endDate);
+
+            $labels = [];
+            $mobileData = [];
+            $desktopData = [];
+            $tabletData = [];
+            $otherData = [];
+
+            // Generate data for each day in the period
+            while ($current <= $endDate) {
+                $dateString = $current->toDateString();
+                $labels[] = $current->format('M j');
+
+                // Get device stats for this date
+                $dayDeviceStats = \App\Models\Affiliate\AffiliateCustomerScan::whereDate('created_at', $dateString)
+                    ->selectRaw('device_type, COUNT(*) as count')
+                    ->groupBy('device_type')
+                    ->pluck('count', 'device_type')
+                    ->toArray();
+
+                $mobileData[] = $dayDeviceStats['mobile'] ?? 0;
+                $desktopData[] = $dayDeviceStats['desktop'] ?? 0;
+                $tabletData[] = $dayDeviceStats['tablet'] ?? 0;
+                $otherData[] = $dayDeviceStats['unknown'] ?? 0;
+
+                $current->addDay();
+            }
+
+            return [
+                'labels' => $labels,
+                'mobile' => $mobileData,
+                'desktop' => $desktopData,
+                'tablet' => $tabletData,
+                'other' => $otherData,
+            ];
+        } catch (\Exception $e) {
+            // Return empty data on error
+            return [
+                'labels' => [],
+                'mobile' => [],
+                'desktop' => [],
+                'tablet' => [],
+                'other' => [],
+            ];
+        }
+    }
+
+    /**
+     * Get location trends data over time
+     */
+    private function getLocationTrendsData($startDate, $endDate): array
+    {
+        try {
+            $current = $startDate->copy();
+            $totalDays = $startDate->diffInDays($endDate);
+
+            $labels = [];
+            $scansData = [];
+            $conversionsData = [];
+
+            // Generate data for each day in the period
+            while ($current <= $endDate) {
+                $dateString = $current->toDateString();
+                $labels[] = $current->format('M j');
+
+                // Get location stats for this date by joining with business locations
+                $dayLocationStats = \App\Models\Affiliate\AffiliateCustomerScan::whereDate('affiliate_customer_scans.created_at', $dateString)
+                    ->leftJoin('affiliate_business_locations', 'affiliate_customer_scans.matched_location_id', '=', 'affiliate_business_locations.id')
+                    ->selectRaw("
+                        COUNT(*) as scans,
+                        SUM(CASE WHEN affiliate_customer_scans.booking_completed = true THEN 1 ELSE 0 END) as conversions
+                    ")
+                    ->first();
+
+                $scansData[] = $dayLocationStats->scans ?? 0;
+                $conversionsData[] = $dayLocationStats->conversions ?? 0;
+
+                $current->addDay();
+            }
+
+            return [
+                'labels' => $labels,
+                'scans' => $scansData,
+                'conversions' => $conversionsData,
+            ];
+        } catch (\Exception $e) {
+            // Return empty data on error
+            return [
+                'labels' => [],
+                'scans' => [],
+                'conversions' => [],
+            ];
+        }
+    }
+
+    /**
+     * Get conversion rate trends data over time
+     */
+    private function getConversionTrendsData($startDate, $endDate): array
+    {
+        try {
+            $current = $startDate->copy();
+            $totalDays = $startDate->diffInDays($endDate);
+
+            $labels = [];
+            $ratesData = [];
+
+            // Generate data for each day in the period
+            while ($current <= $endDate) {
+                $dateString = $current->toDateString();
+                $labels[] = $current->format('M j');
+
+                // Get scans and conversions for this date
+                $dayScans = \App\Models\Affiliate\AffiliateCustomerScan::whereDate('created_at', $dateString)
+                    ->count();
+
+                $dayConversions = \App\Models\Affiliate\AffiliateCustomerScan::whereDate('created_at', $dateString)
+                    ->where('booking_completed', true)
+                    ->whereNotNull('booking_id')
+                    ->count();
+
+                // Calculate conversion rate for this date
+                $conversionRate = $dayScans > 0 ? ($dayConversions / $dayScans) * 100 : 0;
+                $ratesData[] = round($conversionRate, 2);
+
+                $current->addDay();
+            }
+
+            return [
+                'labels' => $labels,
+                'rates' => $ratesData,
+            ];
+        } catch (\Exception $e) {
+            // Return empty data on error
+            return [
+                'labels' => [],
+                'rates' => [],
+            ];
+        }
     }
 
     /**
