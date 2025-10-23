@@ -749,6 +749,112 @@ class AffiliateBusinessModelController extends Controller
     }
 
     /**
+     * Generate time-series data for commission revenue from QR codes
+     */
+    private function getCommissionRevenueTimeSeries($startDate, $endDate, $businesses): array
+    {
+        $data = [];
+        $current = $startDate->copy();
+        $totalDays = $startDate->diffInDays($endDate);
+
+        if ($totalDays <= 31) {
+            // Daily data
+            while ($current <= $endDate) {
+                $dayRevenue = $businesses->sum(function ($business) use ($current) {
+                    return $business->qrCodes()
+                        ->whereDate('created_at', $current->toDateString())
+                        ->sum('total_revenue_generated');
+                });
+                $data[] = $dayRevenue;
+                $current->addDay();
+            }
+        } elseif ($totalDays <= 90) {
+            // Weekly data
+            while ($current <= $endDate) {
+                $weekEnd = $current->copy()->addDays(6)->min($endDate);
+                $weekRevenue = $businesses->sum(function ($business) use ($current, $weekEnd) {
+                    return $business->qrCodes()
+                        ->whereBetween('created_at', [$current, $weekEnd])
+                        ->sum('total_revenue_generated');
+                });
+                $data[] = $weekRevenue;
+                $current->addWeek();
+            }
+        } else {
+            // Monthly data
+            while ($current <= $endDate) {
+                $monthEnd = $current->copy()->addMonth()->subDay()->min($endDate);
+                $monthRevenue = $businesses->sum(function ($business) use ($current, $monthEnd) {
+                    return $business->qrCodes()
+                        ->whereBetween('created_at', [$current, $monthEnd])
+                        ->sum('total_revenue_generated');
+                });
+                $data[] = $monthRevenue;
+                $current->addMonth();
+            }
+        }
+
+        return $data;
+    }
+
+    /**
+     * Generate time-series data for commission amounts
+     */
+    private function getCommissionAmountTimeSeries($startDate, $endDate, $businesses): array
+    {
+        return $this->getCommissionTimeSeries($startDate, $endDate, $businesses);
+    }
+
+    /**
+     * Generate time-series data for commission counts
+     */
+    private function getCommissionCountTimeSeries($startDate, $endDate, $businesses): array
+    {
+        $data = [];
+        $current = $startDate->copy();
+        $totalDays = $startDate->diffInDays($endDate);
+
+        if ($totalDays <= 31) {
+            // Daily data
+            while ($current <= $endDate) {
+                $dayCount = $businesses->sum(function ($business) use ($current) {
+                    return $business->commissions()
+                        ->whereDate('created_at', $current->toDateString())
+                        ->count();
+                });
+                $data[] = $dayCount;
+                $current->addDay();
+            }
+        } elseif ($totalDays <= 90) {
+            // Weekly data
+            while ($current <= $endDate) {
+                $weekEnd = $current->copy()->addDays(6)->min($endDate);
+                $weekCount = $businesses->sum(function ($business) use ($current, $weekEnd) {
+                    return $business->commissions()
+                        ->whereBetween('created_at', [$current, $weekEnd])
+                        ->count();
+                });
+                $data[] = $weekCount;
+                $current->addWeek();
+            }
+        } else {
+            // Monthly data
+            while ($current <= $endDate) {
+                $monthEnd = $current->copy()->addMonth()->subDay()->min($endDate);
+                $monthCount = $businesses->sum(function ($business) use ($current, $monthEnd) {
+                    return $business->commissions()
+                        ->whereBetween('created_at', [$current, $monthEnd])
+                        ->count();
+                });
+                $data[] = $monthCount;
+                $current->addMonth();
+            }
+        }
+
+        return $data;
+    }
+
+    /**
      * Display business verification management page
      */
     public function businessVerification()
@@ -1092,7 +1198,8 @@ class AffiliateBusinessModelController extends Controller
             };
 
             $commissions = \App\Models\Affiliate\AffiliateCommission::with(['business', 'customer'])
-                ->where('created_at', '>=', $startDate);
+                ->where('created_at', '>=', $startDate)
+                ->get(); // FIX: Add get() to execute the query
 
             $totalCommissions = $commissions->sum('commission_amount');
             $pendingCommissions = $commissions->where('status', 'pending')->sum('commission_amount');
@@ -1100,6 +1207,15 @@ class AffiliateBusinessModelController extends Controller
             $paidCommissions = $commissions->where('status', 'paid')->sum('commission_amount');
             $disputedCommissions = $commissions->where('status', 'disputed')->sum('commission_amount');
             $rejectedCommissions = $commissions->where('status', 'rejected')->sum('commission_amount');
+
+            // Get businesses for time-series data generation
+            $businesses = \App\Models\Affiliate\AffiliateBusiness::with(['commissions', 'qrCodes'])->get();
+
+            // Generate time-series data for charts
+            $chartLabels = $this->generateChartLabels($startDate, $now);
+            $revenueData = $this->getCommissionRevenueTimeSeries($startDate, $now, $businesses);
+            $commissionData = $this->getCommissionAmountTimeSeries($startDate, $now, $businesses);
+            $commissionCountData = $this->getCommissionCountTimeSeries($startDate, $now, $businesses);
 
             $stats = [
                 'overview' => [
@@ -1127,8 +1243,14 @@ class AffiliateBusinessModelController extends Controller
                     'paid' => $commissions->where('status', 'paid')->count(),
                     'disputed' => $commissions->where('status', 'disputed')->count(),
                     'rejected' => $commissions->where('status', 'rejected')->count(),
+                    'cancelled' => $commissions->where('status', 'cancelled')->count(),
                 ],
                 'currency_breakdown' => $this->getCurrencyBreakdown($startDate),
+                // Add time-series data for charts
+                'chart_labels' => $chartLabels,
+                'revenue_data' => $revenueData,
+                'commission_data' => $commissionData,
+                'commission_count_data' => $commissionCountData,
             ];
 
             return response()->json($stats);
@@ -1233,7 +1355,7 @@ class AffiliateBusinessModelController extends Controller
                     'ID' => $commission->id,
                     'Business Name' => $commission->business->name ?? 'N/A',
                     'Business Type' => $commission->business->business_type ?? 'N/A',
-                    'Affiliate Name' => $commission->customer->name ?? 'N/A',
+                    'Affiliate Name' => trim(($commission->customer->first_name ?? '') . ' ' . ($commission->customer->last_name ?? '')) ?: 'N/A',
                     'Affiliate Email' => $commission->customer->email ?? 'N/A',
                     'QR Code ID' => $commission->qr_code_id,
                     'Amount' => $commission->commission_amount,
@@ -1425,7 +1547,7 @@ class AffiliateBusinessModelController extends Controller
                 return [
                     'id' => $customer->id ?? null,
                     'rank' => $index + 1,
-                    'name' => $customer->name ?? 'N/A',
+                    'name' => trim(($customer->first_name ?? '') . ' ' . ($customer->last_name ?? '')) ?: 'N/A',
                     'email' => $customer->email ?? 'N/A',
                     'total_commissions' => $item->total_commissions,
                     'total_transactions' => $item->total_transactions,

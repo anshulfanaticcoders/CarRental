@@ -150,27 +150,39 @@ const commissionTrendChartOptions = {
 }
 
 // Commission status chart data
-const commissionStatusChartData = computed(() => ({
-  labels: commissionStatusChart.value?.labels || ['Pending', 'Approved', 'Paid', 'Rejected'],
-  datasets: [
-    {
-      data: commissionStatusChart.value?.data || [30, 45, 100, 15],
-      backgroundColor: [
-        'rgba(245, 158, 11, 0.8)',
-        'rgba(59, 130, 246, 0.8)',
-        'rgba(16, 185, 129, 0.8)',
-        'rgba(239, 68, 68, 0.8)'
-      ],
-      borderColor: [
-        'rgb(245, 158, 11)',
-        'rgb(59, 130, 246)',
-        'rgb(16, 185, 129)',
-        'rgb(239, 68, 68)'
-      ],
-      borderWidth: 1
-    }
-  ]
-}))
+const commissionStatusChartData = computed(() => {
+  console.log('🔍 DEBUG: commissionStatusChartData computed called')
+  console.log('🔍 DEBUG: commissionStatusChart.value', commissionStatusChart.value)
+
+  const data = {
+    labels: commissionStatusChart.value?.labels || ['Pending', 'Approved', 'Paid', 'Rejected', 'Cancelled', 'Disputed'],
+    datasets: [
+      {
+        data: commissionStatusChart.value?.data || [30, 45, 100, 15, 5, 8],
+        backgroundColor: [
+          'rgba(245, 158, 11, 0.8)',   // yellow for pending
+          'rgba(59, 130, 246, 0.8)',    // blue for approved
+          'rgba(16, 185, 129, 0.8)',    // green for paid
+          'rgba(239, 68, 68, 0.8)',     // red for rejected
+          'rgba(107, 114, 128, 0.8)',   // gray for cancelled
+          'rgba(255, 159, 64, 0.8)'     // orange for disputed
+        ],
+        borderColor: [
+          'rgb(245, 158, 11)',
+          'rgb(59, 130, 246)',
+          'rgb(16, 185, 129)',
+          'rgb(239, 68, 68)',
+          'rgb(107, 114, 128)',
+          'rgb(255, 159, 64)'
+        ],
+        borderWidth: 1
+      }
+    ]
+  }
+
+  console.log('🔍 DEBUG: final chart data', data)
+  return data
+})
 
 const commissionStatusChartOptions = {
   ...chartOptions,
@@ -254,8 +266,8 @@ const formattedStats = computed(() => {
     paidCommissions: stats.paid_commissions || 0,
     totalAmount: stats.total_amount || 0,
     averageCommission: stats.average_commission || 0,
-    monthlyGrowth: stats.monthly_growth || 0,
-    topAffiliates: stats.top_affiliates || []
+    monthlyGrowth: statistics.value.monthly_growth || 0,
+    topAffiliates: statistics.value.top_affiliates || []
   }
 })
 
@@ -291,7 +303,7 @@ const loadStatistics = async () => {
     })
     statistics.value = response.data
 
-    // Load chart data (mock data for now)
+    // Load chart data
     loadChartData()
   } catch (error) {
     console.error('Error loading statistics:', error)
@@ -301,32 +313,43 @@ const loadStatistics = async () => {
 
 // Load chart data
 const loadChartData = () => {
-  // Mock data for charts - in real implementation, this would come from API
-  const days = dateRange.value === '7d' ? 7 : dateRange.value === '30d' ? 30 : dateRange.value === '90d' ? 90 : 30
-  const labels = Array.from({length: Math.min(days, 7)}, (_, i) => {
-    const date = new Date()
-    date.setDate(date.getDate() - (days - i - 1))
-    return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
-  })
+  // Use real data from statistics instead of mock data
+  if (statistics.value.overview) {
+    const stats = statistics.value.overview
+    const statusDistribution = statistics.value.status_distribution || {}
 
-  // Commission trend chart data
-  commissionTrendChart.value = {
-    labels,
-    amounts: Array.from({length: labels.length}, () => Math.floor(Math.random() * 2000) + 500),
-    counts: Array.from({length: labels.length}, () => Math.floor(Math.random() * 20) + 5)
-  }
+    // Commission status chart data - use real status distribution from controller
+    commissionStatusChart.value = {
+      labels: ['Pending', 'Approved', 'Paid', 'Rejected', 'Cancelled', 'Disputed'],
+      data: [
+        statusDistribution.pending || stats.pending_commissions || 0,
+        statusDistribution.approved || stats.approved_commissions || 0,
+        statusDistribution.paid || stats.paid_commissions || 0,
+        statusDistribution.rejected || stats.rejected_commissions || 0,
+        statusDistribution.cancelled || 0,
+        statusDistribution.disputed || stats.disputed_commissions || 0
+      ]
+    }
 
-  // Commission status chart data
-  commissionStatusChart.value = {
-    labels: ['Pending', 'Approved', 'Paid', 'Rejected'],
-    data: [30, 45, 100, 15]
-  }
+    // Top affiliates chart data - use real top affiliates data from controller
+    if (statistics.value.top_affiliates && statistics.value.top_affiliates.length > 0) {
+      const topAffiliates = statistics.value.top_affiliates.slice(0, 10)
+      topAffiliatesChart.value = {
+        labels: topAffiliates.map(affiliate => affiliate.name || 'N/A'),
+        commissions: topAffiliates.map(affiliate => affiliate.total_commissions || 0)
+      }
+    }
 
-  // Top affiliates chart data
-  const topAffiliates = ['John Doe', 'Jane Smith', 'Bob Johnson', 'Alice Brown', 'Charlie Wilson']
-  topAffiliatesChart.value = {
-    labels: topAffiliates,
-    commissions: [2500, 1800, 1200, 800, 600]
+    const labels = statistics.value.chart_labels || []
+    const commissionData = statistics.value.commission_data || []
+    const commissionCountData = statistics.value.commission_count_data || []
+    const revenueData = statistics.value.revenue_data || []
+
+    commissionTrendChart.value = {
+      labels: labels,
+      amounts: revenueData,
+      counts: commissionCountData
+    }
   }
 }
 
@@ -389,13 +412,54 @@ const exportCommissions = async () => {
 
 // Format currency
 const formatCurrency = (amount, currency = 'EUR') => {
-  const formatter = new Intl.NumberFormat('en-US', {
-    style: 'currency',
-    currency: currency,
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2
-  })
-  return formatter.format(amount)
+  // Convert currency symbols to proper currency codes
+  const currencyMap = {
+    '₹': 'INR',
+    '$': 'USD',
+    '€': 'EUR',
+    '£': 'GBP',
+    '¥': 'JPY',
+    '₩': 'KRW',
+    '₽': 'RUB',
+    '₴': 'UAH',
+    '₸': 'KZT',
+    '₼': 'AZN',
+    '₺': 'TRY',
+    '₨': 'PKR',
+    '৳': 'BDT',
+    '₡': 'CRC',
+    '¢': 'CLP',
+    '₱': 'PHP',
+    '₲': 'PYG',
+    '₦': 'NGN',
+    '₵': 'GHS'
+  }
+
+  // If currency is a single character (symbol), convert to code
+  let currencyCode = currency
+  if (currency && currency.length === 1 && currencyMap[currency]) {
+    currencyCode = currencyMap[currency]
+  }
+
+  // Fallback to EUR if invalid currency code
+  try {
+    const formatter = new Intl.NumberFormat('en-US', {
+      style: 'currency',
+      currency: currencyCode,
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2
+    })
+    return formatter.format(amount)
+  } catch (error) {
+    console.warn(`Invalid currency code: ${currencyCode}, falling back to EUR`)
+    const fallbackFormatter = new Intl.NumberFormat('en-US', {
+      style: 'currency',
+      currency: 'EUR',
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2
+    })
+    return fallbackFormatter.format(amount)
+  }
 }
 
 // Format date
@@ -415,7 +479,8 @@ const getStatusBadgeClass = (status) => {
     pending: 'bg-yellow-100 text-yellow-800',
     approved: 'bg-blue-100 text-blue-800',
     paid: 'bg-green-100 text-green-800',
-    rejected: 'bg-red-100 text-red-800'
+    rejected: 'bg-red-100 text-red-800',
+    disputed: 'bg-orange-100 text-orange-800'
   }
   return classes[status] || 'bg-gray-100 text-gray-800'
 }
@@ -426,7 +491,8 @@ const getStatusIcon = (status) => {
     pending: Clock,
     approved: CheckCircle,
     paid: CheckCircle,
-    rejected: XCircle
+    rejected: XCircle,
+    disputed: AlertCircle
   }
   return icons[status] || AlertCircle
 }
@@ -513,6 +579,7 @@ onMounted(() => {
             <option value="approved">Approved</option>
             <option value="paid">Paid</option>
             <option value="rejected">Rejected</option>
+            <option value="disputed">Disputed</option>
           </select>
           <select v-model="dateRange" @change="loadCommissions(); loadStatistics()" class="filter-select">
             <option value="7d">Last 7 Days</option>
@@ -603,11 +670,12 @@ onMounted(() => {
               <PieChart class="chart-icon" />
             </div>
             <div class="chart-wrapper">
+              <div class="chart-wrapper">
               <Doughnut
                 :data="commissionStatusChartData"
                 :options="commissionStatusChartOptions"
-                v-if="!loading"
               />
+            </div>
             </div>
           </div>
         </div>
@@ -632,7 +700,7 @@ onMounted(() => {
           <div class="table-header">
             <h3>Commission Transactions</h3>
             <div class="table-stats">
-              <span>{{ pagination.value.total }} total commissions</span>
+              <span>{{ pagination.total }} total commissions</span>
             </div>
           </div>
 
@@ -730,12 +798,12 @@ onMounted(() => {
           </div>
 
           <!-- Pagination -->
-          <div v-if="pagination.value.last_page > 1" class="pagination">
+          <div v-if="pagination.last_page > 1" class="pagination">
             <button
-              v-for="page in pagination.value.last_page"
+              v-for="page in pagination.last_page"
               :key="page"
               @click="loadCommissions(page)"
-              :class="['page-btn', { active: page === pagination.value.current_page }]"
+              :class="['page-btn', { active: page === pagination.current_page }]"
             >
               {{ page }}
             </button>
