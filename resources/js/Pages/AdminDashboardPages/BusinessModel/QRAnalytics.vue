@@ -149,7 +149,7 @@ const deviceUsageChartData = computed(() => ({
   labels: deviceUsageChart.value?.labels || ['Mobile', 'Desktop', 'Tablet', 'Other'],
   datasets: [
     {
-      data: deviceUsageChart.value?.data || [65, 25, 8, 2],
+      data: deviceUsageChart.value?.data || [0, 0, 0, 0],
       backgroundColor: [
         'rgba(59, 130, 246, 0.8)',
         'rgba(16, 185, 129, 0.8)',
@@ -316,41 +316,97 @@ const loadAnalytics = async () => {
 
 // Load chart data
 const loadChartData = () => {
-  // Mock data for charts - in real implementation, this would come from API
-  const days = dateRange.value === '7d' ? 7 : dateRange.value === '30d' ? 30 : dateRange.value === '90d' ? 90 : 30
-  const labels = Array.from({length: Math.min(days, 7)}, (_, i) => {
-    const date = new Date()
-    date.setDate(date.getDate() - (days - i - 1))
-    return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
-  })
+  // Use real data from API response instead of mock data
+  const overview = qrData.value.overview || {}
 
-  // Scan trend chart data
+  // Scan trends chart data - use real time-series data from API
+  const scanTrendsData = qrData.value.scan_trends_data || {}
   scanTrendChart.value = {
-    labels,
-    total_scans: Array.from({length: labels.length}, () => Math.floor(Math.random() * 500) + 100),
-    unique_scans: Array.from({length: labels.length}, () => Math.floor(Math.random() * 300) + 50),
-    conversions: Array.from({length: labels.length}, () => Math.floor(Math.random() * 50) + 10)
+    labels: scanTrendsData?.labels || [],
+    datasets: [
+      {
+        label: 'Total Scans',
+        data: scanTrendsData?.total_scans || [],
+        borderColor: 'rgb(59, 130, 246)',
+        backgroundColor: 'rgba(59, 130, 246, 0.1)',
+        tension: 0.4,
+        fill: true,
+      },
+      {
+        label: 'Unique Scans',
+        data: scanTrendsData?.unique_scans || [],
+        borderColor: 'rgb(16, 185, 129)',
+        backgroundColor: 'rgba(16, 185, 129, 0.1)',
+        tension: 0.4,
+        fill: true,
+      },
+      {
+        label: 'Conversions',
+        data: scanTrendsData?.conversions || [],
+        borderColor: 'rgb(139, 92, 246)',
+        backgroundColor: 'rgba(139, 92, 246, 0.1)',
+        tension: 0.4,
+        fill: true,
+      },
+    ]
   }
 
-  // Device usage chart data
+  // Device usage chart data - use real device stats from API
+  const deviceStats = qrData.value.device_stats || {}
   deviceUsageChart.value = {
     labels: ['Mobile', 'Desktop', 'Tablet', 'Other'],
-    data: [65, 25, 8, 2]
+    data: [
+      deviceStats.mobile || 0,
+      deviceStats.desktop || 0,
+      deviceStats.tablet || 0,
+      deviceStats.other || 0,
+    ]
   }
 
-  // Location performance chart data
-  const locations = ['New York', 'London', 'Paris', 'Tokyo', 'Sydney']
-  locationPerformanceChart.value = {
-    labels: locations,
-    scans: [1250, 980, 750, 1100, 890],
-    conversions: [145, 112, 89, 134, 98]
+  // Location performance chart data - use real location stats from API
+  const locationStats = qrData.value.location_stats || []
+  if (locationStats.length > 0) {
+    locationPerformanceChart.value = {
+      labels: locationStats.map(loc => `${loc.location}, ${loc.country}`),
+      scans: locationStats.map(loc => loc.scans),
+      conversions: locationStats.map(loc => loc.conversions)
+    }
+  } else {
+    // Fallback if no location data
+    locationPerformanceChart.value = {
+      labels: ['No location data'],
+      scans: [0],
+      conversions: [0]
+    }
   }
 
-  // Conversion rate chart data
+  // Conversion rate trends data - use real conversion rate trends
+  const conversionTrendsData = qrData.value.conversion_trends_data || {}
   conversionRateChart.value = {
-    labels,
-    rates: Array.from({length: labels.length}, () => Math.random() * 15 + 5)
+    labels: conversionTrendsData?.labels || [],
+    datasets: [
+      {
+        label: 'Conversion Rate (%)',
+        data: conversionTrendsData?.rates || [],
+        borderColor: 'rgb(34, 197, 94)',
+        backgroundColor: 'rgba(34, 197, 94, 0.1)',
+        tension: 0.4,
+        fill: true,
+      },
+    ]
   }
+}
+
+// Helper function to distribute a total value across chart labels
+const distributeValueAcrossLabels = (total, count) => {
+  if (total === 0 || count === 0) return Array(count).fill(0)
+
+  const baseValue = Math.floor(total / count)
+  const remainder = total % count
+
+  return Array.from({length: count}, (_, i) => {
+    return baseValue + (i < remainder ? 1 : 0)
+  })
 }
 
 // Export QR analytics
