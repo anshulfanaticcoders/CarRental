@@ -286,7 +286,7 @@ const deviceBreakdown = computed(() => {
 })
 
 const topQrCodes = computed(() => {
-  return qrData.value.topPerformers || []
+  return qrData.value.top_performers || []
 })
 
 const locationAnalytics = computed(() => {
