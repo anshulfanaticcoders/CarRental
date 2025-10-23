@@ -1689,18 +1689,18 @@ class AffiliateBusinessModelController extends Controller
     private function getLocationStats($startDate)
     {
         try {
-            // Get location statistics from customer scans joined with business locations
+            // First, let's try to get location data from the business itself if no location matching is available
             $locationStats = \App\Models\Affiliate\AffiliateCustomerScan::where('affiliate_customer_scans.created_at', '>=', $startDate)
                 ->leftJoin('affiliate_business_locations', 'affiliate_customer_scans.matched_location_id', '=', 'affiliate_business_locations.id')
                 ->leftJoin('affiliate_businesses', 'affiliate_business_locations.business_id', '=', 'affiliate_businesses.id')
                 ->selectRaw("
-                    COALESCE(affiliate_business_locations.city, 'Unknown') as location,
-                    COALESCE(affiliate_business_locations.country, 'Unknown') as country,
+                    COALESCE(affiliate_business_locations.city, affiliate_businesses.city, 'Unknown Location') as location,
+                    COALESCE(affiliate_business_locations.country, affiliate_businesses.country, 'Unknown') as country,
                     COUNT(*) as scans,
                     COUNT(DISTINCT affiliate_customer_scans.customer_id) as unique_scans,
                     SUM(CASE WHEN affiliate_customer_scans.booking_completed = true THEN 1 ELSE 0 END) as conversions
                 ")
-                ->groupBy('affiliate_business_locations.city', 'affiliate_business_locations.country')
+                ->groupBy('affiliate_business_locations.city', 'affiliate_business_locations.country', 'affiliate_businesses.city', 'affiliate_businesses.country')
                 ->orderByDesc('scans')
                 ->take(10)
                 ->get();
