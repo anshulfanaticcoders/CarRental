@@ -320,43 +320,23 @@ const loadAnalytics = async () => {
 
 // Load chart data
 const loadChartData = () => {
-  // Use real data from API response instead of mock data
-  const overview = qrData.value.overview || {}
+  console.log('🔄 Loading chart data from API response:', qrData.value)
 
   // Scan trends chart data - use real time-series data from API
   const scanTrendsData = qrData.value.scan_trends_data || {}
+  console.log('📊 Scan trends data:', scanTrendsData)
+
   scanTrendChart.value = {
     labels: scanTrendsData?.labels || [],
-    datasets: [
-      {
-        label: 'Total Scans',
-        data: scanTrendsData?.total_scans || [],
-        borderColor: 'rgb(59, 130, 246)',
-        backgroundColor: 'rgba(59, 130, 246, 0.1)',
-        tension: 0.4,
-        fill: true,
-      },
-      {
-        label: 'Unique Scans',
-        data: scanTrendsData?.unique_scans || [],
-        borderColor: 'rgb(16, 185, 129)',
-        backgroundColor: 'rgba(16, 185, 129, 0.1)',
-        tension: 0.4,
-        fill: true,
-      },
-      {
-        label: 'Conversions',
-        data: scanTrendsData?.conversions || [],
-        borderColor: 'rgb(139, 92, 246)',
-        backgroundColor: 'rgba(139, 92, 246, 0.1)',
-        tension: 0.4,
-        fill: true,
-      },
-    ]
+    total_scans: scanTrendsData?.total_scans || [],
+    unique_scans: scanTrendsData?.unique_scans || [],
+    conversions: scanTrendsData?.conversions || []
   }
 
   // Device usage chart data - use real device stats from API
   const deviceStats = qrData.value.device_stats || {}
+  console.log('📱 Device stats:', deviceStats)
+
   deviceUsageChart.value = {
     labels: ['Mobile', 'Desktop', 'Tablet', 'Other'],
     data: [
@@ -367,13 +347,15 @@ const loadChartData = () => {
     ]
   }
 
-  // Location performance chart data - use real location stats from API
+  // Location performance chart data - use location_stats for simple location comparison
   const locationStats = qrData.value.location_stats || []
+  console.log('📍 Location stats data:', locationStats)
+
   if (locationStats.length > 0) {
     locationPerformanceChart.value = {
-      labels: locationStats.map(loc => `${loc.location}, ${loc.country}`),
+      labels: locationStats.map(loc => loc.location),
       scans: locationStats.map(loc => loc.scans),
-      conversions: locationStats.map(loc => loc.conversions)
+      conversions: locationStats.map(loc => loc.conversions || 0)
     }
   } else {
     // Fallback if no location data
@@ -386,18 +368,11 @@ const loadChartData = () => {
 
   // Conversion rate trends data - use real conversion rate trends
   const conversionTrendsData = qrData.value.conversion_trends_data || {}
+  console.log('📈 Conversion trends data:', conversionTrendsData)
+
   conversionRateChart.value = {
     labels: conversionTrendsData?.labels || [],
-    datasets: [
-      {
-        label: 'Conversion Rate (%)',
-        data: conversionTrendsData?.rates || [],
-        borderColor: 'rgb(34, 197, 94)',
-        backgroundColor: 'rgba(34, 197, 94, 0.1)',
-        tension: 0.4,
-        fill: true,
-      },
-    ]
+    rates: conversionTrendsData?.rates || []
   }
 }
 
