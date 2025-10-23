@@ -60,10 +60,14 @@ ChartJS.register(
 const loading = ref(true)
 const qrData = ref({
   overview: {},
-  analytics: {},
-  topPerformers: [],
-  deviceStats: {},
-  locationStats: []
+  top_performers: [],
+  device_stats: {},
+  location_stats: [],
+  qr_codes: [],
+  scan_trends_data: {},
+  device_trends_data: {},
+  location_trends_data: {},
+  conversion_trends_data: {}
 })
 const dateRange = ref('30d')
 const selectedBusiness = ref('all')
@@ -272,7 +276,7 @@ const formattedStats = computed(() => {
 })
 
 const deviceBreakdown = computed(() => {
-  const stats = qrData.value.deviceStats || {}
+  const stats = qrData.value.device_stats || {}
   return {
     mobile: stats.mobile || 0,
     desktop: stats.desktop || 0,
@@ -286,7 +290,7 @@ const topQrCodes = computed(() => {
 })
 
 const locationAnalytics = computed(() => {
-  return qrData.value.locationStats || []
+  return qrData.value.location_stats || []
 })
 
 // Load QR analytics data
