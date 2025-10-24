@@ -7,7 +7,6 @@ use App\Services\Affiliate\AffiliateBusinessModelService;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Illuminate\Http\JsonResponse;
-use Illuminate\Support\Facades\Log;
 
 class AffiliateBusinessModelController extends Controller
 {
@@ -1645,10 +1644,7 @@ class AffiliateBusinessModelController extends Controller
                 ->pluck('count', 'device_type')
                 ->toArray();
 
-            // Log for debugging - remove in production
-            \Log::info('Device stats query for date range: ' . $startDate->toDateString());
-            \Log::info('Device stats results: ', $deviceStats);
-
+  
             // Handle both 'unknown' and 'other' device types for compatibility
             $unknownCount = ($deviceStats['unknown'] ?? 0) + ($deviceStats['other'] ?? 0);
 
@@ -1660,7 +1656,6 @@ class AffiliateBusinessModelController extends Controller
                 'other' => $unknownCount, // Combine both unknown and other device types
             ];
         } catch (\Exception $e) {
-            \Log::error('Error in getDeviceStats: ' . $e->getMessage());
             // Return fallback data if there's an error
             return [
                 'mobile' => 0,
@@ -1703,13 +1698,9 @@ class AffiliateBusinessModelController extends Controller
                 ->values()
                 ->toArray();
 
-            // Log for debugging
-            \Log::info('Location stats from QR codes table for date range: ' . $startDate->toDateString());
-            \Log::info('Location stats results: ' . json_encode($locationStats));
-
+    
             return $locationStats;
         } catch (\Exception $e) {
-            \Log::error('Error in getLocationStats: ' . $e->getMessage());
             // Return empty array if there's an error
             return [];
         }
@@ -2193,9 +2184,8 @@ class AffiliateBusinessModelController extends Controller
                 try {
                     $business->notify(new \App\Notifications\Affiliate\BusinessRegistrationNotification($business));
                 } catch (\Exception $emailException) {
-                    // Log email error but don't fail the registration
-                    \Log::warning('Failed to send welcome email for business ID ' . $business->id . ': ' . $emailException->getMessage());
-                }
+                    // Email error but don't fail the registration
+                  }
             }
 
             return response()->json([
