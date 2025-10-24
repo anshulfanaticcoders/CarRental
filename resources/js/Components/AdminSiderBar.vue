@@ -142,6 +142,10 @@ const data = {
           title: 'Business Model Settings',
           url: '/admin/affiliate/business-model',
         },
+        {
+          title: 'Register Business',
+          url: '/admin/affiliate/business-register',
+        },
       ],
     },
     {

@@ -297,43 +297,38 @@ class AffiliateBusinessModelController extends Controller
             };
 
             // Get businesses with their relationships for comprehensive statistics
-            $businessesQuery = \App\Models\Affiliate\AffiliateBusiness::with(['qrCodes', 'commissions', 'customerScans']);
+            $businesses = \App\Models\Affiliate\AffiliateBusiness::with(['qrCodes', 'commissions', 'customerScans'])->get();
 
-            // Apply date filtering for the relevant data
-            $businesses = $businessesQuery->get();
-
-            // Calculate overview statistics
+            // Calculate overview statistics using real-time scan data
             $totalBusinesses = $businesses->count();
             $activeBusinesses = $businesses->where('status', 'active')->count();
             $pendingVerification = $businesses->where('verification_status', 'pending')->count();
 
-            // Aggregate data across all businesses
+            // Use AffiliateCustomerScan for real-time statistics
+            $scansInPeriod = \App\Models\Affiliate\AffiliateCustomerScan::where('created_at', '>=', $startDate)->get();
+            $totalScans = $scansInPeriod->count();
+
+            // Get QR codes created in period
             $totalQrCodes = $businesses->sum(function ($business) use ($startDate) {
                 return $business->qrCodes()->where('created_at', '>=', $startDate)->count();
             });
 
-            $totalScans = $businesses->sum(function ($business) use ($startDate) {
-                return $business->qrCodes()->where('created_at', '>=', $startDate)->sum('total_scans');
-            });
+            // Calculate actual revenue from QR scans (using real-time data)
+            $totalRevenue = 0;
+            $totalConversions = 0;
+            $scansWithBookings = $scansInPeriod->where('booking_completed', true)->whereNotNull('booking_id');
 
-            $totalRevenue = $businesses->sum(function ($business) use ($startDate) {
-                return $business->qrCodes()->where('created_at', '>=', $startDate)->sum('total_revenue_generated');
-            });
+            // Estimate revenue based on commissions (more accurate)
+            $commissionsInPeriod = \App\Models\Affiliate\AffiliateCommission::where('created_at', '>=', $startDate)->get();
+            $totalCommissions = $commissionsInPeriod->sum('commission_amount');
+            $totalRevenue = $commissionsInPeriod->sum('booking_amount') ?? 0;
+            $totalConversions = $commissionsInPeriod->count();
 
-            $totalCommissions = $businesses->sum(function ($business) use ($startDate) {
-                return $business->commissions()->where('created_at', '>=', $startDate)->sum('commission_amount');
-            });
-
-            $pendingPayouts = $businesses->sum(function ($business) {
-                return $business->commissions()->where('status', 'approved')->sum('commission_amount');
-            });
+            $pendingPayouts = \App\Models\Affiliate\AffiliateCommission::where('status', 'approved')->sum('commission_amount');
 
             // Calculate conversion rate safely
             $avgConversionRate = 0;
             if ($totalScans > 0) {
-                $totalConversions = $businesses->sum(function ($business) use ($startDate) {
-                    return $business->qrCodes()->where('created_at', '>=', $startDate)->sum('conversion_count');
-                });
                 $avgConversionRate = ($totalConversions / $totalScans) * 100;
             }
 
@@ -527,7 +522,7 @@ class AffiliateBusinessModelController extends Controller
     }
 
     /**
-     * Generate time-series data for revenue
+     * Generate time-series data for revenue (using real commission data)
      */
     private function getRevenueTimeSeries($startDate, $endDate, $businesses): array
     {
@@ -538,36 +533,27 @@ class AffiliateBusinessModelController extends Controller
         if ($totalDays <= 31) {
             // Daily data
             while ($current <= $endDate) {
-                $dayRevenue = $businesses->sum(function ($business) use ($current) {
-                    return $business->qrCodes()
-                        ->whereDate('created_at', $current->toDateString())
-                        ->sum('total_revenue_generated');
-                });
-                $data[] = $dayRevenue;
+                $dayRevenue = \App\Models\Affiliate\AffiliateCommission::whereDate('created_at', $current->toDateString())
+                    ->sum('booking_amount');
+                $data[] = $dayRevenue ?: 0;
                 $current->addDay();
             }
         } elseif ($totalDays <= 90) {
             // Weekly data
             while ($current <= $endDate) {
                 $weekEnd = $current->copy()->addDays(6)->min($endDate);
-                $weekRevenue = $businesses->sum(function ($business) use ($current, $weekEnd) {
-                    return $business->qrCodes()
-                        ->whereBetween('created_at', [$current, $weekEnd])
-                        ->sum('total_revenue_generated');
-                });
-                $data[] = $weekRevenue;
+                $weekRevenue = \App\Models\Affiliate\AffiliateCommission::whereBetween('created_at', [$current, $weekEnd])
+                    ->sum('booking_amount');
+                $data[] = $weekRevenue ?: 0;
                 $current->addWeek();
             }
         } else {
             // Monthly data
             while ($current <= $endDate) {
                 $monthEnd = $current->copy()->addMonth()->subDay()->min($endDate);
-                $monthRevenue = $businesses->sum(function ($business) use ($current, $monthEnd) {
-                    return $business->qrCodes()
-                        ->whereBetween('created_at', [$current, $monthEnd])
-                        ->sum('total_revenue_generated');
-                });
-                $data[] = $monthRevenue;
+                $monthRevenue = \App\Models\Affiliate\AffiliateCommission::whereBetween('created_at', [$current, $monthEnd])
+                    ->sum('booking_amount');
+                $data[] = $monthRevenue ?: 0;
                 $current->addMonth();
             }
         }
@@ -587,36 +573,27 @@ class AffiliateBusinessModelController extends Controller
         if ($totalDays <= 31) {
             // Daily data
             while ($current <= $endDate) {
-                $dayCommissions = $businesses->sum(function ($business) use ($current) {
-                    return $business->commissions()
-                        ->whereDate('created_at', $current->toDateString())
-                        ->sum('commission_amount');
-                });
-                $data[] = $dayCommissions;
+                $dayCommissions = \App\Models\Affiliate\AffiliateCommission::whereDate('created_at', $current->toDateString())
+                    ->sum('commission_amount');
+                $data[] = $dayCommissions ?: 0;
                 $current->addDay();
             }
         } elseif ($totalDays <= 90) {
             // Weekly data
             while ($current <= $endDate) {
                 $weekEnd = $current->copy()->addDays(6)->min($endDate);
-                $weekCommissions = $businesses->sum(function ($business) use ($current, $weekEnd) {
-                    return $business->commissions()
-                        ->whereBetween('created_at', [$current, $weekEnd])
-                        ->sum('commission_amount');
-                });
-                $data[] = $weekCommissions;
+                $weekCommissions = \App\Models\Affiliate\AffiliateCommission::whereBetween('created_at', [$current, $weekEnd])
+                    ->sum('commission_amount');
+                $data[] = $weekCommissions ?: 0;
                 $current->addWeek();
             }
         } else {
             // Monthly data
             while ($current <= $endDate) {
                 $monthEnd = $current->copy()->addMonth()->subDay()->min($endDate);
-                $monthCommissions = $businesses->sum(function ($business) use ($current, $monthEnd) {
-                    return $business->commissions()
-                        ->whereBetween('created_at', [$current, $monthEnd])
-                        ->sum('commission_amount');
-                });
-                $data[] = $monthCommissions;
+                $monthCommissions = \App\Models\Affiliate\AffiliateCommission::whereBetween('created_at', [$current, $monthEnd])
+                    ->sum('commission_amount');
+                $data[] = $monthCommissions ?: 0;
                 $current->addMonth();
             }
         }
@@ -674,7 +651,7 @@ class AffiliateBusinessModelController extends Controller
     }
 
     /**
-     * Generate time-series data for conversion rates
+     * Generate time-series data for conversion rates (using real scan data)
      */
     private function getConversionTimeSeries($startDate, $endDate, $businesses): array
     {
@@ -685,17 +662,11 @@ class AffiliateBusinessModelController extends Controller
         if ($totalDays <= 31) {
             // Daily data
             while ($current <= $endDate) {
-                $dayScans = $businesses->sum(function ($business) use ($current) {
-                    return $business->qrCodes()
-                        ->whereDate('created_at', $current->toDateString())
-                        ->sum('total_scans');
-                });
+                $dayScans = \App\Models\Affiliate\AffiliateCustomerScan::whereDate('created_at', $current->toDateString())
+                    ->count();
 
-                $dayConversions = $businesses->sum(function ($business) use ($current) {
-                    return $business->qrCodes()
-                        ->whereDate('created_at', $current->toDateString())
-                        ->sum('conversion_count');
-                });
+                $dayConversions = \App\Models\Affiliate\AffiliateCommission::whereDate('created_at', $current->toDateString())
+                    ->count();
 
                 $conversionRate = $dayScans > 0 ? ($dayConversions / $dayScans) * 100 : 0;
                 $data[] = round($conversionRate, 2);
@@ -706,17 +677,11 @@ class AffiliateBusinessModelController extends Controller
             while ($current <= $endDate) {
                 $weekEnd = $current->copy()->addDays(6)->min($endDate);
 
-                $weekScans = $businesses->sum(function ($business) use ($current, $weekEnd) {
-                    return $business->qrCodes()
-                        ->whereBetween('created_at', [$current, $weekEnd])
-                        ->sum('total_scans');
-                });
+                $weekScans = \App\Models\Affiliate\AffiliateCustomerScan::whereBetween('created_at', [$current, $weekEnd])
+                    ->count();
 
-                $weekConversions = $businesses->sum(function ($business) use ($current, $weekEnd) {
-                    return $business->qrCodes()
-                        ->whereBetween('created_at', [$current, $weekEnd])
-                        ->sum('conversion_count');
-                });
+                $weekConversions = \App\Models\Affiliate\AffiliateCommission::whereBetween('created_at', [$current, $weekEnd])
+                    ->count();
 
                 $conversionRate = $weekScans > 0 ? ($weekConversions / $weekScans) * 100 : 0;
                 $data[] = round($conversionRate, 2);
@@ -727,17 +692,11 @@ class AffiliateBusinessModelController extends Controller
             while ($current <= $endDate) {
                 $monthEnd = $current->copy()->addMonth()->subDay()->min($endDate);
 
-                $monthScans = $businesses->sum(function ($business) use ($current, $monthEnd) {
-                    return $business->qrCodes()
-                        ->whereBetween('created_at', [$current, $monthEnd])
-                        ->sum('total_scans');
-                });
+                $monthScans = \App\Models\Affiliate\AffiliateCustomerScan::whereBetween('created_at', [$current, $monthEnd])
+                    ->count();
 
-                $monthConversions = $businesses->sum(function ($business) use ($current, $monthEnd) {
-                    return $business->qrCodes()
-                        ->whereBetween('created_at', [$current, $monthEnd])
-                        ->sum('conversion_count');
-                });
+                $monthConversions = \App\Models\Affiliate\AffiliateCommission::whereBetween('created_at', [$current, $monthEnd])
+                    ->count();
 
                 $conversionRate = $monthScans > 0 ? ($monthConversions / $monthScans) * 100 : 0;
                 $data[] = round($conversionRate, 2);
@@ -1421,11 +1380,14 @@ class AffiliateBusinessModelController extends Controller
                 $qrCodes = $qrCodes->where('business_id', $request->business_id);
             }
 
-            // Use single source of truth: AffiliateCustomerScan real-time data for ALL analytics
-            $realtimeScans = \App\Models\Affiliate\AffiliateCustomerScan::where('created_at', '>=', $startDate)->get();
-            $totalScans = $realtimeScans->count();
-            $uniqueScans = $realtimeScans->whereNotNull('customer_id')->unique('customer_id')->count();
-            $totalConversions = $realtimeScans->where('booking_completed', true)->whereNotNull('booking_id')->count();
+            // Use QR codes table which has aggregated fields for analytics
+            $qrCodesForAnalytics = \App\Models\Affiliate\AffiliateQrCode::where('created_at', '>=', $startDate)
+                ->orWhere('last_scanned_at', '>=', $startDate)
+                ->get();
+
+            $totalScans = $qrCodesForAnalytics->sum('total_scans');
+            $uniqueScans = $qrCodesForAnalytics->sum('unique_scans');
+            $totalConversions = $qrCodesForAnalytics->sum('conversion_count');
 
             $analytics = [
                 'overview' => [
@@ -1437,49 +1399,35 @@ class AffiliateBusinessModelController extends Controller
                     'avg_scans_per_qr' => $qrCodes->count() > 0 ? round($totalScans / $qrCodes->count(), 2) : 0,
                     'recent_growth' => $this->calculateQrGrowth($startDate),
                 ],
-                'top_performers' => $qrCodes->map(function ($qr) use ($startDate) {
-                    // Get real-time scan data for this QR code
-                    $qrScanData = \App\Models\Affiliate\AffiliateCustomerScan::where('qr_code_id', $qr->id)
-                        ->where('created_at', '>=', $startDate)
-                        ->get();
-
-                    $realTotalScans = $qrScanData->count();
-                    $realUniqueScans = $qrScanData->whereNotNull('customer_id')->unique('customer_id')->count();
-                    $realConversions = $qrScanData->where('booking_completed', true)->whereNotNull('booking_id')->count();
-                    $conversionRate = $realTotalScans > 0 ? ($realConversions / $realTotalScans) * 100 : 0;
+                'top_performers' => $qrCodes->map(function ($qr) {
+                    // Use the aggregated fields from QR codes table
+                    $conversionRate = $qr->total_scans > 0 ? ($qr->conversion_count / $qr->total_scans) * 100 : 0;
 
                     return [
                         'id' => $qr->id,
                         'qr_code_id' => $qr->qr_code_value ?: $qr->short_code ?: 'QR-' . $qr->id,
                         'business_name' => $qr->business->name ?? 'N/A',
-                        'total_scans' => $realTotalScans,
-                        'unique_scans' => $realUniqueScans,
-                        'conversions' => $realConversions,
+                        'total_scans' => $qr->total_scans,
+                        'unique_scans' => $qr->unique_scans,
+                        'conversions' => $qr->conversion_count,
                         'conversion_rate' => round($conversionRate, 2),
                         'performance' => $this->getPerformanceLevel($conversionRate / 100),
                     ];
                 })->sortByDesc('total_scans')->take(10)->values(),
                 'device_stats' => $this->getDeviceStats($startDate),
                 'location_stats' => $this->getLocationStats($startDate),
-                'qr_codes' => $qrCodes->map(function ($qr) use ($startDate) {
-                    // Get real-time scan data for this QR code
-                    $qrScanData = \App\Models\Affiliate\AffiliateCustomerScan::where('qr_code_id', $qr->id)
-                        ->where('created_at', '>=', $startDate)
-                        ->get();
-
-                    $realTotalScans = $qrScanData->count();
-                    $realUniqueScans = $qrScanData->whereNotNull('customer_id')->unique('customer_id')->count();
-                    $realConversions = $qrScanData->where('booking_completed', true)->whereNotNull('booking_id')->count();
-                    $conversionRate = $realTotalScans > 0 ? ($realConversions / $realTotalScans) * 100 : 0;
+                'qr_codes' => $qrCodes->map(function ($qr) {
+                    // Use the aggregated fields from QR codes table
+                    $conversionRate = $qr->total_scans > 0 ? ($qr->conversion_count / $qr->total_scans) * 100 : 0;
 
                     return [
                         'id' => $qr->id,
                         'qr_code_id' => $qr->qr_code_value ?: $qr->short_code ?: 'QR-' . $qr->id,
                         'business_name' => $qr->business->name ?? 'N/A',
                         'business_type' => $qr->business->business_type ?? 'N/A',
-                        'total_scans' => $realTotalScans,
-                        'unique_scans' => $realUniqueScans,
-                        'conversions' => $realConversions,
+                        'total_scans' => $qr->total_scans,
+                        'unique_scans' => $qr->unique_scans,
+                        'conversions' => $qr->conversion_count,
                         'conversion_rate' => round($conversionRate, 2),
                         'status' => $qr->status,
                         'performance' => $this->getPerformanceLevel($conversionRate / 100),
@@ -1677,6 +1625,19 @@ class AffiliateBusinessModelController extends Controller
     private function getDeviceStats($startDate)
     {
         try {
+            // First check if there are any scans at all
+            $totalScans = \App\Models\Affiliate\AffiliateCustomerScan::whereDate('created_at', '>=', $startDate)->count();
+
+            // If no scans, return all zeros
+            if ($totalScans === 0) {
+                return [
+                    'mobile' => 0,
+                    'desktop' => 0,
+                    'tablet' => 0,
+                    'other' => 0,
+                ];
+            }
+
             // Get device statistics from customer scans - use whereDate to ensure proper date filtering
             $deviceStats = \App\Models\Affiliate\AffiliateCustomerScan::whereDate('created_at', '>=', $startDate)
                 ->selectRaw('device_type, COUNT(*) as count')
@@ -1713,37 +1674,40 @@ class AffiliateBusinessModelController extends Controller
     private function getLocationStats($startDate)
     {
         try {
-            // Get location statistics directly from customer scans - single source of truth
-            // Simple aggregation without complex joins that could miss locations
-            $locationStats = \App\Models\Affiliate\AffiliateCustomerScan::where('affiliate_customer_scans.created_at', '>=', $startDate)
-                ->leftJoin('affiliate_qr_codes', 'affiliate_customer_scans.qr_code_id', '=', 'affiliate_qr_codes.id')
-                ->leftJoin('affiliate_businesses', 'affiliate_qr_codes.business_id', '=', 'affiliate_businesses.id')
-                ->selectRaw("
-                    COALESCE(affiliate_businesses.city, 'Unknown Location') as location,
-                    COALESCE(affiliate_businesses.country, 'Unknown') as country,
-                    COUNT(*) as scans,
-                    COUNT(DISTINCT CASE WHEN affiliate_customer_scans.customer_id IS NOT NULL THEN affiliate_customer_scans.customer_id END) as unique_scans,
-                    SUM(CASE WHEN affiliate_customer_scans.booking_completed = true THEN 1 ELSE 0 END) as conversions
-                ")
-                ->groupBy('location', 'country')
-                ->orderByDesc('scans')
+            // Get location statistics from QR codes table using location_id
+            $locationStats = \App\Models\Affiliate\AffiliateQrCode::where('created_at', '>=', $startDate)
+                ->orWhere('last_scanned_at', '>=', $startDate)
+                ->with(['location', 'business'])
+                ->get()
+                ->groupBy('location_id')
+                ->map(function ($group) {
+                    $location = $group->first();
+                    $locationName = $location->location ? $location->location->name : ($location->business->city ?? 'Unknown Location');
+                    $totalScans = $group->sum('total_scans');
+                    $uniqueScans = $group->sum('unique_scans');
+                    $conversions = $group->sum('conversion_count');
+
+                    return [
+                        'location' => $locationName,
+                        'country' => $location->business->country ?? 'Unknown',
+                        'scans' => (int) $totalScans,
+                        'unique_scans' => (int) $uniqueScans,
+                        'conversions' => (int) $conversions,
+                    ];
+                })
+                ->filter(function ($stat) {
+                    return $stat['scans'] > 0; // Only show locations with actual scans
+                })
+                ->sortByDesc('scans')
                 ->take(10)
-                ->get();
+                ->values()
+                ->toArray();
 
             // Log for debugging
-            \Log::info('Location stats query for date range: ' . $startDate->toDateString());
-            \Log::info('Location stats raw results: ' . json_encode($locationStats->toArray()));
+            \Log::info('Location stats from QR codes table for date range: ' . $startDate->toDateString());
+            \Log::info('Location stats results: ' . json_encode($locationStats));
 
-            // Return mapped results with proper data types
-            return $locationStats->map(function ($stat) {
-                return [
-                    'location' => $stat->location,
-                    'country' => $stat->country,
-                    'scans' => (int) $stat->scans,
-                    'unique_scans' => (int) $stat->unique_scans,
-                    'conversions' => (int) ($stat->conversions ?? 0),
-                ];
-            })->toArray();
+            return $locationStats;
         } catch (\Exception $e) {
             \Log::error('Error in getLocationStats: ' . $e->getMessage());
             // Return empty array if there's an error
@@ -1788,6 +1752,22 @@ class AffiliateBusinessModelController extends Controller
     private function getScanTrendsData($startDate, $endDate): array
     {
         try {
+            // Get QR codes created or scanned in this period
+            $qrCodesInPeriod = \App\Models\Affiliate\AffiliateQrCode::where(function ($query) use ($startDate, $endDate) {
+                $query->where('created_at', '>=', $startDate)
+                      ->orWhere('last_scanned_at', '>=', $startDate);
+            })->get();
+
+            // If no QR codes with activity, return empty data
+            if ($qrCodesInPeriod->isEmpty()) {
+                return [
+                    'labels' => [],
+                    'total_scans' => [],
+                    'unique_scans' => [],
+                    'conversions' => [],
+                ];
+            }
+
             $current = $startDate->copy();
             $totalDays = $startDate->diffInDays($endDate);
 
@@ -1801,21 +1781,16 @@ class AffiliateBusinessModelController extends Controller
                 $dateString = $current->toDateString();
                 $labels[] = $current->format('M j');
 
-                // Get total scans for this date
-                $dayTotalScans = \App\Models\Affiliate\AffiliateCustomerScan::whereDate('created_at', $dateString)
-                    ->count();
+                // Get QR codes created or scanned on this date
+                $dayQrCodes = \App\Models\Affiliate\AffiliateQrCode::where(function ($query) use ($dateString) {
+                    $query->whereDate('created_at', $dateString)
+                          ->orWhereDate('last_scanned_at', $dateString);
+                })->get();
 
-                // Get unique scans for this date
-                $dayUniqueScans = \App\Models\Affiliate\AffiliateCustomerScan::whereDate('created_at', $dateString)
-                    ->whereNotNull('customer_id')
-                    ->distinct('customer_id')
-                    ->count('customer_id');
-
-                // Get conversions for this date
-                $dayConversions = \App\Models\Affiliate\AffiliateCustomerScan::whereDate('created_at', $dateString)
-                    ->where('booking_completed', true)
-                    ->whereNotNull('booking_id')
-                    ->count();
+                // Sum the aggregated fields from QR codes table
+                $dayTotalScans = $dayQrCodes->sum('total_scans');
+                $dayUniqueScans = $dayQrCodes->sum('unique_scans');
+                $dayConversions = $dayQrCodes->sum('conversion_count');
 
                 $totalScansData[] = $dayTotalScans;
                 $uniqueScansData[] = $dayUniqueScans;
@@ -1949,6 +1924,20 @@ class AffiliateBusinessModelController extends Controller
     private function getConversionTrendsData($startDate, $endDate): array
     {
         try {
+            // Get QR codes created or scanned in this period
+            $qrCodesInPeriod = \App\Models\Affiliate\AffiliateQrCode::where(function ($query) use ($startDate, $endDate) {
+                $query->where('created_at', '>=', $startDate)
+                      ->orWhere('last_scanned_at', '>=', $startDate);
+            })->get();
+
+            // If no QR codes with activity, return empty data
+            if ($qrCodesInPeriod->isEmpty()) {
+                return [
+                    'labels' => [],
+                    'rates' => [],
+                ];
+            }
+
             $current = $startDate->copy();
             $totalDays = $startDate->diffInDays($endDate);
 
@@ -1960,17 +1949,18 @@ class AffiliateBusinessModelController extends Controller
                 $dateString = $current->toDateString();
                 $labels[] = $current->format('M j');
 
-                // Get scans and conversions for this date
-                $dayScans = \App\Models\Affiliate\AffiliateCustomerScan::whereDate('created_at', $dateString)
-                    ->count();
+                // Get QR codes created or scanned on this date
+                $dayQrCodes = \App\Models\Affiliate\AffiliateQrCode::where(function ($query) use ($dateString) {
+                    $query->whereDate('created_at', $dateString)
+                          ->orWhereDate('last_scanned_at', $dateString);
+                })->get();
 
-                $dayConversions = \App\Models\Affiliate\AffiliateCustomerScan::whereDate('created_at', $dateString)
-                    ->where('booking_completed', true)
-                    ->whereNotNull('booking_id')
-                    ->count();
+                // Sum the aggregated fields from QR codes table
+                $dayTotalScans = $dayQrCodes->sum('total_scans');
+                $dayConversions = $dayQrCodes->sum('conversion_count');
 
                 // Calculate conversion rate for this date
-                $conversionRate = $dayScans > 0 ? ($dayConversions / $dayScans) * 100 : 0;
+                $conversionRate = $dayTotalScans > 0 ? ($dayConversions / $dayTotalScans) * 100 : 0;
                 $ratesData[] = round($conversionRate, 2);
 
                 $current->addDay();
@@ -2123,5 +2113,109 @@ class AffiliateBusinessModelController extends Controller
                 'message' => 'Error bulk rejecting businesses: ' . $e->getMessage(),
             ], 500);
         }
+    }
+
+    /**
+     * Show the admin business registration form.
+     */
+    public function registerBusiness()
+    {
+        return Inertia::render('AdminDashboardPages/BusinessModel/RegisterBusiness');
+    }
+
+    /**
+     * Store a newly registered business by admin.
+     */
+    public function storeBusiness(Request $request)
+    {
+        try {
+            $validated = $request->validate([
+                'business_type' => 'required|in:hotel,hotel_chain,travel_agent,partner,corporate,rental_company,tourism_board',
+                'name' => 'required|string|max:255',
+                'contact_email' => 'required|email|unique:affiliate_businesses,contact_email',
+                'contact_phone' => 'required|string|max:50',
+                'website' => 'nullable|url|max:255',
+                'legal_address' => 'required|string|max:1000',
+                'billing_address' => 'nullable|string|max:1000',
+                'city' => 'required|string|max:100',
+                'state' => 'nullable|string|max:100',
+                'country' => 'required|string|max:100',
+                'postal_code' => 'required|string|max:20',
+                'currency' => 'required|string|max:3',
+                'business_registration_number' => 'nullable|string|max:100|unique:affiliate_businesses,business_registration_number',
+                'tax_id' => 'nullable|string|max:50|unique:affiliate_businesses,tax_id',
+                'description' => 'nullable|string|max:2000',
+                'verification_status' => 'required|in:pending,verified,rejected',
+                'status' => 'required|in:pending,active,inactive,suspended',
+                'send_welcome_email' => 'boolean',
+            ]);
+
+            // Generate dashboard access token
+            $dashboardToken = $this->generateDashboardToken();
+
+            // Create the business with admin privileges
+            $business = \App\Models\Affiliate\AffiliateBusiness::create([
+                'uuid' => \Illuminate\Support\Str::uuid(),
+                'business_type' => $validated['business_type'],
+                'name' => $validated['name'],
+                'contact_email' => $validated['contact_email'],
+                'contact_phone' => $validated['contact_phone'],
+                'website' => $validated['website'],
+                'legal_address' => $validated['legal_address'],
+                'billing_address' => $validated['billing_address'],
+                'city' => $validated['city'],
+                'state' => $validated['state'],
+                'country' => $validated['country'],
+                'postal_code' => $validated['postal_code'],
+                'currency' => $validated['currency'],
+                'business_registration_number' => $validated['business_registration_number'],
+                'tax_id' => $validated['tax_id'],
+                'description' => $validated['description'],
+                'verification_token' => null, // Not needed for admin-created businesses
+                'dashboard_access_token' => $dashboardToken,
+                'dashboard_token_expires_at' => now()->addDays(30),
+                'verification_status' => $validated['verification_status'],
+                'status' => $validated['status'],
+                'verified_at' => $validated['verification_status'] === 'verified' ? now() : null,
+                'email_verified_at' => $validated['verification_status'] === 'verified' ? now() : null,
+            ]);
+
+            // Create business model with default settings from global settings
+            $globalSettings = \App\Models\Affiliate\AffiliateGlobalSetting::first();
+            \App\Models\Affiliate\AffiliateBusinessModel::create([
+                'uuid' => \Illuminate\Support\Str::uuid(),
+                'business_id' => $business->id,
+                'configured_at' => now(),
+            ]);
+
+            // Send welcome email if requested
+            if ($validated['send_welcome_email']) {
+                try {
+                    $business->notify(new \App\Notifications\Affiliate\BusinessRegistrationNotification($business));
+                } catch (\Exception $emailException) {
+                    // Log email error but don't fail the registration
+                    \Log::warning('Failed to send welcome email for business ID ' . $business->id . ': ' . $emailException->getMessage());
+                }
+            }
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Business registered successfully',
+                'business' => $business->fresh(['businessModel'])
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Error registering business: ' . $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    /**
+     * Generate a dashboard access token.
+     */
+    private function generateDashboardToken(): string
+    {
+        return \Illuminate\Support\Str::random(32) . '_' . time();
     }
 }

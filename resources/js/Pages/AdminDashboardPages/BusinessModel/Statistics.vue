@@ -288,9 +288,9 @@ const loadStatistics = async () => {
     loadChartData(data)
   } catch (error) {
     console.error('Error loading statistics:', error)
-    showNotification('Error loading statistics', 'error')
+    showNotification('Error loading statistics: ' + (error.response?.data?.message || error.message), 'error')
 
-    // Load fallback data on error
+    // Initialize empty data on error - no fake data
     statistics.value = {
       overview: {},
       recent: [],
@@ -307,7 +307,7 @@ const loadChartData = (apiData = null) => {
   // Use real data from API if available
   const data = apiData || {}
 
-  // Use real chart labels and data from API if available
+  // Only use real chart data from API - no fake fallbacks
   if (data.chart_labels && data.revenue_data) {
     // Revenue chart - use real time-series data
     revenueChart.value = {
@@ -322,112 +322,42 @@ const loadChartData = (apiData = null) => {
       rates: data.conversion_data || []
     }
 
-    // Business growth chart - use real data if available, otherwise fall back to calculated
+    // Business growth chart - use QR code data as proxy for new business growth
     const totalBusinesses = data.overview?.total_businesses || 0
     const activeBusinesses = data.overview?.active_businesses || 0
 
     businessGrowthChart.value = {
-      labels: data.chart_labels.slice(0, 6), // Use first 6 labels for cleaner display
-      new_businesses: data.qr_code_data ? data.qr_code_data.slice(0, 6) : [
-        Math.max(Math.floor(totalBusinesses * 0.1), 0),
-        Math.max(Math.floor(totalBusinesses * 0.15), 0),
-        Math.max(Math.floor(totalBusinesses * 0.2), 0),
-        Math.max(Math.floor(totalBusinesses * 0.12), 0),
-        Math.max(Math.floor(totalBusinesses * 0.25), 0),
-        Math.max(Math.floor(totalBusinesses * 0.18), 0)
-      ],
-      active_businesses: [
-        Math.max(Math.floor(activeBusinesses * 0.3), 0),
-        Math.max(Math.floor(activeBusinesses * 0.4), 0),
-        Math.max(Math.floor(activeBusinesses * 0.5), 0),
-        Math.max(Math.floor(activeBusinesses * 0.6), 0),
-        Math.max(Math.floor(activeBusinesses * 0.8), 0),
-        activeBusinesses
-      ]
+      labels: data.chart_labels.slice(0, Math.min(6, data.chart_labels.length)),
+      new_businesses: data.qr_code_data ? data.qr_code_data.slice(0, Math.min(6, data.qr_code_data.length)) : [],
+      active_businesses: data.chart_labels.slice(0, Math.min(6, data.chart_labels.length)).map(() => activeBusinesses)
     }
 
-    // QR performance chart - create realistic performance data
-    const totalQrCodes = data.overview?.total_qr_codes || 0
-    const totalScans = data.overview?.total_scans || 0
-    const avgScansPerQr = totalQrCodes > 0 ? totalScans / totalQrCodes : 0
-
-    const topQrCodes = totalQrCodes > 0
-      ? Array.from({length: Math.min(5, totalQrCodes)}, (_, i) => `QR${String(i + 1).padStart(3, '0')}`)
-      : ['QR001', 'QR002', 'QR003', 'QR004', 'QR005']
-
-    qrPerformanceChart.value = {
-      labels: topQrCodes,
-      scans: topQrCodes.map(() => Math.max(avgScansPerQr * (0.5 + Math.random()), 0)),
-      conversions: topQrCodes.map(() => Math.max(avgScansPerQr * (0.05 + Math.random() * 0.1), 0))
+    // QR performance chart - show top performing QR codes based on real data
+    const topPerformers = data.top_performers || []
+    if (topPerformers.length > 0) {
+      qrPerformanceChart.value = {
+        labels: topPerformers.slice(0, 5).map(p => p.name || `QR${p.id}`),
+        scans: topPerformers.slice(0, 5).map(p => p.total_scans || 0),
+        conversions: topPerformers.slice(0, 5).map(p => {
+          const scans = p.total_scans || 1
+          const rate = p.conversion_rate || 0
+          return Math.round(scans * rate / 100)
+        })
+      }
+    } else {
+      // No QR performance data available
+      qrPerformanceChart.value = {
+        labels: [],
+        scans: [],
+        conversions: []
+      }
     }
   } else {
-    // Fallback to realistic mock data if API doesn't have chart data
-    const days = dateRange.value === '7d' ? 7 : dateRange.value === '30d' ? 30 : dateRange.value === '90d' ? 90 : 30
-    const labels = Array.from({length: Math.min(days, 7)}, (_, i) => {
-      const date = new Date()
-      date.setDate(date.getDate() - (days - i - 1))
-      return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
-    })
-
-    const totalRevenue = data.overview?.total_revenue || 0
-    const totalCommissions = data.overview?.total_commissions || 0
-
-    revenueChart.value = {
-      labels,
-      revenue: Array.from({length: labels.length}, (_, i) => {
-        const baseValue = totalRevenue / labels.length
-        return Math.max(baseValue * (0.8 + Math.random() * 0.4), 0)
-      }),
-      commissions: Array.from({length: labels.length}, (_, i) => {
-        const baseValue = totalCommissions / labels.length
-        return Math.max(baseValue * (0.8 + Math.random() * 0.4), 0)
-      })
-    }
-
-    const avgConversionRate = data.overview?.avg_conversion_rate || 0
-    conversionChart.value = {
-      labels,
-      rates: Array.from({length: labels.length}, () =>
-        Math.max(avgConversionRate * (0.8 + Math.random() * 0.4), 0)
-      )
-    }
-
-    const totalBusinesses = data.overview?.total_businesses || 0
-    const activeBusinesses = data.overview?.active_businesses || 0
-
-    businessGrowthChart.value = {
-      labels: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun'],
-      new_businesses: [
-        Math.max(Math.floor(totalBusinesses * 0.1), 0),
-        Math.max(Math.floor(totalBusinesses * 0.15), 0),
-        Math.max(Math.floor(totalBusinesses * 0.2), 0),
-        Math.max(Math.floor(totalBusinesses * 0.12), 0),
-        Math.max(Math.floor(totalBusinesses * 0.25), 0),
-        Math.max(Math.floor(totalBusinesses * 0.18), 0)
-      ],
-      active_businesses: [
-        Math.max(Math.floor(activeBusinesses * 0.3), 0),
-        Math.max(Math.floor(activeBusinesses * 0.4), 0),
-        Math.max(Math.floor(activeBusinesses * 0.5), 0),
-        Math.max(Math.floor(activeBusinesses * 0.6), 0),
-        Math.max(Math.floor(activeBusinesses * 0.8), 0),
-        activeBusinesses
-      ]
-    }
-
-    const totalQrCodes = data.overview?.total_qr_codes || 0
-    const totalScans = data.overview?.total_scans || 0
-    const avgScansPerQr = totalQrCodes > 0 ? totalScans / totalQrCodes : 0
-
-    const topQrCodes = totalQrCodes > 0
-      ? Array.from({length: Math.min(5, totalQrCodes)}, (_, i) => `QR${String(i + 1).padStart(3, '0')}`)
-      : ['QR001', 'QR002', 'QR003', 'QR004', 'QR005']
-
-    qrPerformanceChart.value = {
-      labels: topQrCodes,
-      scans: topQrCodes.map(() => Math.max(avgScansPerQr * (0.5 + Math.random()), 0)),
-      conversions: topQrCodes.map(() => Math.max(avgScansPerQr * (0.05 + Math.random() * 0.1), 0))
-    }
+    // No chart data available from API - initialize empty charts
+    revenueChart.value = { labels: [], revenue: [], commissions: [] }
+    conversionChart.value = { labels: [], rates: [] }
+    businessGrowthChart.value = { labels: [], new_businesses: [], active_businesses: [] }
+    qrPerformanceChart.value = { labels: [], scans: [], conversions: [] }
   }
 }
 

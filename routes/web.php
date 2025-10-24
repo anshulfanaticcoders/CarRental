@@ -262,6 +262,10 @@ Route::middleware(['auth', 'role:admin'])->group(function () {
     Route::get('/admin/affiliate/commission-management', [AffiliateBusinessModelController::class, 'commissionManagement'])->name('admin.affiliate.commission-management');
     Route::get('/admin/affiliate/qr-analytics', [AffiliateBusinessModelController::class, 'qrAnalytics'])->name('admin.affiliate.qr-analytics');
 
+    // Admin Business Registration Routes
+    Route::get('/admin/affiliate/business-register', [AffiliateBusinessModelController::class, 'registerBusiness'])->name('admin.affiliate.business-register');
+    Route::post('/admin/affiliate/business-register', [AffiliateBusinessModelController::class, 'storeBusiness'])->name('admin.affiliate.business-register.store');
+
     // Commission Management API Routes
     Route::get('/admin/affiliate/commissions-data', [AffiliateBusinessModelController::class, 'getCommissionsData'])->name('admin.affiliate.commissions-data');
     Route::get('/admin/affiliate/commission-statistics', [AffiliateBusinessModelController::class, 'getCommissionStatistics'])->name('admin.affiliate.commission-statistics');
