@@ -127,10 +127,6 @@ const data = {
           url: '/admin/affiliate/payment-tracking',
         },
         {
-          title: 'Business Details',
-          url: '/admin/affiliate/business-details',
-        },
-        {
           title: 'Commission Management',
           url: '/admin/affiliate/commission-management',
         },
