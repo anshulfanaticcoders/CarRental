@@ -168,11 +168,15 @@ const props = defineProps({
     filters: Object,
     seoMeta: Object,
     error: String,
+    affiliate_data: Object, // Affiliate data from session
 });
 
 const page = usePage();
 const toast = useToast();
 const mapContainerRef = ref(null);
+
+// Affiliate data management
+const affiliateData = ref(props.affiliate_data || null); // Affiliate data from session
 let map = ref(null);
 
 // Image loading states
@@ -424,8 +428,42 @@ const rentalDuration = computed(() => {
     return Math.ceil(diffTime / (1000 * 60 * 60 * 24));
 });
 
-const calculateTotalPrice = computed(() => {
+// Calculate original price before affiliate discount
+const originalTotalPrice = computed(() => {
     return parseFloat(vehicleProduct.value?.total || 0);
+});
+
+// Calculate affiliate discount amount
+const affiliateDiscountAmount = computed(() => {
+    if (!affiliateData.value) return 0;
+
+    const originalPrice = originalTotalPrice.value;
+    if (originalPrice <= 0) return 0;
+
+    const discountType = affiliateData.value.discount_type || 'percentage';
+    const discountValue = affiliateData.value.discount_value || 0;
+
+    if (discountType === 'fixed_amount') {
+        return Math.min(discountValue, originalPrice);
+    } else {
+        // Percentage discount
+        return originalPrice * (discountValue / 100);
+    }
+});
+
+// Check if user has affiliate discount
+const hasAffiliateDiscount = computed(() => {
+    return affiliateData.value && affiliateData.value.discount_value > 0;
+});
+
+const calculateTotalPrice = computed(() => {
+    const basePrice = parseFloat(vehicleProduct.value?.total || 0);
+
+    if (hasAffiliateDiscount.value) {
+        return Math.max(0, basePrice - affiliateDiscountAmount.value);
+    }
+
+    return basePrice;
 });
 
 const formatPrice = (price) => {
@@ -594,6 +632,11 @@ const proceedToPayment = async () => {
         sessionStorage.setItem('greenMotionVehicleId', props.vehicle.id);
         sessionStorage.setItem('greenMotionLocationId', props.location.id);
         sessionStorage.setItem('currentLocale', page.props.locale); // Store the current locale explicitly
+
+        // Store affiliate data in session storage if available
+        if (affiliateData.value) {
+            sessionStorage.setItem('affiliateData', JSON.stringify(affiliateData.value));
+        }
 
         // Redirect to login page
         router.visit(route('login', { locale: page.props.locale }));
@@ -1238,6 +1281,28 @@ onBeforeUnmount(() => {
                                 <!-- Price Summary -->
                                 <div v-if="form.start_date && form.end_date" class="p-6 bg-gradient-to-r from-green-50 to-blue-50 rounded-xl border border-green-200">
                                     <div class="text-center">
+                                        <!-- Affiliate Discount Section -->
+                                        <div v-if="hasAffiliateDiscount" class="border-b border-blue-200 mb-3 pb-3">
+                                            <div class="flex items-center justify-center gap-2 mb-2">
+                                                <div class="w-2 h-2 bg-green-500 rounded-full"></div>
+                                                <p class="text-sm font-semibold text-green-700">
+                                                    🎉 Special Affiliate Discount Applied!
+                                                </p>
+                                            </div>
+                                            <div class="space-y-1 text-left">
+                                                <p class="text-sm text-gray-600">
+                                                    Original Price: <span class="line-through">{{ formatPrice(originalTotalPrice) }}</span>
+                                                </p>
+                                                <p class="text-sm text-green-600 font-semibold">
+                                                    Affiliate Discount ({{ affiliateData.discount_type === 'percentage' ? affiliateData.discount_value + '%' : formatPrice(affiliateData.discount_value) }}):
+                                                    -{{ formatPrice(affiliateDiscountAmount) }}
+                                                </p>
+                                                <p class="text-sm text-gray-500">
+                                                    From: {{ affiliateData.business_name }}
+                                                </p>
+                                            </div>
+                                        </div>
+
                                         <p class="text-3xl font-bold text-gray-900 mb-1">{{ formatPrice(calculateTotalPrice) }}</p>
                                         <p class="text-sm text-gray-600 mb-3">Total for {{ rentalDuration }} {{ rentalDuration === 1 ? 'day' : 'days' }}</p>
                                         <div class="flex items-center justify-center gap-2 text-xs text-green-700">

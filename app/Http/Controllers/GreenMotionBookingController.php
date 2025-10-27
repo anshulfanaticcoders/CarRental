@@ -14,6 +14,13 @@ use App\Models\User; // Added for admin notification
 use App\Notifications\Booking\GreenMotionBookingCreatedAdminNotification; // Added for admin notification
 use App\Notifications\Booking\GreenMotionBookingCreatedCustomerNotification; // Added for customer notification
 use App\Jobs\SendGreenMotionBookingNotificationJob;
+use App\Models\Affiliate\AffiliateCommission;
+use App\Models\Affiliate\AffiliateCustomerScan;
+use App\Models\Affiliate\AffiliateQrCode;
+use App\Services\Affiliate\AffiliateQrCodeService;
+use App\Services\CurrencyConversionService;
+use Illuminate\Support\Facades\Session as LaravelSession;
+use Illuminate\Support\Str;
 
 class GreenMotionBookingController extends Controller
 {
@@ -237,6 +244,9 @@ class GreenMotionBookingController extends Controller
                     'payment_handler_ref' => $session->payment_intent,
                 ]);
 
+                // Create affiliate commission if applicable (same as PaymentController)
+                $this->createAffiliateCommission($greenMotionBooking);
+
                 // Send notifications
                 try {
                     dispatch(new SendGreenMotionBookingNotificationJob($greenMotionBooking));
@@ -245,9 +255,14 @@ class GreenMotionBookingController extends Controller
                         'booking_id' => $greenMotionBooking->id
                     ]);
                 }
-                
+
+                // Clear session storage (same as PaymentController)
+                session()->forget(['pending_booking_id', 'driverInfo', 'rentalDates', 'selectionData', 'affiliate_data']);
+                LaravelSession::forget('can_access_booking_page');
+
                 Log::info('GreenMotion booking confirmed via Stripe success callback. Booking ID: ' . $greenMotionBooking->id);
-                
+                Log::info('Session storage cleared for GreenMotion booking success');
+
                 // Redirect to the profile bookings page
                 return redirect()->route('profile.bookings.green-motion', ['locale' => app()->getLocale()]);
 
@@ -295,5 +310,192 @@ class GreenMotionBookingController extends Controller
         return Inertia::render('Profile/Bookings/GreenMotionBookings', [
             'bookings' => $bookings,
         ]);
+    }
+
+    /**
+     * Create affiliate commission record if GreenMotion booking came from affiliate QR code
+     */
+    private function createAffiliateCommission(GreenMotionBooking $booking): void
+    {
+        try {
+            // Get affiliate data from session
+            $affiliateData = session('affiliate_data');
+
+            if (!$affiliateData || !isset($affiliateData['customer_scan_id'])) {
+                Log::info('GreenMotionBookingController::createAffiliateCommission - No affiliate data found');
+                return;
+            }
+
+            // Get the customer scan record
+            $customerScan = AffiliateCustomerScan::find($affiliateData['customer_scan_id']);
+            if (!$customerScan) {
+                Log::warning('GreenMotionBookingController::createAffiliateCommission - Customer scan not found', [
+                    'customer_scan_id' => $affiliateData['customer_scan_id']
+                ]);
+                return;
+            }
+
+            // Get QR code and business details
+            $qrCode = AffiliateQrCode::find($customerScan->qr_code_id);
+            if (!$qrCode) {
+                Log::warning('GreenMotionBookingController::createAffiliateCommission - QR code not found', [
+                    'qr_code_id' => $customerScan->qr_code_id
+                ]);
+                return;
+            }
+
+            $business = $qrCode->business;
+            if (!$business) {
+                Log::warning('GreenMotionBookingController::createAffiliateCommission - Business not found', [
+                    'business_id' => $qrCode->business_id
+                ]);
+                return;
+            }
+
+            // Get business model for commission calculation
+            $businessModel = $business->getEffectiveBusinessModel();
+
+            // Calculate commission (using GreenMotion booking data)
+            $bookingAmount = $booking->grand_total;
+            $discountAmount = $affiliateData['discount_amount'] ?? 0;
+            $commissionableAmount = $bookingAmount;
+
+            $commissionAmount = 0;
+            $commissionRate = $businessModel['commission_rate'] ?? 0;
+            $commissionType = $businessModel['commission_type'] ?? 'percentage';
+
+            if ($commissionType === 'percentage') {
+                $commissionAmount = ($commissionableAmount * $commissionRate) / 100;
+            } else {
+                $commissionAmount = min($commissionRate, $commissionableAmount);
+            }
+
+            // Convert commission amounts to business currency
+            $businessCurrency = $business->currency ?? 'EUR';
+            $bookingCurrency = $booking->currency ?? 'EUR';
+
+            // Perform currency conversion if needed
+            if ($bookingCurrency !== $businessCurrency) {
+                try {
+                    $currencyService = new CurrencyConversionService();
+
+                    // Convert booking amount
+                    $bookingConversion = $currencyService->convert($bookingAmount, $bookingCurrency, $businessCurrency);
+                    $convertedBookingAmount = $bookingConversion['success'] ? $bookingConversion['converted_amount'] : $bookingAmount;
+
+                    // Convert commission amount
+                    $commissionConversion = $currencyService->convert($commissionAmount, $bookingCurrency, $businessCurrency);
+                    $convertedCommissionAmount = $commissionConversion['success'] ? $commissionConversion['converted_amount'] : $commissionAmount;
+
+                    // Convert discount amount
+                    $discountConversion = $currencyService->convert($discountAmount, $bookingCurrency, $businessCurrency);
+                    $convertedDiscountAmount = $discountConversion['success'] ? $discountConversion['converted_amount'] : $discountAmount;
+
+                    // Update amounts for commission record
+                    $bookingAmount = $convertedBookingAmount;
+                    $commissionAmount = $convertedCommissionAmount;
+                    $discountAmount = $convertedDiscountAmount;
+                    $commissionableAmount = $convertedBookingAmount;
+
+                    Log::info('GreenMotionBookingController::createAffiliateCommission - Currency conversion performed', [
+                        'from_currency' => $bookingCurrency,
+                        'to_currency' => $businessCurrency,
+                        'original_booking_amount' => $booking->grand_total,
+                        'converted_booking_amount' => $convertedBookingAmount,
+                        'original_commission_amount' => ($booking->grand_total * $commissionRate) / 100,
+                        'converted_commission_amount' => $convertedCommissionAmount,
+                        'conversion_rate_used' => $bookingConversion['rate'] ?? 1.0,
+                    ]);
+
+                } catch (\Exception $e) {
+                    Log::error('GreenMotionBookingController::createAffiliateCommission - Currency conversion failed', [
+                        'error' => $e->getMessage(),
+                        'from_currency' => $bookingCurrency,
+                        'to_currency' => $businessCurrency,
+                        'original_amount' => $commissionAmount,
+                    ]);
+                    // Keep original amounts if conversion fails
+                }
+            }
+
+            // Update customer scan record with booking completion
+            $customerScan->update([
+                'booking_completed' => true,
+                'booking_id' => $booking->id,
+                'booking_type' => 'greenmotion',
+                'conversion_time_minutes' => $customerScan->created_at->diffInMinutes(now()),
+                'discount_applied' => $discountAmount,
+                'discount_percentage' => $affiliateData['discount_rate'] ?? 0,
+            ]);
+
+            // Update QR code conversion tracking
+            $qrCode->update([
+                'conversion_count' => $qrCode->conversion_count + 1,
+                'total_revenue_generated' => $qrCode->total_revenue_generated + $bookingAmount,
+                'last_scanned_at' => now(),
+            ]);
+
+            // Create commission record
+            $commission = AffiliateCommission::create([
+                'uuid' => Str::uuid(),
+                'business_id' => $business->id,
+                'location_id' => $qrCode->location_id,
+                'booking_id' => $booking->id,
+                'customer_id' => $booking->user_id,
+                'qr_scan_id' => $customerScan->id,
+                'booking_amount' => $bookingAmount,
+                'commissionable_amount' => $commissionableAmount,
+                'commission_rate' => $commissionRate,
+                'commission_amount' => $commissionAmount,
+                'discount_amount' => $discountAmount,
+                'tax_amount' => 0,
+                'net_commission' => $commissionAmount,
+                'booking_type' => 'greenmotion',
+                'commission_type' => $commissionType,
+                'status' => 'pending',
+                'scheduled_payout_date' => now()->addDays(30),
+                'audit_log' => [
+                    [
+                        'action' => 'created',
+                        'data' => [
+                            'booking_id' => $booking->id,
+                            'customer_scan_id' => $customerScan->id,
+                            'qr_code_id' => $qrCode->id,
+                            'created_by' => 'system',
+                            'timestamp' => now()->toISOString(),
+                            'currency_conversion' => [
+                                'from_currency' => $bookingCurrency,
+                                'to_currency' => $businessCurrency,
+                                'conversion_performed' => $bookingCurrency !== $businessCurrency,
+                                'original_booking_amount' => $booking->grand_total,
+                                'converted_booking_amount' => $bookingAmount,
+                                'original_commission_amount' => ($booking->grand_total * $commissionRate) / 100,
+                                'converted_commission_amount' => $commissionAmount,
+                            ]
+                        ]
+                    ]
+                ],
+                'compliance_checked' => false,
+                'fraud_review_required' => false,
+            ]);
+
+            Log::info('GreenMotionBookingController::createAffiliateCommission - Commission created successfully', [
+                'commission_id' => $commission->id,
+                'business_id' => $business->id,
+                'booking_id' => $booking->id,
+                'commission_amount' => $commissionAmount,
+                'commission_rate' => $commissionRate,
+                'commission_type' => $commissionType,
+            ]);
+
+        } catch (\Exception $e) {
+            Log::error('GreenMotionBookingController::createAffiliateCommission - Error creating commission', [
+                'error' => $e->getMessage(),
+                'booking_id' => $booking->id,
+                'user_id' => $booking->user_id,
+                'trace' => $e->getTraceAsString(),
+            ]);
+            // Don't throw here - commission creation failure shouldn't break the booking
+        }
     }
 }

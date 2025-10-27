@@ -12,6 +12,7 @@ use App\Models\GreenMotionBooking; // Correctly placed import
 use App\Models\User;
 use App\Notifications\GreenMotionBooking\BookingCreatedAdminNotification;
 use App\Notifications\GreenMotionBooking\BookingCreatedCustomerNotification;
+use App\Services\Affiliate\AffiliateQrCodeService;
 
 class GreenMotionController extends Controller
 {
@@ -566,11 +567,16 @@ class GreenMotionController extends Controller
             }
         }
 
+        // Get affiliate data if available
+        $affiliateService = new AffiliateQrCodeService();
+        $affiliateData = $affiliateService->getAffiliateSessionData();
+
         return Inertia::render('GreenMotionSingle', [
             'vehicle' => $vehicle,
             'location' => $location,
             'dropoffLocation' => $dropoffLocation,
             'optionalExtras' => $optionalExtras,
+            'affiliate_data' => $affiliateData, // Pass affiliate data to the view
             'filters' => array_merge($request->all(), ['quoteid' => $quoteId]), // Pass quoteId in filters
             'locale' => $locale, // Use the $locale parameter from the route
             'seoMeta' => [
@@ -693,11 +699,16 @@ class GreenMotionController extends Controller
             }
         }
 
+        // Get affiliate data if available
+        $affiliateService = new AffiliateQrCodeService();
+        $affiliateData = $affiliateService->getAffiliateSessionData();
+
         return Inertia::render('GreenMotionBooking', [
             'vehicle' => $vehicle,
             'location' => $location,
             'dropoffLocation' => $dropoffLocation,
             'optionalExtras' => $optionalExtras,
+            'affiliate_data' => $affiliateData, // Pass affiliate data to the view
             'filters' => $filters,
             'locale' => $locale,
         ]);

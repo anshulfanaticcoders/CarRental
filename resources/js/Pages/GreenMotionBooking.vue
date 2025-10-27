@@ -16,6 +16,7 @@ const props = defineProps({
     locale: String,
     error: String,
     auth: Object,
+    affiliate_data: Object,
 });
 
 const page = usePage();
@@ -139,6 +140,9 @@ const getFuelPolicyName = (policy) => {
 
 const selectedPackage = ref(null);
 const selectedOptionalExtras = ref([]);
+
+// Affiliate data
+const affiliateData = ref(props.affiliate_data || null);
 
 const form = ref({
     location_id: props.filters?.location_id || props.location?.id || 61627,
@@ -296,6 +300,34 @@ const calculateTotals = () => {
     }));
 };
 
+// Affiliate discount computed properties
+const originalTotalPrice = computed(() => {
+    return form.value.grand_total;
+});
+
+const affiliateDiscountAmount = computed(() => {
+    if (!affiliateData.value || !affiliateData.value.discount_type) {
+        return 0;
+    }
+
+    const originalPrice = originalTotalPrice.value;
+    if (affiliateData.value.discount_type === 'percentage') {
+        return originalPrice * (parseFloat(affiliateData.value.discount_value) / 100);
+    } else if (affiliateData.value.discount_type === 'fixed') {
+        return parseFloat(affiliateData.value.discount_value);
+    }
+
+    return 0;
+});
+
+const hasAffiliateDiscount = computed(() => {
+    return affiliateData.value && affiliateData.value.discount_value && parseFloat(affiliateData.value.discount_value) > 0;
+});
+
+const finalTotalPrice = computed(() => {
+    return originalTotalPrice.value - affiliateDiscountAmount.value;
+});
+
 watch(selectedPackage, calculateTotals, { deep: true });
 watch(selectedOptionalExtras, calculateTotals, { deep: true });
 
@@ -346,6 +378,23 @@ onMounted(() => {
         sessionStorage.removeItem('greenMotionLocationId');
     }
 
+    // Handle affiliate data from session storage
+    if (!affiliateData.value) {
+        const sessionAffiliateData = sessionStorage.getItem('affiliate_data');
+        if (sessionAffiliateData) {
+            try {
+                affiliateData.value = JSON.parse(sessionAffiliateData);
+                console.log("Affiliate data loaded from session storage in GreenMotionBooking.vue");
+            } catch (error) {
+                console.error("Error parsing affiliate data from session storage:", error);
+            }
+        } else {
+            console.log("No affiliate data in session storage in GreenMotionBooking.vue");
+        }
+    } else {
+        console.log("Affiliate data from props in GreenMotionBooking.vue:", affiliateData.value);
+    }
+
     console.log("Quote ID in GreenMotionBooking.vue props.filters:", props.filters?.quoteid);
     console.log("Quote ID in GreenMotionBooking.vue form.value:", form.value.quoteid);
 });
@@ -369,7 +418,7 @@ const bookingDataForStripe = computed(() => {
         vehicle_id: form.value.vehicle_id,
         vehicle_total: form.value.vehicle_total,
         currency: form.value.currency,
-        grand_total: form.value.grand_total,
+        grand_total: hasAffiliateDiscount ? finalTotalPrice.value : form.value.grand_total,
         paymentHandlerRef: form.value.paymentHandlerRef,
         quoteid: form.value.quoteid,
         payment_type: form.value.payment_type,
@@ -385,9 +434,9 @@ const bookingDataForStripe = computed(() => {
         total_days: rentalDuration.value,
         extra_charges: form.value.grand_total - form.value.vehicle_total,
         tax_amount: 0,
-        discount_amount: 0,
+        discount_amount: hasAffiliateDiscount ? affiliateDiscountAmount.value : 0,
         pending_amount: 0,
-        amount_paid: form.value.grand_total,
+        amount_paid: hasAffiliateDiscount ? finalTotalPrice.value : form.value.grand_total,
         plan: null,
         plan_price: 0,
         greenmotion_booking_ref: null,
@@ -920,9 +969,22 @@ const bookingDataForStripe = computed(() => {
 
                                 <!-- Total -->
                                 <div class="pt-4 border-t border-gray-200">
+                                    <!-- Original Price with Discount -->
+                                    <div v-if="hasAffiliateDiscount" class="flex justify-between items-center mb-2">
+                                        <span class="text-lg text-gray-600">Original Price:</span>
+                                        <span class="text-lg text-gray-500 line-through">{{ formatPrice(originalTotalPrice, form.currency) }}</span>
+                                    </div>
+
+                                    <!-- Affiliate Discount -->
+                                    <div v-if="hasAffiliateDiscount" class="flex justify-between items-center mb-2">
+                                        <span class="text-lg text-green-600">Affiliate Discount ({{ affiliateData.discount_type === 'percentage' ? affiliateData.discount_value + '%' : formatPrice(affiliateData.discount_value, form.currency) }}):</span>
+                                        <span class="text-lg font-bold text-green-600">-{{ formatPrice(affiliateDiscountAmount, form.currency) }}</span>
+                                    </div>
+
+                                    <!-- Final Total -->
                                     <div class="flex justify-between items-center">
                                         <span class="text-xl font-bold text-gray-900">Total</span>
-                                        <span class="text-2xl font-bold text-primary">{{ formatPrice(form.grand_total, form.currency) }}</span>
+                                        <span class="text-2xl font-bold text-primary">{{ formatPrice(hasAffiliateDiscount ? finalTotalPrice : form.grand_total, form.currency) }}</span>
                                     </div>
                                 </div>
 
