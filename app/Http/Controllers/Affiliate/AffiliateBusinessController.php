@@ -209,12 +209,37 @@ class AffiliateBusinessController extends Controller
      */
     public function verifyEmail($token)
     {
-        $business = AffiliateBusiness::where('verification_token', $token)->first();
+        // Get the full token from the URL (same logic as dashboard method)
+        $fullToken = request()->segment(count(request()->segments()));
+        if ($fullToken === $token && strlen($token) < 20) {
+            $fullToken = request()->route('token') ?? $token;
+        }
+
+        // Log for debugging
+        \Log::info('Email verification attempt', [
+            'original_token' => $token,
+            'full_token' => $fullToken,
+            'route_token' => request()->route('token'),
+            'all_segments' => request()->segments(),
+        ]);
+
+        $business = AffiliateBusiness::where('verification_token', $fullToken)->first();
 
         if (!$business) {
-            return Inertia::render('Affiliate/Business/VerificationError', [
-                'message' => 'Invalid verification token'
-            ]);
+            // Also try with the original token for backward compatibility
+            $business = AffiliateBusiness::where('verification_token', $token)->first();
+
+            if (!$business) {
+                \Log::warning('Email verification failed - token not found', [
+                    'searched_token' => $fullToken,
+                    'original_token' => $token,
+                    'all_tokens_in_db' => AffiliateBusiness::whereNotNull('verification_token')->pluck('verification_token')->take(5)->toArray()
+                ]);
+
+                return Inertia::render('Affiliate/Business/VerificationError', [
+                    'message' => 'Invalid verification token'
+                ]);
+            }
         }
 
         $business->update([
