@@ -44,6 +44,7 @@ const props = defineProps({
 
 // Reactive data
 const loading = ref(true)
+const statusUpdating = ref(false)
 const business = ref(null)
 const statistics = ref({})
 const locations = ref([])
@@ -130,9 +131,10 @@ const verifyBusiness = async (approve = true) => {
 
 // Toggle business status
 const toggleBusinessStatus = async () => {
+  statusUpdating.value = true
   try {
     const newStatus = business.value.status === 'active' ? 'inactive' : 'active'
-    await axios.put(`/admin/affiliate/businesses/${props.businessId}`, {
+    await axios.put(`/admin/affiliate/businesses/${props.businessId}/status`, {
       status: newStatus
     })
     business.value.status = newStatus
@@ -140,6 +142,8 @@ const toggleBusinessStatus = async () => {
   } catch (error) {
     console.error('Error toggling business status:', error)
     showNotification('Error updating business status', 'error')
+  } finally {
+    statusUpdating.value = false
   }
 }
 
@@ -401,14 +405,6 @@ onMounted(() => {
             <Download />
             Export
           </button>
-          <a
-            :href="`/business/${business.dashboard_access_token}/dashboard`"
-            target="_blank"
-            class="btn-dashboard"
-          >
-            <ExternalLink />
-            View Dashboard
-          </a>
           <button @click="loadBusinessDetails" class="btn-refresh" :disabled="loading">
             <RefreshCw :class="{ 'animate-spin': loading }" />
           </button>
@@ -428,9 +424,9 @@ onMounted(() => {
               <XCircle />
               Reject Business
             </button>
-            <button @click="toggleBusinessStatus" class="btn-toggle">
-              <Shield />
-              {{ isActive ? 'Deactivate' : 'Activate' }}
+            <button @click="toggleBusinessStatus" class="btn-toggle" :disabled="statusUpdating">
+              <Shield :class="{ 'animate-spin': statusUpdating }" />
+              {{ statusUpdating ? 'Updating...' : (isActive ? 'Deactivate' : 'Activate') }}
             </button>
             <button @click="editingBusiness = !editingBusiness" class="btn-edit">
               <Edit />
@@ -948,7 +944,7 @@ onMounted(() => {
   background: #2563eb;
 }
 
-.btn-refresh:disabled {
+.btn-refresh:disabled, .btn-toggle:disabled {
   opacity: 0.6;
   cursor: not-allowed;
 }

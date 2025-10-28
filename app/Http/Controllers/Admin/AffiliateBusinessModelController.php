@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Services\Affiliate\AffiliateBusinessModelService;
+use App\Notifications\Affiliate\BusinessStatusChangedNotification;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Illuminate\Http\JsonResponse;
@@ -879,7 +880,7 @@ class AffiliateBusinessModelController extends Controller
                 [
                     'id' => 2,
                     'type' => 'info',
-                    'description' => '€' . number_format($statistics['total_revenue'], 2) . ' total revenue generated',
+                    'description' => $business->currency . ' ' . number_format($statistics['total_revenue'], 2) . ' total revenue generated',
                     'created_at' => $business->updated_at->toISOString(),
                 ],
             ];
@@ -2050,6 +2051,40 @@ class AffiliateBusinessModelController extends Controller
             return response()->json([
                 'success' => false,
                 'message' => 'Error activating business: ' . $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    /**
+     * Update business status (generic method for any status change)
+     */
+    public function updateBusinessStatus(Request $request, $businessId): JsonResponse
+    {
+        try {
+            $data = $request->validate([
+                'status' => 'required|in:pending,active,inactive,suspended'
+            ]);
+
+            $business = \App\Models\Affiliate\AffiliateBusiness::findOrFail($businessId);
+            $oldStatus = $business->status;
+
+            $business->update(['status' => $data['status']]);
+
+            // Send notification to business about status change
+            if ($oldStatus !== $data['status']) {
+                $business->notify(new BusinessStatusChangedNotification($business, $oldStatus, $data['status']));
+            }
+
+            return response()->json([
+                'success' => true,
+                'message' => "Business status updated from {$oldStatus} to {$data['status']} successfully",
+                'old_status' => $oldStatus,
+                'new_status' => $data['status']
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Error updating business status: ' . $e->getMessage(),
             ], 500);
         }
     }

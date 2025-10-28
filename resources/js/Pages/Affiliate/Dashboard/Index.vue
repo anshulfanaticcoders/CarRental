@@ -265,7 +265,7 @@ onMounted(() => {
         <!-- Header -->
         <header class="bg-white shadow-sm border-b">
             <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-                <div class="flex justify-between items-center py-4">
+                <div class="flex flex-col sm:flex-row sm:justify-between sm:items-center py-4 gap-4 sm:gap-0">
                     <div>
                         <h1 class="text-2xl font-bold text-gray-900">{{ business.name }}</h1>
                         <p class="text-sm text-gray-500">Affiliate Dashboard</p>
@@ -387,7 +387,7 @@ onMounted(() => {
             <!-- Tab Navigation -->
             <div class="bg-white shadow rounded-lg mb-6">
                 <div class="border-b border-gray-200">
-                    <nav class="-mb-px flex space-x-8 px-6" aria-label="Tabs">
+                    <nav class="-mb-px flex space-x-8 px-6 overflow-x-auto" aria-label="Tabs">
                         <button
                             @click="activeTab = 'overview'"
                             :class="[
@@ -673,7 +673,8 @@ onMounted(() => {
                             </div>
 
                             <div v-else class="overflow-x-auto">
-                                <Table>
+                                <!-- Desktop Table -->
+                                <Table class="hidden md:table">
                                     <TableHeader>
                                         <TableRow>
                                             <TableHead class="w-[180px]">Location</TableHead>
@@ -791,6 +792,39 @@ onMounted(() => {
                                         </TableRow>
                                     </TableFooter>
                                 </Table>
+
+                                <!-- Mobile Card View -->
+                                <div class="md:hidden space-y-4">
+                                    <div v-for="qrCode in sortedQrCodes" :key="qrCode.id" class="bg-white border rounded-lg p-4">
+                                        <div class="flex justify-between items-center mb-3">
+                                            <div>
+                                                <div class="font-medium text-gray-900">{{ getLocationDisplayName(qrCode) }}</div>
+                                                <div class="text-xs text-gray-500">{{ qrCode.location_address }}</div>
+                                            </div>
+                                            <span :class="getQrCodeStatus(qrCode).class" class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium">
+                                                {{ getQrCodeStatus(qrCode).text }}
+                                            </span>
+                                        </div>
+                                        <div class="space-y-2 text-sm">
+                                            <div class="flex justify-between">
+                                                <span class="text-gray-500">Scans:</span>
+                                                <span class="font-medium">{{ qrCode.total_scans || 0 }}</span>
+                                            </div>
+                                            <div class="flex justify-between">
+                                                <span class="text-gray-500">Conversions:</span>
+                                                <span class="font-medium">{{ qrCode.conversion_count || 0 }}</span>
+                                            </div>
+                                            <div class="flex justify-between">
+                                                <span class="text-gray-500">Commission:</span>
+                                                <span class="font-medium text-green-600">{{ formattedCurrency }}{{ parseFloat(qrCode.total_commission_earned || 0).toFixed(2) }}</span>
+                                            </div>
+                                            <div class="flex justify-between">
+                                                <span class="text-gray-500">Conv. Rate:</span>
+                                                <span class="font-medium">{{ getConversionRate(qrCode) }}%</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
                             </div>
                         </div>
 

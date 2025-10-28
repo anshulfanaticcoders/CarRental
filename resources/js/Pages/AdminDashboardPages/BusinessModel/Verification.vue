@@ -121,21 +121,19 @@ const loadBusinesses = async () => {
   }
 }
 
-// Verify business
-const verifyBusiness = async (businessId, approve = true) => {
+// Change business status
+const changeBusinessStatus = async (businessId, newStatus) => {
   processing.value.add(businessId)
   try {
-    const action = approve ? 'approve' : 'reject'
-    await axios.post(`/admin/affiliate/businesses/${businessId}/verify`, {
-      action: action,
-      reason: approve ? null : 'Business does not meet verification requirements'
+    await axios.put(`/admin/affiliate/businesses/${businessId}/status`, {
+      status: newStatus
     })
 
-    showNotification(`Business ${action}d successfully`, 'success')
+    showNotification(`Business status changed to ${newStatus} successfully`, 'success')
     await loadBusinesses()
   } catch (error) {
-    console.error(`Error ${approve ? 'approving' : 'rejecting'} business:`, error)
-    showNotification(`Error ${approve ? 'approving' : 'rejecting'} business`, 'error')
+    console.error('Error changing business status:', error)
+    showNotification('Error changing business status', 'error')
   } finally {
     processing.value.delete(businessId)
   }
@@ -458,8 +456,16 @@ onMounted(() => {
           </div>
           <div class="table-actions">
             <button @click="sort('verified_at')" class="sort-btn" :class="{ active: sortBy === 'verified_at' }">
-              Status
+              Email Verification
               <span v-if="sortBy === 'verified_at'" class="sort-indicator">
+                {{ sortOrder === 'asc' ? '↑' : '↓' }}
+              </span>
+            </button>
+          </div>
+          <div class="table-actions">
+            <button @click="sort('status')" class="sort-btn" :class="{ active: sortBy === 'status' }">
+              Business Status
+              <span v-if="sortBy === 'status'" class="sort-indicator">
                 {{ sortOrder === 'asc' ? '↑' : '↓' }}
               </span>
             </button>
@@ -527,7 +533,10 @@ onMounted(() => {
                 <component :is="getStatusIcon(business.verification_status)" />
                 {{ business.verification_status }}
               </div>
-              <div v-if="business.status !== business.verification_status" class="status-badge" :class="getStatusColor(business.status)">
+            </div>
+
+            <div class="table-cell status-cell">
+              <div class="status-badge" :class="getStatusColor(business.status)">
                 {{ business.status }}
               </div>
             </div>
@@ -539,35 +548,24 @@ onMounted(() => {
                   View
                 </Link>
 
-                <template v-if="business.verification_status === 'pending'">
-                  <button
-                    @click="verifyBusiness(business.id, true)"
-                    class="btn-approve"
+                <div class="status-dropdown">
+                  <select
+                    @change="changeBusinessStatus(business.id, $event.target.value)"
                     :disabled="processing.has(business.id)"
+                    :value="business.status"
+                    class="status-select"
                   >
-                    <CheckCircle />
-                    Approve
-                  </button>
-                  <button
-                    @click="verifyBusiness(business.id, false)"
-                    class="btn-reject"
-                    :disabled="processing.has(business.id)"
-                  >
-                    <XCircle />
-                    Reject
-                  </button>
-                </template>
+                    <option value="pending">Pending</option>
+                    <option value="active">Active</option>
+                    <option value="inactive">Inactive</option>
+                    <option value="suspended">Suspended</option>
+                  </select>
+                  <div v-if="processing.has(business.id)" class="status-spinner">
+                    <RefreshCw class="animate-spin" />
+                  </div>
+                </div>
 
-                <template v-else>
-                  <Link
-                    :href="`/admin/affiliate/business-details/${business.id}`"
-                    class="btn-external"
-                  >
-                    <ExternalLink />
-                    Dashboard
-                  </Link>
-                </template>
-              </div>
+                </div>
             </div>
           </div>
 
@@ -861,7 +859,7 @@ onMounted(() => {
 
 .table-header {
   display: grid;
-  grid-template-columns: 40px 2fr 1fr 2fr 1.5fr 1fr 1fr 1.5fr;
+  grid-template-columns: 40px 2fr 1fr 2fr 1.5fr 1fr 1fr 1fr 1.5fr;
   gap: 1rem;
   padding: 1rem;
   background: #f9fafb;
@@ -903,7 +901,7 @@ onMounted(() => {
 
 .table-row {
   display: grid;
-  grid-template-columns: 40px 2fr 1fr 2fr 1.5fr 1fr 1fr 1.5fr;
+  grid-template-columns: 40px 2fr 1fr 2fr 1.5fr 1fr 1fr 1fr 1.5fr;
   gap: 1rem;
   padding: 1rem;
   border-bottom: 1px solid #f3f4f6;
@@ -956,6 +954,11 @@ onMounted(() => {
   display: flex;
   align-items: center;
   gap: 0.25rem;
+  font-size: 0.75rem;
+  color: #6b7280;
+}
+
+.date-info {
   font-size: 0.75rem;
   color: #6b7280;
 }
@@ -1051,6 +1054,49 @@ onMounted(() => {
 .btn-approve:disabled, .btn-reject:disabled {
   opacity: 0.6;
   cursor: not-allowed;
+}
+
+.status-dropdown {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.status-select {
+  padding: 0.25rem 0.5rem;
+  border: 1px solid #d1d5db;
+  border-radius: 4px;
+  background: white;
+  color: #374151;
+  font-size: 0.75rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+  min-width: 100px;
+}
+
+.status-select:focus {
+  outline: none;
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 1px #3b82f6;
+}
+
+.status-select:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  background: #f9fafb;
+}
+
+.status-spinner {
+  display: flex;
+  align-items: center;
+  color: #3b82f6;
+}
+
+.status-spinner svg {
+  width: 12px;
+  height: 12px;
 }
 
 .empty-state {

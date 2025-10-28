@@ -378,7 +378,7 @@ const formProgress = computed(() => {
 
     <div class="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50">
         <!-- Header -->
-        <div class="bg-white shadow-sm border-b">
+        <!-- <div class="bg-white shadow-sm border-b">
             <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
                 <div class="flex items-center justify-between">
                     <Link :href="route('welcome', { locale })" class="flex items-center space-x-3">
@@ -398,7 +398,7 @@ const formProgress = computed(() => {
                     </div>
                 </div>
             </div>
-        </div>
+        </div> -->
 
         <!-- Main Content -->
         <div class="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-12">

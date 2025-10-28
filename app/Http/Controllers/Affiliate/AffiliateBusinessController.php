@@ -8,6 +8,7 @@ use App\Models\Affiliate\AffiliateBusinessModel;
 use App\Models\Affiliate\AffiliateDashboardSession;
 use App\Models\Affiliate\AffiliateGlobalSetting;
 use App\Notifications\Affiliate\BusinessRegistrationNotification;
+use App\Notifications\Affiliate\NewBusinessRegistrationNotification;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
 use Illuminate\Support\Facades\Validator;
@@ -86,8 +87,13 @@ class AffiliateBusinessController extends Controller
             'configured_at' => now(),
         ]);
 
-        // Send verification email
+        // Send verification email to business
         $business->notify(new BusinessRegistrationNotification($business));
+
+        // Send notification to admin about new business registration
+        $adminEmail = env('VITE_ADMIN_EMAIL', 'admin@vrooem.com');
+        \Illuminate\Support\Facades\Notification::route('mail', $adminEmail)
+            ->notify(new NewBusinessRegistrationNotification($business));
 
         return Inertia::render('Affiliate/Business/Success', [
             'business' => $business,
@@ -124,15 +130,17 @@ class AffiliateBusinessController extends Controller
             'verification_status' => $business->verification_status,
         ]);
 
-        // Temporarily bypass token validation for testing
-        // if (!$business->isDashboardTokenValid()) {
-        //     abort(403, 'Dashboard access token has expired');
-        // }
+        // Check token validity
+        if (!$business->isDashboardTokenValid()) {
+            abort(403, 'Dashboard access token has expired');
+        }
 
-        // Temporarily bypass business status validation for testing
-        // if ($business->status !== 'active' || $business->verification_status !== 'verified') {
-        //     abort(403, 'Business must be active and verified to access dashboard. Status: ' . $business->status . ', Verification: ' . $business->verification_status);
-        // }
+        // Check business status - only active businesses can access dashboard
+        if ($business->status !== 'active') {
+            return Inertia::render('Affiliate/Business/StatusPending', [
+                'business' => $business,
+            ]);
+        }
 
         // Update last accessed time
         $business->update([
