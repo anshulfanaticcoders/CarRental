@@ -477,51 +477,95 @@ class SearchController extends Controller
                             $xmlObject = simplexml_load_string($okMobilityResponse);
 
                             if ($xmlObject !== false) {
-                                $xmlObject->registerXPathNamespace('get', 'http://www.OKGroup.es/RentaCarWebService/getWSDL');
-                                $vehicles = $xmlObject->xpath('//get:getMultiplePrice');
+                                // Register the correct namespace for OK Mobility
+                                $xmlObject->registerXPathNamespace('ns', 'http://tempuri.org/');
+
+                                // Try both possible XPath patterns
+                                $vehicles = $xmlObject->xpath('//ns:getMultiplePricesResult/ns:getMultiplePrice') ?:
+                                          $xmlObject->xpath('//ns:getMultiplePrice');
 
                                 foreach ($vehicles as $vehicle) {
                                     $vehicleData = json_decode(json_encode($vehicle), true);
-                                    $brandName = explode(' ', $vehicleData['Group_Name'])[0] ?? 'Unknown';
+
+                                    // Extract vehicle data with proper fallbacks
+                                    $groupName = $vehicleData['Group_Name'] ?? 'Unknown Vehicle';
+                                    $brandName = explode(' ', $groupName)[0] ?? 'Unknown';
+                                    $groupId = $vehicleData['GroupID'] ?? 'unknown';
+                                    $token = $vehicleData['token'] ?? 'unknown';
+
+                                    // Calculate price per day
+                                    $pricePerDay = 0;
+                                    if (isset($vehicleData['totalDayValueWithTax']) && is_numeric($vehicleData['totalDayValueWithTax'])) {
+                                        $pricePerDay = (float) $vehicleData['totalDayValueWithTax'];
+                                    }
+
+                                    // Extract mileage information
+                                    $mileage = 'Unknown';
+                                    if (isset($vehicleData['kmsIncluded'])) {
+                                        $mileage = $vehicleData['kmsIncluded'] === 'true' ? 'Unlimited' : 'Limited';
+                                    }
+
+                                    // Extract extras if available
+                                    $extras = [];
+                                    if (isset($vehicleData['allExtras']['allExtra'])) {
+                                        $extras = $vehicleData['allExtras']['allExtra'];
+                                        if (!isset($extras[0])) {
+                                            $extras = [$extras]; // Convert single extra to array
+                                        }
+                                    }
 
                                     $providerVehicles->push((object) [
-                                        'id' => 'okmobility_' . $vehicleData['GroupID'] . '_' . md5($vehicleData['token']),
+                                        'id' => 'okmobility_' . $groupId . '_' . md5($token),
                                         'source' => 'okmobility',
                                         'brand' => $brandName,
-                                        'model' => $vehicleData['Group_Name'],
-                                        'image' => $vehicleData['imageURL'] ?? null,
-                                        'price_per_day' => (float) $vehicleData['totalDayValueWithTax'],
-                                        'price_per_week' => null,
-                                        'price_per_month' => null,
-                                        'currency' => 'EUR', // Assuming EUR, adjust if available in response
-                                        'transmission' => 'Unknown', // Not provided in getMultiplePrices
-                                        'fuel' => 'Unknown', // Not provided in getMultiplePrices
-                                        'seating_capacity' => 4, // Placeholder, not in response
-                                        'mileage' => $vehicleData['kmsIncluded'] === 'true' ? 'Unlimited' : 'Limited',
+                                        'model' => $groupName,
+                                        'image' => $vehicleData['imageURL'] ?? '/default-vehicle.png',
+                                        'price_per_day' => $pricePerDay,
+                                        'price_per_week' => $pricePerDay * 7, // Calculate weekly price
+                                        'price_per_month' => $pricePerDay * 30, // Calculate monthly price
+                                        'currency' => 'EUR', // OK Mobility uses EUR
+                                        'transmission' => $vehicleData['Transmission'] ?? 'Unknown',
+                                        'fuel' => $vehicleData['Fuel'] ?? 'Unknown',
+                                        'seating_capacity' => (int) ($vehicleData['Seats'] ?? 4),
+                                        'mileage' => $mileage,
                                         'latitude' => (float) $locationLat,
                                         'longitude' => (float) $locationLng,
                                         'full_vehicle_address' => $locationAddress,
                                         'provider_pickup_id' => $providerLocationId,
                                         'benefits' => (object) [
-                                            'cancellation_available_per_day' => true, // Placeholder
+                                            'cancellation_available_per_day' => true,
                                             'limited_km_per_day' => $vehicleData['kmsIncluded'] !== 'true',
-                                            'minimum_driver_age' => 21, // Placeholder
-                                            'fuel_policy' => 'Unknown', // Placeholder
+                                            'minimum_driver_age' => (int) ($vehicleData['MinAge'] ?? 21),
+                                            'fuel_policy' => $vehicleData['FuelPolicy'] ?? 'Unknown',
                                         ],
                                         'review_count' => 0,
                                         'average_rating' => 0,
-                                        'products' => [], // Can be populated from 'allExtras' if needed
-                                        'options' => [],
+                                        'products' => [[
+                                            'type' => 'BAS',
+                                            'total' => (string) $pricePerDay,
+                                            'currency' => 'EUR',
+                                            'token' => $token,
+                                            'group_id' => $groupId,
+                                        ]],
+                                        'extras' => $extras,
                                         'insurance_options' => [],
-                                        'ok_mobility_token' => $vehicleData['token'],
+                                        'ok_mobility_token' => $token,
+                                        'ok_mobility_group_id' => $groupId,
                                     ]);
                                 }
                             } else {
-                                Log::warning("okmobility API response for vehicles was empty or malformed for location ID: " . $providerLocationId, ['response' => $okMobilityResponse]);
+                                Log::warning("OK Mobility API response for vehicles was empty or malformed for location ID: " . $providerLocationId, [
+                                    'response' => $okMobilityResponse,
+                                    'xml_errors' => libxml_get_errors()
+                                ]);
+                                libxml_clear_errors();
                             }
                         }
                     } catch (\Exception $e) {
-                        Log::error("Error fetching okmobility vehicles: " . $e->getMessage());
+                        Log::error("Error fetching OK Mobility vehicles: " . $e->getMessage(), [
+                            'provider_location_id' => $providerLocationId,
+                            'trace' => $e->getTraceAsString()
+                        ]);
                     }
                 }
             }

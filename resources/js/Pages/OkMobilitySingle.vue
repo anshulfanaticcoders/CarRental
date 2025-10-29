@@ -1,47 +1,1585 @@
-<template>
-  <div class="container mx-auto p-4">
-    <h1 class="text-2xl font-bold mb-4">{{ vehicle.model }}</h1>
-    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-      <div>
-        <img :src="vehicle.image" alt="Vehicle Image" class="w-full h-auto rounded-lg">
-      </div>
-      <div>
-        <p><strong>Brand:</strong> {{ vehicle.brand }}</p>
-        <p><strong>Price per day:</strong> {{ vehicle.price_per_day }} {{ vehicle.currency }}</p>
-        <p><strong>Transmission:</strong> {{ vehicle.transmission }}</p>
-        <p><strong>Fuel:</strong> {{ vehicle.fuel }}</p>
-        <p><strong>Seating Capacity:</strong> {{ vehicle.seating_capacity }}</p>
-        <p><strong>Mileage:</strong> {{ vehicle.mileage }}</p>
-        <div class="mt-4">
-          <h2 class="text-xl font-semibold">Extras</h2>
-          <ul class="list-disc list-inside">
-            <li v-for="extra in vehicle.extras" :key="extra.extraID">
-              {{ extra.extra }} - {{ extra.value }} {{ vehicle.currency }}
-            </li>
-          </ul>
-        </div>
-        <button @click="proceedToBooking" class="mt-4 bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded">
-          Proceed to Booking
-        </button>
-      </div>
-    </div>
-  </div>
-</template>
-
 <script setup>
-import { defineProps } from 'vue';
-import { router } from '@inertiajs/vue3';
+import { Link, usePage, Head, router } from "@inertiajs/vue3";
+import { computed, onMounted, ref, watch, nextTick, onBeforeUnmount } from "vue";
+import Footer from "@/Components/Footer.vue";
+import carIcon from "../../assets/carIcon.svg";
+import mileageIcon from "../../assets/mileageIcon.svg";
+import check from "../../assets/Check.svg";
+import L from 'leaflet';
+import 'leaflet/dist/leaflet.css';
+import markerIcon2x from 'leaflet/dist/images/marker-icon-2x.png';
+import markerIcon from 'leaflet/dist/images/marker-icon.png';
+import markerShadow from 'leaflet/dist/images/marker-shadow.png';
+import Clock from '../../assets/clock.svg';
 
-const props = defineProps({
-  vehicle: Object,
-  searchParams: Object,
+// Icons
+import doorIcon from "../../assets/door.svg";
+import luggageIcon from "../../assets/luggage.svg";
+import fuelIcon from "../../assets/fuel.svg";
+import transmisionIcon from "../../assets/transmision.svg";
+import peopleIcon from "../../assets/people.svg";
+import carbonIcon from "../../assets/carbon-emmision.svg";
+import MapPin from "../../assets/MapPin.svg";
+import fullStar from "../../assets/fullstar.svg";
+import halfStar from "../../assets/halfstar.svg";
+import carguaranteeIcon from "../../assets/carguarantee.png";
+import locationPinIcon from "../../assets/locationPin.svg";
+import ShareIcon from "../../assets/ShareNetwork.svg";
+import Heart from "../../assets/Heart.svg";
+import FilledHeart from "../../assets/FilledHeart.svg";
+import pickupLocationIcon from "../../assets/pickupLocationIcon.svg";
+import returnLocationIcon from "../../assets/returnLocationIcon.svg";
+import partnersIcon from "../../assets/partners.svg";
+import offerIcon from "../../assets/percentage-tag.svg";
+
+// UI components
+import { Skeleton } from '@/Components/ui/skeleton';
+import '@vuepic/vue-datepicker/dist/main.css';
+import VueDatepicker from '@vuepic/vue-datepicker';
+import { useToast } from 'vue-toastification';
+import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious } from "@/Components/ui/carousel";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/Components/ui/dialog";
+import Card from "@/Components/ui/card/Card.vue";
+import CardContent from "@/Components/ui/card/CardContent.vue";
+import CardHeader from "@/Components/ui/card/CardHeader.vue";
+import CardTitle from "@/Components/ui/card/CardTitle.vue";
+import { ChevronRight, ImageIcon, ZoomIn } from 'lucide-vue-next';
+import { Alert, AlertDescription } from '@/Components/ui/alert';
+import { Button } from "@/Components/ui/button";
+import Lightbox from "@/Components/Lightbox.vue";
+import AuthenticatedHeaderLayout from "@/Layouts/AuthenticatedHeaderLayout.vue";
+import { Vue3Lottie } from 'vue3-lottie';
+import universalLoader from '../../../public/animations/universal-loader.json';
+import { useCurrency } from '@/composables/useCurrency';
+
+const isBooking = ref(false);
+const currencySymbols = ref({});
+const exchangeRates = ref(null);
+const { selectedCurrency, supportedCurrencies, changeCurrency } = useCurrency();
+
+const symbolToCodeMap = {
+    '$': 'USD',
+    '€': 'EUR',
+    '£': 'GBP',
+    '¥': 'JPY',
+    'A$': 'AUD',
+    'C$': 'CAD',
+    'Fr': 'CHF',
+    'HK$': 'HKD',
+    'S$': 'SGD',
+    'kr': 'SEK',
+    '₩': 'KRW',
+    'kr': 'NOK',
+    'NZ$': 'NZD',
+    '₹': 'INR',
+    'Mex$': 'MXN',
+    'R': 'ZAR',
+    'AED': 'AED'
+    // Add other symbol-to-code mappings as needed
+};
+
+const providerName = computed(() => {
+    const urlParams = new URLSearchParams(window.location.search);
+    const provider = urlParams.get('provider');
+    if (provider) {
+        if (provider.toLowerCase() === 'okmobility') {
+            return 'OK Mobility';
+        }
+        return provider.charAt(0).toUpperCase() + provider.slice(1);
+    }
+    return 'OK Mobility'; // Default value
 });
 
-const proceedToBooking = () => {
-  const bookingUrl = `/ok-mobility-booking/${props.vehicle.id}/checkout`;
-  router.get(bookingUrl, {
-    ...props.searchParams,
-    vehicle: JSON.stringify(props.vehicle),
-  });
+const providerLogoText = computed(() => {
+    const name = providerName.value;
+    if (name === 'OK Mobility') {
+        return 'OK';
+    }
+    return 'OK'; // Default for OK Mobility
+});
+
+const fetchExchangeRates = async () => {
+    try {
+        const response = await fetch(`https://v6.exchangerate-api.com/v6/01b88ff6c6507396d707e4b6/latest/USD`);
+        const data = await response.json();
+        if (data.result === 'success') {
+            exchangeRates.value = data.conversion_rates;
+        } else {
+            console.error('Failed to fetch exchange rates:', data['error-type']);
+        }
+    } catch (error) {
+        console.error('Error fetching exchange rates:', error);
+    }
 };
+
+const convertCurrency = (price, fromCurrency) => {
+    const numericPrice = parseFloat(price);
+    if (isNaN(numericPrice)) {
+        return 0; // Return 0 if price is not a number
+    }
+
+    let fromCurrencyCode = fromCurrency;
+    if (symbolToCodeMap[fromCurrency]) {
+        fromCurrencyCode = symbolToCodeMap[fromCurrency];
+    }
+
+    if (!exchangeRates.value || !fromCurrencyCode || !selectedCurrency.value) {
+        return numericPrice; // Return original price if rates not loaded or currencies are invalid
+    }
+    const rateFrom = exchangeRates.value[fromCurrencyCode];
+    const rateTo = exchangeRates.value[selectedCurrency.value];
+    if (rateFrom && rateTo) {
+        return (numericPrice / rateFrom) * rateTo;
+    }
+    return numericPrice; // Fallback to original price if conversion is not possible
+};
+
+onMounted(async () => {
+    fetchExchangeRates();
+
+    try {
+        const response = await fetch('/currency.json');
+        const data = await response.json();
+        currencySymbols.value = data.reduce((acc, curr) => {
+            acc[curr.code] = curr.symbol;
+            return acc;
+        }, {});
+    } catch (error) {
+        console.error("Error loading currency symbols:", error);
+    }
+});
+
+const getCurrencySymbol = (code) => {
+    return currencySymbols.value[code] || '$'; // Use fetched symbol or default to '$'
+};
+
+const props = defineProps({
+    vehicle: Object,
+    location: Object,
+    dropoffLocation: Object, // New prop for dropoff location
+    optionalExtras: Array,
+    filters: Object,
+    seoMeta: Object,
+    error: String,
+    affiliate_data: Object, // Affiliate data from session
+});
+
+const page = usePage();
+const toast = useToast();
+const mapContainerRef = ref(null);
+
+// Affiliate data management
+const affiliateData = ref(props.affiliate_data || null); // Affiliate data from session
+let map = ref(null);
+
+// Image loading states
+const imageLoading = ref(true);
+const imageError = ref(false);
+
+// SEO Computed Properties
+const seoTranslation = computed(() => {
+    if (!props.seoMeta || !props.seoMeta.translations) {
+        return {};
+    }
+    return props.seoMeta.translations.find(t => t.locale === page.props.locale) || {};
+});
+
+const constructedLocalizedUrlSlug = computed(() => {
+    return seoTranslation.value.url_slug || props.seoMeta?.url_slug || 'ok-mobility-car';
+});
+
+const currentUrl = computed(() => {
+    return `${window.location.origin}/${page.props.locale}/${constructedLocalizedUrlSlug.value}`;
+});
+
+const canonicalUrl = computed(() => {
+    return props.seoMeta?.canonical_url || currentUrl.value;
+});
+
+const seoTitle = computed(() => {
+    return seoTranslation.value.seo_title || props.seoMeta?.seo_title || 'OK Mobility Vehicle Details';
+});
+
+const seoDescription = computed(() => {
+    return seoTranslation.value.meta_description || props.seoMeta?.meta_description || '';
+});
+
+const seoKeywords = computed(() => {
+    return seoTranslation.value.keywords || props.seoMeta?.keywords || '';
+});
+
+const seoImageUrl = computed(() => {
+    return props.seoMeta?.seo_image_url || '';
+});
+
+const backToSearchUrl = computed(() => {
+    const searchUrl = sessionStorage.getItem('searchurl');
+    if (searchUrl) {
+        return searchUrl;
+    }
+    return route('search', { locale: page.props.locale, ...props.filters });
+});
+
+const vehicleProduct = computed(() => {
+    return props.vehicle?.products?.[0] || props.vehicle || null;
+});
+
+const priceToDisplay = computed(() => {
+    if (vehicleProduct.value?.total && vehicleProduct.value.total > 0) {
+        const currencyCode = vehicleProduct.value.currency || 'EUR';
+        const currencySymbol = getCurrencySymbol(currencyCode);
+        return `${currencySymbol}${parseFloat(vehicleProduct.value.total).toFixed(2)}`;
+    }
+    return 'Price not available';
+});
+
+// Enhanced Image Handling
+const primaryImage = computed(() => {
+    const imageUrl = props.vehicle?.image || props.vehicle?.largeImage || '/default-car-image.jpg';
+    imageLoading.value = false;
+    return {
+        image_url: imageUrl,
+        alt: `${props.vehicle?.name || 'Vehicle'} - Primary Image`
+    };
+});
+
+const galleryImages = computed(() => {
+    const images = [];
+
+    // Add large image if different from primary
+    if (props.vehicle?.largeImage && props.vehicle.largeImage !== props.vehicle?.image) {
+        images.push({
+            image_url: props.vehicle.largeImage,
+            alt: `${props.vehicle?.name || 'Vehicle'} - Large View`
+        });
+    }
+
+    // Add small image if available and different
+    if (props.vehicle?.smallImage &&
+        props.vehicle.smallImage !== props.vehicle?.image &&
+        props.vehicle.smallImage !== props.vehicle.largeImage) {
+        images.push({
+            image_url: props.vehicle.smallImage,
+            alt: `${props.vehicle?.name || 'Vehicle'} - Small View`
+        });
+    }
+
+    return images;
+});
+
+const allImages = computed(() => {
+    const images = [primaryImage.value];
+    images.push(...galleryImages.value);
+    return images;
+});
+
+const hasMultipleImages = computed(() => {
+    return allImages.value.length > 1;
+});
+
+// Image optimization function
+const getOptimizedImageUrl = (url, width = 800, height = 800) => {
+    if (!url || url.includes('default-car-image.jpg')) {
+        return url;
+    }
+
+    // If the URL already has parameters, append with &, otherwise use ?
+    const separator = url.includes('?') ? '&' : '?';
+    return `${url}${separator}w=${width}&h=${height}&fit=crop&auto=format,compress&q=80`;
+};
+
+const handleImageLoad = () => {
+    imageLoading.value = false;
+    imageError.value = false;
+};
+
+const handleImageError = (error) => {
+    console.error('Image loading error:', error);
+    imageLoading.value = false;
+    imageError.value = true;
+};
+
+// Map Initialization
+const initMap = () => {
+    if (!props.location || !props.location.latitude || !props.location.longitude || !mapContainerRef.value) {
+        console.warn('Map initialization skipped: Missing location data or map container not ready.');
+        return;
+    }
+
+    if (map.value) {
+        map.value.remove();
+    }
+
+    delete L.Icon.Default.prototype._getIconUrl;
+    L.Icon.Default.mergeOptions({
+        iconRetinaUrl: markerIcon2x,
+        iconUrl: markerIcon,
+        shadowUrl: markerShadow,
+    });
+
+    map.value = L.map(mapContainerRef.value, {
+        zoomControl: true,
+        maxZoom: 18,
+        minZoom: 4,
+        preferCanvas: true
+    }).setView([parseFloat(props.location.latitude), parseFloat(props.location.longitude)], 15);
+
+    const osmLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '© OpenStreetMap contributors',
+        maxZoom: 19,
+        detectRetina: true
+    }).addTo(map.value);
+
+    osmLayer.on('tileerror', (error) => {
+        console.error('Tile loading error:', error);
+    });
+
+    const createColoredIcon = (color) => {
+        return L.divIcon({
+            className: 'custom-div-icon',
+            html: `
+                <div class="marker-pin" style="filter: drop-shadow(0 4px 3px rgba(0,0,0,0.2));">
+                    <svg width="40" height="40" viewBox="0 0 24 24" fill="${color}" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/>
+                    </svg>
+                </div>
+            `,
+            iconSize: [40, 40],
+            iconAnchor: [20, 40],
+            popupAnchor: [0, -40]
+        });
+    };
+
+    const pickupIcon = createColoredIcon('#22c55e'); // Green
+    const dropoffIcon = createColoredIcon('#ef4444'); // Red
+
+    const pickupLatLng = [parseFloat(props.location.latitude), parseFloat(props.location.longitude)];
+
+    L.marker(pickupLatLng, { icon: pickupIcon })
+        .bindPopup(`
+            <div class="text-center">
+                <p class="font-semibold">Pickup: ${props.location.name}</p>
+                <p>${props.location.address_city}</p>
+            </div>
+        `)
+        .addTo(map.value);
+
+    let bounds = L.latLngBounds([pickupLatLng]);
+
+    if (props.dropoffLocation &&
+        (props.location.latitude !== props.dropoffLocation.latitude || props.location.longitude !== props.dropoffLocation.longitude)) {
+
+        const dropoffLatLng = [parseFloat(props.dropoffLocation.latitude), parseFloat(props.dropoffLocation.longitude)];
+
+        L.marker(dropoffLatLng, { icon: dropoffIcon })
+            .bindPopup(`
+                <div class="text-center">
+                    <p class="font-semibold">Dropoff: ${props.dropoffLocation.name}</p>
+                    <p>${props.dropoffLocation.address_city}</p>
+                </div>
+            `)
+            .addTo(map.value);
+
+        L.polyline([pickupLatLng, dropoffLatLng], {
+            color: 'black',
+            weight: 2,
+            opacity: 0.7,
+            dashArray: '5, 10'
+        }).addTo(map.value);
+
+        bounds.extend(dropoffLatLng);
+        map.value.fitBounds(bounds, { padding: [50, 50] });
+    }
+
+    setTimeout(() => {
+        map.value.invalidateSize();
+        if (bounds.getNorthEast().equals(bounds.getSouthWest())) {
+            map.value.setView(bounds.getCenter(), 15);
+        } else {
+            map.value.fitBounds(bounds, { padding: [50, 50] });
+        }
+    }, 100);
+};
+
+// Form and Booking Data
+const form = ref({
+    location_id: props.filters?.location_id || props.location?.id || 61627,
+    start_date: props.filters?.start_date || '2032-01-06',
+    start_time: props.filters?.start_time || '09:00',
+    end_date: props.filters?.end_date || '2032-01-08',
+    end_time: props.filters?.end_time || '09:00',
+    age: props.filters?.age || 35,
+    rentalCode: props.filters?.rentalCode || null,
+});
+
+const selectedPackage = ref('day');
+const rentalDuration = computed(() => {
+    if (!form.value.start_date || !form.value.end_date) return 0;
+    const startDate = new Date(form.value.start_date);
+    const endDate = new Date(form.value.end_date);
+    const diffTime = Math.abs(endDate - startDate);
+    return Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+});
+
+// Calculate original price before affiliate discount
+const originalTotalPrice = computed(() => {
+    return parseFloat(vehicleProduct.value?.total || 0);
+});
+
+// Calculate affiliate discount amount
+const affiliateDiscountAmount = computed(() => {
+    if (!affiliateData.value) return 0;
+
+    const originalPrice = originalTotalPrice.value;
+    if (originalPrice <= 0) return 0;
+
+    const discountType = affiliateData.value.discount_type || 'percentage';
+    const discountValue = affiliateData.value.discount_value || 0;
+
+    if (discountType === 'fixed_amount') {
+        return Math.min(discountValue, originalPrice);
+    } else {
+        // Percentage discount
+        return originalPrice * (discountValue / 100);
+    }
+});
+
+// Check if user has affiliate discount
+const hasAffiliateDiscount = computed(() => {
+    return affiliateData.value && affiliateData.value.discount_value > 0;
+});
+
+const calculateTotalPrice = computed(() => {
+    const basePrice = parseFloat(vehicleProduct.value?.total || 0);
+
+    if (hasAffiliateDiscount.value) {
+        return Math.max(0, basePrice - affiliateDiscountAmount.value);
+    }
+
+    return basePrice;
+});
+
+const formatPrice = (price) => {
+    const originalCurrency = vehicleProduct.value?.currency || 'EUR';
+    const convertedPrice = convertCurrency(price, originalCurrency);
+    const currencySymbol = getCurrencySymbol(selectedCurrency.value);
+    return `${currencySymbol}${convertedPrice.toFixed(2)}`;
+};
+
+const timeOptions = Array.from({ length: 24 }, (_, i) => {
+    const hour = String(i).padStart(2, '0');
+    return [`${hour}:00`, `${hour}:30`];
+}).flat();
+
+const departureTimeOptions = computed(() => timeOptions);
+const returnTimeOptions = computed(() => timeOptions);
+
+const updateDateTimeSelection = () => {
+    // No session storage for OK Mobility
+};
+
+const bookedDates = ref([]);
+const blockedDates = ref([]);
+
+const isDateBooked = (dateTr) => false;
+const getDisabledDates = () => [];
+
+const minDate = computed(() => new Date());
+const maxPickupDate = computed(() => {
+    const today = new Date();
+    const futureDate = new Date(today);
+    futureDate.setMonth(today.getMonth() + 3);
+    return futureDate;
+});
+const minReturnDate = computed(() => {
+    if (!form.value.start_date) return new Date();
+    const pickupDate = new Date(form.value.start_date);
+    const minDate = new Date(pickupDate);
+    minDate.setDate(pickupDate.getDate() + 1);
+    return minDate;
+});
+const maxReturnDate = computed(() => {
+    if (!form.value.start_date) return null;
+    const pickupDate = new Date(form.value.start_date);
+    const maxDate = new Date(pickupDate);
+    maxDate.setDate(pickupDate.getDate() + 30);
+    return maxDate;
+});
+
+const handleDateFrom = (date) => {
+    form.value.start_date = date ? date.toISOString().split('T')[0] : '';
+    form.value.end_date = '';
+};
+
+const handleDateTo = (date) => {
+    form.value.end_date = date ? date.toISOString().split('T')[0] : '';
+};
+
+const pricingPackages = computed(() => [
+    {
+        id: 'day',
+        label: 'Total Rental Price',
+        description: 'Price for the selected rental period',
+        price: vehicleProduct.value?.total,
+        icon: Clock,
+        priceLabel: '/rental'
+    }
+].filter(pkg => pkg.price));
+
+// Lightbox for Gallery
+const lightboxRef = ref(null);
+
+const openLightbox = (index) => {
+    if (lightboxRef.value) {
+        lightboxRef.value.openLightbox(index);
+    }
+};
+
+const searchUrl = computed(() => {
+    if (typeof window !== 'undefined' && sessionStorage.getItem('searchurl')) {
+        return sessionStorage.getItem('searchurl');
+    }
+    return '';
+});
+
+// Share
+const shareVehicle = async () => {
+    try {
+        const shareData = {
+            title: seoTitle.value,
+            text: `Check out this OK Mobility vehicle: ${props.vehicle?.name}!`,
+            url: canonicalUrl.value,
+        };
+
+        if (navigator.share) {
+            await navigator.share(shareData);
+        } else {
+            const shareText = `${shareData.text}\n${shareData.url}`;
+            if (navigator.clipboard?.writeText) {
+                await navigator.clipboard.writeText(shareText);
+                toast.success('Link copied to clipboard!');
+            } else {
+                window.prompt('Copy this link:', shareData.url);
+            }
+        }
+    } catch (error) {
+        console.error('Error sharing:', error);
+        if (error.name !== 'AbortError') {
+            toast.error('Failed to share. Please try another method.');
+        }
+    }
+};
+
+// Booking
+const showWarningModal = ref(false);
+const availabilityChanged = ref(false);
+const isCheckingAvailability = ref(false);
+const availabilityError = ref(null);
+
+watch([() => form.value.start_date, () => form.value.end_date, () => form.value.start_time, () => form.value.end_time], () => {
+    availabilityChanged.value = true;
+});
+
+const checkAvailability = async () => {
+    isCheckingAvailability.value = true;
+    availabilityError.value = null;
+
+    // Combine existing filters with the updated form values.
+    // The form values (new dates/times) will overwrite the old ones in filters.
+    const newFilters = { ...props.filters, ...form.value };
+
+    router.get(route('ok-mobility-car.show', { locale: page.props.locale, id: props.vehicle.id, ...newFilters }), {}, {
+        preserveState: true,
+        preserveScroll: true,
+        onSuccess: () => {
+            availabilityChanged.value = false;
+            toast.success('Vehicle availability and price updated!');
+        },
+        onError: (errors) => {
+            availabilityError.value = 'Failed to check availability. Please try again.';
+            toast.error(availabilityError.value);
+            console.error('Availability check error:', errors);
+        },
+        onFinish: () => {
+            isCheckingAvailability.value = false;
+        },
+    });
+};
+
+const proceedToPayment = async () => {
+    if (availabilityChanged.value) {
+        toast.warning('Please check availability for the new dates before proceeding.');
+        return;
+    }
+    if (!form.value.location_id || !form.value.start_date || !form.value.start_time || !form.value.end_date || !form.value.end_time || !form.value.age) {
+        toast.error("Please fill all required rental details (Location ID, Dates, Times, Age).");
+        return;
+    }
+    isBooking.value = true;
+
+    // Check if user is authenticated
+    if (!page.props.auth.user) {
+        sessionStorage.setItem('returnToUrl', window.location.href);
+        // Store current form data in session storage to retrieve after login
+        sessionStorage.setItem('okMobilityBookingForm', JSON.stringify(form.value));
+        sessionStorage.setItem('okMobilityVehicleId', props.vehicle.id);
+        sessionStorage.setItem('okMobilityLocationId', props.location.id);
+        sessionStorage.setItem('currentLocale', page.props.locale); // Store the current locale explicitly
+
+        // Store affiliate data in session storage if available
+        if (affiliateData.value) {
+            sessionStorage.setItem('affiliateData', JSON.stringify(affiliateData.value));
+        }
+
+        // Redirect to login page
+        router.visit(route('login', { locale: page.props.locale }));
+        return;
+    }
+
+    router.visit(route('ok-mobility-booking.checkout', {
+        locale: page.props.locale,
+        id: props.vehicle.id,
+        location_id: form.value.location_id,
+        start_date: form.value.start_date,
+        start_time: form.value.start_time,
+        end_date: form.value.end_date,
+        end_time: form.value.end_time,
+        age: form.value.age,
+        rentalCode: form.value.rentalCode,
+        dropoff_location_id: props.filters?.dropoff_location_id,
+        where: props.filters?.where,
+        dropoff_where: props.filters?.dropoff_where,
+        provider: props.filters?.provider,
+        currency: props.filters?.currency,
+    }), {
+        onFinish: () => {
+            isBooking.value = false;
+        },
+    });
+};
+
+// Lifecycle Hooks
+onMounted(() => {
+    nextTick(() => {
+        initMap();
+    });
+});
+
+watch([() => props.location, mapContainerRef], ([newLocation, newMapContainerRef]) => {
+    if (newLocation && newMapContainerRef) {
+        initMap();
+    }
+}, { immediate: true, deep: true });
+
+onBeforeUnmount(() => {
+    if (map.value) {
+        map.value.remove();
+        map.value = null;
+    }
+});
 </script>
+
+<template>
+    <Head>
+        <meta name="robots" content="noindex, nofollow" />
+        <title>{{ seoTitle }}</title>
+        <meta name="description" :content="seoDescription" />
+        <meta name="keywords" :content="seoKeywords" />
+        <link rel="canonical" :href="canonicalUrl" />
+        <meta property="og:title" :content="seoTitle" />
+        <meta property="og:description" :content="seoDescription" />
+        <meta property="og:image" :content="seoImageUrl" />
+        <meta property="og:url" :content="currentUrl" />
+        <meta name="twitter:card" content="summary_large_image" />
+        <meta name="twitter:title" :content="seoTitle" />
+        <meta name="twitter:description" :content="seoDescription" />
+        <meta name="twitter:image" :content="seoImageUrl" />
+    </Head>
+
+    <AuthenticatedHeaderLayout />
+
+    <!-- Hero Section -->
+    <section class="bg-gradient-to-r from-customPrimaryColor to-blue-700 py-16">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
+            <h1 class="text-white text-4xl md:text-5xl font-bold mb-4">{{ vehicle?.name || 'OK Mobility Vehicle' }}</h1>
+            <p class="text-blue-100 text-lg md:text-xl">Premium rental experience with quality service</p>
+            <div class="mt-6 flex items-center justify-center gap-4">
+                <div class="bg-white/20 backdrop-blur-sm rounded-full px-4 py-2 text-white">
+                    <span class="font-medium">{{ vehicle?.groupName || vehicle?.groupCode }}</span>
+                </div>
+                <div class="bg-blue-500/20 backdrop-blur-sm rounded-full px-4 py-2 text-white">
+                    <span class="font-medium">Quality Service</span>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <div v-if="error" class="text-center text-red-500 text-xl py-8">
+            {{ error }}
+            <Link :href="backToSearchUrl" class="text-blue-500 hover:underline block mt-4">
+                Back to Search Results
+            </Link>
+        </div>
+        <div v-else-if="vehicle">
+            <!-- Breadcrumb -->
+            <nav class="flex items-center gap-2 text-sm mb-8 p-4 bg-gray-50 rounded-lg">
+                <Link :href="`/${$page.props.locale}`" class="text-customPrimaryColor hover:underline font-medium">Home</Link>
+                <ChevronRight class="h-4 w-4 text-gray-400" />
+                <Link :href="backToSearchUrl" class="text-customPrimaryColor hover:underline font-medium">Vehicles</Link>
+                <ChevronRight class="h-4 w-4 text-gray-400" />
+                <span class="text-gray-600">{{ vehicle?.name }}</span>
+            </nav>
+
+            <!-- Vehicle Header Info -->
+            <div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4">
+                <div>
+                    <h2 class="text-3xl font-bold text-gray-900 mb-2">{{ vehicle?.name }}</h2>
+                    <div class="flex items-center gap-3">
+                        <span class="inline-flex items-center px-3 py-1 bg-blue-100 text-blue-800 rounded-full text-sm font-medium">
+                            {{ vehicle?.groupName || vehicle?.groupCode }}
+                        </span>
+                        <span class="inline-flex items-center px-3 py-1 bg-green-100 text-green-800 rounded-full text-sm font-medium">
+                            <svg class="w-4 h-4 mr-1" fill="currentColor" viewBox="0 0 20 20">
+                                <path fill-rule="evenodd" d="M3.172 5.172a4 4 0 015.656 0L10 6.343l1.172-1.171a4 4 0 115.656 5.656L10 17.657l-6.828-6.829a4 4 0 010-5.656z" clip-rule="evenodd" />
+                            </svg>
+                            Quality Service
+                        </span>
+                    </div>
+                </div>
+                <div class="flex items-center gap-6">
+                    <div class="flex items-center gap-2 text-gray-600">
+                        <img :src="locationPinIcon" alt="Location" class="w-4 h-4" loading="lazy" />
+                        <span class="text-sm font-medium">{{ location?.address_city }}</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Main Content -->
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-12">
+                <!-- Left Column: Vehicle Details -->
+                <div class="lg:col-span-2 space-y-10">
+                    <!-- Enhanced Image Section -->
+                    <div class="mb-12">
+                        <div v-if="hasMultipleImages" class="grid grid-cols-1 lg:grid-cols-4 gap-4">
+                            <!-- Main Image -->
+                            <div class="lg:col-span-3">
+                                <div class="relative group rounded-2xl overflow-hidden shadow-2xl bg-gradient-to-br from-gray-100 to-gray-200">
+                                    <div class="aspect-w-16 aspect-h-9 h-[500px]">
+                                        <Skeleton v-if="imageLoading" class="w-full h-full" />
+                                        <div v-else-if="imageError" class="w-full h-full flex flex-col items-center justify-center bg-gradient-to-br from-gray-100 to-gray-200">
+                                            <ImageIcon class="w-24 h-24 text-gray-400 mb-4" />
+                                            <p class="text-gray-500 font-medium">Image not available</p>
+                                            <p class="text-gray-400 text-sm">{{ vehicle?.name }}</p>
+                                        </div>
+                                        <img
+                                            v-else
+                                            :src="getOptimizedImageUrl(primaryImage.image_url, 1200, 675)"
+                                            :alt="primaryImage.alt"
+                                            class="w-full h-full object-cover transition-all duration-500 group-hover:scale-105"
+                                            loading="lazy"
+                                            @load="handleImageLoad"
+                                            @error="handleImageError"
+                                            @click="openLightbox(0)"
+                                        />
+                                        <div class="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+                                        <button
+                                            class="absolute top-4 right-4 bg-white/90 backdrop-blur-sm p-3 rounded-full shadow-lg opacity-0 group-hover:opacity-100 transition-all duration-300 hover:bg-white"
+                                            @click="openLightbox(0)"
+                                        >
+                                            <ZoomIn class="w-5 h-5 text-gray-700" />
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Gallery Images -->
+                            <div class="space-y-4">
+                                <div v-for="(image, index) in galleryImages.slice(0, 2)" :key="index"
+                                     class="relative group rounded-xl overflow-hidden shadow-lg cursor-pointer bg-gradient-to-br from-gray-100 to-gray-200"
+                                     @click="openLightbox(index + 1)">
+                                    <div class="aspect-w-4 aspect-h-3 h-[240px]">
+                                        <img
+                                            :src="getOptimizedImageUrl(image.image_url, 400, 300)"
+                                            :alt="image.alt"
+                                            class="w-full h-full object-cover transition-all duration-300 group-hover:scale-110"
+                                            loading="lazy"
+                                        />
+                                        <div class="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+                                        <button class="absolute top-2 right-2 bg-white/90 backdrop-blur-sm p-2 rounded-full shadow opacity-0 group-hover:opacity-100 transition-all duration-300">
+                                            <ZoomIn class="w-4 h-4 text-gray-700" />
+                                        </button>
+                                    </div>
+                                </div>
+
+                                <div v-if="galleryImages.length > 2"
+                                     class="relative group rounded-xl overflow-hidden shadow-lg cursor-pointer bg-gradient-to-br from-gray-100 to-gray-200"
+                                     @click="openLightbox(3)">
+                                    <div class="aspect-w-4 aspect-h-3 h-[240px]">
+                                        <img
+                                            :src="getOptimizedImageUrl(galleryImages[2].image_url, 400, 300)"
+                                            :alt="galleryImages[2].alt"
+                                            class="w-full h-full object-cover opacity-70"
+                                            loading="lazy"
+                                        />
+                                        <div class="absolute inset-0 bg-black/60 flex items-center justify-center">
+                                            <div class="text-center text-white">
+                                                <ImageIcon class="w-8 h-8 mx-auto mb-2" />
+                                                <span class="text-lg font-semibold">+{{ galleryImages.length - 2 }}</span>
+                                                <p class="text-sm opacity-90">More Photos</p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Single Image Layout -->
+                        <div v-else class="relative group">
+                            <div class="rounded-2xl overflow-hidden shadow-2xl bg-gradient-to-br from-gray-100 to-gray-200">
+                                <div class="aspect-w-16 aspect-h-9 h-[600px] relative">
+                                    <Skeleton v-if="imageLoading" class="w-full h-full" />
+                                    <div v-else-if="imageError" class="w-full h-full flex flex-col items-center justify-center bg-gradient-to-br from-gray-100 to-gray-200">
+                                        <div class="text-center p-8">
+                                            <ImageIcon class="w-32 h-32 text-gray-400 mx-auto mb-6" />
+                                            <h3 class="text-2xl font-bold text-gray-600 mb-2">{{ vehicle?.name }}</h3>
+                                            <p class="text-gray-500 mb-4">High-quality image coming soon</p>
+                                            <div class="bg-blue-50 border border-blue-200 rounded-lg p-4 max-w-md mx-auto">
+                                                <p class="text-blue-800 text-sm font-medium">Professional vehicle photos are being prepared</p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <img
+                                        v-else
+                                        :src="getOptimizedImageUrl(primaryImage.image_url, 1200, 675)"
+                                        :alt="primaryImage.alt"
+                                        class="w-full h-full object-cover transition-all duration-500 group-hover:scale-105"
+                                        loading="lazy"
+                                        @load="handleImageLoad"
+                                        @error="handleImageError"
+                                        @click="openLightbox(0)"
+                                    />
+                                    <div class="absolute inset-0 bg-gradient-to-t from-black/30 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+                                    <div class="absolute bottom-6 left-6 right-6">
+                                        <div class="bg-white/90 backdrop-blur-sm rounded-xl p-4 transform translate-y-4 opacity-0 group-hover:translate-y-0 group-hover:opacity-100 transition-all duration-300">
+                                            <h3 class="font-bold text-lg text-gray-900 mb-1">{{ vehicle?.name }}</h3>
+                                        </div>
+                                    </div>
+                                    <button
+                                        v-if="!imageError"
+                                        class="absolute top-6 right-6 bg-white/90 backdrop-blur-sm p-3 rounded-full shadow-lg opacity-0 group-hover:opacity-100 transition-all duration-300 hover:bg-white hover:scale-110"
+                                        @click="openLightbox(0)"
+                                    >
+                                        <ZoomIn class="w-6 h-6 text-gray-700" />
+                                    </button>
+                                </div>
+                            </div>
+
+                            <!-- Image Info Badge -->
+                            <div class="absolute top-6 left-6 bg-white/95 backdrop-blur-sm rounded-xl px-4 py-2 shadow-lg">
+                                <div class="flex items-center gap-2">
+                                    <ImageIcon class="w-5 h-5 text-blue-600" />
+                                    <span class="text-sm font-medium text-gray-900">Photos</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <Lightbox ref="lightboxRef" :images="allImages.map(img => getOptimizedImageUrl(img.image_url, 1200, 800))" />
+                    </div>
+                    <!-- Vehicle Features -->
+                    <div class="bg-white rounded-2xl shadow-lg p-8">
+                        <h2 class="text-2xl font-bold text-gray-900 mb-6 flex items-center gap-3">
+                            <div class="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
+                                <img :src="carIcon" alt="Car" class="w-6 h-6" loading="lazy" />
+                            </div>
+                            Vehicle Specifications
+                        </h2>
+                        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                            <div class="flex items-center gap-4 p-4 bg-gray-50 rounded-xl hover:bg-gray-100 transition-colors">
+                                <div class="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center">
+                                    <img :src="peopleIcon" alt="People" class="w-6 h-6" loading="lazy" />
+                                </div>
+                                <div>
+                                    <span class="text-sm text-gray-500 font-medium">People</span>
+                                    <p class="font-bold text-lg text-gray-900">{{ (parseInt(vehicle?.adults) || 0) + (parseInt(vehicle?.children) || 0) }}</p>
+                                </div>
+                            </div>
+                            <div class="flex items-center gap-4 p-4 bg-gray-50 rounded-xl hover:bg-gray-100 transition-colors">
+                                <div class="w-12 h-12 bg-purple-100 rounded-full flex items-center justify-center">
+                                    <img :src="luggageIcon" alt="Luggage" class="w-6 h-6" loading="lazy" />
+                                </div>
+                                <div>
+                                    <span class="text-sm text-gray-500 font-medium">Luggage</span>
+                                    <p class="font-bold text-sm text-gray-900">S:{{ vehicle?.luggageSmall || 0 }} M:{{ vehicle?.luggageMed || 0 }} L:{{ vehicle?.luggageLarge || 0 }}</p>
+                                </div>
+                            </div>
+                            <div class="flex items-center gap-4 p-4 bg-gray-50 rounded-xl hover:bg-gray-100 transition-colors">
+                                <div class="w-12 h-12 bg-orange-100 rounded-full flex items-center justify-center">
+                                    <img :src="transmisionIcon" alt="Transmission" class="w-6 h-6" loading="lazy" />
+                                </div>
+                                <div>
+                                    <span class="text-sm text-gray-500 font-medium">Transmission</span>
+                                    <p class="font-bold text-lg text-gray-900 capitalize">{{ vehicle?.transmission || 'N/A' }}</p>
+                                </div>
+                            </div>
+                            <div class="flex items-center gap-4 p-4 bg-gray-50 rounded-xl hover:bg-gray-100 transition-colors">
+                                <div class="w-12 h-12 bg-red-100 rounded-full flex items-center justify-center">
+                                    <img :src="fuelIcon" alt="Fuel Type" class="w-6 h-6" loading="lazy" />
+                                </div>
+                                <div>
+                                    <span class="text-sm text-gray-500 font-medium">Fuel Type</span>
+                                    <p class="font-bold text-lg text-gray-900 capitalize">{{ vehicle?.fuel || 'N/A' }}</p>
+                                </div>
+                            </div>
+                            <div class="flex items-center gap-4 p-4 bg-gray-50 rounded-xl hover:bg-gray-100 transition-colors">
+                                <div class="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center">
+                                    <img :src="carbonIcon" alt="CO2 Emission" class="w-6 h-6" loading="lazy" />
+                                </div>
+                                <div>
+                                    <span class="text-sm text-gray-500 font-medium">CO2 Emission</span>
+                                    <p class="font-bold text-lg text-gray-900">{{ vehicle?.co2 || 'N/A' }}</p>
+                                </div>
+                            </div>
+                            <div class="flex items-center gap-4 p-4 bg-gray-50 rounded-xl hover:bg-gray-100 transition-colors">
+                                <div class="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center">
+                                    <img :src="check" alt="Air Conditioning" class="w-6 h-6" loading="lazy" />
+                                </div>
+                                <div>
+                                    <span class="text-sm text-gray-500 font-medium">Air Conditioning</span>
+                                    <p class="font-bold text-lg text-gray-900">{{ vehicle?.airConditioning || 'Standard' }}</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Rental Details -->
+                    <div class="bg-white rounded-2xl shadow-lg p-8">
+                        <h2 class="text-2xl font-bold text-gray-900 mb-6 flex items-center gap-3">
+                            <div class="w-10 h-10 bg-green-100 rounded-full flex items-center justify-center">
+                                <img :src="check" alt="Check" class="w-6 h-6" loading="lazy" />
+                            </div>
+                            Rental Information
+                        </h2>
+                        <div v-if="vehicleProduct" class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div class="flex items-center gap-3 p-4 bg-green-50 rounded-xl border border-green-200">
+                                <img :src="check" alt="Check" class="w-5 h-5 text-green-600" loading="lazy" />
+                                <div>
+                                    <span class="text-sm font-medium text-green-800">Fuel Policy</span>
+                                    <p class="text-green-900">{{ vehicleProduct.fuelpolicy || 'Full-to-Full' }}</p>
+                                </div>
+                            </div>
+                            <div class="flex items-center gap-3 p-4 bg-purple-50 rounded-xl border border-purple-200">
+                                <img :src="check" alt="Check" class="w-5 h-5 text-purple-600" loading="lazy" />
+                                <div>
+                                    <span class="text-sm font-medium text-purple-800">Min Age</span>
+                                    <p class="text-purple-900">{{ vehicleProduct.minage || 21 }} years</p>
+                                </div>
+                            </div>
+                            <div class="flex items-center gap-3 p-4 bg-orange-50 rounded-xl border border-orange-200">
+                                <img :src="check" alt="Check" class="w-5 h-5 text-orange-600" loading="lazy" />
+                                <div>
+                                    <span class="text-sm font-medium text-orange-800">Deposit</span>
+                                    <p class="text-orange-900">{{ formatPrice(vehicleProduct.deposit || 0) }}</p>
+                                </div>
+                            </div>
+                            <div class="flex items-center gap-3 p-4 bg-red-50 rounded-xl border border-red-200">
+                                <img :src="check" alt="Check" class="w-5 h-5 text-red-600" loading="lazy" />
+                                <div>
+                                    <span class="text-sm font-medium text-red-800">Excess</span>
+                                    <p class="text-red-900">{{ formatPrice(vehicleProduct.excess || 0) }}</p>
+                                </div>
+                            </div>
+                        </div>
+                        <div v-else class="text-center p-8 bg-gray-50 rounded-xl">
+                            <p class="text-gray-500">No specific rental details available for this vehicle.</p>
+                        </div>
+                    </div>
+
+                    <!-- Optional Extras -->
+                    <div class="bg-white rounded-2xl shadow-lg p-8">
+                        <h2 class="text-2xl font-bold text-gray-900 mb-6 flex items-center gap-3">
+                            <div class="w-10 h-10 bg-purple-100 rounded-full flex items-center justify-center">
+                                <img :src="offerIcon" alt="Extras" class="w-6 h-6" loading="lazy" />
+                            </div>
+                            Optional Extras
+                        </h2>
+                        <div v-if="optionalExtras && optionalExtras.length > 0" class="space-y-4">
+                            <div v-for="extra in optionalExtras" :key="extra.optionID || extra.Name"
+                                 class="flex items-start gap-4 p-4 bg-purple-50 rounded-xl border border-purple-200 hover:bg-purple-100 transition-colors">
+                                <img :src="check" alt="Check" class="w-5 h-5 text-purple-600 mt-1" loading="lazy" />
+                                <div class="flex-1">
+                                    <h4 class="font-semibold text-purple-900 text-lg">{{ extra.Name }}</h4>
+                                    <p class="text-purple-700 text-sm mb-2">{{ extra.Description }}</p>
+                                    <div v-if="extra.Daily_rate" class="text-purple-800 font-medium">
+                                        {{ formatPrice(extra.Daily_rate) }}/day
+                                    </div>
+                                    <div v-else-if="extra.options && extra.options.length > 0" class="space-y-1">
+                                        <div v-for="subOption in extra.options" :key="subOption.optionID"
+                                             class="text-sm text-purple-700 pl-4 border-l border-purple-300">
+                                            {{ subOption.Name }} - {{ formatPrice(subOption.Daily_rate) }}/day
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div v-else class="text-center p-8 bg-gray-50 rounded-xl">
+                            <p class="text-gray-500">No optional extras available for this booking.</p>
+                        </div>
+                    </div>
+
+                    <!-- Location -->
+                    <div class="bg-white rounded-2xl shadow-lg p-8">
+                        <h2 class="text-2xl font-bold text-gray-900 mb-6 flex items-center gap-3">
+                            <div class="w-10 h-10 bg-red-100 rounded-full flex items-center justify-center">
+                                <img :src="locationPinIcon" alt="Location" class="w-6 h-6" loading="lazy" />
+                            </div>
+                            Pickup Location
+                        </h2>
+                        <div class="mb-6 p-4 bg-red-50 rounded-xl border border-red-200">
+                            <div class="flex items-start gap-3">
+                                <img :src="locationPinIcon" alt="Location" class="w-6 h-6 text-red-600 mt-3" loading="lazy" />
+                                <div>
+                                    <h5 class="font-semibold text-red-900">{{ location?.name }}</h5>
+                                    <p class="text-red-800">{{ location?.address_1 }}, {{ location?.address_city }}, {{ location?.address_postcode }}</p>
+                                </div>
+                            </div>
+                        </div>
+                        <div id="map" ref="mapContainerRef" class="rounded-xl h-[350px] w-full bg-gray-100 shadow-inner" v-if="location">
+                            <div v-if="!map" class="w-full h-full flex items-center justify-center">
+                                <div class="text-center">
+                                    <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-customPrimaryColor mx-auto mb-4"></div>
+                                    <p class="text-gray-600">Loading interactive map...</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Provider -->
+                    <div class="bg-gradient-to-r from-green-50 to-blue-50 rounded-2xl shadow-lg p-8 border border-green-200">
+                        <h2 class="text-2xl font-bold text-gray-900 mb-6 flex items-center gap-3">
+
+                            About {{ providerName }}
+                        </h2>
+                        <div class="flex items-start gap-6">
+                            <div class="w-20 h-20 bg-gradient-to-br from-green-400 to-blue-500 rounded-2xl flex items-center justify-center shadow-lg">
+                                <span class="text-white font-bold text-2xl">{{ providerLogoText }}</span>
+                            </div>
+                            <div class="flex-1">
+                                <h4 class="text-2xl font-bold text-customPrimaryColor mb-2">{{ providerName }}</h4>
+                                <p class="text-gray-600 mb-4">Your trusted car rental company committed to quality service and customer satisfaction.</p>
+                                <div class="flex items-center gap-4 text-sm">
+                                    <div class="flex items-center gap-2 bg-green-100 px-3 py-1 rounded-full">
+                                        <div class="w-2 h-2 bg-green-500 rounded-full"></div>
+                                        <span class="text-green-800 font-medium">Quality Service</span>
+                                    </div>
+                                    <div class="flex items-center gap-2 bg-blue-100 px-3 py-1 rounded-full">
+                                        <div class="w-2 h-2 bg-blue-500 rounded-full"></div>
+                                        <span class="text-blue-800 font-medium">Trusted Partner</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Right Column: Booking Card -->
+                <div class="lg:col-span-1">
+                    <Card class="sticky top-4 shadow-2xl border-0 overflow-hidden">
+                        <div class="bg-gradient-to-r from-customPrimaryColor to-blue-700 p-6 text-white">
+                            <div class="flex items-center justify-between mb-4">
+                                <div class="flex-1 min-w-0">
+                                    <h3 class="text-xl font-bold truncate">{{ vehicle?.name }}</h3>
+                                    <span class="inline-block px-3 py-1 bg-white/20 backdrop-blur-sm rounded-full text-sm mt-2">{{ vehicle?.groupName || vehicle?.groupCode }}</span>
+                                </div>
+                                <div class="flex gap-2 ml-4">
+                                    <button @click="shareVehicle" class="p-2 bg-white/20 rounded-full transition-colors">
+                                        <img :src="ShareIcon" alt="Share" class="w-5 h-5" loading="lazy" />
+                                    </button>
+
+                                </div>
+                            </div>
+                            <p class="text-blue-100 text-sm">Powered by <span class="font-semibold text-white">{{ providerName }}</span></p>
+                        </div>
+
+                        <CardContent class="p-6">
+                            <div class="space-y-6">
+                                <!-- Vehicle Summary -->
+                                <div class="space-y-4">
+                                    <div class="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
+                                        <img :src="carIcon" alt="Car" class="w-5 h-5" loading="lazy" />
+                                        <span class="text-sm text-gray-700">
+                                            {{ vehicle?.transmission }} • {{ vehicle?.fuel }} • {{ vehicle?.adults }}+{{ vehicle?.children }} Seats
+                                        </span>
+                                    </div>
+                                    <div class="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
+                                        <img :src="mileageIcon" alt="Mileage" class="w-5 h-5" loading="lazy" />
+                                        <span class="text-sm text-gray-700">{{ vehicle?.mpg || 'N/A' }} MPG • Quality Service</span>
+                                    </div>
+                                </div>
+
+                                <!-- Location Info -->
+                                <div class="space-y-4">
+                                    <div class="flex items-start gap-3 p-4 bg-green-50 rounded-lg border border-green-200">
+                                        <img :src="pickupLocationIcon" alt="Pickup" class="w-5 h-5 mt-1" loading="lazy" />
+                                        <div class="flex-1">
+                                            <span class="text-sm font-medium text-green-800">Pickup Location</span>
+                                            <p class="font-semibold text-green-900">{{ filters.where || location?.address_1 }}</p>
+                                            <p class="text-sm text-green-700">{{ location?.address_city }}</p>
+                                            <p class="text-sm text-green-600 mt-1">{{ form.start_date }} at {{ form.start_time }}</p>
+                                        </div>
+                                    </div>
+                                    <div class="flex items-start gap-3 p-4 bg-blue-50 rounded-lg border border-blue-200">
+                                        <img :src="returnLocationIcon" alt="Return" class="w-5 h-5 mt-1" loading="lazy" />
+                                        <div class="flex-1">
+                                            <span class="text-sm font-medium text-blue-800">Return Location</span>
+                                            <p class="font-semibold text-blue-900">{{ dropoffLocation ? dropoffLocation.name : (filters.where || location?.name) }}</p>
+                                            <p class="text-sm text-blue-700">{{ dropoffLocation ? dropoffLocation.address_city : location?.address_city }}</p>
+                                            <p class="text-sm text-blue-600 mt-1">{{ form.end_date }} at {{ form.end_time }}</p>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Guarantee Banner -->
+                                <div class="relative h-12 bg-gradient-to-r from-blue-50 to-green-50 rounded-lg shadow-inner overflow-hidden border border-blue-200">
+                                    <div class="absolute left-0 top-0 h-full w-8 bg-gradient-to-r from-blue-50 to-transparent z-10"></div>
+                                    <div class="absolute right-0 top-0 h-full w-8 bg-gradient-to-l from-green-50 to-transparent z-10"></div>
+                                    <div class="marquee-wrapper overflow-hidden relative w-full h-12 flex items-center">
+                                        <div class="marquee-content flex absolute whitespace-nowrap animate-marquee">
+                                            <div class="flex items-center gap-3 px-6">
+                                                <img :src="carguaranteeIcon" alt="Guarantee" class="w-6 h-6 object-contain" loading="lazy" />
+                                                <p class="text-sm text-gray-800 font-medium">
+                                                    Vehicle Guarantee • <span class="text-blue-600 font-bold">{{ providerName }}</span> ensures your reservation
+                                                </p>
+                                            </div>
+                                            <div class="flex items-center gap-3 px-6">
+                                                <img :src="carguaranteeIcon" alt="Guarantee" class="w-6 h-6 object-contain" loading="lazy" />
+                                                <p class="text-sm text-gray-800 font-medium">
+                                                    Vehicle Guarantee • <span class="text-blue-600 font-bold">{{ providerName }}</span> ensures your reservation
+                                                </p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Date Selection -->
+                                <div class="space-y-4">
+                                    <div>
+                                        <label class="block text-sm font-semibold text-gray-700 mb-2">Pickup Date</label>
+                                        <VueDatepicker
+                                            v-model="form.start_date"
+                                            :min-date="minDate"
+                                            :max-date="maxPickupDate"
+                                            :day-class="isDateBooked"
+                                            :disabled-dates="getDisabledDates()"
+                                            @update:model-value="handleDateFrom"
+                                            placeholder="Select pickup date"
+                                            class="w-full"
+                                            :enable-time-picker="false"
+                                            :clearable="true"
+                                            :format="'yyyy-MM-dd'"
+                                            auto-apply
+                                        />
+                                    </div>
+                                    <div>
+                                        <label class="block text-sm font-semibold text-gray-700 mb-2">Return Date</label>
+                                        <VueDatepicker
+                                            v-model="form.end_date"
+                                            :min-date="minReturnDate"
+                                            :max-date="maxReturnDate"
+                                            :day-class="isDateBooked"
+                                            :disabled-dates="getDisabledDates()"
+                                            @update:model-value="handleDateTo"
+                                            placeholder="Select return date"
+                                            class="w-full"
+                                            :enable-time-picker="false"
+                                            :clearable="true"
+                                            :format="'yyyy-MM-dd'"
+                                            auto-apply
+                                        />
+                                    </div>
+                                    <div class="grid grid-cols-2 gap-3">
+                                        <div>
+                                            <label class="block text-sm font-semibold text-gray-700 mb-2">Pickup Time</label>
+                                            <select v-model="form.start_time" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-customPrimaryColor focus:border-transparent">
+                                                <option v-for="option in departureTimeOptions" :key="option" :value="option">
+                                                    {{ option }}
+                                                </option>
+                                            </select>
+                                        </div>
+                                        <div>
+                                            <label class="block text-sm font-semibold text-gray-700 mb-2">Return Time</label>
+                                            <select v-model="form.end_time" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-customPrimaryColor focus:border-transparent">
+                                                <option v-for="option in returnTimeOptions" :key="option" :value="option">
+                                                    {{ option }}
+                                                </option>
+                                            </select>
+                                        </div>
+                                    </div>
+                                </div>
+
+
+                                <!-- Price Summary -->
+                                <div v-if="form.start_date && form.end_date" class="p-6 bg-gradient-to-r from-green-50 to-blue-50 rounded-xl border border-green-200">
+                                    <div class="text-center">
+                                        <!-- Affiliate Discount Section -->
+                                        <div v-if="hasAffiliateDiscount" class="border-b border-blue-200 mb-3 pb-3">
+                                            <div class="flex items-center justify-center gap-2 mb-2">
+                                                <div class="w-2 h-2 bg-green-500 rounded-full"></div>
+                                                <p class="text-sm font-semibold text-green-700">
+                                                    🎉 Special Affiliate Discount Applied!
+                                                </p>
+                                            </div>
+                                            <div class="space-y-1 text-left">
+                                                <p class="text-sm text-gray-600">
+                                                    Original Price: <span class="line-through">{{ formatPrice(originalTotalPrice) }}</span>
+                                                </p>
+                                                <p class="text-sm text-green-600 font-semibold">
+                                                    Affiliate Discount ({{ affiliateData.discount_type === 'percentage' ? affiliateData.discount_value + '%' : formatPrice(affiliateData.discount_value) }}):
+                                                    -{{ formatPrice(affiliateDiscountAmount) }}
+                                                </p>
+                                                <p class="text-sm text-gray-500">
+                                                    From: {{ affiliateData.business_name }}
+                                                </p>
+                                            </div>
+                                        </div>
+
+                                        <p class="text-3xl font-bold text-gray-900 mb-1">{{ formatPrice(calculateTotalPrice) }}</p>
+                                        <p class="text-sm text-gray-600 mb-3">Total for {{ rentalDuration }} {{ rentalDuration === 1 ? 'day' : 'days' }}</p>
+                                        <div class="flex items-center justify-center gap-2 text-xs text-green-700">
+                                            <div class="w-2 h-2 bg-green-500 rounded-full"></div>
+                                            <span>Quality service choice</span>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Availability Check Button -->
+                                <Button v-if="availabilityChanged" @click="checkAvailability" :disabled="isCheckingAvailability" class="w-full bg-yellow-500 hover:bg-yellow-600 text-white py-3 font-semibold text-md rounded-xl shadow-lg transition-all duration-300">
+                                    <div class="flex items-center justify-center gap-2">
+                                        <span v-if="!isCheckingAvailability">Check Availability</span>
+                                        <span v-else>Checking...</span>
+                                    </div>
+                                </Button>
+
+                                <!-- Book Button -->
+                                <Button @click="proceedToPayment" :disabled="isBooking || availabilityChanged" class="w-full bg-gradient-to-r from-customPrimaryColor to-blue-700 hover:from-customPrimaryColor/90 hover:to-blue-700/90 text-white py-4 font-semibold text-lg rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-105">
+                                    <div class="flex items-center justify-center gap-2">
+                                        <span>Reserve Now</span>
+                                        <ChevronRight class="w-5 h-5" />
+                                    </div>
+                                </Button>
+
+                                <!-- Security Badge -->
+                                <div class="text-center">
+                                    <div class="flex flex-col items-center justify-center gap-3 p-3 bg-gray-50 rounded-lg">
+                                        <img :src="partnersIcon" alt="Security" class="" loading="lazy" />
+                                        <p class="text-sm text-gray-600 font-medium">Secure & Protected Booking</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </CardContent>
+                    </Card>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Warning Modal -->
+    <Dialog v-model:open="showWarningModal">
+        <DialogContent class="sm:max-w-md">
+            <DialogHeader>
+                <DialogTitle class="text-xl font-bold text-red-600">Access Restricted</DialogTitle>
+                <DialogDescription class="text-gray-600 mt-2">
+                    This booking interface is designed for customers. As a provider, you cannot proceed with vehicle reservations.
+                </DialogDescription>
+            </DialogHeader>
+            <div class="flex justify-end mt-6">
+                <Button @click="showWarningModal = false" class="bg-customPrimaryColor hover:bg-customPrimaryColor/90 text-white px-6 py-2 rounded-lg">
+                    Understood
+                </Button>
+            </div>
+        </DialogContent>
+    </Dialog>
+
+    <Footer />
+
+    <!-- Loader Overlay -->
+    <div v-if="isBooking" class="loader-overlay">
+        <Vue3Lottie :animation-data="universalLoader" :height="200" :width="200" />
+    </div>
+</template>
+
+<style scoped>
+.loader-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(0, 0, 0, 0.5);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 9999;
+}
+.bg-customPrimaryColor {
+    background-color: #153b4f;
+}
+
+.text-customPrimaryColor {
+    color: #153b4f;
+}
+
+.shadow-2xl {
+    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+}
+
+.rounded-2xl {
+    border-radius: 1rem;
+}
+
+.marker-pin {
+    width: 50px;
+    height: 30px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.custom-div-icon {
+    background: none;
+    border: none;
+}
+
+@keyframes pop {
+    0% { transform: scale(1); }
+    50% { transform: scale(1.2); }
+    100% { transform: scale(1); }
+}
+
+.pop-animation {
+    animation: pop 0.4s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+}
+
+@keyframes marquee {
+    0% { transform: translateX(0%); }
+    100% { transform: translateX(-50%); }
+}
+
+.marquee-content {
+    animation: marquee 20s linear infinite;
+    display: flex;
+}
+
+.marquee-wrapper:hover .marquee-content {
+    animation-play-state: paused;
+}
+
+/* Enhanced hover effects */
+.group:hover .group-hover\:scale-105 {
+    transform: scale(1.05);
+}
+
+.group:hover .group-hover\:scale-110 {
+    transform: scale(1.1);
+}
+
+/* Image loading skeleton animation */
+@keyframes skeleton-loading {
+    0% {
+        background-position: -200px 0;
+    }
+    100% {
+        background-position: calc(200px + 100%) 0;
+    }
+}
+
+.skeleton-loading {
+    background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+    background-size: 200px 100%;
+    animation: skeleton-loading 1.5s infinite;
+}
+
+/* Responsive improvements */
+@media (max-width: 768px) {
+    .text-4xl { font-size: 2.25rem; }
+    .text-3xl { font-size: 1.875rem; }
+    .text-2xl { font-size: 1.5rem; }
+    .text-xl { font-size: 1.25rem; }
+    .h-\[600px\] { height: 400px; }
+    .h-\[500px\] { height: 350px; }
+    .h-\[350px\] { height: 250px; }
+    .h-\[240px\] { height: 180px; }
+    .p-8 { padding: 1.5rem; }
+    .p-6 { padding: 1rem; }
+    .gap-12 { gap: 2rem; }
+    .gap-8 { gap: 1.5rem; }
+    .gap-6 { gap: 1rem; }
+}
+
+@media (max-width: 640px) {
+    .text-4xl { font-size: 2rem; }
+    .text-3xl { font-size: 1.75rem; }
+    .text-2xl { font-size: 1.375rem; }
+    .h-\[600px\] { height: 300px; }
+    .h-\[500px\] { height: 280px; }
+    .h-\[350px\] { height: 200px; }
+    .h-\[240px\] { height: 150px; }
+    .p-8 { padding: 1rem; }
+    .p-6 { padding: 0.75rem; }
+}
+
+/* Custom scrollbar for better UX */
+::-webkit-scrollbar {
+    width: 8px;
+}
+
+::-webkit-scrollbar-track {
+    background: #f1f1f1;
+    border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb {
+    background: #c1c1c1;
+    border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: #a8a8a8;
+}
+
+/* Focus styles for accessibility */
+button:focus,
+select:focus,
+input:focus {
+    outline: 2px solid #153b4f;
+    outline-offset: 2px;
+}
+
+/* Improved gradient backgrounds */
+.bg-gradient-to-r {
+    background-image: linear-gradient(to right, var(--tw-gradient-stops));
+}
+
+.from-customPrimaryColor {
+    --tw-gradient-from: #153b4f;
+    --tw-gradient-stops: var(--tw-gradient-from), var(--tw-gradient-to, rgba(21, 59, 79, 0));
+}
+
+.to-blue-700 {
+    --tw-gradient-to: #1d4ed8;
+}
+
+.from-green-50 {
+    --tw-gradient-from: #f0fdf4;
+    --tw-gradient-stops: var(--tw-gradient-from), var(--tw-gradient-to, rgba(240, 253, 244, 0));
+}
+
+.to-blue-50 {
+    --tw-gradient-to: #eff6ff;
+}
+
+/* Enhanced card shadows and interactions */
+.shadow-lg {
+    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+}
+
+.hover\:shadow-xl:hover {
+    box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+}
+
+/* Loading spinner animation */
+@keyframes spin {
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+.animate-spin {
+    animation: spin 1s linear infinite;
+}
+
+/* Backdrop blur support */
+.backdrop-blur-sm {
+    backdrop-filter: blur(4px);
+}
+
+/* Enhanced transition effects */
+.transition-all {
+    transition-property: all;
+    transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+    transition-duration: 300ms;
+}
+
+.transition-colors {
+    transition-property: color, background-color, border-color, text-decoration-color, fill, stroke;
+    transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+    transition-duration: 150ms;
+}
+
+.transition-transform {
+    transition-property: transform;
+    transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+    transition-duration: 150ms;
+}
+
+.transition-opacity {
+    transition-property: opacity;
+    transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+    transition-duration: 150ms;
+}
+
+/* Enhanced button hover effects */
+.transform {
+    transform: translateX(var(--tw-translate-x)) translateY(var(--tw-translate-y)) rotate(var(--tw-rotate)) skewX(var(--tw-skew-x)) scaleY(var(--tw-scale-y)) scaleX(var(--tw-scale-x));
+}
+
+.hover\:scale-105:hover {
+    --tw-scale-x: 1.05;
+    --tw-scale-y: 1.05;
+}
+
+.hover\:scale-110:hover {
+    --tw-scale-x: 1.1;
+    --tw-scale-y: 1.1;
+}
+
+/* Enhanced image optimization */
+img {
+    image-rendering: -webkit-optimize-contrast;
+    image-rendering: crisp-edges;
+}
+
+/* Dark mode support (if needed in the future) */
+@media (prefers-color-scheme: dark) {
+    /* Add dark mode styles here if needed */
+}
+
+/* High contrast mode support */
+@media (prefers-contrast: high) {
+    .border {
+        border-width: 2px;
+    }
+
+    .shadow-lg {
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.3), 0 2px 4px -1px rgba(0, 0, 0, 0.2);
+    }
+}
+
+/* Reduced motion support */
+@media (prefers-reduced-motion: reduce) {
+    .marquee-content {
+        animation: none;
+    }
+
+    .transition-all,
+    .transition-colors,
+    .transition-transform,
+    .transition-opacity {
+        transition: none;
+    }
+
+    .animate-spin {
+        animation: none;
+    }
+}
+</style>

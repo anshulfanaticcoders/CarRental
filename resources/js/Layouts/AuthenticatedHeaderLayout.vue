@@ -315,11 +315,15 @@ const changeLanguage = (newLocale) => {
         }
 
         // Handle blog post translations
-        if (pathParts.length > 2 && pathParts[2] === 'blog' && page.props.blog) {
+        if (pathParts.length > 3 && pathParts[3] === 'blog' && page.props.blog) {
             const blog = page.props.blog;
             const newTranslation = blog.translations.find(t => t.locale === newLocale);
             if (newTranslation && newTranslation.slug) {
-                router.visit(route('blog.show', { locale: newLocale, blog: newTranslation.slug }));
+                router.visit(route('blog.show', { locale: newLocale, country: page.props.country, blog: newTranslation.slug }));
+                return;
+            } else {
+                // If no translation, redirect to the blog index page for the new locale
+                router.visit(route('blog', { locale: newLocale, country: page.props.country }));
                 return;
             }
         }

@@ -318,30 +318,80 @@ class UpdateUnifiedLocationsCommand extends Command
         }
 
         $locations = [];
+
+        // Log the response for debugging
+        $this->comment('OK Mobility XML Response (first 500 chars): ' . substr($xmlResponse, 0, 500));
+
         $xmlObject = simplexml_load_string($xmlResponse);
         if ($xmlObject !== false) {
+            // Register the correct namespace based on the actual response
+            $xmlObject->registerXPathNamespace('soap', 'http://schemas.xmlsoap.org/soap/envelope/');
             $xmlObject->registerXPathNamespace('get', 'http://www.OKGroup.es/RentaCarWebService/getWSDL');
+
+            // Try different XPath expressions to find the stations
             $stations = $xmlObject->xpath('//get:RentalStation');
+
+            if (empty($stations)) {
+                // Try alternative paths
+                $stations = $xmlObject->xpath('//soap:Body//get:RentalStation');
+                $this->comment('Found stations with alternative path: ' . count($stations));
+            }
+
+            if (empty($stations)) {
+                // Try without namespace
+                $stations = $xmlObject->xpath('//RentalStation');
+                $this->comment('Found stations without namespace: ' . count($stations));
+            }
+
+            if (empty($stations)) {
+                $this->error('No OK Mobility stations found in XML response');
+                $this->error('Full XML response: ' . $xmlResponse);
+                return [];
+            }
+
+            $this->info('Found ' . count($stations) . ' OK Mobility stations');
 
             foreach ($stations as $station) {
                 $stationData = json_decode(json_encode($station), true);
+
+                // Handle both array and object formats with null checking
+                $stationId = is_array($stationData['StationID']) ? ($stationData['StationID'][0] ?? '') : ($stationData['StationID'] ?? '');
+                $stationName = is_array($stationData['Station']) ? ($stationData['Station'][0] ?? '') : ($stationData['Station'] ?? '');
+                $city = is_array($stationData['City']) ? ($stationData['City'][0] ?? '') : ($stationData['City'] ?? '');
+                $countryId = is_array($stationData['CountryID']) ? ($stationData['CountryID'][0] ?? '') : ($stationData['CountryID'] ?? '');
+
+                // Handle Latitude/Longitude which might not exist
+                $latitude = 0;
+                if (isset($stationData['Latitude'])) {
+                    $latitude = is_array($stationData['Latitude']) ? (float) ($stationData['Latitude'][0] ?? 0) : (float) $stationData['Latitude'];
+                }
+
+                $longitude = 0;
+                if (isset($stationData['Longitude'])) {
+                    $longitude = is_array($stationData['Longitude']) ? (float) ($stationData['Longitude'][0] ?? 0) : (float) $stationData['Longitude'];
+                }
+
                 $locations[] = [
-                    'id' => 'okmobility_' . $stationData['StationID'],
-                    'label' => $stationData['Station'],
-                    'below_label' => implode(', ', array_filter([$stationData['City'], $stationData['CountryID']])),
-                    'location' => $stationData['Station'],
-                    'city' => $stationData['City'],
+                    'id' => 'okmobility_' . $stationId,
+                    'label' => $stationName,
+                    'below_label' => implode(', ', array_filter([$city, $countryId])),
+                    'location' => $stationName,
+                    'city' => $city,
                     'state' => null,
-                    'country' => $stationData['CountryID'],
-                    'latitude' => (float) ($stationData['Latitude'] ?? 0),
-                    'longitude' => (float) ($stationData['Longitude'] ?? 0),
+                    'country' => $countryId,
+                    'latitude' => (float) $latitude,
+                    'longitude' => (float) $longitude,
                     'source' => 'okmobility',
                     'matched_field' => 'location',
-                    'provider_location_id' => $stationData['StationID'],
+                    'provider_location_id' => $stationId,
                 ];
             }
+        } else {
+            $this->error('Failed to parse OK Mobility XML response');
+            $this->error('XML Response: ' . $xmlResponse);
         }
 
+        $this->info('Processed ' . count($locations) . ' OK Mobility locations');
         return $locations;
     }
 }
