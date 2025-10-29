@@ -32,7 +32,7 @@ createInertiaApp({
         // Create a separate Vue app for the popup and mount it to a new div
         const popupDiv = document.createElement('div');
         document.body.appendChild(popupDiv);
-        createApp(AffiliateSignupPopup).mount(popupDiv);
+        // createApp(AffiliateSignupPopup).mount(popupDiv);
 
         return vueApp;
     },
