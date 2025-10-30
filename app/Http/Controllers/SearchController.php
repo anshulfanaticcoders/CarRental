@@ -506,9 +506,11 @@ class SearchController extends Controller
                                     $vehicleData = json_decode(json_encode($vehicle), true);
 
                                     // Extract vehicle data with proper fallbacks
-                                    $groupName = $vehicleData['Group_Name'] ?? 'Unknown Vehicle';
-                                    $brandName = explode(' ', $groupName)[0] ?? 'Unknown';
+                                    $groupFullName = $vehicleData['Group_Name'] ?? 'Unknown Vehicle';
                                     $groupId = $vehicleData['GroupID'] ?? 'unknown';
+
+                                    // Use the Group_Name as the vehicle name (what OK Mobility provides)
+                                    $vehicleName = $groupFullName;
                                     $token = $vehicleData['token'] ?? 'unknown';
 
                                     // Calculate price per day using OK Mobility's dayValue field
@@ -535,29 +537,30 @@ class SearchController extends Controller
                                     $okMobilityVehicles->push((object) [
                                         'id' => 'okmobility_' . $groupId . '_' . md5($token),
                                         'source' => 'okmobility',
-                                        'brand' => $brandName,
-                                        'model' => $groupName,
-                                        'image' => !empty($vehicleData['imageURL']) ? $vehicleData['imageURL'] : '/images/default-vehicle.jpg',
+                                        'brand' => $vehicleName, // Use the full Group_Name as provided by API
+                                        'model' => $vehicleName, // Same as brand since OK Mobility provides full descriptive name
+                                        'sipp_code' => $vehicleData['SIPP'] ?? null,
+                                        'image' => !empty($vehicleData['imageURL']) ? $vehicleData['imageURL'] : $this->getOkMobilityImageUrl($groupId),
                                         'price_per_day' => $pricePerDay,
                                         'price_per_week' => $pricePerDay * 7, // Calculate weekly price
                                         'price_per_month' => $pricePerDay * 30, // Calculate monthly price
                                         'currency' => 'EUR', // OK Mobility uses EUR
-                                        'transmission' => 'Manual', // OK Mobility doesn't provide this in getMultiplePrices
-                                        'fuel' => 'Petrol', // OK Mobility doesn't provide this in getMultiplePrices
-                                        'seating_capacity' => 5, // Default for OK Mobility
+                                        // Don't include transmission, fuel, seating_capacity as OK Mobility doesn't provide these
                                         'mileage' => $mileage,
                                         'latitude' => (float) $locationLat,
                                         'longitude' => (float) $locationLng,
                                         'full_vehicle_address' => $locationAddress,
                                         'provider_pickup_id' => $providerLocationId,
+                                        'station' => $vehicleData['Station'] ?? 'OK Mobility Station',
+                                        'week_day_open' => $vehicleData['weekDayOpen'] ?? null,
+                                        'week_day_close' => $vehicleData['weekDayClose'] ?? null,
+                                        'preview_value' => isset($vehicleData['previewValue']) && is_numeric($vehicleData['previewValue']) ? (float) $vehicleData['previewValue'] : null,
+                                        'total_day_value_with_tax' => isset($vehicleData['totalDayValueWithTax']) && is_numeric($vehicleData['totalDayValueWithTax']) ? (float) $vehicleData['totalDayValueWithTax'] : null,
                                         'benefits' => (object) [
-                                            'cancellation_available_per_day' => true,
+                                            // Only include mileage info - OK Mobility doesn't provide cancellation, min age, or fuel policy in getMultiplePrices
                                             'limited_km_per_day' => $vehicleData['kmsIncluded'] !== 'true',
-                                            'minimum_driver_age' => 21, // Default minimum age for OK Mobility
-                                            'fuel_policy' => 'Full-to-Full', // Default for OK Mobility
                                         ],
-                                        'review_count' => 0,
-                                        'average_rating' => 0,
+                                        // Don't include review_count and average_rating as OK Mobility doesn't provide these
                                         'products' => [[
                                             'type' => 'BAS',
                                             'total' => (string) $pricePerDay,
@@ -569,6 +572,8 @@ class SearchController extends Controller
                                         'insurance_options' => [],
                                         'ok_mobility_token' => $token,
                                         'ok_mobility_group_id' => $groupId,
+                                        'extras_required' => !empty($vehicleData['extrasRequired']) ? explode(',', $vehicleData['extrasRequired']) : [],
+                                        'extras_available' => !empty($vehicleData['extrasAvailable']) ? explode(',', $vehicleData['extrasAvailable']) : [],
                                     ]);
                                 }
                             } else {
@@ -1162,5 +1167,15 @@ class SearchController extends Controller
         }
 
         return response()->json($locations);
+    }
+
+    /**
+     * Generate OK Mobility vehicle image URL based on GroupID
+     * OK Mobility uses pattern: /alquilar/images/grupos/{groupid}.png
+     */
+    private function getOkMobilityImageUrl($groupId): string
+    {
+        // Use the actual OK Mobility image pattern from their website
+        return "https://www.okmobility.com/alquilar/images/grupos/{$groupId}.png";
     }
 }

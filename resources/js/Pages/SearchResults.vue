@@ -624,6 +624,41 @@ const resetFilters = () => {
     submitFilters();
 };
 
+const createPopupContent = (vehicle, primaryImage, popupPrice, detailRoute) => {
+    if (vehicle.source === 'okmobility') {
+        return `
+            <div class="text-center popup-content">
+                <img src="${primaryImage}" alt="${vehicle.brand} ${vehicle.model}" class="popup-image !w-40 !h-20" />
+                <p class="font-semibold !w-40">${vehicle.brand} ${vehicle.model}</p>
+                ${vehicle.sipp_code ? `<p class="!w-40 text-sm">SIPP: ${vehicle.sipp_code}</p>` : ''}
+                <p class="!w-40">${vehicle.full_vehicle_address || ''}</p>
+                ${vehicle.station ? `<p class="!w-40 text-sm"><strong>Station:</strong> ${vehicle.station}</p>` : ''}
+                <p class="!w-40 font-semibold">Price: ${popupPrice}</p>
+                <a href="${detailRoute}"
+                   class="text-blue-500 hover:text-blue-700 block mt-2"
+                   onclick="event.preventDefault(); window.location.href = this.href;">
+                    View Details
+                </a>
+            </div>
+        `;
+    } else {
+        return `
+            <div class="text-center popup-content">
+                <img src="${primaryImage}" alt="${vehicle.brand} ${vehicle.model}" class="popup-image !w-40 !h-20" />
+                <p class="rating !w-40">${vehicle.average_rating ? vehicle.average_rating.toFixed(1) : '0.0'} ★ (${vehicle.review_count} reviews)</p>
+                <p class="font-semibold !w-40">${vehicle.brand} ${vehicle.model}</p>
+                <p class="!w-40">${vehicle.full_vehicle_address || ''}</p>
+                <p class="!w-40">Price: ${popupPrice}</p>
+                <a href="${detailRoute}"
+                   class="text-blue-500 hover:text-blue-700"
+                   onclick="event.preventDefault(); window.location.href = this.href;">
+                    View Details
+                </a>
+            </div>
+        `;
+    }
+};
+
 const addMarkers = () => {
     markers.forEach((marker) => marker.remove());
     markers = [];
@@ -695,20 +730,7 @@ const addMarkers = () => {
         const marker = L.marker([displayLat, displayLng], {
             icon: createCustomIcon(vehicle),
             pane: "markers",
-        }).bindPopup(`
-            <div class="text-center popup-content">
-                <img src="${primaryImage}" alt="${vehicle.brand} ${vehicle.model}" class="popup-image !w-40 !h-20" />
-                <p class="rating !w-40">${vehicle.average_rating ? vehicle.average_rating.toFixed(1) : '0.0'} ★ (${vehicle.review_count} reviews)</p>
-                <p class="font-semibold !w-40">${vehicle.brand} ${vehicle.model}</p>
-                <p class="!w-40">${vehicle.full_vehicle_address || ''}</p>
-                <p class="!w-40">Price: ${popupPrice}</p>
-                <a href="${detailRoute}"
-                   class="text-blue-500 hover:text-blue-700"
-                   onclick="event.preventDefault(); window.location.href = this.href;">
-                    View Details
-                </a>
-            </div>
-        `);
+        }).bindPopup(createPopupContent(vehicle, primaryImage, popupPrice, detailRoute));
 
         map.addLayer(marker);
         markers.push(marker);
@@ -804,20 +826,7 @@ const addMobileMarkers = () => {
         const marker = L.marker([displayLat, displayLng], {
             icon: createCustomIcon(vehicle),
             pane: "markers",
-        }).bindPopup(`
-            <div class="text-center popup-content">
-                <img src="${primaryImage}" alt="${vehicle.brand} ${vehicle.model}" class="popup-image !w-40 !h-20" />
-                <p class="rating !w-40">${vehicle.average_rating ? vehicle.average_rating.toFixed(1) : '0.0'} ★ (${vehicle.review_count} reviews)</p>
-                <p class="font-semibold !w-40">${vehicle.brand} ${vehicle.model}</p>
-                <p class="!w-40">${vehicle.full_vehicle_address || ''}</p>
-                <p class="!w-40">Price: ${popupPrice}</p>
-                <a href="${detailRoute}"
-                   class="text-blue-500 hover:text-blue-700"
-                   onclick="event.preventDefault(); window.location.href = this.href;">
-                    View Details
-                </a>
-            </div>
-        `);
+        }).bindPopup(createPopupContent(vehicle, primaryImage, popupPrice, detailRoute));
 
         mobileMap.addLayer(marker);
         mobileMarkers.push(marker);
@@ -1808,7 +1817,12 @@ watch(
                                     class="w-full h-[250px] object-cover rounded-tl-lg rounded-tr-lg max-[768px]:h-[200px]" loading="lazy" />
                                 <span
                                     class="bg-[#f5f5f5] ml-[1rem] inline-block px-8 py-2 text-center rounded-[40px] max-[768px]:text-[0.95rem]">
-                                    {{ vehicle.model }}
+                                    <template v-if="vehicle.source === 'okmobility'">
+                                        {{ vehicle.sipp_code || 'N/A' }}
+                                    </template>
+                                    <template v-else>
+                                        {{ vehicle.model }}
+                                    </template>
                                 </span>
                             </div>
 
@@ -1818,7 +1832,7 @@ watch(
                                 </h5>
 
                                 <!-- Add Reviews Here -->
-                                <div class="reviews mt-[1rem] flex gap-2 items-center">
+                                <div class="reviews mt-[1rem] flex gap-2 items-center" v-if="vehicle.source !== 'okmobility'">
                                     <div class="flex items-center gap-1">
                                         <img v-for="n in 5" :key="n" :src="getStarIcon(
                                             vehicle.review_count > 0
@@ -1843,6 +1857,19 @@ watch(
                                     <span class="text-[1rem] text-gray-500" v-else>No reviews</span>
                                 </div>
 
+                                <!-- Show OK Mobility specific info -->
+                                <div class="mt-[1rem] text-sm text-gray-600" v-if="vehicle.source === 'okmobility'">
+                                    <div v-if="vehicle.station">
+                                        <strong>Station:</strong> {{ vehicle.station }}
+                                    </div>
+                                    <div v-if="vehicle.week_day_open && vehicle.week_day_close">
+                                        <strong>Hours:</strong> {{ vehicle.week_day_open }} - {{ vehicle.week_day_close }}
+                                    </div>
+                                    <div v-if="vehicle.extras_required && vehicle.extras_required.length > 0">
+                                        <strong>Required Extras:</strong> {{ vehicle.extras_required.join(', ') }}
+                                    </div>
+                                </div>
+
                                  <div>
                                     <span class="italic font-medium">{{vehicle.full_vehicle_address}}</span>
                                  </div>
@@ -1850,18 +1877,29 @@ watch(
                                 <div class="car_short_info mt-[1rem] flex gap-3">
                                     <img :src="carIcon" alt="" loading="lazy" />
                                     <div class="features">
-                                        <span class="capitalize text-[1.15rem] max-[768px]:text-[1rem]">{{
-                                            vehicle.transmission }} .
-                                            {{ vehicle.source === 'greenmotion' ? vehicle.fuel : vehicle.fuel }} .
-                                            {{ vehicle.seating_capacity }}
-                                            Seats</span>
+                                        <span class="capitalize text-[1.15rem] max-[768px]:text-[1rem]">
+                                            <template v-if="vehicle.source === 'okmobility'">
+                                                SIPP: {{ vehicle.sipp_code || 'N/A' }}
+                                            </template>
+                                            <template v-else>
+                                                {{ vehicle.transmission }} .
+                                                {{ vehicle.source === 'greenmotion' ? vehicle.fuel : vehicle.fuel }} .
+                                                {{ vehicle.seating_capacity }} Seats
+                                            </template>
+                                        </span>
                                     </div>
                                 </div>
                                 <div class="extra_details flex gap-5 mt-[1rem] items-center">
-                                    <div class="col flex gap-3">
+                                    <div class="col flex gap-3" v-if="vehicle.source !== 'okmobility'">
                                         <img :src="mileageIcon" alt="" loading="lazy" /><span
                                             class="text-[1.15rem] max-[768px]:text-[0.95rem]">
                                             {{ vehicle.source === 'greenmotion' ? vehicle.mileage + ' MPG' : vehicle.mileage + ' km/L' }}</span>
+                                    </div>
+                                    <!-- OK Mobility mileage display -->
+                                    <div class="col flex gap-3" v-else-if="vehicle.source === 'okmobility' && vehicle.mileage === 'Unlimited'">
+                                        <img :src="mileageIcon" alt="" loading="lazy" /><span
+                                            class="text-[1.15rem] max-[768px]:text-[0.95rem]">
+                                            Unlimited mileage</span>
                                     </div>
                                     <!-- <div class="col flex gap-3" v-if="vehicle.distance_in_km !== undefined">
                                         <img :src="walkIcon" alt="" /><span
@@ -1912,6 +1950,7 @@ watch(
 
                                     <!-- Mileage information based on the selected package type -->
                                     <span v-if="
+                                        vehicle.source !== 'okmobility' &&
                                         vehicle.benefits &&
                                         !vehicle.benefits.limited_km_per_day
                                     " class="flex gap-3 items-center text-[12px]">
@@ -1919,6 +1958,7 @@ watch(
                                         mileage
                                     </span>
                                     <span v-else-if="
+                                        vehicle.source !== 'okmobility' &&
                                         vehicle.benefits &&
                                         vehicle.benefits.limited_km_per_day
                                     " class="flex gap-3 items-center text-[12px]">
@@ -1932,10 +1972,18 @@ watch(
                                     <span v-else-if="vehicle.source === 'greenmotion' && !vehicle.benefits?.limited_km_per_day" class="flex gap-3 items-center text-[12px]">
                                         <img :src="check" alt="" loading="lazy" />Unlimited mileage
                                     </span>
+                                    <!-- OK Mobility mileage info -->
+                                    <span v-else-if="vehicle.source === 'okmobility' && vehicle.benefits?.limited_km_per_day === false" class="flex gap-3 items-center text-[12px]">
+                                        <img :src="check" alt="" loading="lazy" />Unlimited mileage
+                                    </span>
+                                    <span v-else-if="vehicle.source === 'okmobility' && vehicle.benefits?.limited_km_per_day === true" class="flex gap-3 items-center text-[12px]">
+                                        <img :src="check" alt="" loading="lazy" />Limited mileage
+                                    </span>
 
 
                                     <!-- Additional cost per km if applicable -->
                                     <span v-if="
+                                        vehicle.source !== 'okmobility' &&
                                         vehicle.benefits &&
                                         vehicle.benefits.price_per_km_per_day
                                     " class="flex gap-3 items-center text-[12px]">
@@ -1945,6 +1993,7 @@ watch(
                                         }}/km extra above limit
                                     </span>
                                     <span v-else-if="
+                                        vehicle.source !== 'okmobility' &&
                                         vehicle.benefits &&
                                         vehicle.benefits.price_per_km_per_week
                                     " class="flex gap-3 items-center text-[12px]">
@@ -1954,6 +2003,7 @@ watch(
                                         }}/km extra above limit
                                     </span>
                                     <span v-else-if="
+                                        vehicle.source !== 'okmobility' &&
                                         vehicle.benefits &&
                                         vehicle.benefits.price_per_km_per_month
                                     " class="flex gap-3 items-center text-[12px]">
@@ -1977,7 +2027,7 @@ watch(
                                     <span v-else-if="vehicle.source === 'greenmotion' && vehicle.benefits?.minimum_driver_age" class="flex gap-3 items-center text-[12px]">
                                         <img :src="check" alt="" loading="lazy" />Min age: {{ vehicle.benefits.minimum_driver_age }} years
                                     </span>
-                                    <span v-if="vehicle.source === 'greenmotion' && vehicle.benefits?.fuel_policy" class="flex gap-3 items-center text-[12px]">
+                                    <span v-else-if="vehicle.source === 'greenmotion' && vehicle.benefits?.fuel_policy" class="flex gap-3 items-center text-[12px]">
                                         <img :src="check" alt="" loading="lazy" />Fuel Policy: {{ vehicle.benefits.fuel_policy }}
                                     </span>
                                 </div>

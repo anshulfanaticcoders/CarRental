@@ -69,8 +69,7 @@ class OkMobilityService
         try {
             Log::info('OK Mobility API Request (getMultiplePrices): ' . $xmlRequest);
 
-            $response = Http::timeout(120) // Increased timeout to 120 seconds for slow test environment
-                ->withHeaders([
+            $response = Http::withHeaders([
                     'Content-Type' => 'application/soap+xml; charset=utf-8',
                     'SOAPAction' => 'http://tempuri.org/getMultiplePrices',
                 ])
@@ -149,8 +148,7 @@ class OkMobilityService
         try {
             Log::info('OK Mobility API Request (createReservation): ' . $xmlRequest);
 
-            $response = Http::timeout(120) // Increased timeout to 120 seconds for slow test environment
-                ->withHeaders([
+            $response = Http::withHeaders([
                     'Content-Type' => 'application/soap+xml; charset=utf-8',
                     'SOAPAction' => 'http://tempuri.org/createReservation',
                 ])
@@ -198,8 +196,7 @@ class OkMobilityService
         try {
             Log::info('OK Mobility API Request (getStations): ' . $xmlRequest);
 
-            $response = Http::timeout(120) // Increased timeout to 120 seconds for slow test environment
-                ->withHeaders([
+            $response = Http::withHeaders([
                     'Content-Type' => 'application/soap+xml; charset=utf-8',
                     'SOAPAction' => 'http://tempuri.org/getStations',
                 ])

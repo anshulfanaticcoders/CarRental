@@ -82,7 +82,7 @@ class OkMobilityController extends Controller
                     'name' => $vehicleData['Group_Name'] ?? 'Unknown Vehicle',
                     'brand' => 'OK Mobility',
                     'model' => $vehicleData['Group_Name'] ?? 'Unknown Vehicle',
-                    'image' => $vehicleData['imageURL'] ?? '/default-vehicle.png',
+                    'image' => $vehicleData['imageURL'] ?? '/default-image.png',
                     'category' => $vehicleData['Group_Name'] ?? 'Unknown',
                     'transmission' => 'Manual', // OK Mobility doesn't provide this in getMultiplePrices
                     'fuel' => 'Petrol', // OK Mobility doesn't provide this in getMultiplePrices
