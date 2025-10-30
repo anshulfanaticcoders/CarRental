@@ -426,7 +426,7 @@ const fetchDropoffLocations = async (provider, locationId) => {
   if (!provider || !locationId) return;
   try {
     const response = await axios.get(`/api/${provider}/dropoff-locations/${locationId}`);
-    let dropoffs = response.data;
+    let dropoffs = response.data.locations || response.data;
     if (selectedPickupLocation.value) {
         // Ensure pickup location is not already in the list before adding
         const pickupExists = dropoffs.some(loc => loc.unified_location_id === selectedPickupLocation.value.unified_location_id);

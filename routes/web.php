@@ -70,6 +70,7 @@ use App\Http\Controllers\UserDocumentController;
 use App\Http\Controllers\VehicleController;
 use App\Http\Controllers\GreenMotionController;
 use App\Http\Controllers\GreenMotionBookingController; // Import the new GreenMotionBookingController
+use App\Http\Controllers\OkMobilityController; // Import the OkMobilityController
 use App\Http\Controllers\AdminProfileController; // Import the AdminProfileController
 use App\Http\Controllers\Affiliate\AffiliateBusinessController; // Import the AffiliateBusinessController
 use App\Http\Controllers\Admin\AffiliateBusinessModelController; // Import the AffiliateBusinessModelController
@@ -895,6 +896,9 @@ Route::group([
     // GreenMotion Cars Page
     Route::get('/green-motion-cars', [GreenMotionController::class, 'showGreenMotionCars'])->name('green-motion-cars');
 
+    // OK Mobility Cars Page
+    Route::get('/ok-mobility-cars', [OkMobilityController::class, 'showOkMobilityCars'])->name('ok-mobility-cars');
+
     // GreenMotion Booking Page
     Route::get('/green-motion-booking/{id}/checkout', [GreenMotionController::class, 'showGreenMotionBookingPage'])
         ->where('id', '[0-9]+') // Ensure ID is numeric
@@ -908,12 +912,15 @@ Route::group([
     Route::post('/green-motion-car/check-availability', [GreenMotionController::class, 'checkAvailability'])->name('green-motion-car.check-availability');
 
     // OK Mobility Single Car Page
-    Route::get('/ok-mobility-car/{id}', [OkMobilityBookingController::class, 'showVehicleDetails'])
+    Route::get('/ok-mobility-car/{id}', [OkMobilityController::class, 'showOkMobilityCar'])
         ->name('ok-mobility-car.show');
 
     // OK Mobility Booking Page
-    Route::get('/ok-mobility-booking/{id}/checkout', [OkMobilityBookingController::class, 'showBookingPage'])
+    Route::get('/ok-mobility-booking/{id}/checkout', [OkMobilityController::class, 'showOkMobilityBookingPage'])
         ->name('ok-mobility-booking.checkout');
+
+    // OK Mobility Check Availability
+    Route::post('/ok-mobility-car/check-availability', [OkMobilityController::class, 'checkAvailability'])->name('ok-mobility-car.check-availability');
    
 }); // End of locale group
 

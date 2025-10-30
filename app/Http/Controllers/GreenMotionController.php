@@ -976,11 +976,21 @@ class GreenMotionController extends Controller
         $allLocations = json_decode(File::get($locationsFilePath), true);
         $dropoffLocations = collect($allLocations)->whereIn('greenmotion_location_id', $dropoffLocationIds)->values()->all();
 
-        return response()->json($dropoffLocations);
+        return response()->json([
+            'locations' => $dropoffLocations
+        ]);
     }
 
     public function getDropoffLocationsForProvider(Request $request, $provider, $location_id)
     {
+        // Handle OK Mobility - it's one-way rental only, no dropoff locations
+        if ($provider === 'okmobility') {
+            return response()->json([
+                'locations' => [],
+                'message' => 'OK Mobility is one-way rental only. Dropoff location is the same as pickup location.'
+            ]);
+        }
+
         try {
             $this->greenMotionService->setProvider($provider);
         } catch (\Exception $e) {
@@ -1032,7 +1042,9 @@ class GreenMotionController extends Controller
         })->values()->all();
 
 
-        return response()->json($dropoffLocations);
+        return response()->json([
+            'locations' => $dropoffLocations
+        ]);
     }
 
     public function checkAvailability(Request $request)

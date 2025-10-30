@@ -318,6 +318,7 @@ class SearchController extends Controller
 
         // --- Provider Vehicle Fetching Logic ---
         $providerVehicles = collect();
+        $okMobilityVehicles = collect(); // Separate collection for OK Mobility vehicles
         $providerName = $validated['provider'] ?? null;
         $providerLocationId = $validated['provider_pickup_id'] ?? null;
         $locationLat = $validated['latitude'] ?? null;
@@ -365,6 +366,8 @@ class SearchController extends Controller
             } else {
                 $providersToFetch[] = $providerName;
             }
+
+            Log::info('Providers to fetch: ' . json_encode($providersToFetch));
 
             foreach ($providersToFetch as $providerToFetch) {
                 if ($providerToFetch === 'greenmotion' || $providerToFetch === 'usave') {
@@ -463,26 +466,41 @@ class SearchController extends Controller
                     }
                 } elseif ($providerToFetch === 'okmobility') {
                     try {
+                        Log::info('Attempting to fetch OK Mobility vehicles for location ID: ' . $providerLocationId);
+                        Log::info('Search params: ', [
+                            'pickup_id' => $providerLocationId,
+                            'date_from' => $validated['date_from'],
+                            'start_time' => $validated['start_time'] ?? '09:00',
+                            'date_to' => $validated['date_to'],
+                            'end_time' => $validated['end_time'] ?? '09:00'
+                        ]);
+
                         $okMobilityResponse = $this->okMobilityService->getVehicles(
                             $providerLocationId,
-                            $validated['dropoff_location_id'] ?? $providerLocationId,
+                            $providerLocationId, // OK Mobility is one-way rental only
                             $validated['date_from'],
                             $validated['start_time'] ?? '09:00',
                             $validated['date_to'],
                             $validated['end_time'] ?? '09:00'
                         );
 
+                        Log::info('OK Mobility API response received: ' . ($okMobilityResponse ? 'SUCCESS' : 'NULL/EMPTY'));
+
                         if ($okMobilityResponse) {
                             libxml_use_internal_errors(true);
                             $xmlObject = simplexml_load_string($okMobilityResponse);
 
                             if ($xmlObject !== false) {
+                                Log::info('OK Mobility XML parsed successfully');
                                 // Register the correct namespace for OK Mobility
                                 $xmlObject->registerXPathNamespace('ns', 'http://tempuri.org/');
 
                                 // Try both possible XPath patterns
-                                $vehicles = $xmlObject->xpath('//ns:getMultiplePricesResult/ns:getMultiplePrice') ?:
+                                $vehicles = $xmlObject->xpath('//get:getMultiplePrice') ?:
+                                          $xmlObject->xpath('//getMultiplePricesResult/getMultiplePrice') ?:
                                           $xmlObject->xpath('//ns:getMultiplePrice');
+
+                                Log::info('OK Mobility vehicles found in XML: ' . count($vehicles));
 
                                 foreach ($vehicles as $vehicle) {
                                     $vehicleData = json_decode(json_encode($vehicle), true);
@@ -493,10 +511,10 @@ class SearchController extends Controller
                                     $groupId = $vehicleData['GroupID'] ?? 'unknown';
                                     $token = $vehicleData['token'] ?? 'unknown';
 
-                                    // Calculate price per day
+                                    // Calculate price per day using OK Mobility's dayValue field
                                     $pricePerDay = 0;
-                                    if (isset($vehicleData['totalDayValueWithTax']) && is_numeric($vehicleData['totalDayValueWithTax'])) {
-                                        $pricePerDay = (float) $vehicleData['totalDayValueWithTax'];
+                                    if (isset($vehicleData['dayValue']) && is_numeric($vehicleData['dayValue'])) {
+                                        $pricePerDay = (float) $vehicleData['dayValue'];
                                     }
 
                                     // Extract mileage information
@@ -514,19 +532,19 @@ class SearchController extends Controller
                                         }
                                     }
 
-                                    $providerVehicles->push((object) [
+                                    $okMobilityVehicles->push((object) [
                                         'id' => 'okmobility_' . $groupId . '_' . md5($token),
                                         'source' => 'okmobility',
                                         'brand' => $brandName,
                                         'model' => $groupName,
-                                        'image' => $vehicleData['imageURL'] ?? '/default-vehicle.png',
+                                        'image' => !empty($vehicleData['imageURL']) ? $vehicleData['imageURL'] : '/images/default-vehicle.jpg',
                                         'price_per_day' => $pricePerDay,
                                         'price_per_week' => $pricePerDay * 7, // Calculate weekly price
                                         'price_per_month' => $pricePerDay * 30, // Calculate monthly price
                                         'currency' => 'EUR', // OK Mobility uses EUR
-                                        'transmission' => $vehicleData['Transmission'] ?? 'Unknown',
-                                        'fuel' => $vehicleData['Fuel'] ?? 'Unknown',
-                                        'seating_capacity' => (int) ($vehicleData['Seats'] ?? 4),
+                                        'transmission' => 'Manual', // OK Mobility doesn't provide this in getMultiplePrices
+                                        'fuel' => 'Petrol', // OK Mobility doesn't provide this in getMultiplePrices
+                                        'seating_capacity' => 5, // Default for OK Mobility
                                         'mileage' => $mileage,
                                         'latitude' => (float) $locationLat,
                                         'longitude' => (float) $locationLng,
@@ -535,8 +553,8 @@ class SearchController extends Controller
                                         'benefits' => (object) [
                                             'cancellation_available_per_day' => true,
                                             'limited_km_per_day' => $vehicleData['kmsIncluded'] !== 'true',
-                                            'minimum_driver_age' => (int) ($vehicleData['MinAge'] ?? 21),
-                                            'fuel_policy' => $vehicleData['FuelPolicy'] ?? 'Unknown',
+                                            'minimum_driver_age' => 21, // Default minimum age for OK Mobility
+                                            'fuel_policy' => 'Full-to-Full', // Default for OK Mobility
                                         ],
                                         'review_count' => 0,
                                         'average_rating' => 0,
@@ -561,6 +579,8 @@ class SearchController extends Controller
                                 libxml_clear_errors();
                             }
                         }
+
+                        Log::info('OK Mobility vehicles added to collection: ' . $okMobilityVehicles->count());
                     } catch (\Exception $e) {
                         Log::error("Error fetching OK Mobility vehicles: " . $e->getMessage(), [
                             'provider_location_id' => $providerLocationId,
@@ -588,7 +608,25 @@ class SearchController extends Controller
             return true;
         });
 
-        $combinedVehicles = $internalVehiclesCollection->merge($filteredProviderVehicles);
+        // Filter OK Mobility vehicles separately
+        $filteredOkMobilityVehicles = $okMobilityVehicles->filter(function ($vehicle) use ($validated) {
+            if (!empty($validated['seating_capacity']) && $vehicle->seating_capacity != $validated['seating_capacity']) return false;
+            if (!empty($validated['brand']) && strcasecmp($vehicle->brand, $validated['brand']) != 0) return false;
+            if (!empty($validated['transmission']) && strcasecmp($vehicle->transmission, $validated['transmission']) != 0) return false;
+            if (!empty($validated['fuel']) && strcasecmp($vehicle->fuel, $validated['fuel']) != 0) return false;
+            if (!empty($validated['price_range'])) {
+                $range = explode('-', $validated['price_range']);
+                if ($vehicle->price_per_day < (int) $range[0] || $vehicle->price_per_day > (int) $range[1]) return false;
+            }
+            if (!empty($validated['mileage'])) {
+                $range = explode('-', $validated['mileage']);
+                $mileageValue = (int) $vehicle->mileage;
+                if ($mileageValue < (int) $range[0] || $mileageValue > (int) $range[1]) return false;
+            }
+            return true;
+        });
+
+        $combinedVehicles = $internalVehiclesCollection->merge($filteredProviderVehicles)->merge($filteredOkMobilityVehicles);
         $perPage = 10;
         $currentPage = \Illuminate\Pagination\LengthAwarePaginator::resolveCurrentPage();
         $currentItems = $combinedVehicles->slice(($currentPage - 1) * $perPage, $perPage)->values();
@@ -600,20 +638,30 @@ class SearchController extends Controller
             ['path' => $request->url(), 'query' => $request->query()]
         );
 
-        $gmBrands = $providerVehicles->pluck('brand')->unique()->filter()->values()->all();
-        $gmSeatingCapacities = $providerVehicles->pluck('seating_capacity')->unique()->filter()->values()->all();
-        $gmTransmissions = $providerVehicles->pluck('transmission')->unique()->filter()->values()->all();
-        $gmFuels = $providerVehicles->pluck('fuel')->unique()->filter()->values()->all();
+        $allProviderBrands = $providerVehicles->pluck('brand')->merge($okMobilityVehicles->pluck('brand'))->unique()->filter()->values()->all();
+        $allProviderSeatingCapacities = $providerVehicles->pluck('seating_capacity')->merge($okMobilityVehicles->pluck('seating_capacity'))->unique()->filter()->values()->all();
+        $allProviderTransmissions = $providerVehicles->pluck('transmission')->merge($okMobilityVehicles->pluck('transmission'))->unique()->filter()->values()->all();
+        $allProviderFuels = $providerVehicles->pluck('fuel')->merge($okMobilityVehicles->pluck('fuel'))->unique()->filter()->values()->all();
 
-        $combinedBrands = collect($brands)->merge($gmBrands)->map(fn($val) => trim($val))->unique(fn($val) => strtolower($val))->sort()->values()->all();
-        $combinedSeatingCapacities = collect($seatingCapacities)->merge($gmSeatingCapacities)->unique()->sort()->values()->all();
-        $combinedTransmissions = collect($transmissions)->merge($gmTransmissions)->map(fn($val) => trim($val))->unique(fn($val) => strtolower($val))->sort()->values()->all();
-        $combinedFuels = collect($fuels)->merge($gmFuels)->map(fn($val) => trim($val))->unique(fn($val) => strtolower($val))->sort()->values()->all();
+        $combinedBrands = collect($brands)->merge($allProviderBrands)->map(fn($val) => trim($val))->unique(fn($val) => strtolower($val))->sort()->values()->all();
+        $combinedSeatingCapacities = collect($seatingCapacities)->merge($allProviderSeatingCapacities)->unique()->sort()->values()->all();
+        $combinedTransmissions = collect($transmissions)->merge($allProviderTransmissions)->map(fn($val) => trim($val))->unique(fn($val) => strtolower($val))->sort()->values()->all();
+        $combinedFuels = collect($fuels)->merge($allProviderFuels)->map(fn($val) => trim($val))->unique(fn($val) => strtolower($val))->sort()->values()->all();
 
         $seoMeta = \App\Models\SeoMeta::with('translations')->where('url_slug', '/s')->first();
 
+        // Create paginated OK Mobility vehicles for the frontend
+        $okMobilityVehiclesPaginated = new \Illuminate\Pagination\LengthAwarePaginator(
+            $filteredOkMobilityVehicles->values(),
+            $filteredOkMobilityVehicles->count(),
+            $perPage,
+            $currentPage,
+            ['path' => $request->url(), 'query' => $request->query()]
+        );
+
         return Inertia::render('SearchResults', [
             'vehicles' => $vehicles,
+            'okMobilityVehicles' => $okMobilityVehiclesPaginated,
             'filters' => $validated,
             'pagination_links' => $vehicles->links()->toHtml(),
             'brands' => $combinedBrands,
