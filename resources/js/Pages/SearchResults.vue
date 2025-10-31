@@ -377,8 +377,7 @@ let mobileMarkers = [];
 const allVehiclesForMap = computed(() => {
     const internal = props.vehicles.data || [];
     const greenMotion = props.greenMotionVehicles?.data || [];
-    const okMobility = props.okMobilityVehicles?.data || [];
-    return [...internal, ...greenMotion, ...okMobility];
+    return [...internal, ...greenMotion];
 });
 
 const isValidCoordinate = (coord) => {
