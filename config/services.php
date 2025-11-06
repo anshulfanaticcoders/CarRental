@@ -49,6 +49,12 @@ return [
         'company_code' => env('OK_MOBILITY_COMPANY_CODE'),
     ],
 
+    'esim_access' => [
+        'api_key' => env('ESIM_ACCESS_API_KEY'),
+        'base_url' => env('ESIM_ACCESS_API_URL'),
+        'markup_percentage' => env('ESIM_ACCESS_MARKUP_PERCENTAGE', 20),
+    ],
+
     'proxy' => [
         'http' => env('PROXY_HTTP'),
         'https' => env('PROXY_HTTPS'),

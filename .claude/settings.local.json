@@ -14,7 +14,8 @@
       "mcp__chrome-devtools__list_pages",
       "Bash(php artisan:*)",
       "WebSearch",
-      "Bash(php:*)"
+      "Bash(php:*)",
+      "mcp__consult7__consultation"
     ]
   },
   "enableAllProjectMcpServers": true,
