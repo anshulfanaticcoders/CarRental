@@ -10,6 +10,7 @@ import phoneIcon from "../../assets/phone.svg";
 import userCoverageIcon from "../../assets/usercoverage.svg";
 import carImage from "../../assets/carImagebgrmoved.jpeg";
 import AuthenticatedHeaderLayout from "@/Layouts/AuthenticatedHeaderLayout.vue";
+import ESimBanner from "@/Components/ESimBanner.vue";
 import HowItWorks from "@/Components/ReusableComponents/HowItWorks.vue";
 import SearchBar from "@/Components/SearchBar.vue";
 import goIcon from "../../assets/goIcon.svg";
@@ -233,6 +234,17 @@ const navigateToSearch = (place) => {
     }
 };
 
+const esimCountry = ref('');
+
+const navigateToEsimSearch = () => {
+    if (!esimCountry.value) {
+        alert('Please select a country.');
+        return;
+    }
+    const url = route('esim.search', { locale: page.props.locale, country: esimCountry.value });
+    window.location.href = url;
+};
+
 const updateSearchUrl = (place) => {
     const location = unifiedLocations.value.find(l => l.name === place.place_name);
 
@@ -352,6 +364,8 @@ useScrollAnimation('.popular-places-trigger', '.popular-place-card', {
     <!-- Schema for Organization (globally shared, if it exists) -->
     <SchemaInjector v-if="$page.props.organizationSchema" :schema="$page.props.organizationSchema" />
 
+    <ESimBanner />
+
     <AuthenticatedHeaderLayout />
 
     <main class="overflow-x-hidden">
@@ -385,6 +399,22 @@ useScrollAnimation('.popular-places-trigger', '.popular-place-card', {
         <section
             class="mt-[-14rem] mb-[12rem] max-[768px]:mb-[0] max-[768px]:mt-[-1rem] max-[768px]:pt-[2rem] max-[768px]:bg-customPrimaryColor relative z-10 search-bar-section">
                 <SearchBar class="search-bar-animation" />
+        </section>
+
+        <section class="bg-customPrimaryColor py-8">
+            <div class="full-w-container text-white text-center">
+                <h2 class="text-2xl font-bold mb-2">Find an eSIM for your travels</h2>
+                <p class="mb-6 text-gray-300">Stay connected wherever you go. Select a country to find the best eSIM deals.</p>
+                <form @submit.prevent="navigateToEsimSearch" class="mt-4 max-w-md mx-auto flex gap-2 items-center p-2 bg-white/10 rounded-full">
+                    <select v-model="esimCountry" class="w-full p-2 border-none rounded-full bg-transparent text-white focus:ring-0">
+                        <option value="" disabled class="text-gray-500">Select a country</option>
+                        <option v-for="country in props.countries" :key="country.code" :value="country.code" class="text-black">
+                            {{ country.name }}
+                        </option>
+                    </select>
+                    <button type="submit" class="button-primary py-2 px-6 rounded-full">Search</button>
+                </form>
+            </div>
         </section>
 
         <section

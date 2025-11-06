@@ -71,6 +71,7 @@ use App\Http\Controllers\VehicleController;
 use App\Http\Controllers\GreenMotionController;
 use App\Http\Controllers\GreenMotionBookingController; // Import the new GreenMotionBookingController
 use App\Http\Controllers\OkMobilityController; // Import the OkMobilityController
+use App\Http\Controllers\EsimController;
 use App\Http\Controllers\AdminProfileController; // Import the AdminProfileController
 use App\Http\Controllers\Affiliate\AffiliateBusinessController; // Import the AffiliateBusinessController
 use App\Http\Controllers\Admin\AffiliateBusinessModelController; // Import the AffiliateBusinessModelController
@@ -921,6 +922,9 @@ Route::group([
 
     // OK Mobility Check Availability
     Route::post('/ok-mobility-car/check-availability', [OkMobilityController::class, 'checkAvailability'])->name('ok-mobility-car.check-availability');
+
+    // Esim Routes
+    Route::get('/esim/search', [EsimController::class, 'search'])->name('esim.search');
    
 }); // End of locale group
 

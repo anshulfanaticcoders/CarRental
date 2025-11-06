@@ -23,13 +23,19 @@ class UpdateUnifiedLocationsCommand extends Command
     protected $greenMotionService;
     protected $okMobilityService;
     protected $locationSearchService;
+    protected $adobeCarService;
 
-    public function __construct(\App\Services\GreenMotionService $greenMotionService, \App\Services\OkMobilityService $okMobilityService, \App\Services\LocationSearchService $locationSearchService)
-    {
+    public function __construct(
+        \App\Services\GreenMotionService $greenMotionService,
+        \App\Services\OkMobilityService $okMobilityService,
+        \App\Services\LocationSearchService $locationSearchService,
+        \App\Services\AdobeCarService $adobeCarService
+    ) {
         parent::__construct();
         $this->greenMotionService = $greenMotionService;
         $this->okMobilityService = $okMobilityService;
         $this->locationSearchService = $locationSearchService;
+        $this->adobeCarService = $adobeCarService;
     }
 
     /**
@@ -51,7 +57,10 @@ class UpdateUnifiedLocationsCommand extends Command
         $okMobilityLocations = $this->fetchOkMobilityLocations();
         $this->info('Fetched ' . count($okMobilityLocations) . ' OK Mobility locations.');
 
-        $unifiedLocations = $this->mergeAndNormalizeLocations($internalLocations, $greenMotionLocations, $usaveLocations, $okMobilityLocations);
+        $adobeLocations = $this->fetchAdobeLocations();
+        $this->info('Fetched ' . count($adobeLocations) . ' Adobe locations.');
+
+        $unifiedLocations = $this->mergeAndNormalizeLocations($internalLocations, $greenMotionLocations, $usaveLocations, $okMobilityLocations, $adobeLocations);
         $this->info('Merged into ' . count($unifiedLocations) . ' unique unified locations.');
 
         $this->saveUnifiedLocations(array_values($unifiedLocations));
@@ -392,6 +401,42 @@ class UpdateUnifiedLocationsCommand extends Command
         }
 
         $this->info('Processed ' . count($locations) . ' OK Mobility locations');
+        return $locations;
+    }
+
+    private function fetchAdobeLocations(): array
+    {
+        $this->info('Fetching Adobe Car locations...');
+        $offices = $this->adobeCarService->getOfficeList();
+
+        if (empty($offices)) {
+            $this->error('Failed to retrieve locations from Adobe Car API.');
+            return [];
+        }
+
+        $locations = [];
+        foreach ($offices as $office) {
+            // Basic validation for essential fields
+            if (empty($office['code']) || empty($office['name']) || !isset($office['coordinates'][0], $office['coordinates'][1])) {
+                continue;
+            }
+
+            $locations[] = [
+                'id' => 'adobe_' . $office['code'],
+                'label' => $office['name'],
+                'below_label' => $office['address'] ?? '',
+                'location' => $office['name'],
+                'city' => null, // Adobe API does not provide a separate city field
+                'state' => null, // Adobe API does not provide a separate state field
+                'country' => 'Costa Rica', // Assuming all locations are in Costa Rica as per docs
+                'latitude' => (float) $office['coordinates'][0],
+                'longitude' => (float) $office['coordinates'][1],
+                'source' => 'adobe',
+                'matched_field' => 'location',
+                'provider_location_id' => $office['code'],
+            ];
+        }
+
         return $locations;
     }
 }
