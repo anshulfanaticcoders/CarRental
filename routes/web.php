@@ -75,7 +75,6 @@ use App\Http\Controllers\AdminProfileController; // Import the AdminProfileContr
 use App\Http\Controllers\Affiliate\AffiliateBusinessController; // Import the AffiliateBusinessController
 use App\Http\Controllers\Admin\AffiliateBusinessModelController; // Import the AffiliateBusinessModelController
 use App\Http\Controllers\Affiliate\AffiliateQrCodeController; // Import the AffiliateQrCodeController
-use App\Http\Controllers\EsimController; // Import the EsimController
 use Stevebauman\Location\Facades\Location;
 
 /*
@@ -923,13 +922,7 @@ Route::group([
     // OK Mobility Check Availability
     Route::post('/ok-mobility-car/check-availability', [OkMobilityController::class, 'checkAvailability'])->name('ok-mobility-car.check-availability');
 
-    // eSIM Routes
-    Route::get('/api/esim/countries', [EsimController::class, 'getCountries'])->name('esim.countries');
-    Route::get('/api/esim/plans/{countryCode}', [EsimController::class, 'getPlansByCountry'])->name('esim.plans');
-    Route::post('/api/esim/order', [EsimController::class, 'createOrder'])->name('esim.order');
-    Route::get('/esim/success', [EsimController::class, 'paymentSuccess'])->name('esim.success');
-    Route::get('/esim/cancel', [EsimController::class, 'paymentCancel'])->name('esim.cancel');
-
+  
 }); // End of locale group
 
 // Public QR Code Tracking Routes (outside locale prefix for backward compatibility)
