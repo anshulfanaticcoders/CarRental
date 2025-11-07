@@ -42,6 +42,7 @@ class SetLocale
             'createvehicle' => trans('createvehicle'),
             'contactus' => trans('contactus'),
             'aboutus' => trans('aboutus'), // Added for About Us page translations
+            'esim' => trans('esim'), // Added for eSIM translations
         ],
     ]);
 

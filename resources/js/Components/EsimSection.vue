@@ -8,6 +8,8 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/Components/ui/card'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/Components/ui/select'
 import { Input } from '@/Components/ui/input'
 import { Label } from '@/Components/ui/label'
+// Import the background image
+import abstractWaveBg from '../../assets/abstract-wave-min.png'
 
 const page = usePage()
 const currentLocale = computed(() => page.props.locale || 'en')
@@ -179,32 +181,35 @@ const _t = (key) => {
 </script>
 
 <template>
-    <section class="py-customVerticalSpacing bg-gray-50">
-        <div class="full-w-container">
+    <section class="py-customVerticalSpacing relative bg-cover bg-center bg-no-repeat" :style="`background-image: url('${abstractWaveBg}');`">
+        <!-- Dark overlay for better text visibility -->
+        <div class="absolute inset-0 bg-black/40"></div>
+
+        <div class="full-w-container relative z-10">
             <div class="text-center mb-12">
-                <span class="text-[1.25rem] text-customPrimaryColor">- Stay Connected -</span>
-                <h2 class="text-[3rem] font-bold text-customDarkBlackColor max-[768px]:text-[2rem] mt-2">
+                <span class="text-[1.25rem] text-white">- Stay Connected -</span>
+                <h2 class="text-[3rem] font-bold text-white max-[768px]:text-[2rem] mt-2">
                     {{ _t('title') || 'Get Your eSIM Instantly' }}
                 </h2>
-                <p class="text-lg text-customLightGrayColor mt-4 max-w-2xl mx-auto">
+                <p class="text-lg text-white/90 mt-4 max-w-2xl mx-auto">
                     {{ _t('subtitle') || 'Travel ready with instant eSIM activation. No physical SIM, no hassle. Just select your destination and stay connected.' }}
                 </p>
             </div>
 
-            <Card class="max-w-2xl mx-auto">
-                <CardHeader>
-                    <CardTitle class="text-center text-xl">
+            <Card class="max-w-2xl mx-auto shadow-lg bg-white/95 backdrop-blur-sm">
+                <CardHeader class="pb-4">
+                    <CardTitle class="text-center text-xl font-bold text-gray-800">
                         {{ _t('form_title') || 'Choose Your eSIM Plan' }}
                     </CardTitle>
                 </CardHeader>
-                <CardContent class="space-y-6">
+                <CardContent class="space-y-6 pb-6">
                     <!-- Country Selection -->
                     <div class="space-y-2">
-                        <Label for="country">
+                        <Label for="country" class="text-sm font-medium text-gray-700">
                             {{ _t('select_country') || 'Select Country' }}
                         </Label>
                         <Select v-model="selectedCountry" @update:model-value="handleCountryChange" :disabled="isLoadingCountries">
-                            <SelectTrigger class="w-full" :class="{ 'border-red-500': errors.country }">
+                            <SelectTrigger class="w-full h-12" :class="{ 'border-red-500': errors.country }">
                                 <SelectValue :placeholder="_t('country_placeholder') || 'Choose your destination country...'" />
                             </SelectTrigger>
                             <SelectContent>
@@ -222,18 +227,18 @@ const _t = (key) => {
 
                     <!-- Plan Selection -->
                     <div class="space-y-2" v-if="selectedCountry">
-                        <Label for="plan">
+                        <Label for="plan" class="text-sm font-medium text-gray-700">
                             {{ _t('select_plan') || 'Select Plan' }}
                         </Label>
                         <Select v-model="selectedPlan" @update:model-value="handlePlanChange" :disabled="isLoadingPlans || !selectedCountry">
-                            <SelectTrigger class="w-full" :class="{ 'border-red-500': errors.plan }">
+                            <SelectTrigger class="w-full h-12" :class="{ 'border-red-500': errors.plan }">
                                 <SelectValue :placeholder="_t('plan_placeholder') || 'Choose a data plan...'" />
                             </SelectTrigger>
-                            <SelectContent>
-                                <SelectItem v-for="plan in plans" :key="plan.packageCode || plan.code || plan.id" :value="plan.packageCode || plan.code || plan.id">
-                                    <div class="flex flex-col">
-                                        <span class="font-medium">{{ plan.name }}</span>
-                                        <span class="text-sm text-gray-500">
+                            <SelectContent class="max-h-60">
+                                <SelectItem v-for="plan in plans" :key="plan.packageCode || plan.code || plan.id" :value="plan.packageCode || plan.code || plan.id" class="py-3">
+                                    <div class="flex flex-col items-start">
+                                        <span class="font-medium text-sm leading-tight">{{ plan.name }}</span>
+                                        <span class="text-xs text-green-600 font-semibold mt-1">
                                             ${{ (plan.price / 10000).toFixed(2) }}
                                         </span>
                                     </div>
@@ -251,7 +256,7 @@ const _t = (key) => {
                     <!-- Customer Information -->
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div class="space-y-2">
-                            <Label for="name">
+                            <Label for="name" class="text-sm font-medium text-gray-700">
                                 {{ _t('your_name') || 'Your Name' }}
                             </Label>
                             <Input
@@ -259,12 +264,13 @@ const _t = (key) => {
                                 v-model="customerName"
                                 type="text"
                                 :placeholder="_t('name_placeholder') || 'Enter your full name'"
+                                class="h-12"
                                 :class="{ 'border-red-500': errors.name }"
                             />
                             <p v-if="errors.name" class="text-sm text-red-500">{{ errors.name }}</p>
                         </div>
                         <div class="space-y-2">
-                            <Label for="email">
+                            <Label for="email" class="text-sm font-medium text-gray-700">
                                 {{ _t('email_address') || 'Email Address' }}
                             </Label>
                             <Input
@@ -272,6 +278,7 @@ const _t = (key) => {
                                 v-model="customerEmail"
                                 type="email"
                                 :placeholder="_t('email_placeholder') || 'Enter your email for eSIM delivery'"
+                                class="h-12"
                                 :class="{ 'border-red-500': errors.email }"
                             />
                             <p v-if="errors.email" class="text-sm text-red-500">{{ errors.email }}</p>
@@ -286,7 +293,12 @@ const _t = (key) => {
                         :disabled="isProcessingOrder || !selectedCountry || !selectedPlan || !customerName || !customerEmail"
                     >
                         <Loader2 v-if="isProcessingOrder" class="w-4 h-4 mr-2 animate-spin" />
-                        {{ isProcessingOrder ? (_t('processing') || 'Processing...') : (_t('get_esim') || 'Get eSIM Now') }}
+                        <span v-if="!isProcessingOrder" class="font-semibold">
+                            {{ _t('get_esim') || 'Get eSIM Now' }}
+                        </span>
+                        <span v-else>
+                            {{ _t('processing') || 'Processing...' }}
+                        </span>
                     </Button>
 
                     <!-- Info Message -->

@@ -10,7 +10,6 @@ import phoneIcon from "../../assets/phone.svg";
 import userCoverageIcon from "../../assets/usercoverage.svg";
 import carImage from "../../assets/carImagebgrmoved.jpeg";
 import AuthenticatedHeaderLayout from "@/Layouts/AuthenticatedHeaderLayout.vue";
-import ESimBanner from "@/Components/ESimBanner.vue";
 import HowItWorks from "@/Components/ReusableComponents/HowItWorks.vue";
 import EsimSection from "@/Components/EsimSection.vue";
 import SearchBar from "@/Components/SearchBar.vue";
@@ -354,8 +353,6 @@ useScrollAnimation('.popular-places-trigger', '.popular-place-card', {
     <!-- Schema for Organization (globally shared, if it exists) -->
     <SchemaInjector v-if="$page.props.organizationSchema" :schema="$page.props.organizationSchema" />
 
-    <ESimBanner />
-
     <AuthenticatedHeaderLayout />
 
     <main class="overflow-x-hidden">
@@ -517,6 +514,11 @@ useScrollAnimation('.popular-places-trigger', '.popular-place-card', {
 
 
 
+        <!------------------------------- eSIM Section -------------------------------------->
+        <!------------------------------ <Start>  -------------------------------------------------->
+        <EsimSection />
+        <!------------------------------ <End>  -------------------------------------------------->
+
         <!------------------------------- WHY CHOOSE US -------------------------------------->
         <!------------------------------ <Start>  -------------------------------------------------->
         <section class="py-customVerticalSpacing why-choose-us-trigger">
@@ -586,12 +588,6 @@ useScrollAnimation('.popular-places-trigger', '.popular-place-card', {
         <!------------------------------ <Start>  -------------------------------------------------->
         <HowItWorks />
         <!------------------------------ <End>  -------------------------------------------------->
-
-        <!------------------------------- eSIM Section -------------------------------------->
-        <!------------------------------ <Start>  -------------------------------------------------->
-        <EsimSection />
-        <!------------------------------ <End>  -------------------------------------------------->
-
 
         <!-- ------------------------Testimonials Section-------------------------------- -->
         <!------------------------------ <Start>  -------------------------------------------------->
