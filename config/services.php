@@ -55,6 +55,12 @@ return [
         'markup_percentage' => env('ESIM_ACCESS_MARKUP_PERCENTAGE', 20),
     ],
 
+    'stripe' => [
+        'key' => env('STRIPE_KEY'),
+        'secret' => env('STRIPE_SECRET'),
+        'webhook_secret' => env('STRIPE_WEBHOOK_SECRET'),
+    ],
+
     'proxy' => [
         'http' => env('PROXY_HTTP'),
         'https' => env('PROXY_HTTPS'),

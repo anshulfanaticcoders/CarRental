@@ -154,15 +154,19 @@ const submitOrder = async () => {
 }
 
 const getSelectedPlanDetails = () => {
-    return plans.value.find(plan => plan.id === selectedPlan.value)
+    return plans.value.find(plan => plan.packageCode === selectedPlan.value || plan.code === selectedPlan.value || plan.id === selectedPlan.value)
 }
 
-const formatPrice = (price, currency = 'USD') => {
-    return new Intl.NumberFormat('en-US', {
-        style: 'currency',
-        currency: currency.toUpperCase()
-    }).format(price)
+const formatData = (bytes) => {
+    if (!bytes) return 'N/A'
+
+    const sizes = ['Bytes', 'KB', 'MB', 'GB', 'TB']
+    if (bytes === 0) return '0 Bytes'
+
+    const i = Math.floor(Math.log(bytes) / Math.log(1024))
+    return Math.round(bytes / Math.pow(1024, i) * 100) / 100 + ' ' + sizes[i]
 }
+
 
 // Translation helper
 const _t = (key) => {
@@ -226,11 +230,11 @@ const _t = (key) => {
                                 <SelectValue :placeholder="_t('plan_placeholder') || 'Choose a data plan...'" />
                             </SelectTrigger>
                             <SelectContent>
-                                <SelectItem v-for="plan in plans" :key="plan.id" :value="plan.id">
+                                <SelectItem v-for="plan in plans" :key="plan.packageCode || plan.code || plan.id" :value="plan.packageCode || plan.code || plan.id">
                                     <div class="flex flex-col">
                                         <span class="font-medium">{{ plan.name }}</span>
                                         <span class="text-sm text-gray-500">
-                                            {{ plan.data_amount }} - {{ plan.validity }} - {{ formatPrice(plan.price, plan.currency) }}
+                                            ${{ (plan.price / 10000).toFixed(2) }}
                                         </span>
                                     </div>
                                 </SelectItem>
@@ -243,16 +247,7 @@ const _t = (key) => {
                         </div>
                     </div>
 
-                    <!-- Plan Details -->
-                    <div v-if="getSelectedPlanDetails()" class="p-4 bg-blue-50 rounded-lg">
-                        <h4 class="font-medium text-blue-900 mb-2">{{ _t('plan_details') || 'Plan Details' }}</h4>
-                        <div class="space-y-1 text-sm text-blue-800">
-                            <p><strong>{{ _t('data') || 'Data' }}:</strong> {{ getSelectedPlanDetails().data_amount }}</p>
-                            <p><strong>{{ _t('validity') || 'Validity' }}:</strong> {{ getSelectedPlanDetails().validity }}</p>
-                            <p><strong>{{ _t('price') || 'Price' }}:</strong> {{ formatPrice(getSelectedPlanDetails().price, getSelectedPlanDetails().currency) }}</p>
-                        </div>
-                    </div>
-
+                    
                     <!-- Customer Information -->
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div class="space-y-2">

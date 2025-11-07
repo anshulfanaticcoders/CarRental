@@ -78,42 +78,127 @@ class EsimAccessService
     public function createOrder(array $orderData): array
     {
         try {
-            Log::warning('The /orders endpoint may be outdated based on the new API documentation.');
+            // Prepare order data according to eSIM Access API v1 documentation
+            $payload = [
+                'assignEmail' => $orderData['customer_email'],
+                'packageId' => $orderData['plan_id'],
+                'quantity' => $orderData['quantity'] ?? 1,
+            ];
+
+            // Add optional parameters if provided
+            if (isset($orderData['referenceCode'])) {
+                $payload['referenceCode'] = $orderData['referenceCode'];
+            }
+            if (isset($orderData['iccid'])) {
+                $payload['iccid'] = $orderData['iccid'];
+            }
+
+            // Try the correct endpoint based on documentation
+            $endpoint = $this->baseUrl . '/api/v1/open/order/create';
+
             $response = Http::withHeaders([
                 'RT-AccessCode' => $this->apiKey,
                 'Content-Type' => 'application/json',
             ])->timeout(30)
-              ->post($this->baseUrl . '/orders', $orderData);
+              ->post($endpoint, $payload);
 
-            if ($response->successful()) {
-                return $response->json();
+            if ($response->successful() && $response->json('success')) {
+                return $response->json('obj');
             }
 
+            Log::error('Failed to create eSIM order', [
+                'status' => $response->status(),
+                'body' => $response->body(),
+                'payload' => $payload,
+            ]);
             throw new \Exception('Failed to create eSIM order: ' . $response->body());
         } catch (RequestException $e) {
+            Log::error('eSIM API request failed for order creation', ['message' => $e->getMessage()]);
             throw new \Exception('API request failed: ' . $e->getMessage());
         }
     }
 
     /**
-     * Get order details by order ID
+     * Get order details by order number
      */
-    public function getOrderDetails(string $orderId): array
+    public function getOrderDetails(string $orderNo): array
     {
         try {
-            Log::warning('The /orders/{orderId} endpoint may be outdated based on the new API documentation.');
             $response = Http::withHeaders([
                 'RT-AccessCode' => $this->apiKey,
                 'Content-Type' => 'application/json',
             ])->timeout(30)
-              ->get($this->baseUrl . '/orders/' . $orderId);
+              ->post($this->baseUrl . '/api/v1/ec/order/status', ['orderNo' => $orderNo]);
 
-            if ($response->successful()) {
-                return $response->json();
+            if ($response->successful() && $response->json('success')) {
+                return $response->json('obj');
             }
 
+            Log::error('Failed to fetch eSIM order details', [
+                'status' => $response->status(),
+                'body' => $response->body(),
+                'orderNo' => $orderNo,
+            ]);
             throw new \Exception('Failed to fetch order details: ' . $response->body());
         } catch (RequestException $e) {
+            Log::error('eSIM API request failed for order details', ['message' => $e->getMessage()]);
+            throw new \Exception('API request failed: ' . $e->getMessage());
+        }
+    }
+
+    /**
+     * Check account balance
+     */
+    public function checkBalance(): array
+    {
+        try {
+            $response = Http::withHeaders([
+                'RT-AccessCode' => $this->apiKey,
+                'Content-Type' => 'application/json',
+            ])->timeout(30)
+              ->post($this->baseUrl . '/api/v1/open/balance/query', (object)[]);
+
+            if ($response->successful() && $response->json('success')) {
+                return $response->json('obj');
+            }
+
+            Log::error('Failed to check eSIM account balance', [
+                'status' => $response->status(),
+                'body' => $response->body(),
+            ]);
+            throw new \Exception('Failed to check balance: ' . $response->body());
+        } catch (RequestException $e) {
+            Log::error('eSIM API request failed for balance check', ['message' => $e->getMessage()]);
+            throw new \Exception('API request failed: ' . $e->getMessage());
+        }
+    }
+
+    /**
+     * Check data usage for eSIM
+     */
+    public function checkDataUsage(array $esimTranNoList): array
+    {
+        try {
+            $response = Http::withHeaders([
+                'RT-AccessCode' => $this->apiKey,
+                'Content-Type' => 'application/json',
+            ])->timeout(30)
+              ->post($this->baseUrl . '/api/v1/open/esim/usage/query', [
+                  'esimTranNoList' => $esimTranNoList
+              ]);
+
+            if ($response->successful() && $response->json('success')) {
+                return $response->json('obj');
+            }
+
+            Log::error('Failed to check eSIM data usage', [
+                'status' => $response->status(),
+                'body' => $response->body(),
+                'esimTranNoList' => $esimTranNoList,
+            ]);
+            throw new \Exception('Failed to check data usage: ' . $response->body());
+        } catch (RequestException $e) {
+            Log::error('eSIM API request failed for data usage check', ['message' => $e->getMessage()]);
             throw new \Exception('API request failed: ' . $e->getMessage());
         }
     }

@@ -18,17 +18,7 @@ class EsimController extends Controller
         $this->esimService = $esimService;
     }
 
-    private function formatBytes($bytes, $precision = 2)
-    {
-        if ($bytes == 0) {
-            return '0 Bytes';
-        }
-        $base = log($bytes, 1024);
-        $suffixes = array('Bytes', 'KB', 'MB', 'GB', 'TB');
-
-        return round(pow(1024, $base - floor($base)), $precision) . ' ' . $suffixes[floor($base)];
-    }
-
+    
     /**
      * Get available countries for eSIM plans
      */
@@ -59,27 +49,12 @@ class EsimController extends Controller
         try {
             $plans = $this->esimService->getPlansByCountry($countryCode);
 
-            $processedPlans = array_map(function ($plan) {
-                // Per user feedback, not modifying the price from the API for display.
-                if (isset($plan['totalData'])) {
-                    $plan['data_amount'] = $this->formatBytes($plan['totalData']);
-                }
-                if (isset($plan['totalDuration']) && isset($plan['durationUnit'])) {
-                    $plan['validity'] = $plan['totalDuration'] . ' ' . ucfirst(strtolower($plan['durationUnit'])) . 's';
-                }
-                if (isset($plan['packageCode'])) {
-                    $plan['id'] = $plan['packageCode'];
-                }
-                return $plan;
-            }, $plans);
-
+            // Return raw API data without any manipulation
             return response()->json([
                 'success' => true,
-                'data' => $processedPlans
+                'data' => $plans
             ]);
         } catch (\Exception $e) {
-            Log::error('Failed to fetch eSIM plans for country ' . $countryCode . ': ' . $e->getMessage());
-
             return response()->json([
                 'success' => false,
                 'message' => 'Failed to fetch plans for selected country'
@@ -92,6 +67,9 @@ class EsimController extends Controller
      */
     public function createOrder(string $locale, Request $request): JsonResponse
     {
+        // Debug: Log incoming request
+        error_log('eSIM Order Request Data: ' . json_encode($request->all()));
+
         $validated = $request->validate([
             'country_code' => 'required|string',
             'plan_id' => 'required|string',
@@ -99,37 +77,56 @@ class EsimController extends Controller
             'customer_name' => 'required|string|max:255',
         ]);
 
+        error_log('eSIM Validated Data: ' . json_encode($validated));
+
         try {
-            // Get plan details first to calculate price
+            // Get plan details from API (raw data)
             $plans = $this->esimService->getPlansByCountry($validated['country_code']);
-            $selectedPlan = collect($plans)->firstWhere('id', $validated['plan_id']);
+            error_log('eSIM Plans Retrieved: ' . json_encode(array_slice($plans, 0, 2)));
+
+            $selectedPlan = collect($plans)->firstWhere('packageCode', $validated['plan_id']);
 
             if (!$selectedPlan) {
+                $selectedPlan = collect($plans)->firstWhere('code', $validated['plan_id']);
+            }
+
+            if (!$selectedPlan) {
+                error_log('eSIM Plan not found. Plan ID: ' . $validated['plan_id']);
+                error_log('Available plan codes: ' . json_encode(array_column($plans, 'packageCode')));
                 return response()->json([
                     'success' => false,
                     'message' => 'Selected plan not found'
                 ], 404);
             }
 
-            // Per user feedback, treating the API price as dollars directly.
-            $originalPriceInDollars = $selectedPlan['price'] ?? 0;
-            $finalPriceInDollars = $originalPriceInDollars; // No markup
-            $markupAmount = 0;
+            // Use raw price and currency from API
+            $rawPrice = $selectedPlan['price'] ?? 0;
+
+            // Convert price: divide by 10000 as per eSIM Access documentation
+            $price = $rawPrice / 10000;
+
+            // Stripe needs amount in cents and currency must be 3-letter lowercase
+            $amountInCents = round($price * 100);
+            $currency = 'usd'; // Force USD since we're converting to USD
 
             // Initialize Stripe
-            Stripe::setApiKey(config('services.stripe.secret'));
+            $stripeSecret = config('services.stripe.secret');
+            if (!$stripeSecret) {
+                throw new \Exception('Stripe secret key not configured');
+            }
+            Stripe::setApiKey($stripeSecret);
 
             // Create Stripe checkout session
             $checkoutSession = Session::create([
                 'payment_method_types' => ['card'],
                 'line_items' => [[
                     'price_data' => [
-                        'currency' => strtolower($selectedPlan['currency'] ?? 'usd'),
+                        'currency' => $currency,
                         'product_data' => [
-                            'name' => "eSIM - {$selectedPlan['name']} ({$validated['country_code']})",
-                            'description' => "Data: {$selectedPlan['data_amount']} | Validity: {$selectedPlan['validity']}",
+                            'name' => "eSIM - {$selectedPlan['name']}",
+                            'description' => "Plan: {$selectedPlan['name']}",
                         ],
-                        'unit_amount' => intval($finalPriceInDollars * 100), // Convert to cents for Stripe
+                        'unit_amount' => $amountInCents,
                     ],
                     'quantity' => 1,
                 ]],
@@ -143,9 +140,6 @@ class EsimController extends Controller
                     'plan_id' => $validated['plan_id'],
                     'customer_name' => $validated['customer_name'],
                     'email' => $validated['email'],
-                    'original_price' => $originalPriceInDollars,
-                    'markup_amount' => $markupAmount,
-                    'final_price' => $finalPriceInDollars,
                 ],
             ]);
 
@@ -156,11 +150,13 @@ class EsimController extends Controller
             ]);
 
         } catch (\Exception $e) {
-            Log::error('Failed to create eSIM order: ' . $e->getMessage());
+            // Log the actual error for debugging
+            error_log('eSIM Order Error: ' . $e->getMessage());
+            error_log('Stripe Error: ' . ($e->getMessage()));
 
             return response()->json([
                 'success' => false,
-                'message' => 'Failed to process eSIM order'
+                'message' => 'Failed to process eSIM order: ' . $e->getMessage()
             ], 500);
         }
     }
@@ -185,15 +181,13 @@ class EsimController extends Controller
 
                 // Create eSIM order with eSIM Access API
                 $orderData = [
-                    'plan_id' => $metadata['plan_id'],
                     'customer_email' => $metadata['email'],
-                    'customer_name' => $metadata['customer_name'],
+                    'plan_id' => $metadata['plan_id'],
+                    'quantity' => 1,
+                    'referenceCode' => $sessionId,
                 ];
 
                 $order = $this->esimService->createOrder($orderData);
-
-                // Store order in database (optional - you can create an EsimOrder model)
-                // For now, we'll just redirect with success message
 
                 return redirect()->route('welcome')->with('success',
                     'eSIM order completed successfully! Check your email for activation instructions.');
@@ -202,8 +196,6 @@ class EsimController extends Controller
             return redirect()->route('welcome')->with('error', 'Payment was not successful');
 
         } catch (\Exception $e) {
-            Log::error('Error processing eSIM payment success: ' . $e->getMessage());
-
             return redirect()->route('welcome')->with('error',
                 'Payment was successful but there was an issue processing your eSIM order. Please contact support.');
         }
