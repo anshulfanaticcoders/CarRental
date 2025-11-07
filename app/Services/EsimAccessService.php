@@ -93,8 +93,14 @@ class EsimAccessService
                 $payload['iccid'] = $orderData['iccid'];
             }
 
-            // Try the correct endpoint based on documentation
+            // Use the correct endpoint based on documentation
             $endpoint = $this->baseUrl . '/api/v1/open/order/create';
+
+            Log::info('Creating eSIM order', [
+                'endpoint' => $endpoint,
+                'packageId' => $orderData['plan_id'],
+                'assignEmail' => $orderData['customer_email'],
+            ]);
 
             $response = Http::withHeaders([
                 'RT-AccessCode' => $this->apiKey,
@@ -103,17 +109,32 @@ class EsimAccessService
               ->post($endpoint, $payload);
 
             if ($response->successful() && $response->json('success')) {
+                Log::info('eSIM order created successfully', [
+                    'response' => $response->json('obj'),
+                ]);
                 return $response->json('obj');
             }
 
+            // Enhanced error logging with API response details
+            $responseBody = $response->body();
+            $responseData = json_decode($responseBody, true);
+
             Log::error('Failed to create eSIM order', [
                 'status' => $response->status(),
-                'body' => $response->body(),
+                'endpoint' => $endpoint,
                 'payload' => $payload,
+                'response_body' => $responseBody,
+                'error_code' => $responseData['errorCode'] ?? 'unknown',
+                'error_message' => $responseData['errorMsg'] ?? 'No error message',
             ]);
-            throw new \Exception('Failed to create eSIM order: ' . $response->body());
+
+            throw new \Exception('Failed to create eSIM order: ' . $responseBody);
         } catch (RequestException $e) {
-            Log::error('eSIM API request failed for order creation', ['message' => $e->getMessage()]);
+            Log::error('eSIM API request failed for order creation', [
+                'message' => $e->getMessage(),
+                'endpoint' => $endpoint ?? 'unknown',
+                'payload' => $payload ?? [],
+            ]);
             throw new \Exception('API request failed: ' . $e->getMessage());
         }
     }
