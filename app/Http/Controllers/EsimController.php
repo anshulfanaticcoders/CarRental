@@ -84,7 +84,11 @@ class EsimController extends Controller
             $plans = $this->esimService->getPlansByCountry($validated['country_code']);
             error_log('eSIM Plans Retrieved: ' . json_encode(array_slice($plans, 0, 2)));
 
-            $selectedPlan = collect($plans)->firstWhere('packageCode', $validated['plan_id']);
+            $selectedPlan = collect($plans)->firstWhere('slug', $validated['plan_id']);
+
+            if (!$selectedPlan) {
+                $selectedPlan = collect($plans)->firstWhere('packageCode', $validated['plan_id']);
+            }
 
             if (!$selectedPlan) {
                 $selectedPlan = collect($plans)->firstWhere('code', $validated['plan_id']);
@@ -99,54 +103,26 @@ class EsimController extends Controller
                 ], 404);
             }
 
-            // Use raw price and currency from API
-            $rawPrice = $selectedPlan['price'] ?? 0;
+            // Use partner payment links with slug from API response
+            $planSlug = $selectedPlan['slug'] ?? '';
 
-            // Convert price: divide by 10000 as per eSIM Access documentation
-            $price = $rawPrice / 10000;
-
-            // Stripe needs amount in cents and currency must be 3-letter lowercase
-            $amountInCents = round($price * 100);
-            $currency = 'usd'; // Force USD since we're converting to USD
-
-            // Initialize Stripe
-            $stripeSecret = config('services.stripe.secret');
-            if (!$stripeSecret) {
-                throw new \Exception('Stripe secret key not configured');
+            if (!$planSlug) {
+                error_log('Plan slug not found for plan: ' . $validated['plan_id']);
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Payment link not available for this plan'
+                ], 400);
             }
-            Stripe::setApiKey($stripeSecret);
 
-            // Create Stripe checkout session
-            $checkoutSession = Session::create([
-                'payment_method_types' => ['card'],
-                'line_items' => [[
-                    'price_data' => [
-                        'currency' => $currency,
-                        'product_data' => [
-                            'name' => "eSIM - {$selectedPlan['name']}",
-                            'description' => "Plan: {$selectedPlan['name']}",
-                        ],
-                        'unit_amount' => $amountInCents,
-                    ],
-                    'quantity' => 1,
-                ]],
-                'mode' => 'payment',
-                'success_url' => route('esim.success') . '?session_id={CHECKOUT_SESSION_ID}',
-                'cancel_url' => route('esim.cancel'),
-                'customer_email' => $validated['email'],
-                'metadata' => [
-                    'type' => 'esim',
-                    'country_code' => $validated['country_code'],
-                    'plan_id' => $validated['plan_id'],
-                    'customer_name' => $validated['customer_name'],
-                    'email' => $validated['email'],
-                ],
-            ]);
+            // Create partner payment link
+            // Format: https://vrooem.esimqr.link/pay/{currency}/{slug}
+            $paymentLink = "https://vrooem.esimqr.link/pay/usd/{$planSlug}";
 
             return response()->json([
                 'success' => true,
-                'checkout_url' => $checkoutSession->url,
-                'session_id' => $checkoutSession->id
+                'checkout_url' => $paymentLink,
+                'partner_payment' => true,
+                'message' => 'Redirecting to secure payment portal...'
             ]);
 
         } catch (\Exception $e) {

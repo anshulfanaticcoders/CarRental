@@ -131,9 +131,13 @@ const submitOrder = async () => {
     isProcessingOrder.value = true
 
     try {
+        // Get the selected plan details to ensure we have the correct slug
+        const selectedPlanDetails = getSelectedPlanDetails()
+        const planId = selectedPlanDetails?.slug || selectedPlan.value
+
         const orderData = {
             country_code: selectedCountry.value,
-            plan_id: selectedPlan.value,
+            plan_id: planId,
             customer_name: customerName.value,
             email: customerEmail.value
         }
@@ -156,7 +160,7 @@ const submitOrder = async () => {
 }
 
 const getSelectedPlanDetails = () => {
-    return plans.value.find(plan => plan.packageCode === selectedPlan.value || plan.code === selectedPlan.value || plan.id === selectedPlan.value)
+    return plans.value.find(plan => plan.slug === selectedPlan.value || plan.packageCode === selectedPlan.value || plan.code === selectedPlan.value)
 }
 
 const formatData = (bytes) => {
@@ -235,7 +239,7 @@ const _t = (key) => {
                                 <SelectValue :placeholder="_t('plan_placeholder') || 'Choose a data plan...'" />
                             </SelectTrigger>
                             <SelectContent class="max-h-60">
-                                <SelectItem v-for="plan in plans" :key="plan.packageCode || plan.code || plan.id" :value="plan.packageCode || plan.code || plan.id" class="py-3">
+                                <SelectItem v-for="plan in plans" :key="plan.slug || plan.packageCode || plan.code || plan.id" :value="plan.slug || plan.packageCode || plan.code || plan.id" class="py-3">
                                     <div class="flex flex-col items-start">
                                         <span class="font-medium text-sm leading-tight">{{ plan.name }}</span>
                                         <span class="text-xs text-green-600 font-semibold mt-1">
