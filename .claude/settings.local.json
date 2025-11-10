@@ -15,7 +15,9 @@
       "Bash(php artisan:*)",
       "WebSearch",
       "Bash(php:*)",
-      "mcp__consult7__consultation"
+      "mcp__consult7__consultation",
+      "mcp__serena__activate_project",
+      "mcp__serena__initial_instructions"
     ]
   },
   "enableAllProjectMcpServers": true,

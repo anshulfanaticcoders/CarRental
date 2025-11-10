@@ -58,7 +58,7 @@ class AdobeCarService
             return [];
         }
 
-        $response = Http::withToken($token)->get("{$this->baseUrl}/offices/list");
+        $response = Http::withToken($token)->get("{$this->baseUrl}/Offices");
 
         if ($response->successful()) {
             return $response->json();
