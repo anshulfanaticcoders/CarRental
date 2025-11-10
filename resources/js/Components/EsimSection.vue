@@ -1,8 +1,18 @@
 <script setup>
+import { usePage } from '@inertiajs/vue3'
 import { Button } from '@/Components/ui/button'
 import { Card, CardContent } from '@/Components/ui/card'
 // Import the background image
 import abstractWaveBg from '../../assets/abstract-wave-min.png'
+
+// Translation helper
+const _t = (key, fallback = '') => {
+    const { props } = usePage();
+    if (props.translations && props.translations.esim && props.translations.esim[key]) {
+        return props.translations.esim[key];
+    }
+    return fallback || key;
+}
 
 // Redirect to partner portal
 const redirectToPartnerPortal = () => {
@@ -17,12 +27,12 @@ const redirectToPartnerPortal = () => {
 
         <div class="full-w-container relative z-10">
             <div class="text-center mb-12">
-                <span class="text-[1.25rem] text-white">- Stay Connected -</span>
+                <span class="text-[1.25rem] text-white">- {{ _t('tagline') }} -</span>
                 <h2 class="text-[3rem] font-bold text-white max-[768px]:text-[2rem] mt-2">
-                    Get Your eSIM Instantly
+                    {{ _t('title') }}
                 </h2>
                 <p class="text-lg text-white/90 mt-4 max-w-2xl mx-auto">
-                    Travel ready with instant eSIM activation. No physical SIM, no hassle. Visit our partner portal to browse all available eSIM plans and purchase directly.
+                    {{ _t('subtitle') }}
                 </p>
             </div>
 
@@ -37,11 +47,27 @@ const redirectToPartnerPortal = () => {
                                 </svg>
                             </div>
                             <h3 class="text-xl font-bold text-gray-800 mb-2">
-                                Choose Your Perfect Plan
+                                {{ _t('card_title') }}
                             </h3>
-                            <p class="text-gray-600 mb-6">
-                                Browse our complete collection of eSIM plans with competitive pricing and instant delivery.
+                            <p class="text-gray-600 mb-4">
+                                {{ _t('card_description') }}
                             </p>
+
+                            <!-- Key Benefits -->
+                            <div class="grid grid-cols-3 gap-3 mb-6 text-center">
+                                <div class="bg-gray-50 rounded-lg p-3">
+                                    <div class="text-lg font-bold text-blue-600">∞</div>
+                                    <div class="text-xs font-medium text-gray-700">{{ _t('unlimited_data') }}</div>
+                                </div>
+                                <div class="bg-gray-50 rounded-lg p-3">
+                                    <div class="text-lg font-bold text-blue-600">🌍</div>
+                                    <div class="text-xs font-medium text-gray-700">{{ _t('destinations') }}</div>
+                                </div>
+                                <div class="bg-gray-50 rounded-lg p-3">
+                                    <div class="text-lg font-bold text-blue-600">⚡</div>
+                                    <div class="text-xs font-medium text-gray-700">{{ _t('instant_setup') }}</div>
+                                </div>
+                            </div>
                         </div>
 
                         <div class="space-y-4">
@@ -50,11 +76,11 @@ const redirectToPartnerPortal = () => {
                                 size="lg"
                                 class="w-full bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white font-semibold py-4 px-8 text-lg transform transition-transform hover:scale-105"
                             >
-                                Buy eSIM Now
+                                {{ _t('get_esim') }}
                             </Button>
 
                             <div class="text-sm text-gray-500">
-                                <p>You will be redirected to our secure partner portal</p>
+                                <p>{{ _t('support_info') }}</p>
                             </div>
                         </div>
                     </CardContent>
