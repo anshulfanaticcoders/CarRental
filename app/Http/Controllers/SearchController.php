@@ -14,6 +14,7 @@ use App\Services\GreenMotionService; // Import GreenMotionService
 use App\Services\OkMobilityService;
 use App\Services\LocationSearchService; // Import LocationSearchService
 use App\Services\AdobeCarService; // Import AdobeCarService
+use App\Services\WheelsysService; // Import WheelsysService
 use Illuminate\Support\Facades\Log; // Import Log facade
 
 class SearchController extends Controller
@@ -22,13 +23,15 @@ class SearchController extends Controller
     protected $okMobilityService;
     protected $locationSearchService;
     protected $adobeCarService;
+    protected $wheelsysService;
 
-    public function __construct(GreenMotionService $greenMotionService, OkMobilityService $okMobilityService, LocationSearchService $locationSearchService, AdobeCarService $adobeCarService)
+    public function __construct(GreenMotionService $greenMotionService, OkMobilityService $okMobilityService, LocationSearchService $locationSearchService, AdobeCarService $adobeCarService, WheelsysService $wheelsysService)
     {
         $this->greenMotionService = $greenMotionService;
         $this->okMobilityService = $okMobilityService;
         $this->locationSearchService = $locationSearchService;
         $this->adobeCarService = $adobeCarService;
+        $this->wheelsysService = $wheelsysService;
     }
 
     public function search(Request $request)
@@ -505,7 +508,7 @@ class SearchController extends Controller
 
                             Log::info('Adobe API response received: ' . ($adobeResponse ? 'SUCCESS' : 'NULL/EMPTY'));
 
-                            if ($adobeResponse && isset($adobeResponse['data']) && !empty($adobeResponse['data'])) {
+                            if ($adobeResponse && isset($adobeResponse['result']) && $adobeResponse['result'] && !empty($adobeResponse['data'])) {
                                 $adobeVehicles = collect($adobeResponse['data']);
 
                                 // Process vehicles to get detailed information including protections and extras
@@ -527,18 +530,18 @@ class SearchController extends Controller
                                     $processedVehicle = [
                                         'id' => 'adobe_' . $providerLocationId . '_' . ($vehicle['category'] ?? 'unknown'),
                                         'source' => 'adobe',
-                                        'brand' => $vehicle['brand'] ?? 'Adobe',
-                                        'model' => $vehicle['name'] ?? $vehicle['category'] ?? 'Adobe Vehicle',
+                                        'brand' => $this->extractBrandFromModel($vehicle['model'] ?? ''),
+                                        'model' => $vehicle['model'] ?? 'Adobe Vehicle',
                                         'category' => $vehicle['category'] ?? '',
-                                        'image' => $vehicle['image'] ?? '/images/adobe-placeholder.jpg',
-                                        'price_per_day' => (float) ($vehicle['price_per_day'] ?? 0),
-                                        'price_per_week' => (float) ($vehicle['price_per_week'] ?? 0),
-                                        'price_per_month' => (float) ($vehicle['price_per_month'] ?? 0),
-                                        'currency' => $vehicle['currency'] ?? 'USD',
-                                        'transmission' => $vehicle['transmission'] ?? 'manual',
-                                        'fuel' => $vehicle['fuel'] ?? 'petrol',
-                                        'seating_capacity' => (int) ($vehicle['seating_capacity'] ?? 4),
-                                        'mileage' => $vehicle['mileage'] ?? 'unlimited',
+                                        'image' => $this->getAdobeVehicleImage($vehicle['photo'] ?? ''),
+                                        'price_per_day' => (float) ($vehicle['pli'] ?? 0), // pli = base daily rate
+                                        'price_per_week' => (float) (($vehicle['pli'] ?? 0) * 7),
+                                        'price_per_month' => (float) (($vehicle['pli'] ?? 0) * 30),
+                                        'currency' => 'USD', // Adobe uses USD
+                                        'transmission' => ($vehicle['manual'] ?? false) ? 'manual' : 'automatic',
+                                        'fuel' => 'petrol', // Default fuel type
+                                        'seating_capacity' => (int) ($vehicle['passengers'] ?? 4),
+                                        'mileage' => 'unlimited', // Default mileage
                                         'latitude' => (float) $locationLat,
                                         'longitude' => (float) $locationLng,
                                         'full_vehicle_address' => $locationAddress,
@@ -548,6 +551,9 @@ class SearchController extends Controller
                                             'limited_km_per_day' => false,
                                             'minimum_driver_age' => 21,
                                             'fuel_policy' => 'full_to_full',
+                                            'vehicle_type' => $vehicle['type'] ?? '',
+                                            'traction' => $vehicle['traction'] ?? '',
+                                            'doors' => (int) ($vehicle['doors'] ?? 4),
                                         ],
                                         'review_count' => 0,
                                         'average_rating' => 0,
@@ -555,6 +561,12 @@ class SearchController extends Controller
                                         'protections' => $vehicleDetails['protections'] ?? [],
                                         'extras' => $vehicleDetails['extras'] ?? [],
                                         'adobe_category' => $vehicle['category'] ?? '',
+                                        // Adobe-specific fields
+                                        'adobe_pli' => (float) ($vehicle['pli'] ?? 0),
+                                        'adobe_ldw' => (float) ($vehicle['ldw'] ?? 0),
+                                        'adobe_spp' => (float) ($vehicle['spp'] ?? 0),
+                                        'adobe_tdr' => (float) ($vehicle['tdr'] ?? 0),
+                                        'adobe_dro' => (float) ($vehicle['dro'] ?? 0),
                                     ];
 
                                     $processedVehicles[] = (object) $processedVehicle;
@@ -719,6 +731,64 @@ class SearchController extends Controller
                         Log::info('OK Mobility vehicles added to collection: ' . $okMobilityVehicles->count());
                     } catch (\Exception $e) {
                         Log::error("Error fetching OK Mobility vehicles: " . $e->getMessage(), [
+                            'provider_location_id' => $providerLocationId,
+                            'trace' => $e->getTraceAsString()
+                        ]);
+                    }
+                } elseif ($providerToFetch === 'wheelsys') {
+                    try {
+                        Log::info('Attempting to fetch Wheelsys vehicles for location ID: ' . $providerLocationId);
+                        Log::info('Search params: ', [
+                            'pickup_id' => $providerLocationId,
+                            'date_from' => $validated['date_from'],
+                            'start_time' => $validated['start_time'] ?? '10:00',
+                            'date_to' => $validated['date_to'],
+                            'end_time' => $validated['end_time'] ?? '10:00'
+                        ]);
+
+                        // Convert date format from YYYY-MM-DD to DD/MM/YYYY for Wheelsys
+                        $dateFromFormatted = date('d/m/Y', strtotime($validated['date_from']));
+                        $dateToFormatted = date('d/m/Y', strtotime($validated['date_to']));
+
+                        $wheelsysResponse = $this->wheelsysService->getVehicles(
+                            $providerLocationId,
+                            $validated['dropoff_location_id'] ?? $providerLocationId,
+                            $dateFromFormatted,
+                            $validated['start_time'] ?? '10:00',
+                            $dateToFormatted,
+                            $validated['end_time'] ?? '10:00'
+                        );
+
+                        Log::info('Wheelsys API response received: ' . ($wheelsysResponse ? 'SUCCESS' : 'NULL/EMPTY'));
+
+                        if ($wheelsysResponse && isset($wheelsysResponse['Rates']) && !empty($wheelsysResponse['Rates'])) {
+                            $wheelsysRates = collect($wheelsysResponse['Rates']);
+
+                            // Process each rate and convert to standard vehicle format
+                            foreach ($wheelsysRates as $rate) {
+                                $standardVehicle = $this->wheelsysService->convertToStandardVehicle(
+                                    $rate,
+                                    $providerLocationId,
+                                    $locationLat,
+                                    $locationLng,
+                                    $locationAddress
+                                );
+
+                                if ($standardVehicle) {
+                                    $providerVehicles->push((object) $standardVehicle);
+                                }
+                            }
+
+                            Log::info('Wheelsys vehicles processed and added: ' . $providerVehicles->count());
+
+                        } else {
+                            Log::warning("Wheelsys API response for vehicles was empty or malformed for location ID: " . $providerLocationId, [
+                                'response' => $wheelsysResponse
+                            ]);
+                        }
+
+                    } catch (\Exception $e) {
+                        Log::error("Error fetching Wheelsys vehicles: " . $e->getMessage(), [
                             'provider_location_id' => $providerLocationId,
                             'trace' => $e->getTraceAsString()
                         ]);
@@ -1308,5 +1378,45 @@ class SearchController extends Controller
     {
         // Use the actual OK Mobility image pattern from their website
         return "https://www.okmobility.com/alquilar/images/grupos/{$groupId}.png";
+    }
+
+    /**
+     * Extract brand name from vehicle model
+     */
+    private function extractBrandFromModel($model): string
+    {
+        if (empty($model)) {
+            return 'Adobe';
+        }
+
+        // Common car brands to extract from model names
+        $brands = ['Suzuki', 'Toyota', 'Nissan', 'Hyundai', 'Honda', 'Ford', 'Chevrolet', 'Mitsubishi', 'Mazda', 'Volkswagen'];
+
+        foreach ($brands as $brand) {
+            if (stripos($model, $brand) !== false) {
+                return $brand;
+            }
+        }
+
+        // If no brand found, use first word as brand
+        $words = explode(' ', $model);
+        return $words[0] ?? 'Adobe';
+    }
+
+    /**
+     * Get Adobe vehicle image URL
+     */
+    private function getAdobeVehicleImage($photo): string
+    {
+        if (empty($photo)) {
+            return '/images/adobe-placeholder.jpg';
+        }
+
+        // If photo is just filename, construct full URL
+        if (strpos($photo, 'http') === false) {
+            return "https://adobecar.cr/images/vehicles/{$photo}";
+        }
+
+        return $photo;
     }
 }

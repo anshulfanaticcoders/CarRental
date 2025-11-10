@@ -80,23 +80,56 @@ class AdobeCarService
      */
     public function getAvailableVehicles(array $params): array
     {
+        logger()->info('Adobe API: Starting vehicle search', ['params' => $params]);
+
         $token = $this->getAccessToken();
 
         if (!$token) {
-            logger()->error('Failed to get Adobe API access token for vehicle search.');
+            logger()->error('Adobe API: Failed to get access token for vehicle search.');
             return [];
         }
 
-        $response = Http::withToken($token)->get("{$this->baseUrl}/Vehicles/Available", $params);
+        logger()->info('Adobe API: Token obtained, making API call');
+        logger()->info('Adobe API: URL', ['url' => "{$this->baseUrl}/Client/GetAvailabilityWithPrice"]);
 
-        if ($response->successful()) {
-            return $response->json();
+        // Adobe API expects query parameters for GetAvailabilityWithPrice
+        $queryParams = [
+            'pickupoffice' => $params['pickupoffice'] ?? '',
+            'returnoffice' => $params['returnoffice'] ?? $params['pickupoffice'] ?? '',
+            'startdate' => $params['startdate'] ?? '',
+            'enddate' => $params['enddate'] ?? '',
+            'customerCode' => 'PRUEBA' // Default customer code as per Adobe documentation
+        ];
+
+        // Add promotion code if provided
+        if (!empty($params['promotionCode'])) {
+            $queryParams['promotionCode'] = $params['promotionCode'];
         }
 
-        logger()->error('Failed to fetch Adobe API available vehicles.', [
+        logger()->info('Adobe API: Query parameters', ['queryParams' => $queryParams]);
+
+        $response = Http::withToken($token)->get("{$this->baseUrl}/Client/GetAvailabilityWithPrice", $queryParams);
+
+        logger()->info('Adobe API: Response received', [
+            'status' => $response->status(),
+            'successful' => $response->successful(),
+            'body_length' => strlen($response->body()),
+            'body' => $response->body()
+        ]);
+
+        if ($response->successful()) {
+            logger()->info('Adobe API: Vehicle search successful');
+            $vehicles = $response->json();
+            return [
+                'result' => true,
+                'data' => $vehicles
+            ];
+        }
+
+        logger()->error('Adobe API: Failed to fetch available vehicles.', [
             'status' => $response->status(),
             'body' => $response->body(),
-            'params' => $params
+            'params' => $queryParams
         ]);
 
         return [];
@@ -178,32 +211,60 @@ class AdobeCarService
      */
     public function getProtectionsAndExtras(string $locationCode, string $category, array $dates): array
     {
-        // Create mock booking parameters to get protections and extras
-        $bookingParams = [
+        logger()->info('Adobe API: Getting protections and extras', [
+            'location' => $locationCode,
+            'category' => $category,
+            'dates' => $dates
+        ]);
+
+        $token = $this->getAccessToken();
+
+        if (!$token) {
+            logger()->error('Adobe API: Failed to get access token for protections/extras.');
+            return ['protections' => [], 'extras' => []];
+        }
+
+        // Adobe API GetCategoryWithFare parameters
+        $queryParams = [
             'pickupoffice' => $locationCode,
-            'returnoffice' => $locationCode,
+            'category' => $category,
             'startdate' => $dates['startdate'],
             'enddate' => $dates['enddate'],
-            'category' => $category,
-            'customerCode' => 'PRUEBA',
-            'name' => 'Test User',
-            'lastName' => 'Test',
-            'email' => 'test@example.com',
-            'phone' => '123456789'
+            'customerCode' => 'PRUEBA' // Default customer code as per Adobe documentation
         ];
 
-        $vehicleDetails = $this->getVehicleDetails($bookingParams);
+        logger()->info('Adobe API: Calling GetCategoryWithFare', ['queryParams' => $queryParams]);
 
-        if (isset($vehicleDetails['data']['items'])) {
-            return [
-                'protections' => array_filter($vehicleDetails['data']['items'], function($item) {
-                    return $item['type'] === 'protection' || $item['included'] === true;
-                }),
-                'extras' => array_filter($vehicleDetails['data']['items'], function($item) {
-                    return $item['type'] !== 'protection' && $item['included'] === false;
-                })
-            ];
+        $response = Http::withToken($token)->get("{$this->baseUrl}/Client/GetCategoryWithFare", $queryParams);
+
+        if ($response->successful()) {
+            logger()->info('Adobe API: GetCategoryWithFare successful');
+            $data = $response->json();
+
+            if (isset($data['items']) && is_array($data['items'])) {
+                $protections = [];
+                $extras = [];
+
+                foreach ($data['items'] as $item) {
+                    // Adobe items have 'type' field - separate protections from extras
+                    if (isset($item['type']) && ($item['type'] === 'Proteccion' || $item['type'] === 'protection')) {
+                        $protections[] = $item;
+                    } else {
+                        $extras[] = $item;
+                    }
+                }
+
+                return [
+                    'protections' => $protections,
+                    'extras' => $extras
+                ];
+            }
         }
+
+        logger()->error('Adobe API: Failed to GetCategoryWithFare', [
+            'status' => $response->status(),
+            'body' => $response->body()
+        ]);
 
         return ['protections' => [], 'extras' => []];
     }

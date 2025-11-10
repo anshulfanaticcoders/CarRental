@@ -1,13 +1,35 @@
 {
     "SJO": {
+        "vehicles": [
+            {
+                "id": "adobe_SJO_test",
+                "source": "adobe",
+                "brand": "Test Brand",
+                "model": "Test Vehicle",
+                "price_per_day": 50,
+                "category": "test"
+            }
+        ],
+        "protections": [
+            {
+                "code": "TEST_PROT",
+                "name": "Test Protection",
+                "included": true,
+                "price": 0
+            }
+        ],
+        "extras": [
+            {
+                "code": "TEST_EXTRA",
+                "name": "Test Extra",
+                "included": false,
+                "price": 5
+            }
+        ],
         "location": {
-            "name": "San Jose Centro / Downtown",
             "code": "SJO",
-            "last_updated": null
-        },
-        "vehicles": [],
-        "protections": [],
-        "extras": []
+            "last_updated": "2025-11-10T06:16:54.024369Z"
+        }
     },
     "LIB": {
         "location": {

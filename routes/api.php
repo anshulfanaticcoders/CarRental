@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Admin\BlogController;
 use App\Http\Controllers\Admin\FaqController;
+use App\Http\Controllers\AdobeController;
 use App\Http\Controllers\Api\CategoryFeaturesController;
 use App\Http\Controllers\Api\FooterController;
 use App\Http\Controllers\BookingAddonController;
@@ -94,6 +95,11 @@ Route::get('/admin/profile', [App\Http\Controllers\AdminProfileController::class
 
 // Public API for fetching payment percentage
 Route::get('/payment-percentage', [PayableSettingController::class, 'getPercentage'])->name('api.payment-percentage');
+
+// Adobe API routes (must come before generic provider routes)
+Route::get('/adobe/vehicles', [AdobeController::class, 'getVehicles'])->name('api.adobe.vehicles');
+Route::get('/adobe/vehicle-details', [AdobeController::class, 'getVehicleDetails'])->name('api.adobe.vehicle-details');
+Route::get('/adobe/dropoff-locations/{location_id}', [AdobeController::class, 'getDropoffLocationsForProvider'])->name('api.adobe.dropoff-locations');
 
 // GreenMotion API routes
 Route::get('/greenmotion/locations-autocomplete', [GreenMotionController::class, 'getGreenMotionLocationsForAutocomplete'])->name('api.greenmotion.locations-autocomplete');

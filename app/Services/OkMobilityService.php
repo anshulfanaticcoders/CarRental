@@ -45,35 +45,36 @@ class OkMobilityService
         }
 
         $xmlRequest = '<?xml version="1.0" encoding="utf-8"?>
-            <soap12:Envelope xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:soap12="http://www.w3.org/2003/05/soap-envelope">
-                <soap12:Body>
-                    <getMultiplePrices xmlns="http://tempuri.org/">
-                        <Value>
-                            <companyCode>' . $this->companyCode . '</companyCode>
-                            <customerCode>' . $this->customerCode . '</customerCode>
-                            <onlyDynamicRate>false</onlyDynamicRate>
-                            <PickUpDate>' . $pickupDateTime . '</PickUpDate>
-                            <PickUpStation>' . $pickupStationId . '</PickUpStation>
-                            <DropOffDate>' . $dropoffDateTime . '</DropOffDate>
-                            <DropOffStation>' . $dropoffStationId . '</DropOffStation>';
+<soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/" xmlns:get="http://www.OKGroup.es/RentaCarWebService/getWSDL">
+   <soapenv:Header/>
+   <soapenv:Body>
+      <get:getMultiplePricesRequest>
+         <objRequest>
+            <companyCode>' . $this->companyCode . '</companyCode>
+            <customerCode>' . $this->customerCode . '</customerCode>
+            <onlyDynamicRate>false</onlyDynamicRate>
+            <PickUpDate>' . $pickupDateTime . '</PickUpDate>
+            <PickUpStation>' . $pickupStationId . '</PickUpStation>
+            <DropOffDate>' . $dropoffDateTime . '</DropOffDate>
+            <DropOffStation>' . $dropoffStationId . '</DropOffStation>';
 
         if ($groupId) {
             $xmlRequest .= '<groupID>' . $groupId . '</groupID>';
         }
 
-        $xmlRequest .= '</Value>
-                    </getMultiplePrices>
-                </soap12:Body>
-            </soap12:Envelope>';
+        $xmlRequest .= '</objRequest>
+      </get:getMultiplePricesRequest>
+   </soapenv:Body>
+</soapenv:Envelope>';
 
         try {
             Log::info('OK Mobility API Request (getMultiplePrices): ' . $xmlRequest);
 
             $response = Http::withHeaders([
-                    'Content-Type' => 'application/soap+xml; charset=utf-8',
-                    'SOAPAction' => 'http://tempuri.org/getMultiplePrices',
+                    'Content-Type' => 'text/xml; charset=utf-8',
+                    'SOAPAction' => 'http://www.OKGroup.es/RentaCarWebService/getWSDL/getMultiplePrices',
                 ])
-                ->send('POST', $this->baseUrl . '/getMultiplePrices', [
+                ->send('POST', $this->baseUrl . '/okrentacar', [
                     'body' => $xmlRequest
                 ]);
 
@@ -182,25 +183,26 @@ class OkMobilityService
         }
 
         $xmlRequest = '<?xml version="1.0" encoding="utf-8"?>
-            <soap12:Envelope xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:soap12="http://www.w3.org/2003/05/soap-envelope">
-                <soap12:Body>
-                    <getStations xmlns="http://tempuri.org/">
-                        <Value>
-                            <companyCode>' . $this->companyCode . '</companyCode>
-                            <customerCode>' . $this->customerCode . '</customerCode>
-                        </Value>
-                    </getStations>
-                </soap12:Body>
-            </soap12:Envelope>';
+<soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/" xmlns:get="http://www.OKGroup.es/RentaCarWebService/getWSDL">
+   <soapenv:Header/>
+   <soapenv:Body>
+      <get:getStationsRequest>
+         <objRequest>
+            <customerCode>' . $this->customerCode . '</customerCode>
+            <companyCode>' . $this->companyCode . '</companyCode>
+         </objRequest>
+      </get:getStationsRequest>
+   </soapenv:Body>
+</soapenv:Envelope>';
 
         try {
             Log::info('OK Mobility API Request (getStations): ' . $xmlRequest);
 
             $response = Http::withHeaders([
-                    'Content-Type' => 'application/soap+xml; charset=utf-8',
-                    'SOAPAction' => 'http://tempuri.org/getStations',
+                    'Content-Type' => 'text/xml; charset=utf-8',
+                    'SOAPAction' => 'http://www.OKGroup.es/RentaCarWebService/getWSDL/getStations',
                 ])
-                ->send('POST', $this->baseUrl . '/getStations', [
+                ->send('POST', $this->baseUrl . '/okrentacar', [
                     'body' => $xmlRequest
                 ]);
 

@@ -49,6 +49,13 @@ return [
         'company_code' => env('OK_MOBILITY_COMPANY_CODE'),
     ],
 
+    'wheelsys' => [
+        'account_no' => env('WHEELSYS_ACCOUNT_NO'),
+        'link_code' => env('WHEELSYS_LINK_CODE'),
+        'agent_code' => env('WHEELSYS_AGENT_CODE'),
+        'base_url' => env('WHEELSYS_BASE_URL'),
+    ],
+
     'esim_access' => [
         'api_key' => env('ESIM_ACCESS_API_KEY'),
         'base_url' => env('ESIM_ACCESS_API_URL'),
