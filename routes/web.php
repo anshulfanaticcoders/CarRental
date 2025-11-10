@@ -922,6 +922,10 @@ Route::group([
     // OK Mobility Check Availability
     Route::post('/ok-mobility-car/check-availability', [OkMobilityController::class, 'checkAvailability'])->name('ok-mobility-car.check-availability');
 
+    // Wheelsys Single Car Page
+    Route::get('/wheelsys-car/{id}', [WheelsysCarController::class, 'show'])
+        ->name('wheelsys-car.show');
+
   
 }); // End of locale group
 

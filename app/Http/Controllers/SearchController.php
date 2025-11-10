@@ -781,6 +781,20 @@ class SearchController extends Controller
 
                             Log::info('Wheelsys vehicles processed and added: ' . $providerVehicles->count());
 
+                            // Debug: Log the first few vehicles to see their structure
+                            $wheelsysVehiclesDebug = $providerVehicles->where('source', 'wheelsys')->take(3);
+                            foreach ($wheelsysVehiclesDebug as $debugVehicle) {
+                                Log::info('Wheelsys Vehicle Debug', [
+                                    'id' => $debugVehicle->id,
+                                    'source' => $debugVehicle->source,
+                                    'brand' => $debugVehicle->brand,
+                                    'model' => $debugVehicle->model,
+                                    'price_per_day' => $debugVehicle->price_per_day,
+                                    'image' => $debugVehicle->image,
+                                    'availability' => $debugVehicle->availability ?? 'N/A'
+                                ]);
+                            }
+
                         } else {
                             Log::warning("Wheelsys API response for vehicles was empty or malformed for location ID: " . $providerLocationId, [
                                 'response' => $wheelsysResponse

@@ -640,6 +640,24 @@ const createPopupContent = (vehicle, primaryImage, popupPrice, detailRoute) => {
                 </a>
             </div>
         `;
+    } else if (vehicle.source === 'wheelsys') {
+        return `
+            <div class="text-center popup-content">
+                <img src="${primaryImage}" alt="${vehicle.brand} ${vehicle.model}" class="popup-image !w-40 !h-20" />
+                <p class="font-semibold !w-40">${vehicle.brand} ${vehicle.model}</p>
+                ${vehicle.acriss_code || vehicle.group_code ? `<p class="!w-40 text-sm">Code: ${vehicle.acriss_code || vehicle.group_code}</p>` : ''}
+                ${vehicle.category ? `<p class="!w-40 text-sm"><strong>Category:</strong> ${vehicle.category}</p>` : ''}
+                <p class="!w-40">${vehicle.full_vehicle_address || ''}</p>
+                ${vehicle.doors ? `<p class="!w-40 text-sm"><strong>Doors:</strong> ${vehicle.doors}</p>` : ''}
+                ${vehicle.seating_capacity ? `<p class="!w-40 text-sm"><strong>Seats:</strong> ${vehicle.seating_capacity}</p>` : ''}
+                <p class="!w-40 font-semibold">Price: ${popupPrice}</p>
+                <a href="${detailRoute}"
+                   class="text-blue-500 hover:text-blue-700 block mt-2"
+                   onclick="event.preventDefault(); window.location.href = this.href;">
+                    View Details
+                </a>
+            </div>
+        `;
     } else {
         return `
             <div class="text-center popup-content">
@@ -704,7 +722,7 @@ const addMarkers = () => {
             displayLng = lng + effectiveRadius * Math.cos(angle);
         }
 
-        const primaryImage = vehicle.source === 'greenmotion' ? vehicle.image : (vehicle.images?.find((image) => image.image_type === 'primary')?.image_url || '/default-image.png');
+        const primaryImage = (vehicle.source === 'greenmotion' || vehicle.source === 'wheelsys') ? vehicle.image : (vehicle.images?.find((image) => image.image_type === 'primary')?.image_url || '/default-image.png');
         const detailRoute = vehicle.source !== 'internal'
             ? route(getProviderRoute(vehicle), { locale: page.props.locale, id: vehicle.id.substring(vehicle.id.indexOf('_') + 1), location_id: vehicle.provider_pickup_id, start_date: form.date_from, end_date: form.date_to, start_time: form.start_time, end_time: form.end_time, age: form.age, rentalCode: form.rentalCode, currency: form.currency, fuel: form.fuel, userid: form.userid, username: form.username, language: form.language, full_credit: form.full_credit, promocode: form.promocode, dropoff_location_id: form.dropoff_location_id, dropoff_where: form.dropoff_where, where: form.where, provider: vehicle.source })
             : route('vehicle.show', { locale: page.props.locale, id: vehicle.id, package: form.package_type, pickup_date: form.date_from, return_date: form.date_to, currency: form.currency });
@@ -712,7 +730,12 @@ const addMarkers = () => {
         let popupPrice = "N/A";
         let popupCurrencySymbol = getCurrencySymbol(selectedCurrency.value);
 
-        if (vehicle.source !== 'internal' && vehicle.products && vehicle.products[0]?.total && vehicle.products[0].total > 0) {
+        if (vehicle.source === 'wheelsys' && vehicle.price_per_day && vehicle.price_per_day > 0) {
+            const originalCurrency = vehicle.currency || 'USD';
+            const convertedPrice = convertCurrency(vehicle.price_per_day, originalCurrency);
+            popupCurrencySymbol = getCurrencySymbol(selectedCurrency.value);
+            popupPrice = `${popupCurrencySymbol}${convertedPrice.toFixed(2)}`; // Display price per day
+        } else if (vehicle.source !== 'internal' && vehicle.products && vehicle.products[0]?.total && vehicle.products[0].total > 0) {
             const currencyCode = vehicle.products[0]?.currency || 'USD';
             const totalProviderPrice = parseFloat(vehicle.products[0]?.total || 0);
             const pricePerDay = totalProviderPrice / numberOfRentalDays.value;
@@ -800,7 +823,7 @@ const addMobileMarkers = () => {
             displayLng = lng + effectiveRadius * Math.cos(angle);
         }
 
-        const primaryImage = vehicle.source === 'greenmotion' ? vehicle.image : (vehicle.images?.find((image) => image.image_type === 'primary')?.image_url || '/default-image.png');
+        const primaryImage = (vehicle.source === 'greenmotion' || vehicle.source === 'wheelsys') ? vehicle.image : (vehicle.images?.find((image) => image.image_type === 'primary')?.image_url || '/default-image.png');
         const detailRoute = vehicle.source !== 'internal'
             ? route(getProviderRoute(vehicle), { locale: page.props.locale, id: vehicle.id.substring(vehicle.id.indexOf('_') + 1), location_id: vehicle.provider_pickup_id, start_date: form.date_from, end_date: form.date_to, start_time: form.start_time, end_time: form.end_time, age: form.age, rentalCode: form.rentalCode, currency: form.currency, fuel: form.fuel, userid: form.userid, username: form.username, language: form.language, full_credit: form.full_credit, promocode: form.promocode, dropoff_location_id: form.dropoff_location_id, dropoff_where: form.dropoff_where, where: form.where, provider: vehicle.source })
             : route('vehicle.show', { locale: page.props.locale, id: vehicle.id, package: form.package_type, pickup_date: form.date_from, return_date: form.date_to, currency: form.currency });
@@ -808,7 +831,12 @@ const addMobileMarkers = () => {
         let popupPrice = "N/A";
         let popupCurrencySymbol = getCurrencySymbol(selectedCurrency.value);
 
-        if (vehicle.source !== 'internal' && vehicle.products && vehicle.products[0]?.total && vehicle.products[0].total > 0) {
+        if (vehicle.source === 'wheelsys' && vehicle.price_per_day && vehicle.price_per_day > 0) {
+            const originalCurrency = vehicle.currency || 'USD';
+            const convertedPrice = convertCurrency(vehicle.price_per_day, originalCurrency);
+            popupCurrencySymbol = getCurrencySymbol(selectedCurrency.value);
+            popupPrice = `${popupCurrencySymbol}${convertedPrice.toFixed(2)}`; // Display price per day
+        } else if (vehicle.source !== 'internal' && vehicle.products && vehicle.products[0]?.total && vehicle.products[0].total > 0) {
             const currencyCode = vehicle.products[0]?.currency || 'USD';
             const totalProviderPrice = parseFloat(vehicle.products[0]?.total || 0);
             const pricePerDay = totalProviderPrice / numberOfRentalDays.value;
@@ -1207,6 +1235,9 @@ const getProviderRoute = (vehicle) => {
     if (vehicle.source === 'okmobility') {
         return 'ok-mobility-car.show';
     }
+    if (vehicle.source === 'wheelsys') {
+        return 'wheelsys-car.show';
+    }
     // Add other providers here as needed
     // if (vehicle.source === 'usave') {
     //     return 'usave-car.show';
@@ -1334,6 +1365,17 @@ onMounted(() => {
     }
     setupIntersectionObserver(); // Initialize Intersection Observer
 });
+
+const handleImageError = (event) => {
+    console.error('Image failed to load:', event.target.src);
+    console.error('Data URL:', event.target.dataset.imageUrl);
+    // Set fallback image
+    event.target.src = '/default-image.png';
+};
+
+const handleImageLoad = (event) => {
+    console.log('Image loaded successfully:', event.target.src);
+};
 
 watch(
     () => props.vehicles.data,
@@ -1811,13 +1853,19 @@ watch(
                                 <img :src="vehicle.source !== 'internal' ? vehicle.image : (vehicle.images?.find(
                                     (image) =>
                                         image.image_type === 'primary'
-                                )?.image_url || '/default-image.png')
-                                    " alt="Vehicle Image"
+                                )?.image_url || '/default-image.png')"
+                                    @error="handleImageError"
+                                    @load="handleImageLoad"
+                                    :data-image-url="vehicle.source !== 'internal' ? vehicle.image : (vehicle.images?.find((image) => image.image_type === 'primary')?.image_url || '/default-image.png')"
+                                    alt="Vehicle Image"
                                     class="w-full h-[250px] object-cover rounded-tl-lg rounded-tr-lg max-[768px]:h-[200px]" loading="lazy" />
                                 <span
                                     class="bg-[#f5f5f5] ml-[1rem] inline-block px-8 py-2 text-center rounded-[40px] max-[768px]:text-[0.95rem]">
                                     <template v-if="vehicle.source === 'okmobility'">
                                         {{ vehicle.sipp_code || 'N/A' }}
+                                    </template>
+                                    <template v-else-if="vehicle.source === 'wheelsys'">
+                                        {{ vehicle.acriss_code || vehicle.group_code || 'N/A' }}
                                     </template>
                                     <template v-else>
                                         {{ vehicle.model }}
@@ -1869,6 +1917,22 @@ watch(
                                     </div>
                                 </div>
 
+                                <!-- Show Wheelsys specific info -->
+                                <div class="mt-[1rem] text-sm text-gray-600" v-if="vehicle.source === 'wheelsys'">
+                                    <div v-if="vehicle.category">
+                                        <strong>Category:</strong> {{ vehicle.category }}
+                                    </div>
+                                    <div v-if="vehicle.group_code">
+                                        <strong>Group Code:</strong> {{ vehicle.group_code }}
+                                    </div>
+                                    <div v-if="vehicle.doors">
+                                        <strong>Doors:</strong> {{ vehicle.doors }}
+                                    </div>
+                                    <div v-if="vehicle.bags || vehicle.suitcases">
+                                        <strong>Luggage:</strong> {{ vehicle.bags || 0 }} bags, {{ vehicle.suitcases || 0 }} suitcases
+                                    </div>
+                                </div>
+
                                  <div>
                                     <span class="italic font-medium">{{vehicle.full_vehicle_address}}</span>
                                  </div>
@@ -1880,6 +1944,12 @@ watch(
                                             <template v-if="vehicle.source === 'okmobility'">
                                                 SIPP: {{ vehicle.sipp_code || 'N/A' }}
                                             </template>
+                                            <template v-else-if="vehicle.source === 'wheelsys'">
+                                                {{ vehicle.transmission }} .
+                                                {{ vehicle.fuel }} .
+                                                {{ vehicle.seating_capacity }} Seats .
+                                                {{ vehicle.doors }} Doors
+                                            </template>
                                             <template v-else>
                                                 {{ vehicle.transmission }} .
                                                 {{ vehicle.source === 'greenmotion' ? vehicle.fuel : vehicle.fuel }} .
@@ -1889,7 +1959,7 @@ watch(
                                     </div>
                                 </div>
                                 <div class="extra_details flex gap-5 mt-[1rem] items-center">
-                                    <div class="col flex gap-3" v-if="vehicle.source !== 'okmobility'">
+                                    <div class="col flex gap-3" v-if="vehicle.source !== 'okmobility' && vehicle.source !== 'wheelsys'">
                                         <img :src="mileageIcon" alt="" loading="lazy" /><span
                                             class="text-[1.15rem] max-[768px]:text-[0.95rem]">
                                             {{ vehicle.source === 'greenmotion' ? vehicle.mileage + ' MPG' : vehicle.mileage + ' km/L' }}</span>
@@ -1899,6 +1969,12 @@ watch(
                                         <img :src="mileageIcon" alt="" loading="lazy" /><span
                                             class="text-[1.15rem] max-[768px]:text-[0.95rem]">
                                             Unlimited mileage</span>
+                                    </div>
+                                    <!-- Wheelsys mileage display -->
+                                    <div class="col flex gap-3" v-else-if="vehicle.source === 'wheelsys'">
+                                        <img :src="mileageIcon" alt="" loading="lazy" /><span
+                                            class="text-[1.15rem] max-[768px]:text-[0.95rem]">
+                                            {{ vehicle.mileage || 'Unlimited mileage' }}</span>
                                     </div>
                                     <!-- <div class="col flex gap-3" v-if="vehicle.distance_in_km !== undefined">
                                         <img :src="walkIcon" alt="" /><span
@@ -2029,6 +2105,22 @@ watch(
                                     <span v-else-if="vehicle.source === 'greenmotion' && vehicle.benefits?.fuel_policy" class="flex gap-3 items-center text-[12px]">
                                         <img :src="check" alt="" loading="lazy" />Fuel Policy: {{ vehicle.benefits.fuel_policy }}
                                     </span>
+                                    <!-- Wheelsys specific benefits -->
+                                    <span v-if="vehicle.source === 'wheelsys' && vehicle.benefits?.unlimited_mileage" class="flex gap-3 items-center text-[12px]">
+                                        <img :src="check" alt="" loading="lazy" />Unlimited mileage
+                                    </span>
+                                    <span v-else-if="vehicle.source === 'wheelsys' && vehicle.benefits?.included_km" class="flex gap-3 items-center text-[12px]">
+                                        <img :src="check" alt="" loading="lazy" />{{ vehicle.benefits.included_km }} km included
+                                    </span>
+                                    <span v-if="vehicle.source === 'wheelsys' && vehicle.benefits?.cancellation_available_per_day" class="flex gap-3 items-center text-[12px]">
+                                        <img :src="check" alt="" loading="lazy" />Free Cancellation
+                                    </span>
+                                    <span v-else-if="vehicle.source === 'wheelsys' && vehicle.benefits?.fuel_policy" class="flex gap-3 items-center text-[12px]">
+                                        <img :src="check" alt="" loading="lazy" />Fuel Policy: {{ vehicle.benefits.fuel_policy }}
+                                    </span>
+                                    <span v-else-if="vehicle.source === 'wheelsys' && vehicle.benefits?.minimum_driver_age" class="flex gap-3 items-center text-[12px]">
+                                        <img :src="check" alt="" loading="lazy" />Min age: {{ vehicle.benefits.minimum_driver_age }} years
+                                    </span>
                                 </div>
 
                                 <div class="mt-[2rem] flex justify-between items-center">
@@ -2037,9 +2129,15 @@ watch(
                                         <!-- If a specific package_type filter is active (day, week, or month) -->
                                         <div v-if="form.package_type === 'day' || form.package_type === 'week' || form.package_type === 'month'">
                                             <div v-if="vehicle.source !== 'internal'">
-                                                <div v-if="vehicle.products && vehicle.products[0]?.total && vehicle.products[0].total > 0">
+                                                <div v-if="vehicle.source === 'wheelsys' && vehicle.price_per_day && vehicle.price_per_day > 0">
                                                     <span class="text-customPrimaryColor text-[1.875rem] font-medium max-[768px]:text-[1.3rem] max-[768px]:font-bold">
-                                                        {{ getCurrencySymbol(vehicle.products[0].currency) }}{{ (parseFloat(vehicle.products[0].total) / numberOfRentalDays).toFixed(2) }}
+                                                        {{ getCurrencySymbol(selectedCurrency) }}{{ convertCurrency(vehicle.price_per_day, vehicle.currency || 'USD').toFixed(2) }}
+                                                    </span>
+                                                    <span>/day</span>
+                                                </div>
+                                                <div v-else-if="vehicle.products && vehicle.products[0]?.total && vehicle.products[0].total > 0">
+                                                    <span class="text-customPrimaryColor text-[1.875rem] font-medium max-[768px]:text-[1.3rem] max-[768px]:font-bold">
+                                                        {{ getCurrencySymbol(selectedCurrency) }}{{ convertCurrency((parseFloat(vehicle.products[0].total) / numberOfRentalDays), vehicle.products[0].currency).toFixed(2) }}
                                                     </span>
                                                     <span>/day</span>
                                                 </div>
@@ -2060,7 +2158,13 @@ watch(
                                         <!-- Else (no package_type filter is active, form.package_type is '') -->
                                         <div v-else class="flex flex-col">
                                             <template v-if="vehicle.source !== 'internal'">
-                                                <div v-if="vehicle.products && vehicle.products[0]?.total && vehicle.products[0].total > 0" class="flex items-baseline">
+                                                <div v-if="vehicle.source === 'wheelsys' && vehicle.price_per_day && vehicle.price_per_day > 0" class="flex items-baseline">
+                                                    <span class="text-customPrimaryColor text-lg font-semibold">
+                                                        {{ getCurrencySymbol(selectedCurrency) }}{{ convertCurrency(vehicle.price_per_day, vehicle.currency || 'USD').toFixed(2) }}
+                                                    </span>
+                                                    <span class="text-xs text-gray-600 ml-1">/day</span>
+                                                </div>
+                                                <div v-else-if="vehicle.products && vehicle.products[0]?.total && vehicle.products[0].total > 0" class="flex items-baseline">
                                                     <span class="text-customPrimaryColor text-lg font-semibold">
                                                         {{ getCurrencySymbol(selectedCurrency) }}{{ convertCurrency((parseFloat(vehicle.products[0].total) / numberOfRentalDays), vehicle.products[0].currency).toFixed(2) }}
                                                     </span>

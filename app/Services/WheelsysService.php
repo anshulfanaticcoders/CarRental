@@ -227,6 +227,14 @@ class WheelsysService
         // Convert price from integer to actual value (divide by 100)
         $pricePerDay = isset($rate['TotalRate']) ? (float) ($rate['TotalRate'] / 100) : 0.0;
 
+        // Debug logging
+        Log::info('Wheelsys Vehicle Processing', [
+            'group_code' => $rate['GroupCode'] ?? 'N/A',
+            'total_rate' => $rate['TotalRate'] ?? 'N/A',
+            'price_per_day' => $pricePerDay,
+            'availability' => $rate['Availability'] ?? 'N/A'
+        ]);
+
         return [
             'id' => 'wheelsys_' . $rate['GroupCode'] . '_' . uniqid(),
             'source' => 'wheelsys',
@@ -235,7 +243,7 @@ class WheelsysService
             'category' => $rate['Category'] ?? '',
             'group_code' => $rate['GroupCode'] ?? '',
             'acriss_code' => $rate['Acriss'] ?? '',
-            'image' => $this->getVehicleImage($rate['ImageUrl'] ?? ''),
+            'image' => $this->getVehicleImage($rate['ImageUrl'] ?? '', $rate['Acriss'] ?? '', $rate['GroupCode'] ?? ''),
             'price_per_day' => $pricePerDay,
             'price_per_week' => $pricePerDay * 7,
             'price_per_month' => $pricePerDay * 30,
@@ -297,10 +305,20 @@ class WheelsysService
     /**
      * Get vehicle image URL
      */
-    private function getVehicleImage($imageUrl)
+    private function getVehicleImage($imageUrl, $sippCode = '', $groupCode = '')
     {
+        // Try to construct image URL using SIPP code or group code if ImageUrl is empty
         if (empty($imageUrl)) {
-            return '/images/wheelsys-placeholder.jpg';
+            $imgRoot = "https://wheels-assets.s3.eu-central-1.amazonaws.com/";
+
+            // Use SIPP code first, then group code as fallback
+            $imageIdentifier = !empty($sippCode) ? $sippCode : $groupCode;
+
+            if (!empty($imageIdentifier)) {
+                return "{$imgRoot}{$imageIdentifier}.png";
+            }
+
+            return 'https://via.placeholder.com/300x200/4CAF50/FFFFFF?text=' . urlencode($imageIdentifier ?? 'Car');
         }
 
         // If it's already a full URL, return as is
