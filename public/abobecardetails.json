@@ -1,0 +1,42 @@
+{
+    "SJO": {
+        "location": {
+            "name": "San Jose Centro / Downtown",
+            "code": "SJO",
+            "last_updated": null
+        },
+        "vehicles": [],
+        "protections": [],
+        "extras": []
+    },
+    "LIB": {
+        "location": {
+            "name": "Aeropuerto Liberia [LIR]",
+            "code": "LIB",
+            "last_updated": null
+        },
+        "vehicles": [],
+        "protections": [],
+        "extras": []
+    },
+    "LDT": {
+        "location": {
+            "name": "Liberia Centro",
+            "code": "LDT",
+            "last_updated": null
+        },
+        "vehicles": [],
+        "protections": [],
+        "extras": []
+    },
+    "OCO": {
+        "location": {
+            "name": "Ocotal / Alajuela",
+            "code": "OCO",
+            "last_updated": null
+        },
+        "vehicles": [],
+        "protections": [],
+        "extras": []
+    }
+}

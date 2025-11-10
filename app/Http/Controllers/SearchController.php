@@ -13,6 +13,7 @@ use App\Helpers\SchemaBuilder;
 use App\Services\GreenMotionService; // Import GreenMotionService
 use App\Services\OkMobilityService;
 use App\Services\LocationSearchService; // Import LocationSearchService
+use App\Services\AdobeCarService; // Import AdobeCarService
 use Illuminate\Support\Facades\Log; // Import Log facade
 
 class SearchController extends Controller
@@ -20,12 +21,14 @@ class SearchController extends Controller
     protected $greenMotionService;
     protected $okMobilityService;
     protected $locationSearchService;
+    protected $adobeCarService;
 
-    public function __construct(GreenMotionService $greenMotionService, OkMobilityService $okMobilityService, LocationSearchService $locationSearchService)
+    public function __construct(GreenMotionService $greenMotionService, OkMobilityService $okMobilityService, LocationSearchService $locationSearchService, AdobeCarService $adobeCarService)
     {
         $this->greenMotionService = $greenMotionService;
         $this->okMobilityService = $okMobilityService;
         $this->locationSearchService = $locationSearchService;
+        $this->adobeCarService = $adobeCarService;
     }
 
     public function search(Request $request)
@@ -463,6 +466,134 @@ class SearchController extends Controller
                         }
                     } catch (\Exception $e) {
                         Log::error("Error fetching {$providerToFetch} vehicles: " . $e->getMessage());
+                    }
+                } elseif ($providerToFetch === 'adobe') {
+                    try {
+                        Log::info('Attempting to fetch Adobe vehicles for location ID: ' . $providerLocationId);
+                        Log::info('Search params: ', [
+                            'pickup_id' => $providerLocationId,
+                            'date_from' => $validated['date_from'],
+                            'start_time' => $validated['start_time'] ?? '09:00',
+                            'date_to' => $validated['date_to'],
+                            'end_time' => $validated['end_time'] ?? '09:00'
+                        ]);
+
+                        // First, check if we have cached data
+                        $cachedAdobeData = $this->adobeCarService->getCachedVehicleData($providerLocationId, 60); // 60 minutes cache
+
+                        if ($cachedAdobeData && !empty($cachedAdobeData['vehicles'])) {
+                            Log::info('Using cached Adobe vehicle data for location: ' . $providerLocationId);
+                            $adobeVehicles = collect($cachedAdobeData['vehicles']);
+                        } else {
+                            Log::info('Fetching fresh Adobe vehicle data from API');
+
+                            // Prepare search parameters for Adobe API
+                            $adobeSearchParams = [
+                                'pickupoffice' => $providerLocationId,
+                                'returnoffice' => $providerLocationId,
+                                'startdate' => $validated['date_from'] . ' ' . ($validated['start_time'] ?? '09:00'),
+                                'enddate' => $validated['date_to'] . ' ' . ($validated['end_time'] ?? '09:00'),
+                                'promotionCode' => $validated['promocode'] ?? null
+                            ];
+
+                            // Filter out null values
+                            $adobeSearchParams = array_filter($adobeSearchParams, function($value) {
+                                return $value !== null && $value !== '';
+                            });
+
+                            $adobeResponse = $this->adobeCarService->getAvailableVehicles($adobeSearchParams);
+
+                            Log::info('Adobe API response received: ' . ($adobeResponse ? 'SUCCESS' : 'NULL/EMPTY'));
+
+                            if ($adobeResponse && isset($adobeResponse['data']) && !empty($adobeResponse['data'])) {
+                                $adobeVehicles = collect($adobeResponse['data']);
+
+                                // Process vehicles to get detailed information including protections and extras
+                                $processedVehicles = [];
+                                $allProtections = [];
+                                $allExtras = [];
+
+                                foreach ($adobeVehicles as $vehicle) {
+                                    // Get detailed vehicle information including protections and extras
+                                    $vehicleDetails = $this->adobeCarService->getProtectionsAndExtras(
+                                        $providerLocationId,
+                                        $vehicle['category'] ?? '',
+                                        [
+                                            'startdate' => $adobeSearchParams['startdate'],
+                                            'enddate' => $adobeSearchParams['enddate']
+                                        ]
+                                    );
+
+                                    $processedVehicle = [
+                                        'id' => 'adobe_' . $providerLocationId . '_' . ($vehicle['category'] ?? 'unknown'),
+                                        'source' => 'adobe',
+                                        'brand' => $vehicle['brand'] ?? 'Adobe',
+                                        'model' => $vehicle['name'] ?? $vehicle['category'] ?? 'Adobe Vehicle',
+                                        'category' => $vehicle['category'] ?? '',
+                                        'image' => $vehicle['image'] ?? '/images/adobe-placeholder.jpg',
+                                        'price_per_day' => (float) ($vehicle['price_per_day'] ?? 0),
+                                        'price_per_week' => (float) ($vehicle['price_per_week'] ?? 0),
+                                        'price_per_month' => (float) ($vehicle['price_per_month'] ?? 0),
+                                        'currency' => $vehicle['currency'] ?? 'USD',
+                                        'transmission' => $vehicle['transmission'] ?? 'manual',
+                                        'fuel' => $vehicle['fuel'] ?? 'petrol',
+                                        'seating_capacity' => (int) ($vehicle['seating_capacity'] ?? 4),
+                                        'mileage' => $vehicle['mileage'] ?? 'unlimited',
+                                        'latitude' => (float) $locationLat,
+                                        'longitude' => (float) $locationLng,
+                                        'full_vehicle_address' => $locationAddress,
+                                        'provider_pickup_id' => $providerLocationId,
+                                        'benefits' => (object) [
+                                            'cancellation_available_per_day' => true,
+                                            'limited_km_per_day' => false,
+                                            'minimum_driver_age' => 21,
+                                            'fuel_policy' => 'full_to_full',
+                                        ],
+                                        'review_count' => 0,
+                                        'average_rating' => 0,
+                                        'products' => [],
+                                        'protections' => $vehicleDetails['protections'] ?? [],
+                                        'extras' => $vehicleDetails['extras'] ?? [],
+                                        'adobe_category' => $vehicle['category'] ?? '',
+                                    ];
+
+                                    $processedVehicles[] = (object) $processedVehicle;
+
+                                    // Collect protections and extras for caching
+                                    $allProtections = array_merge($allProtections, $vehicleDetails['protections'] ?? []);
+                                    $allExtras = array_merge($allExtras, $vehicleDetails['extras'] ?? []);
+                                }
+
+                                // Update the JSON cache with fresh data
+                                $this->adobeCarService->updateAdobeDetailsJson($providerLocationId, [
+                                    'vehicles' => $processedVehicles,
+                                    'protections' => $allProtections,
+                                    'extras' => $allExtras
+                                ]);
+
+                                $adobeVehicles = collect($processedVehicles);
+                                Log::info('Adobe vehicles processed and cached: ' . $adobeVehicles->count());
+
+                            } else {
+                                Log::warning("Adobe API response for vehicles was empty or malformed for location ID: " . $providerLocationId, [
+                                    'response' => $adobeResponse
+                                ]);
+                                $adobeVehicles = collect([]);
+                            }
+                        }
+
+                        // Add Adobe vehicles to the main provider vehicles collection
+                        foreach ($adobeVehicles as $adobeVehicle) {
+                            $providerVehicles->push($adobeVehicle);
+                        }
+
+                        Log::info('Adobe vehicles added to collection: ' . $adobeVehicles->count());
+
+                    } catch (\Exception $e) {
+                        Log::error("Error fetching Adobe vehicles: " . $e->getMessage(), [
+                            'provider_location_id' => $providerLocationId,
+                            'trace' => $e->getTraceAsString()
+                        ]);
                     }
                 } elseif ($providerToFetch === 'okmobility') {
                     try {
