@@ -28,37 +28,24 @@ class WheelsysCarController extends Controller
                 'all_params' => $request->all()
             ]);
 
-            // Extract Wheelsys vehicle ID (remove wheelsys_ prefix if present)
-            $wheelsysId = $id;
-            if (strpos($id, 'wheelsys_') === 0) {
-                $wheelsysId = substr($id, 9); // Remove 'wheelsys_' prefix
+            // Extract group code from the ID (take first part before underscore)
+            if (strpos($id, '_') !== false) {
+                $parts = explode('_', $id);
+                $groupCode = $parts[0]; // Use the first part as the group code (e.g., FFAR)
+            } else {
+                $groupCode = $id;
             }
 
-            // Extract the unique ID part if present (after last underscore)
-            if (strpos($wheelsysId, '_') !== false) {
-                $parts = explode('_', $wheelsysId);
-                $wheelsysId = $parts[0]; // Use the first part as the group code
-            }
+            Log::info('Processed Wheelsys ID', ['originalId' => $id, 'groupCode' => $groupCode]);
 
-            Log::info('Processed Wheelsys ID', ['wheelsysId' => $wheelsysId]);
-
-            // Get search parameters from request
+            // Get search parameters from request and convert date format (like SearchController does)
             $pickupStation = $request->get('location_id');
             $returnStation = $request->get('dropoff_location_id', $pickupStation);
-            $dateFrom = $request->get('start_date');
-            $timeFrom = $request->get('start_time', '10:00');
-            $dateTo = $request->get('end_date');
-            $timeTo = $request->get('end_time', '10:00');
+            $dateFrom = date('d/m/Y', strtotime($request->get('start_date')));
+            $timeFrom = str_replace('%3A', ':', $request->get('start_time', '10:00')); // Fix URL encoding
+            $dateTo = date('d/m/Y', strtotime($request->get('end_date')));
+            $timeTo = str_replace('%3A', ':', $request->get('end_time', '10:00')); // Fix URL encoding
             $currency = $request->get('currency', 'USD');
-
-            Log::info('Search parameters', [
-                'pickupStation' => $pickupStation,
-                'returnStation' => $returnStation,
-                'dateFrom' => $dateFrom,
-                'timeFrom' => $timeFrom,
-                'dateTo' => $dateTo,
-                'timeTo' => $timeTo
-            ]);
 
             if (!$pickupStation || !$dateFrom || !$dateTo) {
                 Log::error('Missing required search parameters');
@@ -76,62 +63,49 @@ class WheelsysCarController extends Controller
                 $timeTo
             );
 
-            if (!$vehicles || !isset($vehicles['RATES'])) {
+            Log::info('Wheelsys API response structure', [
+                'vehicles' => $vehicles,
+                'isArray' => is_array($vehicles),
+                'keys' => $vehicles ? array_keys($vehicles) : null,
+                'hasRates' => isset($vehicles['Rates'])
+            ]);
+
+            if (!$vehicles || !isset($vehicles['Rates'])) {
                 Log::error('No vehicles found or invalid response from Wheelsys API');
                 return redirect()->route('search', $locale)
                     ->with('error', 'Vehicle not found or temporarily unavailable.');
             }
 
-            Log::info('Wheelsys API response', ['vehicle_count' => count($vehicles['RATES'])]);
-
-            // Find the specific vehicle
+            // Find the specific vehicle (like SearchController does)
             $selectedVehicle = null;
-            foreach ($vehicles['RATES'] as $rate) {
-                if (isset($rate['GroupCode']) && $rate['GroupCode'] === $wheelsysId) {
-                    // Convert to standard vehicle format
-                    $selectedVehicle = $this->wheelsysService->convertToStandardVehicle(
+            $wheelsysRates = collect($vehicles['Rates']);
+
+            foreach ($wheelsysRates as $rate) {
+                if (isset($rate['GroupCode']) && $rate['GroupCode'] === $groupCode) {
+                    // Convert to standard vehicle format (same as SearchController)
+                    $standardVehicle = $this->wheelsysService->convertToStandardVehicle(
                         $rate,
                         $pickupStation,
                         $request->get('lat'),
                         $request->get('lng'),
                         $request->get('full_vehicle_address')
                     );
+
+                    if ($standardVehicle) {
+                        $selectedVehicle = $standardVehicle;
+                    }
                     break;
                 }
             }
 
             if (!$selectedVehicle) {
-                Log::error('Vehicle not found', ['wheelsysId' => $wheelsysId]);
+                Log::error('Vehicle not found', ['groupCode' => $groupCode, 'availableCodes' => $wheelsysRates->pluck('GroupCode')->toArray()]);
                 return redirect()->route('search', $locale)
                     ->with('error', 'Vehicle not found. Please search again.');
             }
 
-            // Get vehicle groups for additional information
-            $vehicleGroups = $this->wheelsysService->getVehicleGroups();
-            $groupInfo = null;
-            if ($vehicleGroups && isset($vehicleGroups['GROUPS'])) {
-                foreach ($vehicleGroups['GROUPS'] as $group) {
-                    if (isset($group['CODE']) && $group['CODE'] === $selectedVehicle['group_code']) {
-                        $groupInfo = $group;
-                        break;
-                    }
-                }
-            }
-
-            // Get options/extras
-            $options = $this->wheelsysService->getOptions();
-
-            Log::info('Vehicle found', [
-                'vehicle_id' => $selectedVehicle['id'],
-                'brand' => $selectedVehicle['brand'],
-                'model' => $selectedVehicle['model'],
-                'price_per_day' => $selectedVehicle['price_per_day']
-            ]);
-
             return Inertia::render('WheelsysCar/Show', [
                 'vehicle' => $selectedVehicle,
-                'groupInfo' => $groupInfo,
-                'options' => $options,
                 'searchParams' => [
                     'pickup_station' => $pickupStation,
                     'return_station' => $returnStation,

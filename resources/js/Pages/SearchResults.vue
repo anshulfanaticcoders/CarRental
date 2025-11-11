@@ -645,11 +645,8 @@ const createPopupContent = (vehicle, primaryImage, popupPrice, detailRoute) => {
             <div class="text-center popup-content">
                 <img src="${primaryImage}" alt="${vehicle.brand} ${vehicle.model}" class="popup-image !w-40 !h-20" />
                 <p class="font-semibold !w-40">${vehicle.brand} ${vehicle.model}</p>
-                ${vehicle.acriss_code || vehicle.group_code ? `<p class="!w-40 text-sm">Code: ${vehicle.acriss_code || vehicle.group_code}</p>` : ''}
-                ${vehicle.category ? `<p class="!w-40 text-sm"><strong>Category:</strong> ${vehicle.category}</p>` : ''}
+                ${vehicle.acriss_code || vehicle.group_code ? `<p class="!w-40 text-sm">${vehicle.acriss_code || vehicle.group_code}</p>` : ''}
                 <p class="!w-40">${vehicle.full_vehicle_address || ''}</p>
-                ${vehicle.doors ? `<p class="!w-40 text-sm"><strong>Doors:</strong> ${vehicle.doors}</p>` : ''}
-                ${vehicle.seating_capacity ? `<p class="!w-40 text-sm"><strong>Seats:</strong> ${vehicle.seating_capacity}</p>` : ''}
                 <p class="!w-40 font-semibold">Price: ${popupPrice}</p>
                 <a href="${detailRoute}"
                    class="text-blue-500 hover:text-blue-700 block mt-2"
@@ -658,7 +655,7 @@ const createPopupContent = (vehicle, primaryImage, popupPrice, detailRoute) => {
                 </a>
             </div>
         `;
-    } else {
+        } else {
         return `
             <div class="text-center popup-content">
                 <img src="${primaryImage}" alt="${vehicle.brand} ${vehicle.model}" class="popup-image !w-40 !h-20" />
@@ -730,7 +727,7 @@ const addMarkers = () => {
         let popupPrice = "N/A";
         let popupCurrencySymbol = getCurrencySymbol(selectedCurrency.value);
 
-        if (vehicle.source === 'wheelsys' && vehicle.price_per_day && vehicle.price_per_day > 0) {
+        if (vehicle.source === 'wheelsys' && vehicle.price_per_day) {
             const originalCurrency = vehicle.currency || 'USD';
             const convertedPrice = convertCurrency(vehicle.price_per_day, originalCurrency);
             popupCurrencySymbol = getCurrencySymbol(selectedCurrency.value);
@@ -831,7 +828,7 @@ const addMobileMarkers = () => {
         let popupPrice = "N/A";
         let popupCurrencySymbol = getCurrencySymbol(selectedCurrency.value);
 
-        if (vehicle.source === 'wheelsys' && vehicle.price_per_day && vehicle.price_per_day > 0) {
+        if (vehicle.source === 'wheelsys' && vehicle.price_per_day) {
             const originalCurrency = vehicle.currency || 'USD';
             const convertedPrice = convertCurrency(vehicle.price_per_day, originalCurrency);
             popupCurrencySymbol = getCurrencySymbol(selectedCurrency.value);

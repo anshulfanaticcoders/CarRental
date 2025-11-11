@@ -380,7 +380,7 @@ watch(() => url.value, () => {
       <div class="flex justify-between items-center h-16 md:h-20">
         <!-- Logo Section -->
         <div class="flex-shrink-0">
-          <Link :href="route('welcome', { locale: props.locale })" class="block w-32 md:w-40 transition-transform hover:opacity-80">
+          <Link :href="route('welcome', { locale: page.props.locale })" class="block w-32 md:w-40 transition-transform hover:opacity-80">
             <ApplicationLogo class="w-full h-auto" />
           </Link>
         </div>

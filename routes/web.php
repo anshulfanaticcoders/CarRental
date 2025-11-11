@@ -60,6 +60,7 @@ use App\Http\Controllers\VendorController;
 use App\Http\Controllers\PaymentController;
 use App\Http\Controllers\Admin\VendorsDashboardController;
 use App\Http\Controllers\Admin\PayableSettingController;
+use App\Http\Controllers\WheelsysCarController;
 use App\Models\Booking;
 use App\Models\Message;
 use App\Models\Page;
@@ -383,6 +384,9 @@ Route::group([
     Route::get('/contact-us', [ContactUsPageController::class, 'show'])->name('contact-us');
     Route::post('/contact', [ContactFormController::class, 'store'])->name('contact.submit');
     Route::get('/vendor/{vendorProfileId}/reviews', [ReviewController::class, 'vendorAllReviews'])->name('vendor.reviews.all');
+
+    // Wheelsys Single Car Page (Open Route)
+    Route::get('/wheelsys-car/{id}', [WheelsysCarController::class, 'show'])->name('wheelsys-car.show');
 
     // Affiliate Business Routes
     Route::prefix('business')->name('affiliate.business.')->group(function () {
@@ -922,11 +926,7 @@ Route::group([
     // OK Mobility Check Availability
     Route::post('/ok-mobility-car/check-availability', [OkMobilityController::class, 'checkAvailability'])->name('ok-mobility-car.check-availability');
 
-    // Wheelsys Single Car Page
-    Route::get('/wheelsys-car/{id}', [WheelsysCarController::class, 'show'])
-        ->name('wheelsys-car.show');
 
-  
 }); // End of locale group
 
 // Public QR Code Tracking Routes (outside locale prefix for backward compatibility)
