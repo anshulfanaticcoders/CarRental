@@ -307,27 +307,8 @@ class WheelsysService
      */
     private function getVehicleImage($imageUrl, $sippCode = '', $groupCode = '')
     {
-        // Try to construct image URL using SIPP code or group code if ImageUrl is empty
-        if (empty($imageUrl)) {
-            $imgRoot = "https://wheels-assets.s3.eu-central-1.amazonaws.com/";
-
-            // Use SIPP code first, then group code as fallback
-            $imageIdentifier = !empty($sippCode) ? $sippCode : $groupCode;
-
-            if (!empty($imageIdentifier)) {
-                return "{$imgRoot}{$imageIdentifier}.png";
-            }
-
-            return 'https://via.placeholder.com/300x200/4CAF50/FFFFFF?text=' . urlencode($imageIdentifier ?? 'Car');
-        }
-
-        // If it's already a full URL, return as is
-        if (strpos($imageUrl, 'http') === 0) {
-            return $imageUrl;
-        }
-
-        // Construct full URL if it's a relative path
-        return "https://wheels-assets.s3.eu-central-1.amazonaws.com/{$imageUrl}";
+        // Return the full URL for the placeholder image
+        return url('/images/wheelsys-placeholder.jpg');
     }
 
     /**

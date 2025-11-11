@@ -424,6 +424,13 @@ const selectProvider = async (provider) => {
 
 const fetchDropoffLocations = async (provider, locationId) => {
   if (!provider || !locationId) return;
+
+  // For Wheelsys, pickup and dropoff are the same - no API call needed
+  if (provider === 'wheelsys') {
+    dropoffSearchResults.value = selectedPickupLocation.value ? [selectedPickupLocation.value] : [];
+    return;
+  }
+
   try {
     const response = await axios.get(`/api/${provider}/dropoff-locations/${locationId}`);
     let dropoffs = response.data.locations || response.data;
