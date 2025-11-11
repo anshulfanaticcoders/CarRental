@@ -1,7 +1,10 @@
 <script setup>
 import { Link, Head } from "@inertiajs/vue3";
-import { computed, onMounted, ref } from "vue";
+import { computed, onMounted, ref, watch } from "vue";
+import L from "leaflet";
+import "leaflet/dist/leaflet.css";
 import AuthenticatedHeaderLayout from "@/Layouts/AuthenticatedHeaderLayout.vue";
+import Footer from "@/Components/Footer.vue";
 import { useCurrency } from '@/composables/useCurrency';
 import MapPin from "../../../assets/MapPin.svg";
 import carIcon from "../../../assets/carIcon.svg";
@@ -75,6 +78,11 @@ onMounted(async () => {
     } catch (error) {
         console.error("Error loading currency symbols:", error);
     }
+
+    // Initialize map after DOM is ready
+    setTimeout(() => {
+        initMap();
+    }, 100);
 });
 
 const getCurrencySymbol = (code) => {
@@ -127,6 +135,121 @@ const scrollToBooking = () => {
         element.scrollIntoView({ behavior: 'smooth' });
     }
 };
+
+// Map functionality
+let map = null;
+let marker = null;
+const showMap = ref(true);
+
+const isValidCoordinate = (coord) => {
+    const num = parseFloat(coord);
+    return !isNaN(num) && isFinite(num);
+};
+
+const initMap = () => {
+    if (map) {
+        map.remove();
+        map = null;
+    }
+
+    map = L.map("vehicle-map", {
+        zoomControl: true,
+        maxZoom: 18,
+        minZoom: 3,
+        zoomSnap: 0.25,
+        markerZoomAnimation: false,
+        preferCanvas: true,
+    });
+
+    const defaultView = [20, 0]; // Default to a global view
+    const defaultZoom = 2;
+
+    // Use vehicle location if available, otherwise default to Orlando Airport
+    let vehicleCoords = [28.9313, -81.2790]; // Orlando Airport coordinates
+
+    // Try to get coordinates from vehicle or search params
+    const pickupLat = props.searchParams?.pickup_latitude || props.vehicle?.latitude || props.vehicle?.pickup_latitude;
+    const pickupLng = props.searchParams?.pickup_longitude || props.vehicle?.longitude || props.vehicle?.pickup_longitude;
+
+    if (pickupLat && pickupLng &&
+        isValidCoordinate(pickupLat) && isValidCoordinate(pickupLng)) {
+        vehicleCoords = [parseFloat(pickupLat), parseFloat(pickupLng)];
+    }
+
+    map.setView(vehicleCoords, 13);
+
+    L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+        attribution: "© OpenStreetMap contributors",
+    }).addTo(map);
+
+    map.createPane("markers");
+    map.getPane("markers").style.zIndex = 1000;
+
+    addVehicleMarker(vehicleCoords);
+
+    setTimeout(() => {
+        if (map) {
+            map.invalidateSize();
+        }
+    }, 200);
+};
+
+const addVehicleMarker = (coords) => {
+    if (marker) {
+        marker.remove();
+        marker = null;
+    }
+
+    const customIcon = L.divIcon({
+        className: "custom-div-icon",
+        html: `
+            <div class="map-pin-wrapper">
+                <svg width="40" height="40" viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M20 2C12.268 2 6 8.268 6 16C6 25.5 20 38 20 38S34 25.5 34 16C34 8.268 27.732 2 20 2Z" fill="#1e40af" stroke="white" stroke-width="2"/>
+                    <circle cx="20" cy="16" r="5" fill="white"/>
+                </svg>
+            </div>
+        `,
+        iconSize: [40, 40],
+        iconAnchor: [20, 40],
+        popupAnchor: [0, -40],
+        pane: "markers",
+    });
+
+    marker = L.marker(coords, {
+        icon: customIcon,
+        pane: "markers",
+    }).bindPopup(`
+        <div class="text-center popup-content">
+            <p class="font-semibold">${props.vehicle?.brand || 'Wheelsys'} ${props.vehicle?.model || 'Vehicle'}</p>
+            <p class="text-sm">Pickup Location</p>
+            <p class="text-xs text-gray-600">${props.vehicle?.full_vehicle_address || 'Orlando Airport'}</p>
+        </div>
+    `);
+
+    map.addLayer(marker);
+};
+
+const handleMapToggle = (value) => {
+    showMap.value = value;
+    if (value && map) {
+        setTimeout(() => {
+            map.invalidateSize();
+            let vehicleCoords = [28.9313, -81.2790]; // Orlando Airport coordinates
+
+            // Try to get coordinates from vehicle or search params
+            const pickupLat = props.searchParams?.pickup_latitude || props.vehicle?.latitude || props.vehicle?.pickup_latitude;
+            const pickupLng = props.searchParams?.pickup_longitude || props.vehicle?.longitude || props.vehicle?.pickup_longitude;
+
+            if (pickupLat && pickupLng &&
+                isValidCoordinate(pickupLat) && isValidCoordinate(pickupLng)) {
+                vehicleCoords = [parseFloat(pickupLat), parseFloat(pickupLng)];
+            }
+
+            map.setView(vehicleCoords, 13);
+        }, 100);
+    }
+};
 </script>
 
 <template>
@@ -166,12 +289,33 @@ const scrollToBooking = () => {
             <span class="text-gray-600">{{ vehicle?.brand || 'Wheelsys' }} {{ vehicle?.model || 'Vehicle' }}</span>
         </nav>
 
+        <!-- Map Toggle -->
+        <div class="flex justify-end max-[768px]:hidden my-[2rem]">
+            <div class="flex items-center space-x-2">
+                <span class="text-customPrimaryColor font-medium">Map</span>
+                <button
+                    @click="handleMapToggle(!showMap)"
+                    :class="[
+                        'relative inline-flex h-6 w-11 items-center rounded-full transition-colors',
+                        showMap ? 'bg-customPrimaryColor' : 'bg-gray-200'
+                    ]"
+                >
+                    <span
+                        :class="[
+                            'inline-block h-4 w-4 transform rounded-full bg-white transition-transform',
+                            showMap ? 'translate-x-6' : 'translate-x-1'
+                        ]"
+                    />
+                </button>
+            </div>
+        </div>
+
         <!-- Vehicle Header Info -->
         <div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4">
             <div>
                 <h2 class="text-3xl font-bold text-gray-900 mb-2">{{ vehicle?.brand || 'Wheelsys' }} {{ vehicle?.model || 'Vehicle' }}</h2>
                 <div class="flex items-center gap-3">
-                    <span class="inline-flex items-center px-3 py-1 bg-blue-100 text-blue-800 rounded-full text-sm font-medium">
+                    <span class="inline-flex items-center px-3 py-1 bg-customPrimaryColor/10 text-customPrimaryColor rounded-full text-sm font-medium">
                         {{ vehicle?.category || 'Standard' }}
                     </span>
                     <span class="inline-flex items-center px-3 py-1 bg-green-100 text-green-800 rounded-full text-sm font-medium">
@@ -196,6 +340,9 @@ const scrollToBooking = () => {
             <div class="lg:col-span-2 space-y-8">
                 <!-- Enhanced Image Section -->
                 <div class="relative group rounded-2xl overflow-hidden shadow-2xl bg-gradient-to-br from-gray-100 to-gray-200">
+                    <!-- Wheelsys Corner Badge -->
+                    <div class="wheelsys-corner-badge"></div>
+
                     <div class="aspect-w-16 aspect-h-9 h-[600px] relative">
                         <img
                             :src="vehicle.image"
@@ -218,23 +365,23 @@ const scrollToBooking = () => {
                     <!-- Image Info Badge -->
                     <div class="absolute top-6 left-6 bg-white/95 backdrop-blur-sm rounded-xl px-4 py-2 shadow-lg">
                         <div class="flex items-center gap-2">
-                            <ImageIcon class="w-5 h-5 text-blue-600" />
+                            <ImageIcon class="w-5 h-5 text-customPrimaryColor" />
                             <span class="text-sm font-medium text-gray-900">Photos</span>
                         </div>
                     </div>
                 </div>
 
                 <!-- Vehicle Features -->
-                <div class="bg-white rounded-2xl shadow-lg p-8">
+                <div class="bg-white rounded-2xl shadow-lg p-8 hover:shadow-xl transition-shadow duration-300">
                     <h2 class="text-2xl font-bold text-gray-900 mb-6 flex items-center gap-3">
-                        <div class="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
+                        <div class="w-10 h-10 bg-customPrimaryColor/10 rounded-full flex items-center justify-center">
                             <img :src="carIcon" alt="Car Icon" class="w-6 h-6" />
                         </div>
                         Vehicle Specifications
                     </h2>
                     <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
                         <div class="flex items-center gap-4 p-4 bg-gray-50 rounded-xl hover:bg-gray-100 transition-colors">
-                            <div class="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center">
+                            <div class="w-12 h-12 bg-customPrimaryColor/10 rounded-full flex items-center justify-center">
                                 <img :src="peopleIcon" alt="People Icon" class="w-6 h-6" />
                             </div>
                             <div>
@@ -305,8 +452,30 @@ const scrollToBooking = () => {
                     </div>
                 </div>
 
+                <!-- Vehicle Location Map -->
+                <div v-show="showMap" class="bg-white rounded-2xl shadow-lg p-8 hover:shadow-xl transition-shadow duration-300">
+                    <h2 class="text-2xl font-bold text-gray-900 mb-6 flex items-center gap-3">
+                        <div class="w-10 h-10 bg-customPrimaryColor/10 rounded-full flex items-center justify-center">
+                            <img :src="MapPin" alt="Map Pin" class="w-6 h-6" />
+                        </div>
+                        Vehicle Location
+                    </h2>
+                    <div class="rounded-lg overflow-hidden" style="height: 400px;">
+                        <div id="vehicle-map" class="h-full w-full"></div>
+                    </div>
+                    <div class="mt-4 p-4 bg-customPrimaryColor/5 rounded-lg border border-customPrimaryColor/20">
+                        <div class="flex items-center gap-3">
+                            <img :src="MapPin" alt="Map Pin" class="w-5 h-5 text-customPrimaryColor" />
+                            <div>
+                                <span class="text-sm font-medium text-customPrimaryColor">Pickup Location</span>
+                                <p class="font-semibold text-customPrimaryColor">{{ vehicle?.full_vehicle_address || 'Orlando Airport' }}</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
                 <!-- Available Extras -->
-                <div v-if="vehicle.extras && vehicle.extras.length > 0" class="bg-white rounded-2xl shadow-lg p-8">
+                <div v-if="vehicle.extras && vehicle.extras.length > 0" class="bg-white rounded-2xl shadow-lg p-8 hover:shadow-xl transition-shadow duration-300">
                     <h2 class="text-2xl font-bold text-gray-900 mb-6 flex items-center gap-3">
                         <div class="w-10 h-10 bg-purple-100 rounded-full flex items-center justify-center">
                             <ImageIcon class="w-6 h-6" />
@@ -316,9 +485,9 @@ const scrollToBooking = () => {
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div v-for="extra in vehicle.extras" :key="extra.code" class="border border-gray-200 rounded-lg p-4">
                             <div class="flex justify-between items-start">
-                                <div>
-                                    <h3 class="font-medium text-gray-900">{{ extra.name }}</h3>
-                                    <p class="text-sm text-gray-600 mt-1">{{ extra.description }}</p>
+                                <div class="flex-1">
+                                    <h3 class="text-sm font-medium text-gray-900">{{ extra.name }}</h3>
+                                    <p class="text-xs text-gray-600 mt-1">{{ extra.description }}</p>
                                     <div v-if="extra.mandatory" class="inline-block bg-red-100 text-red-800 text-xs px-2 py-1 rounded mt-2">
                                         Required
                                     </div>
@@ -328,7 +497,7 @@ const scrollToBooking = () => {
                                 </div>
                             </div>
                             <div class="text-right">
-                                <div class="font-semibold text-gray-900">
+                                <div class="text-sm font-semibold text-gray-900">
                                     {{ formatPrice(extra.rate, vehicle.currency) }}
                                 </div>
                                 <div class="text-xs text-gray-500">{{ extra.charge_type || 'per day' }}</div>
@@ -340,7 +509,7 @@ const scrollToBooking = () => {
 
             <!-- Right Column: Booking Card -->
             <div class="lg:col-span-1">
-                <Card class="sticky top-4 shadow-2xl border-0 overflow-hidden">
+                <Card class="sticky top-4 shadow-2xl border-0 overflow-hidden hover:shadow-3xl transition-shadow duration-300">
                     <div class="bg-gradient-to-r from-customPrimaryColor to-blue-700 p-6 text-white">
                         <div class="flex items-center justify-between mb-4">
                             <div class="flex-1 min-w-0">
@@ -386,9 +555,9 @@ const scrollToBooking = () => {
                                 <div class="flex items-start gap-3 p-4 bg-blue-50 rounded-lg border border-blue-200">
                                     <img :src="MapPin" alt="Map Pin" class="w-5 h-5 mt-1" />
                                     <div class="flex-1">
-                                        <span class="text-sm font-medium text-blue-800">Return Location</span>
-                                        <p class="font-semibold text-blue-900">{{ searchParams?.return_station || 'Orlando Airport' }}</p>
-                                        <p class="text-sm text-blue-700">{{ searchParams?.date_to }} {{ searchParams?.time_to || '10:00' }}</p>
+                                        <span class="text-sm font-medium text-customPrimaryColor">Return Location</span>
+                                        <p class="font-semibold text-customPrimaryColor">{{ searchParams?.return_station || 'Orlando Airport' }}</p>
+                                        <p class="text-sm text-customPrimaryColor/80">{{ searchParams?.date_to }} {{ searchParams?.time_to || '10:00' }}</p>
                                     </div>
                                 </div>
                             </div>
@@ -443,4 +612,88 @@ const scrollToBooking = () => {
             </div>
         </div>
     </div>
+
+    <Footer />
 </template>
+
+<style scoped>
+.wheelsys-corner-badge {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 0;
+    height: 0;
+    border-top: 90px solid var(--custom-primary-color, #1e40af); /* Use custom primary color */
+    border-right: 90px solid transparent;
+    z-index: 10;
+}
+
+.wheelsys-corner-badge::after {
+    content: "Wheelsys";
+    position: absolute;
+    top: -41px; /* Adjust as needed */
+    left: 0px; /* Adjust as needed */
+    color: white;
+    font-size: 0.7rem;
+    font-weight: bold;
+    transform: rotate(-45deg);
+    transform-origin: 0% 0%;
+    white-space: nowrap;
+}
+
+/* Map Styles */
+.map-pin-wrapper {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.3));
+}
+
+.custom-div-icon {
+    background: none;
+    border: none;
+}
+
+/* Leaflet pane z-index overrides */
+.leaflet-pane.leaflet-marker-pane {
+    z-index: 1000 !important;
+}
+
+.leaflet-pane.leaflet-popup-pane {
+    z-index: 1001 !important;
+}
+
+.leaflet-pane.leaflet-tile-pane {
+    z-index: 200;
+}
+
+.leaflet-pane.leaflet-overlay-pane {
+    z-index: 400;
+}
+
+.leaflet-popup {
+    z-index: 1001 !important;
+}
+
+.leaflet-container {
+    z-index: 1;
+}
+
+.leaflet-control-container {
+    z-index: 2000;
+}
+
+#vehicle-map {
+    height: 100%;
+    width: 100%;
+}
+
+.popup-image {
+    width: 100%;
+    height: 70px;
+    object-fit: cover;
+    border-top-left-radius: 0.5rem;
+    border-top-right-radius: 0.5rem;
+    margin-bottom: 5px;
+}
+</style>
