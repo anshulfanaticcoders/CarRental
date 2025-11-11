@@ -1,6 +1,22 @@
 <script setup>
 import { Link, Head } from "@inertiajs/vue3";
+import { computed, onMounted, ref } from "vue";
 import AuthenticatedHeaderLayout from "@/Layouts/AuthenticatedHeaderLayout.vue";
+import { useCurrency } from '@/composables/useCurrency';
+import MapPin from "../../../assets/MapPin.svg";
+import carIcon from "../../../assets/carIcon.svg";
+import check from "../../../assets/Check.svg";
+import doorIcon from "../../../assets/door.svg";
+import luggageIcon from "../../../assets/luggage.svg";
+import fuelIcon from "../../../assets/fuel.svg";
+import peopleIcon from "../../../assets/people.svg";
+import carbonIcon from "../../../assets/carbon-emmision.svg";
+import { ChevronRight, ImageIcon, ZoomIn } from 'lucide-vue-next';
+import Card from "@/Components/ui/card/Card.vue";
+import CardContent from "@/Components/ui/card/CardContent.vue";
+import CardHeader from "@/Components/ui/card/CardHeader.vue";
+import CardTitle from "@/Components/ui/card/CardTitle.vue";
+import { Button } from "@/Components/ui/button";
 
 const props = defineProps({
     vehicle: Object,
@@ -8,17 +24,91 @@ const props = defineProps({
     locale: String
 });
 
+const currencySymbols = ref({});
+const exchangeRates = ref(null);
+const { selectedCurrency, supportedCurrencies, changeCurrency } = useCurrency();
+
+const symbolToCodeMap = {
+    '$': 'USD',
+    '€': 'EUR',
+    '£': 'GBP',
+    '¥': 'JPY',
+    'A$': 'AUD',
+    'C$': 'CAD',
+    'Fr': 'CHF',
+    'HK$': 'HKD',
+    'S$': 'SGD',
+    'kr': 'SEK',
+    '₩': 'KRW',
+    'kr': 'NOK',
+    'NZ$': 'NZD',
+    '₹': 'INR',
+    'Mex$': 'MXN',
+    'R': 'ZAR',
+    'AED': 'AED'
+};
+
+const fetchExchangeRates = async () => {
+    try {
+        const response = await fetch(`https://v6.exchangerate-api.com/v6/01b88ff6c6507396d707e4b6/latest/USD`);
+        const data = await response.json();
+        if (data.result === 'success') {
+            exchangeRates.value = data.conversion_rates;
+        } else {
+            console.error('Failed to fetch exchange rates:', data['error-type']);
+        }
+    } catch (error) {
+        console.error('Error fetching exchange rates:', error);
+    }
+};
+
+onMounted(async () => {
+    fetchExchangeRates();
+
+    try {
+        const response = await fetch('/currency.json');
+        const data = await response.json();
+        currencySymbols.value = data.reduce((acc, curr) => {
+            acc[curr.code] = curr.symbol;
+            return acc;
+        }, {});
+    } catch (error) {
+        console.error("Error loading currency symbols:", error);
+    }
+});
+
+const getCurrencySymbol = (code) => {
+    return currencySymbols.value[code] || '$';
+};
+
+const convertCurrency = (price, fromCurrency) => {
+    const numericPrice = parseFloat(price);
+    if (isNaN(numericPrice)) {
+        return 0;
+    }
+
+    let fromCurrencyCode = fromCurrency;
+    if (symbolToCodeMap[fromCurrency]) {
+        fromCurrencyCode = symbolToCodeMap[fromCurrency];
+    }
+
+    if (!exchangeRates.value || !fromCurrencyCode || !selectedCurrency.value) {
+        return numericPrice;
+    }
+    const rateFrom = exchangeRates.value[fromCurrencyCode];
+    const rateTo = exchangeRates.value[selectedCurrency.value];
+    if (rateFrom && rateTo) {
+        return (numericPrice / rateFrom) * rateTo;
+    }
+    return numericPrice;
+};
+
 const formatPrice = (price, currency = 'USD') => {
     if (!price || price === 0) return 'Price on request';
-    const currencySymbols = {
-        'USD': '$',
-        'EUR': '€',
-        'GBP': '£',
-        'CAD': 'C$',
-        'AUD': 'A$'
-    };
-    const symbol = currencySymbols[currency] || '$';
-    return `${symbol}${parseFloat(price).toFixed(2)}`;
+    const originalCurrency = currency || 'USD';
+    const convertedPrice = convertCurrency(price, originalCurrency);
+    const currencySymbol = getCurrencySymbol(selectedCurrency.value);
+    return `${currencySymbol}${convertedPrice.toFixed(2)}`;
 };
 
 const getFuelPolicyDisplay = (policy) => {
@@ -50,218 +140,305 @@ const scrollToBooking = () => {
 
     <AuthenticatedHeaderLayout />
 
-    <div class="min-h-screen bg-gray-50">
-        <!-- Hero Section -->
-        <div class="bg-white shadow-sm border-b">
-            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-                <div class="flex items-center justify-between">
-                    <div>
-                        <h1 class="text-gray-900 text-4xl md:text-5xl font-bold mb-4">
-                            {{ vehicle?.brand || 'Wheelsys' }} {{ vehicle?.model || 'Vehicle' }}
-                        </h1>
-                        <p class="text-gray-600 text-lg md:text-xl">
-                            Eco-friendly rental with premium comfort
-                        </p>
-                    </div>
-                    <div class="text-right">
-                        <div class="bg-green-100 text-green-800 px-4 py-2 rounded-lg inline-block">
-                            <span class="text-sm font-medium">Available</span>
-                        </div>
-                        <p class="text-sm text-gray-500 mt-2">
-                            {{ vehicle?.full_vehicle_address || 'Orlando Airport' }}
-                        </p>
-                    </div>
+    <!-- Hero Section -->
+    <section class="bg-gradient-to-r from-customPrimaryColor to-blue-700 py-16">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
+            <h1 class="text-white text-4xl md:text-5xl font-bold mb-4">{{ vehicle?.brand || 'Wheelsys' }} {{ vehicle?.model || 'Vehicle' }}</h1>
+            <p class="text-blue-100 text-lg md:text-xl">Premium car rental with great service</p>
+            <div class="mt-6 flex items-center justify-center gap-4">
+                <div class="bg-white/20 backdrop-blur-sm rounded-full px-4 py-2 text-white">
+                    <span class="font-medium">{{ vehicle?.category || 'Standard' }}</span>
+                </div>
+                <div class="bg-green-500/20 backdrop-blur-sm rounded-full px-4 py-2 text-white">
+                    <span class="font-medium">Wheelsys</span>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <!-- Breadcrumb -->
+        <nav class="flex items-center gap-2 text-sm mb-8 p-4 bg-gray-50 rounded-lg">
+            <Link :href="route('search', locale)" class="text-customPrimaryColor hover:underline font-medium">Home</Link>
+            <ChevronRight class="h-4 w-4 text-gray-400" />
+            <Link :href="route('search', locale)" class="text-customPrimaryColor hover:underline font-medium">Vehicles</Link>
+            <ChevronRight class="h-4 w-4 text-gray-400" />
+            <span class="text-gray-600">{{ vehicle?.brand || 'Wheelsys' }} {{ vehicle?.model || 'Vehicle' }}</span>
+        </nav>
+
+        <!-- Vehicle Header Info -->
+        <div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4">
+            <div>
+                <h2 class="text-3xl font-bold text-gray-900 mb-2">{{ vehicle?.brand || 'Wheelsys' }} {{ vehicle?.model || 'Vehicle' }}</h2>
+                <div class="flex items-center gap-3">
+                    <span class="inline-flex items-center px-3 py-1 bg-blue-100 text-blue-800 rounded-full text-sm font-medium">
+                        {{ vehicle?.category || 'Standard' }}
+                    </span>
+                    <span class="inline-flex items-center px-3 py-1 bg-green-100 text-green-800 rounded-full text-sm font-medium">
+                        <svg class="w-4 h-4 mr-1" fill="currentColor" viewBox="0 0 20 20">
+                            <path fill-rule="evenodd" d="M3.172 5.172a4 4 0 015.656 0L10 6.343l1.172-1.171a4 4 0 115.656 5.656L10 17.657l-6.828-6.829a4 4 0 010-5.656z" clip-rule="evenodd" />
+                        </svg>
+                        Premium Service
+                    </span>
+                </div>
+            </div>
+            <div class="flex items-center gap-6">
+                <div class="flex items-center gap-2 text-gray-600">
+                    <img :src="MapPin" alt="Map Pin Icon" class="w-5 h-5 mt-1" />
+                    <span class="text-sm font-medium">{{ vehicle?.full_vehicle_address || 'Orlando Airport' }}</span>
                 </div>
             </div>
         </div>
 
-        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-            <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                <!-- Main Content -->
-                <div class="lg:col-span-2 space-y-8">
-                    <!-- Image Gallery -->
-                    <div class="bg-white rounded-xl shadow-md overflow-hidden">
-                        <div class="aspect-w-16 aspect-h-9 h-[500px]">
-                            <img
-                                :src="vehicle.image"
-                                :alt="`${vehicle.brand} ${vehicle.model}`"
-                                class="w-full h-96 object-cover"
-                            />
+        <!-- Main Content -->
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            <!-- Left Column: Vehicle Details -->
+            <div class="lg:col-span-2 space-y-8">
+                <!-- Enhanced Image Section -->
+                <div class="relative group rounded-2xl overflow-hidden shadow-2xl bg-gradient-to-br from-gray-100 to-gray-200">
+                    <div class="aspect-w-16 aspect-h-9 h-[600px] relative">
+                        <img
+                            :src="vehicle.image"
+                            :alt="`${vehicle.brand} ${vehicle.model}`"
+                            class="w-full h-full object-cover transition-all duration-500 group-hover:scale-105"
+                            loading="lazy"
+                        />
+                        <div class="absolute inset-0 bg-gradient-to-t from-black/30 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+                        <button
+                            class="absolute top-6 right-6 bg-white/90 backdrop-blur-sm p-3 rounded-full shadow-lg opacity-0 group-hover:opacity-100 transition-all duration-300 hover:bg-white"
+                        >
+                            <ZoomIn class="w-6 h-6 text-gray-700" />
+                        </button>
+                    </div>
+                    <div class="absolute bottom-6 left-6 right-6">
+                        <div class="bg-white/95 backdrop-blur-sm rounded-xl p-4 transform translate-y-4 opacity-0 group-hover:translate-y-0 group-hover:opacity-100 transition-all duration-300">
+                            <h3 class="font-bold text-lg text-gray-900 mb-1">{{ vehicle?.brand || 'Wheelsys' }} {{ vehicle?.model || 'Vehicle' }}</h3>
                         </div>
                     </div>
+                    <!-- Image Info Badge -->
+                    <div class="absolute top-6 left-6 bg-white/95 backdrop-blur-sm rounded-xl px-4 py-2 shadow-lg">
+                        <div class="flex items-center gap-2">
+                            <ImageIcon class="w-5 h-5 text-blue-600" />
+                            <span class="text-sm font-medium text-gray-900">Photos</span>
+                        </div>
+                    </div>
+                </div>
 
-                    <!-- Vehicle Specifications -->
-                    <div class="bg-white rounded-xl shadow-md p-6">
-                        <h2 class="text-xl font-semibold mb-6">Vehicle Specifications</h2>
-                        <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
-                            <div class="text-center p-4 bg-gray-50 rounded-lg">
-                                <div class="text-2xl font-bold text-blue-600">{{ vehicle.seating_capacity || 5 }}</div>
-                                <div class="text-sm text-gray-600">Seats</div>
+                <!-- Vehicle Features -->
+                <div class="bg-white rounded-2xl shadow-lg p-8">
+                    <h2 class="text-2xl font-bold text-gray-900 mb-6 flex items-center gap-3">
+                        <div class="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
+                            <img :src="carIcon" alt="Car Icon" class="w-6 h-6" />
+                        </div>
+                        Vehicle Specifications
+                    </h2>
+                    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                        <div class="flex items-center gap-4 p-4 bg-gray-50 rounded-xl hover:bg-gray-100 transition-colors">
+                            <div class="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center">
+                                <img :src="peopleIcon" alt="People Icon" class="w-6 h-6" />
                             </div>
-                            <div class="text-center p-4 bg-gray-50 rounded-lg">
-                                <div class="text-2xl font-bold text-blue-600">{{ vehicle.doors || 4 }}</div>
-                                <div class="text-sm text-gray-600">Doors</div>
-                            </div>
-                            <div class="text-center p-4 bg-gray-50 rounded-lg">
-                                <div class="text-2xl font-bold text-blue-600 capitalize">{{ vehicle.transmission || 'automatic' }}</div>
-                                <div class="text-sm text-gray-600">Transmission</div>
-                            </div>
-                            <div class="text-center p-4 bg-gray-50 rounded-lg">
-                                <div class="text-2xl font-bold text-blue-600 capitalize">{{ vehicle.fuel || 'petrol' }}</div>
-                                <div class="text-sm text-gray-600">Fuel Type</div>
+                            <div>
+                                <span class="text-sm text-gray-500 font-medium">People</span>
+                                <p class="font-bold text-lg text-gray-900">{{ vehicle?.seating_capacity || 5 }}</p>
                             </div>
                         </div>
-
-                        <div class="mt-6 space-y-3">
-                            <div class="flex items-center gap-3">
-                                <span class="text-blue-600">📦</span>
-                                <span class="text-gray-700">
-                                    Luggage: {{ vehicle.bags || 0 }} bags, {{ vehicle.suitcases || 0 }} suitcases
-                                </span>
+                        <div class="flex items-center gap-4 p-4 bg-gray-50 rounded-xl hover:bg-gray-100 transition-colors">
+                            <div class="w-12 h-12 bg-purple-100 rounded-full flex items-center justify-center">
+                                <img :src="doorIcon" alt="Door Icon" class="w-6 h-6" />
                             </div>
-                            <div class="flex items-center gap-3">
-                                <span class="text-blue-600">🚗</span>
-                                <span class="text-gray-700">Category: {{ vehicle.category }}</span>
+                            <div>
+                                <span class="text-sm text-gray-500 font-medium">Doors</span>
+                                <p class="font-bold text-lg text-gray-900">{{ vehicle?.doors || 4 }}</p>
                             </div>
-                            <div v-if="vehicle.group_code" class="flex items-center gap-3">
-                                <span class="text-blue-600">🏷️</span>
-                                <span class="text-gray-700">Group Code: {{ vehicle.group_code }}</span>
+                        </div>
+                        <div class="flex items-center gap-4 p-4 bg-gray-50 rounded-xl hover:bg-gray-100 transition-colors">
+                            <div class="w-12 h-12 bg-orange-100 rounded-full flex items-center justify-center">
+                                <img :src="luggageIcon" alt="Luggage Icon" class="w-6 h-6" />
+                            </div>
+                            <div>
+                                <span class="text-sm text-gray-500 font-medium">Luggage</span>
+                                <p class="font-bold text-lg text-gray-900">{{ (vehicle?.bags || 0) }} bags, {{ (vehicle?.suitcases || 0) }} suitcases</p>
+                            </div>
+                        </div>
+                        <div class="flex items-center gap-4 p-4 bg-gray-50 rounded-xl hover:bg-gray-100 transition-colors">
+                            <div class="w-12 h-12 bg-red-100 rounded-full flex items-center justify-center">
+                                <img :src="fuelIcon" alt="Fuel Icon" class="w-6 h-6" />
+                            </div>
+                            <div>
+                                <span class="text-sm text-gray-500 font-medium">Fuel</span>
+                                <p class="font-bold text-lg text-gray-900 capitalize">{{ vehicle?.fuel || 'Petrol' }}</p>
+                            </div>
+                        </div>
+                        <div class="flex items-center gap-4 p-4 bg-gray-50 rounded-xl hover:bg-gray-100 transition-colors">
+                            <div class="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center">
+                                <img :src="check" alt="Check Icon" class="w-5 h-5" />
+                            </div>
+                            <div>
+                                <span class="text-sm text-gray-500 font-medium">Transmission</span>
+                                <p class="font-bold text-lg text-gray-900 capitalize">{{ vehicle?.transmission || 'Automatic' }}</p>
                             </div>
                         </div>
                     </div>
 
                     <!-- Benefits & Features -->
-                    <div class="bg-white rounded-xl shadow-md p-6">
-                        <h2 class="text-xl font-semibold mb-6">Benefits & Features</h2>
-                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <div v-if="vehicle.benefits?.unlimited_mileage || vehicle.benefits?.included_km" class="flex items-center gap-3">
-                                <span class="text-green-500">✓</span>
-                                <span class="text-gray-700">
-                                    {{ vehicle.benefits.unlimited_mileage ? 'Unlimited mileage' : `${vehicle.benefits.included_km} km included` }}
-                                </span>
-                            </div>
-                            <div v-if="vehicle.benefits?.cancellation_available_per_day" class="flex items-center gap-3">
-                                <span class="text-green-500">✓</span>
-                                <span class="text-gray-700">Free Cancellation</span>
-                            </div>
-                            <div v-if="vehicle.benefits?.fuel_policy" class="flex items-center gap-3">
-                                <span class="text-green-500">✓</span>
-                                <span class="text-gray-700">
-                                    Fuel Policy: {{ getFuelPolicyDisplay(vehicle.benefits.fuel_policy) }}
-                                </span>
-                            </div>
-                            <div v-if="vehicle.benefits?.minimum_driver_age" class="flex items-center gap-3">
-                                <span class="text-green-500">✓</span>
-                                <span class="text-gray-700">Min Age: {{ vehicle.benefits.minimum_driver_age }} years</span>
-                            </div>
-                            <div v-if="vehicle.benefits?.tax_inclusive" class="flex items-center gap-3">
-                                <span class="text-green-500">✓</span>
-                                <span class="text-gray-700">Tax Inclusive</span>
-                            </div>
+                    <div class="mt-6 space-y-3">
+                        <div v-if="vehicle.benefits?.unlimited_mileage || vehicle.benefits?.included_km" class="flex items-center gap-3">
+                            <span class="text-blue-600">✓</span>
+                            <span class="text-gray-700">
+                                {{ vehicle.benefits.unlimited_mileage ? 'Unlimited mileage' : `${vehicle.benefits.included_km} km included` }}
+                            </span>
                         </div>
-                    </div>
-
-                    <!-- Available Extras -->
-                    <div v-if="vehicle.extras && vehicle.extras.length > 0" class="bg-white rounded-xl shadow-md p-6">
-                        <h2 class="text-xl font-semibold mb-6">Available Extras</h2>
-                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <div v-for="extra in vehicle.extras" :key="extra.code" class="border border-gray-200 rounded-lg p-4">
-                                <div class="flex justify-between items-start">
-                                    <div>
-                                        <h3 class="font-medium text-gray-900">{{ extra.name }}</h3>
-                                        <p class="text-sm text-gray-600 mt-1">{{ extra.description }}</p>
-                                        <div v-if="extra.mandatory" class="inline-block bg-red-100 text-red-800 text-xs px-2 py-1 rounded mt-2">
-                                            Required
-                                        </div>
-                                        <div v-else-if="extra.inclusive" class="inline-block bg-green-100 text-green-800 text-xs px-2 py-1 rounded mt-2">
-                                            Included
-                                        </div>
-                                    </div>
-                                    <div class="text-right">
-                                        <div class="font-semibold text-gray-900">
-                                            {{ formatPrice(extra.rate, vehicle.currency) }}
-                                        </div>
-                                        <div class="text-xs text-gray-500">{{ extra.charge_type || 'per day' }}</div>
-                                    </div>
-                                </div>
-                            </div>
+                        <div v-if="vehicle.benefits?.cancellation_available_per_day" class="flex items-center gap-3">
+                            <span class="text-blue-600">✓</span>
+                            <span class="text-gray-700">Free Cancellation</span>
+                        </div>
+                        <div v-if="vehicle.benefits?.fuel_policy" class="flex items-center gap-3">
+                            <span class="text-blue-600">✓</span>
+                            <span class="text-gray-700">
+                                Fuel Policy: {{ getFuelPolicyDisplay(vehicle.benefits.fuel_policy) }}
+                            </span>
+                        </div>
+                        <div v-if="vehicle.benefits?.minimum_driver_age" class="flex items-center gap-3">
+                            <span class="text-blue-600">✓</span>
+                            <span class="text-gray-700">Min Age: {{ vehicle.benefits.minimum_driver_age }} years</span>
                         </div>
                     </div>
                 </div>
 
-                <!-- Sidebar -->
-                <div class="lg:col-span-1">
-                    <div class="bg-white rounded-xl shadow-md p-6 sticky top-6">
-                        <h2 class="text-xl font-semibold mb-4">Rental Details</h2>
-
-                        <!-- Pricing -->
-                        <div class="border-b border-gray-200 pb-4 mb-4">
-                            <div class="flex justify-between items-center mb-2">
-                                <span class="text-gray-600">Daily Rate</span>
-                                <span class="text-xl font-bold text-blue-600">
-                                    {{ formatPrice(vehicle.price_per_day, vehicle.currency) }}
-                                </span>
-                            </div>
-                            <div class="flex justify-between items-center">
-                                <span class="text-gray-600">Weekly Rate</span>
-                                <span class="font-semibold">
-                                    {{ formatPrice(vehicle.price_per_week, vehicle.currency) }}
-                                </span>
-                            </div>
+                <!-- Available Extras -->
+                <div v-if="vehicle.extras && vehicle.extras.length > 0" class="bg-white rounded-2xl shadow-lg p-8">
+                    <h2 class="text-2xl font-bold text-gray-900 mb-6 flex items-center gap-3">
+                        <div class="w-10 h-10 bg-purple-100 rounded-full flex items-center justify-center">
+                            <ImageIcon class="w-6 h-6" />
                         </div>
-
-                        <!-- Pickup & Return Info -->
-                        <div class="border-b border-gray-200 pb-4 mb-4">
-                            <h3 class="font-medium mb-2">Pickup</h3>
-                            <p class="text-sm text-gray-600">{{ searchParams.date_from }} {{ searchParams.time_from }}</p>
-                            <p class="text-sm text-gray-900 font-medium">{{ vehicle.full_vehicle_address || 'Orlando Airport' }}</p>
-
-                            <h3 class="font-medium mt-3 mb-2">Return</h3>
-                            <p class="text-sm text-gray-600">{{ searchParams.date_to }} {{ searchParams.time_to }}</p>
-                            <p class="text-sm text-gray-900 font-medium">{{ vehicle.full_vehicle_address || 'Orlando Airport' }}</p>
-                        </div>
-
-                        <!-- Book Now Button -->
-                        <button
-                            @click="scrollToBooking"
-                            class="w-full bg-blue-600 text-white py-3 px-6 rounded-lg font-medium hover:bg-blue-700 transition-colors"
-                        >
-                            Continue to Booking
-                        </button>
-
-                        <div class="mt-4 text-center">
-                            <p class="text-sm text-gray-500">
-                                Free cancellation up to 24 hours before pickup
-                            </p>
-                        </div>
-
-                        <!-- Provider Info -->
-                        <div class="mt-6 pt-4 border-t border-gray-200">
-                            <div class="flex items-center gap-3">
-                                <div class="bg-blue-100 text-blue-600 px-3 py-1 rounded text-sm font-medium">
-                                    Wheelsys
+                        Available Extras
+                    </h2>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div v-for="extra in vehicle.extras" :key="extra.code" class="border border-gray-200 rounded-lg p-4">
+                            <div class="flex justify-between items-start">
+                                <div>
+                                    <h3 class="font-medium text-gray-900">{{ extra.name }}</h3>
+                                    <p class="text-sm text-gray-600 mt-1">{{ extra.description }}</p>
+                                    <div v-if="extra.mandatory" class="inline-block bg-red-100 text-red-800 text-xs px-2 py-1 rounded mt-2">
+                                        Required
+                                    </div>
+                                    <div v-else-if="extra.inclusive" class="inline-block bg-green-100 text-green-800 text-xs px-2 py-1 rounded mt-2">
+                                        Included
+                                    </div>
                                 </div>
-                                <div class="text-sm text-gray-600">
-                                    Professional car rental service
+                            </div>
+                            <div class="text-right">
+                                <div class="font-semibold text-gray-900">
+                                    {{ formatPrice(extra.rate, vehicle.currency) }}
                                 </div>
+                                <div class="text-xs text-gray-500">{{ extra.charge_type || 'per day' }}</div>
                             </div>
                         </div>
                     </div>
                 </div>
             </div>
 
-            <!-- Booking Section -->
-            <div id="booking-section" class="hidden">
-                <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-                    <div class="bg-white rounded-xl shadow-md p-8 text-center">
-                        <h2 class="text-2xl font-bold mb-4">Ready to Book?</h2>
-                        <p class="text-gray-600 mb-6">
-                            Complete your reservation for this {{ vehicle?.brand }} {{ vehicle?.model }}
-                        </p>
-                        <button class="bg-blue-600 text-white py-3 px-8 rounded-lg font-medium hover:bg-blue-700 transition-colors">
-                            Continue Booking Process
-                        </button>
+            <!-- Right Column: Booking Card -->
+            <div class="lg:col-span-1">
+                <Card class="sticky top-4 shadow-2xl border-0 overflow-hidden">
+                    <div class="bg-gradient-to-r from-customPrimaryColor to-blue-700 p-6 text-white">
+                        <div class="flex items-center justify-between mb-4">
+                            <div class="flex-1 min-w-0">
+                                <h3 class="text-xl font-bold truncate">{{ vehicle?.brand || 'Wheelsys' }} {{ vehicle?.model || 'Vehicle' }}</h3>
+                                <span class="inline-block px-3 py-1 bg-white/20 backdrop-blur-sm rounded-full text-sm mt-2">{{ vehicle?.category || 'Standard' }}</span>
+                            </div>
+                            <div class="flex gap-2 ml-4">
+                                <Button class="p-2 bg-white/20 rounded-full transition-colors">
+                                    <img :src="MapPin" alt="Map Pin" class="w-5 h-5" />
+                                </Button>
+                            </div>
+                        </div>
+                        <p class="text-blue-100 text-sm">Powered by <span class="font-semibold text-white">Wheelsys</span></p>
                     </div>
+
+                    <CardContent class="p-6">
+                        <div class="space-y-6">
+                            <!-- Vehicle Summary -->
+                            <div class="space-y-4">
+                                <div class="flex items-center gap-3 p-4 bg-gray-50 rounded-lg">
+                                    <img :src="carIcon" alt="Car Icon" class="w-5 h-5" />
+                                    <span class="text-sm text-gray-700">
+                                        {{ vehicle?.transmission || 'Automatic' }} • {{ vehicle?.fuel || 'Petrol' }} • {{ vehicle?.seating_capacity || 5 }} Seats
+                                    </span>
+                                </div>
+                                <div class="flex items-center gap-3 p-4 bg-gray-50 rounded-lg">
+                                    <img :src="carbonIcon" alt="Carbon Icon" class="w-5 h-5" />
+                                    <span class="text-sm text-gray-700">Great rates & service</span>
+                                </div>
+                            </div>
+
+                            <!-- Location Info -->
+                            <div class="space-y-4">
+                                <div class="flex items-start gap-3 p-4 bg-green-50 rounded-lg border border-green-200">
+                                    <img :src="MapPin" alt="Map Pin" class="w-5 h-5 mt-1" />
+                                    <div class="flex-1">
+                                        <span class="text-sm font-medium text-green-800">Pickup Location</span>
+                                        <p class="font-semibold text-green-900">{{ searchParams?.pickup_station || 'Orlando Airport' }}</p>
+                                        <p class="text-sm text-green-700">{{ vehicle?.full_vehicle_address || 'Orlando Airport' }}</p>
+                                        <p class="text-sm text-green-600">{{ searchParams?.date_from }} {{ searchParams?.time_from || '10:00' }}</p>
+                                    </div>
+                                </div>
+                                <div class="flex items-start gap-3 p-4 bg-blue-50 rounded-lg border border-blue-200">
+                                    <img :src="MapPin" alt="Map Pin" class="w-5 h-5 mt-1" />
+                                    <div class="flex-1">
+                                        <span class="text-sm font-medium text-blue-800">Return Location</span>
+                                        <p class="font-semibold text-blue-900">{{ searchParams?.return_station || 'Orlando Airport' }}</p>
+                                        <p class="text-sm text-blue-700">{{ searchParams?.date_to }} {{ searchParams?.time_to || '10:00' }}</p>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Price Summary -->
+                            <div class="p-6 bg-gradient-to-r from-green-50 to-blue-50 rounded-xl border border-green-200">
+                                <div class="text-center">
+                                    <p class="text-3xl font-bold text-gray-900 mb-1">{{ formatPrice(vehicle.price_per_day, vehicle.currency) }}</p>
+                                    <p class="text-sm text-gray-600 mb-3">Daily rate • From {{ vehicle?.currency || 'USD' }}{{ formatPrice(vehicle.price_per_day, vehicle.currency).split(getCurrencySymbol(selectedCurrency.value))[1] }}</p>
+                                    <div class="flex items-center justify-center gap-2 text-xs text-green-700">
+                                        <div class="w-2 h-2 bg-green-500 rounded-full"></div>
+                                        <span>Great value!</span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Book Button -->
+                            <Button class="w-full bg-gradient-to-r from-customPrimaryColor to-blue-700 hover:from-customPrimaryColor/90 hover:to-blue-700/90 text-white py-4 font-semibold text-lg rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-105">
+                                <div class="flex items-center justify-center gap-2">
+                                    <span>Reserve Now</span>
+                                    <ChevronRight class="w-5 h-5" />
+                                </div>
+                            </Button>
+
+                            <!-- Security Badge -->
+                            <div class="text-center">
+                                <div class="flex flex-col items-center justify-center gap-3 p-3 bg-gray-50 rounded-lg">
+                                    <div class="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
+                                        <img :src="check" alt="Check Icon" class="w-5 h-5" />
+                                    </div>
+                                    <p class="text-sm text-gray-600 font-medium">Secure & Protected Booking</p>
+                                </div>
+                            </div>
+                        </div>
+                    </CardContent>
+                </Card>
+            </div>
+        </div>
+
+        <!-- Booking Section (Hidden by default) -->
+        <div id="booking-section" class="hidden">
+            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+                <div class="bg-white rounded-2xl shadow-md p-8 text-center">
+                    <h2 class="text-2xl font-bold mb-4">Ready to Book?</h2>
+                    <p class="text-gray-600 mb-6">
+                        Complete your reservation for this {{ vehicle?.brand }} {{ vehicle?.model }}
+                    </p>
+                    <Button class="bg-blue-600 text-white py-3 px-8 rounded-lg font-medium hover:bg-blue-700 transition-colors">
+                        Continue Booking Process
+                    </Button>
                 </div>
             </div>
         </div>
