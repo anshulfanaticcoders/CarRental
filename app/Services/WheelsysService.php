@@ -307,7 +307,12 @@ class WheelsysService
      */
     private function getVehicleImage($imageUrl, $sippCode = '', $groupCode = '')
     {
-        // Return the full URL for the placeholder image
+        // If we have a valid ImageUrl from the API, use it
+        if (!empty($imageUrl) && filter_var($imageUrl, FILTER_VALIDATE_URL)) {
+            return $imageUrl;
+        }
+
+        // Fallback to placeholder image
         return url('/images/wheelsys-placeholder.jpg');
     }
 
