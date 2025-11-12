@@ -200,7 +200,9 @@ class WheelsysService
      */
     public function convertToStandardVehicle($rate, $pickupStation, $locationLat = null, $locationLng = null, $locationAddress = null)
     {
-        if (!isset($rate['GroupCode']) || $rate['Availability'] !== 'AVAILABLE') {
+        // Check for required fields using correct API response structure
+        if (!isset($rate['GroupCode'])) {
+            Log::error('Vehicle rate missing required fields', ['rate' => $rate]);
             return null;
         }
 

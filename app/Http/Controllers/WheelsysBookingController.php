@@ -28,12 +28,55 @@ class WheelsysBookingController extends Controller
         // Get search parameters from session or request
         $searchParams = Session::get('wheelsysBookingForm', $request->all());
 
+        // If still no search params, create default ones
         if (!$searchParams || !isset($searchParams['date_from'])) {
-            return redirect()->route('search', $locale)
-                ->with('error', 'Please search for vehicles first to select rental dates.');
+            $searchParams = [
+                'pickup_station' => 'MAIN',
+                'return_station' => 'MAIN',
+                'date_from' => date('d/m/Y', strtotime('+1 day')), // Tomorrow
+                'time_from' => '12:00',
+                'date_to' => date('d/m/Y', strtotime('+4 days')), // 4 days from now
+                'time_to' => '12:00',
+            ];
+
+            Log::info('Using default search parameters for Wheelsys booking', [
+                'group_code' => $groupCode,
+                'search_params' => $searchParams,
+                'today' => date('d/m/Y'),
+                'pickup_date_valid' => strtotime($searchParams['date_from']) > time()
+            ]);
+        }
+
+        // Validate that dates are in the future
+        $pickupTimestamp = strtotime($searchParams['date_from']);
+        $todayTimestamp = strtotime(date('d/m/Y'));
+
+        if ($pickupTimestamp <= $todayTimestamp) {
+            Log::warning('Pickup date is in the past or today, adjusting to future dates', [
+                'original_pickup_date' => $searchParams['date_from'],
+                'today' => date('d/m/Y'),
+                'pickup_timestamp' => $pickupTimestamp,
+                'today_timestamp' => $todayTimestamp
+            ]);
+
+            // Adjust to future dates
+            $searchParams['date_from'] = date('d/m/Y', strtotime('+1 day'));
+            $searchParams['date_to'] = date('d/m/Y', strtotime('+4 days'));
+
+            Log::info('Adjusted search parameters to future dates', [
+                'new_pickup_date' => $searchParams['date_from'],
+                'new_return_date' => $searchParams['date_to']
+            ]);
         }
 
         try {
+            Log::info('Wheelsys booking: Starting vehicle lookup', [
+                'group_code' => $groupCode,
+                'search_params' => $searchParams,
+                'pickup_date' => $searchParams['date_from'],
+                'return_date' => $searchParams['date_to']
+            ]);
+
             // Get vehicle quote from Wheelsys API
             $response = $this->wheelsysService->getVehicles(
                 $searchParams['pickup_station'] ?? 'MAIN',
@@ -44,15 +87,47 @@ class WheelsysBookingController extends Controller
                 $searchParams['time_to'] ?? '12:00'
             );
 
+            Log::info('Wheelsys booking: API response received', [
+                'requested_group_code' => $groupCode,
+                'response_structure' => array_keys($response),
+                'has_rates' => isset($response['Rates']),
+                'rates_count' => isset($response['Rates']) ? count($response['Rates']) : 0,
+                'available_groups' => isset($response['Rates']) ? collect($response['Rates'])->pluck('GroupCode')->toArray() : [],
+                'rate_details' => isset($response['Rates']) ? collect($response['Rates'])->map(function($rate) {
+                    return [
+                        'GroupCode' => $rate['GroupCode'],
+                        'Category' => $rate['Category'],
+                        'TotalRate' => $rate['TotalRate'],
+                        'Availability' => $rate['Availability']
+                    ];
+                })->toArray() : []
+            ]);
+
+            // Check for Rates structure (actual API response)
             if (!isset($response['Rates'])) {
-                throw new \Exception('No vehicles available for selected dates');
+                throw new \Exception('No vehicles available for selected dates - API response missing Rates structure. Response: ' . json_encode($response));
             }
 
-            // Find the specific vehicle group
+            // Find the specific vehicle group using 'GroupCode' field
             $vehicleRate = collect($response['Rates'])->firstWhere('GroupCode', $groupCode);
 
             if (!$vehicleRate) {
-                throw new \Exception("Vehicle group {$groupCode} not available for selected dates");
+                $availableGroups = collect($response['Rates'])->pluck('GroupCode')->toArray();
+                $rateDetails = collect($response['Rates'])->map(function($rate) {
+                    return $rate['GroupCode'] . ' (' . $rate['Category'] . ')';
+                })->toArray();
+
+                Log::error('Vehicle group not found', [
+                    'requested_group' => $groupCode,
+                    'available_groups' => $availableGroups,
+                    'rate_details' => $rateDetails,
+                    'search_dates' => [
+                        'pickup' => $searchParams['date_from'],
+                        'return' => $searchParams['date_to']
+                    ]
+                ]);
+
+                throw new \Exception("Vehicle group {$groupCode} not available for selected dates. Available groups: " . implode(', ', $rateDetails));
             }
 
             // Convert to standard vehicle format
@@ -88,7 +163,13 @@ class WheelsysBookingController extends Controller
                 'group_code' => $groupCode,
                 'search_params' => $searchParams,
                 'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
             ]);
+
+            // For debugging: Show the actual error instead of redirecting
+            if (config('app.debug')) {
+                throw new \Exception('Wheelsys API Error: ' . $e->getMessage() . '. Params: ' . json_encode($searchParams));
+            }
 
             return redirect()->route('search', $locale)
                 ->with('error', 'Unable to load booking details. Please try again.');

@@ -134,7 +134,7 @@ const formatDate = (dateString) => {
         <title>Complete Booking - {{ vehicle?.brand }} {{ vehicle?.model }}</title>
     </Head>
 
-    <AuthenticatedHeaderLayout>
+    <AuthenticatedHeaderLayout/>
         <div class="min-h-screen bg-gray-50 py-8">
             <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                 <!-- Header -->
@@ -406,5 +406,4 @@ const formatDate = (dateString) => {
                 </div>
             </div>
         </div>
-    </AuthenticatedHeaderLayout>
 </template>

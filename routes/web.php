@@ -389,6 +389,14 @@ Route::group([
     // Wheelsys Single Car Page (Open Route)
     Route::get('/wheelsys-car/{id}', [WheelsysCarController::class, 'show'])->name('wheelsys-car.show');
 
+    // Wheelsys Booking Routes (Open - Accessible by both guests and authenticated users)
+    Route::get('/wheelsys-booking/create/{groupCode}', [WheelsysBookingController::class, 'create'])->name('wheelsys.booking.create');
+    Route::post('/wheelsys-booking', [WheelsysBookingController::class, 'store'])->name('wheelsys.booking.store');
+    Route::get('/wheelsys-booking/payment/{booking}', [WheelsysBookingController::class, 'payment'])->name('wheelsys.booking.payment');
+    Route::post('/wheelsys-booking/process-payment/{booking}', [WheelsysBookingController::class, 'processPayment'])->name('wheelsys.booking.process-payment');
+    Route::get('/wheelsys-booking/success/{booking}', [WheelsysBookingController::class, 'success'])->name('wheelsys.booking.success');
+    Route::get('/wheelsys-booking/{booking}', [WheelsysBookingController::class, 'show'])->name('wheelsys.booking.show');
+
     // Affiliate Business Routes
     Route::prefix('business')->name('affiliate.business.')->group(function () {
         Route::get('/register', [AffiliateBusinessController::class, 'create'])->name('register');
@@ -851,14 +859,6 @@ Route::group([
     Route::post('/ok-mobility-booking/charge', [OkMobilityBookingController::class, 'processBookingPayment'])->name('okmobility.booking.charge');
     Route::get('/ok-mobility-booking-success', [OkMobilityBookingController::class, 'bookingSuccess'])->name('okmobility.booking.success');
     Route::get('/ok-mobility-booking-cancel', [OkMobilityBookingController::class, 'bookingCancel'])->name('okmobility.booking.cancel');
-
-    // Wheelsys Booking Routes
-    Route::get('/wheelsys-booking/create/{groupCode}', [WheelsysBookingController::class, 'create'])->name('wheelsys.booking.create');
-    Route::post('/wheelsys-booking', [WheelsysBookingController::class, 'store'])->name('wheelsys.booking.store');
-    Route::get('/wheelsys-booking/payment/{booking}', [WheelsysBookingController::class, 'payment'])->name('wheelsys.booking.payment');
-    Route::post('/wheelsys-booking/process-payment/{booking}', [WheelsysBookingController::class, 'processPayment'])->name('wheelsys.booking.process-payment');
-    Route::get('/wheelsys-booking/success/{booking}', [WheelsysBookingController::class, 'success'])->name('wheelsys.booking.success');
-    Route::get('/wheelsys-booking/{booking}', [WheelsysBookingController::class, 'show'])->name('wheelsys.booking.show');
     });
 
     // Vendor status check for vehicle creation

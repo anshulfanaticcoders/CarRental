@@ -77,19 +77,42 @@ const proceedToBooking = () => {
         time_to: props.searchParams?.time_to || '12:00',
     };
 
-    // Store in session for booking page
-    sessionStorage.setItem('wheelsysBookingForm', JSON.stringify(searchParams));
+    // Convert dates to dd/mm/YYYY format for Laravel session
+    const formattedSearchParams = {
+        ...searchParams,
+        date_from: formatDateForLaravel(searchParams.date_from),
+        date_to: formatDateForLaravel(searchParams.date_to),
+    };
+
+    console.log('Formatted search params for Laravel session:', formattedSearchParams);
+
+    // Store in session for booking page using Laravel-compatible format
+    sessionStorage.setItem('wheelsysBookingForm', JSON.stringify(formattedSearchParams));
     sessionStorage.setItem('wheelsysVehicleId', props.vehicle?.id || '');
     sessionStorage.setItem('currentLocale', props.locale || 'en');
 
     // Navigate to booking page with group code from vehicle
     const groupCode = props.vehicle?.group_code || 'CCAR';
 
-    // Navigate to booking page with group code and locale
-    router.visit(route('wheelsys.booking.create', {
+    console.log('Proceeding to booking with:', {
         locale: props.locale,
-        groupCode: groupCode
-    }));
+        groupCode: groupCode,
+        routeName: 'wheelsys.booking.create'
+    });
+
+    // Navigate to booking page with group code and locale - try direct URL
+    const bookingUrl = `/${props.locale}/wheelsys-booking/create/${groupCode}`;
+    console.log('Direct booking URL:', bookingUrl);
+    window.location.href = bookingUrl;
+};
+
+// Helper function to format dates for Laravel session
+const formatDateForLaravel = (dateString) => {
+    const date = new Date(dateString);
+    const day = String(date.getDate()).padStart(2, '0');
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const year = date.getFullYear();
+    return `${day}/${month}/${year}`;
 };
 
 onMounted(async () => {
