@@ -1,5 +1,5 @@
 <script setup>
-import { Link, Head } from "@inertiajs/vue3";
+import { Link, Head, router } from "@inertiajs/vue3";
 import { computed, onMounted, ref, watch } from "vue";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
@@ -63,6 +63,33 @@ const fetchExchangeRates = async () => {
     } catch (error) {
         console.error('Error fetching exchange rates:', error);
     }
+};
+
+// Booking methods
+const proceedToBooking = () => {
+    // Use existing search parameters from the URL, with fallbacks
+    const searchParams = {
+        pickup_station: props.searchParams?.pickup_station || 'MAIN',
+        return_station: props.searchParams?.return_station || 'MAIN',
+        date_from: props.searchParams?.date_from || new Date().toISOString().split('T')[0],
+        time_from: props.searchParams?.time_from || '12:00',
+        date_to: props.searchParams?.date_to || new Date(Date.now() + 86400000 * 3).toISOString().split('T')[0], // +3 days
+        time_to: props.searchParams?.time_to || '12:00',
+    };
+
+    // Store in session for booking page
+    sessionStorage.setItem('wheelsysBookingForm', JSON.stringify(searchParams));
+    sessionStorage.setItem('wheelsysVehicleId', props.vehicle?.id || '');
+    sessionStorage.setItem('currentLocale', props.locale || 'en');
+
+    // Navigate to booking page with group code from vehicle
+    const groupCode = props.vehicle?.group_code || 'CCAR';
+
+    // Navigate to booking page with group code and locale
+    router.visit(route('wheelsys.booking.create', {
+        locale: props.locale,
+        groupCode: groupCode
+    }));
 };
 
 onMounted(async () => {
@@ -575,7 +602,7 @@ const handleMapToggle = (value) => {
                             </div>
 
                             <!-- Book Button -->
-                            <Button class="w-full bg-gradient-to-r from-customPrimaryColor to-blue-700 hover:from-customPrimaryColor/90 hover:to-blue-700/90 text-white py-4 font-semibold text-lg rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-105">
+                            <Button @click="proceedToBooking" class="w-full bg-gradient-to-r from-customPrimaryColor to-blue-700 hover:from-customPrimaryColor/90 hover:to-blue-700/90 text-white py-4 font-semibold text-lg rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-105">
                                 <div class="flex items-center justify-center gap-2">
                                     <span>Reserve Now</span>
                                     <ChevronRight class="w-5 h-5" />
