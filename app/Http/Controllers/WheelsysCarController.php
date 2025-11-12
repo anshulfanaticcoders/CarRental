@@ -53,27 +53,59 @@ class WheelsysCarController extends Controller
                     ->with('error', 'Missing required search parameters. Please search again.');
             }
 
-            // Get vehicle data from Wheelsys API
-            $vehicles = $this->wheelsysService->getVehicles(
-                $pickupStation,
-                $returnStation,
-                $dateFrom,
-                $timeFrom,
-                $dateTo,
-                $timeTo
-            );
+            try {
+                // Get vehicle data from Wheelsys API
+                $vehicles = $this->wheelsysService->getVehicles(
+                    $pickupStation,
+                    $returnStation,
+                    $dateFrom,
+                    $timeFrom,
+                    $dateTo,
+                    $timeTo
+                );
 
-            Log::info('Wheelsys API response structure', [
-                'vehicles' => $vehicles,
-                'isArray' => is_array($vehicles),
-                'keys' => $vehicles ? array_keys($vehicles) : null,
-                'hasRates' => isset($vehicles['Rates'])
-            ]);
+                Log::info('Wheelsys API response received successfully', [
+                    'isArray' => is_array($vehicles),
+                    'keys' => $vehicles ? array_keys($vehicles) : null,
+                    'hasRates' => isset($vehicles['Rates'])
+                ]);
 
-            if (!$vehicles || !isset($vehicles['Rates'])) {
-                Log::error('No vehicles found or invalid response from Wheelsys API');
-                return redirect()->route('search', $locale)
-                    ->with('error', 'Vehicle not found or temporarily unavailable.');
+                if (!$vehicles || !isset($vehicles['Rates'])) {
+                    Log::error('No vehicles found or invalid response from Wheelsys API');
+                    return redirect()->route('search', $locale)
+                        ->with('error', 'Vehicle not found or temporarily unavailable.');
+                }
+
+            } catch (\Exception $e) {
+                // Handle the new robust error scenarios from WheelsysService
+                $errorMessage = $e->getMessage();
+
+                if (str_contains($errorMessage, 'temporarily unavailable due to repeated failures')) {
+                    Log::warning('Wheelsys API circuit breaker is open - API temporarily unavailable', [
+                        'pickup_station' => $pickupStation,
+                        'circuit_breaker_status' => $this->wheelsysService->getCircuitBreakerStatus()
+                    ]);
+
+                    return redirect()->route('search', $locale)
+                        ->with('error', 'Wheelsys service temporarily unavailable due to technical issues. Please try again later.');
+                } else if (str_contains($errorMessage, 'Invalid API response structure')) {
+                    Log::error('Wheelsys API response validation failed', [
+                        'pickup_station' => $pickupStation,
+                        'error' => $errorMessage
+                    ]);
+
+                    return redirect()->route('search', $locale)
+                        ->with('error', 'Unable to process vehicle data. Please try again later.');
+                } else {
+                    Log::error('Wheelsys API error after retries', [
+                        'pickup_station' => $pickupStation,
+                        'error' => $errorMessage,
+                        'circuit_breaker_status' => $this->wheelsysService->getCircuitBreakerStatus()
+                    ]);
+
+                    return redirect()->route('search', $locale)
+                        ->with('error', 'Unable to connect to Wheelsys service. Please try again later.');
+                }
             }
 
             // Find the specific vehicle (like SearchController does)

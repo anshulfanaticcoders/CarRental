@@ -736,7 +736,6 @@ class SearchController extends Controller
                         ]);
                     }
                 } elseif ($providerToFetch === 'wheelsys') {
-                    try {
                         Log::info('Attempting to fetch Wheelsys vehicles for location ID: ' . $providerLocationId);
                         Log::info('Search params: ', [
                             'pickup_id' => $providerLocationId,
@@ -750,65 +749,95 @@ class SearchController extends Controller
                         $dateFromFormatted = date('d/m/Y', strtotime($validated['date_from']));
                         $dateToFormatted = date('d/m/Y', strtotime($validated['date_to']));
 
-                        $wheelsysResponse = $this->wheelsysService->getVehicles(
-                            $providerLocationId,
-                            $validated['dropoff_location_id'] ?? $providerLocationId,
-                            $dateFromFormatted,
-                            $validated['start_time'] ?? '10:00',
-                            $dateToFormatted,
-                            $validated['end_time'] ?? '10:00'
-                        );
+                        try {
+                            $wheelsysResponse = $this->wheelsysService->getVehicles(
+                                $providerLocationId,
+                                $validated['dropoff_location_id'] ?? $providerLocationId,
+                                $dateFromFormatted,
+                                $validated['start_time'] ?? '10:00',
+                                $dateToFormatted,
+                                $validated['end_time'] ?? '10:00'
+                            );
 
-                        Log::info('Wheelsys API response received: ' . ($wheelsysResponse ? 'SUCCESS' : 'NULL/EMPTY'));
+                            Log::info('Wheelsys API response received successfully');
 
-                        if ($wheelsysResponse && isset($wheelsysResponse['Rates']) && !empty($wheelsysResponse['Rates'])) {
-                            $wheelsysRates = collect($wheelsysResponse['Rates']);
+                            // Handle different response structures
+                            $ratesData = null;
+                            if (isset($wheelsysResponse['vehicles']['Rates'])) {
+                                $ratesData = $wheelsysResponse['vehicles']['Rates'];
+                            } elseif (isset($wheelsysResponse['Rates'])) {
+                                $ratesData = $wheelsysResponse['Rates'];
+                            }
 
-                            // Process each rate and convert to standard vehicle format
-                            foreach ($wheelsysRates as $rate) {
-                                $standardVehicle = $this->wheelsysService->convertToStandardVehicle(
-                                    $rate,
-                                    $providerLocationId,
-                                    $locationLat,
-                                    $locationLng,
-                                    $locationAddress
-                                );
+                            if ($ratesData && !empty($ratesData)) {
+                                $wheelsysRates = collect($ratesData);
 
-                                if ($standardVehicle) {
-                                    $providerVehicles->push((object) $standardVehicle);
+                                // Process each rate and convert to standard vehicle format
+                                foreach ($wheelsysRates as $rate) {
+                                    $standardVehicle = $this->wheelsysService->convertToStandardVehicle(
+                                        $rate,
+                                        $providerLocationId,
+                                        $locationLat,
+                                        $locationLng,
+                                        $locationAddress
+                                    );
+
+                                    if ($standardVehicle) {
+                                        $providerVehicles->push((object) $standardVehicle);
+                                    }
                                 }
-                            }
 
-                            Log::info('Wheelsys vehicles processed and added: ' . $providerVehicles->count());
+                                Log::info('Wheelsys vehicles processed and added: ' . $providerVehicles->count());
 
-                            // Debug: Log the first few vehicles to see their structure
-                            $wheelsysVehiclesDebug = $providerVehicles->where('source', 'wheelsys')->take(3);
-                            foreach ($wheelsysVehiclesDebug as $debugVehicle) {
-                                Log::info('Wheelsys Vehicle Debug', [
-                                    'id' => $debugVehicle->id,
-                                    'source' => $debugVehicle->source,
-                                    'brand' => $debugVehicle->brand,
-                                    'model' => $debugVehicle->model,
-                                    'price_per_day' => $debugVehicle->price_per_day,
-                                    'image' => $debugVehicle->image,
-                                    'availability' => $debugVehicle->availability ?? 'N/A'
-                                ]);
-                            }
+                                /// Debug: Log the first few vehicles to see their structure
+                                $wheelsysVehiclesDebug = $providerVehicles->where('source', 'wheelsys')->take(3);
+                                foreach ($wheelsysVehiclesDebug as $debugVehicle) {
+                                    Log::info('Wheelsys Vehicle Debug', [
+                                        'id' => $debugVehicle->id,
+                                        'source' => $debugVehicle->source,
+                                        'brand' => $debugVehicle->brand,
+                                        'model' => $debugVehicle->model,
+                                        'price_per_day' => $debugVehicle->price_per_day,
+                                        'image' => $debugVehicle->image,
+                                        'availability' => $debugVehicle->availability ?? 'N/A'
+                                    ]);
+                                }
 
-                        } else {
-                            Log::warning("Wheelsys API response for vehicles was empty or malformed for location ID: " . $providerLocationId, [
-                                'response' => $wheelsysResponse
+                            } else {
+                            Log::warning("Wheelsys API response for vehicles was empty or no rates found for location ID: " . $providerLocationId, [
+                                'has_response' => !empty($wheelsysResponse),
+                                'response_keys' => $wheelsysResponse ? array_keys($wheelsysResponse) : [],
+                                'has_rates' => isset($ratesData) && !empty($ratesData)
                             ]);
                         }
 
                     } catch (\Exception $e) {
-                        Log::error("Error fetching Wheelsys vehicles: " . $e->getMessage(), [
-                            'provider_location_id' => $providerLocationId,
-                            'trace' => $e->getTraceAsString()
-                        ]);
+                        // Handle the new robust error scenarios from WheelsysService
+                        $errorMessage = $e->getMessage();
+
+                        if (str_contains($errorMessage, 'temporarily unavailable due to repeated failures')) {
+                            Log::warning('Wheelsys API circuit breaker is open - API temporarily unavailable', [
+                                'provider_location_id' => $providerLocationId,
+                                'circuit_breaker_status' => $this->wheelsysService->getCircuitBreakerStatus()
+                            ]);
+                        } else if (str_contains($errorMessage, 'Invalid API response structure')) {
+                            Log::error('Wheelsys API response validation failed', [
+                                'provider_location_id' => $providerLocationId,
+                                'error' => $errorMessage
+                            ]);
+                        } else {
+                            Log::error('Wheelsys API error after retries', [
+                                'provider_location_id' => $providerLocationId,
+                                'error' => $errorMessage,
+                                'circuit_breaker_status' => $this->wheelsysService->getCircuitBreakerStatus()
+                            ]);
+                        }
+
+                        // Continue with other providers - don't fail the entire search
+                        Log::info('Continuing search with other providers after Wheelsys failure');
                     }
-                }
-            }
+                } // Close Wheelsys elseif
+            } // Close foreach $providersToFetch
         }
 
         $filteredProviderVehicles = $providerVehicles->filter(function ($vehicle) use ($validated) {

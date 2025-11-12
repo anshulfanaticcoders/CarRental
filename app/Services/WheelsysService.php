@@ -11,8 +11,12 @@ class WheelsysService
     private $accountNo;
     private $linkCode;
     private $agentCode;
-    private $cacheFile;
-    private $cacheTime = 3600; // 1 hour cache
+    private $maxRetries = 3;
+    private $circuitBreakerThreshold = 5;
+    private $circuitBreakerTimeout = 60;
+    private $failures = 0;
+    private $lastFailureTime = 0;
+    private $circuitOpen = false;
 
     public function __construct()
     {
@@ -20,7 +24,6 @@ class WheelsysService
         $this->accountNo = config('services.wheelsys.account_no');
         $this->linkCode = config('services.wheelsys.link_code');
         $this->agentCode = config('services.wheelsys.agent_code');
-        $this->cacheFile = storage_path('app/cache/wheelsys_cache.json');
 
         if (empty($this->baseUrl) || empty($this->linkCode) || empty($this->agentCode) || empty($this->accountNo)) {
             throw new \Exception("Wheelsys credentials are not configured correctly.");
@@ -29,22 +32,16 @@ class WheelsysService
 
     /**
      * Fetches available vehicles based on search criteria.
-     * Uses the price-quote endpoint
+     * Uses the price-quote endpoint with retry mechanism and circuit breaker
      */
     public function getVehicles($pickupStation, $returnStation, $dateFrom, $timeFrom, $dateTo, $timeTo, $options = [])
     {
-        // Create cache key
-        $cacheKey = "vehicles_{$pickupStation}_{$returnStation}_{$dateFrom}_{$timeFrom}_{$dateTo}_{$timeTo}";
-
-        // Check cache first
-        $cachedData = $this->getCachedData($cacheKey);
-        if ($cachedData) {
-            Log::info('Wheelsys: Using cached data for ' . $cacheKey);
-            return $cachedData;
+        // Check circuit breaker
+        if ($this->isCircuitOpen()) {
+            throw new \Exception('Wheelsys API temporarily unavailable due to repeated failures');
         }
 
         $url = $this->baseUrl . "price-quote_{$this->linkCode}.html";
-
         $params = [
             'agent' => $this->agentCode,
             'DATE_FROM' => $dateFrom,
@@ -56,7 +53,7 @@ class WheelsysService
             'format' => 'json'
         ];
 
-        try {
+        return $this->executeWithRetry(function() use ($url, $params) {
             Log::info('Wheelsys API Request (getVehicles): ' . $url, ['params' => $params]);
 
             $response = Http::timeout(30)->get($url, $params);
@@ -65,42 +62,45 @@ class WheelsysService
                 Log::info('Wheelsys API Response received successfully');
                 $responseData = $response->json();
 
-                // Cache the response
-                $this->setCachedData($cacheKey, $responseData);
+                // Debug: Log the actual response structure
+                Log::debug('Wheelsys API response structure', [
+                    'is_array' => is_array($responseData),
+                    'keys' => is_array($responseData) ? array_keys($responseData) : 'not_array',
+                    'response_sample' => is_array($responseData) ? json_encode(array_slice($responseData, 0, 2, true)) : 'not_array'
+                ]);
+
+                // Validate response structure
+                if (!$this->validateApiResponse($responseData)) {
+                    throw new \Exception('Invalid API response structure');
+                }
+
+                // Reset failures on success
+                $this->resetCircuitBreaker();
 
                 return $responseData;
             }
 
-            Log::error('Wheelsys API Error: ' . $response->status() . ' - ' . $response->body());
-            return null;
-
-        } catch (\Exception $e) {
-            Log::error('Wheelsys API Exception (getVehicles): ' . $e->getMessage());
-            return null;
-        }
+            throw new \Exception('Wheelsys API Error: ' . $response->status() . ' - ' . $response->body());
+        }, 'getVehicles');
     }
 
     /**
      * Fetches all available rental stations.
-     * Uses the stations endpoint
+     * Uses the stations endpoint with retry mechanism
      */
     public function getStations()
     {
-        // Check cache first
-        $cachedData = $this->getCachedData('stations');
-        if ($cachedData) {
-            Log::info('Wheelsys: Using cached stations data');
-            return $cachedData;
+        if ($this->isCircuitOpen()) {
+            throw new \Exception('Wheelsys API temporarily unavailable due to repeated failures');
         }
 
         $url = $this->baseUrl . "stations_{$this->linkCode}.html";
-
         $params = [
             'agent' => $this->agentCode,
             'format' => 'json'
         ];
 
-        try {
+        return $this->executeWithRetry(function() use ($url, $params) {
             Log::info('Wheelsys API Request (getStations): ' . $url);
 
             $response = Http::timeout(30)->get($url, $params);
@@ -109,42 +109,35 @@ class WheelsysService
                 Log::info('Wheelsys API Response (getStations) received successfully');
                 $responseData = $response->json();
 
-                // Cache the response for longer time (stations don't change often)
-                $this->setCachedData('stations', $responseData, 86400); // 24 hours cache
+                if (!$this->validateApiResponse($responseData)) {
+                    throw new \Exception('Invalid API response structure');
+                }
 
+                $this->resetCircuitBreaker();
                 return $responseData;
             }
 
-            Log::error('Wheelsys API Error (getStations): ' . $response->status() . ' - ' . $response->body());
-            return null;
-
-        } catch (\Exception $e) {
-            Log::error('Wheelsys API Exception (getStations): ' . $e->getMessage());
-            return null;
-        }
+            throw new \Exception('Wheelsys API Error (getStations): ' . $response->status() . ' - ' . $response->body());
+        }, 'getStations');
     }
 
     /**
      * Fetches vehicle groups/categories.
-     * Uses the groups endpoint
+     * Uses the groups endpoint with retry mechanism
      */
     public function getVehicleGroups()
     {
-        // Check cache first
-        $cachedData = $this->getCachedData('groups');
-        if ($cachedData) {
-            Log::info('Wheelsys: Using cached groups data');
-            return $cachedData;
+        if ($this->isCircuitOpen()) {
+            throw new \Exception('Wheelsys API temporarily unavailable due to repeated failures');
         }
 
         $url = $this->baseUrl . "groups_{$this->linkCode}.html";
-
         $params = [
             'agent' => $this->agentCode,
             'format' => 'json'
         ];
 
-        try {
+        return $this->executeWithRetry(function() use ($url, $params) {
             Log::info('Wheelsys API Request (getVehicleGroups): ' . $url);
 
             $response = Http::timeout(30)->get($url, $params);
@@ -153,42 +146,35 @@ class WheelsysService
                 Log::info('Wheelsys API Response (getVehicleGroups) received successfully');
                 $responseData = $response->json();
 
-                // Cache the response for longer time (groups don't change often)
-                $this->setCachedData('groups', $responseData, 86400); // 24 hours cache
+                if (!$this->validateApiResponse($responseData)) {
+                    throw new \Exception('Invalid API response structure');
+                }
 
+                $this->resetCircuitBreaker();
                 return $responseData;
             }
 
-            Log::error('Wheelsys API Error (getVehicleGroups): ' . $response->status() . ' - ' . $response->body());
-            return null;
-
-        } catch (\Exception $e) {
-            Log::error('Wheelsys API Exception (getVehicleGroups): ' . $e->getMessage());
-            return null;
-        }
+            throw new \Exception('Wheelsys API Error (getVehicleGroups): ' . $response->status() . ' - ' . $response->body());
+        }, 'getVehicleGroups');
     }
 
     /**
      * Fetches available options/extras.
-     * Uses the options endpoint
+     * Uses the options endpoint with retry mechanism
      */
     public function getOptions()
     {
-        // Check cache first
-        $cachedData = $this->getCachedData('options');
-        if ($cachedData) {
-            Log::info('Wheelsys: Using cached options data');
-            return $cachedData;
+        if ($this->isCircuitOpen()) {
+            throw new \Exception('Wheelsys API temporarily unavailable due to repeated failures');
         }
 
         $url = $this->baseUrl . "options_{$this->linkCode}.html";
-
         $params = [
             'agent' => $this->agentCode,
             'format' => 'json'
         ];
 
-        try {
+        return $this->executeWithRetry(function() use ($url, $params) {
             Log::info('Wheelsys API Request (getOptions): ' . $url);
 
             $response = Http::timeout(30)->get($url, $params);
@@ -197,19 +183,16 @@ class WheelsysService
                 Log::info('Wheelsys API Response (getOptions) received successfully');
                 $responseData = $response->json();
 
-                // Cache the response for longer time (options don't change often)
-                $this->setCachedData('options', $responseData, 86400); // 24 hours cache
+                if (!$this->validateApiResponse($responseData)) {
+                    throw new \Exception('Invalid API response structure');
+                }
 
+                $this->resetCircuitBreaker();
                 return $responseData;
             }
 
-            Log::error('Wheelsys API Error (getOptions): ' . $response->status() . ' - ' . $response->body());
-            return null;
-
-        } catch (\Exception $e) {
-            Log::error('Wheelsys API Exception (getOptions): ' . $e->getMessage());
-            return null;
-        }
+            throw new \Exception('Wheelsys API Error (getOptions): ' . $response->status() . ' - ' . $response->body());
+        }, 'getOptions');
     }
 
     /**
@@ -410,60 +393,110 @@ class WheelsysService
     }
 
     /**
-     * Cache management methods
+     * Execute API call with retry mechanism and circuit breaker
      */
-    private function getCachedData($key)
+    private function executeWithRetry(callable $callback, string $operation)
     {
-        if (!file_exists($this->cacheFile)) {
-            return null;
+        $lastException = null;
+
+        for ($attempt = 1; $attempt <= $this->maxRetries; $attempt++) {
+            try {
+                return $callback();
+            } catch (\Exception $e) {
+                $lastException = $e;
+                $this->recordFailure();
+
+                Log::warning("Wheelsys API attempt {$attempt} failed for {$operation}: " . $e->getMessage());
+
+                if ($attempt < $this->maxRetries) {
+                    $delay = min(pow(2, $attempt), 10); // Exponential backoff, max 10 seconds
+                    sleep($delay);
+                    Log::info("Retrying Wheelsys API operation {$operation} in {$delay} seconds (attempt {$attempt}/{$this->maxRetries})");
+                }
+            }
         }
 
-        $cache = json_decode(file_get_contents($this->cacheFile), true);
-        if (!$cache || !isset($cache[$key])) {
-            return null;
-        }
-
-        $item = $cache[$key];
-        if (time() > $item['expires']) {
-            unset($cache[$key]);
-            file_put_contents($this->cacheFile, json_encode($cache));
-            return null;
-        }
-
-        return $item['data'];
-    }
-
-    private function setCachedData($key, $data, $customCacheTime = null)
-    {
-        $cacheTime = $customCacheTime ?? $this->cacheTime;
-        $cache = [];
-
-        if (file_exists($this->cacheFile)) {
-            $cache = json_decode(file_get_contents($this->cacheFile), true) ?: [];
-        }
-
-        $cache[$key] = [
-            'data' => $data,
-            'expires' => time() + $cacheTime
-        ];
-
-        // Ensure cache directory exists
-        $cacheDir = dirname($this->cacheFile);
-        if (!is_dir($cacheDir)) {
-            mkdir($cacheDir, 0755, true);
-        }
-
-        file_put_contents($this->cacheFile, json_encode($cache));
+        Log::error("Wheelsys API operation {$operation} failed after {$this->maxRetries} attempts");
+        throw $lastException;
     }
 
     /**
-     * Clear cache
+     * Check if circuit breaker is open
      */
-    public function clearCache()
+    private function isCircuitOpen(): bool
     {
-        if (file_exists($this->cacheFile)) {
-            unlink($this->cacheFile);
+        if ($this->circuitOpen) {
+            // Check if timeout has passed
+            if (time() - $this->lastFailureTime > $this->circuitBreakerTimeout) {
+                $this->circuitOpen = false;
+                $this->failures = 0;
+                Log::info('Wheelsys circuit breaker reset after timeout');
+                return false;
+            }
+            return true;
         }
-        Log::info('Wheelsys cache cleared');
+
+        return false;
+    }
+
+    /**
+     * Record a failure for circuit breaker
+     */
+    private function recordFailure(): void
+    {
+        $this->failures++;
+        $this->lastFailureTime = time();
+
+        if ($this->failures >= $this->circuitBreakerThreshold) {
+            $this->circuitOpen = true;
+            Log::warning("Wheelsys circuit breaker opened after {$this->failures} failures");
+        }
+    }
+
+    /**
+     * Reset circuit breaker on success
+     */
+    private function resetCircuitBreaker(): void
+    {
+        if ($this->failures > 0) {
+            Log::info("Wheelsys circuit breaker reset after {$this->failures} failures");
+            $this->failures = 0;
+            $this->circuitOpen = false;
+        }
+    }
+
+    /**
+     * Validate API response structure
+     */
+    private function validateApiResponse($responseData): bool
+    {
+        if (!is_array($responseData)) {
+            Log::error('Wheelsys API response is not an array');
+            return false;
+        }
+
+        // Based on the actual API response structure you showed me
+        // The response might be directly the vehicles object, not wrapped in 'vehicles' key
+        if (!isset($responseData['Rates']) && !isset($responseData['vehicles'])) {
+            Log::warning('Wheelsys API response structure unexpected - checking available keys');
+            Log::debug('Available response keys: ' . implode(', ', array_keys($responseData)));
+            return true; // Allow processing - let the controller handle it
+        }
+
+        return true; // Response seems valid for processing
+    }
+
+    /**
+     * Get current circuit breaker status for monitoring
+     */
+    public function getCircuitBreakerStatus(): array
+    {
+        return [
+            'open' => $this->circuitOpen,
+            'failures' => $this->failures,
+            'threshold' => $this->circuitBreakerThreshold,
+            'last_failure_time' => $this->lastFailureTime,
+            'timeout' => $this->circuitBreakerTimeout
+        ];
     }
 }
