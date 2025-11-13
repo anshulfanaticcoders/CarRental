@@ -2,17 +2,18 @@
 import { Link, Head, useForm, usePage } from '@inertiajs/vue3';
 import { computed, ref, onMounted } from 'vue';
 import AuthenticatedHeaderLayout from '@/Layouts/AuthenticatedHeaderLayout.vue';
+import Footer from '@/Components/Footer.vue';
 import { Button } from '@/Components/ui/button';
 import { Input } from '@/Components/ui/input';
 import { Label } from '@/Components/ui/label';
 import { Textarea } from '@/Components/ui/textarea';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/Components/ui/select';
 import { Checkbox } from '@/Components/ui/checkbox';
 import { Card, CardContent, CardHeader, CardTitle } from '@/Components/ui/card';
 import { Separator } from '@/Components/ui/separator';
 import { Badge } from '@/Components/ui/badge';
 import { Alert, AlertDescription } from '@/Components/ui/alert';
 import { useCurrency } from '@/composables/useCurrency';
+import WheelsysStripeCheckout from '@/Components/WheelsysStripeCheckout.vue';
 
 const props = defineProps({
     vehicle: Object,
@@ -20,212 +21,60 @@ const props = defineProps({
     availableExtras: Array,
     pickupStation: Object,
     returnStation: Object,
-    quoteResponse: Object,
     user: Object,
+    locale: String,
 });
 
 const page = usePage();
-const processing = ref(false);
-const selectedExtras = ref([]);
+const currentStep = ref(1);
+const formErrors = ref({});
 
 // Currency conversion setup
 const currencySymbols = ref({});
 const exchangeRates = ref(null);
-const { selectedCurrency, supportedCurrencies, changeCurrency } = useCurrency();
+const { selectedCurrency } = useCurrency();
 
-const symbolToCodeMap = {
-    '$': 'USD',
-    '€': 'EUR',
-    '£': 'GBP',
-    '¥': 'JPY',
-    'A$': 'AUD',
-    'C$': 'CAD',
-    'Fr': 'CHF',
-    'HK$': 'HKD',
-    'S$': 'SGD',
-    'kr': 'SEK',
-    '₩': 'KRW',
-    'kr': 'NOK',
-    'NZ$': 'NZD',
-    '₹': 'INR',
-    'Mex$': 'MXN',
-    'R': 'ZAR',
-    'R$': 'BRL',
-    '₽': 'RUB',
-    '₺': 'TRY',
-    '฿': 'THB',
-    '₡': 'CRC',
-    '₦': 'NGN',
-    '₨': 'PKR',
-    '₪': 'ILS',
-    '₫': 'LAK',
-    '₸': 'KZT',
-    '₼': 'AZN',
-    '₴': 'UAH',
-    '؋': 'LBP',
-    '₦': 'NGN',
-    '₨': 'LKR',
-    '₡': 'SVC',
-    '₲': 'PYG',
-    '₱': 'PHP',
-    '₽': 'RUB',
-    '₪': 'ILS',
-    '﷼': 'IRR',
-    '₮': 'MNT',
-    '₩': 'KRW',
-    '円': 'JPY',
-    '元': 'CNY',
-    'ƒ': 'ANG',
-    '₨': 'BDT',
-    '₨': 'NPR',
-    '₹': 'INR',
-    '₨': 'PKR',
-    '৳': 'BDT',
-    '៛': 'KHR',
-    '₭': 'LAK',
-    '₦': 'NGN',
-    '₨': 'PKR',
-    '₨': 'LKR',
-    '៛': 'KHR',
-    '₭': 'LAK',
-    '₦': 'NGN',
-    '₨': 'PKR',
-    '₨': 'LKR',
-    '૱': 'INR',
-    '௹': 'LKR',
-    'রু': 'BDT',
-    '៛': 'KHR',
-    '₭': 'LAK',
-    '₦': 'NGN',
-    '₨': 'PKR',
-    '₨': 'LKR',
-    '₹': 'INR',
-    '৳': 'BDT',
-    '៛': 'KHR',
-    '₭': 'LAK',
-    '₦': 'NGN',
-    '₨': 'PKR',
-    '₨': 'LKR',
-};
-
-// Load exchange rates on mount
 onMounted(async () => {
     try {
-        const response = await fetch('/api/currency/rates');
-        const data = await response.json();
-        exchangeRates.value = data.rates;
-        currencySymbols.value = data.symbols;
+        const ratesResponse = await fetch(`https://v6.exchangerate-api.com/v6/01b88ff6c6507396d707e4b6/latest/USD`);
+        const ratesData = await ratesResponse.json();
+        if (ratesData.result === 'success') {
+            exchangeRates.value = ratesData.conversion_rates;
+        }
+        const symbolsResponse = await fetch('/currency.json');
+        const symbolsData = await symbolsResponse.json();
+        currencySymbols.value = symbolsData.reduce((acc, curr) => {
+            acc[curr.code] = curr.symbol;
+            return acc;
+        }, {});
     } catch (error) {
         console.error('Failed to load currency data:', error);
     }
 });
 
-const getCurrencySymbol = (code) => {
-    return currencySymbols.value[code] || '$';
-};
+const getCurrencySymbol = (code) => currencySymbols.value[code] || '$';
 
 const convertCurrency = (price, fromCurrency) => {
     const numericPrice = parseFloat(price);
-    if (isNaN(numericPrice)) {
-        return 0;
-    }
-
-    let fromCurrencyCode = fromCurrency;
-    if (symbolToCodeMap[fromCurrency]) {
-        fromCurrencyCode = symbolToCodeMap[fromCurrency];
-    }
-
-    if (!exchangeRates.value || !fromCurrencyCode || !selectedCurrency.value) {
-        return numericPrice;
-    }
-    const rateFrom = exchangeRates.value[fromCurrencyCode];
+    if (isNaN(numericPrice)) return 0;
+    if (!exchangeRates.value || !fromCurrency || !selectedCurrency.value) return numericPrice;
+    const rateFrom = exchangeRates.value[fromCurrency];
     const rateTo = exchangeRates.value[selectedCurrency.value];
-    if (rateFrom && rateTo) {
-        return (numericPrice / rateFrom) * rateTo;
-    }
-    return numericPrice;
+    return rateFrom && rateTo ? (numericPrice / rateFrom) * rateTo : numericPrice;
 };
 
 const formatPrice = (price, currency = 'USD') => {
     if (!price || price === 0) return 'Free';
-    const originalCurrency = currency || 'USD';
-    const convertedPrice = convertCurrency(price, originalCurrency);
+    const convertedPrice = convertCurrency(price, currency);
     const currencySymbol = getCurrencySymbol(selectedCurrency.value);
     return `${currencySymbol}${convertedPrice.toFixed(2)}`;
 };
 
-// Calculate pricing with fallbacks
-const baseRate = computed(() => {
-    const rate = props.vehicle?.price_per_day;
-    console.log('Base rate calculation:', {
-        'vehicle exists': !!props.vehicle,
-        'vehicle currency': props.vehicle?.currency,
-        'vehicle_price_per_day': props.vehicle?.price_per_day,
-        'rate value': rate,
-        'isNan': isNaN(rate)
-    });
+const selectedExtras = ref([]);
 
-    // Multiple fallback checks
-    if (rate === null || rate === undefined || isNaN(rate) || rate === 0) {
-        console.warn('Using fallback price due to invalid rate:', rate);
-        return 50.0;
-    }
-
-    return parseFloat(rate);
-});
-
-const rentalDays = computed(() => {
-    // Convert dd/mm/YYYY to mm/dd/YYYY for JavaScript Date parsing
-    const formatDate = (dateStr) => {
-        if (!dateStr) return new Date();
-        const parts = dateStr.split('/');
-        if (parts.length === 3) {
-            // Convert dd/mm/YYYY to mm/dd/YYYY
-            return new Date(`${parts[1]}/${parts[0]}/${parts[2]}`);
-        }
-        return new Date(dateStr);
-    };
-
-    const pickup = formatDate(props.searchParams?.date_from);
-    const returnDate = formatDate(props.searchParams?.date_to);
-    const days = Math.ceil((returnDate - pickup) / (1000 * 60 * 60 * 24));
-    return Math.max(1, days);
-});
-
-const baseTotal = computed(() => baseRate.value * rentalDays.value);
-const extrasTotal = computed(() => {
-    return selectedExtras.value.reduce((total, extra) => {
-        return total + (extra.rate * rentalDays.value);
-    }, 0);
-});
-
-const taxesTotal = computed(() => {
-    const subtotal = baseTotal.value + extrasTotal.value;
-    return subtotal * 0.065; // 6.5% tax
-});
-
-const grandTotal = computed(() => baseTotal.value + extrasTotal.value + taxesTotal.value);
-
-// Formatted pricing displays with currency conversion
-const formattedBaseRate = computed(() => formatPrice(baseRate.value, props.vehicle?.currency || 'USD'));
-const formattedBaseTotal = computed(() => formatPrice(baseTotal.value, props.vehicle?.currency || 'USD'));
-const formattedExtrasTotal = computed(() => formatPrice(extrasTotal.value, props.vehicle?.currency || 'USD'));
-const formattedTaxesTotal = computed(() => formatPrice(taxesTotal.value, props.vehicle?.currency || 'USD'));
-const formattedGrandTotal = computed(() => formatPrice(grandTotal.value, props.vehicle?.currency || 'USD'));
-
-// Debug log
-console.log('Booking page data:', {
-    vehicle: props.vehicle,
-    searchParams: props.searchParams,
-    baseRate: baseRate.value,
-    rentalDays: rentalDays.value,
-    baseTotal: baseTotal.value
-});
-
-// Form setup
 const form = useForm({
     vehicle_group_code: props.vehicle?.group_code || '',
-    vehicle_group_name: (props.vehicle?.brand || 'Wheelsys') + ' ' + (props.vehicle?.model || 'Vehicle'),
+    vehicle_group_name: `${props.vehicle?.brand || 'Wheelsys'} ${props.vehicle?.model || 'Vehicle'}`,
     pickup_date: props.searchParams?.date_from || '',
     pickup_time: props.searchParams?.time_from || '12:00',
     return_date: props.searchParams?.date_to || '',
@@ -246,56 +95,66 @@ const form = useForm({
     affiliate_code: page.props.affiliate_data?.code || null,
 });
 
-// Handle extras selection
-const toggleExtra = (extra) => {
-    const index = selectedExtras.value.findIndex(e => e.code === extra.Code);
+const rentalDays = computed(() => {
+    const parseDate = (dateStr) => {
+        if (!dateStr) return new Date();
+        const parts = dateStr.split('/');
+        return parts.length === 3 ? new Date(parts[2], parts[1] - 1, parts[0]) : new Date(dateStr);
+    };
+    const pickup = parseDate(props.searchParams?.date_from);
+    const returnDate = parseDate(props.searchParams?.date_to);
+    const days = Math.ceil((returnDate - pickup) / (1000 * 60 * 60 * 24));
+    return Math.max(1, days);
+});
 
+const baseTotal = computed(() => (props.vehicle?.price_per_day || 0) * rentalDays.value);
+const extrasTotal = computed(() => selectedExtras.value.reduce((total, extra) => total + (extra.rate * rentalDays.value), 0));
+const taxesTotal = computed(() => (baseTotal.value + extrasTotal.value) * 0.065);
+const grandTotal = computed(() => baseTotal.value + extrasTotal.value + taxesTotal.value);
+
+const toggleExtra = (extra) => {
+    const index = selectedExtras.value.findIndex(e => e.code === extra.code);
     if (index > -1) {
         selectedExtras.value.splice(index, 1);
     } else {
-        // Convert rate from cents to dollars (divide by 100)
-        const rateInDollars = extra.Rate ? extra.Rate / 100 : 0;
-
-        selectedExtras.value.push({
-            code: extra.Code,
-            name: extra.Name,
-            rate: rateInDollars,
-            quantity: 1,
-            originalRate: extra.Rate,
-            mandatory: extra.Mandatory || false
-        });
+        selectedExtras.value.push({ ...extra, quantity: 1 });
     }
-
     form.selected_extras = selectedExtras.value;
 };
 
-// Submit booking
-const submitBooking = () => {
-    processing.value = true;
-
-    form.selected_extras = selectedExtras.value;
-
-    form.post(route('wheelsys.booking.store'), {
-        onSuccess: () => {
-            processing.value = false;
-        },
-        onError: (errors) => {
-            processing.value = false;
-            console.error('Booking errors:', errors);
-        }
-    });
+const validateStep = (step) => {
+    const errors = {};
+    if (step === 2) {
+        if (!form.customer_first_name.trim()) errors.firstname = 'First name is required';
+        if (!form.customer_last_name.trim()) errors.surname = 'Last name is required';
+        if (!form.customer_email.trim()) errors.email = 'Email is required';
+        if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.customer_email)) errors.email = 'Please enter a valid email address';
+        if (!form.customer_phone.trim()) errors.phone = 'Phone number is required';
+    }
+    formErrors.value = errors;
+    return Object.keys(errors).length === 0;
 };
 
+const nextStep = () => {
+    if (validateStep(currentStep.value)) {
+        if (currentStep.value < 3) currentStep.value++;
+    }
+};
+const prevStep = () => {
+    if (currentStep.value > 1) currentStep.value--;
+};
+const goToStep = (step) => {
+    if (step < currentStep.value || validateStep(currentStep.value)) {
+        currentStep.value = step;
+    }
+};
 
-// Format date
 const formatDate = (dateString) => {
-    const date = new Date(dateString);
-    return date.toLocaleDateString('en-US', {
-        weekday: 'short',
-        year: 'numeric',
-        month: 'short',
-        day: 'numeric'
-    });
+    if (!dateString) return 'Invalid date';
+    const parts = dateString.split('/');
+    if (parts.length !== 3) return 'Invalid date';
+    const date = new Date(parts[2], parts[1] - 1, parts[0]);
+    return date.toLocaleDateString('en-US', { weekday: 'short', year: 'numeric', month: 'short', day: 'numeric' });
 };
 </script>
 
@@ -304,276 +163,184 @@ const formatDate = (dateString) => {
         <title>Complete Booking - {{ vehicle?.brand }} {{ vehicle?.model }}</title>
     </Head>
 
-    <AuthenticatedHeaderLayout/>
-        <div class="min-h-screen bg-gray-50 py-8">
-            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-                <!-- Header -->
-                <div class="mb-8">
-                    <h1 class="text-3xl font-bold text-gray-900">Complete Your Booking</h1>
-                    <p class="text-gray-600 mt-2">Review your details and confirm your reservation</p>
-                </div>
+    <AuthenticatedHeaderLayout />
 
-                <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                    <!-- Main Content (2 columns) -->
-                    <div class="lg:col-span-2 space-y-8">
-                        <!-- Vehicle Summary -->
-                        <Card>
-                            <CardHeader>
-                                <CardTitle>Vehicle Details</CardTitle>
-                            </CardHeader>
-                            <CardContent>
-                                <div class="flex gap-6">
-                                    <img
-                                        :src="vehicle?.image"
-                                        :alt="`${vehicle?.brand} ${vehicle?.model}`"
-                                        class="w-32 h-24 object-cover rounded-lg"
-                                    />
-                                    <div class="flex-1">
-                                        <h3 class="text-lg font-semibold">{{ vehicle?.brand }} {{ vehicle?.model }}</h3>
-                                        <p class="text-gray-600">{{ vehicle?.category }}</p>
-                                        <div class="flex gap-4 mt-2 text-sm text-gray-500">
-                                            <span>{{ vehicle?.seating_capacity }} Seats</span>
-                                            <span>{{ vehicle?.doors }} Doors</span>
-                                            <span>{{ vehicle?.transmission }}</span>
-                                        </div>
-                                    </div>
-                                </div>
-                            </CardContent>
-                        </Card>
+    <section class="bg-primary py-16 relative overflow-hidden">
+        <div class="container relative z-10">
+            <div class="max-w-4xl mx-auto text-center text-white">
+                <h1 class="text-4xl md:text-5xl font-bold mb-4">Complete Your Reservation</h1>
+                <p class="text-xl opacity-90">{{ vehicle?.brand }} {{ vehicle?.model }} - {{ pickupStation?.Name }}</p>
+            </div>
+        </div>
+    </section>
 
-                        <!-- Rental Details -->
-                        <Card>
-                            <CardHeader>
-                                <CardTitle>Rental Details</CardTitle>
-                            </CardHeader>
-                            <CardContent class="space-y-4">
-                                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                    <div>
-                                        <Label class="text-sm font-medium text-gray-700">Pickup</Label>
-                                        <div class="mt-1 p-3 bg-green-50 rounded-lg">
-                                            <p class="font-semibold text-green-900">{{ pickupStation?.Name }}</p>
-                                            <p class="text-sm text-green-700">{{ formatDate(searchParams?.date_from) }} at {{ searchParams?.time_from }}</p>
-                                        </div>
-                                    </div>
-                                    <div>
-                                        <Label class="text-sm font-medium text-gray-700">Return</Label>
-                                        <div class="mt-1 p-3 bg-blue-50 rounded-lg">
-                                            <p class="font-semibold text-blue-900">{{ returnStation?.Name }}</p>
-                                            <p class="text-sm text-blue-700">{{ formatDate(searchParams?.date_to) }} at {{ searchParams?.time_to }}</p>
-                                        </div>
-                                    </div>
-                                </div>
-
-                                <div class="text-center">
-                                    <Badge variant="secondary" class="text-lg px-4 py-2">
-                                        {{ rentalDays }} {{ rentalDays === 1 ? 'Day' : 'Days' }}
-                                    </Badge>
-                                </div>
-                            </CardContent>
-                        </Card>
-
-                        <!-- Customer Information -->
-                        <Card>
-                            <CardHeader>
-                                <CardTitle>Customer Information</CardTitle>
-                            </CardHeader>
-                            <CardContent class="space-y-6">
-                                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                    <div>
-                                        <Label for="first_name">First Name *</Label>
-                                        <Input
-                                            id="first_name"
-                                            v-model="form.customer_first_name"
-                                            type="text"
-                                            required
-                                            :class="{ 'border-red-500': form.errors.customer_first_name }"
-                                        />
-                                        <p v-if="form.errors.customer_first_name" class="text-red-500 text-sm mt-1">{{ form.errors.customer_first_name }}</p>
-                                    </div>
-                                    <div>
-                                        <Label for="last_name">Last Name *</Label>
-                                        <Input
-                                            id="last_name"
-                                            v-model="form.customer_last_name"
-                                            type="text"
-                                            required
-                                            :class="{ 'border-red-500': form.errors.customer_last_name }"
-                                        />
-                                        <p v-if="form.errors.customer_last_name" class="text-red-500 text-sm mt-1">{{ form.errors.customer_last_name }}</p>
-                                    </div>
-                                </div>
-
-                                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                    <div>
-                                        <Label for="email">Email Address *</Label>
-                                        <Input
-                                            id="email"
-                                            v-model="form.customer_email"
-                                            type="email"
-                                            required
-                                            :class="{ 'border-red-500': form.errors.customer_email }"
-                                        />
-                                        <p v-if="form.errors.customer_email" class="text-red-500 text-sm mt-1">{{ form.errors.customer_email }}</p>
-                                    </div>
-                                    <div>
-                                        <Label for="phone">Phone Number *</Label>
-                                        <Input
-                                            id="phone"
-                                            v-model="form.customer_phone"
-                                            type="tel"
-                                            required
-                                            :class="{ 'border-red-500': form.errors.customer_phone }"
-                                        />
-                                        <p v-if="form.errors.customer_phone" class="text-red-500 text-sm mt-1">{{ form.errors.customer_phone }}</p>
-                                    </div>
-                                </div>
-
-                                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                    <div>
-                                        <Label for="age">Driver Age *</Label>
-                                        <Input
-                                            id="age"
-                                            v-model="form.customer_age"
-                                            type="number"
-                                            min="18"
-                                            max="99"
-                                            required
-                                            :class="{ 'border-red-500': form.errors.customer_age }"
-                                        />
-                                        <p v-if="form.errors.customer_age" class="text-red-500 text-sm mt-1">{{ form.errors.customer_age }}</p>
-                                    </div>
-                                    <div>
-                                        <Label for="driver_licence">Driver's License</Label>
-                                        <Input
-                                            id="driver_licence"
-                                            v-model="form.customer_driver_licence"
-                                            type="text"
-                                            placeholder="License number"
-                                        />
-                                    </div>
-                                </div>
-
-                                <div>
-                                    <Label for="address">Address</Label>
-                                    <Textarea
-                                        id="address"
-                                        v-model="form.customer_address"
-                                        placeholder="Full address"
-                                        rows="3"
-                                    />
-                                </div>
-                            </CardContent>
-                        </Card>
-
-                        <!-- Extras -->
-                        <Card v-if="availableExtras && availableExtras.length > 0">
-                            <CardHeader>
-                                <CardTitle>Additional Extras</CardTitle>
-                            </CardHeader>
-                            <CardContent>
-                                <div class="space-y-3">
-                                    <div
-                                        v-for="extra in availableExtras"
-                                        :key="extra.Code"
-                                        class="flex items-center justify-between p-4 border rounded-lg hover:bg-gray-50"
-                                    >
-                                        <div class="flex items-center space-x-3">
-                                            <Checkbox
-                                                :id="extra.Code"
-                                                :checked="selectedExtras.some(e => e.code === extra.Code)"
-                                                @update:checked="toggleExtra(extra)"
-                                            />
-                                            <div>
-                                                <Label :for="extra.Code" class="font-medium cursor-pointer">
-                                                    {{ extra.Name }}
-                                                </Label>
-                                                <p class="text-sm text-gray-500">Additional charge per day</p>
-                                            </div>
-                                        </div>
-                                        <div class="text-right">
-                                            <p class="font-semibold">{{ formatPrice(extra.Rate ? extra.Rate / 100 : 0, props.vehicle?.currency || 'USD') }}</p>
-                                            <p class="text-xs text-gray-500">per day</p>
-                                        </div>
-                                    </div>
-                                </div>
-                            </CardContent>
-                        </Card>
-
-                        <!-- Additional Notes -->
-                        <Card>
-                            <CardHeader>
-                                <CardTitle>Additional Notes</CardTitle>
-                            </CardHeader>
-                            <CardContent>
-                                <Textarea
-                                    v-model="form.customer_notes"
-                                    placeholder="Any special requests or notes for your rental..."
-                                    rows="4"
-                                />
-                            </CardContent>
-                        </Card>
-                    </div>
-
-                    <!-- Sidebar (1 column) -->
-                    <div class="space-y-6">
-                        <!-- Price Summary -->
-                        <Card class="sticky top-4">
-                            <CardHeader>
-                                <CardTitle>Price Summary</CardTitle>
-                            </CardHeader>
-                            <CardContent class="space-y-4">
-                                <div class="flex justify-between">
-                                    <span>Vehicle Rental ({{ rentalDays }} days)</span>
-                                    <span>{{ formattedBaseTotal }}</span>
-                                </div>
-
-                                <div v-if="extrasTotal > 0" class="flex justify-between">
-                                    <span>Extras</span>
-                                    <span>{{ formattedExtrasTotal }}</span>
-                                </div>
-
-                                <div class="flex justify-between">
-                                    <span>Taxes & Fees</span>
-                                    <span>{{ formattedTaxesTotal }}</span>
-                                </div>
-
-                                <Separator />
-
-                                <div class="flex justify-between text-lg font-bold">
-                                    <span>Total</span>
-                                    <span>{{ formattedGrandTotal }}</span>
-                                </div>
-
-                                <Alert>
-                                    <AlertDescription>
-                                        <strong>Important:</strong> Payment will be processed securely via Stripe. Your booking will be confirmed immediately after successful payment.
-                                    </AlertDescription>
-                                </Alert>
-                            </CardContent>
-                        </Card>
-
-                        <!-- Action Buttons -->
-                        <div class="space-y-4">
-                            <Button
-                                @click="submitBooking"
-                                :disabled="processing"
-                                class="w-full bg-gradient-to-r from-customPrimaryColor to-blue-700 hover:from-customPrimaryColor/90 hover:to-blue-700/90 text-white py-3 text-lg font-semibold rounded-xl shadow-lg hover:shadow-xl transition-all duration-300"
-                            >
-                                <span v-if="!processing">Proceed to Payment</span>
-                                <span v-else>Processing...</span>
-                            </Button>
-
-                            <Link
-                                :href="route('wheelsys-car.show', vehicle?.id)"
-                                class="block w-full text-center"
-                            >
-                                <Button variant="outline" class="w-full">
-                                    Back to Vehicle Details
-                                </Button>
-                            </Link>
+    <div class="container mx-auto py-12">
+        <div class="mb-8">
+            <div class="flex items-center justify-center space-x-8 mb-8">
+                <div v-for="step in 3" :key="step" @click="goToStep(step)" class="flex items-center cursor-pointer transition-all duration-300">
+                    <div class="flex items-center">
+                        <div class="w-10 h-10 rounded-full flex items-center justify-center font-semibold transition-all duration-300" :class="step <= currentStep ? 'bg-primary text-white shadow-lg' : 'bg-gray-200 text-gray-600'">
+                            <span>{{ step }}</span>
                         </div>
+                        <span class="ml-3 font-medium" :class="step <= currentStep ? 'text-primary' : 'text-gray-500'">
+                            {{ step === 1 ? 'Vehicle & Extras' : step === 2 ? 'Your Details' : 'Payment' }}
+                        </span>
                     </div>
+                    <div v-if="step < 3" class="w-20 h-0.5 ml-8" :class="step < currentStep ? 'bg-primary' : 'bg-gray-200'"></div>
                 </div>
             </div>
         </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-5 gap-8">
+            <div class="lg:col-span-3">
+                <!-- Step 1: Vehicle & Extras -->
+                <div v-show="currentStep === 1" class="space-y-8">
+                    <Card>
+                        <CardHeader><CardTitle>Your Selected Vehicle</CardTitle></CardHeader>
+                        <CardContent>
+                            <div class="flex gap-6">
+                                <img :src="vehicle?.image" :alt="`${vehicle?.brand} ${vehicle?.model}`" class="w-32 h-24 object-cover rounded-lg" />
+                                <div class="flex-1">
+                                    <h3 class="text-lg font-semibold">{{ vehicle?.brand }} {{ vehicle?.model }}</h3>
+                                    <p class="text-gray-600">{{ vehicle?.category }}</p>
+                                    <div class="flex gap-4 mt-2 text-sm text-gray-500">
+                                        <span>{{ vehicle?.seating_capacity }} Seats</span>
+                                        <span>{{ vehicle?.doors }} Doors</span>
+                                        <span>{{ vehicle?.transmission }}</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </CardContent>
+                    </Card>
+                    <Card v-if="availableExtras && availableExtras.length > 0">
+                        <CardHeader><CardTitle>Additional Extras</CardTitle></CardHeader>
+                        <CardContent>
+                            <div class="space-y-3">
+                                <div v-for="extra in availableExtras" :key="extra.code" class="flex items-center justify-between p-4 border rounded-lg hover:bg-gray-50">
+                                    <div class="flex items-center space-x-3">
+                                        <Checkbox :id="extra.code" :checked="selectedExtras.some(e => e.code === extra.code)" @update:checked="toggleExtra(extra)" />
+                                        <div>
+                                            <Label :for="extra.code" class="font-medium cursor-pointer">{{ extra.name }}</Label>
+                                            <p class="text-sm text-gray-500">{{ extra.description || 'Additional charge per day' }}</p>
+                                        </div>
+                                    </div>
+                                    <div class="text-right">
+                                        <p class="font-semibold">{{ formatPrice(extra.rate, vehicle?.currency || 'USD') }}</p>
+                                        <p class="text-xs text-gray-500">{{ extra.charge_type || 'per day' }}</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </CardContent>
+                    </Card>
+                </div>
+
+                <!-- Step 2: Customer Information -->
+                <div v-show="currentStep === 2" class="space-y-8">
+                    <Card>
+                        <CardHeader><CardTitle>Your Details</CardTitle></CardHeader>
+                        <CardContent class="space-y-6">
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                <div>
+                                    <Label for="first_name">First Name *</Label>
+                                    <Input id="first_name" v-model="form.customer_first_name" type="text" required :class="{ 'border-red-500': formErrors.firstname }" />
+                                    <p v-if="formErrors.firstname" class="text-red-500 text-sm mt-1">{{ formErrors.firstname }}</p>
+                                </div>
+                                <div>
+                                    <Label for="last_name">Last Name *</Label>
+                                    <Input id="last_name" v-model="form.customer_last_name" type="text" required :class="{ 'border-red-500': formErrors.surname }" />
+                                    <p v-if="formErrors.surname" class="text-red-500 text-sm mt-1">{{ formErrors.surname }}</p>
+                                </div>
+                            </div>
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                <div>
+                                    <Label for="email">Email Address *</Label>
+                                    <Input id="email" v-model="form.customer_email" type="email" required :class="{ 'border-red-500': formErrors.email }" />
+                                    <p v-if="formErrors.email" class="text-red-500 text-sm mt-1">{{ formErrors.email }}</p>
+                                </div>
+                                <div>
+                                    <Label for="phone">Phone Number *</Label>
+                                    <Input id="phone" v-model="form.customer_phone" type="tel" required :class="{ 'border-red-500': formErrors.phone }" />
+                                    <p v-if="formErrors.phone" class="text-red-500 text-sm mt-1">{{ formErrors.phone }}</p>
+                                </div>
+                            </div>
+                        </CardContent>
+                    </Card>
+                </div>
+
+                <!-- Step 3: Payment -->
+                <div v-show="currentStep === 3" class="space-y-8">
+                    <Card>
+                        <CardHeader><CardTitle>Complete Your Payment</CardTitle></CardHeader>
+                        <CardContent>
+                            <WheelsysStripeCheckout :booking-data="form" />
+                        </CardContent>
+                    </Card>
+                </div>
+
+                <div class="flex justify-between pt-8">
+                    <Button v-if="currentStep > 1" @click="prevStep" variant="outline">Previous Step</Button>
+                    <div v-else></div>
+                    <Button v-if="currentStep < 3" @click="nextStep">Next Step</Button>
+                </div>
+            </div>
+
+            <!-- Right Column: Booking Summary -->
+            <div class="lg:col-span-2">
+                <div class="sticky top-4">
+                    <Card>
+                        <CardHeader class="bg-primary text-white"><CardTitle>Booking Summary</CardTitle></CardHeader>
+                        <CardContent class="p-6 space-y-6">
+                            <div class="space-y-4">
+                                <div class="flex justify-between items-center">
+                                    <span class="text-gray-600">Pickup</span>
+                                    <div class="text-right">
+                                        <p class="font-medium text-gray-900">{{ formatDate(searchParams.date_from) }}</p>
+                                        <p class="text-sm text-gray-500">{{ searchParams.time_from }} at {{ pickupStation.Name }}</p>
+                                    </div>
+                                </div>
+                                <div class="flex justify-between items-center">
+                                    <span class="text-gray-600">Return</span>
+                                    <div class="text-right">
+                                        <p class="font-medium text-gray-900">{{ formatDate(searchParams.date_to) }}</p>
+                                        <p class="text-sm text-gray-500">{{ searchParams.time_to }} at {{ returnStation.Name }}</p>
+                                    </div>
+                                </div>
+                                <div class="flex justify-between items-center">
+                                    <span class="text-gray-600">Duration</span>
+                                    <span class="font-medium text-gray-900">{{ rentalDays }} days</span>
+                                </div>
+                            </div>
+                            <Separator />
+                            <div class="space-y-2">
+                                <div class="flex justify-between">
+                                    <span class="text-gray-600">Vehicle Rental</span>
+                                    <span class="font-medium">{{ formatPrice(baseTotal, vehicle.currency) }}</span>
+                                </div>
+                                <div v-if="extrasTotal > 0" class="flex justify-between">
+                                    <span class="text-gray-600">Extras</span>
+                                    <span class="font-medium">{{ formatPrice(extrasTotal, vehicle.currency) }}</span>
+                                </div>
+                                <div class="flex justify-between">
+                                    <span class="text-gray-600">Taxes & Fees</span>
+                                    <span class="font-medium">{{ formatPrice(taxesTotal, vehicle.currency) }}</span>
+                                </div>
+                            </div>
+                            <Separator />
+                            <div class="flex justify-between items-center">
+                                <span class="text-xl font-bold text-gray-900">Total</span>
+                                <span class="text-2xl font-bold text-primary">{{ formatPrice(grandTotal, vehicle.currency) }}</span>
+                            </div>
+                        </CardContent>
+                    </Card>
+                </div>
+            </div>
+        </div>
+    </div>
+    <Footer />
 </template>
+
+<style scoped>
+.bg-primary { background-color: #153b4f; }
+.text-primary { color: #153b4f; }
+.border-primary { border-color: #153b4f; }
+</style>

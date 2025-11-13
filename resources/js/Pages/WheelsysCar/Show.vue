@@ -1,5 +1,5 @@
 <script setup>
-import { Link, Head, router } from "@inertiajs/vue3";
+import { Link, Head, router, usePage } from "@inertiajs/vue3";
 import { computed, onMounted, ref, watch } from "vue";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
@@ -26,6 +26,9 @@ const props = defineProps({
     searchParams: Object,
     locale: String
 });
+
+const page = usePage();
+const authUser = computed(() => page.props.auth.user);
 
 const currencySymbols = ref({});
 const exchangeRates = ref(null);
@@ -67,52 +70,26 @@ const fetchExchangeRates = async () => {
 
 // Booking methods
 const proceedToBooking = () => {
-    // Use existing search parameters from the URL, with fallbacks
-    const searchParams = {
-        pickup_station: props.searchParams?.pickup_station || 'MAIN',
-        return_station: props.searchParams?.return_station || 'MAIN',
-        date_from: props.searchParams?.date_from || new Date().toISOString().split('T')[0],
-        time_from: props.searchParams?.time_from || '12:00',
-        date_to: props.searchParams?.date_to || new Date(Date.now() + 86400000 * 3).toISOString().split('T')[0], // +3 days
-        time_to: props.searchParams?.time_to || '12:00',
-    };
+    if (!authUser.value) {
+        // If user is not logged in, redirect to login page
+        router.visit(route('login', { locale: props.locale }));
+        return;
+    }
 
-    // Convert dates to dd/mm/YYYY format for Laravel session
-    const formattedSearchParams = {
-        ...searchParams,
-        date_from: formatDateForLaravel(searchParams.date_from),
-        date_to: formatDateForLaravel(searchParams.date_to),
-    };
+    const groupCode = props.vehicle?.group_code;
+    if (!groupCode) {
+        console.error('Cannot proceed to booking without a vehicle group code.');
+        return;
+    }
 
-    console.log('Formatted search params for Laravel session:', formattedSearchParams);
-
-    // Store in session for booking page using Laravel-compatible format
-    sessionStorage.setItem('wheelsysBookingForm', JSON.stringify(formattedSearchParams));
-    sessionStorage.setItem('wheelsysVehicleId', props.vehicle?.id || '');
-    sessionStorage.setItem('currentLocale', props.locale || 'en');
-
-    // Navigate to booking page with group code from vehicle
-    const groupCode = props.vehicle?.group_code || 'CCAR';
-
-    console.log('Proceeding to booking with:', {
+    // Pass search parameters directly to the booking page route
+    const bookingUrl = route('wheelsys.booking.create', {
         locale: props.locale,
         groupCode: groupCode,
-        routeName: 'wheelsys.booking.create'
+        ...props.searchParams // Spread the search params into the query string
     });
 
-    // Navigate to booking page with group code and locale - try direct URL
-    const bookingUrl = `/${props.locale}/wheelsys-booking/create/${groupCode}`;
-    console.log('Direct booking URL:', bookingUrl);
-    window.location.href = bookingUrl;
-};
-
-// Helper function to format dates for Laravel session
-const formatDateForLaravel = (dateString) => {
-    const date = new Date(dateString);
-    const day = String(date.getDate()).padStart(2, '0');
-    const month = String(date.getMonth() + 1).padStart(2, '0');
-    const year = date.getFullYear();
-    return `${day}/${month}/${year}`;
+    router.get(bookingUrl);
 };
 
 onMounted(async () => {

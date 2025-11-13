@@ -12,7 +12,8 @@ use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Str;
 use Inertia\Inertia;
 use Stripe\Stripe;
-use Stripe\PaymentIntent;
+use Stripe\Checkout\Session as StripeSession;
+use Stripe\Exception\ApiConnectionException;
 
 class WheelsysBookingController extends Controller
 {
@@ -25,48 +26,14 @@ class WheelsysBookingController extends Controller
 
     public function create(Request $request, $locale, $groupCode)
     {
-        // Get search parameters from session or request
-        $searchParams = Session::get('wheelsysBookingForm', $request->all());
+        // Get search parameters from the request query string.
+        $searchParams = $request->all();
 
-        // If still no search params, create default ones
-        if (!$searchParams || !isset($searchParams['date_from'])) {
-            $searchParams = [
-                'pickup_station' => 'MAIN',
-                'return_station' => 'MAIN',
-                'date_from' => date('d/m/Y', strtotime('+1 day')), // Tomorrow
-                'time_from' => '12:00',
-                'date_to' => date('d/m/Y', strtotime('+4 days')), // 4 days from now
-                'time_to' => '12:00',
-            ];
-
-            Log::info('Using default search parameters for Wheelsys booking', [
-                'group_code' => $groupCode,
-                'search_params' => $searchParams,
-                'today' => date('d/m/Y'),
-                'pickup_date_valid' => strtotime($searchParams['date_from']) > time()
-            ]);
-        }
-
-        // Validate that dates are in the future
-        $pickupTimestamp = strtotime($searchParams['date_from']);
-        $todayTimestamp = strtotime(date('d/m/Y'));
-
-        if ($pickupTimestamp <= $todayTimestamp) {
-            Log::warning('Pickup date is in the past or today, adjusting to future dates', [
-                'original_pickup_date' => $searchParams['date_from'],
-                'today' => date('d/m/Y'),
-                'pickup_timestamp' => $pickupTimestamp,
-                'today_timestamp' => $todayTimestamp
-            ]);
-
-            // Adjust to future dates
-            $searchParams['date_from'] = date('d/m/Y', strtotime('+1 day'));
-            $searchParams['date_to'] = date('d/m/Y', strtotime('+4 days'));
-
-            Log::info('Adjusted search parameters to future dates', [
-                'new_pickup_date' => $searchParams['date_from'],
-                'new_return_date' => $searchParams['date_to']
-            ]);
+        // Basic validation to ensure essential params are present
+        if (empty($searchParams['date_from']) || empty($searchParams['date_to'])) {
+            Log::warning('Wheelsys booking page accessed without required date parameters.');
+            return redirect()->route('search', $locale)
+                ->with('error', 'Missing search parameters. Please start a new search.');
         }
 
         try {
@@ -142,9 +109,8 @@ class WheelsysBookingController extends Controller
                 'original_rate' => $vehicleRate
             ]);
 
-            // Get available options/extras
-            $optionsResponse = $this->wheelsysService->getOptions();
-            $availableExtras = $optionsResponse['Options'] ?? [];
+            // The correct, priced extras are already part of the converted vehicle object
+            $availableExtras = $vehicle['extras'] ?? [];
 
             // Get station details
             $stationsResponse = $this->wheelsysService->getStations();
@@ -190,16 +156,16 @@ class WheelsysBookingController extends Controller
     }
 
     /**
-     * Process the booking form and redirect to payment
+     * Process the booking and create a Stripe Payment Intent.
      */
     public function store(Request $request)
     {
         $validator = Validator::make($request->all(), [
             'vehicle_group_code' => 'required|string',
             'vehicle_group_name' => 'required|string',
-            'pickup_date' => 'required|date',
+            'pickup_date' => 'required|date_format:d/m/Y',
             'pickup_time' => 'required',
-            'return_date' => 'required|date|after_or_equal:pickup_date',
+            'return_date' => 'required|date_format:d/m/Y|after_or_equal:pickup_date',
             'return_time' => 'required',
             'pickup_station_code' => 'required|string',
             'return_station_code' => 'required|string',
@@ -216,19 +182,17 @@ class WheelsysBookingController extends Controller
         ]);
 
         if ($validator->fails()) {
-            return back()->withErrors($validator)->withInput();
+            return response()->json(['errors' => $validator->errors()], 422);
         }
 
         try {
-            // Get validated data
             $validated = $validator->validated();
 
-            // Calculate rental duration
-            $pickupDate = \Carbon\Carbon::parse($validated['pickup_date']);
-            $returnDate = \Carbon\Carbon::parse($validated['return_date']);
+            // Convert dates from d/m/Y to Y-m-d for Carbon and database
+            $pickupDate = \Carbon\Carbon::createFromFormat('d/m/Y', $validated['pickup_date']);
+            $returnDate = \Carbon\Carbon::createFromFormat('d/m/Y', $validated['return_date']);
             $durationDays = $pickupDate->diffInDays($returnDate) ?: 1;
 
-            // Get quote from Wheelsys API
             $quoteResponse = $this->wheelsysService->getVehicles(
                 $validated['pickup_station_code'],
                 $validated['return_station_code'],
@@ -247,20 +211,15 @@ class WheelsysBookingController extends Controller
                 throw new \Exception('Vehicle no longer available for selected dates');
             }
 
-            // Calculate pricing
-            $baseRate = (float) ($vehicleRate['TotalRate'] / 100); // Convert from cents
+            $baseRate = (float) ($vehicleRate['TotalRate'] / 100);
             $extrasTotal = $this->calculateExtrasTotal($validated['selected_extras'] ?? [], $quoteResponse);
             $taxesTotal = $this->calculateTaxesTotal($baseRate, $extrasTotal);
             $grandTotal = $baseRate + $extrasTotal + $taxesTotal;
 
-            // Create booking record
             $booking = WheelsysBooking::create([
-                // Wheelsys specific fields
                 'wheelsys_quote_id' => $quoteResponse['Id'] ?? null,
                 'wheelsys_group_code' => $validated['vehicle_group_code'],
-                'wheelsys_status' => 'REQ', // Requested status
-
-                // Vehicle information
+                'wheelsys_status' => 'REQ',
                 'vehicle_group_name' => $validated['vehicle_group_name'],
                 'vehicle_category' => $vehicleRate['Category'] ?? '',
                 'vehicle_sipp_code' => $vehicleRate['Acriss'] ?? '',
@@ -269,19 +228,15 @@ class WheelsysBookingController extends Controller
                 'vehicle_doors' => $vehicleRate['Doors'] ?? 4,
                 'vehicle_bags' => $vehicleRate['Bags'] ?? 0,
                 'vehicle_suitcases' => $vehicleRate['Suitcases'] ?? 0,
-
-                // Rental details
                 'pickup_station_code' => $validated['pickup_station_code'],
                 'pickup_station_name' => $request->input('pickup_station_name', 'Main Location'),
-                'pickup_date' => $validated['pickup_date'],
+                'pickup_date' => $pickupDate,
                 'pickup_time' => $validated['pickup_time'],
                 'return_station_code' => $validated['return_station_code'],
                 'return_station_name' => $request->input('return_station_name', 'Main Location'),
-                'return_date' => $validated['return_date'],
+                'return_date' => $returnDate,
                 'return_time' => $validated['return_time'],
                 'rental_duration_days' => $durationDays,
-
-                // Customer details
                 'customer_details' => [
                     'first_name' => $validated['customer_first_name'],
                     'last_name' => $validated['customer_last_name'],
@@ -294,142 +249,66 @@ class WheelsysBookingController extends Controller
                 'customer_age' => $validated['customer_age'],
                 'customer_driver_licence' => $validated['customer_driver_licence'],
                 'customer_address' => $validated['customer_address'],
-
-                // Pricing
                 'base_rate_total' => $baseRate,
                 'extras_total' => $extrasTotal,
                 'taxes_total' => $taxesTotal,
                 'grand_total' => $grandTotal,
                 'currency' => 'USD',
-
-                // Extras
                 'selected_extras' => $validated['selected_extras'] ?? [],
                 'available_extras' => $quoteResponse['Options'] ?? [],
-
-                // Booking management
                 'booking_status' => 'pending',
                 'customer_notes' => $validated['customer_notes'] ?? null,
-
-                // API data
                 'api_quote_response' => $quoteResponse,
-
-                // System fields
                 'user_id' => Auth::id(),
                 'affiliate_code' => $validated['affiliate_code'] ?? session('affiliate_data.code'),
                 'affiliate_data' => session('affiliate_data'),
                 'session_id' => session()->getId(),
             ]);
 
-            // Store booking ID in session for payment processing
-            session(['wheelsys_booking_id' => $booking->id]);
+            Stripe::setApiKey(config('services.stripe.secret'));
 
-            Log::info('Wheelsys booking created', [
-                'booking_id' => $booking->id,
-                'group_code' => $booking->wheelsys_group_code,
-                'total' => $booking->grand_total,
+            $checkoutSession = StripeSession::create([
+                'payment_method_types' => ['card'],
+                'line_items' => [[
+                    'price_data' => [
+                        'currency' => 'usd',
+                        'product_data' => [
+                            'name' => $validated['vehicle_group_name'],
+                            'images' => [$booking->vehicle_image_url],
+                        ],
+                        'unit_amount' => (int) ($grandTotal * 100),
+                    ],
+                    'quantity' => 1,
+                ]],
+                'mode' => 'payment',
+                'success_url' => route('wheelsys.booking.success', ['booking' => $booking->id, 'locale' => $request->get('locale', 'en')]),
+                'cancel_url' => route('wheelsys.booking.create', ['groupCode' => $booking->wheelsys_group_code, 'locale' => $request->get('locale', 'en')]),
+                'metadata' => [
+                    'booking_id' => $booking->id,
+                    'booking_type' => 'wheelsys',
+                ]
             ]);
 
-            // Redirect to payment
-            return redirect()->route('wheelsys.booking.payment', $booking->id);
+            $booking->stripe_payment_intent_id = $checkoutSession->payment_intent;
+            $booking->save();
 
+            return response()->json([
+                'sessionId' => $checkoutSession->id,
+            ]);
+
+        } catch (ApiConnectionException $e) {
+            Log::error('Stripe API connection error during Wheelsys booking', [
+                'request_data' => $request->all(),
+                'error' => $e->getMessage(),
+            ]);
+            return response()->json(['error' => 'Could not connect to the payment service. Please check your internet connection and try again.'], 503);
         } catch (\Exception $e) {
             Log::error('Wheelsys booking store error', [
                 'request_data' => $request->all(),
                 'error' => $e->getMessage(),
                 'trace' => $e->getTraceAsString(),
             ]);
-
-            return back()
-                ->with('error', 'Unable to create booking. Please try again or contact support.')
-                ->withInput();
-        }
-    }
-
-    /**
-     * Show payment page
-     */
-    public function payment(WheelsysBooking $booking)
-    {
-        // Verify booking belongs to current user or is guest
-        if (Auth::check() && $booking->user_id !== Auth::id()) {
-            abort(403);
-        }
-
-        // Check if booking is still pending payment
-        if ($booking->booking_status !== 'pending' && $booking->stripe_payment_status !== 'pending') {
-            return redirect()->route('wheelsys.booking.show', $booking->id)
-                ->with('info', 'This booking has already been processed.');
-        }
-
-        return Inertia::render('WheelsysCar/Payment', [
-            'booking' => $booking->load('user'),
-            'stripe_key' => config('services.stripe.key'),
-        ]);
-    }
-
-    /**
-     * Process payment via Stripe
-     */
-    public function processPayment(Request $request, WheelsysBooking $booking)
-    {
-        $validator = Validator::make($request->all(), [
-            'payment_method_id' => 'required|string',
-        ]);
-
-        if ($validator->fails()) {
-            return response()->json(['error' => 'Invalid payment method'], 400);
-        }
-
-        try {
-            // Set Stripe key
-            Stripe::setApiKey(config('services.stripe.secret'));
-
-            // Create or confirm PaymentIntent
-            if ($booking->stripe_payment_intent_id) {
-                // Update existing PaymentIntent
-                $paymentIntent = PaymentIntent::retrieve($booking->stripe_payment_intent_id);
-                $paymentIntent = PaymentIntent::update(
-                    $booking->stripe_payment_intent_id,
-                    ['payment_method' => $request->payment_method_id]
-                );
-            } else {
-                // Create new PaymentIntent
-                $paymentIntent = PaymentIntent::create([
-                    'amount' => (int) ($booking->grand_total * 100), // Convert to cents
-                    'currency' => strtolower($booking->currency),
-                    'payment_method' => $request->payment_method_id,
-                    'confirmation_method' => 'manual',
-                    'confirm' => true,
-                    'metadata' => [
-                        'booking_id' => $booking->id,
-                        'booking_type' => 'wheelsys',
-                        'customer_email' => $booking->customer_email,
-                    ],
-                ]);
-
-                $booking->stripe_payment_intent_id = $paymentIntent->id;
-                $booking->save();
-            }
-
-            // Handle payment result
-            if ($paymentIntent->status === 'succeeded') {
-                return $this->handleSuccessfulPayment($booking, $paymentIntent);
-            } elseif ($paymentIntent->status === 'requires_action') {
-                return response()->json([
-                    'requires_action' => true,
-                    'payment_intent_client_secret' => $paymentIntent->client_secret,
-                ]);
-            } else {
-                throw new \Exception('Payment failed: ' . $paymentIntent->status);
-            }
-
-        } catch (\Exception $e) {
-            Log::error('Wheelsys payment processing error', [
-                'booking_id' => $booking->id,
-                'error' => $e->getMessage(),
-            ]);
-
-            return response()->json(['error' => 'Payment processing failed'], 500);
+            return response()->json(['error' => 'Unable to process booking. Please try again or contact support.'], 500);
         }
     }
 
@@ -447,7 +326,31 @@ class WheelsysBookingController extends Controller
             ]);
 
             // Create reservation with Wheelsys API
-            $this->createWheelsysReservation($booking);
+            $customerDetails = $booking->customer_details;
+            $reservationData = [
+                'pickup_date' => $booking->pickup_date->format('d/m/Y'),
+                'pickup_time' => $booking->pickup_time,
+                'return_date' => $booking->return_date->format('d/m/Y'),
+                'return_time' => $booking->return_time,
+                'pickup_station_code' => $booking->pickup_station_code,
+                'return_station_code' => $booking->return_station_code,
+                'vehicle_group_code' => $booking->wheelsys_group_code,
+                'wheelsys_quote_id' => $booking->wheelsys_quote_id,
+                'customer_first_name' => $customerDetails['first_name'],
+                'customer_last_name' => $customerDetails['last_name'],
+                'customer_email' => $customerDetails['email'],
+                'customer_phone' => $customerDetails['phone'],
+            ];
+
+            $wheelsysResponse = $this->wheelsysService->createReservation($reservationData);
+
+            // Update booking with Wheelsys response
+            $booking->update([
+                'wheelsys_booking_ref' => $wheelsysResponse['irn'] ?? null,
+                'wheelsys_ref_no' => $wheelsysResponse['refno'] ?? null,
+                'wheelsys_status' => $wheelsysResponse['status'] ?? 'REQ',
+                'api_reservation_response' => $wheelsysResponse,
+            ]);
 
             // Update booking status
             $booking->updateBookingStatus();
@@ -470,51 +373,6 @@ class WheelsysBookingController extends Controller
             ]);
 
             return response()->json(['error' => 'Payment successful but booking confirmation failed'], 500);
-        }
-    }
-
-    /**
-     * Create reservation with Wheelsys API
-     */
-    protected function createWheelsysReservation(WheelsysBooking $booking)
-    {
-        $customer = $booking->customer_details;
-
-        $reservationData = [
-            'agent' => config('services.wheelsys.agent_code'),
-            'date_from' => $booking->pickup_date->format('Y-m-d'),
-            'time_from' => $booking->pickup_time->format('H:i'),
-            'date_to' => $booking->return_date->format('Y-m-d'),
-            'time_to' => $booking->return_time->format('H:i'),
-            'pickup_station' => $booking->pickup_station_code,
-            'return_station' => $booking->return_station_code,
-            'group' => $booking->wheelsys_group_code,
-            'quoteref' => $booking->wheelsys_quote_id,
-            'first_name' => $customer['first_name'],
-            'last_name' => $customer['last_name'],
-            'email' => $customer['email'],
-            'phone' => $customer['phone'],
-        ];
-
-        // Call Wheelsys new-res endpoint
-        $url = config('services.wheelsys.base_url') . "new-res_" . config('services.wheelsys.link_code') . ".html";
-
-        $response = \Http::timeout(30)->post($url, $reservationData);
-
-        if ($response->successful()) {
-            $responseData = $response->json();
-
-            // Update booking with Wheelsys response
-            $booking->update([
-                'wheelsys_booking_ref' => $responseData['irn'] ?? null,
-                'wheelsys_ref_no' => $responseData['refno'] ?? null,
-                'wheelsys_status' => $responseData['status'] ?? 'REQ',
-                'api_reservation_response' => $responseData,
-            ]);
-
-            return $responseData;
-        } else {
-            throw new \Exception('Wheelsys reservation failed: ' . $response->body());
         }
     }
 

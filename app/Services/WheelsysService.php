@@ -395,6 +395,57 @@ class WheelsysService
     }
 
     /**
+     * Creates a new reservation with the Wheelsys API.
+     */
+    public function createReservation(array $bookingData)
+    {
+        if ($this->isCircuitOpen()) {
+            throw new \Exception('Wheelsys API temporarily unavailable due to repeated failures');
+        }
+
+        $url = $this->baseUrl . "new-res_{$this->linkCode}.html";
+
+        // Prepare parameters for the API call
+        $params = [
+            'agent' => $this->agentCode,
+            'DATE_FROM' => $bookingData['pickup_date'],
+            'TIME_FROM' => $bookingData['pickup_time'],
+            'DATE_TO' => $bookingData['return_date'],
+            'TIME_TO' => $bookingData['return_time'],
+            'PICKUP_STATION' => $bookingData['pickup_station_code'],
+            'RETURN_STATION' => $bookingData['return_station_code'],
+            'group' => $bookingData['vehicle_group_code'],
+            'quoteref' => $bookingData['wheelsys_quote_id'] ?? null,
+            'first_name' => $bookingData['customer_first_name'],
+            'last_name' => $bookingData['customer_last_name'],
+            'email' => $bookingData['customer_email'],
+            'phone' => $bookingData['customer_phone'],
+            'format' => 'json'
+        ];
+
+        return $this->executeWithRetry(function() use ($url, $params) {
+            Log::info('Wheelsys API Request (createReservation): ' . $url, ['params' => $params]);
+
+            $response = Http::timeout(30)->post($url, $params);
+
+            if ($response->successful()) {
+                Log::info('Wheelsys API Response (createReservation) received successfully');
+                $responseData = $response->json();
+
+                // You might want to add validation for the reservation response here
+                if (!isset($responseData['irn'])) {
+                    throw new \Exception('Invalid reservation response structure');
+                }
+
+                $this->resetCircuitBreaker();
+                return $responseData;
+            }
+
+            throw new \Exception('Wheelsys API Error (createReservation): ' . $response->status() . ' - ' . $response->body());
+        }, 'createReservation');
+    }
+
+    /**
      * Execute API call with retry mechanism and circuit breaker
      */
     private function executeWithRetry(callable $callback, string $operation)
