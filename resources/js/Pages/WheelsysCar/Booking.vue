@@ -12,6 +12,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/Components/ui/card';
 import { Separator } from '@/Components/ui/separator';
 import { Badge } from '@/Components/ui/badge';
 import { Alert, AlertDescription } from '@/Components/ui/alert';
+import { useCurrency } from '@/composables/useCurrency';
 
 const props = defineProps({
     vehicle: Object,
@@ -27,11 +28,166 @@ const page = usePage();
 const processing = ref(false);
 const selectedExtras = ref([]);
 
-// Calculate pricing
-const baseRate = computed(() => props.vehicle?.price_per_day || 0);
+// Currency conversion setup
+const currencySymbols = ref({});
+const exchangeRates = ref(null);
+const { selectedCurrency, supportedCurrencies, changeCurrency } = useCurrency();
+
+const symbolToCodeMap = {
+    '$': 'USD',
+    '€': 'EUR',
+    '£': 'GBP',
+    '¥': 'JPY',
+    'A$': 'AUD',
+    'C$': 'CAD',
+    'Fr': 'CHF',
+    'HK$': 'HKD',
+    'S$': 'SGD',
+    'kr': 'SEK',
+    '₩': 'KRW',
+    'kr': 'NOK',
+    'NZ$': 'NZD',
+    '₹': 'INR',
+    'Mex$': 'MXN',
+    'R': 'ZAR',
+    'R$': 'BRL',
+    '₽': 'RUB',
+    '₺': 'TRY',
+    '฿': 'THB',
+    '₡': 'CRC',
+    '₦': 'NGN',
+    '₨': 'PKR',
+    '₪': 'ILS',
+    '₫': 'LAK',
+    '₸': 'KZT',
+    '₼': 'AZN',
+    '₴': 'UAH',
+    '؋': 'LBP',
+    '₦': 'NGN',
+    '₨': 'LKR',
+    '₡': 'SVC',
+    '₲': 'PYG',
+    '₱': 'PHP',
+    '₽': 'RUB',
+    '₪': 'ILS',
+    '﷼': 'IRR',
+    '₮': 'MNT',
+    '₩': 'KRW',
+    '円': 'JPY',
+    '元': 'CNY',
+    'ƒ': 'ANG',
+    '₨': 'BDT',
+    '₨': 'NPR',
+    '₹': 'INR',
+    '₨': 'PKR',
+    '৳': 'BDT',
+    '៛': 'KHR',
+    '₭': 'LAK',
+    '₦': 'NGN',
+    '₨': 'PKR',
+    '₨': 'LKR',
+    '៛': 'KHR',
+    '₭': 'LAK',
+    '₦': 'NGN',
+    '₨': 'PKR',
+    '₨': 'LKR',
+    '૱': 'INR',
+    '௹': 'LKR',
+    'রু': 'BDT',
+    '៛': 'KHR',
+    '₭': 'LAK',
+    '₦': 'NGN',
+    '₨': 'PKR',
+    '₨': 'LKR',
+    '₹': 'INR',
+    '৳': 'BDT',
+    '៛': 'KHR',
+    '₭': 'LAK',
+    '₦': 'NGN',
+    '₨': 'PKR',
+    '₨': 'LKR',
+};
+
+// Load exchange rates on mount
+onMounted(async () => {
+    try {
+        const response = await fetch('/api/currency/rates');
+        const data = await response.json();
+        exchangeRates.value = data.rates;
+        currencySymbols.value = data.symbols;
+    } catch (error) {
+        console.error('Failed to load currency data:', error);
+    }
+});
+
+const getCurrencySymbol = (code) => {
+    return currencySymbols.value[code] || '$';
+};
+
+const convertCurrency = (price, fromCurrency) => {
+    const numericPrice = parseFloat(price);
+    if (isNaN(numericPrice)) {
+        return 0;
+    }
+
+    let fromCurrencyCode = fromCurrency;
+    if (symbolToCodeMap[fromCurrency]) {
+        fromCurrencyCode = symbolToCodeMap[fromCurrency];
+    }
+
+    if (!exchangeRates.value || !fromCurrencyCode || !selectedCurrency.value) {
+        return numericPrice;
+    }
+    const rateFrom = exchangeRates.value[fromCurrencyCode];
+    const rateTo = exchangeRates.value[selectedCurrency.value];
+    if (rateFrom && rateTo) {
+        return (numericPrice / rateFrom) * rateTo;
+    }
+    return numericPrice;
+};
+
+const formatPrice = (price, currency = 'USD') => {
+    if (!price || price === 0) return 'Free';
+    const originalCurrency = currency || 'USD';
+    const convertedPrice = convertCurrency(price, originalCurrency);
+    const currencySymbol = getCurrencySymbol(selectedCurrency.value);
+    return `${currencySymbol}${convertedPrice.toFixed(2)}`;
+};
+
+// Calculate pricing with fallbacks
+const baseRate = computed(() => {
+    const rate = props.vehicle?.price_per_day;
+    console.log('Base rate calculation:', {
+        'vehicle exists': !!props.vehicle,
+        'vehicle currency': props.vehicle?.currency,
+        'vehicle_price_per_day': props.vehicle?.price_per_day,
+        'rate value': rate,
+        'isNan': isNaN(rate)
+    });
+
+    // Multiple fallback checks
+    if (rate === null || rate === undefined || isNaN(rate) || rate === 0) {
+        console.warn('Using fallback price due to invalid rate:', rate);
+        return 50.0;
+    }
+
+    return parseFloat(rate);
+});
+
 const rentalDays = computed(() => {
-    const pickup = new Date(props.searchParams?.date_from);
-    const returnDate = new Date(props.searchParams?.date_to);
+    // Convert dd/mm/YYYY to mm/dd/YYYY for JavaScript Date parsing
+    const formatDate = (dateStr) => {
+        if (!dateStr) return new Date();
+        const parts = dateStr.split('/');
+        if (parts.length === 3) {
+            // Convert dd/mm/YYYY to mm/dd/YYYY
+            return new Date(`${parts[1]}/${parts[0]}/${parts[2]}`);
+        }
+        return new Date(dateStr);
+    };
+
+    const pickup = formatDate(props.searchParams?.date_from);
+    const returnDate = formatDate(props.searchParams?.date_to);
     const days = Math.ceil((returnDate - pickup) / (1000 * 60 * 60 * 24));
     return Math.max(1, days);
 });
@@ -50,10 +206,26 @@ const taxesTotal = computed(() => {
 
 const grandTotal = computed(() => baseTotal.value + extrasTotal.value + taxesTotal.value);
 
+// Formatted pricing displays with currency conversion
+const formattedBaseRate = computed(() => formatPrice(baseRate.value, props.vehicle?.currency || 'USD'));
+const formattedBaseTotal = computed(() => formatPrice(baseTotal.value, props.vehicle?.currency || 'USD'));
+const formattedExtrasTotal = computed(() => formatPrice(extrasTotal.value, props.vehicle?.currency || 'USD'));
+const formattedTaxesTotal = computed(() => formatPrice(taxesTotal.value, props.vehicle?.currency || 'USD'));
+const formattedGrandTotal = computed(() => formatPrice(grandTotal.value, props.vehicle?.currency || 'USD'));
+
+// Debug log
+console.log('Booking page data:', {
+    vehicle: props.vehicle,
+    searchParams: props.searchParams,
+    baseRate: baseRate.value,
+    rentalDays: rentalDays.value,
+    baseTotal: baseTotal.value
+});
+
 // Form setup
 const form = useForm({
     vehicle_group_code: props.vehicle?.group_code || '',
-    vehicle_group_name: props.vehicle?.brand + ' ' + props.vehicle?.model || '',
+    vehicle_group_name: (props.vehicle?.brand || 'Wheelsys') + ' ' + (props.vehicle?.model || 'Vehicle'),
     pickup_date: props.searchParams?.date_from || '',
     pickup_time: props.searchParams?.time_from || '12:00',
     return_date: props.searchParams?.date_to || '',
@@ -81,11 +253,16 @@ const toggleExtra = (extra) => {
     if (index > -1) {
         selectedExtras.value.splice(index, 1);
     } else {
+        // Convert rate from cents to dollars (divide by 100)
+        const rateInDollars = extra.Rate ? extra.Rate / 100 : 0;
+
         selectedExtras.value.push({
             code: extra.Code,
             name: extra.Name,
-            rate: 0, // Will be calculated based on API response
-            quantity: 1
+            rate: rateInDollars,
+            quantity: 1,
+            originalRate: extra.Rate,
+            mandatory: extra.Mandatory || false
         });
     }
 
@@ -109,13 +286,6 @@ const submitBooking = () => {
     });
 };
 
-// Format currency
-const formatPrice = (price) => {
-    return new Intl.NumberFormat('en-US', {
-        style: 'currency',
-        currency: 'USD'
-    }).format(price);
-};
 
 // Format date
 const formatDate = (dateString) => {
@@ -321,7 +491,7 @@ const formatDate = (dateString) => {
                                             </div>
                                         </div>
                                         <div class="text-right">
-                                            <p class="font-semibold">{{ formatPrice(0) }}</p>
+                                            <p class="font-semibold">{{ formatPrice(extra.Rate ? extra.Rate / 100 : 0, props.vehicle?.currency || 'USD') }}</p>
                                             <p class="text-xs text-gray-500">per day</p>
                                         </div>
                                     </div>
@@ -354,24 +524,24 @@ const formatDate = (dateString) => {
                             <CardContent class="space-y-4">
                                 <div class="flex justify-between">
                                     <span>Vehicle Rental ({{ rentalDays }} days)</span>
-                                    <span>{{ formatPrice(baseTotal) }}</span>
+                                    <span>{{ formattedBaseTotal }}</span>
                                 </div>
 
                                 <div v-if="extrasTotal > 0" class="flex justify-between">
                                     <span>Extras</span>
-                                    <span>{{ formatPrice(extrasTotal) }}</span>
+                                    <span>{{ formattedExtrasTotal }}</span>
                                 </div>
 
                                 <div class="flex justify-between">
                                     <span>Taxes & Fees</span>
-                                    <span>{{ formatPrice(taxesTotal) }}</span>
+                                    <span>{{ formattedTaxesTotal }}</span>
                                 </div>
 
                                 <Separator />
 
                                 <div class="flex justify-between text-lg font-bold">
                                     <span>Total</span>
-                                    <span>{{ formatPrice(grandTotal) }}</span>
+                                    <span>{{ formattedGrandTotal }}</span>
                                 </div>
 
                                 <Alert>

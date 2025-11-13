@@ -136,6 +136,12 @@ class WheelsysBookingController extends Controller
                 $searchParams['pickup_station'] ?? 'MAIN'
             );
 
+            Log::info('Vehicle converted to standard format', [
+                'vehicle_is_null' => is_null($vehicle),
+                'vehicle_data' => $vehicle,
+                'original_rate' => $vehicleRate
+            ]);
+
             // Get available options/extras
             $optionsResponse = $this->wheelsysService->getOptions();
             $availableExtras = $optionsResponse['Options'] ?? [];
@@ -146,6 +152,13 @@ class WheelsysBookingController extends Controller
 
             $pickupStation = collect($stations)->firstWhere('Code', $searchParams['pickup_station'] ?? 'MAIN');
             $returnStation = collect($stations)->firstWhere('Code', $searchParams['return_station'] ?? 'MAIN');
+
+            Log::info('Final data being sent to booking page', [
+                'vehicle_price_per_day' => $vehicle['price_per_day'] ?? 'MISSING',
+                'vehicle_brand' => $vehicle['brand'] ?? 'MISSING',
+                'vehicle_model' => $vehicle['model'] ?? 'MISSING',
+                'search_params' => $searchParams
+            ]);
 
             return Inertia::render('WheelsysCar/Booking', [
                 'vehicle' => $vehicle,
