@@ -542,7 +542,11 @@ const createCustomIcon = (vehicle, isHighlighted = false) => {
     let priceToDisplay = "N/A";
     let priceValue = null;
 
-    if (vehicle.source !== 'internal') {
+    if (vehicle.source === 'wheelsys') {
+        const originalCurrency = vehicle.currency || 'USD';
+        priceValue = convertCurrency(vehicle.price_per_day, originalCurrency);
+        currencySymbol = getCurrencySymbol(selectedCurrency.value);
+    } else if (vehicle.source !== 'internal') {
         const currencyCode = vehicle.products[0]?.currency || 'USD';
         // Calculate price per day for provider vehicles
         const totalProviderPrice = parseFloat(vehicle.products[0]?.total || 0);
