@@ -221,13 +221,17 @@ const initMap = () => {
 
     const pickupIcon = createColoredIcon('#22c55e'); // Green
 
-    const pickupLatLng = [parseFloat(props.locationInfo.latitude), parseFloat(props.locationInfo.longitude)];
+    const pickupLatLng = [
+        parseFloat(props.locationInfo?.latitude || 9.9374),
+        parseFloat(props.locationInfo?.longitude || -84.0893)
+    ]; // Default to San Jose coordinates if location info is missing
 
     L.marker(pickupLatLng, { icon: pickupIcon })
         .bindPopup(`
             <div class="text-center">
-                <p class="font-semibold">Pickup: ${props.locationInfo.label}</p>
-                <p>${props.locationInfo.address || 'Adobe Car Rental Location'}</p>
+                <p class="font-semibold">Pickup: ${props.locationInfo?.name || 'Adobe Location'}</p>
+                <p>${props.locationInfo?.below_label || ''}</p>
+                <p class="text-xs text-gray-500">${props.locationInfo?.city || ''}, ${props.locationInfo?.country || ''}</p>
             </div>
         `)
         .addTo(map.value);
