@@ -320,64 +320,62 @@ const handleImageError = () => {
     <AuthenticatedHeaderLayout />
 
     <!-- Hero Section -->
-    <section class="bg-gradient-to-r from-customPrimaryColor to-blue-700 py-16">
+    <section class="bg-gradient-to-r from-customPrimaryColor to-blue-700 py-8 md:py-12">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
-            <h1 class="text-white text-4xl md:text-5xl font-bold mb-4">{{ props.vehicle?.model || 'Adobe Vehicle' }}</h1>
-            <p class="text-blue-100 text-lg md:text-xl">Quality rental with Adobe Car Rental</p>
-            <div class="mt-6 flex items-center justify-center gap-4">
-                <div class="bg-white/20 backdrop-blur-sm rounded-full px-4 py-2 text-white">
+            <h1 class="text-white text-2xl md:text-4xl font-bold mb-2">{{ props.vehicle?.model || 'Adobe Vehicle' }}</h1>
+            <p class="text-blue-100 text-sm md:text-base mb-4">Quality rental with Adobe Car Rental</p>
+            <div class="flex flex-wrap items-center justify-center gap-2">
+                <div class="bg-white/20 backdrop-blur-sm rounded-full px-3 py-1 text-white text-sm">
                     <span class="font-medium">{{ props.vehicle?.type || 'Vehicle' }}</span>
                 </div>
-                <div class="bg-green-500/20 backdrop-blur-sm rounded-full px-4 py-2 text-white">
+                <div class="bg-green-500/20 backdrop-blur-sm rounded-full px-3 py-1 text-white text-sm">
                     <span class="font-medium">{{ props.vehicle?.category?.toUpperCase() }}</span>
                 </div>
-                <div class="bg-blue-500/20 backdrop-blur-sm rounded-full px-4 py-2 text-white">
+                <div class="bg-blue-500/20 backdrop-blur-sm rounded-full px-3 py-1 text-white text-sm">
                     <span class="font-medium">Adobe Rental</span>
                 </div>
             </div>
         </div>
     </section>
 
-    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    <div class="max-w-7xl mx-auto px-3 sm:px-4 lg:px-6 py-4 md:py-6">
         <!-- Breadcrumb -->
-        <nav class="flex items-center gap-2 text-sm mb-8 p-4 bg-gray-50 rounded-lg">
+        <nav class="flex items-center gap-1 text-xs sm:text-sm mb-4 p-2 sm:p-3 bg-gray-50 rounded-lg">
             <Link :href="`/${page.props.locale}`" class="text-customPrimaryColor hover:underline font-medium">Home</Link>
-            <ChevronRight class="h-4 w-4 text-gray-400" />
+            <ChevronRight class="h-3 w-3 sm:h-4 sm:w-4 text-gray-400" />
             <Link :href="route('search', { locale: page.props.locale })" class="text-customPrimaryColor hover:underline font-medium">Vehicles</Link>
-            <ChevronRight class="h-4 w-4 text-gray-400" />
-            <span class="text-gray-600">{{ props.vehicle?.model }}</span>
+            <ChevronRight class="h-3 w-3 sm:h-4 sm:w-4 text-gray-400" />
+            <span class="text-gray-600 truncate max-w-[150px] sm:max-w-none">{{ props.vehicle?.model }}</span>
         </nav>
 
         <!-- Vehicle Header Info -->
-        <div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4">
-            <div>
-                <h2 class="text-3xl font-bold text-gray-900 mb-2">{{ props.vehicle?.model }}</h2>
-                <div class="flex items-center gap-3">
-                    <span class="inline-flex items-center px-3 py-1 bg-blue-100 text-blue-800 rounded-full text-sm font-medium">
+        <div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-4 sm:mb-6 gap-3">
+            <div class="flex-1 min-w-0">
+                <h2 class="text-lg sm:text-xl md:text-2xl font-bold text-gray-900 mb-2 truncate">{{ props.vehicle?.model }}</h2>
+                <div class="flex flex-wrap items-center gap-2">
+                    <span class="inline-flex items-center px-2 py-1 bg-blue-100 text-blue-800 rounded-full text-xs font-medium">
                         {{ props.vehicle?.type }}
                     </span>
-                    <span class="inline-flex items-center px-3 py-1 bg-green-100 text-green-800 rounded-full text-sm font-medium">
-                        <svg class="w-4 h-4 mr-1" fill="currentColor" viewBox="0 0 20 20">
+                    <span class="inline-flex items-center px-2 py-1 bg-green-100 text-green-800 rounded-full text-xs font-medium">
+                        <svg class="w-3 h-3 mr-1" fill="currentColor" viewBox="0 0 20 20">
                             <path fill-rule="evenodd" d="M3.172 5.172a4 4 0 015.656 0L10 6.343l1.172-1.171a4 4 0 115.656 5.656L10 17.657l-6.828-6.829a4 4 0 010-5.656z" clip-rule="evenodd" />
                         </svg>
                         Adobe Rental
                     </span>
                 </div>
             </div>
-            <div class="flex items-center gap-6">
-                <div class="flex items-center gap-2 text-gray-600">
-                    <img :src="locationPinIcon" alt="Location" class="w-4 h-4" loading="lazy" />
-                    <span class="text-sm font-medium">{{ props.locationInfo?.label || 'Adobe Location' }}</span>
-                </div>
+            <div class="flex items-center gap-2 text-gray-600 flex-shrink-0">
+                <img :src="locationPinIcon" alt="Location" class="w-3 h-3 sm:w-4 sm:h-4" loading="lazy" />
+                <span class="text-xs sm:text-sm font-medium truncate max-w-[120px] sm:max-w-none">{{ props.locationInfo?.label || 'Adobe Location' }}</span>
             </div>
         </div>
 
         <!-- Main Content -->
-        <div class="grid grid-cols-1 lg:grid-cols-3 gap-12">
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6">
             <!-- Left Column: Vehicle Details -->
-            <div class="lg:col-span-2 space-y-10">
+            <div class="lg:col-span-2 space-y-4 sm:space-y-6">
                 <!-- Enhanced Image Section -->
-                <div class="mb-12">
+                <div class="mb-6">
                     <div class="relative group rounded-2xl overflow-hidden shadow-2xl bg-gradient-to-br from-gray-100 to-gray-200">
                         <div class="aspect-w-16 aspect-h-9 h-[600px] relative">
                             <div v-if="props.vehicle?.image && !imageError" class="w-full h-full">
@@ -409,14 +407,14 @@ const handleImageError = () => {
                 </div>
 
                 <!-- Vehicle Features -->
-                <div class="bg-white rounded-2xl shadow-lg p-8">
-                    <h2 class="text-2xl font-bold text-gray-900 mb-6 flex items-center gap-3">
-                        <div class="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
-                            <img :src="carIcon" alt="Car" class="w-6 h-6" loading="lazy" />
+                <div class="bg-white rounded-xl sm:rounded-2xl shadow-lg p-4 sm:p-6">
+                    <h2 class="text-lg sm:text-xl font-bold text-gray-900 mb-4 flex items-center gap-3">
+                        <div class="w-8 h-8 sm:w-10 sm:h-10 bg-blue-100 rounded-full flex items-center justify-center">
+                            <img :src="carIcon" alt="Car" class="w-4 h-4 sm:w-6 sm:h-6" loading="lazy" />
                         </div>
                         Vehicle Specifications
                     </h2>
-                    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                    <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-3 gap-3 sm:gap-4">
                         <!-- Passengers -->
                         <div v-if="props.vehicle?.passengers" class="flex items-center gap-4 p-4 bg-gray-50 rounded-xl hover:bg-gray-100 transition-colors">
                             <div class="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center">
@@ -486,74 +484,74 @@ const handleImageError = () => {
                 </div>
 
                 <!-- Adobe Pricing Details -->
-                <div class="bg-white rounded-2xl shadow-lg p-8">
-                    <h2 class="text-2xl font-bold text-gray-900 mb-6 flex items-center gap-3">
-                        <div class="w-10 h-10 bg-green-100 rounded-full flex items-center justify-center">
-                            <svg class="w-6 h-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <div class="bg-white rounded-xl sm:rounded-2xl shadow-lg p-4 sm:p-6">
+                    <h2 class="text-lg sm:text-xl font-bold text-gray-900 mb-4 flex items-center gap-3">
+                        <div class="w-8 h-8 sm:w-10 sm:h-10 bg-green-100 rounded-full flex items-center justify-center">
+                            <svg class="w-4 h-4 sm:w-6 sm:h-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                             </svg>
                         </div>
                         Adobe Pricing Details
                     </h2>
-                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                        <div class="bg-gradient-to-br from-blue-50 to-blue-100 p-6 rounded-xl border border-blue-200">
-                            <div class="flex items-center gap-3 mb-3">
-                                <div class="w-8 h-8 bg-blue-500 rounded-lg flex items-center justify-center">
-                                    <span class="text-white font-bold text-sm">PLI</span>
+                    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 gap-3 sm:gap-4">
+                        <div class="bg-gradient-to-br from-blue-50 to-blue-100 p-3 sm:p-4 rounded-lg border border-blue-200">
+                            <div class="flex items-center gap-2 mb-2">
+                                <div class="w-6 h-6 sm:w-8 sm:h-8 bg-blue-500 rounded-lg flex items-center justify-center">
+                                    <span class="text-white font-bold text-xs sm:text-sm">PLI</span>
                                 </div>
-                                <h4 class="font-semibold text-blue-900">Basic Rate</h4>
+                                <h4 class="font-semibold text-blue-900 text-sm">Basic Rate</h4>
                             </div>
-                            <p class="text-blue-700 text-sm mb-3">Daily rental rate including basic liability insurance</p>
-                            <p class="text-blue-900 font-bold text-lg">{{ formatCurrency(props.vehicle.pli) }}<span class="text-sm font-normal">/day</span></p>
+                            <p class="text-blue-700 text-xs mb-2 line-clamp-2">Daily rental rate including basic liability insurance</p>
+                            <p class="text-blue-900 font-bold text-sm sm:text-base">{{ formatCurrency(props.vehicle.pli) }}<span class="text-xs font-normal">/day</span></p>
                         </div>
-                        <div class="bg-gradient-to-br from-green-50 to-green-100 p-6 rounded-xl border border-green-200">
-                            <div class="flex items-center gap-3 mb-3">
-                                <div class="w-8 h-8 bg-green-500 rounded-lg flex items-center justify-center">
-                                    <span class="text-white font-bold text-sm">LDW</span>
+                        <div class="bg-gradient-to-br from-green-50 to-green-100 p-3 sm:p-4 rounded-lg border border-green-200">
+                            <div class="flex items-center gap-2 mb-2">
+                                <div class="w-6 h-6 sm:w-8 sm:h-8 bg-green-500 rounded-lg flex items-center justify-center">
+                                    <span class="text-white font-bold text-xs sm:text-sm">LDW</span>
                                 </div>
-                                <h4 class="font-semibold text-green-900">Car Protection</h4>
+                                <h4 class="font-semibold text-green-900 text-sm">Car Protection</h4>
                             </div>
-                            <p class="text-green-700 text-sm mb-3">Waivers financial responsibility for car damage with deductible</p>
-                            <p class="text-green-900 font-bold text-lg">{{ formatCurrency(props.vehicle.ldw) }}<span class="text-sm font-normal">/day</span></p>
+                            <p class="text-green-700 text-xs mb-2 line-clamp-2">Waivers financial responsibility for car damage with deductible</p>
+                            <p class="text-green-900 font-bold text-sm sm:text-base">{{ formatCurrency(props.vehicle.ldw) }}<span class="text-xs font-normal">/day</span></p>
                         </div>
-                        <div class="bg-gradient-to-br from-purple-50 to-purple-100 p-6 rounded-xl border border-purple-200">
-                            <div class="flex items-center gap-3 mb-3">
-                                <div class="w-8 h-8 bg-purple-500 rounded-lg flex items-center justify-center">
-                                    <span class="text-white font-bold text-sm">SPP</span>
+                        <div class="bg-gradient-to-br from-purple-50 to-purple-100 p-3 sm:p-4 rounded-lg border border-purple-200">
+                            <div class="flex items-center gap-2 mb-2">
+                                <div class="w-6 h-6 sm:w-8 sm:h-8 bg-purple-500 rounded-lg flex items-center justify-center">
+                                    <span class="text-white font-bold text-xs sm:text-sm">SPP</span>
                                 </div>
-                                <h4 class="font-semibold text-purple-900">Extended Protection</h4>
+                                <h4 class="font-semibold text-purple-900 text-sm">Extended Protection</h4>
                             </div>
-                            <p class="text-purple-700 text-sm mb-3">Covers deductible, vandalism, tires, windows & roadside assistance</p>
-                            <p class="text-purple-900 font-bold text-lg">{{ formatCurrency(props.vehicle.spp) }}<span class="text-sm font-normal">/day</span></p>
+                            <p class="text-purple-700 text-xs mb-2 line-clamp-2">Covers deductible, vandalism, tires, windows & roadside assistance</p>
+                            <p class="text-purple-900 font-bold text-sm sm:text-base">{{ formatCurrency(props.vehicle.spp) }}<span class="text-xs font-normal">/day</span></p>
                         </div>
-                        <div v-if="props.vehicle.tdr > 0" class="bg-gradient-to-br from-orange-50 to-orange-100 p-6 rounded-xl border border-orange-200">
-                            <div class="flex items-center gap-3 mb-3">
-                                <div class="w-8 h-8 bg-orange-500 rounded-lg flex items-center justify-center">
-                                    <span class="text-white font-bold text-sm">TDR</span>
+                        <div v-if="props.vehicle.tdr > 0" class="bg-gradient-to-br from-orange-50 to-orange-100 p-3 sm:p-4 rounded-lg border border-orange-200">
+                            <div class="flex items-center gap-2 mb-2">
+                                <div class="w-6 h-6 sm:w-8 sm:h-8 bg-orange-500 rounded-lg flex items-center justify-center">
+                                    <span class="text-white font-bold text-xs sm:text-sm">TDR</span>
                                 </div>
-                                <h4 class="font-semibold text-orange-900">Total Daily Rate</h4>
+                                <h4 class="font-semibold text-orange-900 text-sm">Total Daily Rate</h4>
                             </div>
-                            <p class="text-orange-700 text-sm mb-3">Complete daily rate including all applicable charges</p>
-                            <p class="text-orange-900 font-bold text-lg">{{ formatCurrency(props.vehicle.tdr) }}<span class="text-sm font-normal">/day</span></p>
+                            <p class="text-orange-700 text-xs mb-2 line-clamp-2">Complete daily rate including all applicable charges</p>
+                            <p class="text-orange-900 font-bold text-sm sm:text-base">{{ formatCurrency(props.vehicle.tdr) }}<span class="text-xs font-normal">/day</span></p>
                         </div>
-                        <div v-if="props.vehicle.dro > 0" class="bg-gradient-to-br from-red-50 to-red-100 p-6 rounded-xl border border-red-200">
-                            <div class="flex items-center gap-3 mb-3">
-                                <div class="w-8 h-8 bg-red-500 rounded-lg flex items-center justify-center">
-                                    <span class="text-white font-bold text-sm">DRO</span>
+                        <div v-if="props.vehicle.dro > 0" class="bg-gradient-to-br from-red-50 to-red-100 p-3 sm:p-4 rounded-lg border border-red-200">
+                            <div class="flex items-center gap-2 mb-2">
+                                <div class="w-6 h-6 sm:w-8 sm:h-8 bg-red-500 rounded-lg flex items-center justify-center">
+                                    <span class="text-white font-bold text-xs sm:text-sm">DRO</span>
                                 </div>
-                                <h4 class="font-semibold text-red-900">Drop-off Fee</h4>
+                                <h4 class="font-semibold text-red-900 text-sm">Drop-off Fee</h4>
                             </div>
-                            <p class="text-red-700 text-sm mb-3">One-way rental fee for different return location</p>
-                            <p class="text-red-900 font-bold text-lg">{{ formatCurrency(props.vehicle.dro) }}<span class="text-sm font-normal">/rental</span></p>
+                            <p class="text-red-700 text-xs mb-2 line-clamp-2">One-way rental fee for different return location</p>
+                            <p class="text-red-900 font-bold text-sm sm:text-base">{{ formatCurrency(props.vehicle.dro) }}<span class="text-xs font-normal">/rental</span></p>
                         </div>
-                        <div class="bg-gradient-to-br from-gray-50 to-gray-100 p-6 rounded-xl border border-gray-200">
-                            <div class="flex items-center gap-3 mb-3">
-                                <svg class="w-8 h-8 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <div class="bg-gradient-to-br from-gray-50 to-gray-100 p-3 sm:p-4 rounded-lg border border-gray-200">
+                            <div class="flex items-center gap-2 mb-2">
+                                <svg class="w-5 h-5 sm:w-6 sm:h-6 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                                 </svg>
-                                <h4 class="font-semibold text-gray-900">Coverage Details</h4>
+                                <h4 class="font-semibold text-gray-900 text-sm">Coverage Details</h4>
                             </div>
-                            <p class="text-gray-700 text-sm mb-3">All rates include mandatory liability protection with US$1,130 deductible</p>
+                            <p class="text-gray-700 text-xs mb-2">All rates include mandatory liability protection with US$1,130 deductible</p>
                             <div class="text-xs text-gray-600">
                                 <p>• Third-party coverage up to US$100,000</p>
                                 <p>• 24/7 roadside assistance available</p>
@@ -563,29 +561,29 @@ const handleImageError = () => {
                 </div>
 
                 <!-- Adobe Protections -->
-                <div v-if="props.vehicle?.protections && props.vehicle.protections.length > 0" class="bg-white rounded-2xl shadow-lg p-8">
-                    <h2 class="text-2xl font-bold text-gray-900 mb-6 flex items-center gap-3">
-                        <div class="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
-                            <img :src="carguaranteeIcon" alt="Insurance" class="w-6 h-6" loading="lazy" />
+                <div v-if="props.vehicle?.protections && props.vehicle.protections.length > 0" class="bg-white rounded-xl sm:rounded-2xl shadow-lg p-4 sm:p-6">
+                    <h2 class="text-lg sm:text-xl font-bold text-gray-900 mb-4 flex items-center gap-3">
+                        <div class="w-8 h-8 sm:w-10 sm:h-10 bg-blue-100 rounded-full flex items-center justify-center">
+                            <img :src="carguaranteeIcon" alt="Insurance" class="w-4 h-4 sm:w-6 sm:h-6" loading="lazy" />
                         </div>
                         Protection Options
                     </h2>
-                    <div class="space-y-4">
+                    <div class="space-y-3 sm:space-y-4">
                         <div v-for="protection in props.vehicle.protections" :key="protection.code"
-                             class="p-6 bg-blue-50 rounded-xl border border-blue-200 hover:bg-blue-100 transition-colors">
-                            <div class="flex items-start gap-4">
-                                <img :src="check" alt="Protection" class="w-5 h-5 text-blue-600 mt-1" loading="lazy" />
-                                <div class="flex-1">
-                                    <h4 class="font-semibold text-blue-900 mb-2">{{ protection.displayName || protection.name || protection.code }}</h4>
-                                    <p class="text-blue-700 text-sm mb-3">{{ protection.displayDescription || protection.description }}</p>
-                                    <div class="flex items-center gap-4 mb-2">
-                                        <div class="bg-white/50 px-3 py-1 rounded-lg">
-                                            <span class="text-blue-600 font-medium">Price</span>
-                                            <p class="text-blue-900 font-bold">{{ formatCurrency(protection.price || protection.total) }}</p>
+                             class="p-3 sm:p-4 bg-blue-50 rounded-lg border border-blue-200 hover:bg-blue-100 transition-colors">
+                            <div class="flex items-start gap-3">
+                                <img :src="check" alt="Protection" class="w-4 h-4 sm:w-5 sm:h-5 text-blue-600 mt-0.5 flex-shrink-0" loading="lazy" />
+                                <div class="flex-1 min-w-0">
+                                    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 mb-2">
+                                        <h4 class="font-semibold text-blue-900 text-sm truncate">{{ protection.displayName || protection.name || protection.code }}</h4>
+                                        <div class="flex items-center gap-2 flex-shrink-0">
+                                            <span v-if="protection.required" class="bg-red-100 px-2 py-0.5 rounded text-xs text-red-700 font-medium">Required</span>
                                         </div>
-                                        <div v-if="protection.required" class="bg-red-100 px-3 py-1 rounded-lg">
-                                            <span class="text-red-700 font-medium text-sm">Required</span>
-                                        </div>
+                                    </div>
+                                    <p class="text-blue-700 text-xs mb-2 line-clamp-2">{{ protection.displayDescription || protection.description }}</p>
+                                    <div class="flex items-center justify-between">
+                                        <span class="text-blue-600 font-medium text-xs">Price:</span>
+                                        <span class="text-blue-900 font-bold text-sm">{{ formatCurrency(protection.price || protection.total) }}</span>
                                     </div>
                                 </div>
                             </div>
@@ -594,29 +592,29 @@ const handleImageError = () => {
                 </div>
 
                 <!-- Adobe Extras -->
-                <div v-if="props.vehicle?.extras && props.vehicle.extras.length > 0" class="bg-white rounded-2xl shadow-lg p-8">
-                    <h2 class="text-2xl font-bold text-gray-900 mb-6 flex items-center gap-3">
-                        <div class="w-10 h-10 bg-purple-100 rounded-full flex items-center justify-center">
-                            <img :src="offerIcon" alt="Extras" class="w-6 h-6" loading="lazy" />
+                <div v-if="props.vehicle?.extras && props.vehicle.extras.length > 0" class="bg-white rounded-xl sm:rounded-2xl shadow-lg p-4 sm:p-6">
+                    <h2 class="text-lg sm:text-xl font-bold text-gray-900 mb-4 flex items-center gap-3">
+                        <div class="w-8 h-8 sm:w-10 sm:h-10 bg-purple-100 rounded-full flex items-center justify-center">
+                            <img :src="offerIcon" alt="Extras" class="w-4 h-4 sm:w-6 sm:h-6" loading="lazy" />
                         </div>
                         Optional Extras
                     </h2>
-                    <div class="space-y-4">
+                    <div class="space-y-3 sm:space-y-4">
                         <div v-for="extra in props.vehicle.extras" :key="extra.code"
-                             class="p-6 bg-purple-50 rounded-xl border border-purple-200 hover:bg-purple-100 transition-colors">
-                            <div class="flex items-start gap-4">
-                                <img :src="check" alt="Extra" class="w-5 h-5 text-purple-600 mt-1" loading="lazy" />
-                                <div class="flex-1">
-                                    <h4 class="font-semibold text-purple-900 mb-2">{{ extra.displayName || extra.name || extra.code }}</h4>
-                                    <p class="text-purple-700 text-sm mb-3">{{ extra.displayDescription || extra.description }}</p>
-                                    <div class="flex items-center gap-4 mb-2">
-                                        <div class="bg-white/50 px-3 py-1 rounded-lg">
-                                            <span class="text-purple-600 font-medium">Price</span>
-                                            <p class="text-purple-900 font-bold">{{ formatCurrency(extra.price || extra.total) }}</p>
+                             class="p-3 sm:p-4 bg-purple-50 rounded-lg border border-purple-200 hover:bg-purple-100 transition-colors">
+                            <div class="flex items-start gap-3">
+                                <img :src="check" alt="Extra" class="w-4 h-4 sm:w-5 sm:h-5 text-purple-600 mt-0.5 flex-shrink-0" loading="lazy" />
+                                <div class="flex-1 min-w-0">
+                                    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 mb-2">
+                                        <h4 class="font-semibold text-purple-900 text-sm truncate">{{ extra.displayName || extra.name || extra.code }}</h4>
+                                        <div class="flex items-center gap-2 flex-shrink-0">
+                                            <span v-if="extra.required" class="bg-red-100 px-2 py-0.5 rounded text-xs text-red-700 font-medium">Required</span>
                                         </div>
-                                        <div v-if="extra.required" class="bg-red-100 px-3 py-1 rounded-lg">
-                                            <span class="text-red-700 font-medium text-sm">Required</span>
-                                        </div>
+                                    </div>
+                                    <p class="text-purple-700 text-xs mb-2 line-clamp-2">{{ extra.displayDescription || extra.description }}</p>
+                                    <div class="flex items-center justify-between">
+                                        <span class="text-purple-600 font-medium text-xs">Price:</span>
+                                        <span class="text-purple-900 font-bold text-sm">{{ formatCurrency(extra.price || extra.total) }}</span>
                                     </div>
                                 </div>
                             </div>
