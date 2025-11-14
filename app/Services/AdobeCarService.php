@@ -98,7 +98,7 @@ class AdobeCarService
             'returnoffice' => $params['returnoffice'] ?? $params['pickupoffice'] ?? '',
             'startdate' => $params['startdate'] ?? '',
             'enddate' => $params['enddate'] ?? '',
-            'customerCode' => 'PRUEBA' // Default customer code as per Adobe documentation
+            'customerCode' => 'Z11338' // Valid Adobe customer code
         ];
 
         // Add promotion code if provided
@@ -185,7 +185,7 @@ class AdobeCarService
 
         $response = Http::withToken($token)->get("{$this->baseUrl}/Booking", [
             'bookingNumber' => $bookingNumber,
-            'customerCode' => 'PRUEBA' // Default customer code for details lookup
+            'customerCode' => 'Z11338' // Valid Adobe customer code for details lookup
         ]);
 
         if ($response->successful()) {
@@ -230,7 +230,7 @@ class AdobeCarService
             'category' => $category,
             'startdate' => $dates['startdate'],
             'enddate' => $dates['enddate'],
-            'customerCode' => 'PRUEBA' // Default customer code as per Adobe documentation
+            'customerCode' => 'Z11338' // Valid Adobe customer code
         ];
 
         logger()->info('Adobe API: Calling GetCategoryWithFare', ['queryParams' => $queryParams]);
