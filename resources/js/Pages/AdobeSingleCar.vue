@@ -716,13 +716,13 @@ const handleImageError = () => {
 
                             <!-- Location Info -->
                             <div class="space-y-4">
-                                <div class="flex items-start gap-3 p-4 bg-green-50 rounded-lg border border-green-200">
+                                <div class="flex items-start gap-3 p-3 sm:p-4 bg-green-50 rounded-lg border border-green-200">
                                     <img :src="pickupLocationIcon" alt="Pickup" class="w-5 h-5 mt-1" loading="lazy" />
-                                    <div class="flex-1">
-                                        <span class="text-sm font-medium text-green-800">Pickup Location</span>
-                                        <p class="font-semibold text-green-900">{{ props.locationInfo?.label || 'Adobe Location' }}</p>
-                                        <p class="text-sm text-green-700">{{ props.locationInfo?.address || 'Adobe Car Rental Location' }}</p>
-                                        <p class="text-sm text-green-600 mt-1">{{ props.searchParams?.pickup_datetime || 'Select dates' }}</p>
+                                    <div class="flex-1 min-w-0">
+                                        <span class="text-xs sm:text-sm font-medium text-green-800">Pickup Location</span>
+                                        <p class="font-semibold text-sm sm:text-base text-green-900 truncate">{{ props.locationInfo?.name || 'Adobe Location' }}</p>
+                                        <p class="text-xs sm:text-sm text-green-700">{{ props.locationInfo?.below_label || 'Adobe Car Rental Location' }}</p>
+                                        <p class="text-xs sm:text-sm text-green-600 mt-1">{{ props.searchParams?.pickup_datetime || 'Select dates' }}</p>
                                     </div>
                                 </div>
                             </div>
