@@ -73,6 +73,8 @@ use App\Http\Controllers\VehicleController;
 use App\Http\Controllers\GreenMotionController;
 use App\Http\Controllers\GreenMotionBookingController; // Import the new GreenMotionBookingController
 use App\Http\Controllers\OkMobilityController; // Import the OkMobilityController
+use App\Http\Controllers\AdobeCarController; // Import the AdobeCarController
+use App\Http\Controllers\AdobeBookingController; // Import the AdobeBookingController
 use App\Http\Controllers\AdminProfileController; // Import the AdminProfileController
 use App\Http\Controllers\Affiliate\AffiliateBusinessController; // Import the AffiliateBusinessController
 use App\Http\Controllers\Admin\AffiliateBusinessModelController; // Import the AffiliateBusinessModelController
@@ -843,6 +845,7 @@ Route::group([
         Route::get('/profile/bookings/confirmed', [BookingController::class, 'getConfirmedBookings'])->name('profile.bookings.confirmed');
         Route::get('/profile/bookings/completed', [BookingController::class, 'getCompletedBookings'])->name('profile.bookings.completed');
         Route::get('/profile/bookings/green-motion', [GreenMotionBookingController::class, 'getCustomerGreenMotionBookings'])->name('profile.bookings.green-motion');
+        Route::get('/profile/bookings/adobe', [AdobeBookingController::class, 'getCustomerAdobeBookings'])->name('profile.bookings.adobe');
 
         // Favourite vehicles
         Route::post('/vehicles/{vehicle}/favourite', [FavoriteController::class, 'favourite'])->name('vehicles.favourite');
@@ -854,6 +857,12 @@ Route::group([
     Route::post('/green-motion-booking/charge', [GreenMotionBookingController::class, 'processGreenMotionBookingPayment'])->name('greenmotion.booking.charge');
      Route::get('/green-motion-booking-success', [GreenMotionBookingController::class, 'greenMotionBookingSuccess'])->name('greenmotion.booking.success');
         Route::get('/green-motion-booking-cancel', [GreenMotionBookingController::class, 'greenMotionBookingCancel'])->name('greenmotion.booking.cancel');
+
+        // Adobe Booking Routes
+        Route::get('/adobe-booking/create/{id}', [AdobeBookingController::class, 'create'])->name('adobe-booking.create');
+        Route::post('/adobe-booking/charge', [AdobeBookingController::class, 'processAdobeBookingPayment'])->name('adobe.booking.charge');
+        Route::get('/adobe-booking-success', [AdobeBookingController::class, 'adobeBookingSuccess'])->name('adobe.booking.success');
+        Route::get('/adobe-booking-cancel', [AdobeBookingController::class, 'adobeBookingCancel'])->name('adobe.booking.cancel');
 
         // OK Mobility Booking Routes
     Route::post('/ok-mobility-booking/charge', [OkMobilityBookingController::class, 'processBookingPayment'])->name('okmobility.booking.charge');
