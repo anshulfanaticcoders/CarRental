@@ -151,7 +151,13 @@ class AdobeCarController extends Controller
                     'currency' => 'USD',
                     'transmission' => ($selectedVehicle['manual'] ?? false) ? 'manual' : 'automatic',
                     'fuel' => 'petrol',
+                    // Direct properties for frontend template
                     'seating_capacity' => (int) ($selectedVehicle['passengers'] ?? 4),
+                    'passengers' => (int) ($selectedVehicle['passengers'] ?? 4),
+                    'doors' => (int) ($selectedVehicle['doors'] ?? 4),
+                    'type' => $selectedVehicle['type'] ?? '',
+                    'traction' => $selectedVehicle['traction'] ?? '',
+                    'manual' => (bool) ($selectedVehicle['manual'] ?? false),
                     'mileage' => 'unlimited',
                     'latitude' => (float) $request->get('lat', 0),
                     'longitude' => (float) $request->get('lng', 0),
