@@ -44,6 +44,26 @@ const currencySymbols = ref({});
 const exchangeRates = ref(null);
 const { selectedCurrency, supportedCurrencies, changeCurrency } = useCurrency();
 
+const symbolToCodeMap = {
+    '$': 'USD',
+    '€': 'EUR',
+    '£': 'GBP',
+    '¥': 'JPY',
+    'A$': 'AUD',
+    'C$': 'CAD',
+    'Fr': 'CHF',
+    'HK$': 'HKD',
+    'S$': 'SGD',
+    'kr': 'SEK',
+    '₩': 'KRW',
+    'kr': 'NOK',
+    'NZ$': 'NZD',
+    '₹': 'INR',
+    'Mex$': 'MXN',
+    'R': 'ZAR',
+    'AED': 'AED'
+};
+
 const props = defineProps({
     vehicle: Object,
     locationInfo: Object,
@@ -82,8 +102,63 @@ const seoKeywords = computed(() => {
 const currentUrl = computed(() => page.props.ziggy?.location || window.location.href);
 const canonicalUrl = computed(() => currentUrl.value);
 
+// Fetch exchange rates
+const fetchExchangeRates = async () => {
+    try {
+        const response = await fetch('/api/exchange-rates');
+        const data = await response.json();
+        if (data.result === 'success') {
+            exchangeRates.value = data.conversion_rates;
+        } else {
+            console.error('Failed to fetch exchange rates:', data['error-type']);
+        }
+    } catch (error) {
+        console.error('Error fetching exchange rates:', error);
+    }
+};
+
+const convertCurrency = (price, fromCurrency) => {
+    const numericPrice = parseFloat(price);
+    if (isNaN(numericPrice)) {
+        return 0; // Return 0 if price is not a number
+    }
+
+    let fromCurrencyCode = fromCurrency;
+    if (symbolToCodeMap[fromCurrency]) {
+        fromCurrencyCode = symbolToCodeMap[fromCurrency];
+    }
+
+    if (!exchangeRates.value || !fromCurrencyCode || !selectedCurrency.value) {
+        return numericPrice; // Return original price if rates not loaded or currencies are invalid
+    }
+    const rateFrom = exchangeRates.value[fromCurrencyCode];
+    const rateTo = exchangeRates.value[selectedCurrency.value];
+    if (rateFrom && rateTo) {
+        return (numericPrice / rateFrom) * rateTo;
+    }
+    return numericPrice; // Fallback to original price if conversion is not possible
+};
+
+const getCurrencySymbol = (code) => {
+    return currencySymbols.value[code] || '$'; // Use fetched symbol or default to '$'
+};
+
 // Map initialization
-onMounted(() => {
+onMounted(async () => {
+    // Fetch exchange rates and currency symbols
+    await fetchExchangeRates();
+
+    try {
+        const response = await fetch('/currency.json');
+        const data = await response.json();
+        currencySymbols.value = data.reduce((acc, curr) => {
+            acc[curr.code] = curr.symbol;
+            return acc;
+        }, {});
+    } catch (error) {
+        console.error("Error loading currency symbols:", error);
+    }
+
     if (props.locationInfo?.latitude && props.locationInfo?.longitude) {
         nextTick(() => {
             initMap();
@@ -163,13 +238,12 @@ const initMap = () => {
 };
 
 // Format currency
-const formatCurrency = (amount) => {
+const formatCurrency = (amount, fromCurrency = 'USD') => {
     if (!amount) return '$0.00';
-    const numAmount = parseFloat(amount);
-    return new Intl.NumberFormat('en-US', {
-        style: 'currency',
-        currency: 'USD'
-    }).format(numAmount);
+    const originalCurrency = fromCurrency || 'USD';
+    const convertedPrice = convertCurrency(amount, originalCurrency);
+    const currencySymbol = getCurrencySymbol(selectedCurrency.value);
+    return `${currencySymbol}${convertedPrice.toFixed(2)}`;
 };
 
 // Navigation methods
