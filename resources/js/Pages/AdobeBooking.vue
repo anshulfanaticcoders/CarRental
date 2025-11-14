@@ -10,6 +10,7 @@ const props = defineProps({
     vehicle: Object,
     searchParams: Object,
     locale: String,
+    auth: Object,
 });
 
 const page = usePage();
@@ -149,28 +150,32 @@ const pricingBreakdown = computed(() => {
     }
 
     // Add selected protections from API data ONLY
-    Object.values(selectedProtections.value).forEach(protection => {
-        if (protection.selected) {
-            items.push({
-                label: protection.displayName || protection.name || protection.code,
-                amount: protection.total || 0,
-                description: protection.displayDescription || protection.description || '',
-                required: protection.required || false
-            });
-        }
-    });
+    if (selectedProtections.value) {
+        Object.values(selectedProtections.value).forEach(protection => {
+            if (protection && protection.selected) {
+                items.push({
+                    label: protection.displayName || protection.name || protection.code,
+                    amount: protection.total || 0,
+                    description: protection.displayDescription || protection.description || '',
+                    required: protection.required || false
+                });
+            }
+        });
+    }
 
     // Add selected extras from API data ONLY
-    Object.values(selectedExtras.value).forEach(extra => {
-        if (extra.selected && extra.quantity > 0) {
-            items.push({
-                label: extra.displayName || extra.name || extra.code,
-                amount: (extra.total || 0) * extra.quantity,
-                description: extra.displayDescription || extra.description || '',
-                required: false
-            });
-        }
-    });
+    if (selectedExtras.value) {
+        Object.values(selectedExtras.value).forEach(extra => {
+            if (extra && extra.selected && extra.quantity > 0) {
+                items.push({
+                    label: extra.displayName || extra.name || extra.code,
+                    amount: (extra.total || 0) * extra.quantity,
+                    description: extra.displayDescription || extra.description || '',
+                    required: false
+                });
+            }
+        });
+    }
 
     return items;
 });
@@ -213,6 +218,17 @@ onMounted(() => {
                 };
             }
         });
+    }
+
+    // Pre-fill user data if authenticated
+    if (props.auth.user) {
+        formData.value.customer.name = props.auth.user.first_name || '';
+        formData.value.customer.last_name = props.auth.user.last_name || '';
+        formData.value.customer.email = props.auth.user.email || '';
+        formData.value.customer.phone = props.auth.user.phone || '';
+        formData.value.customer.address = props.auth.user.address || '';
+        formData.value.customer.city = props.auth.user.city || '';
+        formData.value.customer.country = props.auth.user.country || '';
     }
 
     // Calculate initial total
@@ -316,8 +332,8 @@ const submitBooking = async () => {
             vehicle_model: props.vehicle.model,
             pickup_location_id: props.searchParams.pickup_location_id,
             dropoff_location_id: props.searchParams.dropoff_location_id,
-            selected_protections: Object.values(selectedProtections.value).filter(p => p.selected),
-            selected_extras: Object.values(selectedExtras.value).filter(e => e.selected && e.quantity > 0),
+            selected_protections: selectedProtections.value ? Object.values(selectedProtections.value).filter(p => p && p.selected) : [],
+            selected_extras: selectedExtras.value ? Object.values(selectedExtras.value).filter(e => e && e.selected && e.quantity > 0) : [],
         };
 
         // Create booking and get Stripe checkout
@@ -473,10 +489,12 @@ const isStepComplete = (step) => {
                                                 <span class="font-semibold">{{ formatPrice(vehicle.tdr || 0) }}</span>
                                             </div>
                                             <!-- Show only selected protections from API data -->
-                                            <div v-for="protection in Object.values(selectedProtections)" v-if="protection.selected" :key="protection.code" class="flex justify-between">
-                                                <span class="text-gray-600">{{ protection.displayName || protection.name || protection.code }}</span>
-                                                <span class="font-semibold">{{ formatPrice(protection.total || 0) }}</span>
-                                            </div>
+                                            <template v-if="selectedProtections && Object.keys(selectedProtections).length > 0">
+                                                <div v-for="protection in Object.values(selectedProtections)" :key="protection.code" v-show="protection && protection.selected" class="flex justify-between">
+                                                    <span class="text-gray-600">{{ protection.displayName || protection.name || protection.code }}</span>
+                                                    <span class="font-semibold">{{ formatPrice(protection.total || 0) }}</span>
+                                                </div>
+                                            </template>
                                         </div>
                                     </div>
                                 </div>
@@ -524,8 +542,8 @@ const isStepComplete = (step) => {
                                                 <label for="email" class="block text-sm font-medium text-gray-700 mb-2">
                                                     Email Address <span class="text-red-500">*</span>
                                                 </label>
-                                                <input type="email" id="email" v-model="formData.customer.email"
-                                                       class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary transition-colors"
+                                                <input type="email" id="email" v-model="formData.customer.email" readonly
+                                                       class="w-full px-4 py-3 border border-gray-300 rounded-lg bg-gray-50 text-gray-600 cursor-not-allowed"
                                                        placeholder="your.email@example.com" />
                                             </div>
                                             <div>
@@ -624,11 +642,11 @@ const isStepComplete = (step) => {
                             </div>
                             <div class="p-6 space-y-6">
                                 <!-- Protections Section -->
-                                <div v-if="Object.keys(selectedProtections).length > 0">
+                                <div v-if="selectedProtections && Object.keys(selectedProtections).length > 0">
                                     <h4 class="text-lg font-semibold text-gray-900 mb-4">Protection Options</h4>
                                     <div class="space-y-4">
                                         <div
-                                            v-for="protection in Object.values(selectedProtections)"
+                                            v-for="protection in (selectedProtections ? Object.values(selectedProtections) : [])"
                                             :key="protection.code"
                                             class="relative flex items-center justify-between p-4 border-2 rounded-xl transition-all duration-300"
                                             :class="{
@@ -669,11 +687,11 @@ const isStepComplete = (step) => {
                                 </div>
 
                                 <!-- Extras Section -->
-                                <div v-if="Object.keys(selectedExtras).length > 0">
+                                <div v-if="selectedExtras && Object.keys(selectedExtras).length > 0">
                                     <h4 class="text-lg font-semibold text-gray-900 mb-4">Additional Extras</h4>
                                     <div class="space-y-4">
                                         <div
-                                            v-for="extra in Object.values(selectedExtras)"
+                                            v-for="extra in (selectedExtras ? Object.values(selectedExtras) : [])"
                                             :key="extra.code"
                                             class="relative flex items-center justify-between p-4 border-2 rounded-xl cursor-pointer transition-all duration-300"
                                             :class="extra.selected
