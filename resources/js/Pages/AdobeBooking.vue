@@ -24,6 +24,9 @@ const isSubmitting = ref(false);
 const selectedProtections = ref({});
 const selectedExtras = ref({});
 
+// Form field errors
+const formErrors = ref({});
+
 const { selectedCurrency, supportedCurrencies, changeCurrency } = useCurrency();
 
 // Currency conversion for Adobe
@@ -111,6 +114,11 @@ const formatPrice = (price, fromCurrency = 'USD') => {
     return `${currencySymbol}${convertedPrice.toFixed(2)}`;
 };
 
+const truncateText = (text, maxLength) => {
+    if (!text || text.length <= maxLength) return text;
+    return text.substring(0, maxLength) + '...';
+};
+
 // Form data
 const formData = ref({
     // Customer Information
@@ -129,7 +137,12 @@ const formData = ref({
     reference: '',
     flight_number: '',
     language: 'en',
-    // Pricing will be calculated from API data only
+    // Adobe pricing components required by backend
+    tdr_total: 0,
+    pli_total: 0,
+    ldw_total: 0,
+    spp_total: 0,
+    dro_total: 0,
     base_rate: 0,
     vehicle_total: 0,
     grand_total: 0,
@@ -181,7 +194,34 @@ const pricingBreakdown = computed(() => {
 });
 
 const calculateTotal = computed(() => {
-    return pricingBreakdown.value.reduce((total, item) => total + item.amount, 0);
+    const total = pricingBreakdown.value.reduce((total, item) => total + item.amount, 0);
+
+    // Update form data fields required by backend
+    formData.value.grand_total = total;
+    formData.value.vehicle_total = total;
+    formData.value.base_rate = props.vehicle.tdr || 0;
+
+    // Calculate individual component totals
+    formData.value.tdr_total = props.vehicle.tdr || 0;
+    formData.value.pli_total = 0;
+    formData.value.ldw_total = 0;
+    formData.value.spp_total = 0;
+    formData.value.dro_total = 0;
+
+    // Sum up protection totals
+    if (selectedProtections.value) {
+        Object.values(selectedProtections.value).forEach(protection => {
+            if (protection && protection.selected) {
+                const code = protection.code.toLowerCase();
+                if (code === 'pli') formData.value.pli_total = protection.total || 0;
+                if (code === 'ldw') formData.value.ldw_total = protection.total || 0;
+                if (code === 'spp') formData.value.spp_total = protection.total || 0;
+                if (code === 'dro') formData.value.dro_total = protection.total || 0;
+            }
+        });
+    }
+
+    return total;
 });
 
 // Watch for protection/extras changes
@@ -250,37 +290,65 @@ const rentalDuration = computed(() => {
 });
 
 const validateStep = (step) => {
+    // Clear previous errors
+    formErrors.value = {};
+
     switch (step) {
         case 1: // Dates and basic info
             return true; // Already validated from search params
 
         case 2: // Customer information
             const customer = formData.value.customer;
-            console.log('Debug - Customer data:', {
-                name: customer.name?.trim(),
-                last_name: customer.last_name?.trim(),
-                email: customer.email?.trim(),
-                phone: customer.phone?.trim(),
-                address: customer.address?.trim(),
-                city: customer.city?.trim(),
-                postcode: customer.postcode?.trim(),
-                country: customer.country?.trim()
-            });
+            let isValid = true;
 
-            const isValid = customer.name.trim() &&
-                           customer.last_name.trim() &&
-                           customer.email.trim() &&
-                           customer.phone.trim() &&
-                           customer.address.trim() &&
-                           customer.city.trim() &&
-                           customer.postcode.trim() &&  // Added postcode validation
-                           customer.country.trim();
+            // Validate each field and set specific errors
+            if (!customer.name.trim()) {
+                formErrors.value.name = 'First name is required';
+                isValid = false;
+            }
 
-            console.log('Debug - Validation result:', isValid);
+            if (!customer.last_name.trim()) {
+                formErrors.value.last_name = 'Last name is required';
+                isValid = false;
+            }
+
+            if (!customer.email.trim()) {
+                formErrors.value.email = 'Email is required';
+                isValid = false;
+            }
+
+            if (!customer.phone.trim()) {
+                formErrors.value.phone = 'Phone number is required';
+                isValid = false;
+            }
+
+            if (!customer.address.trim()) {
+                formErrors.value.address = 'Address is required';
+                isValid = false;
+            }
+
+            if (!customer.city.trim()) {
+                formErrors.value.city = 'City is required';
+                isValid = false;
+            }
+
+            if (!customer.postcode.trim()) {
+                formErrors.value.postcode = 'Postcode is required';
+                isValid = false;
+            }
+
+            if (!customer.country.trim()) {
+                formErrors.value.country = 'Country is required';
+                isValid = false;
+            }
+
             return isValid;
 
         case 3: // Protections and extras
             return true; // Protections are handled by logic
+
+        case 4: // Payment step - ready to submit
+            return true;
 
         default:
             return false;
@@ -292,9 +360,8 @@ const nextStep = () => {
         if (currentStep.value < 4) {
             currentStep.value++;
         }
-    } else {
-        toast.error('Please complete all required fields');
     }
+    // No toast error - field errors are shown inline
 };
 
 const prevStep = () => {
@@ -304,9 +371,21 @@ const prevStep = () => {
 };
 
 const goToStep = (step) => {
-    if (step <= currentStep.value || validateStep(currentStep.value)) {
+    // Allow going back to previous steps
+    if (step < currentStep.value) {
         currentStep.value = step;
+        return;
     }
+
+    // Moving forward - validate all steps up to the target
+    for (let i = currentStep.value + 1; i <= step; i++) {
+        if (!validateStep(i)) {
+            currentStep.value = i; // Go to the failed step
+            return;
+        }
+    }
+
+    currentStep.value = step;
 };
 
 const toggleProtection = (protectionCode) => {
@@ -334,11 +413,16 @@ const updateExtraQuantity = (extraCode, quantity) => {
 };
 
 const submitBooking = async () => {
+    console.log('Debug: submitBooking called');
+    console.log('Debug: currentStep.value:', currentStep.value);
+    console.log('Debug: isSubmitting.value:', isSubmitting.value);
+
     if (!validateStep(currentStep.value)) {
-        toast.error('Please complete all required fields');
+        console.log('Debug: validation failed');
         return;
     }
 
+    console.log('Debug: validation passed');
     isSubmitting.value = true;
 
     try {
@@ -421,37 +505,37 @@ const isStepComplete = (step) => {
     </section>
 
     <div class="container mx-auto py-12">
-        <div class=" mx-auto py-12">
-            <!-- Progress Steps - Match GreenMotion Exactly -->
-            <div class="mb-8">
-                <div class="flex items-center justify-center space-x-8 mb-8">
-                    <div v-for="step in 4" :key="step"
-                         class="flex items-center cursor-pointer transition-all duration-300"
-                         @click="goToStep(step)">
-                        <div class="flex items-center">
-                            <div class="w-10 h-10 rounded-full flex items-center justify-center font-semibold transition-all duration-300"
-                                 :class="step <= currentStep
-                                   ? 'bg-primary text-white shadow-lg'
-                                   : 'bg-gray-200 text-gray-600'">
-                                <svg v-if="step < currentStep" class="w-6 h-6" fill="currentColor" viewBox="0 0 20 20">
-                                    <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/>
-                                </svg>
-                                <span v-else>{{ step }}</span>
-                            </div>
-                            <span class="ml-3 font-medium text-gray-700"
-                                  :class="step <= currentStep ? 'text-primary' : 'text-gray-500'">
-                                {{ step === 1 ? 'Rental Details' : step === 2 ? 'Your Details' : step === 3 ? 'Protection & Extras' : 'Payment' }}
-                            </span>
+        <!-- Progress Steps - Match GreenMotion Exactly -->
+        <div class="mb-8">
+            <div class="flex items-center justify-center space-x-8 mb-8">
+                <div v-for="step in 4" :key="step"
+                     class="flex items-center cursor-pointer transition-all duration-300"
+                     @click="goToStep(step)">
+                    <div class="flex items-center">
+                        <div class="w-10 h-10 rounded-full flex items-center justify-center font-semibold transition-all duration-300"
+                             :class="step <= currentStep
+                               ? 'bg-primary text-white shadow-lg'
+                               : 'bg-gray-200 text-gray-600'">
+                            <svg v-if="step < currentStep" class="w-6 h-6" fill="currentColor" viewBox="0 0 20 20">
+                                <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/>
+                            </svg>
+                            <span v-else>{{ step }}</span>
                         </div>
-                        <div v-if="step < 4" class="w-20 h-0.5 ml-8"
-                             :class="step < currentStep ? 'bg-primary' : 'bg-gray-200'"></div>
+                        <span class="ml-3 font-medium text-gray-700"
+                              :class="step <= currentStep ? 'text-primary' : 'text-gray-500'">
+                            {{ step === 1 ? 'Rental Details' : step === 2 ? 'Your Details' : step === 3 ? 'Protection & Extras' : 'Payment' }}
+                        </span>
                     </div>
+                    <div v-if="step < 4" class="w-20 h-0.5 ml-8"
+                         :class="step < currentStep ? 'bg-primary' : 'bg-gray-200'"></div>
                 </div>
             </div>
+        </div>
 
-            <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                <!-- Main Content -->
-                <div class="lg:col-span-2">
+        <!-- Main Grid: Content + Booking Summary -->
+        <div class="grid grid-cols-3 gap-8">
+            <!-- Main Content -->
+            <div class="lg:col-span-2">
                     <!-- Step 1: Rental Details - Match GreenMotion Structure -->
                     <div v-show="currentStep === 1" class="space-y-8">
                         <!-- Vehicle Summary Card - Exact Match -->
@@ -478,8 +562,8 @@ const isStepComplete = (step) => {
                                                 <p class="text-lg font-semibold text-gray-900">{{ rentalDuration }} days</p>
                                             </div>
                                             <div class="bg-gray-50 rounded-lg p-3">
-                                                <p class="text-sm font-medium text-gray-500">Daily Rate</p>
-                                                <p class="text-lg font-semibold text-primary">{{ formatPrice(vehicle.price_per_day) }}/day</p>
+                                                <p class="text-sm font-medium text-gray-500">Total Rate</p>
+                                                <p class="text-lg font-semibold text-primary">{{ formatPrice(vehicle.tdr || 0) }}</p>
                                             </div>
                                         </div>
                                     </div>
@@ -539,16 +623,20 @@ const isStepComplete = (step) => {
                                                     First Name <span class="text-red-500">*</span>
                                                 </label>
                                                 <input type="text" id="firstname" v-model="formData.customer.name"
-                                                       class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary transition-colors"
+                                                       class="w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary transition-colors"
+                                                       :class="formErrors.name ? 'border-red-500' : 'border-gray-300'"
                                                        placeholder="Enter your first name" />
+                                                <p v-if="formErrors.name" class="mt-1 text-sm text-red-600">{{ formErrors.name }}</p>
                                             </div>
                                             <div>
                                                 <label for="surname" class="block text-sm font-medium text-gray-700 mb-2">
                                                     Last Name <span class="text-red-500">*</span>
                                                 </label>
                                                 <input type="text" id="surname" v-model="formData.customer.last_name"
-                                                       class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary transition-colors"
+                                                       class="w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary transition-colors"
+                                                       :class="formErrors.last_name ? 'border-red-500' : 'border-gray-300'"
                                                        placeholder="Enter your last name" />
+                                                <p v-if="formErrors.last_name" class="mt-1 text-sm text-red-600">{{ formErrors.last_name }}</p>
                                             </div>
                                         </div>
                                     </div>
@@ -570,8 +658,10 @@ const isStepComplete = (step) => {
                                                     Phone Number <span class="text-red-500">*</span>
                                                 </label>
                                                 <input type="tel" id="phone" v-model="formData.customer.phone"
-                                                       class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary transition-colors"
+                                                       class="w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary transition-colors"
+                                                       :class="formErrors.phone ? 'border-red-500' : 'border-gray-300'"
                                                        placeholder="+1 (555) 123-4567" />
+                                                <p v-if="formErrors.phone" class="mt-1 text-sm text-red-600">{{ formErrors.phone }}</p>
                                             </div>
                                         </div>
                                     </div>
@@ -585,8 +675,10 @@ const isStepComplete = (step) => {
                                                     Address Line 1 <span class="text-red-500">*</span>
                                                 </label>
                                                 <input type="text" id="address1" v-model="formData.customer.address"
-                                                       class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary transition-colors"
+                                                       class="w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary transition-colors"
+                                                       :class="formErrors.address ? 'border-red-500' : 'border-gray-300'"
                                                        placeholder="Street address, P.O. box, company name" />
+                                            <p v-if="formErrors.address" class="mt-1 text-sm text-red-600">{{ formErrors.address }}</p>
                                             </div>
                                             <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
                                                 <div>
@@ -594,24 +686,30 @@ const isStepComplete = (step) => {
                                                         Town/City <span class="text-red-500">*</span>
                                                     </label>
                                                     <input type="text" id="town" v-model="formData.customer.city"
-                                                           class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary transition-colors"
+                                                           class="w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary transition-colors"
+                                                           :class="formErrors.city ? 'border-red-500' : 'border-gray-300'"
                                                            placeholder="City" />
+                                                    <p v-if="formErrors.city" class="mt-1 text-sm text-red-600">{{ formErrors.city }}</p>
                                                 </div>
                                                 <div>
                                                     <label for="postcode" class="block text-sm font-medium text-gray-700 mb-2">
                                                         Postcode <span class="text-red-500">*</span>
                                                     </label>
                                                     <input type="text" id="postcode" v-model="formData.customer.postcode"
-                                                           class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary transition-colors"
+                                                           class="w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary transition-colors"
+                                                           :class="formErrors.postcode ? 'border-red-500' : 'border-gray-300'"
                                                            placeholder="12345" />
+                                                    <p v-if="formErrors.postcode" class="mt-1 text-sm text-red-600">{{ formErrors.postcode }}</p>
                                                 </div>
                                                 <div>
                                                     <label for="country" class="block text-sm font-medium text-gray-700 mb-2">
                                                         Country <span class="text-red-500">*</span>
                                                     </label>
                                                     <input type="text" id="country" v-model="formData.customer.country"
-                                                           class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary transition-colors"
+                                                           class="w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary transition-colors"
+                                                           :class="formErrors.country ? 'border-red-500' : 'border-gray-300'"
                                                            placeholder="Country" />
+                                                    <p v-if="formErrors.country" class="mt-1 text-sm text-red-600">{{ formErrors.country }}</p>
                                                 </div>
                                             </div>
                                         </div>
@@ -662,12 +760,12 @@ const isStepComplete = (step) => {
                             <div class="p-6 space-y-6">
                                 <!-- Protections Section -->
                                 <div v-if="selectedProtections && Object.keys(selectedProtections).length > 0">
-                                    <h4 class="text-lg font-semibold text-gray-900 mb-4">Protection Options</h4>
-                                    <div class="space-y-4">
+                                    <h4 class="text-base font-semibold text-gray-900 mb-4">Protection Options</h4>
+                                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                                         <div
                                             v-for="protection in (selectedProtections ? Object.values(selectedProtections) : [])"
                                             :key="protection.code"
-                                            class="relative flex items-center justify-between p-4 border-2 rounded-xl transition-all duration-300"
+                                            class="relative p-4 border-2 rounded-xl transition-all duration-300"
                                             :class="{
                                                 'border-primary bg-primary/5': protection.selected,
                                                 'border-gray-200 hover:border-gray-300': !protection.selected && !protection.required,
@@ -682,23 +780,32 @@ const isStepComplete = (step) => {
                                             <div v-else-if="protection.selected" class="absolute top-0 right-0 bg-green-500 text-white text-xs font-bold px-2 py-1 rounded-bl-lg rounded-tr-lg z-10">
                                                 Selected
                                             </div>
-                                            <div class="flex items-start justify-between w-full">
-                                                <div class="flex items-start space-x-4">
+                                            <div class="flex items-start justify-between w-full mb-3">
+                                                <div class="flex items-start space-x-3">
                                                     <div class="mt-1">
-                                                        <div class="w-5 h-5 rounded-full border-2 flex items-center justify-center"
+                                                        <div class="w-4 h-4 rounded-full border-2 flex items-center justify-center"
                                                              :class="protection.selected
                                                                 ? 'border-primary bg-primary'
                                                                 : 'border-gray-300'">
-                                                            <div v-if="protection.selected" class="w-2 h-2 bg-white rounded-full"></div>
+                                                            <div v-if="protection.selected" class="w-1.5 h-1.5 bg-white rounded-full"></div>
                                                         </div>
                                                     </div>
-                                                    <div>
-                                                        <h4 class="font-semibold text-gray-900">{{ protection.displayName || protection.name || protection.code }}</h4>
-                                                        <p class="text-sm text-gray-600">{{ protection.displayDescription || protection.description }}</p>
+                                                    <div class="flex-1">
+                                                        <h5 class="text-sm font-semibold text-gray-900">{{ protection.displayName || protection.name || protection.code }}</h5>
+                                                        <p class="text-xs text-gray-600 mt-1">
+                                                            <span v-if="!protection.expanded">{{ truncateText(protection.displayDescription || protection.description, 60) }}</span>
+                                                            <span v-else>{{ protection.displayDescription || protection.description }}</span>
+                                                            <button
+                                                                v-if="(protection.displayDescription || protection.description || '').length > 60"
+                                                                @click.stop="protection.expanded = !protection.expanded"
+                                                                class="text-xs text-primary hover:underline ml-1">
+                                                                {{ protection.expanded ? 'Show less' : 'Read more' }}
+                                                            </button>
+                                                        </p>
                                                     </div>
                                                 </div>
                                                 <div class="text-right">
-                                                    <div class="text-lg font-bold text-primary">{{ formatPrice(protection.total || 0) }}</div>
+                                                    <div class="text-base font-bold text-primary">{{ formatPrice(protection.total || 0) }}</div>
                                                 </div>
                                             </div>
                                         </div>
@@ -707,34 +814,44 @@ const isStepComplete = (step) => {
 
                                 <!-- Extras Section -->
                                 <div v-if="selectedExtras && Object.keys(selectedExtras).length > 0">
-                                    <h4 class="text-lg font-semibold text-gray-900 mb-4">Additional Extras</h4>
-                                    <div class="space-y-4">
+                                    <h4 class="text-base font-semibold text-gray-900 mb-4">Additional Extras</h4>
+                                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                                         <div
                                             v-for="extra in (selectedExtras ? Object.values(selectedExtras) : [])"
                                             :key="extra.code"
-                                            class="relative flex items-center justify-between p-4 border-2 rounded-xl cursor-pointer transition-all duration-300"
+                                            class="relative p-4 border-2 rounded-xl cursor-pointer transition-all duration-300"
                                             :class="extra.selected
                                                 ? 'border-primary bg-primary/5'
                                                 : 'border-gray-200 hover:border-gray-300'"
                                             @click="extra.selected = !extra.selected; updateExtraQuantity(extra.code, extra.selected ? 1 : 0)">
                                             <div class="flex items-start justify-between w-full">
-                                                <div class="flex items-start space-x-4">
+                                                <div class="flex items-start justify-between w-full mb-3">
+                                                <div class="flex items-start space-x-3">
                                                     <div class="mt-1">
-                                                        <div class="w-5 h-5 rounded-full border-2 flex items-center justify-center"
+                                                        <div class="w-4 h-4 rounded-full border-2 flex items-center justify-center"
                                                              :class="extra.selected
                                                                 ? 'border-primary bg-primary'
                                                                 : 'border-gray-300'">
-                                                            <div v-if="extra.selected" class="w-2 h-2 bg-white rounded-full"></div>
+                                                            <div v-if="extra.selected" class="w-1.5 h-1.5 bg-white rounded-full"></div>
                                                         </div>
                                                     </div>
-                                                    <div>
-                                                        <h4 class="font-semibold text-gray-900">{{ extra.displayName || extra.name || extra.code }}</h4>
-                                                        <p class="text-sm text-gray-600">{{ extra.displayDescription || extra.description }}</p>
+                                                    <div class="flex-1">
+                                                        <h5 class="text-sm font-semibold text-gray-900">{{ extra.displayName || extra.name || extra.code }}</h5>
+                                                        <p class="text-xs text-gray-600 mt-1">
+                                                            <span v-if="!extra.expanded">{{ truncateText(extra.displayDescription || extra.description, 50) }}</span>
+                                                            <span v-else>{{ extra.displayDescription || extra.description }}</span>
+                                                            <button
+                                                                v-if="(extra.displayDescription || extra.description || '').length > 50"
+                                                                @click.stop="extra.expanded = !extra.expanded"
+                                                                class="text-xs text-primary hover:underline ml-1">
+                                                                {{ extra.expanded ? 'Show less' : 'Read more' }}
+                                                            </button>
+                                                        </p>
                                                     </div>
                                                 </div>
                                                 <div class="text-right">
-                                                    <div class="text-lg font-bold text-primary">{{ formatPrice(extra.total || 0) }} each</div>
-                                                    <div v-if="extra.selected" class="mt-2">
+                                                    <div class="text-base font-bold text-primary">{{ formatPrice(extra.total || 0) }} each</div>
+                                                    <div v-if="extra.selected" class="mt-1">
                                                         <input
                                                             type="number"
                                                             :value="extra.quantity"
@@ -742,8 +859,9 @@ const isStepComplete = (step) => {
                                                             @click.stop
                                                             min="0"
                                                             max="10"
-                                                            class="w-16 px-2 py-1 border border-gray-300 rounded text-sm text-center"
+                                                            class="w-16 px-2 py-1 border border-gray-300 rounded text-xs text-center"
                                                         />
+                                                        <p class="text-xs text-gray-500 mt-1">Qty</p>
                                                     </div>
                                                 </div>
                                             </div>
@@ -753,8 +871,9 @@ const isStepComplete = (step) => {
                             </div>
                         </div>
                     </div>
+                </div>
 
-                       <!-- Step 4: Payment - Match GreenMotion Exactly -->
+                 <!-- Step 4: Payment - Match GreenMotion Exactly -->
                     <div v-show="currentStep === 4" class="space-y-8">
                         <div class="bg-white rounded-2xl shadow-sm border border-gray-100">
                             <div class="p-6 border-b bg-gradient-to-r from-gray-50 to-white">
@@ -806,143 +925,141 @@ const isStepComplete = (step) => {
                             </div>
                         </div>
                     </div>
-
-                    <!-- Navigation Buttons - Match GreenMotion -->
-                    <div class="flex justify-between pt-8">
-                        <button v-if="currentStep > 1"
-                                @click="prevStep"
-                                class="inline-flex items-center px-6 py-3 border border-gray-300 text-gray-700 font-medium rounded-lg hover:bg-gray-50 transition-colors">
-                            <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"/>
-                            </svg>
-                            Previous Step
-                        </button>
-                        <div v-else></div>
-
-                        <button v-if="currentStep < 4"
-                                @click="nextStep"
-                                class="inline-flex items-center px-6 py-3 bg-primary text-white font-medium rounded-lg hover:bg-primary-dark transition-colors">
-                            Next Step
-                            <svg class="w-5 h-5 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3"/>
-                            </svg>
-                        </button>
-                    </div>
-                </div>
-
-                <!-- Right Column: Booking Summary - Match GreenMotion Exactly -->
-                <div class="lg:col-span-1">
-                    <!-- Mobile Summary Toggle -->
-                    <button @click="showMobileBookingSummary = !showMobileBookingSummary"
-                            class="lg:hidden w-full mb-4 px-4 py-3 bg-primary text-white font-medium rounded-lg">
-                        <span v-if="!showMobileBookingSummary">Show Booking Summary</span>
-                        <span v-else>Hide Booking Summary</span>
+                <!-- Navigation Buttons - Match GreenMotion -->
+                <div class="flex justify-between pt-8">
+                    <button v-if="currentStep > 1"
+                            @click="prevStep"
+                            class="inline-flex items-center px-6 py-3 border border-gray-300 text-gray-700 font-medium rounded-lg hover:bg-gray-50 transition-colors">
+                        <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"/>
+                        </svg>
+                        Previous Step
                     </button>
+                    <div v-else></div>
+    
+                    <button v-if="currentStep < 4"
+                            @click="nextStep"
+                            class="inline-flex items-center px-6 py-3 bg-primary text-white font-medium rounded-lg hover:bg-primary-dark transition-colors">
+                        Next Step
+                        <svg class="w-5 h-5 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3"/>
+                        </svg>
+                    </button>
+                </div>
+                
+                <!-- Right Column: Booking Summary - Match GreenMotion Exactly -->
+            </div>
+            <div class="lg:col-span-1">
+                <!-- Mobile Summary Toggle -->
+                <button @click="showMobileBookingSummary = !showMobileBookingSummary"
+                        class="lg:hidden w-full mb-4 px-4 py-3 bg-primary text-white font-medium rounded-lg">
+                    <span v-if="!showMobileBookingSummary">Show Booking Summary</span>
+                    <span v-else>Hide Booking Summary</span>
+                </button>
 
-                    <div class="sticky top-4" :class="{ 'hidden lg:block': !showMobileBookingSummary }">
-                        <div class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-                            <div class="p-6 bg-gradient-to-r from-primary to-primary-dark text-white">
-                                <h3 class="text-xl font-bold mb-2">Booking Summary</h3>
-                                <p class="opacity-90">Review your reservation details</p>
+                <div class="sticky top-4" :class="{ 'hidden lg:block': !showMobileBookingSummary }">
+                    <div class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+                        <div class="p-6 bg-gradient-to-r from-primary to-primary-dark text-white">
+                            <h3 class="text-xl font-bold mb-2">Booking Summary</h3>
+                            <p class="opacity-90">Review your reservation details</p>
+                        </div>
+
+                        <div class="p-6">
+                            <!-- Vehicle Info -->
+                            <div class="border-b border-gray-200 pb-6 mb-6">
+                                <div class="flex items-center justify-between mb-4">
+                                    <div>
+                                        <h4 class="font-bold text-gray-900 text-lg">{{ vehicle?.model }}</h4>
+                                        <p class="text-gray-600 text-sm">{{ vehicle?.category?.toUpperCase() }} • Adobe Car Rental</p>
+                                    </div>
+                                    <img :src="vehicle.image || '/images/adobe-placeholder.jpg'"
+                                         :alt="vehicle.model"
+                                         class="w-20 h-20 object-cover rounded-lg" />
+                                </div>
+
+                                <!-- Adobe Vehicle Features -->
+                                <div class="grid grid-cols-3 gap-4 text-center">
+                                    <div>
+                                        <div class="flex items-center justify-center w-8 h-8 bg-gray-100 rounded-full mx-auto mb-1">
+                                            <svg class="w-4 h-4 text-gray-600" fill="currentColor" viewBox="0 0 20 20">
+                                                <path d="M9 6a3 3 0 11-6 0 3 3 0 016 0zM17 6a3 3 0 11-6 0 3 3 0 016 0zM12.93 17c.046-.327.07-.66.07-1a6.97 6.97 0 00-1.5-4.33A5 5 0 0119 16v1h-6.07zM6 11a5 5 0 015 5v1H1v-1a5 5 0 015-5z"/>
+                                            </svg>
+                                        </div>
+                                        <p class="text-sm text-gray-600">{{ vehicle?.passengers || 4 }} Seats</p>
+                                    </div>
+                                    <div>
+                                        <div class="flex items-center justify-center w-8 h-8 bg-gray-100 rounded-full mx-auto mb-1">
+                                            <svg class="w-4 h-4 text-gray-600" fill="currentColor" viewBox="0 0 20 20">
+                                                <path fill-rule="evenodd" d="M2 5a2 2 0 012-2h12a2 2 0 012 2v10a2 2 0 01-2 2H4a2 2 0 01-2-2V5zm3.293 1.293a1 1 0 011.414 0l3 3a1 1 0 010 1.414l-3 3a1 1 0 01-1.414-1.414L7.586 10 5.293 7.707a1 1 0 010-1.414zM11 12a1 1 0 100 2h3a1 1 0 100-2h-3z" clip-rule="evenodd"/>
+                                            </svg>
+                                        </div>
+                                        <p class="text-sm text-gray-600">{{ vehicle?.doors || 4 }} Doors</p>
+                                    </div>
+                                    <div>
+                                        <div class="flex items-center justify-center w-8 h-8 bg-gray-100 rounded-full mx-auto mb-1">
+                                            <svg class="w-4 h-4 text-gray-600" fill="currentColor" viewBox="0 0 20 20">
+                                                <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z" clip-rule="evenodd"/>
+                                            </svg>
+                                        </div>
+                                        <p class="text-sm text-gray-600">{{ vehicle?.transmission || 'Automatic' }}</p>
+                                    </div>
+                                </div>
                             </div>
 
-                            <div class="p-6">
-                                <!-- Vehicle Info -->
-                                <div class="border-b border-gray-200 pb-6 mb-6">
-                                    <div class="flex items-center justify-between mb-4">
-                                        <div>
-                                            <h4 class="font-bold text-gray-900 text-lg">{{ vehicle?.model }}</h4>
-                                            <p class="text-gray-600 text-sm">{{ vehicle?.category?.toUpperCase() }} • Adobe Car Rental</p>
-                                        </div>
-                                        <img :src="vehicle.image || '/images/adobe-placeholder.jpg'"
-                                             :alt="vehicle.model"
-                                             class="w-20 h-20 object-cover rounded-lg" />
-                                    </div>
-
-                                    <!-- Adobe Vehicle Features -->
-                                    <div class="grid grid-cols-3 gap-4 text-center">
-                                        <div>
-                                            <div class="flex items-center justify-center w-8 h-8 bg-gray-100 rounded-full mx-auto mb-1">
-                                                <svg class="w-4 h-4 text-gray-600" fill="currentColor" viewBox="0 0 20 20">
-                                                    <path d="M9 6a3 3 0 11-6 0 3 3 0 016 0zM17 6a3 3 0 11-6 0 3 3 0 016 0zM12.93 17c.046-.327.07-.66.07-1a6.97 6.97 0 00-1.5-4.33A5 5 0 0119 16v1h-6.07zM6 11a5 5 0 015 5v1H1v-1a5 5 0 015-5z"/>
-                                                </svg>
-                                            </div>
-                                            <p class="text-sm text-gray-600">{{ vehicle?.passengers || 4 }} Seats</p>
-                                        </div>
-                                        <div>
-                                            <div class="flex items-center justify-center w-8 h-8 bg-gray-100 rounded-full mx-auto mb-1">
-                                                <svg class="w-4 h-4 text-gray-600" fill="currentColor" viewBox="0 0 20 20">
-                                                    <path fill-rule="evenodd" d="M2 5a2 2 0 012-2h12a2 2 0 012 2v10a2 2 0 01-2 2H4a2 2 0 01-2-2V5zm3.293 1.293a1 1 0 011.414 0l3 3a1 1 0 010 1.414l-3 3a1 1 0 01-1.414-1.414L7.586 10 5.293 7.707a1 1 0 010-1.414zM11 12a1 1 0 100 2h3a1 1 0 100-2h-3z" clip-rule="evenodd"/>
-                                                </svg>
-                                            </div>
-                                            <p class="text-sm text-gray-600">{{ vehicle?.doors || 4 }} Doors</p>
-                                        </div>
-                                        <div>
-                                            <div class="flex items-center justify-center w-8 h-8 bg-gray-100 rounded-full mx-auto mb-1">
-                                                <svg class="w-4 h-4 text-gray-600" fill="currentColor" viewBox="0 0 20 20">
-                                                    <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z" clip-rule="evenodd"/>
-                                                </svg>
-                                            </div>
-                                            <p class="text-sm text-gray-600">{{ vehicle?.transmission || 'Automatic' }}</p>
-                                        </div>
+                            <!-- Rental Details -->
+                            <div class="space-y-4 mb-6">
+                                <div class="flex justify-between items-center py-3 border-b border-gray-100">
+                                    <span class="text-gray-600">Pickup</span>
+                                    <div class="text-right">
+                                        <p class="font-medium text-gray-900">{{ searchParams.date_from }} {{ searchParams.time_from }}</p>
+                                        <p class="text-sm text-gray-500">{{ searchParams.pickup_location_id }}</p>
                                     </div>
                                 </div>
-
-                                <!-- Rental Details -->
-                                <div class="space-y-4 mb-6">
-                                    <div class="flex justify-between items-center py-3 border-b border-gray-100">
-                                        <span class="text-gray-600">Pickup</span>
-                                        <div class="text-right">
-                                            <p class="font-medium text-gray-900">{{ searchParams.date_from }} {{ searchParams.time_from }}</p>
-                                            <p class="text-sm text-gray-500">{{ searchParams.pickup_location_id }}</p>
-                                        </div>
-                                    </div>
-                                    <div class="flex justify-between items-center py-3 border-b border-gray-100">
-                                        <span class="text-gray-600">Dropoff</span>
-                                        <div class="text-right">
-                                            <p class="font-medium text-gray-900">{{ searchParams.date_to }} {{ searchParams.time_to }}</p>
-                                            <p class="text-sm text-gray-500">{{ searchParams.dropoff_location_id || searchParams.pickup_location_id }}</p>
-                                        </div>
+                                <div class="flex justify-between items-center py-3 border-b border-gray-100">
+                                    <span class="text-gray-600">Dropoff</span>
+                                    <div class="text-right">
+                                        <p class="font-medium text-gray-900">{{ searchParams.date_to }} {{ searchParams.time_to }}</p>
+                                        <p class="text-sm text-gray-500">{{ searchParams.dropoff_location_id || searchParams.pickup_location_id }}</p>
                                     </div>
                                 </div>
+                            </div>
 
-                                <!-- Pricing Breakdown -->
-                                <div class="space-y-3 mb-6">
-                                    <div class="flex justify-between">
-                                        <span class="text-gray-600">Base Rate ({{ rentalDuration }} days)</span>
-                                        <span class="font-medium">{{ formatPrice((vehicle.tdr || vehicle.price_per_day) * rentalDuration) }}</span>
-                                    </div>
-                                    <div v-for="item in pricingBreakdown" :key="item.label" class="flex justify-between">
-                                        <span class="text-gray-600">{{ item.label }}</span>
-                                        <span class="font-medium">{{ formatPrice(item.amount) }}</span>
-                                    </div>
+                            <!-- Pricing Breakdown -->
+                            <div class="space-y-3 mb-6">
+                                <div class="flex justify-between">
+                                    <span class="text-gray-600">Base Rate ({{ rentalDuration }} days)</span>
+                                    <span class="font-medium">{{ formatPrice((vehicle.tdr || vehicle.price_per_day) * rentalDuration) }}</span>
                                 </div>
+                                <div v-for="item in pricingBreakdown" :key="item.label" class="flex justify-between">
+                                    <span class="text-gray-600">{{ item.label }}</span>
+                                    <span class="font-medium">{{ formatPrice(item.amount) }}</span>
+                                </div>
+                            </div>
 
-                                <!-- Total -->
-                                <div class="border-t-2 border-gray-200 pt-4">
-                                    <div class="flex justify-between items-center">
-                                        <span class="text-xl font-bold text-gray-900">Total</span>
-                                        <span class="text-2xl font-bold text-primary">{{ formatPrice(calculateTotal) }}</span>
-                                    </div>
+                            <!-- Total -->
+                            <div class="border-t-2 border-gray-200 pt-4">
+                                <div class="flex justify-between items-center">
+                                    <span class="text-xl font-bold text-gray-900">Total</span>
+                                    <span class="text-2xl font-bold text-primary">{{ formatPrice(calculateTotal) }}</span>
                                 </div>
                             </div>
                         </div>
+                    </div>
 
-                        <!-- Trust Badges -->
-                        <div class="mt-6 bg-white rounded-2xl shadow-sm border border-gray-100 p-4">
-                            <div class="flex items-center justify-center space-x-6 text-gray-600">
-                                <div class="flex items-center text-sm">
-                                    <svg class="w-5 h-5 mr-2 text-green-500" fill="currentColor" viewBox="0 0 20 20">
-                                        <path fill-rule="evenodd" d="M2.166 4.999A11.954 11.954 0 0010 1.944 11.954 11.954 0 0017.834 5c.11.65.166 1.32.166 2.001 0 5.225-3.34 9.67-8 11.317C5.34 16.67 2 12.225 2 7c0-.682.057-1.35.166-2.001zm11.541 3.708a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/>
-                                    </svg>
-                                    Secure Payment
-                                </div>
-                                <div class="flex items-center text-sm">
-                                    <svg class="w-5 h-5 mr-2 text-green-500" fill="currentColor" viewBox="0 0 20 20">
-                                        <path d="M10.394 2.08a1 1 0 00-.788 0l-7 3a1 1 0 000 1.84L5.25 8.051a.999.999 0 01.356-.257l4-1.714a1 1 0 11.788 1.838L7.667 9.088l1.94.831a1 1 0 00.787 0l7-3a1 1 0 000-1.838l-7-3zM3.31 9.397L5 10.12v4.102a8.969 8.969 0 00-1.05-.174 1 1 0 01-.89-.89 11.115 11.115 0 01.25-3.762zM9.3 16.573A9.026 9.026 0 007 14.935v-3.957l1.818.78a3 3 0 002.364 0l5.508-2.361a11.026 11.026 0 01.25 3.762 1 1 0 01-.89.89 8.968 8.968 0 00-5.35 2.524 1 1 0 01-1.4 0zM6 18a1 1 0 001-1v-2.065a8.935 8.935 0 00-2-.712V17a1 1 0 001 1z"/>
-                                    </svg>
-                                    Insurance Included
-                                </div>
+                    <!-- Trust Badges -->
+                    <div class="mt-6 bg-white rounded-2xl shadow-sm border border-gray-100 p-4">
+                        <div class="flex items-center justify-center space-x-6 text-gray-600">
+                            <div class="flex items-center text-sm">
+                                <svg class="w-5 h-5 mr-2 text-green-500" fill="currentColor" viewBox="0 0 20 20">
+                                    <path fill-rule="evenodd" d="M2.166 4.999A11.954 11.954 0 0010 1.944 11.954 11.954 0 0017.834 5c.11.65.166 1.32.166 2.001 0 5.225-3.34 9.67-8 11.317C5.34 16.67 2 12.225 2 7c0-.682.057-1.35.166-2.001zm11.541 3.708a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/>
+                                </svg>
+                                Secure Payment
+                            </div>
+                            <div class="flex items-center text-sm">
+                                <svg class="w-5 h-5 mr-2 text-green-500" fill="currentColor" viewBox="0 0 20 20">
+                                    <path d="M10.394 2.08a1 1 0 00-.788 0l-7 3a1 1 0 000 1.84L5.25 8.051a.999.999 0 01.356-.257l4-1.714a1 1 0 11.788 1.838L7.667 9.088l1.94.831a1 1 0 00.787 0l7-3a1 1 0 000-1.838l-7-3zM3.31 9.397L5 10.12v4.102a8.969 8.969 0 00-1.05-.174 1 1 0 01-.89-.89 11.115 11.115 0 01.25-3.762zM9.3 16.573A9.026 9.026 0 007 14.935v-3.957l1.818.78a3 3 0 002.364 0l5.508-2.361a11.026 11.026 0 01.25 3.762 1 1 0 01-.89.89 8.968 8.968 0 00-5.35 2.524 1 1 0 01-1.4 0zM6 18a1 1 0 001-1v-2.065a8.935 8.935 0 00-2-.712V17a1 1 0 001 1z"/>
+                                </svg>
+                                Insurance Included
                             </div>
                         </div>
                     </div>
@@ -961,7 +1078,7 @@ const isStepComplete = (step) => {
     margin: 0 auto;
 }
 
-@media (min-width: 768px) {
+@media (max-width: 768px) {
     .container {
         padding: 0 2rem;
     }
