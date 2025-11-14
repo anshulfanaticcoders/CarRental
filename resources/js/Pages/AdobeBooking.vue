@@ -222,18 +222,18 @@ watch([selectedProtections, selectedExtras], () => {
 
 // Initialize protections and extras
 onMounted(() => {
-    // Initialize protections
+    // Initialize protections - Adobe business logic: required items are pre-selected by backend
     if (props.vehicle.protections) {
         props.vehicle.protections.forEach(protection => {
             if (protection.type === 'Proteccion') {
                 selectedProtections.value[protection.code] = {
                     ...protection,
-                    selected: protection.required || false,
                     quantity: 1
                 };
 
-                // Auto-select required protections
-                if (protection.required) {
+                // Use the selected property from backend (based on Adobe business logic)
+                // Required items like PLI will have selected=true, optional items like LDW will have selected=false
+                if (protection.selected) {
                     formData.value[`${protection.code.toLowerCase()}_total`] = protection.total || 0;
                 }
             }
@@ -246,8 +246,7 @@ onMounted(() => {
             if (extra.type !== 'Proteccion') {
                 selectedExtras.value[extra.code] = {
                     ...extra,
-                    selected: false,
-                    quantity: 0
+                    quantity: extra.selected ? 1 : 0  // Start with quantity 1 if selected, 0 if not
                 };
             }
         });
@@ -312,15 +311,17 @@ const goToStep = (step) => {
 const toggleProtection = (protectionCode) => {
     const protection = selectedProtections.value[protectionCode];
     if (protection) {
+        // Adobe business logic: required items cannot be deselected
+        if (protection.required) {
+            // Required protections (like PLI) cannot be toggled off
+            return;
+        }
+
+        // Only allow toggling optional protections (like LDW, SPP)
         protection.selected = !protection.selected;
 
-        // Update pricing
-        if (protection.required) {
-            // Required protections are always included
-            formData.value[`${protectionCode.toLowerCase()}_total`] = protection.total || 0;
-        } else {
-            formData.value[`${protectionCode.toLowerCase()}_total`] = protection.selected ? (protection.total || 0) : 0;
-        }
+        // Update pricing for optional protections only
+        formData.value[`${protectionCode.toLowerCase()}_total`] = protection.selected ? (protection.total || 0) : 0;
     }
 };
 
@@ -667,13 +668,20 @@ const isStepComplete = (step) => {
                                         <div
                                             v-for="protection in Object.values(selectedProtections)"
                                             :key="protection.code"
-                                            class="relative flex items-center justify-between p-4 border-2 rounded-xl cursor-pointer transition-all duration-300"
-                                            :class="protection.selected
-                                                ? 'border-primary bg-primary/5'
-                                                : 'border-gray-200 hover:border-gray-300'"
+                                            class="relative flex items-center justify-between p-4 border-2 rounded-xl transition-all duration-300"
+                                            :class="{
+                                                'border-primary bg-primary/5': protection.selected,
+                                                'border-gray-200 hover:border-gray-300': !protection.selected && !protection.required,
+                                                'border-green-200 bg-green-50': protection.selected && protection.required,
+                                                'cursor-pointer': !protection.required,
+                                                'cursor-not-allowed opacity-90': protection.required
+                                            }"
                                             @click="!protection.required && toggleProtection(protection.code)">
                                             <div v-if="protection.required" class="absolute top-0 right-0 bg-red-500 text-white text-xs font-bold px-2 py-1 rounded-bl-lg rounded-tr-lg z-10">
                                                 Required
+                                            </div>
+                                            <div v-else-if="protection.selected" class="absolute top-0 right-0 bg-green-500 text-white text-xs font-bold px-2 py-1 rounded-bl-lg rounded-tr-lg z-10">
+                                                Selected
                                             </div>
                                             <div class="flex items-start justify-between w-full">
                                                 <div class="flex items-start space-x-4">

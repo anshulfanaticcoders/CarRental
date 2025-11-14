@@ -243,32 +243,73 @@ class AdobeCarService
             logger()->info('Adobe API: GetCategoryWithFare successful');
             $data = $response->json();
 
+            // Log the complete API response for debugging
+            logger()->info('Adobe API: Complete GetCategoryWithFare response', [
+                'status' => $response->status(),
+                'data_structure' => $data,
+                'items_count' => isset($data['items']) ? count($data['items']) : 0
+            ]);
+
             if (isset($data['items']) && is_array($data['items'])) {
                 $protections = [];
                 $extras = [];
 
-                foreach ($data['items'] as $item) {
+                foreach ($data['items'] as $index => $item) {
+                    // Log each item to understand the structure
+                    logger()->info("Adobe API: Item {$index}", [
+                        'type' => $item['type'] ?? 'unknown',
+                        'code' => $item['code'] ?? 'no_code',
+                        'name' => $item['name'] ?? 'no_name',
+                        'included' => $item['included'] ?? false,
+                        'required' => $item['required'] ?? false,
+                        'total' => $item['total'] ?? 0,
+                        'full_item' => $item
+                    ]);
+
                     // Adobe items have 'type' field - separate protections from extras
                     // 'Proteccion' = Protections, 'Adicionales' = Extras/Add-ons, 'BaseRate' = Base Rate
                     if (isset($item['type']) && ($item['type'] === 'Proteccion' || $item['type'] === 'protection')) {
-                        // Add additional fields for better display
+                        // Add Adobe-specific fields
                         $item['displayName'] = $item['name'] ?? $item['code'] ?? 'Protection';
                         $item['displayDescription'] = $item['description'] ?? '';
                         $item['price'] = $item['total'] ?? 0;
+                        $item['included'] = $item['included'] ?? false;
                         $item['required'] = $item['required'] ?? false;
+
+                        // Adobe business logic:
+                        // - required=true items MUST be selected (like PLI - Liability Protection)
+                        // - required=false items are optional (like LDW, SPP)
+                        // - included=true items (if any exist) are pre-selected and can't be deselected
+                        $item['selected'] = ($item['required'] ?? false);
+
                         $protections[] = $item;
                     } elseif (isset($item['type']) && ($item['type'] === 'Adicionales' || $item['type'] === 'BaseRate')) {
                         // Skip BaseRate as it's already handled in the main vehicle data
                         if ($item['type'] !== 'BaseRate') {
-                            // Add additional fields for better display
+                            // Add Adobe-specific fields
                             $item['displayName'] = $item['name'] ?? $item['code'] ?? 'Extra';
                             $item['displayDescription'] = $item['description'] ?? '';
                             $item['price'] = $item['total'] ?? 0;
+                            $item['included'] = $item['included'] ?? false;
                             $item['required'] = $item['required'] ?? false;
+
+                            // Adobe business logic for extras:
+                            // - Most extras are optional (required=false)
+                            // - If any extra is required, auto-select it
+                            // - If any extra is included, auto-select it and make it non-optional
+                            $item['selected'] = ($item['required'] ?? false);
+
                             $extras[] = $item;
                         }
                     }
                 }
+
+                logger()->info('Adobe API: Processed protections and extras', [
+                    'protections_count' => count($protections),
+                    'extras_count' => count($extras),
+                    'protections' => $protections,
+                    'extras' => $extras
+                ]);
 
                 return [
                     'protections' => $protections,
