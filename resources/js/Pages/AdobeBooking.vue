@@ -228,6 +228,7 @@ onMounted(() => {
         formData.value.customer.phone = props.auth.user.phone || '';
         formData.value.customer.address = props.auth.user.address || '';
         formData.value.customer.city = props.auth.user.city || '';
+        formData.value.customer.postcode = props.auth.user.postcode || '';
         formData.value.customer.country = props.auth.user.country || '';
     }
 
@@ -254,11 +255,29 @@ const validateStep = (step) => {
             return true; // Already validated from search params
 
         case 2: // Customer information
-            return formData.value.customer.name.trim() &&
-                   formData.value.customer.last_name.trim() &&
-                   formData.value.customer.email.trim() &&
-                   formData.value.customer.phone.trim() &&
-                   formData.value.customer.country.trim();
+            const customer = formData.value.customer;
+            console.log('Debug - Customer data:', {
+                name: customer.name?.trim(),
+                last_name: customer.last_name?.trim(),
+                email: customer.email?.trim(),
+                phone: customer.phone?.trim(),
+                address: customer.address?.trim(),
+                city: customer.city?.trim(),
+                postcode: customer.postcode?.trim(),
+                country: customer.country?.trim()
+            });
+
+            const isValid = customer.name.trim() &&
+                           customer.last_name.trim() &&
+                           customer.email.trim() &&
+                           customer.phone.trim() &&
+                           customer.address.trim() &&
+                           customer.city.trim() &&
+                           customer.postcode.trim() &&  // Added postcode validation
+                           customer.country.trim();
+
+            console.log('Debug - Validation result:', isValid);
+            return isValid;
 
         case 3: // Protections and extras
             return true; // Protections are handled by logic
