@@ -128,80 +128,45 @@ const formData = ref({
     reference: '',
     flight_number: '',
     language: 'en',
-    // Adobe-specific pricing
-    tdr_total: props.vehicle.tdr || 0,
-    pli_total: props.vehicle.pli || 0,
-    ldw_total: 0,
-    spp_total: 0,
-    dro_total: 0,
-    base_rate: props.vehicle.base_rate || props.vehicle.tdr || 0,
-    vehicle_total: props.vehicle.price_per_day || 0,
+    // Pricing will be calculated from API data only
+    base_rate: 0,
+    vehicle_total: 0,
     grand_total: 0,
 });
 
-// Computed pricing
+// Computed pricing - Use ONLY API data, no hardcoded values
 const pricingBreakdown = computed(() => {
-    const items = [
-        {
+    const items = [];
+
+    // Always include TDR (base rate) from API
+    if (props.vehicle.tdr > 0) {
+        items.push({
             label: 'Time & Distance Rate',
-            amount: formData.value.tdr_total,
+            amount: props.vehicle.tdr,
             description: 'Base rental charge',
             required: true
-        },
-        {
-            label: 'Liability Protection (PLI)',
-            amount: formData.value.pli_total,
-            description: 'Third-party liability insurance',
-            required: true
-        }
-    ];
-
-    if (formData.value.ldw_total > 0) {
-        items.push({
-            label: 'Loss Damage Waiver (LDW)',
-            amount: formData.value.ldw_total,
-            description: 'Vehicle damage protection',
-            required: false
         });
     }
 
-    if (formData.value.spp_total > 0) {
-        items.push({
-            label: 'Super Protection (SPP)',
-            amount: formData.value.spp_total,
-            description: 'Comprehensive coverage',
-            required: false
-        });
-    }
-
-    if (formData.value.dro_total > 0) {
-        items.push({
-            label: 'Drop-off Fee (DRO)',
-            amount: formData.value.dro_total,
-            description: 'Different location drop-off',
-            required: false
-        });
-    }
-
-    // Add selected protections
+    // Add selected protections from API data ONLY
     Object.values(selectedProtections.value).forEach(protection => {
         if (protection.selected) {
             items.push({
-                label: protection.name || protection.code,
+                label: protection.displayName || protection.name || protection.code,
                 amount: protection.total || 0,
-                description: protection.description || '',
+                description: protection.displayDescription || protection.description || '',
                 required: protection.required || false
             });
         }
     });
 
-    // Add selected extras
+    // Add selected extras from API data ONLY
     Object.values(selectedExtras.value).forEach(extra => {
         if (extra.selected && extra.quantity > 0) {
             items.push({
-                label: extra.name || extra.code,
+                label: extra.displayName || extra.name || extra.code,
                 amount: (extra.total || 0) * extra.quantity,
-                description: extra.description || '',
+                description: extra.displayDescription || extra.description || '',
                 required: false
             });
         }
@@ -233,9 +198,7 @@ onMounted(() => {
 
                 // Use the selected property from backend (based on Adobe business logic)
                 // Required items like PLI will have selected=true, optional items like LDW will have selected=false
-                if (protection.selected) {
-                    formData.value[`${protection.code.toLowerCase()}_total`] = protection.total || 0;
-                }
+                // Pricing is now calculated dynamically, no need to set individual totals
             }
         });
     }
@@ -255,6 +218,9 @@ onMounted(() => {
     // Calculate initial total
     formData.value.grand_total = calculateTotal.value;
     formData.value.vehicle_total = calculateTotal.value;
+
+    // Fetch exchange rates for currency conversion
+    fetchExchangeRates();
 });
 
 // Adobe rental duration calculation
@@ -320,8 +286,7 @@ const toggleProtection = (protectionCode) => {
         // Only allow toggling optional protections (like LDW, SPP)
         protection.selected = !protection.selected;
 
-        // Update pricing for optional protections only
-        formData.value[`${protectionCode.toLowerCase()}_total`] = protection.selected ? (protection.total || 0) : 0;
+        // Pricing is now calculated dynamically from selected items, no need to update individual totals
     }
 };
 
@@ -504,16 +469,13 @@ const isStepComplete = (step) => {
                                         </div>
                                         <div class="space-y-2">
                                             <div class="flex justify-between">
-                                                <span class="text-gray-600">Total Price</span>
-                                                <span class="font-semibold">{{ formatPrice((vehicle.tdr || vehicle.price_per_day) * rentalDuration) }}</span>
+                                                <span class="text-gray-600">Base Rate</span>
+                                                <span class="font-semibold">{{ formatPrice(vehicle.tdr || 0) }}</span>
                                             </div>
-                                            <div class="flex justify-between">
-                                                <span class="text-gray-600">Liability Protection</span>
-                                                <span class="font-semibold">Included</span>
-                                            </div>
-                                            <div class="flex justify-between">
-                                                <span class="text-gray-600">Basic Coverage</span>
-                                                <span class="font-semibold">Included</span>
+                                            <!-- Show only selected protections from API data -->
+                                            <div v-for="protection in Object.values(selectedProtections)" v-if="protection.selected" :key="protection.code" class="flex justify-between">
+                                                <span class="text-gray-600">{{ protection.displayName || protection.name || protection.code }}</span>
+                                                <span class="font-semibold">{{ formatPrice(protection.total || 0) }}</span>
                                             </div>
                                         </div>
                                     </div>
