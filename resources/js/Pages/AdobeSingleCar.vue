@@ -10,39 +10,26 @@ import 'leaflet/dist/leaflet.css';
 import markerIcon2x from 'leaflet/dist/images/marker-icon-2x.png';
 import markerIcon from 'leaflet/dist/images/marker-icon.png';
 import markerShadow from 'leaflet/dist/images/marker-shadow.png';
-import Clock from '../../assets/clock.svg';
 
 // Icons
 import doorIcon from "../../assets/door.svg";
-import luggageIcon from "../../assets/luggage.svg";
 import fuelIcon from "../../assets/fuel.svg";
 import transmisionIcon from "../../assets/transmision.svg";
 import peopleIcon from "../../assets/people.svg";
-import carbonIcon from "../../assets/carbon-emmision.svg";
 import MapPin from "../../assets/MapPin.svg";
-import fullStar from "../../assets/fullstar.svg";
-import halfStar from "../../assets/halfstar.svg";
 import carguaranteeIcon from "../../assets/carguarantee.png";
 import locationPinIcon from "../../assets/locationPin.svg";
 import ShareIcon from "../../assets/ShareNetwork.svg";
-import Heart from "../../assets/Heart.svg";
-import FilledHeart from "../../assets/FilledHeart.svg";
 import pickupLocationIcon from "../../assets/pickupLocationIcon.svg";
-import returnLocationIcon from "../../assets/returnLocationIcon.svg";
 import partnersIcon from "../../assets/partners.svg";
 import offerIcon from "../../assets/percentage-tag.svg";
 
 // UI components
-import { Skeleton } from '@/Components/ui/skeleton';
-import '@vuepic/vue-datepicker/dist/main.css';
 import VueDatepicker from '@vuepic/vue-datepicker';
 import { useToast } from 'vue-toastification';
-import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious } from "@/Components/ui/carousel";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/Components/ui/dialog";
 import Card from "@/Components/ui/card/Card.vue";
 import CardContent from "@/Components/ui/card/CardContent.vue";
-import CardHeader from "@/Components/ui/card/CardHeader.vue";
-import CardTitle from "@/Components/ui/card/CardTitle.vue";
 import { ChevronRight, ImageIcon, ZoomIn } from 'lucide-vue-next';
 import { Alert, AlertDescription } from '@/Components/ui/alert';
 import { Button } from "@/Components/ui/button";
@@ -67,16 +54,9 @@ const props = defineProps({
 const page = usePage();
 const toast = useToast();
 const map = ref(null);
-const mapContainer = ref(null);
+const mapContainerRef = ref(null);
 const isLoading = ref(false);
-const currentImageIndex = ref(0);
-const selectedImageIndex = ref(0);
-
-// Adobe-specific vehicle images (usually just one main image)
-const vehicleImages = computed(() => {
-    const images = [props.vehicle?.image];
-    return images.filter(img => img && img.trim() !== '');
-});
+const imageError = ref(false);
 
 // SEO Meta
 const seoTitle = computed(() => {
@@ -88,30 +68,25 @@ const seoTitle = computed(() => {
 const seoDescription = computed(() => {
     const vehicleName = props.vehicle?.model || 'Adobe Vehicle';
     const features = [];
-    if (props.vehicle?.seating_capacity) features.push(`${props.vehicle.seating_capacity} seats`);
-    if (props.vehicle?.transmission) features.push(props.vehicle.transmission);
-    if (props.vehicle?.mileage === 'unlimited') features.push('unlimited mileage');
+    if (props.vehicle?.passengers) features.push(`${props.vehicle.passengers} seats`);
+    if (props.vehicle?.type) features.push(props.vehicle.type);
+    if (props.vehicle?.traction) features.push(props.vehicle.traction + ' drive');
 
     return `Rent ${vehicleName} from Adobe Car Rental. Features include ${features.join(', ')}. Best rates guaranteed.`;
 });
 
 const seoKeywords = computed(() => {
-    return `${props.vehicle?.brand}, ${props.vehicle?.model}, Adobe car rental, ${props.locationInfo?.label}, rent car, vehicle hire`;
+    return `${props.vehicle?.brand || 'Adobe'}, ${props.vehicle?.model || 'Vehicle'}, Adobe car rental, ${props.locationInfo?.label || 'Costa Rica'}, rent car, vehicle hire`;
 });
 
 const currentUrl = computed(() => page.props.ziggy?.location || window.location.href);
-const seoImageUrl = computed(() => props.vehicle?.image || '/images/adobe-placeholder.jpg');
 const canonicalUrl = computed(() => currentUrl.value);
-
-// Provider information
-const providerName = ref('Adobe Car Rental');
-const providerLogoText = ref('ACR');
 
 // Map initialization
 onMounted(() => {
     if (props.locationInfo?.latitude && props.locationInfo?.longitude) {
         nextTick(() => {
-            initializeMap();
+            initMap();
         });
     }
 });
@@ -123,171 +98,79 @@ onBeforeUnmount(() => {
     }
 });
 
-const initializeMap = () => {
-    if (!mapContainer.value) return;
-
-    try {
-        // Fix for default Leaflet icons
-        delete L.Icon.Default.prototype._getIconUrl;
-        L.Icon.Default.mergeOptions({
-            iconRetinaUrl: markerIcon2x,
-            iconUrl: markerIcon,
-            shadowUrl: markerShadow,
-        });
-
-        map.value = L.map(mapContainer.value).setView([
-            props.locationInfo.latitude,
-            props.locationInfo.longitude
-        ], 13);
-
-        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-            attribution: '© OpenStreetMap contributors'
-        }).addTo(map.value);
-
-        L.marker([props.locationInfo.latitude, props.locationInfo.longitude])
-            .addTo(map.value)
-            .bindPopup(props.locationInfo.label || 'Adobe Location')
-            .openPopup();
-    } catch (error) {
-        console.error('Error initializing map:', error);
+const initMap = () => {
+    if (!props.locationInfo?.latitude || !props.locationInfo?.longitude || !mapContainerRef.value) {
+        console.warn('Map initialization skipped: Missing location data or map container not ready.');
+        return;
     }
+
+    if (map.value) {
+        map.value.remove();
+    }
+
+    delete L.Icon.Default.prototype._getIconUrl;
+    L.Icon.Default.mergeOptions({
+        iconRetinaUrl: markerIcon2x,
+        iconUrl: markerIcon,
+        shadowUrl: markerShadow,
+    });
+
+    map.value = L.map(mapContainerRef.value, {
+        zoomControl: true,
+        maxZoom: 18,
+        minZoom: 4,
+        preferCanvas: true
+    }).setView([parseFloat(props.locationInfo.latitude), parseFloat(props.locationInfo.longitude)], 15);
+
+    const osmLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '© OpenStreetMap contributors',
+        maxZoom: 19,
+        detectRetina: true
+    }).addTo(map.value);
+
+    const createColoredIcon = (color) => {
+        return L.divIcon({
+            className: 'custom-div-icon',
+            html: `
+                <div class="marker-pin" style="filter: drop-shadow(0 4px 3px rgba(0,0,0,0.2));">
+                    <svg width="40" height="40" viewBox="0 0 24 24" fill="${color}" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/>
+                    </svg>
+                </div>
+            `,
+            iconSize: [40, 40],
+            iconAnchor: [20, 40],
+            popupAnchor: [0, -40]
+        });
+    };
+
+    const pickupIcon = createColoredIcon('#22c55e'); // Green
+
+    const pickupLatLng = [parseFloat(props.locationInfo.latitude), parseFloat(props.locationInfo.longitude)];
+
+    L.marker(pickupLatLng, { icon: pickupIcon })
+        .bindPopup(`
+            <div class="text-center">
+                <p class="font-semibold">Pickup: ${props.locationInfo.label}</p>
+                <p>${props.locationInfo.address || 'Adobe Car Rental Location'}</p>
+            </div>
+        `)
+        .addTo(map.value);
+
+    setTimeout(() => {
+        map.value.invalidateSize();
+    }, 100);
 };
 
-// Vehicle specifications
-const vehicleSpecs = computed(() => {
-    const specs = [];
-
-    if (props.vehicle?.seating_capacity) {
-        specs.push({
-            icon: peopleIcon,
-            label: 'Passengers',
-            value: props.vehicle.seating_capacity
-        });
-    }
-
-    if (props.vehicle?.benefits?.doors) {
-        specs.push({
-            icon: doorIcon,
-            label: 'Doors',
-            value: props.vehicle.benefits.doors
-        });
-    }
-
-    if (props.vehicle?.transmission) {
-        specs.push({
-            icon: transmisionIcon,
-            label: 'Transmission',
-            value: props.vehicle.transmission
-        });
-    }
-
-    if (props.vehicle?.fuel) {
-        specs.push({
-            icon: fuelIcon,
-            label: 'Fuel',
-            value: props.vehicle.fuel
-        });
-    }
-
-    if (props.vehicle?.benefits?.vehicle_type) {
-        specs.push({
-            icon: carIcon,
-            label: 'Type',
-            value: props.vehicle.benefits.vehicle_type
-        });
-    }
-
-    return specs;
-});
-
-// Adobe benefits and features
-const vehicleBenefits = computed(() => {
-    const benefits = [];
-
-    if (props.vehicle?.mileage === 'unlimited') {
-        benefits.push({
-            icon: mileageIcon,
-            title: 'Unlimited Mileage',
-            description: 'Drive without distance restrictions'
-        });
-    }
-
-    if (props.vehicle?.benefits?.cancellation_available_per_day) {
-        benefits.push({
-            icon: Clock,
-            title: 'Flexible Cancellation',
-            description: 'Free cancellation up to 24 hours before pickup'
-        });
-    }
-
-    if (props.vehicle?.benefits?.fuel_policy) {
-        benefits.push({
-            icon: fuelIcon,
-            title: 'Fuel Policy',
-            description: props.vehicle.benefits.fuel_policy.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase())
-        });
-    }
-
-    if (props.vehicle?.benefits?.minimum_driver_age) {
-        benefits.push({
-            icon: carguaranteeIcon,
-            title: 'Driver Requirements',
-            description: `Minimum age: ${props.vehicle.benefits.minimum_driver_age} years`
-        });
-    }
-
-    return benefits;
-});
-
-// Pricing information
-const pricingInfo = computed(() => {
-    const pricing = [];
-
-    if (props.vehicle?.tdr) {
-        pricing.push({
-            label: 'Time & Distance Rate',
-            amount: props.vehicle.tdr,
-            description: 'Base rental charge'
-        });
-    }
-
-    if (props.vehicle?.pli) {
-        pricing.push({
-            label: 'Liability Protection (PLI)',
-            amount: props.vehicle.pli,
-            description: 'Third-party liability insurance'
-        });
-    }
-
-    if (props.vehicle?.ldw) {
-        pricing.push({
-            label: 'Loss Damage Waiver (LDW)',
-            amount: props.vehicle.ldw,
-            description: 'Vehicle damage protection',
-            optional: true
-        });
-    }
-
-    if (props.vehicle?.spp) {
-        pricing.push({
-            label: 'Super Protection (SPP)',
-            amount: props.vehicle.spp,
-            description: 'Comprehensive coverage',
-            optional: true
-        });
-    }
-
-    return pricing;
-});
-
-// Protections and extras
-const availableProtections = computed(() => {
-    return props.vehicle?.protections?.filter(p => p.type === 'Proteccion') || [];
-});
-
-const availableExtras = computed(() => {
-    return props.vehicle?.extras?.filter(e => e.type !== 'Proteccion') || [];
-});
+// Format currency
+const formatCurrency = (amount) => {
+    if (!amount) return '$0.00';
+    const numAmount = parseFloat(amount);
+    return new Intl.NumberFormat('en-US', {
+        style: 'currency',
+        currency: 'USD'
+    }).format(numAmount);
+};
 
 // Navigation methods
 const startBooking = () => {
@@ -298,7 +181,7 @@ const startBooking = () => {
         ...props.searchParams
     });
 
-    const route = router.visit(route('adobe-booking.create', {
+    router.visit(route('adobe-booking.create', {
         locale: props.locale,
         id: props.vehicle.id
     }), {
@@ -314,327 +197,497 @@ const startBooking = () => {
     });
 };
 
-const imageLightboxOpen = ref(false);
-const currentLightboxImage = ref(null);
-
-const openImageLightbox = (imageUrl) => {
-    currentLightboxImage.value = imageUrl;
-    imageLightboxOpen.value = true;
-};
-
-const closeImageLightbox = () => {
-    imageLightboxOpen.value = false;
-    currentLightboxImage.value = null;
-};
-
-// Format currency
-const formatCurrency = (amount) => {
-    const formattedAmount = selectedCurrency.value ?
-        convertCurrency(amount, 'USD', selectedCurrency.value) : amount;
-
-    return new Intl.NumberFormat('en-US', {
-        style: 'currency',
-        currency: selectedCurrency.value || 'USD'
-    }).format(formattedAmount);
-};
-
-const convertCurrency = (amount, fromCurrency, toCurrency) => {
-    // This would integrate with your currency conversion service
-    // For now, return the original amount
-    return amount;
-};
-
 // Share functionality
 const shareVehicle = async () => {
     try {
+        const shareData = {
+            title: seoTitle.value,
+            text: `Check out this Adobe vehicle: ${props.vehicle?.model}!`,
+            url: currentUrl.value,
+        };
+
         if (navigator.share) {
-            await navigator.share({
-                title: seoTitle.value,
-                text: seoDescription.value,
-                url: currentUrl.value,
-            });
+            await navigator.share(shareData);
         } else {
-            // Fallback: copy to clipboard
-            await navigator.clipboard.writeText(currentUrl.value);
-            toast.success('Link copied to clipboard!');
+            const shareText = `${shareData.text}\n${shareData.url}`;
+            if (navigator.clipboard?.writeText) {
+                await navigator.clipboard.writeText(shareText);
+                toast.success('Link copied to clipboard!');
+            } else {
+                window.prompt('Copy this link:', shareData.url);
+            }
         }
     } catch (error) {
         console.error('Error sharing:', error);
-        toast.error('Unable to share vehicle');
+        if (error.name !== 'AbortError') {
+            toast.error('Failed to share. Please try another method.');
+        }
     }
+};
+
+const handleImageError = () => {
+    imageError.value = true;
 };
 </script>
 
 <template>
     <Head>
-        <meta name="robots" content="noindex, nofollow" />
         <title>{{ seoTitle }}</title>
         <meta name="description" :content="seoDescription" />
         <meta name="keywords" :content="seoKeywords" />
-        <link rel="canonical" :href="canonicalUrl" />
         <meta property="og:title" :content="seoTitle" />
         <meta property="og:description" :content="seoDescription" />
-        <meta property="og:image" :content="seoImageUrl" />
         <meta property="og:url" :content="currentUrl" />
         <meta name="twitter:card" content="summary_large_image" />
         <meta name="twitter:title" :content="seoTitle" />
         <meta name="twitter:description" :content="seoDescription" />
-        <meta name="twitter:image" :content="seoImageUrl" />
     </Head>
 
     <AuthenticatedHeaderLayout />
 
     <!-- Hero Section -->
-    <section class="bg-gradient-to-r from-blue-600 to-blue-800 py-16">
-        <div class="container mx-auto px-4">
-            <div class="flex items-center justify-between text-white">
-                <div>
-                    <h1 class="text-4xl font-bold mb-2">{{ vehicle.model || 'Adobe Vehicle' }}</h1>
-                    <p class="text-xl opacity-90">{{ locationInfo?.label || 'Adobe Car Rental Location' }}</p>
+    <section class="bg-gradient-to-r from-customPrimaryColor to-blue-700 py-16">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
+            <h1 class="text-white text-4xl md:text-5xl font-bold mb-4">{{ props.vehicle?.model || 'Adobe Vehicle' }}</h1>
+            <p class="text-blue-100 text-lg md:text-xl">Quality rental with Adobe Car Rental</p>
+            <div class="mt-6 flex items-center justify-center gap-4">
+                <div class="bg-white/20 backdrop-blur-sm rounded-full px-4 py-2 text-white">
+                    <span class="font-medium">{{ props.vehicle?.type || 'Vehicle' }}</span>
                 </div>
-                <div class="text-right">
-                    <div class="text-sm opacity-75">Starting from</div>
-                    <div class="text-3xl font-bold">{{ formatCurrency(vehicle.price_per_day) }}</div>
-                    <div class="text-sm opacity-75">per day</div>
+                <div class="bg-green-500/20 backdrop-blur-sm rounded-full px-4 py-2 text-white">
+                    <span class="font-medium">{{ props.vehicle?.category?.toUpperCase() }}</span>
+                </div>
+                <div class="bg-blue-500/20 backdrop-blur-sm rounded-full px-4 py-2 text-white">
+                    <span class="font-medium">Adobe Rental</span>
                 </div>
             </div>
         </div>
     </section>
 
-    <!-- Vehicle Images and Basic Info -->
-    <section class="py-12 bg-gray-50">
-        <div class="container mx-auto px-4">
-            <div class="grid lg:grid-cols-2 gap-8">
-                <!-- Vehicle Images -->
-                <div>
-                    <div v-if="vehicleImages.length > 0" class="relative">
-                        <Carousel class="w-full">
-                            <CarouselContent>
-                                <CarouselItem v-for="(image, index) in vehicleImages" :key="index">
-                                    <div class="relative aspect-video rounded-lg overflow-hidden bg-gray-200">
-                                        <img
-                                            :src="image"
-                                            :alt="`${vehicle.model} - Image ${index + 1}`"
-                                            class="w-full h-full object-cover cursor-pointer"
-                                            @click="openImageLightbox(image)"
-                                            @error="$event.target.src = '/images/adobe-placeholder.jpg'"
-                                        />
-                                        <div class="absolute bottom-2 right-2 bg-black bg-opacity-50 text-white px-2 py-1 rounded text-sm">
-                                            {{ index + 1 }} / {{ vehicleImages.length }}
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <!-- Breadcrumb -->
+        <nav class="flex items-center gap-2 text-sm mb-8 p-4 bg-gray-50 rounded-lg">
+            <Link :href="`/${page.props.locale}`" class="text-customPrimaryColor hover:underline font-medium">Home</Link>
+            <ChevronRight class="h-4 w-4 text-gray-400" />
+            <Link :href="route('search', { locale: page.props.locale })" class="text-customPrimaryColor hover:underline font-medium">Vehicles</Link>
+            <ChevronRight class="h-4 w-4 text-gray-400" />
+            <span class="text-gray-600">{{ props.vehicle?.model }}</span>
+        </nav>
+
+        <!-- Vehicle Header Info -->
+        <div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4">
+            <div>
+                <h2 class="text-3xl font-bold text-gray-900 mb-2">{{ props.vehicle?.model }}</h2>
+                <div class="flex items-center gap-3">
+                    <span class="inline-flex items-center px-3 py-1 bg-blue-100 text-blue-800 rounded-full text-sm font-medium">
+                        {{ props.vehicle?.type }}
+                    </span>
+                    <span class="inline-flex items-center px-3 py-1 bg-green-100 text-green-800 rounded-full text-sm font-medium">
+                        <svg class="w-4 h-4 mr-1" fill="currentColor" viewBox="0 0 20 20">
+                            <path fill-rule="evenodd" d="M3.172 5.172a4 4 0 015.656 0L10 6.343l1.172-1.171a4 4 0 115.656 5.656L10 17.657l-6.828-6.829a4 4 0 010-5.656z" clip-rule="evenodd" />
+                        </svg>
+                        Adobe Rental
+                    </span>
+                </div>
+            </div>
+            <div class="flex items-center gap-6">
+                <div class="flex items-center gap-2 text-gray-600">
+                    <img :src="locationPinIcon" alt="Location" class="w-4 h-4" loading="lazy" />
+                    <span class="text-sm font-medium">{{ props.locationInfo?.label || 'Adobe Location' }}</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Main Content -->
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-12">
+            <!-- Left Column: Vehicle Details -->
+            <div class="lg:col-span-2 space-y-10">
+                <!-- Enhanced Image Section -->
+                <div class="mb-12">
+                    <div class="relative group rounded-2xl overflow-hidden shadow-2xl bg-gradient-to-br from-gray-100 to-gray-200">
+                        <div class="aspect-w-16 aspect-h-9 h-[600px] relative">
+                            <div v-if="props.vehicle?.image && !imageError" class="w-full h-full">
+                                <img
+                                    :src="props.vehicle.image"
+                                    :alt="`${props.vehicle?.model} - Primary Image`"
+                                    class="w-full h-full object-cover transition-all duration-500 group-hover:scale-105"
+                                    loading="lazy"
+                                    @error="handleImageError"
+                                />
+                            </div>
+                            <div v-else class="w-full h-full flex flex-col items-center justify-center bg-gradient-to-br from-gray-100 to-gray-200">
+                                <div class="text-center p-8">
+                                    <ImageIcon class="w-32 h-32 text-gray-400 mx-auto mb-6" />
+                                    <h3 class="text-2xl font-bold text-gray-600 mb-2">{{ props.vehicle?.model }}</h3>
+                                    <p class="text-gray-500 mb-4">High-quality image coming soon</p>
+                                    <div class="bg-blue-50 border border-blue-200 rounded-lg p-4 max-w-md mx-auto">
+                                        <p class="text-blue-800 text-sm font-medium">Professional vehicle photos are being prepared</p>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="absolute bottom-6 left-6 right-6">
+                                <div class="bg-white/90 backdrop-blur-sm rounded-xl p-4 transform translate-y-4 opacity-0 group-hover:translate-y-0 group-hover:opacity-100 transition-all duration-300">
+                                    <h3 class="font-bold text-lg text-gray-900 mb-1">{{ props.vehicle?.model }}</h3>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Vehicle Features -->
+                <div class="bg-white rounded-2xl shadow-lg p-8">
+                    <h2 class="text-2xl font-bold text-gray-900 mb-6 flex items-center gap-3">
+                        <div class="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
+                            <img :src="carIcon" alt="Car" class="w-6 h-6" loading="lazy" />
+                        </div>
+                        Vehicle Specifications
+                    </h2>
+                    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                        <!-- Passengers -->
+                        <div v-if="props.vehicle?.passengers" class="flex items-center gap-4 p-4 bg-gray-50 rounded-xl hover:bg-gray-100 transition-colors">
+                            <div class="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center">
+                                <img :src="peopleIcon" alt="People" class="w-6 h-6" loading="lazy" />
+                            </div>
+                            <div>
+                                <span class="text-sm text-gray-500 font-medium">Passengers</span>
+                                <p class="font-bold text-lg text-gray-900">{{ props.vehicle.passengers }}</p>
+                            </div>
+                        </div>
+
+                        <!-- Doors -->
+                        <div v-if="props.vehicle?.doors" class="flex items-center gap-4 p-4 bg-gray-50 rounded-xl hover:bg-gray-100 transition-colors">
+                            <div class="w-12 h-12 bg-purple-100 rounded-full flex items-center justify-center">
+                                <img :src="doorIcon" alt="Doors" class="w-6 h-6" loading="lazy" />
+                            </div>
+                            <div>
+                                <span class="text-sm text-gray-500 font-medium">Doors</span>
+                                <p class="font-bold text-lg text-gray-900">{{ props.vehicle.doors }}</p>
+                            </div>
+                        </div>
+
+                        <!-- Transmission -->
+                        <div v-if="props.vehicle?.manual !== undefined" class="flex items-center gap-4 p-4 bg-gray-50 rounded-xl hover:bg-gray-100 transition-colors">
+                            <div class="w-12 h-12 bg-orange-100 rounded-full flex items-center justify-center">
+                                <img :src="transmisionIcon" alt="Transmission" class="w-6 h-6" loading="lazy" />
+                            </div>
+                            <div>
+                                <span class="text-sm text-gray-500 font-medium">Transmission</span>
+                                <p class="font-bold text-lg text-gray-900 capitalize">{{ props.vehicle.manual ? 'Manual' : 'Automatic' }}</p>
+                            </div>
+                        </div>
+
+                        <!-- Vehicle Type -->
+                        <div v-if="props.vehicle?.type" class="flex items-center gap-4 p-4 bg-gray-50 rounded-xl hover:bg-gray-100 transition-colors">
+                            <div class="w-12 h-12 bg-red-100 rounded-full flex items-center justify-center">
+                                <img :src="carIcon" alt="Type" class="w-6 h-6" loading="lazy" />
+                            </div>
+                            <div>
+                                <span class="text-sm text-gray-500 font-medium">Vehicle Type</span>
+                                <p class="font-bold text-lg text-gray-900">{{ props.vehicle.type }}</p>
+                            </div>
+                        </div>
+
+                        <!-- Traction -->
+                        <div v-if="props.vehicle?.traction" class="flex items-center gap-4 p-4 bg-gray-50 rounded-xl hover:bg-gray-100 transition-colors">
+                            <div class="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center">
+                                <img :src="mileageIcon" alt="Traction" class="w-6 h-6" loading="lazy" />
+                            </div>
+                            <div>
+                                <span class="text-sm text-gray-500 font-medium">Traction</span>
+                                <p class="font-bold text-lg text-gray-900">{{ props.vehicle.traction }}</p>
+                            </div>
+                        </div>
+
+                        <!-- Category -->
+                        <div v-if="props.vehicle?.category" class="flex items-center gap-4 p-4 bg-gray-50 rounded-xl hover:bg-gray-100 transition-colors">
+                            <div class="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center">
+                                <img :src="check" alt="Category" class="w-6 h-6" loading="lazy" />
+                            </div>
+                            <div>
+                                <span class="text-sm text-gray-500 font-medium">Category</span>
+                                <p class="font-bold text-lg text-gray-900">{{ props.vehicle.category.toUpperCase() }}</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Adobe Pricing Details -->
+                <div class="bg-white rounded-2xl shadow-lg p-8">
+                    <h2 class="text-2xl font-bold text-gray-900 mb-6 flex items-center gap-3">
+                        <div class="w-10 h-10 bg-green-100 rounded-full flex items-center justify-center">
+                            <svg class="w-6 h-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                            </svg>
+                        </div>
+                        Adobe Pricing Details
+                    </h2>
+                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                        <div class="bg-gradient-to-br from-blue-50 to-blue-100 p-6 rounded-xl border border-blue-200">
+                            <div class="flex items-center gap-3 mb-3">
+                                <div class="w-8 h-8 bg-blue-500 rounded-lg flex items-center justify-center">
+                                    <span class="text-white font-bold text-sm">PLI</span>
+                                </div>
+                                <h4 class="font-semibold text-blue-900">Basic Rate</h4>
+                            </div>
+                            <p class="text-blue-700 text-sm mb-3">Daily rental rate including basic liability insurance</p>
+                            <p class="text-blue-900 font-bold text-lg">{{ formatCurrency(props.vehicle.pli) }}<span class="text-sm font-normal">/day</span></p>
+                        </div>
+                        <div class="bg-gradient-to-br from-green-50 to-green-100 p-6 rounded-xl border border-green-200">
+                            <div class="flex items-center gap-3 mb-3">
+                                <div class="w-8 h-8 bg-green-500 rounded-lg flex items-center justify-center">
+                                    <span class="text-white font-bold text-sm">LDW</span>
+                                </div>
+                                <h4 class="font-semibold text-green-900">Car Protection</h4>
+                            </div>
+                            <p class="text-green-700 text-sm mb-3">Waivers financial responsibility for car damage with deductible</p>
+                            <p class="text-green-900 font-bold text-lg">{{ formatCurrency(props.vehicle.ldw) }}<span class="text-sm font-normal">/day</span></p>
+                        </div>
+                        <div class="bg-gradient-to-br from-purple-50 to-purple-100 p-6 rounded-xl border border-purple-200">
+                            <div class="flex items-center gap-3 mb-3">
+                                <div class="w-8 h-8 bg-purple-500 rounded-lg flex items-center justify-center">
+                                    <span class="text-white font-bold text-sm">SPP</span>
+                                </div>
+                                <h4 class="font-semibold text-purple-900">Extended Protection</h4>
+                            </div>
+                            <p class="text-purple-700 text-sm mb-3">Covers deductible, vandalism, tires, windows & roadside assistance</p>
+                            <p class="text-purple-900 font-bold text-lg">{{ formatCurrency(props.vehicle.spp) }}<span class="text-sm font-normal">/day</span></p>
+                        </div>
+                        <div v-if="props.vehicle.tdr > 0" class="bg-gradient-to-br from-orange-50 to-orange-100 p-6 rounded-xl border border-orange-200">
+                            <div class="flex items-center gap-3 mb-3">
+                                <div class="w-8 h-8 bg-orange-500 rounded-lg flex items-center justify-center">
+                                    <span class="text-white font-bold text-sm">TDR</span>
+                                </div>
+                                <h4 class="font-semibold text-orange-900">Total Daily Rate</h4>
+                            </div>
+                            <p class="text-orange-700 text-sm mb-3">Complete daily rate including all applicable charges</p>
+                            <p class="text-orange-900 font-bold text-lg">{{ formatCurrency(props.vehicle.tdr) }}<span class="text-sm font-normal">/day</span></p>
+                        </div>
+                        <div v-if="props.vehicle.dro > 0" class="bg-gradient-to-br from-red-50 to-red-100 p-6 rounded-xl border border-red-200">
+                            <div class="flex items-center gap-3 mb-3">
+                                <div class="w-8 h-8 bg-red-500 rounded-lg flex items-center justify-center">
+                                    <span class="text-white font-bold text-sm">DRO</span>
+                                </div>
+                                <h4 class="font-semibold text-red-900">Drop-off Fee</h4>
+                            </div>
+                            <p class="text-red-700 text-sm mb-3">One-way rental fee for different return location</p>
+                            <p class="text-red-900 font-bold text-lg">{{ formatCurrency(props.vehicle.dro) }}<span class="text-sm font-normal">/rental</span></p>
+                        </div>
+                        <div class="bg-gradient-to-br from-gray-50 to-gray-100 p-6 rounded-xl border border-gray-200">
+                            <div class="flex items-center gap-3 mb-3">
+                                <svg class="w-8 h-8 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                </svg>
+                                <h4 class="font-semibold text-gray-900">Coverage Details</h4>
+                            </div>
+                            <p class="text-gray-700 text-sm mb-3">All rates include mandatory liability protection with US$1,130 deductible</p>
+                            <div class="text-xs text-gray-600">
+                                <p>• Third-party coverage up to US$100,000</p>
+                                <p>• 24/7 roadside assistance available</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Adobe Protections -->
+                <div v-if="props.vehicle?.protections && props.vehicle.protections.length > 0" class="bg-white rounded-2xl shadow-lg p-8">
+                    <h2 class="text-2xl font-bold text-gray-900 mb-6 flex items-center gap-3">
+                        <div class="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
+                            <img :src="carguaranteeIcon" alt="Insurance" class="w-6 h-6" loading="lazy" />
+                        </div>
+                        Protection Options
+                    </h2>
+                    <div class="space-y-4">
+                        <div v-for="protection in props.vehicle.protections" :key="protection.code"
+                             class="p-6 bg-blue-50 rounded-xl border border-blue-200 hover:bg-blue-100 transition-colors">
+                            <div class="flex items-start gap-4">
+                                <img :src="check" alt="Protection" class="w-5 h-5 text-blue-600 mt-1" loading="lazy" />
+                                <div class="flex-1">
+                                    <h4 class="font-semibold text-blue-900 mb-2">{{ protection.displayName || protection.name || protection.code }}</h4>
+                                    <p class="text-blue-700 text-sm mb-3">{{ protection.displayDescription || protection.description }}</p>
+                                    <div class="flex items-center gap-4 mb-2">
+                                        <div class="bg-white/50 px-3 py-1 rounded-lg">
+                                            <span class="text-blue-600 font-medium">Price</span>
+                                            <p class="text-blue-900 font-bold">{{ formatCurrency(protection.price || protection.total) }}</p>
+                                        </div>
+                                        <div v-if="protection.required" class="bg-red-100 px-3 py-1 rounded-lg">
+                                            <span class="text-red-700 font-medium text-sm">Required</span>
                                         </div>
                                     </div>
-                                </CarouselItem>
-                            </CarouselContent>
-                            <CarouselPrevious class="left-2" />
-                            <CarouselNext class="right-2" />
-                        </Carousel>
-
-                        <!-- Image Lightbox -->
-                        <Dialog :open="imageLightboxOpen" @update:open="imageLightboxOpen = $event">
-                            <DialogContent class="max-w-4xl w-full p-0">
-                                <div class="relative">
-                                    <img
-                                        v-if="currentLightboxImage"
-                                        :src="currentLightboxImage"
-                                        :alt="`${vehicle.model} - Full Size`"
-                                        class="w-full h-auto max-h-[80vh] object-contain"
-                                        @error="$event.target.src = '/images/adobe-placeholder.jpg'"
-                                    />
-                                    <Button
-                                        @click="closeImageLightbox"
-                                        class="absolute top-4 right-4"
-                                        variant="secondary"
-                                        size="sm"
-                                    >
-                                        Close
-                                    </Button>
                                 </div>
-                            </DialogContent>
-                        </Dialog>
-                    </div>
-
-                    <!-- Fallback image -->
-                    <div v-else class="aspect-video rounded-lg overflow-hidden bg-gray-200">
-                        <img
-                            src="/images/adobe-placeholder.jpg"
-                            :alt="vehicle.model"
-                            class="w-full h-full object-cover"
-                        />
-                    </div>
-
-                    <!-- Quick Share -->
-                    <div class="mt-4 flex items-center gap-4">
-                        <Button @click="shareVehicle" variant="outline" size="sm" class="flex items-center gap-2">
-                            <img :src="ShareIcon" alt="Share" class="w-4 h-4" />
-                            Share Vehicle
-                        </Button>
+                            </div>
+                        </div>
                     </div>
                 </div>
 
-                <!-- Vehicle Specifications -->
-                <div>
-                    <Card>
-                        <CardHeader>
-                            <CardTitle class="flex items-center gap-2">
-                                <img :src="carIcon" alt="Specifications" class="w-6 h-6" />
-                                Vehicle Specifications
-                            </CardTitle>
-                        </CardHeader>
-                        <CardContent>
-                            <div class="grid grid-cols-2 gap-4">
-                                <div v-for="spec in vehicleSpecs" :key="spec.label" class="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
-                                    <img :src="spec.icon" :alt="spec.label" class="w-5 h-5" />
-                                    <div>
-                                        <div class="text-xs text-gray-500">{{ spec.label }}</div>
-                                        <div class="font-semibold">{{ spec.value }}</div>
+                <!-- Adobe Extras -->
+                <div v-if="props.vehicle?.extras && props.vehicle.extras.length > 0" class="bg-white rounded-2xl shadow-lg p-8">
+                    <h2 class="text-2xl font-bold text-gray-900 mb-6 flex items-center gap-3">
+                        <div class="w-10 h-10 bg-purple-100 rounded-full flex items-center justify-center">
+                            <img :src="offerIcon" alt="Extras" class="w-6 h-6" loading="lazy" />
+                        </div>
+                        Optional Extras
+                    </h2>
+                    <div class="space-y-4">
+                        <div v-for="extra in props.vehicle.extras" :key="extra.code"
+                             class="p-6 bg-purple-50 rounded-xl border border-purple-200 hover:bg-purple-100 transition-colors">
+                            <div class="flex items-start gap-4">
+                                <img :src="check" alt="Extra" class="w-5 h-5 text-purple-600 mt-1" loading="lazy" />
+                                <div class="flex-1">
+                                    <h4 class="font-semibold text-purple-900 mb-2">{{ extra.displayName || extra.name || extra.code }}</h4>
+                                    <p class="text-purple-700 text-sm mb-3">{{ extra.displayDescription || extra.description }}</p>
+                                    <div class="flex items-center gap-4 mb-2">
+                                        <div class="bg-white/50 px-3 py-1 rounded-lg">
+                                            <span class="text-purple-600 font-medium">Price</span>
+                                            <p class="text-purple-900 font-bold">{{ formatCurrency(extra.price || extra.total) }}</p>
+                                        </div>
+                                        <div v-if="extra.required" class="bg-red-100 px-3 py-1 rounded-lg">
+                                            <span class="text-red-700 font-medium text-sm">Required</span>
+                                        </div>
                                     </div>
                                 </div>
                             </div>
+                        </div>
+                    </div>
+                </div>
 
-                            <!-- Adobe Category Information -->
-                            <div v-if="vehicle.category" class="mt-6 p-4 bg-blue-50 rounded-lg">
-                                <div class="text-sm text-blue-800">
-                                    <strong>Adobe Category:</strong> {{ vehicle.category.toUpperCase() }}
+                <!-- Location -->
+                <div v-if="props.locationInfo" class="bg-white rounded-2xl shadow-lg p-8">
+                    <h2 class="text-2xl font-bold text-gray-900 mb-6 flex items-center gap-3">
+                        <div class="w-10 h-10 bg-red-100 rounded-full flex items-center justify-center">
+                            <img :src="locationPinIcon" alt="Location" class="w-6 h-6" loading="lazy" />
+                        </div>
+                        Pickup Location
+                    </h2>
+                    <div class="mb-6 p-4 bg-red-50 rounded-xl border border-red-200">
+                        <div class="flex items-start gap-3">
+                            <img :src="locationPinIcon" alt="Location" class="w-6 h-6 text-red-600 mt-3" loading="lazy" />
+                            <div>
+                                <h5 class="font-semibold text-red-900">{{ props.locationInfo.label }}</h5>
+                                <p class="text-red-800">{{ props.locationInfo.address || 'Adobe Car Rental Location' }}</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div v-if="props.locationInfo.latitude && props.locationInfo.longitude" class="rounded-xl h-[350px] w-full bg-gray-100 shadow-inner" ref="mapContainerRef">
+                        <div v-if="!map" class="w-full h-full flex items-center justify-center">
+                            <div class="text-center">
+                                <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-customPrimaryColor mx-auto mb-4"></div>
+                                <p class="text-gray-600">Loading interactive map...</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Provider -->
+                <div class="bg-gradient-to-r from-green-50 to-blue-50 rounded-2xl shadow-lg p-8 border border-green-200">
+                    <h2 class="text-2xl font-bold text-gray-900 mb-6 flex items-center gap-3">
+                        About Adobe Car Rental
+                    </h2>
+                    <div class="flex items-start gap-6">
+                        <div class="w-20 h-20 bg-gradient-to-br from-green-400 to-blue-500 rounded-2xl flex items-center justify-center shadow-lg">
+                            <span class="text-white font-bold text-2xl">AD</span>
+                        </div>
+                        <div class="flex-1">
+                            <h4 class="text-2xl font-bold text-customPrimaryColor mb-2">Adobe Car Rental</h4>
+                            <p class="text-gray-600 mb-4">Your trusted car rental company committed to providing quality vehicles and excellent service throughout Costa Rica.</p>
+                            <div class="flex items-center gap-4 text-sm">
+                                <div class="flex items-center gap-2 bg-green-100 px-3 py-1 rounded-full">
+                                    <div class="w-2 h-2 bg-green-500 rounded-full"></div>
+                                    <span class="text-green-800 font-medium">Quality Service</span>
                                 </div>
-                                <div class="text-xs text-blue-600 mt-1">
-                                    Adobe vehicle categories define specific car types and pricing tiers
+                                <div class="flex items-center gap-2 bg-blue-100 px-3 py-1 rounded-full">
+                                    <div class="w-2 h-2 bg-blue-500 rounded-full"></div>
+                                    <span class="text-blue-800 font-medium">Trusted Partner</span>
                                 </div>
                             </div>
-                        </CardContent>
-                    </Card>
-
-                    <!-- Pricing Breakdown -->
-                    <Card class="mt-6">
-                        <CardHeader>
-                            <CardTitle class="flex items-center gap-2">
-                                <span class="text-2xl">💰</span>
-                                Pricing Details
-                            </CardTitle>
-                        </CardHeader>
-                        <CardContent>
-                            <div class="space-y-3">
-                                <div v-for="price in pricingInfo" :key="price.label"
-                                     :class="['flex justify-between items-center p-3 rounded-lg',
-                                            price.optional ? 'bg-gray-50' : 'bg-white border']">
-                                    <div>
-                                        <div class="font-medium">{{ price.label }}</div>
-                                        <div class="text-sm text-gray-600">{{ price.description }}</div>
-                                        <span v-if="price.optional" class="text-xs bg-orange-100 text-orange-800 px-2 py-1 rounded">
-                                            Optional
-                                        </span>
-                                    </div>
-                                    <div class="font-semibold">{{ formatCurrency(price.amount) }}</div>
-                                </div>
-
-                                <div class="border-t pt-3 mt-3">
-                                    <div class="flex justify-between items-center text-lg font-bold">
-                                        <span>Total Daily Rate</span>
-                                        <span>{{ formatCurrency(vehicle.price_per_day) }}</span>
-                                    </div>
-                                </div>
-                            </div>
-                        </CardContent>
-                    </Card>
+                        </div>
+                    </div>
                 </div>
             </div>
-        </div>
-    </section>
 
-    <!-- Vehicle Benefits -->
-    <section class="py-12">
-        <div class="container mx-auto px-4">
-            <h2 class="text-3xl font-bold text-center mb-8">Why Choose This Vehicle</h2>
-            <div class="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
-                <Card v-for="benefit in vehicleBenefits" :key="benefit.title" class="text-center">
-                    <CardContent class="pt-6">
-                        <img :src="benefit.icon" :alt="benefit.title" class="w-12 h-12 mx-auto mb-4" />
-                        <h3 class="font-semibold mb-2">{{ benefit.title }}</h3>
-                        <p class="text-gray-600 text-sm">{{ benefit.description }}</p>
-                    </CardContent>
-                </Card>
-            </div>
-        </div>
-    </section>
+            <!-- Right Column: Booking Card -->
+            <div class="lg:col-span-1">
+                <Card class="sticky top-4 shadow-2xl border-0 overflow-hidden">
+                    <div class="bg-gradient-to-r from-customPrimaryColor to-blue-700 p-6 text-white">
+                        <div class="flex items-center justify-between mb-4">
+                            <div class="flex-1 min-w-0">
+                                <h3 class="text-xl font-bold truncate">{{ props.vehicle?.model }}</h3>
+                                <span class="inline-block px-3 py-1 bg-white/20 backdrop-blur-sm rounded-full text-sm mt-2">{{ props.vehicle?.type }}</span>
+                            </div>
+                            <div class="flex gap-2 ml-4">
+                                <button @click="shareVehicle" class="p-2 bg-white/20 rounded-full transition-colors">
+                                    <img :src="ShareIcon" alt="Share" class="w-5 h-5" loading="lazy" />
+                                </button>
+                            </div>
+                        </div>
+                        <p class="text-blue-100 text-sm">Powered by <span class="font-semibold text-white">Adobe Car Rental</span></p>
+                    </div>
 
-    <!-- Available Protections -->
-    <section v-if="availableProtections.length > 0" class="py-12 bg-gray-50">
-        <div class="container mx-auto px-4">
-            <h2 class="text-3xl font-bold text-center mb-8">Protection Options</h2>
-            <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-                <Card v-for="protection in availableProtections" :key="protection.code">
-                    <CardContent class="pt-6">
-                        <h3 class="font-semibold mb-2">{{ protection.name || protection.code }}</h3>
-                        <p class="text-gray-600 text-sm mb-3">{{ protection.description }}</p>
-                        <div class="flex justify-between items-center">
-                            <span class="text-lg font-bold">{{ formatCurrency(protection.total) }}</span>
-                            <span v-if="protection.required" class="text-xs bg-red-100 text-red-800 px-2 py-1 rounded">
-                                Required
-                            </span>
+                    <CardContent class="p-6">
+                        <div class="space-y-6">
+                            <!-- Vehicle Summary -->
+                            <div class="space-y-4">
+                                <div class="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
+                                    <img :src="carIcon" alt="Car" class="w-5 h-5" loading="lazy" />
+                                    <span class="text-sm text-gray-700">
+                                        {{ props.vehicle?.manual ? 'Manual' : 'Automatic' }} • {{ props.vehicle?.type || 'Vehicle' }} • {{ props.vehicle?.passengers || 'N/A' }} Seats
+                                    </span>
+                                </div>
+                                <div class="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
+                                    <img :src="mileageIcon" alt="Mileage" class="w-5 h-5" loading="lazy" />
+                                    <span class="text-sm text-gray-700">{{ props.vehicle?.traction || 'Standard Drive' }} • {{ props.vehicle?.doors || 'N/A' }} Doors</span>
+                                </div>
+                            </div>
+
+                            <!-- Location Info -->
+                            <div class="space-y-4">
+                                <div class="flex items-start gap-3 p-4 bg-green-50 rounded-lg border border-green-200">
+                                    <img :src="pickupLocationIcon" alt="Pickup" class="w-5 h-5 mt-1" loading="lazy" />
+                                    <div class="flex-1">
+                                        <span class="text-sm font-medium text-green-800">Pickup Location</span>
+                                        <p class="font-semibold text-green-900">{{ props.locationInfo?.label || 'Adobe Location' }}</p>
+                                        <p class="text-sm text-green-700">{{ props.locationInfo?.address || 'Adobe Car Rental Location' }}</p>
+                                        <p class="text-sm text-green-600 mt-1">{{ props.searchParams?.pickup_datetime || 'Select dates' }}</p>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Price Summary -->
+                            <div v-if="props.vehicle?.tdr" class="p-6 bg-gradient-to-r from-green-50 to-blue-50 rounded-xl border border-green-200">
+                                <div class="text-center">
+                                    <p class="text-3xl font-bold text-gray-900 mb-1">{{ formatCurrency(props.vehicle.tdr) }}</p>
+                                    <p class="text-sm text-gray-600 mb-3">Total for rental period</p>
+                                    <div class="flex items-center justify-center gap-2 text-xs text-green-700">
+                                        <div class="w-2 h-2 bg-green-500 rounded-full"></div>
+                                        <span>Best rate guaranteed</span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Book Button -->
+                            <Button @click="startBooking" :disabled="isLoading" class="w-full bg-gradient-to-r from-customPrimaryColor to-blue-700 hover:from-customPrimaryColor/90 hover:to-blue-700/90 text-white py-4 font-semibold text-lg rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-105">
+                                <div class="flex items-center justify-center gap-2">
+                                    <span>Reserve Now</span>
+                                    <ChevronRight class="w-5 h-5" />
+                                </div>
+                            </Button>
+
+                            <!-- Security Badge -->
+                            <div class="text-center">
+                                <div class="flex flex-col items-center justify-center gap-3 p-3 bg-gray-50 rounded-lg">
+                                    <img :src="partnersIcon" alt="Security" class="" loading="lazy" />
+                                    <p class="text-sm text-gray-600 font-medium">Secure & Protected Booking</p>
+                                </div>
+                            </div>
                         </div>
                     </CardContent>
                 </Card>
             </div>
         </div>
-    </section>
-
-    <!-- Location Information -->
-    <section v-if="locationInfo" class="py-12">
-        <div class="container mx-auto px-4">
-            <h2 class="text-3xl font-bold text-center mb-8">Pickup Location</h2>
-            <div class="grid lg:grid-cols-2 gap-8">
-                <div>
-                    <Card>
-                        <CardHeader>
-                            <CardTitle class="flex items-center gap-2">
-                                <img :src="locationPinIcon" alt="Location" class="w-6 h-6" />
-                                {{ locationInfo.label }}
-                            </CardTitle>
-                        </CardHeader>
-                        <CardContent>
-                            <div class="space-y-2">
-                                <p class="text-gray-600">{{ locationInfo.address || 'Adobe Car Rental Location' }}</p>
-                                <div v-if="locationInfo.below_label" class="text-sm text-gray-500">
-                                    {{ locationInfo.below_label }}
-                                </div>
-                            </div>
-                        </CardContent>
-                    </Card>
-                </div>
-                <div>
-                    <div ref="mapContainer" class="h-64 rounded-lg bg-gray-200"></div>
-                </div>
-            </div>
-        </div>
-    </section>
-
-    <!-- Booking CTA -->
-    <section class="py-16 bg-gradient-to-r from-blue-600 to-blue-800 text-white">
-        <div class="container mx-auto px-4 text-center">
-            <h2 class="text-3xl font-bold mb-4">Ready to Book This Vehicle?</h2>
-            <p class="text-xl mb-8 opacity-90">
-                Reserve your {{ vehicle.model }} now for the best rates
-            </p>
-            <Button
-                @click="startBooking"
-                :disabled="isLoading"
-                size="lg"
-                class="bg-white text-blue-600 hover:bg-gray-100 px-8 py-3 text-lg font-semibold"
-            >
-                <span v-if="isLoading" class="flex items-center gap-2">
-                    <Vue3Lottie :animationData="universalLoader" :height="24" :width="24" />
-                    Processing...
-                </span>
-                <span v-else class="flex items-center gap-2">
-                    Reserve Now
-                    <ChevronRight :size="20" />
-                </span>
-            </Button>
-        </div>
-    </section>
+    </div>
 
     <!-- Loader Overlay -->
     <div v-if="isLoading" class="loader-overlay">
-        <Vue3Lottie :animationData="universalLoader" :height="120" :width="120" />
+        <Vue3Lottie :animationData="universalLoader" :height="200" :width="200" />
     </div>
 
     <Footer />
@@ -654,7 +707,97 @@ const shareVehicle = async () => {
   z-index: 9999;
 }
 
-.aspect-video {
-  aspect-ratio: 16/9;
+.bg-customPrimaryColor {
+    background-color: #153b4f;
+}
+
+.text-customPrimaryColor {
+    color: #153b4f;
+}
+
+.shadow-2xl {
+    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+}
+
+.rounded-2xl {
+    border-radius: 1rem;
+}
+
+.marker-pin {
+    width: 50px;
+    height: 30px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.custom-div-icon {
+    background: none;
+    border: none;
+}
+
+@keyframes pop {
+    0% { transform: scale(1); }
+    50% { transform: scale(1.2); }
+    100% { transform: scale(1); }
+}
+
+.pop-animation {
+    animation: pop 0.4s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+}
+
+/* Enhanced hover effects */
+.group:hover .group-hover\:scale-105 {
+    transform: scale(1.05);
+}
+
+.group:hover .group-hover\:scale-110 {
+    transform: scale(1.1);
+}
+
+/* Responsive improvements */
+@media (max-width: 768px) {
+    .text-4xl { font-size: 2.25rem; }
+    .text-3xl { font-size: 1.875rem; }
+    .text-2xl { font-size: 1.5rem; }
+    .text-xl { font-size: 1.25rem; }
+    .h-\[600px\] { height: 400px; }
+    .p-8 { padding: 1.5rem; }
+    .p-6 { padding: 1rem; }
+    .gap-12 { gap: 2rem; }
+    .gap-8 { gap: 1.5rem; }
+    .gap-6 { gap: 1rem; }
+}
+
+@media (max-width: 640px) {
+    .text-4xl { font-size: 2rem; }
+    .text-3xl { font-size: 1.75rem; }
+    .text-2xl { font-size: 1.375rem; }
+    .h-\[600px\] { height: 300px; }
+    .p-8 { padding: 1rem; }
+    .p-6 { padding: 0.75rem; }
+}
+
+/* Focus styles for accessibility */
+button:focus,
+select:focus,
+input:focus {
+    outline: 2px solid #153b4f;
+    outline-offset: 2px;
+}
+
+/* Enhanced button hover effects */
+.transform {
+    transform: translateX(var(--tw-translate-x)) translateY(var(--tw-translate-y)) rotate(var(--tw-rotate)) skewX(var(--tw-skew-x)) skewY(var(--tw-skew-y)) scaleX(var(--tw-scale-x)) scaleY(var(--tw-scale-y));
+}
+
+.hover\:scale-105:hover {
+    --tw-scale-x: 1.05;
+    --tw-scale-y: 1.05;
+}
+
+.hover\:scale-110:hover {
+    --tw-scale-x: 1.1;
+    --tw-scale-y: 1.1;
 }
 </style>

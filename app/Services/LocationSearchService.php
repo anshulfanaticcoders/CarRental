@@ -88,4 +88,29 @@ class LocationSearchService
 
         return $filteredLocations;
     }
+
+    /**
+     * Get location information by provider ID.
+     *
+     * @param string $providerId
+     * @param string $provider
+     * @return array|null
+     */
+    public function getLocationByProviderId(string $providerId, string $provider): ?array
+    {
+        $allLocations = $this->getAllLocations();
+
+        $matchedLocation = collect($allLocations)->first(function ($location) use ($providerId, $provider) {
+            if (!isset($location['providers'])) {
+                return false;
+            }
+
+            return collect($location['providers'])->first(function ($providerInfo) use ($providerId, $provider) {
+                return ($providerInfo['provider'] === $provider) &&
+                       ($providerInfo['pickup_id'] === $providerId);
+            });
+        });
+
+        return $matchedLocation ?: null;
+    }
 }

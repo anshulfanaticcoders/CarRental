@@ -227,10 +227,12 @@ class AdobeCarService
         // Adobe API GetCategoryWithFare parameters
         $queryParams = [
             'pickupoffice' => $locationCode,
+            'returnOffice' => $locationCode, // Required field
             'category' => $category,
             'startdate' => $dates['startdate'],
             'enddate' => $dates['enddate'],
-            'customerCode' => 'Z11338' // Valid Adobe customer code
+            'customerCode' => 'Z11338', // Valid Adobe customer code
+            'idioma' => 'en' // Required language field
         ];
 
         logger()->info('Adobe API: Calling GetCategoryWithFare', ['queryParams' => $queryParams]);
@@ -247,10 +249,24 @@ class AdobeCarService
 
                 foreach ($data['items'] as $item) {
                     // Adobe items have 'type' field - separate protections from extras
+                    // 'Proteccion' = Protections, 'Adicionales' = Extras/Add-ons, 'BaseRate' = Base Rate
                     if (isset($item['type']) && ($item['type'] === 'Proteccion' || $item['type'] === 'protection')) {
+                        // Add additional fields for better display
+                        $item['displayName'] = $item['name'] ?? $item['code'] ?? 'Protection';
+                        $item['displayDescription'] = $item['description'] ?? '';
+                        $item['price'] = $item['total'] ?? 0;
+                        $item['required'] = $item['required'] ?? false;
                         $protections[] = $item;
-                    } else {
-                        $extras[] = $item;
+                    } elseif (isset($item['type']) && ($item['type'] === 'Adicionales' || $item['type'] === 'BaseRate')) {
+                        // Skip BaseRate as it's already handled in the main vehicle data
+                        if ($item['type'] !== 'BaseRate') {
+                            // Add additional fields for better display
+                            $item['displayName'] = $item['name'] ?? $item['code'] ?? 'Extra';
+                            $item['displayDescription'] = $item['description'] ?? '';
+                            $item['price'] = $item['total'] ?? 0;
+                            $item['required'] = $item['required'] ?? false;
+                            $extras[] = $item;
+                        }
                     }
                 }
 
