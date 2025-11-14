@@ -728,7 +728,7 @@ const addMarkers = () => {
 
         const primaryImage = (vehicle.source === 'greenmotion' || vehicle.source === 'wheelsys' || vehicle.source === 'adobe') ? vehicle.image : (vehicle.images?.find((image) => image.image_type === 'primary')?.image_url || '/default-image.png');
         const detailRoute = vehicle.source !== 'internal'
-            ? route(getProviderRoute(vehicle), { locale: page.props.locale, id: vehicle.id.substring(vehicle.id.indexOf('_') + 1), location_id: vehicle.provider_pickup_id, start_date: form.date_from, end_date: form.date_to, start_time: form.start_time, end_time: form.end_time, age: form.age, rentalCode: form.rentalCode, currency: form.currency, fuel: form.fuel, userid: form.userid, username: form.username, language: form.language, full_credit: form.full_credit, promocode: form.promocode, dropoff_location_id: form.dropoff_location_id, dropoff_where: form.dropoff_where, where: form.where, provider: vehicle.source })
+            ? route(getProviderRoute(vehicle), { locale: page.props.locale, id: vehicle.id, location_id: vehicle.provider_pickup_id, start_date: form.date_from, end_date: form.date_to, start_time: form.start_time, end_time: form.end_time, age: form.age, rentalCode: form.rentalCode, currency: form.currency, fuel: form.fuel, userid: form.userid, username: form.username, language: form.language, full_credit: form.full_credit, promocode: form.promocode, dropoff_location_id: form.dropoff_location_id, dropoff_where: form.dropoff_where, where: form.where, provider: vehicle.source })
             : route('vehicle.show', { locale: page.props.locale, id: vehicle.id, package: form.package_type, pickup_date: form.date_from, return_date: form.date_to, currency: form.currency });
 
         let popupPrice = "N/A";
@@ -833,7 +833,7 @@ const addMobileMarkers = () => {
 
         const primaryImage = (vehicle.source === 'greenmotion' || vehicle.source === 'wheelsys' || vehicle.source === 'adobe') ? vehicle.image : (vehicle.images?.find((image) => image.image_type === 'primary')?.image_url || '/default-image.png');
         const detailRoute = vehicle.source !== 'internal'
-            ? route(getProviderRoute(vehicle), { locale: page.props.locale, id: vehicle.id.substring(vehicle.id.indexOf('_') + 1), location_id: vehicle.provider_pickup_id, start_date: form.date_from, end_date: form.date_to, start_time: form.start_time, end_time: form.end_time, age: form.age, rentalCode: form.rentalCode, currency: form.currency, fuel: form.fuel, userid: form.userid, username: form.username, language: form.language, full_credit: form.full_credit, promocode: form.promocode, dropoff_location_id: form.dropoff_location_id, dropoff_where: form.dropoff_where, where: form.where, provider: vehicle.source })
+            ? route(getProviderRoute(vehicle), { locale: page.props.locale, id: vehicle.id, location_id: vehicle.provider_pickup_id, start_date: form.date_from, end_date: form.date_to, start_time: form.start_time, end_time: form.end_time, age: form.age, rentalCode: form.rentalCode, currency: form.currency, fuel: form.fuel, userid: form.userid, username: form.username, language: form.language, full_credit: form.full_credit, promocode: form.promocode, dropoff_location_id: form.dropoff_location_id, dropoff_where: form.dropoff_where, where: form.where, provider: vehicle.source })
             : route('vehicle.show', { locale: page.props.locale, id: vehicle.id, package: form.package_type, pickup_date: form.date_from, return_date: form.date_to, currency: form.currency });
 
         let popupPrice = "N/A";
@@ -1895,7 +1895,7 @@ watch(
                         </div>
                         <a
                             @click="saveSearchUrl"
-                            :href="vehicle.source !== 'internal' ? route(getProviderRoute(vehicle), { locale: page.props.locale, id: vehicle.id.substring(vehicle.id.indexOf('_') + 1), location_id: vehicle.provider_pickup_id, start_date: form.date_from, end_date: form.date_to, start_time: form.start_time, end_time: form.end_time, age: form.age, rentalCode: form.rentalCode, currency: form.currency, fuel: form.fuel, userid: form.userid, username: form.username, language: form.language, full_credit: form.full_credit, promocode: form.promocode, dropoff_location_id: form.dropoff_location_id, dropoff_where: form.dropoff_where, where: form.where, provider: vehicle.source }) : route('vehicle.show', { locale: page.props.locale, id: vehicle.id, package: form.package_type, pickup_date: form.date_from, return_date: form.date_to, currency: form.currency })">
+                            :href="vehicle.source !== 'internal' ? route(getProviderRoute(vehicle), { locale: page.props.locale, id: vehicle.id, location_id: vehicle.provider_pickup_id, start_date: form.date_from, end_date: form.date_to, start_time: form.start_time, end_time: form.end_time, age: form.age, rentalCode: form.rentalCode, currency: form.currency, fuel: form.fuel, userid: form.userid, username: form.username, language: form.language, full_credit: form.full_credit, promocode: form.promocode, dropoff_location_id: form.dropoff_location_id, dropoff_where: form.dropoff_where, where: form.where, provider: vehicle.source }) : route('vehicle.show', { locale: page.props.locale, id: vehicle.id, package: form.package_type, pickup_date: form.date_from, return_date: form.date_to, currency: form.currency })">
                             <div class="column flex flex-col gap-5 items-start">
                                 <img :src="getImageSource(vehicle)"
                                     @error="handleImageError"
@@ -1982,22 +1982,22 @@ watch(
 
                                 <!-- Show Adobe specific info -->
                                 <div class="mt-[1rem] text-sm text-gray-600" v-if="vehicle.source === 'adobe'">
-                                    <div v-if="vehicle.category">
+                                    <div v-if="vehicle.category && vehicle.category.trim()">
                                         <strong>Category:</strong> {{ vehicle.category }}
                                     </div>
-                                    <div v-if="vehicle.type">
+                                    <div v-if="vehicle.type && vehicle.type.trim()">
                                         <strong>Type:</strong> {{ vehicle.type }}
                                     </div>
-                                    <div v-if="vehicle.passengers">
+                                    <div v-if="vehicle.passengers && vehicle.passengers > 0">
                                         <strong>Passengers:</strong> {{ vehicle.passengers }}
                                     </div>
-                                    <div v-if="vehicle.doors">
+                                    <div v-if="vehicle.doors && vehicle.doors > 0">
                                         <strong>Doors:</strong> {{ vehicle.doors }}
                                     </div>
                                     <div v-if="vehicle.manual !== undefined">
                                         <strong>Transmission:</strong> {{ vehicle.manual ? 'Manual' : 'Automatic' }}
                                     </div>
-                                    <div v-if="vehicle.traction">
+                                    <div v-if="vehicle.traction && vehicle.traction.trim()">
                                         <strong>Traction:</strong> {{ vehicle.traction }}
                                     </div>
                                 </div>
@@ -2020,10 +2020,10 @@ watch(
                                                 {{ vehicle.doors }} Doors
                                             </template>
                                             <template v-else-if="vehicle.source === 'adobe'">
-                                                {{ vehicle.manual ? 'Manual' : 'Automatic' }} .
-                                                {{ vehicle.passengers }} Seats .
-                                                {{ vehicle.doors }} Doors .
-                                                {{ vehicle.traction }}
+                                                <span v-if="vehicle.manual !== undefined">{{ vehicle.manual ? 'Manual' : 'Automatic' }}</span>
+                                                <span v-if="vehicle.passengers && vehicle.passengers > 0"><template v-if="vehicle.manual !== undefined"> . </template>{{ vehicle.passengers }} Seats</span>
+                                                <span v-if="vehicle.doors && vehicle.doors > 0"><template v-if="(vehicle.manual !== undefined) || (vehicle.passengers && vehicle.passengers > 0)"> . </template>{{ vehicle.doors }} Doors</span>
+                                                <span v-if="vehicle.traction && vehicle.traction.trim()"><template v-if="(vehicle.manual !== undefined) || (vehicle.passengers && vehicle.passengers > 0) || (vehicle.doors && vehicle.doors > 0)"> . </template>{{ vehicle.traction }}</span>
                                             </template>
                                             <template v-else>
                                                 {{ vehicle.transmission }} .

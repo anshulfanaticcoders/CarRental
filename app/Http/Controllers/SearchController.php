@@ -567,6 +567,12 @@ class SearchController extends Controller
                                         'spp' => (float) ($vehicle['spp'] ?? 0),
                                         'tdr' => (float) ($vehicle['tdr'] ?? 0),
                                         'dro' => (float) ($vehicle['dro'] ?? 0),
+                                        // Direct fields for frontend template access
+                                        'type' => $vehicle['type'] ?? '',
+                                        'passengers' => (int) ($vehicle['passengers'] ?? 4),
+                                        'doors' => (int) ($vehicle['doors'] ?? 4),
+                                        'manual' => (bool) ($vehicle['manual'] ?? false),
+                                        'traction' => $vehicle['traction'] ?? '',
                                     ];
 
                                     $processedVehicles[] = (object) $processedVehicle;
