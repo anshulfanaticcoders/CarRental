@@ -924,6 +924,10 @@ Route::group([
         ->name('green-motion-car.show');
     Route::post('/green-motion-car/check-availability', [GreenMotionController::class, 'checkAvailability'])->name('green-motion-car.check-availability');
 
+    // Adobe Car Single Car Page
+    Route::get('/adobe-car/{id}', [AdobeCarController::class, 'show'])
+        ->name('adobe-car.show');
+
     // OK Mobility Single Car Page
     Route::get('/ok-mobility-car/{id}', [OkMobilityController::class, 'showOkMobilityCar'])
         ->name('ok-mobility-car.show');

@@ -562,11 +562,11 @@ class SearchController extends Controller
                                         'extras' => $vehicleDetails['extras'] ?? [],
                                         'adobe_category' => $vehicle['category'] ?? '',
                                         // Adobe-specific fields
-                                        'adobe_pli' => (float) ($vehicle['pli'] ?? 0),
-                                        'adobe_ldw' => (float) ($vehicle['ldw'] ?? 0),
-                                        'adobe_spp' => (float) ($vehicle['spp'] ?? 0),
-                                        'adobe_tdr' => (float) ($vehicle['tdr'] ?? 0),
-                                        'adobe_dro' => (float) ($vehicle['dro'] ?? 0),
+                                        'pli' => (float) ($vehicle['pli'] ?? 0),
+                                        'ldw' => (float) ($vehicle['ldw'] ?? 0),
+                                        'spp' => (float) ($vehicle['spp'] ?? 0),
+                                        'tdr' => (float) ($vehicle['tdr'] ?? 0),
+                                        'dro' => (float) ($vehicle['dro'] ?? 0),
                                     ];
 
                                     $processedVehicles[] = (object) $processedVehicle;

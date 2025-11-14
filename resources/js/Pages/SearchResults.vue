@@ -377,7 +377,10 @@ let mobileMarkers = [];
 const allVehiclesForMap = computed(() => {
     const internal = props.vehicles.data || [];
     const greenMotion = props.greenMotionVehicles?.data || [];
-    return [...internal, ...greenMotion];
+    // Provider vehicles (including Adobe, Wheelsys, etc.) are already included in the main vehicles collection
+    const providerVehicles = internal.filter(v => v.source !== 'internal');
+    const internalOnly = internal.filter(v => v.source === 'internal');
+    return [...internalOnly, ...greenMotion, ...providerVehicles];
 });
 
 const isValidCoordinate = (coord) => {
@@ -723,7 +726,7 @@ const addMarkers = () => {
             displayLng = lng + effectiveRadius * Math.cos(angle);
         }
 
-        const primaryImage = (vehicle.source === 'greenmotion' || vehicle.source === 'wheelsys') ? vehicle.image : (vehicle.images?.find((image) => image.image_type === 'primary')?.image_url || '/default-image.png');
+        const primaryImage = (vehicle.source === 'greenmotion' || vehicle.source === 'wheelsys' || vehicle.source === 'adobe') ? vehicle.image : (vehicle.images?.find((image) => image.image_type === 'primary')?.image_url || '/default-image.png');
         const detailRoute = vehicle.source !== 'internal'
             ? route(getProviderRoute(vehicle), { locale: page.props.locale, id: vehicle.id.substring(vehicle.id.indexOf('_') + 1), location_id: vehicle.provider_pickup_id, start_date: form.date_from, end_date: form.date_to, start_time: form.start_time, end_time: form.end_time, age: form.age, rentalCode: form.rentalCode, currency: form.currency, fuel: form.fuel, userid: form.userid, username: form.username, language: form.language, full_credit: form.full_credit, promocode: form.promocode, dropoff_location_id: form.dropoff_location_id, dropoff_where: form.dropoff_where, where: form.where, provider: vehicle.source })
             : route('vehicle.show', { locale: page.props.locale, id: vehicle.id, package: form.package_type, pickup_date: form.date_from, return_date: form.date_to, currency: form.currency });
@@ -734,6 +737,10 @@ const addMarkers = () => {
         if (vehicle.source === 'wheelsys' && vehicle.price_per_day) {
             const originalCurrency = vehicle.currency || 'USD';
             const convertedPrice = convertCurrency(vehicle.price_per_day, originalCurrency);
+            popupCurrencySymbol = getCurrencySymbol(selectedCurrency.value);
+            popupPrice = `${popupCurrencySymbol}${convertedPrice.toFixed(2)}`; // Display price per day
+        } else if (vehicle.source === 'adobe' && vehicle.tdr) {
+            const convertedPrice = convertCurrency(vehicle.tdr, 'USD');
             popupCurrencySymbol = getCurrencySymbol(selectedCurrency.value);
             popupPrice = `${popupCurrencySymbol}${convertedPrice.toFixed(2)}`; // Display price per day
         } else if (vehicle.source !== 'internal' && vehicle.products && vehicle.products[0]?.total && vehicle.products[0].total > 0) {
@@ -824,7 +831,7 @@ const addMobileMarkers = () => {
             displayLng = lng + effectiveRadius * Math.cos(angle);
         }
 
-        const primaryImage = (vehicle.source === 'greenmotion' || vehicle.source === 'wheelsys') ? vehicle.image : (vehicle.images?.find((image) => image.image_type === 'primary')?.image_url || '/default-image.png');
+        const primaryImage = (vehicle.source === 'greenmotion' || vehicle.source === 'wheelsys' || vehicle.source === 'adobe') ? vehicle.image : (vehicle.images?.find((image) => image.image_type === 'primary')?.image_url || '/default-image.png');
         const detailRoute = vehicle.source !== 'internal'
             ? route(getProviderRoute(vehicle), { locale: page.props.locale, id: vehicle.id.substring(vehicle.id.indexOf('_') + 1), location_id: vehicle.provider_pickup_id, start_date: form.date_from, end_date: form.date_to, start_time: form.start_time, end_time: form.end_time, age: form.age, rentalCode: form.rentalCode, currency: form.currency, fuel: form.fuel, userid: form.userid, username: form.username, language: form.language, full_credit: form.full_credit, promocode: form.promocode, dropoff_location_id: form.dropoff_location_id, dropoff_where: form.dropoff_where, where: form.where, provider: vehicle.source })
             : route('vehicle.show', { locale: page.props.locale, id: vehicle.id, package: form.package_type, pickup_date: form.date_from, return_date: form.date_to, currency: form.currency });
@@ -835,6 +842,10 @@ const addMobileMarkers = () => {
         if (vehicle.source === 'wheelsys' && vehicle.price_per_day) {
             const originalCurrency = vehicle.currency || 'USD';
             const convertedPrice = convertCurrency(vehicle.price_per_day, originalCurrency);
+            popupCurrencySymbol = getCurrencySymbol(selectedCurrency.value);
+            popupPrice = `${popupCurrencySymbol}${convertedPrice.toFixed(2)}`; // Display price per day
+        } else if (vehicle.source === 'adobe' && vehicle.tdr) {
+            const convertedPrice = convertCurrency(vehicle.tdr, 'USD');
             popupCurrencySymbol = getCurrencySymbol(selectedCurrency.value);
             popupPrice = `${popupCurrencySymbol}${convertedPrice.toFixed(2)}`; // Display price per day
         } else if (vehicle.source !== 'internal' && vehicle.products && vehicle.products[0]?.total && vehicle.products[0].total > 0) {
@@ -1238,6 +1249,9 @@ const getProviderRoute = (vehicle) => {
     }
     if (vehicle.source === 'wheelsys') {
         return 'wheelsys-car.show';
+    }
+    if (vehicle.source === 'adobe') {
+        return 'adobe-car.show';
     }
     // Add other providers here as needed
     // if (vehicle.source === 'usave') {
@@ -1897,6 +1911,9 @@ watch(
                                     <template v-else-if="vehicle.source === 'wheelsys'">
                                         {{ vehicle.acriss_code || vehicle.group_code || 'N/A' }}
                                     </template>
+                                    <template v-else-if="vehicle.source === 'adobe'">
+                                        {{ vehicle.category || 'N/A' }}
+                                    </template>
                                     <template v-else>
                                         {{ vehicle.model }}
                                     </template>
@@ -1963,6 +1980,28 @@ watch(
                                     </div>
                                 </div>
 
+                                <!-- Show Adobe specific info -->
+                                <div class="mt-[1rem] text-sm text-gray-600" v-if="vehicle.source === 'adobe'">
+                                    <div v-if="vehicle.category">
+                                        <strong>Category:</strong> {{ vehicle.category }}
+                                    </div>
+                                    <div v-if="vehicle.type">
+                                        <strong>Type:</strong> {{ vehicle.type }}
+                                    </div>
+                                    <div v-if="vehicle.passengers">
+                                        <strong>Passengers:</strong> {{ vehicle.passengers }}
+                                    </div>
+                                    <div v-if="vehicle.doors">
+                                        <strong>Doors:</strong> {{ vehicle.doors }}
+                                    </div>
+                                    <div v-if="vehicle.manual !== undefined">
+                                        <strong>Transmission:</strong> {{ vehicle.manual ? 'Manual' : 'Automatic' }}
+                                    </div>
+                                    <div v-if="vehicle.traction">
+                                        <strong>Traction:</strong> {{ vehicle.traction }}
+                                    </div>
+                                </div>
+
                                  <div>
                                     <span class="italic font-medium">{{vehicle.full_vehicle_address}}</span>
                                  </div>
@@ -1980,6 +2019,12 @@ watch(
                                                 {{ vehicle.seating_capacity }} Seats .
                                                 {{ vehicle.doors }} Doors
                                             </template>
+                                            <template v-else-if="vehicle.source === 'adobe'">
+                                                {{ vehicle.manual ? 'Manual' : 'Automatic' }} .
+                                                {{ vehicle.passengers }} Seats .
+                                                {{ vehicle.doors }} Doors .
+                                                {{ vehicle.traction }}
+                                            </template>
                                             <template v-else>
                                                 {{ vehicle.transmission }} .
                                                 {{ vehicle.source === 'greenmotion' ? vehicle.fuel : vehicle.fuel }} .
@@ -1989,7 +2034,7 @@ watch(
                                     </div>
                                 </div>
                                 <div class="extra_details flex gap-5 mt-[1rem] items-center">
-                                    <div class="col flex gap-3" v-if="vehicle.source !== 'okmobility' && vehicle.source !== 'wheelsys'">
+                                    <div class="col flex gap-3" v-if="vehicle.source !== 'okmobility' && vehicle.source !== 'wheelsys' && vehicle.source !== 'adobe'">
                                         <img :src="mileageIcon" alt="" loading="lazy" /><span
                                             class="text-[1.15rem] max-[768px]:text-[0.95rem]">
                                             {{ vehicle.source === 'greenmotion' ? vehicle.mileage + ' MPG' : vehicle.mileage + ' km/L' }}</span>
@@ -2005,6 +2050,12 @@ watch(
                                         <img :src="mileageIcon" alt="" loading="lazy" /><span
                                             class="text-[1.15rem] max-[768px]:text-[0.95rem]">
                                             {{ vehicle.mileage || 'Unlimited mileage' }}</span>
+                                    </div>
+                                    <!-- Adobe mileage display -->
+                                    <div class="col flex gap-3" v-else-if="vehicle.source === 'adobe'">
+                                        <img :src="mileageIcon" alt="" loading="lazy" /><span
+                                            class="text-[1.15rem] max-[768px]:text-[0.95rem]">
+                                            Unlimited mileage</span>
                                     </div>
                                     <!-- <div class="col flex gap-3" v-if="vehicle.distance_in_km !== undefined">
                                         <img :src="walkIcon" alt="" /><span
@@ -2151,6 +2202,16 @@ watch(
                                     <span v-else-if="vehicle.source === 'wheelsys' && vehicle.benefits?.minimum_driver_age" class="flex gap-3 items-center text-[12px]">
                                         <img :src="check" alt="" loading="lazy" />Min age: {{ vehicle.benefits.minimum_driver_age }} years
                                     </span>
+                                    <!-- Adobe specific benefits -->
+                                    <span v-if="vehicle.source === 'adobe'" class="flex gap-3 items-center text-[12px]">
+                                        <img :src="check" alt="" loading="lazy" />Unlimited mileage
+                                    </span>
+                                    <span v-if="vehicle.source === 'adobe'" class="flex gap-3 items-center text-[12px]">
+                                        <img :src="check" alt="" loading="lazy" />Liability Protection included
+                                    </span>
+                                    <span v-if="vehicle.source === 'adobe'" class="flex gap-3 items-center text-[12px]">
+                                        <img :src="check" alt="" loading="lazy" />24/7 Roadside Assistance
+                                    </span>
                                 </div>
 
                                 <div class="mt-[2rem] flex justify-between items-center">
@@ -2191,6 +2252,12 @@ watch(
                                                 <div v-if="vehicle.source === 'wheelsys' && vehicle.price_per_day && vehicle.price_per_day > 0" class="flex items-baseline">
                                                     <span class="text-customPrimaryColor text-lg font-semibold">
                                                         {{ getCurrencySymbol(selectedCurrency) }}{{ convertCurrency(vehicle.price_per_day, vehicle.currency || 'USD').toFixed(2) }}
+                                                    </span>
+                                                    <span class="text-xs text-gray-600 ml-1">/day</span>
+                                                </div>
+                                                <div v-else-if="vehicle.source === 'adobe' && vehicle.tdr && vehicle.tdr > 0" class="flex items-baseline">
+                                                    <span class="text-customPrimaryColor text-lg font-semibold">
+                                                        {{ getCurrencySymbol(selectedCurrency) }}{{ convertCurrency(vehicle.tdr, 'USD').toFixed(2) }}
                                                     </span>
                                                     <span class="text-xs text-gray-600 ml-1">/day</span>
                                                 </div>
