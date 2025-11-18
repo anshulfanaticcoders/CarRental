@@ -118,22 +118,15 @@ class AffiliateBusinessController extends Controller
             abort(403, 'Invalid or expired dashboard access token');
         }
 
-        // For debugging: Log the validation check
+        // For debugging: Log the access attempt
         \Log::info('Dashboard access attempt', [
             'business_id' => $business->id,
             'business_name' => $business->name,
             'token' => $fullToken,
             'route_token' => $token,
-            'token_expires_at' => $business->dashboard_token_expires_at,
-            'is_valid' => $business->isDashboardTokenValid(),
             'status' => $business->status,
             'verification_status' => $business->verification_status,
         ]);
-
-        // Check token validity
-        if (!$business->isDashboardTokenValid()) {
-            abort(403, 'Dashboard access token has expired');
-        }
 
         // Check business status - only active businesses can access dashboard
         if ($business->status !== 'active') {
