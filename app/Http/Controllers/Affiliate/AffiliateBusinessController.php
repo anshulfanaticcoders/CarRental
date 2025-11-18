@@ -287,6 +287,113 @@ class AffiliateBusinessController extends Controller
     }
 
     /**
+     * Login to affiliate dashboard.
+     */
+    public function login(Request $request)
+    {
+        $validated = $request->validate([
+            'email' => 'required|email',
+            'dashboard_token' => 'required|string',
+        ]);
+
+        // Find business by email and dashboard token
+        $business = AffiliateBusiness::where('contact_email', $validated['email'])
+            ->where('dashboard_access_token', $validated['dashboard_token'])
+            ->first();
+
+        if (!$business) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Invalid email or dashboard access token'
+            ], 401);
+        }
+
+        // Check if token is still valid
+        if (!$business->isDashboardTokenValid()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Dashboard access token has expired. Please request a new access link.'
+            ], 401);
+        }
+
+        // Check if business is active
+        if ($business->status !== 'active') {
+            return response()->json([
+                'success' => false,
+                'message' => 'Business account is not active. Please verify your email or contact support.'
+            ], 401);
+        }
+
+        // Update last accessed time
+        $business->update([
+            'last_dashboard_access' => now(),
+        ]);
+
+        // Generate dashboard URL
+        $dashboardUrl = route('affiliate.business.dashboard', ['token' => $business->dashboard_access_token]);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Login successful',
+            'redirect_url' => $dashboardUrl,
+            'business_name' => $business->name,
+        ]);
+    }
+
+    /**
+     * Refresh dashboard access token (forgot access key).
+     */
+    public function refreshAccess(Request $request)
+    {
+        $validated = $request->validate([
+            'email' => 'required|email',
+        ]);
+
+        // Find business by email
+        $business = AffiliateBusiness::where('contact_email', $validated['email'])->first();
+
+        if (!$business) {
+            return response()->json([
+                'success' => false,
+                'message' => 'No business found with this email address'
+            ], 404);
+        }
+
+        // Generate new dashboard token
+        $newToken = $business->refreshDashboardToken();
+
+        // Log the token refresh for security
+        \Log::info('Dashboard access token refreshed', [
+            'business_id' => $business->id,
+            'business_name' => $business->name,
+            'email' => $business->contact_email,
+            'new_token' => $newToken,
+            'refreshed_at' => now(),
+        ]);
+
+        // Send email with new access link
+        try {
+            $business->notify(new \App\Notifications\Affiliate\DashboardAccessNotification($business));
+        } catch (\Exception $e) {
+            \Log::error('Failed to send dashboard access notification', [
+                'business_id' => $business->id,
+                'error' => $e->getMessage(),
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to send email notification. Please try again later.'
+            ], 500);
+        }
+
+        return response()->json([
+            'success' => true,
+            'message' => 'New dashboard access link has been sent to your email address',
+            'email' => $business->contact_email,
+        ]);
+    }
+
+    /**
      * Check if business email already exists.
      */
     public function checkEmail(Request $request)

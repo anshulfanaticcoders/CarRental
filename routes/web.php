@@ -408,6 +408,8 @@ Route::group([
         Route::post('/dashboard/{token}/refresh', [AffiliateBusinessController::class, 'refreshToken'])->name('refresh.token');
         Route::get('/logout/{token}', [AffiliateBusinessController::class, 'logout'])->name('logout');
         Route::post('/check-email', [AffiliateBusinessController::class, 'checkEmail'])->name('check-email');
+        Route::post('/login', [AffiliateBusinessController::class, 'login'])->name('login')->middleware('throttle:5,1');
+        Route::post('/refresh-access', [AffiliateBusinessController::class, 'refreshAccess'])->name('refresh-access')->middleware('throttle:3,1');
 
         // Location Management Routes
         Route::post('/locations/create/{token}', [AffiliateBusinessController::class, 'createLocation'])->name('locations.create');

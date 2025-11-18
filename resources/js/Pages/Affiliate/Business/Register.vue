@@ -21,6 +21,9 @@ const props = defineProps({
     },
 });
 
+// Tab management
+const activeTab = ref('register');
+
 const form = useForm({
     business_type: '',
     name: '',
@@ -39,6 +42,23 @@ const form = useForm({
     description: '',
     accept_terms: false,
 });
+
+// Login form data
+const loginForm = useForm({
+    email: '',
+    dashboard_token: '',
+});
+
+const forgotEmailForm = useForm({
+    email: '',
+});
+
+// Login form states
+const isSubmittingLogin = ref(false);
+const isSubmittingForgot = ref(false);
+const loginError = ref('');
+const forgotSuccess = ref('');
+const forgotError = ref('');
 
 const isSubmitting = ref(false);
 const emailChecking = ref(false);
@@ -324,6 +344,88 @@ const submit = async () => {
     });
 };
 
+// Login submit function
+const submitLogin = async () => {
+    loginError.value = '';
+
+    // Basic validation
+    if (!loginForm.email || !loginForm.dashboard_token) {
+        loginError.value = 'Please fill in all required fields';
+        return;
+    }
+
+    isSubmittingLogin.value = true;
+
+    try {
+        const response = await axios.post(`/${props.locale}/business/login`, {
+            email: loginForm.email,
+            dashboard_token: loginForm.dashboard_token,
+        });
+
+        if (response.data.success) {
+            // Redirect to dashboard
+            window.location.href = response.data.redirect_url;
+        } else {
+            loginError.value = response.data.message || 'Invalid credentials';
+        }
+    } catch (error) {
+        console.error('Login failed:', error);
+        loginError.value = error.response?.data?.message || 'Login failed. Please check your credentials and try again.';
+    } finally {
+        isSubmittingLogin.value = false;
+    }
+};
+
+// Forgot access key function
+const submitForgotAccess = async () => {
+    forgotError.value = '';
+    forgotSuccess.value = '';
+
+    // Basic validation
+    if (!forgotEmailForm.email) {
+        forgotError.value = 'Please enter your email address';
+        return;
+    }
+
+    // Email validation
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(forgotEmailForm.email)) {
+        forgotError.value = 'Please enter a valid email address';
+        return;
+    }
+
+    isSubmittingForgot.value = true;
+
+    try {
+        const response = await axios.post(`/${props.locale}/business/refresh-access`, {
+            email: forgotEmailForm.email,
+        });
+
+        if (response.data.success) {
+            forgotSuccess.value = 'New dashboard access link has been sent to your email address';
+            forgotEmailForm.email = '';
+        } else {
+            forgotError.value = response.data.message || 'Failed to send access link';
+        }
+    } catch (error) {
+        console.error('Forgot access failed:', error);
+        forgotError.value = error.response?.data?.message || 'Failed to send access link. Please try again.';
+    } finally {
+        isSubmittingForgot.value = false;
+    }
+};
+
+// Reset login errors when user starts typing
+const resetLoginError = () => {
+    loginError.value = '';
+};
+
+// Reset forgot errors when user starts typing
+const resetForgotError = () => {
+    forgotError.value = '';
+    forgotSuccess.value = '';
+};
+
 // Enhanced form validation
 const isFormValid = computed(() => {
     // Check all required fields
@@ -416,21 +518,51 @@ const formProgress = computed(() => {
                 </div>
             </div>
 
-            <!-- Registration Form -->
+            <!-- Registration/Login Form -->
             <div class="bg-white shadow-xl rounded-2xl overflow-hidden">
-                <!-- Form Header -->
+                <!-- Form Header with Tabs -->
                 <div class="bg-gradient-to-r from-blue-600 to-purple-600 px-8 py-6">
-                    <div class="text-center">
+                    <div class="text-center mb-6">
                         <h1 class="text-3xl font-bold text-white">
-                            Join the Vrooem Affiliate Program
+                            {{ activeTab === 'register' ? 'Join the Vrooem Affiliate Program' : 'Access Your Dashboard' }}
                         </h1>
                         <p class="mt-2 text-blue-100 max-w-2xl mx-auto">
-                            Register your business to offer exclusive car rental discounts to your customers and earn competitive commissions
+                            {{ activeTab === 'register'
+                                ? 'Register your business to offer exclusive car rental discounts to your customers and earn competitive commissions'
+                                : 'Access your affiliate dashboard to manage QR codes and track your earnings'
+                            }}
                         </p>
+                    </div>
+
+                    <!-- Tab Navigation -->
+                    <div class="flex justify-center space-x-4">
+                        <button
+                            @click="activeTab = 'register'"
+                            :class="[
+                                'px-6 py-2 rounded-lg font-medium transition-all duration-200',
+                                activeTab === 'register'
+                                    ? 'bg-white text-blue-600 shadow-lg'
+                                    : 'bg-blue-500 bg-opacity-20 text-blue-100 hover:bg-opacity-30'
+                            ]"
+                        >
+                            Register
+                        </button>
+                        <button
+                            @click="activeTab = 'login'"
+                            :class="[
+                                'px-6 py-2 rounded-lg font-medium transition-all duration-200',
+                                activeTab === 'login'
+                                    ? 'bg-white text-blue-600 shadow-lg'
+                                    : 'bg-blue-500 bg-opacity-20 text-blue-100 hover:bg-opacity-30'
+                            ]"
+                        >
+                            Login
+                        </button>
                     </div>
                 </div>
 
-                <form @submit.prevent="submit" class="p-8">
+                <!-- Register Form -->
+                <form v-if="activeTab === 'register'" @submit.prevent="submit" class="p-8">
                     <!-- Business Information Section -->
                     <div class="mb-10">
                         <h2 class="text-xl font-semibold text-gray-900 mb-6 flex items-center">
@@ -1001,6 +1133,203 @@ const formProgress = computed(() => {
                         </div>
                     </div>
                 </form>
+
+                <!-- Login Form -->
+                <div v-else-if="activeTab === 'login'" class="p-8">
+                    <!-- Error/Success Messages -->
+                    <div v-if="loginError" class="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg">
+                        <div class="flex items-center">
+                            <svg class="w-5 h-5 text-red-600 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                                <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clip-rule="evenodd" />
+                            </svg>
+                            <span class="text-red-700">{{ loginError }}</span>
+                        </div>
+                    </div>
+
+                    <div v-if="forgotSuccess" class="mb-6 p-4 bg-green-50 border border-green-200 rounded-lg">
+                        <div class="flex items-center">
+                            <svg class="w-5 h-5 text-green-600 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                                <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd" />
+                            </svg>
+                            <span class="text-green-700">{{ forgotSuccess }}</span>
+                        </div>
+                    </div>
+
+                    <!-- Login Form -->
+                    <form v-if="!forgotSuccess" @submit.prevent="submitLogin">
+                        <div class="mb-8">
+                            <h2 class="text-xl font-semibold text-gray-900 mb-6 flex items-center">
+                                <svg class="w-5 h-5 mr-2 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 16l-4-4m0 0l4-4m-4 4h14m-5 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h7a3 3 0 013 3v1" />
+                                </svg>
+                                Dashboard Access
+                            </h2>
+
+                            <div class="space-y-6">
+                                <!-- Email Field -->
+                                <div>
+                                    <label for="login_email" class="block text-sm font-semibold text-gray-700 mb-2">
+                                        Email Address <span class="text-red-500">*</span>
+                                    </label>
+                                    <div class="relative">
+                                        <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                            <svg class="w-5 h-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                                            </svg>
+                                        </div>
+                                        <input
+                                            id="login_email"
+                                            v-model="loginForm.email"
+                                            type="email"
+                                            @input="resetLoginError"
+                                            class="w-full pl-10 pr-4 py-3 border-2 border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200"
+                                            placeholder="contact@yourbusiness.com"
+                                            required
+                                        />
+                                    </div>
+                                </div>
+
+                                <!-- Dashboard Access Token Field -->
+                                <div>
+                                    <label for="dashboard_token" class="block text-sm font-semibold text-gray-700 mb-2">
+                                        Dashboard Access Token <span class="text-red-500">*</span>
+                                    </label>
+                                    <div class="relative">
+                                        <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                            <svg class="w-5 h-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z" />
+                                            </svg>
+                                        </div>
+                                        <input
+                                            id="dashboard_token"
+                                            v-model="loginForm.dashboard_token"
+                                            type="text"
+                                            @input="resetLoginError"
+                                            class="w-full pl-10 pr-4 py-3 border-2 border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200 font-mono text-sm"
+                                            placeholder="AFF-XXXXXXXX-XXXX"
+                                            required
+                                        />
+                                    </div>
+                                    <p class="mt-2 text-sm text-gray-500">
+                                        Enter the dashboard access token you received in your email
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Submit Button -->
+                        <div class="flex justify-center">
+                            <button
+                                type="submit"
+                                :disabled="isSubmittingLogin || !loginForm.email || !loginForm.dashboard_token"
+                                :class="[
+                                    'inline-flex items-center px-8 py-4 border border-transparent text-lg font-semibold rounded-lg text-white transition-all duration-200',
+                                    !isSubmittingLogin && loginForm.email && loginForm.dashboard_token
+                                        ? 'bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 transform hover:scale-105 shadow-lg'
+                                        : 'bg-gray-400 cursor-not-allowed'
+                                ]"
+                            >
+                                <svg v-if="isSubmittingLogin" class="animate-spin -ml-1 mr-3 h-5 w-5 text-white" fill="none" viewBox="0 0 24 24">
+                                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                </svg>
+                                <svg v-else class="mr-2 h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 16l-4-4m0 0l4-4m-4 4h14m-5 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h7a3 3 0 013 3v1" />
+                                </svg>
+                                {{ isSubmittingLogin ? 'Accessing Dashboard...' : 'Access Dashboard' }}
+                            </button>
+                        </div>
+
+                        <!-- Forget Access Key Link -->
+                        <div class="mt-6 text-center">
+                            <button
+                                type="button"
+                                @click="forgotEmailForm.email = loginForm.email; loginError = ''"
+                                class="text-blue-600 hover:text-blue-800 text-sm font-medium underline"
+                            >
+                                Forgot or lost your access key?
+                            </button>
+                        </div>
+                    </form>
+
+                    <!-- Forgot Access Form -->
+                    <div v-else class="space-y-6">
+                        <div class="mb-8">
+                            <h2 class="text-xl font-semibold text-gray-900 mb-6 flex items-center">
+                                <svg class="w-5 h-5 mr-2 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 19v-8.93a2 2 0 01.89-1.664l7-4A2 2 0 0111 4.07V7M3 19l6.75-3.75M3 19l18 0m-18 0l6.75 3.75M21 19V4.07a2 2 0 00-1.11-1.664l-7-4A2 2 0 009 0v7m0 0l6.75 3.75M21 19l-6.75 3.75M21 19l-6.75-3.75M9 7h6m0 0v4m0-4l3 3m-3-3L6 10" />
+                                </svg>
+                                Request New Access Key
+                            </h2>
+                            <p class="text-gray-600 mb-6">
+                                Enter your registered email address and we'll send you a new dashboard access link.
+                            </p>
+
+                            <!-- Email Field for Forgot -->
+                            <div>
+                                <label for="forgot_email" class="block text-sm font-semibold text-gray-700 mb-2">
+                                    Registered Email Address <span class="text-red-500">*</span>
+                                </label>
+                                <div class="relative">
+                                    <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                        <svg class="w-5 h-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                                        </svg>
+                                    </div>
+                                    <input
+                                        id="forgot_email"
+                                        v-model="forgotEmailForm.email"
+                                        type="email"
+                                        @input="resetForgotError"
+                                        class="w-full pl-10 pr-4 py-3 border-2 border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200"
+                                        placeholder="contact@yourbusiness.com"
+                                        required
+                                    />
+                                </div>
+                                <p v-if="forgotError" class="mt-2 text-sm text-red-600 flex items-center">
+                                    <svg class="w-4 h-4 mr-1" fill="currentColor" viewBox="0 0 20 20">
+                                        <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clip-rule="evenodd" />
+                                    </svg>
+                                    {{ forgotError }}
+                                </p>
+                            </div>
+                        </div>
+
+                        <!-- Submit and Back Buttons -->
+                        <div class="flex flex-col sm:flex-row gap-4 justify-center">
+                            <button
+                                type="button"
+                                @click="submitForgotAccess"
+                                :disabled="isSubmittingForgot || !forgotEmailForm.email"
+                                :class="[
+                                    'inline-flex items-center px-6 py-3 border border-transparent text-base font-semibold rounded-lg text-white transition-all duration-200',
+                                    !isSubmittingForgot && forgotEmailForm.email
+                                        ? 'bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 transform hover:scale-105 shadow-lg'
+                                        : 'bg-gray-400 cursor-not-allowed'
+                                ]"
+                            >
+                                <svg v-if="isSubmittingForgot" class="animate-spin -ml-1 mr-2 h-5 w-5 text-white" fill="none" viewBox="0 0 24 24">
+                                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                </svg>
+                                <svg v-else class="mr-2 h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 19v-8.93a2 2 0 01.89-1.664l7-4A2 2 0 0111 4.07V7M3 19l6.75-3.75M3 19l18 0" />
+                                </svg>
+                                {{ isSubmittingForgot ? 'Sending...' : 'Send New Access Link' }}
+                            </button>
+                            <button
+                                type="button"
+                                @click="forgotSuccess = ''; forgotEmailForm.email = ''"
+                                class="inline-flex items-center px-6 py-3 border border-gray-300 text-base font-semibold rounded-lg text-gray-700 bg-white hover:bg-gray-50 transition-colors"
+                            >
+                                <svg class="mr-2 h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+                                </svg>
+                                Back to Login
+                            </button>
+                        </div>
+                    </div>
+                </div>
             </div>
 
             <!-- Benefits Section -->
