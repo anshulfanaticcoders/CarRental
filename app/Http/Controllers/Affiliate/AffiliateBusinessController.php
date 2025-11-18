@@ -308,14 +308,6 @@ class AffiliateBusinessController extends Controller
             ], 401);
         }
 
-        // Check if token is still valid
-        if (!$business->isDashboardTokenValid()) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Dashboard access token has expired. Please request a new access link.'
-            ], 401);
-        }
-
         // Check if business is active
         if ($business->status !== 'active') {
             return response()->json([
