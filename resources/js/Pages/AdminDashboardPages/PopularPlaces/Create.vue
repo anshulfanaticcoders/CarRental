@@ -1,9 +1,8 @@
 <script setup>
 import { ref, onMounted, watch } from 'vue';
 import { Link, useForm } from '@inertiajs/vue3';
-import InputLabel from '@/Components/InputLabel.vue';
-import Input from '@/Components/ui/input/Input.vue';
-import Button from '@/Components/ui/button/Button.vue';
+import { Input } from '@/Components/ui/input';
+import { Button } from '@/Components/ui/button';
 import AdminDashboardLayout from '@/Layouts/AdminDashboardLayout.vue';
 import { useToast } from 'vue-toastification';
 import {
@@ -32,6 +31,10 @@ const form = useForm({
     longitude: null,
     image: null,
 });
+
+const isDragging = ref(false);
+const imagePreview = ref(null);
+const selectedFileName = ref('');
 
 const initAutocomplete = async (inputElement) => {
     if (!(inputElement instanceof HTMLInputElement)) {
@@ -170,6 +173,69 @@ const submitForm = () => {
     });
 };
 
+// Drag and drop handlers
+const handleDragOver = (event) => {
+    event.preventDefault();
+    isDragging.value = true;
+};
+
+const handleDragLeave = (event) => {
+    event.preventDefault();
+    isDragging.value = false;
+};
+
+const handleDrop = (event) => {
+    event.preventDefault();
+    isDragging.value = false;
+
+    const files = event.dataTransfer.files;
+    if (files.length > 0 && files[0].type.startsWith('image/')) {
+        handleImageFile(files[0]);
+    }
+};
+
+// File upload handler
+const handleFileUpload = (event) => {
+    const file = event.target.files[0];
+    if (file) {
+        handleImageFile(file);
+    }
+};
+
+// Handle image file
+const handleImageFile = (file) => {
+    if (file.size > 10 * 1024 * 1024) { // 10MB limit
+        toast.error('Image size should not exceed 10MB');
+        return;
+    }
+
+    if (!file.type.startsWith('image/')) {
+        toast.error('Please select a valid image file');
+        return;
+    }
+
+    form.image = file;
+    selectedFileName.value = file.name;
+
+    // Create preview
+    const reader = new FileReader();
+    reader.onload = (e) => {
+        imagePreview.value = e.target.result;
+    };
+    reader.readAsDataURL(file);
+};
+
+// Remove image
+const removeImage = () => {
+    form.image = null;
+    imagePreview.value = null;
+    selectedFileName.value = '';
+    // Reset file input
+    if (document.querySelector('input[type="file"]')) {
+        document.querySelector('input[type="file"]').value = '';
+    }
+};
+
 // Watch for form errors to log for debugging
 watch(() => form.errors, (newErrors) => {
     if (Object.keys(newErrors).length > 0) {
@@ -180,10 +246,6 @@ watch(() => form.errors, (newErrors) => {
 
 <template>
   <AdminDashboardLayout>
-    <div v-if="form.processing" class="fixed inset-0 z-50 flex items-center justify-center bg-white bg-opacity-70">
-      <img :src="loaderVariant" alt="Loading..." class="h-20 w-20" />
-    </div>
-
     <div class="py-12 px-4 sm:px-6 lg:px-8">
       <div class=" mx-auto">
         <div class="bg-white rounded-xl shadow-sm border border-gray-200">
@@ -200,173 +262,115 @@ watch(() => form.errors, (newErrors) => {
               </div>
             </div>
 
-            <form @submit.prevent class="space-y-6">
+            <form @submit.prevent="submitForm" class="space-y-6">
               <div>
-                <InputLabel for="locationSearch" value="Search Location to Auto-fill Details" class="block text-sm font-medium text-gray-700 mb-2">
-                  <span class="text-red-600">*</span>
-                </InputLabel>
+                <label for="locationSearch" class="text-sm font-medium text-gray-700 mb-2 block">Search Location to Auto-fill Details <span class="text-red-600">*</span></label>
                 <Input
                   id="locationSearch"
                   ref="autocompleteInputRef"
                   type="text"
-                  class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-customPrimaryColor focus:border-customPrimaryColor transition-colors duration-200 bg-gray-50 focus:bg-white"
                   placeholder="Enter a location (e.g., Eiffel Tower, Paris)"
                   required
                   aria-required="true"
                 />
-                <p class="text-sm text-gray-600 mt-2">Selecting a location will auto-fill the fields below. You can then edit them if needed.</p>
+                <p class="text-xs text-gray-500 mt-1">Selecting a location will auto-fill the fields below. You can then edit them if needed.</p>
               </div>
 
               <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <InputLabel for="place_name" value="Place Name" class="block text-sm font-medium text-gray-700 mb-2">
-                    <span class="text-red-600">*</span>
-                  </InputLabel>
-                  <Input
-                    id="place_name"
-                    v-model="form.place_name"
-                    required
-                    aria-required="true"
-                    class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-customPrimaryColor focus:border-customPrimaryColor transition-colors duration-200 bg-gray-50 focus:bg-white"
-                  />
-                  <p v-if="form.errors.place_name" class="mt-2 text-sm text-red-600">{{ form.errors.place_name }}</p>
+                  <label for="place_name" class="text-sm font-medium text-gray-700 mb-1 block">Place Name <span class="text-red-600">*</span></label>
+                  <Input id="place_name" type="text" v-model="form.place_name" required />
                 </div>
                 <div>
-                  <InputLabel for="city" value="City" class="block text-sm font-medium text-gray-700 mb-2">
-                    <span class="text-red-600">*</span>
-                  </InputLabel>
-                  <Input
-                    id="city"
-                    v-model="form.city"
-                    required
-                    aria-required="true"
-                    class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-customPrimaryColor focus:border-customPrimaryColor transition-colors duration-200 bg-gray-50 focus:bg-white"
-                  />
-                  <p v-if="form.errors.city" class="mt-2 text-sm text-red-600">{{ form.errors.city }}</p>
+                  <label for="city" class="text-sm font-medium text-gray-700 mb-1 block">City <span class="text-red-600">*</span></label>
+                  <Input id="city" type="text" v-model="form.city" required />
                 </div>
               </div>
               <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <InputLabel for="state" value="State" class="block text-sm font-medium text-gray-700 mb-2" />
-                  <Input
-                    id="state"
-                    v-model="form.state"
-                    class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-customPrimaryColor focus:border-customPrimaryColor transition-colors duration-200 bg-gray-50 focus:bg-white"
-                  />
-                  <p v-if="form.errors.state" class="mt-2 text-sm text-red-600">{{ form.errors.state }}</p>
+                  <label for="state" class="text-sm font-medium text-gray-700 mb-1 block">State <span class="text-red-600">*</span></label>
+                  <Input id="state" type="text" v-model="form.state" required />
                 </div>
                 <div>
-                  <InputLabel for="country" value="Country" class="block text-sm font-medium text-gray-700 mb-2">
-                    <span class="text-red-600">*</span>
-                  </InputLabel>
-                  <Input
-                    id="country"
-                    v-model="form.country"
-                    required
-                    aria-required="true"
-                    class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-customPrimaryColor focus:border-customPrimaryColor transition-colors duration-200 bg-gray-50 focus:bg-white"
-                  />
-                  <p v-if="form.errors.country" class="mt-2 text-sm text-red-600">{{ form.errors.country }}</p>
+                  <label for="country" class="text-sm font-medium text-gray-700 mb-1 block">Country <span class="text-red-600">*</span></label>
+                  <Input id="country" type="text" v-model="form.country" required />
                 </div>
               </div>
               <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <InputLabel for="latitude" value="Latitude" class="block text-sm font-medium text-gray-700 mb-2">
-                    <span class="text-red-600">*</span>
-                  </InputLabel>
-                  <Input
-                    id="latitude"
-                    v-model="form.latitude"
-                    type="number"
-                    step="any"
-                    required
-                    aria-required="true"
-                    class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-customPrimaryColor focus:border-customPrimaryColor transition-colors duration-200 bg-gray-50 focus:bg-white"
-                  />
-                  <p v-if="form.errors.latitude" class="mt-2 text-sm text-red-600">{{ form.errors.latitude }}</p>
+                  <label for="latitude" class="text-sm font-medium text-gray-700 mb-1 block">Latitude <span class="text-red-600">*</span></label>
+                  <Input id="latitude" type="number" step="any" v-model="form.latitude" required />
                 </div>
                 <div>
-                  <InputLabel for="longitude" value="Longitude" class="block text-sm font-medium text-gray-700 mb-2">
-                    <span class="text-red-600">*</span>
-                  </InputLabel>
-                  <Input
-                    id="longitude"
-                    v-model="form.longitude"
-                    type="number"
-                    step="any"
-                    required
-                    aria-required="true"
-                    class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-customPrimaryColor focus:border-customPrimaryColor transition-colors duration-200 bg-gray-50 focus:bg-white"
-                  />
-                  <p v-if="form.errors.longitude" class="mt-2 text-sm text-red-600">{{ form.errors.longitude }}</p>
+                  <label for="longitude" class="text-sm font-medium text-gray-700 mb-1 block">Longitude <span class="text-red-600">*</span></label>
+                  <Input id="longitude" type="number" step="any" v-model="form.longitude" required />
                 </div>
               </div>
 
               <div>
-                <InputLabel for="image" value="Place Image" class="block text-sm font-medium text-gray-700 mb-2">
-                  <span class="text-red-600">*</span>
-                </InputLabel>
-                <Input
-                  id="image"
-                  type="file"
-                  @input="form.image = $event.target.files[0]"
-                  accept="image/*"
-                  class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-customPrimaryColor focus:border-customPrimaryColor transition-colors duration-200 bg-gray-50 focus:bg-white"
-                />
-                <p v-if="form.errors.image" class="mt-2 text-sm text-red-600">{{ form.errors.image }}</p>
+                <label class="text-sm font-medium text-gray-700 mb-2 block">Place Image</label>
+                <div
+                    class="relative border-2 border-dashed border-gray-300 rounded-lg p-6 hover:border-gray-400 transition-colors cursor-pointer w-1/2"
+                    :class="{ 'border-blue-500 bg-blue-50': isDragging }"
+                    @drop="handleDrop"
+                    @dragover.prevent="handleDragOver"
+                    @dragleave.prevent="handleDragLeave"
+                    @click="$refs.fileInput.click()"
+                >
+                    <input
+                        ref="fileInput"
+                        type="file"
+                        class="hidden"
+                        @change="handleFileUpload"
+                        accept="image/jpeg,image/png,image/jpg,image/gif"
+                    >
+
+                    <!-- Image Preview -->
+                    <div v-if="imagePreview" class="space-y-4">
+                        <div class="relative">
+                            <img :src="imagePreview" alt="Preview" class="mx-auto h-48 w-full object-cover rounded-lg">
+                            <button
+                                type="button"
+                                @click.stop="removeImage"
+                                class="absolute top-2 right-2 bg-red-500 text-white rounded-full p-1 hover:bg-red-600"
+                            >
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                                </svg>
+                            </button>
+                        </div>
+                        <div class="text-center text-sm text-gray-600">
+                            <p class="font-medium">{{ selectedFileName }}</p>
+                            <p>Click or drag to replace image</p>
+                        </div>
+                    </div>
+
+                    <!-- Upload Instructions -->
+                    <div v-else class="text-center">
+                        <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
+                        </svg>
+                        <div class="mt-4">
+                            <p class="text-sm text-gray-600">Drag and drop an image here, or click to select</p>
+                            <p class="text-xs text-gray-500 mt-1">PNG, JPG, GIF up to 10MB</p>
+                        </div>
+                    </div>
+                </div>
               </div>
 
               <div class="flex items-center justify-between pt-6 border-t border-gray-200">
-                <div class="flex items-center space-x-4">
-                  <AlertDialog>
-                    <AlertDialogTrigger as-child>
-                      <Button
-                        :disabled="form.processing"
-                        class="inline-flex items-center px-6 py-3 bg-customPrimaryColor text-white rounded-lg hover:bg-customPrimaryColor/90 focus:outline-none focus:ring-2 focus:ring-customPrimaryColor focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 font-medium"
-                      >
-                        <svg
-                          v-if="form.processing"
-                          class="animate-spin -ml-1 mr-3 h-4 w-4 text-white"
-                          xmlns="http://www.w3.org/2000/svg"
-                          fill="none"
-                          viewBox="0 0 24 24"
-                        >
-                          <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                          <path
-                            class="opacity-75"
-                            fill="currentColor"
-                            d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                          ></path>
-                        </svg>
-                        <svg v-else class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
-                        </svg>
-                        {{ form.processing ? 'Creating...' : 'Create Place' }}
-                      </Button>
-                    </AlertDialogTrigger>
-                    <AlertDialogContent>
-                      <AlertDialogHeader>
-                        <AlertDialogTitle>Create Popular Place?</AlertDialogTitle>
-                        <AlertDialogDescription>
-                          Are you sure you want to create this popular place?
-                        </AlertDialogDescription>
-                      </AlertDialogHeader>
-                      <AlertDialogFooter>
-                        <AlertDialogCancel>Cancel</AlertDialogCancel>
-                        <AlertDialogAction @click="submitForm">Continue</AlertDialogAction>
-                      </AlertDialogFooter>
-                    </AlertDialogContent>
-                  </AlertDialog>
-
-                  <Link
-                    :href="route('popular-places.index')"
-                    class="inline-flex items-center px-6 py-2 border border-gray-300 text-gray-700 bg-white rounded-lg hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-customPrimaryColor focus:ring-offset-2 transition-all duration-200 font-medium"
-                  >
-                    Cancel
+                <div class="flex items-center gap-4">
+                  <Button type="submit" :disabled="form.processing">
+                    {{ form.processing ? 'Creating...' : 'Create Place' }}
+                  </Button>
+                  <Link :href="route('popular-places.index')">
+                    <Button type="button" variant="outline">
+                      Cancel
+                    </Button>
                   </Link>
                 </div>
 
-                <div v-if="form.processing" class="flex items-center text-customPrimaryColor">
+                <div v-if="form.processing" class="flex items-center text-blue-600">
                   <svg class="animate-spin -ml-1 mr-2 h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                     <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
                     <path

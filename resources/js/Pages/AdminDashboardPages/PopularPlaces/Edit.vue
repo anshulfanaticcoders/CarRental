@@ -290,33 +290,33 @@ watch(() => form.errors, (newErrors) => {
 
               <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <label for="place_name" class="text-sm font-medium text-gray-700 mb-1 block">Place Name *</label>
+                  <label for="place_name" class="text-sm font-medium text-gray-700 mb-1 block">Place Name <span class="text-red-600">*</span></label>
                   <Input id="place_name" type="text" v-model="form.place_name" required />
                 </div>
                 <div>
-                  <label for="city" class="text-sm font-medium text-gray-700 mb-1 block">City *</label>
+                  <label for="city" class="text-sm font-medium text-gray-700 mb-1 block">City <span class="text-red-600">*</span></label>
                   <Input id="city" type="text" v-model="form.city" required />
                 </div>
               </div>
 
               <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <label for="state" class="text-sm font-medium text-gray-700 mb-1 block">State</label>
-                  <Input id="state" type="text" v-model="form.state" />
+                  <label for="state" class="text-sm font-medium text-gray-700 mb-1 block">State <span class="text-red-600">*</span></label>
+                  <Input id="state" type="text" v-model="form.state" required />
                 </div>
                 <div>
-                  <label for="country" class="text-sm font-medium text-gray-700 mb-1 block">Country *</label>
+                  <label for="country" class="text-sm font-medium text-gray-700 mb-1 block">Country <span class="text-red-600">*</span></label>
                   <Input id="country" type="text" v-model="form.country" required />
                 </div>
               </div>
 
               <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <label for="latitude" class="text-sm font-medium text-gray-700 mb-1 block">Latitude *</label>
+                  <label for="latitude" class="text-sm font-medium text-gray-700 mb-1 block">Latitude <span class="text-red-600">*</span></label>
                   <Input id="latitude" type="number" step="any" v-model="form.latitude" required />
                 </div>
                 <div>
-                  <label for="longitude" class="text-sm font-medium text-gray-700 mb-1 block">Longitude *</label>
+                  <label for="longitude" class="text-sm font-medium text-gray-700 mb-1 block">Longitude <span class="text-red-600">*</span></label>
                   <Input id="longitude" type="number" step="any" v-model="form.longitude" required />
                 </div>
               </div>
@@ -388,9 +388,11 @@ watch(() => form.errors, (newErrors) => {
                   <Button type="submit" :disabled="form.processing">
                     {{ form.processing ? 'Updating...' : 'Update Place' }}
                   </Button>
-                  <Button type="button" variant="outline" @click="window.location.href = route('popular-places.index')">
-                    Cancel
-                  </Button>
+                  <Link :href="route('popular-places.index')">
+                    <Button type="button" variant="outline">
+                      Cancel
+                    </Button>
+                  </Link>
                 </div>
 
                 <div v-if="form.processing" class="flex items-center text-blue-600">
