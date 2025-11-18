@@ -43,6 +43,7 @@ class VehicleCategoriesController extends Controller
             'name' => 'required|string|max:255',
             'description' => 'nullable|string',
             'image' => 'nullable|image|mimes:jpeg,png,jpg,gif',
+            'alt_text' => 'nullable|string|max:255',
         ]);
 
         $data = $request->all();
@@ -81,11 +82,13 @@ class VehicleCategoriesController extends Controller
             'name' => 'required|string|max:255',
             'description' => 'nullable|string',
             'image' => 'nullable|image|mimes:jpeg,png,jpg,gif',
+            'alt_text' => 'nullable|string|max:255',
         ]);
 
         $data = [
             'name' => $request->name,
             'description' => $request->description,
+            'alt_text' => $request->alt_text,
             'slug' => $request->slug ?? Str::slug($request->name)
         ];
 
@@ -180,5 +183,60 @@ class VehicleCategoriesController extends Controller
         $categories = VehicleCategory::whereIn('id', $selectedCategoryIds)->get();
 
         return response()->json($categories);
+    }
+
+    /**
+     * Bulk delete vehicle categories
+     */
+    public function bulkDelete(Request $request)
+    {
+        $request->validate([
+            'ids' => 'required|array',
+            'ids.*' => 'exists:vehicle_categories,id'
+        ]);
+
+        $categories = VehicleCategory::whereIn('id', $request->ids)->get();
+
+        foreach ($categories as $category) {
+            // Delete associated images
+            if ($category->image) {
+                $oldImagePath = str_replace(Storage::disk('upcloud')->url(''), '', $category->image);
+                Storage::disk('upcloud')->delete($oldImagePath);
+            }
+        }
+
+        VehicleCategory::whereIn('id', $request->ids)->delete();
+
+        return redirect()->back()->with('success', 'Vehicle categories deleted successfully.');
+    }
+
+    /**
+     * Update status of a vehicle category
+     */
+    public function updateStatus(Request $request, VehicleCategory $vehicleCategory)
+    {
+        $request->validate([
+            'status' => 'required|boolean'
+        ]);
+
+        $vehicleCategory->update(['status' => $request->status]);
+
+        return redirect()->back()->with('success', 'Vehicle category status updated successfully.');
+    }
+
+    /**
+     * Bulk update status of vehicle categories
+     */
+    public function bulkUpdateStatus(Request $request)
+    {
+        $request->validate([
+            'ids' => 'required|array',
+            'ids.*' => 'exists:vehicle_categories,id',
+            'status' => 'required|boolean'
+        ]);
+
+        VehicleCategory::whereIn('id', $request->ids)->update(['status' => $request->status]);
+
+        return redirect()->back()->with('success', 'Vehicle categories status updated successfully.');
     }
 }

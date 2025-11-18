@@ -15,6 +15,7 @@ class CreateVehicleCategoriesTable extends Migration
             $table->text('description')->nullable();
             $table->boolean('status')->default(true);
             $table->string('image')->nullable();
+            $table->string('alt_text')->nullable();
             $table->timestamps();
         });
     }

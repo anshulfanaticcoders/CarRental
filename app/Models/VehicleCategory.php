@@ -14,7 +14,8 @@ class VehicleCategory extends Model
         'slug',
         'description',
         'status',
-        'image'
+        'image',
+        'alt_text'
     ];
 
     /**

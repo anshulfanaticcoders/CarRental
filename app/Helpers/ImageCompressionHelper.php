@@ -66,8 +66,17 @@ class ImageCompressionHelper
         // Resize and copy image
         imagecopyresampled($newImage, $sourceImage, 0, 0, 0, 0, $newWidth, $newHeight, $width, $height);
 
-        // Generate a unique file name
-        $fileName = uniqid('compressed_') . '.' . $imageExtension;
+        // Use original filename and handle duplicates
+        $originalFileName = pathinfo($imageFile->getClientOriginalName(), PATHINFO_FILENAME);
+        $fileName = $originalFileName . '.' . $imageExtension;
+
+        // Check if file already exists and handle duplicates
+        $counter = 1;
+        while (Storage::disk('upcloud')->exists($folderName . '/' . $fileName)) {
+            $fileName = $originalFileName . '_' . $counter . '.' . $imageExtension;
+            $counter++;
+        }
+
         $tempPath = tempnam(sys_get_temp_dir(), 'compressed_image_') . '.' . $imageExtension;
 
         // Save the compressed image to a temporary file

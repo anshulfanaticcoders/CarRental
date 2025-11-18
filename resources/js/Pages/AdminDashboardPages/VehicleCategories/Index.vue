@@ -1,36 +1,65 @@
 <template>
     <AdminDashboardLayout>
-        <div class="flex flex-col gap-4 w-[95%] ml-[1.5rem]">
-            <div class="flex items-center justify-between mt-[2rem]">
-                <span class="text-[1.5rem] font-semibold">All Categories</span>
+        <div class="mx-auto py-6 w-[95%]">
+            <div class="flex items-center justify-between mb-6">
+                <div>
+                    <h1 class="text-2xl font-bold text-gray-900">All Categories</h1>
+                    <p class="text-sm text-gray-600 mt-1">Manage vehicle categories</p>
+                </div>
                 <div class="flex items-center gap-4">
                     <Input
                         v-model="search"
-                        placeholder="Search category..."
-                        class="w-[300px]"
+                        placeholder="Search categories..."
+                        class="w-80"
                         @input="handleSearch"
                     />
+                    <Dialog v-model:open="isCreateDialogOpen">
+                        <DialogTrigger as-child>
+                            <Button>Create New Category</Button>
+                        </DialogTrigger>
+                        <CreateCategory @close="isCreateDialogOpen = false" />
+                    </Dialog>
                 </div>
-                <Dialog v-model:open="isCreateDialogOpen">
-                    <DialogTrigger as-child>
-                        <Button>Create New Category</Button>
-                    </DialogTrigger>
-                    <CreateUser @close="isCreateDialogOpen = false" />
-                </Dialog>
+            </div>
+
+            <!-- Bulk Actions Toolbar -->
+            <div v-if="selectedCategories.length > 0" class="flex items-center gap-4 p-3 bg-blue-50 rounded-md">
+                <span class="text-sm font-medium text-blue-900">
+                    {{ selectedCategories.length }} item{{ selectedCategories.length > 1 ? 's' : '' }} selected
+                </span>
+                <div class="flex gap-2">
+                    <Button size="sm" variant="outline" @click="bulkToggleStatus" :disabled="isBulkUpdating">
+                        <span v-if="isBulkUpdating" class="animate-spin mr-2">⚪</span>
+                        {{ isBulkUpdating ? 'Updating...' : (isAllSelectedActive ? 'Deactivate All' : 'Activate All') }}
+                    </Button>
+                    <Button size="sm" variant="destructive" @click="openBulkDeleteDialog" :disabled="isBulkDeleting">
+                        <span v-if="isBulkDeleting" class="animate-spin mr-2">⚪</span>
+                        {{ isBulkDeleting ? 'Deleting...' : 'Delete Selected' }}
+                    </Button>
+                    <Button size="sm" variant="outline" @click="clearSelection">
+                        Clear Selection
+                    </Button>
+                </div>
             </div>
 
             <Dialog v-model:open="isEditDialogOpen">
-                <EditUser :user="editForm" @close="isEditDialogOpen = false" />
+                <EditCategory :user="editForm" @close="isEditDialogOpen = false" />
             </Dialog>
 
-            <!-- <Dialog v-model:open="isViewDialogOpen">
-                <ViewUser :user="viewForm" @close="isViewDialogOpen = false" />
-            </Dialog> -->
+            <Dialog v-model:open="isViewDialogOpen">
+                <ViewCategory :user="viewForm" @close="isViewDialogOpen = false" />
+            </Dialog>
 
-            <div class="rounded-md border p-5  mt-[1rem] bg-[#153B4F0D]">
+            <div class="rounded-md border">
                 <Table>
                     <TableHeader>
                         <TableRow>
+                            <TableHead class="w-[50px]">
+                                <Checkbox
+                                    :checked="areAllSelected"
+                                    @update:checked="toggleAllSelection"
+                                />
+                            </TableHead>
                             <TableHead>ID</TableHead>
                             <TableHead>Image</TableHead>
                             <TableHead>Name</TableHead>
@@ -41,37 +70,57 @@
                     </TableHeader>
                     <TableBody>
                         <TableRow v-for="(user,index) in users.data" :key="user.id">
+                            <TableCell>
+                                <Checkbox
+                                    :checked="isCategorySelected(user.id)"
+                                    @update:checked="(checked) => toggleCategorySelection(user.id, checked)"
+                                />
+                            </TableCell>
                             <TableCell>{{ (users.current_page - 1) * users.per_page + index + 1 }}</TableCell>
-                            <TableCell class="font-medium">
-                                <img :src="`${user.image}`" alt="" class="w-[100px] h-[70px] rounded-[10px]">
+                            <TableCell>
+                                <img
+                                    :src="user.image || '/placeholder-image.jpg'"
+                                    :alt="user.alt_text || user.name"
+                                    class="w-16 h-16 rounded-md object-cover border"
+                                >
                             </TableCell>
                             <TableCell class="font-medium">{{ user.name }}</TableCell>
-                            <TableCell class="font-medium">{{ user.description }}</TableCell>
+                            <TableCell class="text-sm text-gray-600 max-w-xs truncate">{{ user.description }}</TableCell>
                             <TableCell>
-                                <Badge :variant="user.status ? 'default' : 'secondary'">
-                                    {{ user.status ? "Active" : "Inactive" }}
-                                </Badge>
+                                <div class="flex items-center gap-2">
+                                    <Switch
+                                        :checked="user.status"
+                                        :disabled="loadingStatusToggles.has(user.id)"
+                                        @update:checked="(checked) => toggleCategoryStatus(user.id, checked)"
+                                    />
+                                    <div v-if="loadingStatusToggles.has(user.id)" class="animate-spin w-4 h-4">⚪</div>
+                                    <Badge :variant="user.status ? 'default' : 'secondary'">
+                                        {{ user.status ? "Active" : "Inactive" }}
+                                    </Badge>
+                                </div>
                             </TableCell>
                             <TableCell class="text-right">
                                 <div class="flex justify-end gap-2">
-                                    <!-- <Button size="sm" variant="outline" @click="openViewDialog(user)">
+                                    <Button size="sm" variant="outline" @click="openViewDialog(user)">
                                         View
-                                    </Button> -->
+                                    </Button>
                                     <Button size="sm" variant="outline" @click="openEditDialog(user)">
                                         Edit
-                                        <img :src=editIcon alt="">
                                     </Button>
-                                    <Button size="sm" variant="destructive" @click="openDeleteDialog(user.id)">Delete</Button>
+                                    <Button size="sm" variant="destructive" @click="openDeleteDialog(user.id)" :disabled="isDeleting">
+                                        {{ isDeleting ? 'Deleting...' : 'Delete' }}
+                                    </Button>
                                 </div>
                             </TableCell>
                         </TableRow>
                     </TableBody>
                 </Table>
-                <!-- Pagination -->
-                <div class="mt-4 flex justify-end">
-                    <Pagination :current-page="users.current_page" :total-pages="users.last_page"
-                        @page-change="handlePageChange" />
-                </div>
+            </div>
+
+            <!-- Pagination -->
+            <div class="mt-4 flex justify-end">
+                <Pagination :current-page="users.current_page" :total-pages="users.last_page"
+                    @page-change="handlePageChange" />
             </div>
 
             <!-- Alert Dialog for Delete Confirmation -->
@@ -85,7 +134,28 @@
                     </AlertDialogHeader>
                     <AlertDialogFooter>
                         <AlertDialogCancel @click="isDeleteDialogOpen = false">Cancel</AlertDialogCancel>
-                        <AlertDialogAction @click="confirmDelete">Delete</AlertDialogAction>
+                        <AlertDialogAction @click="confirmDelete" :disabled="isDeleting">
+                        {{ isDeleting ? 'Deleting...' : 'Delete' }}
+                    </AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
+
+            <!-- Alert Dialog for Bulk Delete Confirmation -->
+            <AlertDialog v-model:open="isBulkDeleteDialogOpen">
+                <AlertDialogContent>
+                    <AlertDialogHeader>
+                        <AlertDialogTitle>Delete Selected Categories?</AlertDialogTitle>
+                        <AlertDialogDescription>
+                            Do you really want to delete {{ selectedCategories.length }} selected categor{{ selectedCategories.length > 1 ? 'ies' : 'y' }}? This action cannot be undone.
+                        </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                        <AlertDialogCancel @click="isBulkDeleteDialogOpen = false">Cancel</AlertDialogCancel>
+                        <AlertDialogAction @click="confirmBulkDelete" class="bg-red-600 hover:bg-red-700" :disabled="isBulkDeleting">
+                            <span v-if="isBulkDeleting" class="animate-spin mr-2">⚪</span>
+                            {{ isBulkDeleting ? 'Deleting...' : `Delete ${selectedCategories.length} Item${selectedCategories.length > 1 ? 's' : ''}` }}
+                        </AlertDialogAction>
                     </AlertDialogFooter>
                 </AlertDialogContent>
             </AlertDialog>
@@ -94,7 +164,7 @@
 </template>
 
 <script setup>
-import { ref } from "vue";
+import { ref, computed } from "vue";
 import { router } from "@inertiajs/vue3";
 import Table from "@/Components/ui/table/Table.vue";
 import TableHeader from "@/Components/ui/table/TableHeader.vue";
@@ -105,12 +175,14 @@ import TableCell from "@/Components/ui/table/TableCell.vue";
 import Button from "@/Components/ui/button/Button.vue";
 import Badge from "@/Components/ui/badge/Badge.vue";
 import { Input } from "@/Components/ui/input";
+import { Checkbox } from "@/Components/ui/checkbox";
+import { Switch } from "@/Components/ui/switch";
 import editIcon from "../../../../assets/Pencil.svg";
 import { Dialog, DialogTrigger } from "@/Components/ui/dialog";
 import AdminDashboardLayout from "@/Layouts/AdminDashboardLayout.vue";
-import CreateUser from "@/Pages/AdminDashboardPages/VehicleCategories/CreateUser.vue";
-import EditUser from "@/Pages/AdminDashboardPages/VehicleCategories/EditUser.vue";
-import ViewUser from "@/Pages/AdminDashboardPages/VehicleCategories/ViewUser.vue";
+import CreateCategory from "@/Pages/AdminDashboardPages/VehicleCategories/CreateCategory.vue";
+import EditCategory from "@/Pages/AdminDashboardPages/VehicleCategories/EditCategory.vue";
+import ViewCategory from "@/Pages/AdminDashboardPages/VehicleCategories/ViewCategory.vue";
 import Pagination from '@/Components/ReusableComponents/Pagination.vue';
 import {
   AlertDialog,
@@ -126,16 +198,119 @@ import {
 
 const props = defineProps({
     users: Object,
-    filters: Object, 
+    filters: Object,
 });
 const search = ref(props.filters.search || ''); // Initialize search with the filter value
 const isCreateDialogOpen = ref(false);
 const isEditDialogOpen = ref(false);
 const isViewDialogOpen = ref(false);
 const isDeleteDialogOpen = ref(false);
+const isBulkDeleteDialogOpen = ref(false);
 const editForm = ref({});
 const viewForm = ref({});
 const deleteUserId = ref(null);
+const selectedCategories = ref([]);
+
+// Loading states
+const isDeleting = ref(false);
+const isBulkDeleting = ref(false);
+const isBulkUpdating = ref(false);
+const loadingStatusToggles = ref(new Set());
+
+// Computed properties
+const areAllSelected = computed(() => {
+    return props.users.data.length > 0 && selectedCategories.value.length === props.users.data.length;
+});
+
+const isAllSelectedActive = computed(() => {
+    const selectedItems = props.users.data.filter(user => selectedCategories.value.includes(user.id));
+    return selectedItems.length > 0 && selectedItems.every(user => user.status);
+});
+
+// Bulk operation methods
+const isCategorySelected = (categoryId) => {
+    return selectedCategories.value.includes(categoryId);
+};
+
+const toggleCategorySelection = (categoryId, checked) => {
+    if (checked) {
+        if (!selectedCategories.value.includes(categoryId)) {
+            selectedCategories.value.push(categoryId);
+        }
+    } else {
+        const index = selectedCategories.value.indexOf(categoryId);
+        if (index > -1) {
+            selectedCategories.value.splice(index, 1);
+        }
+    }
+};
+
+const toggleAllSelection = (checked) => {
+    if (checked) {
+        selectedCategories.value = props.users.data.map(user => user.id);
+    } else {
+        selectedCategories.value = [];
+    }
+};
+
+const clearSelection = () => {
+    selectedCategories.value = [];
+};
+
+const openBulkDeleteDialog = () => {
+    isBulkDeleteDialogOpen.value = true;
+};
+
+const confirmBulkDelete = () => {
+    isBulkDeleting.value = true;
+    router.delete('/vehicles-categories/bulk-delete', {
+        data: { ids: selectedCategories.value },
+        onSuccess: () => {
+            selectedCategories.value = [];
+            isBulkDeleteDialogOpen.value = false;
+            isBulkDeleting.value = false;
+        },
+        onError: (errors) => {
+            console.error('Bulk delete error:', errors);
+            isBulkDeleteDialogOpen.value = false;
+            isBulkDeleting.value = false;
+        }
+    });
+};
+
+const bulkToggleStatus = () => {
+    const newStatus = !isAllSelectedActive.value;
+    isBulkUpdating.value = true;
+    router.patch('/vehicles-categories/bulk-status', {
+        ids: selectedCategories.value,
+        status: newStatus
+    }, {
+        onSuccess: () => {
+            selectedCategories.value = [];
+            isBulkUpdating.value = false;
+        },
+        onError: (errors) => {
+            console.error('Bulk status update error:', errors);
+            isBulkUpdating.value = false;
+        }
+    });
+};
+
+const toggleCategoryStatus = (categoryId, newStatus) => {
+    loadingStatusToggles.value.add(categoryId);
+    router.patch(`/vehicles-categories/${categoryId}/status`, {
+        status: newStatus
+    }, {
+        preserveState: true,
+        onSuccess: () => {
+            loadingStatusToggles.value.delete(categoryId);
+        },
+        onError: (errors) => {
+            console.error('Status update error:', errors);
+            loadingStatusToggles.value.delete(categoryId);
+        }
+    });
+};
 
 // Handle search input
 const handleSearch = () => {
@@ -161,13 +336,16 @@ const openDeleteDialog = (id) => {
 };
 
 const confirmDelete = () => {
+    isDeleting.value = true;
     router.delete(`/vehicles-categories/${deleteUserId.value}`, {
         onSuccess: () => {
             console.log('Category deleted successfully');
             isDeleteDialogOpen.value = false;
+            isDeleting.value = false;
         },
         onError: (errors) => {
             console.error(errors);
+            isDeleting.value = false;
         }
     });
 };
@@ -177,25 +355,3 @@ const handlePageChange = (page) => {
 };
 
 </script>
-<style scoped>
-.search-box {
-    width: 300px;
-    padding: 0.5rem;
-    border: 1px solid #e9ecef;
-    border-radius: 4px;
-    outline: none;
-}
-
-.search-box:focus {
-    border-color: #3b82f6;
-    box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2);
-}
-
-table th{
-    font-size: 0.95rem;
-}
-table td{
-    font-size: 0.875rem;
-}
-
-</style>

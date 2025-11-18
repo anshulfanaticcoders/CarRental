@@ -376,7 +376,7 @@ useScrollAnimation('.popular-places-trigger', '.popular-place-card', {
                 <div
                     class="column h-[46rem] w-full relative max-[768px]:h-auto max-[768px]:pb-[2rem] max-[768px]:px-[1.5rem] hero-image">
                     <img class="rounded-bl-[20px] h-full w-full object-cover max-[768px]:rounded-[20px]" :src="heroImg"
-                        alt="" />
+                        alt="Hero Image" />
                     <div class="bg-customOverlayColor absolute top-0 w-full h-full rounded-bl-[20px]"></div>
                 </div>
             </div>
@@ -411,7 +411,7 @@ useScrollAnimation('.popular-places-trigger', '.popular-place-card', {
                                             <CardContent
                                                 class="cardContent flex h-[515px] max-[768px]:h-[17rem] items-center justify-center p-6 relative">
                                                 <img class="rounded-[20px] h-full w-full object-cover"
-                                                    :src="`${category.image}`" alt="" />
+                                                    :src="`${category.image}`" :alt="category.alt_text || category.name" />
                                                 <div
                                                     class="category_name absolute bottom-10 left-0 flex justify-between w-full px-8">
                                                     <span class="text-white text-[2rem] font-semibold">
@@ -471,7 +471,7 @@ useScrollAnimation('.popular-places-trigger', '.popular-place-card', {
                                     <Card
                                         class="h-[18rem] border-0 rounded-[0.75rem] transition-all duration-300 hover:mt-[-1rem] max-[768px]:hover:mt-0">
                                         <CardContent class="flex flex-col gap-2 justify-center px-1 h-full">
-                                            <img :src="`${place.image}`" alt=""
+                                            <img :src="`${place.image}`" :alt="place.place_name"
                                                 class="rounded-[0.75rem] h-[12rem] w-full object-cover mb-2"  />
                                             <div class="px-3">
                                                 <h3 class="text-lg font-medium">{{ place.place_name }}</h3>

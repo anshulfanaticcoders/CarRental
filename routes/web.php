@@ -121,6 +121,9 @@ Route::get('/', function () {
 Route::middleware(['auth', 'role:admin'])->group(function () {
     Route::inertia('admin-dashboard', 'AdminDashboard');
     Route::resource('vehicles-categories', VehicleCategoriesController::class)->parameters(['vehicles-categories' => 'vehicleCategory']);
+    Route::patch('/vehicles-categories/{vehicleCategory}/status', [VehicleCategoriesController::class, 'updateStatus'])->name('vehicles-categories.status');
+    Route::delete('/vehicles-categories/bulk-delete', [VehicleCategoriesController::class, 'bulkDelete'])->name('vehicles-categories.bulk-delete');
+    Route::patch('/vehicles-categories/bulk-status', [VehicleCategoriesController::class, 'bulkUpdateStatus'])->name('vehicles-categories.bulk-status');
     Route::resource('vendors', VendorsDashboardController::class)->except(['create', 'edit', 'show']);
     Route::put('/vendors/{vendorProfile}/status', [VendorsDashboardController::class, 'updateStatus'])->name('vendors.updateStatus');
 
