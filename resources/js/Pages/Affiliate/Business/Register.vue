@@ -59,6 +59,7 @@ const isSubmittingForgot = ref(false);
 const loginError = ref('');
 const forgotSuccess = ref('');
 const forgotError = ref('');
+const showForgotForm = ref(false);
 
 const isSubmitting = ref(false);
 const emailChecking = ref(false);
@@ -404,6 +405,7 @@ const submitForgotAccess = async () => {
         if (response.data.success) {
             forgotSuccess.value = 'New dashboard access link has been sent to your email address';
             forgotEmailForm.email = '';
+            showForgotForm.value = false;
         } else {
             forgotError.value = response.data.message || 'Failed to send access link';
         }
@@ -424,6 +426,23 @@ const resetLoginError = () => {
 const resetForgotError = () => {
     forgotError.value = '';
     forgotSuccess.value = '';
+};
+
+// Show forgot form
+const showForgotAccessForm = () => {
+    showForgotForm.value = true;
+    forgotEmailForm.email = loginForm.email;
+    loginError.value = '';
+    forgotError.value = '';
+    forgotSuccess.value = '';
+};
+
+// Show login form (back from forgot)
+const showLoginForm = () => {
+    showForgotForm.value = false;
+    forgotSuccess.value = '';
+    forgotEmailForm.email = '';
+    forgotError.value = '';
 };
 
 // Enhanced form validation
@@ -1156,7 +1175,7 @@ const formProgress = computed(() => {
                     </div>
 
                     <!-- Login Form -->
-                    <form v-if="!forgotSuccess" @submit.prevent="submitLogin">
+                    <form v-if="!forgotSuccess && !showForgotForm" @submit.prevent="submitLogin">
                         <div class="mb-8">
                             <h2 class="text-xl font-semibold text-gray-900 mb-6 flex items-center">
                                 <svg class="w-5 h-5 mr-2 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -1244,7 +1263,7 @@ const formProgress = computed(() => {
                         <div class="mt-6 text-center">
                             <button
                                 type="button"
-                                @click="forgotEmailForm.email = loginForm.email; loginError = ''"
+                                @click="showForgotAccessForm"
                                 class="text-blue-600 hover:text-blue-800 text-sm font-medium underline"
                             >
                                 Forgot or lost your access key?
@@ -1253,7 +1272,7 @@ const formProgress = computed(() => {
                     </form>
 
                     <!-- Forgot Access Form -->
-                    <div v-else class="space-y-6">
+                    <div v-else-if="forgotSuccess || showForgotForm" class="space-y-6">
                         <div class="mb-8">
                             <h2 class="text-xl font-semibold text-gray-900 mb-6 flex items-center">
                                 <svg class="w-5 h-5 mr-2 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -1319,7 +1338,7 @@ const formProgress = computed(() => {
                             </button>
                             <button
                                 type="button"
-                                @click="forgotSuccess = ''; forgotEmailForm.email = ''"
+                                @click="showLoginForm"
                                 class="inline-flex items-center px-6 py-3 border border-gray-300 text-base font-semibold rounded-lg text-gray-700 bg-white hover:bg-gray-50 transition-colors"
                             >
                                 <svg class="mr-2 h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
