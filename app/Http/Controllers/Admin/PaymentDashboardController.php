@@ -84,8 +84,15 @@ class PaymentDashboardController extends Controller
                 'per_page' => $payments->perPage(),
             ],
             'stats' => $stats,
+            'statusCounts' => [
+                'total' => $stats['total_payments'],
+                'successful' => $stats['successful_payments'],
+                'pending' => $stats['pending_payments'],
+                'failed' => $stats['failed_payments'],
+            ],
             'availableCurrencies' => $availableCurrencies,
             'filters' => $request->only(['search', 'status', 'sort', 'order', 'currency']),
+            'flash' => session()->only(['success', 'error'])
         ]);
     }
 }
