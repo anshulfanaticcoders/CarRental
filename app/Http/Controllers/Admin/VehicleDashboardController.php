@@ -16,25 +16,49 @@ class VehicleDashboardController extends Controller
     public function index(Request $request)
     {
         $search = $request->query('search');
-        $vehicles = Vehicle::whereHas('User', function ($query) use ($search) {
-            if ($search) {
+        $status = $request->query('status');
+
+        // Build the vehicle query
+        $vehiclesQuery = Vehicle::with(['User', 'vendorProfile']);
+
+        // Apply search filter
+        if ($search) {
+            $vehiclesQuery->where(function ($query) use ($search) {
                 $query->where('brand', 'like', "%{$search}%")
-                    ->orWhere('model', 'like', "%{$search}%")
-                    ->orWhere('status', 'like', "%{$search}%")
-                    ->orWhere('color', 'like', "%{$search}%")
-                    ->orWhere('price_per_day', 'like', "%{$search}%")
-                    ->orWhere('full_vehicle_address', 'like', "%{$search}%")
-                    ->orWhere('first_name', 'like', "%{$search}%")
-                    ->orWhere('last_name', 'like', "%{$search}%");
-            }
-        })
-        ->orderBy('created_at', 'desc')
-            ->with(['User','vendorProfile'])
-            ->paginate(6);
+                      ->orWhere('model', 'like', "%{$search}%")
+                      ->orWhere('status', 'like', "%{$search}%")
+                      ->orWhere('color', 'like', "%{$search}%")
+                      ->orWhere('price_per_day', 'like', "%{$search}%")
+                      ->orWhere('full_vehicle_address', 'like', "%{$search}%")
+                      ->orWhereHas('User', function ($userQuery) use ($search) {
+                          $userQuery->where('first_name', 'like', "%{$search}%")
+                               ->orWhere('last_name', 'like', "%{$search}%")
+                               ->orWhere('email', 'like', "%{$search}%");
+                      });
+            });
+        }
+
+        // Apply status filter
+        if ($status && $status !== 'all') {
+            $vehiclesQuery->where('status', $status);
+        }
+
+        $vehicles = $vehiclesQuery->orderBy('created_at', 'desc')
+            ->with(['images']) // Load vehicle images
+            ->paginate(7);
+
+        // Get vehicle status counts
+        $statusCounts = [
+            'total' => Vehicle::count(),
+            'available' => Vehicle::where('status', 'available')->count(),
+            'rented' => Vehicle::where('status', 'rented')->count(),
+            'maintenance' => Vehicle::where('status', 'maintenance')->count(),
+        ];
 
         return Inertia::render('AdminDashboardPages/Vehicles/Index', [
             'users' => $vehicles,
-            'filters' => $request->only(['search']),
+            'statusCounts' => $statusCounts,
+            'filters' => $request->only(['search', 'status']),
         ]);
     }
 
