@@ -1,55 +1,74 @@
 <template>
   <AdminDashboardLayout>
-    <div class="flex flex-col gap-4 w-[95%] ml-[1.5rem]">
-      <div class="flex items-center justify-between mt-[2rem]">
-        <span class="text-[1.5rem] font-semibold">Damage Protection Records</span>
+    <div class="w-[95%] ml-[1.5rem] p-6 space-y-6">
+      <div class="flex items-center justify-between">
+        <h1 class="text-2xl font-semibold tracking-tight">Damage Protection Records</h1>
         <!-- Placeholder for search or other actions if needed in future -->
       </div>
 
-      <div class="rounded-md border p-5 mt-[1rem] bg-[#153B4F0D]">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>ID</TableHead>
-              <TableHead>Booking ID</TableHead>
-              <TableHead>Booking No.</TableHead>
-              <TableHead>Before Images</TableHead>
-              <TableHead>After Images</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            <TableRow v-for="(item, index) in damageRecords.data" :key="item.id" class="hover:bg-gray-100">
-              <TableCell>{{ index + 1 }}</TableCell>
-              <TableCell>{{ item.booking_id }}</TableCell>
-              <TableCell>{{ item.booking_number }}</TableCell>
-              <TableCell>
-                <Button v-if="item.before_images && item.before_images.length > 0"
-                        size="sm" variant="outline"
-                        @click="showImages('before', item.before_images)">
-                  View ({{ item.before_images.length }})
-                </Button>
-                <span v-else>N/A</span>
+      <div v-if="damageRecords.data.length > 0" class="rounded-lg border bg-card shadow-sm overflow-hidden">
+        <div class="overflow-x-auto max-w-full">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead class="whitespace-nowrap">ID</TableHead>
+                <TableHead class="whitespace-nowrap">Booking Number</TableHead>
+                <TableHead class="whitespace-nowrap">Customer</TableHead>
+                <TableHead class="whitespace-nowrap">Email</TableHead>
+                <TableHead class="whitespace-nowrap">Vendor</TableHead>
+                <TableHead class="whitespace-nowrap">Vehicle Brand</TableHead>
+                <TableHead class="whitespace-nowrap">Pickup Location</TableHead>
+                <TableHead class="whitespace-nowrap">Date</TableHead>
+                <TableHead class="whitespace-nowrap">Before Images</TableHead>
+                <TableHead class="whitespace-nowrap">After Images</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              <TableRow v-for="(item, index) in damageRecords.data" :key="item.id">
+                <TableCell class="whitespace-nowrap">{{ (damageRecords.current_page - 1) * damageRecords.per_page + index + 1 }}</TableCell>
+                <TableCell class="whitespace-nowrap">{{ item.booking_number }}</TableCell>
+                <TableCell class="whitespace-nowrap">
+                <div>{{ item.customer_name }}</div>
+                <div v-if="item.customer_id" class="text-xs text-gray-500">(ID: {{ item.customer_id }})</div>
               </TableCell>
-              <TableCell>
-                <Button v-if="item.after_images && item.after_images.length > 0"
-                        size="sm" variant="outline"
-                        @click="showImages('after', item.after_images)">
-                  View ({{ item.after_images.length }})
-                </Button>
-                <span v-else>N/A</span>
+                <TableCell class="whitespace-nowrap">{{ item.customer_email }}</TableCell>
+                <TableCell class="whitespace-nowrap">
+                <div>{{ item.vendor_name }}</div>
+                <div v-if="item.vendor_id" class="text-xs text-gray-500">(ID: {{ item.vendor_id }})</div>
               </TableCell>
-            </TableRow>
-            <TableRow v-if="!damageRecords.data || damageRecords.data.length === 0">
-              <TableCell colspan="9" class="text-center">No damage protection records found.</TableCell>
-            </TableRow>
-          </TableBody>
-        </Table>
-        <!-- Pagination -->
-        <div v-if="damageRecords.data && damageRecords.data.length > 0" class="mt-4 flex justify-end">
+                <TableCell class="whitespace-nowrap">{{ item.vehicle_brand }}</TableCell>
+                <TableCell class="whitespace-nowrap">{{ item.pickup_location }}</TableCell>
+                <TableCell class="whitespace-nowrap">{{ formatDate(item.created_at) }}</TableCell>
+                    <TableCell class="whitespace-nowrap">
+                  <Badge v-if="item.before_images && item.before_images.length > 0"
+                         variant="secondary"
+                         class="cursor-pointer"
+                         @click="showImages('before', item.before_images)">
+                    View ({{ item.before_images.length }})
+                  </Badge>
+                  <span v-else class="text-gray-500">No Images</span>
+                </TableCell>
+                <TableCell class="whitespace-nowrap">
+                  <Badge v-if="item.after_images && item.after_images.length > 0"
+                         variant="secondary"
+                         class="cursor-pointer"
+                         @click="showImages('after', item.after_images)">
+                    View ({{ item.after_images.length }})
+                  </Badge>
+                  <span v-else class="text-gray-500">No Images</span>
+                </TableCell>
+              </TableRow>
+            </TableBody>
+          </Table>
+        </div>
+        <div class="flex justify-end pt-4">
           <Pagination :currentPage="damageRecords.current_page"
                       :totalPages="damageRecords.last_page"
                       @page-change="handlePageChange" />
         </div>
+      </div>
+      <div v-else class="rounded-lg border bg-card p-8 text-center">
+        No damage protection records found.
       </div>
 
       <!-- Modal for Image Carousel using Dialog component -->
@@ -91,25 +110,19 @@
 
 <script setup>
 import { ref, defineProps } from 'vue';
+import { router } from "@inertiajs/vue3";
 import AdminDashboardLayout from "@/Layouts/AdminDashboardLayout.vue";
-import Table from "@/Components/ui/table/Table.vue";
-import TableHeader from "@/Components/ui/table/TableHeader.vue";
-import TableRow from "@/Components/ui/table/TableRow.vue";
-import TableHead from "@/Components/ui/table/TableHead.vue";
-import TableBody from "@/Components/ui/table/TableBody.vue";
-import TableCell from "@/Components/ui/table/TableCell.vue";
-import Button from "@/Components/ui/button/Button.vue";
-import Pagination from "@/Pages/AdminDashboardPages/Vendors/Pagination.vue"; // Import Pagination
-import { router } from "@inertiajs/vue3"; // Import router for navigation
+import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from "@/Components/ui/table";
+import { Button } from "@/Components/ui/button";
+import { Badge } from "@/Components/ui/badge";
 import {
   Dialog,
   DialogContent,
-  DialogDescription,
   DialogFooter,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
 } from '@/Components/ui/dialog';
+import Pagination from '@/Components/ReusableComponents/Pagination.vue';
 
 // Data will be passed by Inertia from the Laravel controller
 const props = defineProps({
@@ -147,23 +160,15 @@ const prevImage = () => {
 };
 
 const handlePageChange = (page) => {
-  router.get(route('admin.damage-protection.index', { page: page }), {}, { // Assuming your route is named 'admin.damage-protection.index'
+  router.get(route('admin.damage-protection.index', { page: page }), {}, {
     preserveState: true,
     replace: true,
   });
 };
+
+const formatDate = (dateStr) => {
+  if (!dateStr) return 'N/A';
+  const date = new Date(dateStr);
+  return `${String(date.getDate()).padStart(2, '0')}/${String(date.getMonth() + 1).padStart(2, '0')}/${date.getFullYear()}`;
+};
 </script>
-
-<style scoped>
-/* Styles from Vendors/Index.vue for table font sizes */
-table th {
-  font-size: 0.95rem;
-}
-table td {
-  font-size: 0.875rem;
-}
-
-.max-h-\[70vh\] {
-  max-height: 70vh;
-}
-</style>

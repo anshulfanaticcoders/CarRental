@@ -12,69 +12,119 @@ class DamageProtectionController extends Controller
 {
     public function index()
     {
-        $damageRecordsPaginator = DamageProtection::with([
-            'booking.vehicle',          // For booking_number and vehicle.vendor_id
-            'booking.vendorProfile',    // Loads UserProfile of the vendor via Booking->vendorProfile()
-            'booking.customer.profile', // Loads Customer, then UserProfile of the customer via Customer->profile()
-        ])->latest()->paginate(10); // Using paginate instead of get
+        // Get damage protection records that have valid booking_ids and the bookings actually exist
+        $damageRecordsPaginator = DamageProtection::whereNotNull('booking_id')
+            ->whereIn('booking_id', function($query) {
+                $query->select('id')->from('bookings');
+            })
+            ->latest()
+            ->paginate(10);
 
         // Transform the items within the paginator
         $formattedRecords = $damageRecordsPaginator->through(function ($record) {
-            $booking = $record->booking;
-
-            $vendorUserProfile = $booking ? $booking->vendorProfile : null;
-            $customerModel = $booking ? $booking->customer : null;
-            $customerUserProfile = $customerModel ? $customerModel->profile : null;
-
+            // Default values
             $vendorName = 'N/A';
-            $vendorId = null;
-            if ($vendorUserProfile) {
-                if (!empty($vendorUserProfile->company_name)) {
-                    $vendorName = $vendorUserProfile->company_name;
-                } elseif (!empty($vendorUserProfile->first_name) && !empty($vendorUserProfile->last_name)) {
-                    $vendorName = trim($vendorUserProfile->first_name . ' ' . $vendorUserProfile->last_name);
-                } elseif ($vendorUserProfile->user && !empty($vendorUserProfile->user->name)) { // Fallback to user's name
-                    $vendorName = $vendorUserProfile->user->name;
-                }
-                $vendorId = $vendorUserProfile->user_id;
-            } elseif ($booking && $booking->vehicle) {
-                $vendorId = $booking->vehicle->vendor_id;
-            }
-            
+            $vehicleBrand = 'N/A';
             $customerName = 'N/A';
-            $customerId = $booking ? $booking->customer_id : null; 
+            $customerEmail = 'N/A';
+            $pickupLocation = 'N/A';
+            $bookingNumber = 'N/A';
+            $bookingId = null;
 
-            if ($customerUserProfile) {
-                if (!empty($customerUserProfile->first_name) && !empty($customerUserProfile->last_name)) {
-                    $customerName = trim($customerUserProfile->first_name . ' ' . $customerUserProfile->last_name);
-                } elseif ($customerUserProfile->user && !empty($customerUserProfile->user->name)) { // Fallback to user's name
-                    $customerName = $customerUserProfile->user->name;
+            // Get the booking_id directly from the damage protection record
+            $directBookingId = $record->booking_id;
+
+            if ($directBookingId) {
+                // Find the booking directly using the booking_id from damage_protection table
+                try {
+                    $booking = \App\Models\Booking::find($directBookingId);
+                    if ($booking) {
+                        $bookingId = $booking->id;
+                        $bookingNumber = $booking->booking_number ?? 'N/A';
+                        $pickupLocation = $booking->pickup_location ?? 'N/A';
+
+                        // Get customer info
+                        if ($booking->customer_id) {
+                            $customer = \App\Models\Customer::find($booking->customer_id);
+                            if ($customer) {
+                                $customerName = trim(($customer->first_name ?? '') . ' ' . ($customer->last_name ?? ''));
+                                $customerEmail = $customer->email ?? 'N/A';
+                                if (empty($customerName) && !empty($customer->name)) {
+                                    $customerName = $customer->name;
+                                }
+                            }
+                        }
+
+                        // Get vehicle info
+                        if ($booking->vehicle_id) {
+                            $vehicle = \App\Models\Vehicle::find($booking->vehicle_id);
+                            if ($vehicle) {
+                                $vehicleBrand = $vehicle->brand ?? 'N/A';
+                                // Get vendor name directly from users table
+                                if ($vehicle->vendor_id) {
+                                    $vendorUser = \App\Models\User::find($vehicle->vendor_id);
+                                    if ($vendorUser) {
+                                        $vendorName = trim($vendorUser->first_name . ' ' . $vendorUser->last_name);
+                                    } else {
+                                        $vendorName = 'Vendor #' . $vehicle->vendor_id;
+                                    }
+                                }
+                            }
+                        }
+                    }
+                } catch (\Exception $e) {
+                    // Log error but continue with default values
+                    \Log::error('Error fetching booking data: ' . $e->getMessage());
                 }
-            } elseif ($customerModel && $customerModel->user && !empty($customerModel->user->first_name) && !empty($customerModel->user->last_name)) {
-                 $customerName = trim($customerModel->user->first_name . ' ' . $customerModel->user->last_name);
-            } elseif ($customerModel && $customerModel->user && !empty($customerModel->user->name)) { // Fallback if Customer->user->name exists
-                $customerName = $customerModel->user->name;
-            } elseif ($customerModel && !empty($customerModel->first_name) && !empty($customerModel->last_name)) { // Fallback if Customer model has first_name and last_name
-                 $customerName = trim($customerModel->first_name . ' ' . $customerModel->last_name);
-            } elseif ($customerModel && !empty($customerModel->name)) { // Fallback if Customer model has a 'name' attribute
-                $customerName = $customerModel->name;
             }
 
             return [
                 'id' => $record->id,
-                'booking_id' => $booking ? $booking->id : null,
-                'booking_number' => $booking && $booking->vehicle ? $booking->booking_number : 'N/A',
-                'vendor_id' => $vendorId,
+                'booking_id' => $bookingId,
+                'booking_number' => $bookingNumber,
+                'customer_name' => $customerName ?: 'N/A',
+                'customer_id' => $booking ? $booking->customer_id : null,
+                'customer_email' => $customerEmail ?: 'N/A',
                 'vendor_name' => $vendorName,
-                'customer_id' => $customerId, // FK from bookings table to customers table
-                'customer_name' => $customerName,
+                'vendor_id' => isset($vehicle) && $vehicle ? $vehicle->vendor_id : null,
+                'vehicle_brand' => $vehicleBrand,
+                'pickup_location' => $pickupLocation,
                 'before_images' => $record->before_images ?? [],
                 'after_images' => $record->after_images ?? [],
+                'created_at' => $record->created_at,
             ];
         });
 
         return Inertia::render('AdminDashboardPages/DamageProtection/Index', [
-            'damageRecords' => $formattedRecords, // This will now be a paginator instance
+            'damageRecords' => $formattedRecords,
         ]);
+    }
+
+    /**
+     * Helper method to get vendor name
+     */
+    private function getVendorName($vendorId)
+    {
+        try {
+            // First try to get user profile
+            $vendorProfile = \App\Models\UserProfile::where('user_id', $vendorId)->first();
+            if ($vendorProfile) {
+                if (!empty($vendorProfile->company_name)) {
+                    return $vendorProfile->company_name;
+                } elseif (!empty($vendorProfile->first_name) && !empty($vendorProfile->last_name)) {
+                    return trim($vendorProfile->first_name . ' ' . $vendorProfile->last_name);
+                }
+            }
+
+            // Fallback to user name
+            $user = \App\Models\User::find($vendorId);
+            if ($user) {
+                return $user->name ?: 'Vendor #' . $vendorId;
+            }
+
+            return 'Vendor #' . $vendorId;
+        } catch (\Exception $e) {
+            return 'Vendor #' . $vendorId . ' (Error: ' . $e->getMessage() . ')';
+        }
     }
 }
