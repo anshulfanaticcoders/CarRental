@@ -18,22 +18,40 @@ class UsersController extends Controller
     public function index(Request $request)
     {
         $search = $request->query('search');
-        $users = User::where('role', '!=', 'admin')
-            ->when($search, function ($query, $search) {
-                return $query->where(function ($query) use ($search) {
-                    $query->where('first_name', 'like', "%{$search}%")
-                        ->orWhere('last_name', 'like', "%{$search}%")
-                        ->orWhere('email', 'like', "%{$search}%")
-                        ->orWhere('role', 'like', "%{$search}%")
-                        ->orWhere('status', 'like', "%{$search}%");
-                });
-            })
-            ->orderBy('created_at', 'desc')
-            ->paginate(7);
+        $status = $request->query('status');
+
+        // Build the query
+        $query = User::where('role', '!=', 'admin');
+
+        // Apply search filter
+        if ($search) {
+            $query->where(function ($query) use ($search) {
+                $query->where('first_name', 'like', "%{$search}%")
+                      ->orWhere('last_name', 'like', "%{$search}%")
+                      ->orWhere('email', 'like', "%{$search}%")
+                      ->orWhere('phone', 'like', "%{$search}%");
+            });
+        }
+
+        // Apply status filter
+        if ($status && $status !== 'all') {
+            $query->where('status', $status);
+        }
+
+        $users = $query->orderBy('created_at', 'desc')->paginate(7);
+
+        // Get accurate status counts
+        $statusCounts = [
+            'total' => User::where('role', '!=', 'admin')->count(),
+            'active' => User::where('role', '!=', 'admin')->where('status', 'active')->count(),
+            'inactive' => User::where('role', '!=', 'admin')->where('status', 'inactive')->count(),
+            'suspended' => User::where('role', '!=', 'admin')->where('status', 'suspended')->count(),
+        ];
 
         return Inertia::render('AdminDashboardPages/Users/Index', [
             'users' => $users,
-            'filters' => $request->only(['search']),
+            'statusCounts' => $statusCounts,
+            'filters' => $request->only(['search', 'status']),
         ]);
     }
 
@@ -90,7 +108,6 @@ class UsersController extends Controller
             // 'role' => 'required|in:admin,vendor,customer',
             'status' => 'required|in:active,inactive,suspended',
             'password' => 'nullable|min:8|confirmed',
-            'updated_at' => now(),
         ]);
 
         $data = $request->all();
