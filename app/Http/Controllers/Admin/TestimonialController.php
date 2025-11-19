@@ -11,15 +11,43 @@ use Inertia\Inertia;
 
 class TestimonialController extends Controller
 {
-    public function index(Request $request) // Added Request $request
+    public function index(Request $request)
     {
-        // Paginate testimonials, 10 per page, ordered by latest.
-        $testimonials = Testimonial::latest()->paginate(7)->withQueryString();
-        
+        $search = $request->query('search');
+        $rating = $request->query('rating');
+
+        // Build the testimonials query
+        $testimonialsQuery = Testimonial::query();
+
+        // Apply search filter
+        if ($search) {
+            $testimonialsQuery->where(function ($query) use ($search) {
+                $query->where('name', 'like', "%{$search}%")
+                      ->orWhere('review', 'like', "%{$search}%")
+                      ->orWhere('designation', 'like', "%{$search}%");
+            });
+        }
+
+        // Apply rating filter
+        if ($rating && $rating !== 'all') {
+            $testimonialsQuery->where('ratings', $rating);
+        }
+
+        $testimonials = $testimonialsQuery->orderBy('created_at', 'desc')->paginate(7)->withQueryString();
+
+        // Get testimonial statistics
+        $statusCounts = [
+            'total' => Testimonial::count(),
+            'five_star' => Testimonial::where('ratings', 5)->count(),
+            'four_star' => Testimonial::where('ratings', 4)->count(),
+            'three_star' => Testimonial::where('ratings', 3)->count(),
+        ];
+
         return Inertia::render('AdminDashboardPages/Testimonials/Index', [
             'testimonials' => $testimonials,
-            // If you add filters later, pass them here:
-            // 'filters' => $request->only(['search']), 
+            'statusCounts' => $statusCounts,
+            'filters' => $request->only(['search', 'rating']),
+            'flash' => session()->only(['success', 'error'])
         ]);
     }
 
