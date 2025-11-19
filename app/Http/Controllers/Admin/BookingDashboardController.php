@@ -37,6 +37,7 @@ class BookingDashboardController extends Controller
     private function getBookings(Request $request, $status)
     {
         $search = $request->query('search');
+        $statusFilter = $request->query('status', $status); // Get status from query or use method status
 
         $bookings = Booking::when($search, function ($query) use ($search) {
             $query->where('plan', 'like', "%{$search}%")
@@ -55,17 +56,27 @@ class BookingDashboardController extends Controller
                 });
         });
 
-        if ($status !== 'all') { // Filter by status if not 'all'
-            $bookings->where('booking_status', $status);
+        if ($statusFilter !== 'all') { // Filter by status if not 'all'
+            $bookings->where('booking_status', $statusFilter);
         }
 
-        $bookings = $bookings->orderBy('created_at', 'desc')->with(['customer', 'vehicle.vendorProfileData','payments','vendorProfile'])->paginate(12);
-        
+        $bookings = $bookings->orderBy('created_at', 'desc')->with(['customer', 'vehicle.vendorProfileData','payments','vendorProfile'])->paginate(7);
+
+        // Get booking status counts
+        $statusCounts = [
+            'total' => Booking::count(),
+            'pending' => Booking::where('booking_status', 'pending')->count(),
+            'confirmed' => Booking::where('booking_status', 'confirmed')->count(),
+            'completed' => Booking::where('booking_status', 'completed')->count(),
+            'cancelled' => Booking::where('booking_status', 'cancelled')->count(),
+        ];
 
         return Inertia::render('AdminDashboardPages/Bookings/Index', [
             'users' => $bookings,
-            'filters' => $request->only(['search']), // Only search filter
-            'currentStatus' => $status, // Pass current status to the view
+            'statusCounts' => $statusCounts,
+            'filters' => $request->only(['search', 'status']), // Include status filter
+            'currentStatus' => $statusFilter, // Pass current status to the view
+            'flash' => session()->only(['success', 'error'])
         ]);
     }
 }

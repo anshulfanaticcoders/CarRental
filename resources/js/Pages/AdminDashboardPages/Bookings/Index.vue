@@ -1,123 +1,286 @@
 <template>
     <AdminDashboardLayout>
-        <div class="w-[80%] p-6 space-y-6">
+        <div class="container mx-auto p-6 space-y-6">
+            <!-- Header -->
             <div class="flex items-center justify-between">
-                <h1 class="text-2xl font-semibold tracking-tight">All Bookings</h1>
+                <h1 class="text-3xl font-bold tracking-tight">Bookings Management</h1>
                 <div class="flex items-center gap-4">
-                    <Input v-model="search" placeholder="Search bookings..." class="w-80" @input="handleSearch" />
-                    <div class="flex gap-2">
-                        <Button :variant="currentStatus === 'all' ? 'default' : 'outline'"
-                            @click="navigateTo('all')">All</Button>
-                        <Button :variant="currentStatus === 'pending' ? 'secondary' : 'outline'"
-                            @click="navigateTo('pending')">Pending</Button>
-                        <Button :variant="currentStatus === 'confirmed' ? 'default' : 'outline'"
-                            @click="navigateTo('confirmed')">Confirmed</Button>
-                        <Button :variant="currentStatus === 'completed' ? 'outline' : 'secondary'"
-                            @click="navigateTo('completed')">Completed</Button>
-                        <Button :variant="currentStatus === 'cancelled' ? 'destructive' : 'outline'"
-                            @click="navigateTo('cancelled')">Cancelled</Button>
+                    <span class="inline-flex items-center px-2.5 py-0.5 rounded-full bg-blue-100 text-blue-700">
+                        <Calendar class="w-4 h-4 mr-1" />
+                        All Bookings
+                    </span>
+                </div>
+            </div>
+
+            <!-- Flash Messages -->
+            <div v-if="flash?.success" class="bg-green-50 border border-green-200 text-green-800 px-4 py-3 rounded-lg">
+                {{ flash.success }}
+            </div>
+            <div v-if="flash?.error" class="bg-red-50 border border-red-200 text-red-800 px-4 py-3 rounded-lg">
+                {{ flash.error }}
+            </div>
+
+            <!-- Enhanced Stats Cards -->
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6">
+                <!-- Total Bookings Card -->
+                <div class="relative bg-gradient-to-br from-blue-50 to-blue-100 border border-blue-200 rounded-xl p-6 shadow-lg transition-all duration-200 hover:shadow-xl hover:scale-[1.02]">
+                    <div class="flex items-center justify-between mb-4">
+                        <div class="p-3 bg-blue-500 bg-opacity-20 rounded-lg">
+                            <Calendar class="w-6 h-6 text-blue-600" />
+                        </div>
+                        <Badge variant="secondary" class="bg-blue-500 text-white">
+                            Total
+                        </Badge>
+                    </div>
+                    <div class="text-center">
+                        <p class="text-4xl font-bold text-blue-900">{{ statusCounts?.total || 0 }}</p>
+                        <p class="text-sm text-blue-700 mt-1">Total Bookings</p>
+                    </div>
+                </div>
+
+                <!-- Pending Bookings Card -->
+                <div class="relative bg-gradient-to-br from-yellow-50 to-yellow-100 border border-yellow-200 rounded-xl p-6 shadow-lg transition-all duration-200 hover:shadow-xl hover:scale-[1.02]">
+                    <div class="flex items-center justify-between mb-4">
+                        <div class="p-3 bg-yellow-500 bg-opacity-20 rounded-lg">
+                            <Clock class="w-6 h-6 text-yellow-600" />
+                        </div>
+                        <Badge variant="secondary" class="bg-yellow-500 text-white">
+                            Pending
+                        </Badge>
+                    </div>
+                    <div class="text-center">
+                        <p class="text-4xl font-bold text-yellow-900">{{ statusCounts?.pending || 0 }}</p>
+                        <p class="text-sm text-yellow-700 mt-1">Pending Bookings</p>
+                    </div>
+                </div>
+
+                <!-- Confirmed Bookings Card -->
+                <div class="relative bg-gradient-to-br from-green-50 to-green-100 border border-green-200 rounded-xl p-6 shadow-lg transition-all duration-200 hover:shadow-xl hover:scale-[1.02]">
+                    <div class="flex items-center justify-between mb-4">
+                        <div class="p-3 bg-green-500 bg-opacity-20 rounded-lg">
+                            <CheckCircle class="w-6 h-6 text-green-600" />
+                        </div>
+                        <Badge variant="secondary" class="bg-green-500 text-white">
+                            Confirmed
+                        </Badge>
+                    </div>
+                    <div class="text-center">
+                        <p class="text-4xl font-bold text-green-900">{{ statusCounts?.confirmed || 0 }}</p>
+                        <p class="text-sm text-green-700 mt-1">Confirmed Bookings</p>
+                    </div>
+                </div>
+
+                <!-- Completed Bookings Card -->
+                <div class="relative bg-gradient-to-br from-blue-50 to-blue-100 border border-blue-200 rounded-xl p-6 shadow-lg transition-all duration-200 hover:shadow-xl hover:scale-[1.02]">
+                    <div class="flex items-center justify-between mb-4">
+                        <div class="p-3 bg-blue-500 bg-opacity-20 rounded-lg">
+                            <CheckSquare class="w-6 h-6 text-blue-600" />
+                        </div>
+                        <Badge variant="secondary" class="bg-blue-500 text-white">
+                            Completed
+                        </Badge>
+                    </div>
+                    <div class="text-center">
+                        <p class="text-4xl font-bold text-blue-900">{{ statusCounts?.completed || 0 }}</p>
+                        <p class="text-sm text-blue-700 mt-1">Completed Bookings</p>
+                    </div>
+                </div>
+
+                <!-- Cancelled Bookings Card -->
+                <div class="relative bg-gradient-to-br from-red-50 to-red-100 border border-red-200 rounded-xl p-6 shadow-lg transition-all duration-200 hover:shadow-xl hover:scale-[1.02]">
+                    <div class="flex items-center justify-between mb-4">
+                        <div class="p-3 bg-red-500 bg-opacity-20 rounded-lg">
+                            <XCircle class="w-6 h-6 text-red-600" />
+                        </div>
+                        <Badge variant="secondary" class="bg-red-500 text-white">
+                            Cancelled
+                        </Badge>
+                    </div>
+                    <div class="text-center">
+                        <p class="text-4xl font-bold text-red-900">{{ statusCounts?.cancelled || 0 }}</p>
+                        <p class="text-sm text-red-700 mt-1">Cancelled Bookings</p>
                     </div>
                 </div>
             </div>
 
+            <!-- Enhanced Search & Filter -->
+            <div class="flex flex-col md:flex-row gap-4 items-center justify-center">
+                <div class="flex-1 w-full md:w-auto">
+                    <div class="relative w-full max-w-md">
+                        <Search class="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                        <Input
+                            v-model="search"
+                            placeholder="Search bookings by number, customer, vehicle..."
+                            class="pl-10 pr-4 h-12 text-base"
+                        />
+                    </div>
+                </div>
+                <div>
+                    <Select v-model="statusFilter">
+                        <SelectTrigger class="w-40 h-12">
+                            <SelectValue placeholder="All Statuses" />
+                        </SelectTrigger>
+                        <SelectContent>
+                            <SelectItem value="all">All Statuses</SelectItem>
+                            <SelectItem value="pending">Pending</SelectItem>
+                            <SelectItem value="confirmed">Confirmed</SelectItem>
+                            <SelectItem value="completed">Completed</SelectItem>
+                            <SelectItem value="cancelled">Cancelled</SelectItem>
+                        </SelectContent>
+                    </Select>
+                </div>
+            </div>
+
     
-            <div v-if="users.data.length > 0" class="rounded-lg border bg-card shadow-sm w-full overflow-hidden">
+            <!-- Enhanced Bookings Table -->
+            <div v-if="users.data.length > 0" class="rounded-xl border bg-card shadow-sm overflow-hidden">
+                <div class="overflow-x-auto max-w-full">
                     <Table>
                         <TableHeader>
-                            <TableRow>
-                                <TableHead class="whitespace-nowrap p-3">ID</TableHead>
-                                <TableHead class="whitespace-nowrap p-3">Booking Number</TableHead>
-                                <TableHead class="whitespace-nowrap p-3">Plan</TableHead>
-                                <TableHead class="whitespace-nowrap p-3">Name</TableHead>
-                                <TableHead class="whitespace-nowrap p-3">Email</TableHead>
-                                <TableHead class="whitespace-nowrap p-3">Pickup & Return Location</TableHead>
-                                <TableHead class="whitespace-nowrap p-3">Brand</TableHead>
-                                <TableHead class="whitespace-nowrap p-3">Date</TableHead>
-                                <TableHead class="whitespace-nowrap p-3">Total Days</TableHead>
-                                <TableHead class="whitespace-nowrap p-3">Currency</TableHead>
-                                <TableHead class="whitespace-nowrap p-3">Total Amount</TableHead>
-                                <TableHead class="whitespace-nowrap p-3">Amount Paid</TableHead>
-                                <TableHead class="whitespace-nowrap p-3">Pending Amount</TableHead>
-                                <TableHead class="whitespace-nowrap p-3">Payment Status</TableHead>
-                                <TableHead class="whitespace-nowrap p-3">Booking Status</TableHead>
-                              </TableRow>
-                        </TableHeader>
-                    <TableBody>
-                        <TableRow v-for="(user, index) in users.data" :key="user.id">
-                            <TableCell class="whitespace-nowrap p-3">{{ (users.current_page - 1) * users.per_page + index + 1 }}</TableCell>
-                            <TableCell class="whitespace-nowrap p-3">{{ user.booking_number }}</TableCell>
-                            <TableCell class="whitespace-nowrap p-3">{{ user.plan }}</TableCell>
-                            <TableCell class="whitespace-nowrap p-3">{{ user.customer.first_name }} {{ user.customer.last_name }}</TableCell>
-                            <TableCell class="whitespace-nowrap p-3">{{ user.customer.email }}</TableCell>
-                            <TableCell class="whitespace-nowrap p-3">{{ user.pickup_location }}</TableCell>
-                            <TableCell class="whitespace-nowrap p-3">{{ user.vehicle.brand }}</TableCell>
-                            <TableCell class="whitespace-nowrap p-3">{{ formatDate(user.vehicle.created_at) }}</TableCell>
-                            <TableCell class="whitespace-nowrap p-3">{{ user.total_days }}</TableCell>
-                            <TableCell>
-                                <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium"
-                                    :class="getCurrencyBadgeClass(user.booking_currency || 'USD')">
-                                    {{ user.booking_currency || 'USD' }}
-                                </span>
-                            </TableCell>
-                            <TableCell class="whitespace-nowrap p-3">{{ formatCurrency(user.total_amount, user.booking_currency || 'USD') }}</TableCell>
-                            <TableCell class="whitespace-nowrap p-3 text-green-700 font-medium">{{ formatCurrency(user.amount_paid || 0, user.booking_currency || 'USD') }}</TableCell>
-                            <TableCell class="whitespace-nowrap p-3 text-yellow-700 font-medium">{{ formatCurrency(user.pending_amount || 0, user.booking_currency || 'USD') }}</TableCell>
-                            <TableCell class="whitespace-nowrap p-3">
-                                <Badge v-if="user.payments?.length > 0" :variant="user.payments[0].payment_status === 'succeeded' ? 'default' : user.payments[0].payment_status === 'pending' ? 'secondary' : 'destructive'">
-                                    {{ user.payments[0].payment_status }}
-                                </Badge>
-                                <Badge v-else variant="outline">
-                                    No Payment
-                                </Badge>
-                            </TableCell>
-
-                            <TableCell class="whitespace-nowrap">
-                                <Badge :variant="getStatusBadgeBooking(user.booking_status)">
-                                    {{ user.booking_status }}
-                                </Badge>
-                            </TableCell>
+                            <TableRow class="bg-muted/50">
+                                <TableHead class="whitespace-nowrap px-4 py-3 font-semibold">ID</TableHead>
+                                <TableHead class="whitespace-nowrap px-4 py-3 font-semibold">Booking #</TableHead>
+                                <TableHead class="whitespace-nowrap px-4 py-3 font-semibold">Plan</TableHead>
+                                <TableHead class="whitespace-nowrap px-4 py-3 font-semibold">Customer</TableHead>
+                                <TableHead class="whitespace-nowrap px-4 py-3 font-semibold">Vehicle</TableHead>
+                                <TableHead class="whitespace-nowrap px-4 py-3 font-semibold">Dates</TableHead>
+                                <TableHead class="whitespace-nowrap px-4 py-3 font-semibold">Total Days</TableHead>
+                                <TableHead class="whitespace-nowrap px-4 py-3 font-semibold">Amount</TableHead>
+                                <TableHead class="whitespace-nowrap px-4 py-3 font-semibold">Payment</TableHead>
+                                <TableHead class="whitespace-nowrap px-4 py-3 font-semibold">Status</TableHead>
                             </TableRow>
-                    </TableBody>
-                </Table>
-        </div>
-        <div v-else class="rounded-lg border bg-card p-8 text-center">
-            No bookings found.
-        </div>
-        <div class="flex justify-end pt-4">
-            <Pagination :current-page="users.current_page" :total-pages="users.last_page"
-                @page-change="handlePageChange" />
-        </div>
+                        </TableHeader>
+                        <TableBody>
+                            <TableRow v-for="(booking,index) in users.data" :key="booking.id" class="hover:bg-muted/25 transition-colors">
+                                <TableCell class="whitespace-nowrap px-4 py-3 font-medium">
+                                    {{ (users.current_page - 1) * users.per_page + index + 1 }}
+                                </TableCell>
+                                <TableCell class="whitespace-nowrap px-4 py-3 font-mono">
+                                    {{ booking.booking_number }}
+                                </TableCell>
+                                <TableCell class="whitespace-nowrap px-4 py-3">
+                                    <Badge variant="outline" class="capitalize">
+                                        {{ booking.plan }}
+                                    </Badge>
+                                </TableCell>
+                                <TableCell class="whitespace-nowrap px-4 py-3">
+                                    <div class="font-medium">{{ booking.customer?.first_name }} {{ booking.customer?.last_name }}</div>
+                                    <div class="text-sm text-muted-foreground">{{ booking.customer?.email }}</div>
+                                </TableCell>
+                                <TableCell class="whitespace-nowrap px-4 py-3">
+                                    <div class="font-medium">{{ booking.vehicle?.brand }} {{ booking.vehicle?.model }}</div>
+                                    <div class="text-sm text-muted-foreground">{{ booking.vehicle?.color || 'N/A' }}</div>
+                                </TableCell>
+                                <TableCell class="whitespace-nowrap px-4 py-3">
+                                    <div class="text-sm">
+                                        <div class="font-medium">{{ formatDate(booking.created_at) }}</div>
+                                        <div class="text-muted-foreground text-xs">{{ booking.pickup_location }}</div>
+                                    </div>
+                                </TableCell>
+                                <TableCell class="whitespace-nowrap px-4 py-3">
+                                    <div class="font-medium">{{ booking.total_days || 0 }} days</div>
+                                </TableCell>
+                                <TableCell class="whitespace-nowrap px-4 py-3">
+                                    <div class="text-sm">
+                                        <div class="font-medium">{{ formatCurrency(booking.total_amount, booking.booking_currency || 'USD') }}</div>
+                                        <div class="text-green-600 text-xs">Paid: {{ formatCurrency(booking.amount_paid || 0, booking.booking_currency || 'USD') }}</div>
+                                        <div class="text-yellow-600 text-xs">Pending: {{ formatCurrency(booking.pending_amount || 0, booking.booking_currency || 'USD') }}</div>
+                                    </div>
+                                </TableCell>
+                                <TableCell class="whitespace-nowrap px-4 py-3">
+                                    <Badge v-if="booking.payments?.length > 0"
+                                          :variant="getPaymentBadgeVariant(booking.payments[0].payment_status)">
+                                        {{ booking.payments[0].payment_status }}
+                                    </Badge>
+                                    <Badge v-else variant="outline">
+                                        No Payment
+                                    </Badge>
+                                </TableCell>
+                                <TableCell class="whitespace-nowrap px-4 py-3">
+                                    <Badge :variant="getStatusBadgeBooking(booking.booking_status)" class="capitalize">
+                                        {{ booking.booking_status }}
+                                    </Badge>
+                                </TableCell>
+                            </TableRow>
+                        </TableBody>
+                    </Table>
+                </div>
+                <div class="flex justify-end pt-4 pr-2">
+                    <Pagination :current-page="users.current_page" :total-pages="users.last_page"
+                        @page-change="handlePageChange" />
+                </div>
+            </div>
+
+            <!-- Empty State -->
+            <div v-else class="rounded-xl border bg-card p-12 text-center">
+                <div class="flex flex-col items-center space-y-4">
+                    <Calendar class="w-16 h-16 text-muted-foreground" />
+                    <div class="space-y-2">
+                        <h3 class="text-xl font-semibold text-foreground">No bookings found</h3>
+                        <p class="text-muted-foreground">No bookings match your current search criteria.</p>
+                    </div>
+                </div>
+            </div>
 
         </div>
     </AdminDashboardLayout>
 </template>
 
 <script setup>
-import { ref } from "vue";
+import { ref, watch, onMounted } from "vue";
 import { router } from "@inertiajs/vue3";
-import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from "@/Components/ui/table";
+import {Table, TableHeader, TableRow, TableHead, TableBody, TableCell} from "@/Components/ui/table";
 import { Button } from "@/Components/ui/button";
 import { Badge } from "@/Components/ui/badge";
 import { Input } from "@/Components/ui/input";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/Components/ui/select';
+import {
+  Calendar,
+  Clock,
+  CheckCircle,
+  CheckSquare,
+  XCircle,
+  Search
+} from 'lucide-vue-next';
 import AdminDashboardLayout from "@/Layouts/AdminDashboardLayout.vue";
 import Pagination from '@/Components/ReusableComponents/Pagination.vue';
 
-
 const props = defineProps({
     users: Object,
+    statusCounts: Object,
     filters: Object,
     currentStatus: String,
+    flash: Object,
 });
 
 const search = ref(props.filters.search || '');
-const currentStatus = ref(props.currentStatus || 'all');
+const statusFilter = ref(props.currentStatus || 'all');
 
-const handleSearch = () => {
-    router.get('/customer-bookings', { search: search.value }, {
+// Watch for changes in search and status filter
+watch([search, statusFilter], () => {
+    handleFilterChange();
+});
+
+const handleFilterChange = () => {
+    router.get('/customer-bookings', {
+        search: search.value,
+        status: statusFilter.value
+    }, {
         preserveState: true,
         replace: true,
     });
 };
+
+const handleSearch = () => {
+    handleFilterChange();
+};
+
 const status = ref(props.currentStatus || 'all');
 const handlePageChange = (page) => {
     let routeName = 'customer-bookings.index'; // Default
@@ -149,10 +312,29 @@ const getStatusBadgeBooking = (status) => {
             return 'default';
         case 'pending':
             return 'secondary';
+        case 'confirmed':
+            return 'default';
+        case 'cancelled':
+            return 'destructive';
         case 'failed':
             return 'destructive';
         default:
             return 'default';
+    }
+};
+
+const getPaymentBadgeVariant = (paymentStatus) => {
+    switch (paymentStatus) {
+        case 'paid':
+            return 'default';
+        case 'pending':
+            return 'secondary';
+        case 'failed':
+            return 'destructive';
+        case 'refunded':
+            return 'outline';
+        default:
+            return 'outline';
     }
 };
 const formatDate = (dateStr) => {
@@ -220,6 +402,15 @@ const getCurrencyBadgeClass = (currency) => {
     };
     return classes[currency] || 'bg-gray-100 text-gray-800';
 };
+
+// Flash message handling
+onMounted(() => {
+    if (props.flash?.success) {
+        setTimeout(() => {
+            router.clearFlashMessages();
+        }, 3000);
+    }
+});
 </script>
 
 
