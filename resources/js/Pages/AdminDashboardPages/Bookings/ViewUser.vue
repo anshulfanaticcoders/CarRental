@@ -64,7 +64,7 @@
 
 <script setup>
 import { DialogContent, DialogHeader, DialogTitle } from "@/Components/ui/dialog";
-import Input from "@/Components/ui/input/Input.vue";
+import { Input } from "@/Components/ui/input";
 import InputLabel from "@/Components/InputLabel.vue";
 
 const props = defineProps({

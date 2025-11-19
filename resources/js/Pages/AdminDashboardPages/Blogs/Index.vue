@@ -1,30 +1,31 @@
 <template>
     <AdminDashboardLayout>
-        <div class="flex flex-col gap-4 w-[95%] ml-[1.5rem]">
-            <div class="flex items-center justify-between mt-[2rem]">
-                <span class="text-[1.5rem] font-semibold">Blog Management</span>
-                <div class="flex items-center gap-4">
-                    <Input v-model="search" placeholder="Search blog..." class="w-[300px] search-box" @input="handleSearch" />
+        <div class="py-12 px-4 sm:px-6 lg:px-8">
+            <div class="mx-auto">
+                <div class="flex items-center justify-between mb-6">
+                    <div>
+                        <h1 class="text-2xl font-bold text-gray-900">Blog Management</h1>
+                        <p class="text-sm text-gray-600 mt-1">Manage all blog posts and content</p>
+                    </div>
+                    <div class="flex items-center gap-4">
+                        <Input v-model="search" placeholder="Search blogs..." class="w-80" @input="handleSearch" />
+                        <Link :href="route('admin.blogs.create')">
+                            <Button>Create New Blog</Button>
+                        </Link>
+                    </div>
                 </div>
-                <Link 
-                    :href="route('admin.blogs.create')" 
-                    class="px-4 py-2 bg-primary text-white rounded hover:bg-primary/90"
-                >
-                    Create New Blog
-                </Link>
-            </div>
 
             <!-- Blogs Table -->
-            <div class="rounded-md border p-5 mt-[1rem] bg-[#153B4F0D]">
+            <div class="bg-white rounded-xl shadow-sm border border-gray-200">
                 <Table>
                     <TableHeader>
                         <TableRow>
-                            <TableHead>ID</TableHead>
+                            <TableHead class="w-12">ID</TableHead>
                             <TableHead>Title</TableHead>
                             <TableHead>Slug</TableHead>
-                            <TableHead>Published</TableHead>
-                            <TableHead>Created At</TableHead>
-                            <TableHead class="text-right">Actions</TableHead>
+                            <TableHead class="w-32">Status</TableHead>
+                            <TableHead class="w-32">Created</TableHead>
+                            <TableHead class="text-right w-32">Actions</TableHead>
                         </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -35,24 +36,20 @@
                             <TableCell>
                                 <Button
                                     @click="togglePublishStatus(blog)"
-                                    :class="[
-                                        'px-3 py-1 text-xs rounded-full transition-colors duration-150 ease-in-out',
-                                        blog.is_published ? 'bg-green-500 hover:bg-green-600 text-white' : 'bg-red-500 hover:bg-red-600 text-white'
-                                    ]"
+                                    size="sm"
+                                    :variant="blog.is_published ? 'default' : 'destructive'"
                                 >
                                     {{ blog.is_published ? 'Published' : 'Unpublished' }}
                                 </Button>
                             </TableCell>
                             <TableCell>{{ formatDate(blog.created_at) }}</TableCell>
                             <TableCell class="text-right">
-                                <div class="flex justify-end gap-2">
-                                    <Link 
-                                        :href="route('admin.blogs.edit', blog.id)"
-                                        class="px-3 py-2 bg-[#0f172a] text-white rounded hover:bg-[#0f172ae6]"
-                                    >
-                                        Edit
+                                <div class="flex items-center justify-end gap-2">
+                                    <Link :href="route('admin.blogs.edit', blog.id)">
+                                        <Button size="sm" variant="outline">Edit</Button>
                                     </Link>
-                                    <Button 
+                                    <Button
+                                        size="sm"
                                         variant="destructive"
                                         @click="confirmDeleteBlog(blog.id)"
                                     >
@@ -76,6 +73,7 @@
                     />
                 </div>
             </div>
+        </div>
         </div>
     </AdminDashboardLayout>
 </template>
@@ -158,25 +156,3 @@ const formatDate = (dateStr) => {
     return `${String(date.getDate()).padStart(2, '0')}/${String(date.getMonth() + 1).padStart(2, '0')}/${date.getFullYear()}`;
 };
 </script>
-
-<style scoped>
-.search-box {
-    width: 300px;
-    padding: 0.5rem;
-    border: 1px solid #e9ecef;
-    border-radius: 4px;
-    outline: none;
-}
-
-.search-box:focus {
-    border-color: #3b82f6;
-    box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2);
-}
-
-table th{
-    font-size: 0.95rem;
-}
-table td{
-    font-size: 0.875rem;
-}
-</style>
