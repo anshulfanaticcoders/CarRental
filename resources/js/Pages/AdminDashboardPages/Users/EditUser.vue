@@ -47,7 +47,13 @@
                 </Select>
             </div>
             <DialogFooter>
-                <Button type="submit">Update User</Button>
+                <Button type="submit" :disabled="isSubmitting" class="relative">
+                    <span v-if="isSubmitting" class="flex items-center gap-2">
+                        <div class="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                        Updating...
+                    </span>
+                    <span v-else>Update User</span>
+                </Button>
             </DialogFooter>
         </form>
     </DialogContent>
@@ -74,6 +80,7 @@ const props = defineProps({
 
 const emit = defineEmits(['close']); // Define the 'close' event
 const editForm = ref({ ...props.user });
+const isSubmitting = ref(false);
 
 // Watch for changes in props.user (if the user data is updated dynamically)
 watch(() => props.user, (newUser) => {
@@ -81,6 +88,9 @@ watch(() => props.user, (newUser) => {
 }, { immediate: true });
 
 const updateUser = () => {
+    // Set loading state
+    isSubmitting.value = true;
+
     router.put(`/users/${editForm.value.id}`, editForm.value, {
         onSuccess: () => {
             emit('close');
@@ -91,6 +101,21 @@ const updateUser = () => {
                 pauseOnHover: true,
                 draggable: true,
             });
+        },
+        onError: (errors) => {
+            // Show error notification if validation fails
+            const errorMessage = Object.values(errors)[0] || 'An error occurred while updating the user';
+            toast.error(errorMessage, {
+                position: 'top-right',
+                timeout: 3000,
+                closeOnClick: true,
+                pauseOnHover: true,
+                draggable: true,
+            });
+        },
+        onFinish: () => {
+            // Reset loading state regardless of success or error
+            isSubmitting.value = false;
         },
     });
 };

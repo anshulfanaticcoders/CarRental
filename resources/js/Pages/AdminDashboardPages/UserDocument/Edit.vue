@@ -43,7 +43,13 @@
 
             <DialogFooter>
                 <Button type="button" variant="outline" @click="$emit('close')">Cancel</Button>
-                <Button type="submit" :disabled="processing">Update</Button>
+                <Button type="submit" :disabled="processing" class="relative">
+                    <span v-if="processing" class="flex items-center gap-2">
+                        <div class="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                        Updating...
+                    </span>
+                    <span v-else>Update</span>
+                </Button>
             </DialogFooter>
         </form>
     </DialogContent>

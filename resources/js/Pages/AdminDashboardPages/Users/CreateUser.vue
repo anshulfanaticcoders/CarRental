@@ -103,9 +103,17 @@
                 {{ errorMessage }}
             </div>
             <DialogFooter>
-                <Button type="submit" :disabled="form.password.length < 8 ||
-                    form.password !== form.password_confirmation">
-                    Create User
+                <Button
+                    type="submit"
+                    :disabled="form.password.length < 8 ||
+                        form.password !== form.password_confirmation || isSubmitting"
+                    class="relative"
+                >
+                    <span v-if="isSubmitting" class="flex items-center gap-2">
+                        <div class="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                        Creating...
+                    </span>
+                    <span v-else>Create User</span>
                 </Button>
             </DialogFooter>
         </form>
@@ -139,6 +147,7 @@ const form = ref({
 
 const countries = ref([]);
 const errorMessage = ref('');
+const isSubmitting = ref(false);
 const emit = defineEmits(['close']);
 
 const fetchCountries = async () => {
@@ -178,6 +187,9 @@ const submitForm = () => {
         return;
     }
 
+    // Set loading state
+    isSubmitting.value = true;
+
     router.post("/users", form.value, {
         onSuccess: () => {
             form.value = {
@@ -195,6 +207,10 @@ const submitForm = () => {
         },
         onError: (errors) => {
             errorMessage.value = Object.values(errors)[0] || 'An error occurred';
+        },
+        onFinish: () => {
+            // Reset loading state regardless of success or error
+            isSubmitting.value = false;
         },
         preserveState: true,
         preserveScroll: true,
