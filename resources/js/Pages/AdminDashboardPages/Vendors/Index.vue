@@ -1,10 +1,113 @@
 <template>
     <AdminDashboardLayout>
-        <div class="flex flex-col gap-4 w-[95%] ml-[1.5rem]">
-            <div class="flex items-center justify-between mt-[2rem]">
-                <span class="text-[1.5rem] font-semibold">All Vendors</span>
+        <div class="container mx-auto p-6 space-y-6">
+            <!-- Flash Message -->
+            <div v-if="$page.props.flash.success" class="rounded-lg border border-green-200 bg-green-50 p-4 text-green-800">
+                {{ $page.props.flash.success }}
+            </div>
+
+            <!-- Header -->
+            <div class="flex items-center justify-between">
+                <h1 class="text-3xl font-bold tracking-tight">Vendors Management</h1>
                 <div class="flex items-center gap-4">
-                    <Input v-model="search" placeholder="Search vendor..." class="w-[300px]" @input="handleSearch" />
+                    <span class="inline-flex items-center px-2.5 py-0.5 rounded-full bg-blue-100 text-blue-700">
+                        <Store class="w-4 h-4 mr-1" />
+                        All Vendors
+                    </span>
+                </div>
+            </div>
+
+            <!-- Enhanced Stats Cards -->
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                <!-- Total Vendors Card -->
+                <div class="relative bg-gradient-to-br from-blue-50 to-blue-100 border border-blue-200 rounded-xl p-6 shadow-lg transition-all duration-200 hover:shadow-xl hover:scale-[1.02]">
+                    <div class="flex items-center justify-between mb-4">
+                        <div class="p-3 bg-blue-500 bg-opacity-20 rounded-lg">
+                            <Store class="w-6 h-6 text-blue-600" />
+                        </div>
+                        <Badge variant="secondary" class="bg-blue-500 text-white">
+                            Total
+                        </Badge>
+                    </div>
+                    <div class="text-center">
+                        <p class="text-4xl font-bold text-blue-900">{{ statusCounts?.total || 0 }}</p>
+                        <p class="text-sm text-blue-700 mt-1">Total Vendors</p>
+                    </div>
+                </div>
+
+                <!-- Approved Vendors Card -->
+                <div class="relative bg-gradient-to-br from-green-50 to-green-100 border border-green-200 rounded-xl p-6 shadow-lg transition-all duration-200 hover:shadow-xl hover:scale-[1.02]">
+                    <div class="flex items-center justify-between mb-4">
+                        <div class="p-3 bg-green-500 bg-opacity-20 rounded-lg">
+                            <UserCheck class="w-6 h-6 text-green-600" />
+                        </div>
+                        <Badge variant="secondary" class="bg-green-500 text-white">
+                            Approved
+                        </Badge>
+                    </div>
+                    <div class="text-center">
+                        <p class="text-4xl font-bold text-green-900">{{ statusCounts?.approved || 0 }}</p>
+                        <p class="text-sm text-green-700 mt-1">Approved Vendors</p>
+                    </div>
+                </div>
+
+                <!-- Pending Vendors Card -->
+                <div class="relative bg-gradient-to-br from-yellow-50 to-yellow-100 border border-yellow-200 rounded-xl p-6 shadow-lg transition-all duration-200 hover:shadow-xl hover:scale-[1.02]">
+                    <div class="flex items-center justify-between mb-4">
+                        <div class="p-3 bg-yellow-500 bg-opacity-20 rounded-lg">
+                            <Clock class="w-6 h-6 text-yellow-600" />
+                        </div>
+                        <Badge variant="secondary" class="bg-yellow-500 text-white">
+                            Pending
+                        </Badge>
+                    </div>
+                    <div class="text-center">
+                        <p class="text-4xl font-bold text-yellow-900">{{ statusCounts?.pending || 0 }}</p>
+                        <p class="text-sm text-yellow-700 mt-1">Pending Vendors</p>
+                    </div>
+                </div>
+
+                <!-- Rejected Vendors Card -->
+                <div class="relative bg-gradient-to-br from-red-50 to-red-100 border border-red-200 rounded-xl p-6 shadow-lg transition-all duration-200 hover:shadow-xl hover:scale-[1.02]">
+                    <div class="flex items-center justify-between mb-4">
+                        <div class="p-3 bg-red-500 bg-opacity-20 rounded-lg">
+                            <UserX class="w-6 h-6 text-red-600" />
+                        </div>
+                        <Badge variant="secondary" class="bg-red-500 text-white">
+                            Rejected
+                        </Badge>
+                    </div>
+                    <div class="text-center">
+                        <p class="text-4xl font-bold text-red-900">{{ statusCounts?.rejected || 0 }}</p>
+                        <p class="text-sm text-red-700 mt-1">Rejected Vendors</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Enhanced Search & Filter -->
+            <div class="flex flex-col md:flex-row gap-4 items-center justify-center">
+                <div class="flex-1 w-full md:w-auto">
+                    <div class="relative w-full max-w-md">
+                        <Search class="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                        <Input
+                            v-model="search"
+                            placeholder="Search vendors by company, email..."
+                            class="pl-10 pr-4 h-12 text-base"
+                        />
+                    </div>
+                </div>
+                <div>
+                    <Select v-model="statusFilter">
+                        <SelectTrigger class="w-40 h-12">
+                            <SelectValue placeholder="All Statuses" />
+                        </SelectTrigger>
+                        <SelectContent>
+                            <SelectItem value="all">All Statuses</SelectItem>
+                            <SelectItem value="approved">Approved</SelectItem>
+                            <SelectItem value="pending">Pending</SelectItem>
+                            <SelectItem value="rejected">Rejected</SelectItem>
+                        </SelectContent>
+                    </Select>
                 </div>
             </div>
 
@@ -19,6 +122,9 @@
             <!-- Image Preview Dialog -->
             <Dialog v-model:open="isImageModalOpen">
                 <DialogContent class="sm:max-w-[80%]">
+                    <DialogHeader>
+                        <DialogTitle>Document Preview</DialogTitle>
+                    </DialogHeader>
                     <div class="flex justify-center">
                         <img :src="selectedImage" alt="Document preview" class="max-w-full max-h-[80vh] object-contain">
                     </div>
@@ -44,65 +150,104 @@
                 </AlertDialogContent>
             </AlertDialog>
 
-            <div class="rounded-md border p-5  mt-[1rem] bg-[#153B4F0D]">
-                <Table>
-                    <TableHeader>
-                        <TableRow>
-                            <TableHead>ID</TableHead>
-                            <TableHead>User Name</TableHead>
-                            <TableHead>Company Name</TableHead>
-                            <TableHead>Company Email</TableHead>
-                            <TableHead>Status</TableHead>
-                            <TableHead>Passport Front</TableHead>
-                            <TableHead>Passport Back</TableHead>
-                            <TableHead>Created at</TableHead>
-                            <TableHead class="text-right">Actions</TableHead>
-                        </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                        <TableRow v-for="(user, index) in users.data" :key="user.id">
-                            <TableCell>{{ (users.current_page - 1) * users.per_page + index + 1 }}</TableCell>
-                            <TableCell>{{ user.first_name }} {{ user.last_name }}</TableCell>
-                            <TableCell>{{ user.vendor_profile?.company_name }}</TableCell>
-                            <TableCell>{{ user.vendor_profile?.company_email }}</TableCell>
-                            <TableCell>
-                                <Badge :variant="getStatusBadgeVariant(user.vendor_profile?.status)">
-                                    {{ user.vendor_profile?.status }}
-                                </Badge>
-                            </TableCell>
-                            
-                            <TableCell>
-                                <img @click="openImageModal(`${user.vendor_document?.passport_front}`)"
-                                    :src="`${user.vendor_document?.passport_front}`" alt="Passport"
-                                    class="w-[100px] h-[80px] object-cover mb-2 cursor-pointer" />
-                            </TableCell>
-                            <TableCell>
-                                <img @click="openImageModal(`${user.vendor_document?.passport_back}`)"
-                                    :src="`${user.vendor_document?.passport_back}`" alt="Passport"
-                                    class="w-[100px] h-[80px] object-cover mb-2 cursor-pointer" />
-                            </TableCell>
-                            <TableCell>
-                                {{ formatDate(user.vendor_profile.created_at) }}
-                            </TableCell>
-                            <TableCell class="text-right">
-                                <div class="flex justify-end gap-2">
-                                    <Button size="sm" variant="outline" @click="openViewDialog(user)">
-                                        View
-                                    </Button>
-                                    <Button size="sm" variant="outline" @click="openEditDialog(user)">
-                                        Edit
-                                        <img :src=editIcon alt="">
-                                    </Button>
-                                    <Button size="sm" variant="destructive" @click="openDeleteDialog(user.id)">Delete</Button>
-                                </div>
-                            </TableCell>
-                        </TableRow>
-                    </TableBody>
-                </Table>
-                <!-- Pagination -->
-                <div class="mt-4 flex justify-end">
+            <!-- Enhanced Vendors Table -->
+            <div v-if="users.data.length > 0" class="rounded-xl border bg-card shadow-sm overflow-hidden">
+                <div class="overflow-x-auto max-w-full">
+                    <Table>
+                        <TableHeader>
+                            <TableRow class="bg-muted/50">
+                                <TableHead class="whitespace-nowrap px-4 py-3 font-semibold">ID</TableHead>
+                                <TableHead class="whitespace-nowrap px-4 py-3 font-semibold">Vendor Name</TableHead>
+                                <TableHead class="whitespace-nowrap px-4 py-3 font-semibold">Company Name</TableHead>
+                                <TableHead class="whitespace-nowrap px-4 py-3 font-semibold">Company Email</TableHead>
+                                <TableHead class="whitespace-nowrap px-4 py-3 font-semibold">Status</TableHead>
+                                <TableHead class="whitespace-nowrap px-4 py-3 font-semibold">Passport Front</TableHead>
+                                <TableHead class="whitespace-nowrap px-4 py-3 font-semibold">Passport Back</TableHead>
+                                <TableHead class="whitespace-nowrap px-4 py-3 font-semibold">Date Created</TableHead>
+                                <TableHead class="whitespace-nowrap px-4 py-3 font-semibold text-right">Actions</TableHead>
+                            </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                            <TableRow v-for="(user,index) in users.data" :key="user.id" class="hover:bg-muted/25 transition-colors">
+                                <TableCell class="whitespace-nowrap px-4 py-3 font-medium">
+                                    {{ (users.current_page - 1) * users.per_page + index + 1 }}
+                                </TableCell>
+                                <TableCell class="whitespace-nowrap px-4 py-3">
+                                    <div class="font-medium">{{ user.user?.first_name }} {{ user.user?.last_name }}</div>
+                                    <div class="text-sm text-muted-foreground">ID: {{ user.user_id }}</div>
+                                </TableCell>
+                                <TableCell class="whitespace-nowrap px-4 py-3">{{ user.company_name || 'N/A' }}</TableCell>
+                                <TableCell class="whitespace-nowrap px-4 py-3">{{ user.company_email || 'N/A' }}</TableCell>
+                                <TableCell class="whitespace-nowrap px-4 py-3">
+                                    <Badge :variant="getStatusBadgeVariant(user.status)" class="capitalize">
+                                        {{ user.status || 'N/A' }}
+                                    </Badge>
+                                </TableCell>
+                                <TableCell class="whitespace-nowrap px-4 py-3">
+                                    <div v-if="user.user?.vendor_document?.passport_front" class="relative group cursor-pointer" @click="openImageModal(user.user.vendor_document.passport_front)">
+                                        <img
+                                            :src="user.user.vendor_document.passport_front"
+                                            alt="Passport Front"
+                                            class="w-20 h-16 object-cover rounded-lg border border-gray-200 hover:border-blue-400 transition-all pointer-events-none"
+                                        />
+                                        <div class="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-20 rounded-lg transition-all flex items-center justify-center">
+                                            <Image class="w-6 h-6 text-white opacity-0 group-hover:opacity-100 transition-opacity" />
+                                        </div>
+                                    </div>
+                                    <div v-else class="w-20 h-16 bg-gray-100 rounded-lg flex items-center justify-center text-gray-400 text-sm">
+                                        No Image
+                                    </div>
+                                </TableCell>
+                                <TableCell class="whitespace-nowrap px-4 py-3">
+                                    <div v-if="user.user?.vendor_document?.passport_back" class="relative group cursor-pointer" @click="openImageModal(user.user.vendor_document.passport_back)">
+                                        <img
+                                            :src="user.user.vendor_document.passport_back"
+                                            alt="Passport Back"
+                                            class="w-20 h-16 object-cover rounded-lg border border-gray-200 hover:border-blue-400 transition-all pointer-events-none"
+                                        />
+                                        <div class="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-20 rounded-lg transition-all flex items-center justify-center">
+                                            <Image class="w-6 h-6 text-white opacity-0 group-hover:opacity-100 transition-opacity" />
+                                        </div>
+                                    </div>
+                                    <div v-else class="w-20 h-16 bg-gray-100 rounded-lg flex items-center justify-center text-gray-400 text-sm">
+                                        No Image
+                                    </div>
+                                </TableCell>
+                                <TableCell class="whitespace-nowrap px-4 py-3">{{ formatDate(user.created_at) }}</TableCell>
+                                <TableCell class="whitespace-nowrap px-4 py-3">
+                                    <div class="flex justify-end gap-2">
+                                        <Button size="sm" variant="outline" @click="openViewDialog(user)" class="flex items-center gap-1">
+                                            <Eye class="w-3 h-3" />
+                                            View
+                                        </Button>
+                                        <Button size="sm" variant="outline" @click="openEditDialog(user)" class="flex items-center gap-1">
+                                            <Edit class="w-3 h-3" />
+                                            Edit
+                                        </Button>
+                                        <Button size="sm" variant="destructive" @click="openDeleteDialog(user.id)" class="flex items-center gap-1">
+                                            <Trash2 class="w-3 h-3" />
+                                            Delete
+                                        </Button>
+                                    </div>
+                                </TableCell>
+                            </TableRow>
+                        </TableBody>
+                    </Table>
+                </div>
+                <div class="flex justify-end pt-4 pr-2">
                     <Pagination :current-page="users.current_page" :total-pages="users.last_page"
                         @page-change="handlePageChange" />
+                </div>
+            </div>
+
+            <!-- Empty State -->
+            <div v-else class="rounded-xl border bg-card p-12 text-center">
+                <div class="flex flex-col items-center space-y-4">
+                    <Store class="w-16 h-16 text-muted-foreground" />
+                    <div class="space-y-2">
+                        <h3 class="text-xl font-semibold text-foreground">No vendors found</h3>
+                        <p class="text-muted-foreground">No vendor applications match your current search criteria.</p>
+                    </div>
                 </div>
             </div>
         </div>
@@ -110,7 +255,7 @@
 </template>
 
 <script setup>
-import { ref } from "vue";
+import { ref, computed, watch } from "vue";
 import { router } from "@inertiajs/vue3";
 import Table from "@/Components/ui/table/Table.vue";
 import TableHeader from "@/Components/ui/table/TableHeader.vue";
@@ -121,8 +266,25 @@ import TableCell from "@/Components/ui/table/TableCell.vue";
 import Button from "@/Components/ui/button/Button.vue";
 import Badge from "@/Components/ui/badge/Badge.vue";
 import { Input } from "@/Components/ui/input";
-import editIcon from "../../../../assets/Pencil.svg";
-import { Dialog, DialogContent, DialogFooter, DialogTrigger } from "@/Components/ui/dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/Components/ui/select';
+import {
+  Store,
+  UserCheck,
+  UserX,
+  Clock,
+  Search,
+  Eye,
+  Edit,
+  Trash2,
+  Image
+} from 'lucide-vue-next';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogTrigger } from "@/Components/ui/dialog";
 import AdminDashboardLayout from "@/Layouts/AdminDashboardLayout.vue";
 import EditUser from "@/Pages/AdminDashboardPages/Vendors/EditUser.vue";
 import ViewUser from "@/Pages/AdminDashboardPages/Vendors/ViewUser.vue";
@@ -141,9 +303,13 @@ import {
 
 const props = defineProps({
     users: Object,
+    statusCounts: Object,
     filters: Object,
+    flash: Object,
 });
+
 const search = ref(props.filters.search || ''); // Initialize search with the filter value
+const statusFilter = ref(props.filters?.status || 'all'); // Initialize status filter
 const isEditDialogOpen = ref(false);
 const isViewDialogOpen = ref(false);
 const isImageModalOpen = ref(false)
@@ -155,11 +321,63 @@ const deleteUserId = ref(null);
 
 // Handle search input
 const handleSearch = () => {
-    router.get('/vendors', { search: search.value }, {
+    const params = {
+        search: search.value
+    };
+
+    // Only add status parameter if it's not "all"
+    if (statusFilter.value && statusFilter.value !== 'all') {
+        params.status = statusFilter.value;
+    }
+
+    router.get('/vendors', params, {
         preserveState: true,
         replace: true,
     });
 };
+
+// Filter by status
+const filterByStatus = () => {
+    const params = {
+        search: search.value
+    };
+
+    // Only add status parameter if it's not "all"
+    if (statusFilter.value && statusFilter.value !== 'all') {
+        params.status = statusFilter.value;
+    }
+
+    router.get('/vendors', params, {
+        preserveState: true,
+        replace: true,
+    });
+};
+
+// Watch for search query changes
+watch(search, (newValue) => {
+    handleSearch();
+});
+
+// Watch for status filter changes
+watch(statusFilter, (newValue) => {
+    filterByStatus();
+});
+
+const clearFlash = () => {
+    setTimeout(() => {
+        router.visit(window.location.pathname, {
+            preserveState: true,
+            preserveScroll: true,
+            replace: true,
+            data: { flash: null }
+        });
+    }, 3000); // Clear after 3 seconds
+};
+
+// Call clearFlash when flash message exists
+if (props.flash?.success) {
+    clearFlash();
+}
 
 const openEditDialog = (user) => {
     editForm.value = { ...user };
@@ -188,7 +406,20 @@ const confirmDelete = () => {
 };
 
 const handlePageChange = (page) => {
-    router.get(`/vendors?page=${page}`);
+    const params = {
+        page: page,
+        search: search.value
+    };
+
+    // Only add status parameter if it's not "all"
+    if (statusFilter.value && statusFilter.value !== 'all') {
+        params.status = statusFilter.value;
+    }
+
+    router.get('/vendors', params, {
+        preserveState: true,
+        replace: true,
+    });
 };
 const getStatusBadgeVariant = (status) => {
     switch (status) {
@@ -208,26 +439,3 @@ const formatDate = (dateStr) => {
     return `${String(date.getDate()).padStart(2, '0')}/${String(date.getMonth() + 1).padStart(2, '0')}/${date.getFullYear()}`;
 };
 </script>
-<style scoped>
-.search-box {
-    width: 300px;
-    padding: 0.5rem;
-    border: 1px solid #e9ecef;
-    border-radius: 4px;
-    outline: none;
-}
-
-.search-box:focus {
-    border-color: #3b82f6;
-    box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2);
-}
-
-
-table th{
-    font-size: 0.95rem;
-}
-table td{
-    font-size: 0.875rem;
-}
-
-</style>

@@ -7,24 +7,24 @@
             <div class="grid grid-cols-2 gap-4">
                 <div>
                     <InputLabel for="first_name" value="First Name *" />
-                    <Input v-model="editForm.first_name" required readonly class="bg-gray-200 cursor-not-allowed"/>
+                    <Input v-model="editForm.user.first_name" required readonly class="bg-gray-200 cursor-not-allowed"/>
                 </div>
                 <div>
                     <InputLabel for="last_name" value="Last Name *" />
-                    <Input v-model="editForm.last_name" required readonly class="bg-gray-200 cursor-not-allowed"/>
+                    <Input v-model="editForm.user.last_name" required readonly class="bg-gray-200 cursor-not-allowed"/>
                 </div>
             </div>
             <div>
                 <InputLabel for="email" value="Email *" />
-                <Input v-model="editForm.vendor_profile.company_email" type="email" required readonly class="bg-gray-200 cursor-not-allowed" />
+                <Input v-model="editForm.company_email" type="email" required readonly class="bg-gray-200 cursor-not-allowed" />
             </div>
             <div>
                 <InputLabel for="phone" value="Phone *" />
-                <Input v-model="editForm.vendor_profile.company_phone_number" required  readonly class="bg-gray-200 cursor-not-allowed"/>
+                <Input v-model="editForm.company_phone_number" required  readonly class="bg-gray-200 cursor-not-allowed"/>
             </div>
             <div>
                 <InputLabel for="status" value="Status *" />
-                <Select v-model="editForm.vendor_profile.status" required>
+                <Select v-model="editForm.status" required>
                     <SelectTrigger>
                         <SelectValue placeholder="Select Status" />
                     </SelectTrigger>
@@ -36,7 +36,13 @@
                 </Select>
             </div>
             <DialogFooter>
-                <Button type="submit">Update Vendor</Button>
+                <Button type="submit" :disabled="isSubmitting" class="relative">
+                    <span v-if="isSubmitting" class="flex items-center gap-2">
+                        <div class="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                        Updating...
+                    </span>
+                    <span v-else>Update Vendor</span>
+                </Button>
             </DialogFooter>
         </form>
     </DialogContent>
@@ -62,6 +68,7 @@ const props = defineProps({
 
 const emit = defineEmits(['close']); // Define the 'close' event
 const editForm = ref({ ...props.user });
+const isSubmitting = ref(false);
 
 // Watch for changes in props.user (if the user data is updated dynamically)
 watch(() => props.user, (newUser) => {
@@ -69,10 +76,13 @@ watch(() => props.user, (newUser) => {
 }, { immediate: true });
 
 const updateUser = () => {
+    // Set loading state
+    isSubmitting.value = true;
+
     const payload = {
-        status: editForm.value.vendor_profile.status,
+        status: editForm.value.status,
     };
-    router.put(`/vendors/${editForm.value.vendor_profile.id}`, payload, {
+    router.put(`/vendors/${editForm.value.id}`, payload, {
         onSuccess: () => {
             emit('close');
             toast.success('Vendor status updated successfully!', {
@@ -82,6 +92,21 @@ const updateUser = () => {
                 pauseOnHover: true,
                 draggable: true,
             });
+        },
+        onError: (errors) => {
+            // Show error notification if validation fails
+            const errorMessage = Object.values(errors)[0] || 'An error occurred while updating the vendor';
+            toast.error(errorMessage, {
+                position: 'top-right',
+                timeout: 3000,
+                closeOnClick: true,
+                pauseOnHover: true,
+                draggable: true,
+            });
+        },
+        onFinish: () => {
+            // Reset loading state regardless of success or error
+            isSubmitting.value = false;
         },
     });
 };

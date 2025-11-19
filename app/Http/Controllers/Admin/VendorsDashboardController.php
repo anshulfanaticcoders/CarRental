@@ -18,23 +18,46 @@ class VendorsDashboardController extends Controller
      */
     public function index(Request $request)
     {
-
         $search = $request->query('search');
-        $users = User::whereHas('vendorProfile', function ($query) use ($search) {
-            if ($search) {
+        $status = $request->query('status');
+
+        // Get vendor profiles with search and join with users
+        $vendorProfilesQuery = VendorProfile::with(['user', 'user.vendorDocument']);
+
+        // Apply search filter
+        if ($search) {
+            $vendorProfilesQuery->where(function ($query) use ($search) {
                 $query->where('company_name', 'like', "%{$search}%")
-                    ->orWhere('company_address', 'like', "%{$search}%")
-                    ->orWhere('company_email', 'like', "%{$search}%")
-                    ->orWhere('status', 'like', "%{$search}%");
-            }
-        })
-        ->orderBy('created_at', 'desc')
-            ->with(['vendorProfile', 'vendorDocument'])
-            ->paginate(4);
+                      ->orWhere('company_address', 'like', "%{$search}%")
+                      ->orWhere('company_email', 'like', "%{$search}%")
+                      ->orWhere('status', 'like', "%{$search}%")
+                      ->orWhereHas('user', function ($userQuery) use ($search) {
+                          $userQuery->where('first_name', 'like', "%{$search}%")
+                               ->orWhere('last_name', 'like', "%{$search}%")
+                               ->orWhere('email', 'like', "%{$search}%");
+                      });
+            });
+        }
+
+        // Apply status filter
+        if ($status && $status !== 'all') {
+            $vendorProfilesQuery->where('status', $status);
+        }
+
+        $vendorProfiles = $vendorProfilesQuery->orderBy('created_at', 'desc')->paginate(7);
+
+       // Get accurate status counts directly from VendorProfile table
+        $statusCounts = [
+            'total' => VendorProfile::count(),
+            'approved' => VendorProfile::where('status', 'approved')->count(),
+            'pending' => VendorProfile::where('status', 'pending')->count(),
+            'rejected' => VendorProfile::where('status', 'rejected')->count(),
+        ];
 
         return Inertia::render('AdminDashboardPages/Vendors/Index', [
-            'users' => $users,
-            'filters' => $request->only(['search']),
+            'users' => $vendorProfiles, // Changed from $users to $vendorProfiles
+            'statusCounts' => $statusCounts,
+            'filters' => $request->only(['search', 'status']),
         ]);
     }
     /**
