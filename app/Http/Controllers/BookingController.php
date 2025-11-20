@@ -306,23 +306,33 @@ public function getVendorPaymentHistory()
 {
     $vendorId = auth()->id();
 
+    // Get ALL payments for statistics (without pagination)
+    $allPayments = BookingPayment::with(['booking.customer', 'booking.vehicle'])
+        ->join('bookings', 'booking_payments.booking_id', '=', 'bookings.id')
+        ->join('vehicles', 'bookings.vehicle_id', '=', 'vehicles.id')
+        ->where('vehicles.vendor_id', $vendorId)
+        ->select('booking_payments.*')
+        ->orderBy('booking_payments.created_at', 'desc')
+        ->get(); // <-- Get ALL payments for statistics
+
+    // Get paginated payments for the table
     $payments = BookingPayment::with(['booking.customer', 'booking.vehicle'])
-    ->join('bookings', 'booking_payments.booking_id', '=', 'bookings.id')
-    ->join('vehicles', 'bookings.vehicle_id', '=', 'vehicles.id')
-    ->where('vehicles.vendor_id', $vendorId)
-    ->select('booking_payments.*')
-    ->orderBy('booking_payments.created_at', 'desc')
-    ->paginate(6);
+        ->join('bookings', 'booking_payments.booking_id', '=', 'bookings.id')
+        ->join('vehicles', 'bookings.vehicle_id', '=', 'vehicles.id')
+        ->where('vehicles.vendor_id', $vendorId)
+        ->select('booking_payments.*')
+        ->orderBy('booking_payments.created_at', 'desc')
+        ->paginate(6); // <-- Paginated for table
 
-return Inertia::render('Vendor/Payments/Index', [
-    'payments' => $payments->items(), 
-    'pagination' => [
-        'current_page' => $payments->currentPage(),
-        'last_page' => $payments->lastPage(),
-        'per_page' => $payments->perPage(),
-    ]
-]);
-
+    return Inertia::render('Vendor/Payments/Index', [
+        'payments' => $payments->items(),
+        'allPayments' => $allPayments, // <-- Add ALL payments for statistics
+        'pagination' => [
+            'current_page' => $payments->currentPage(),
+            'last_page' => $payments->lastPage(),
+            'per_page' => $payments->perPage(),
+        ]
+    ]);
 }
 
 

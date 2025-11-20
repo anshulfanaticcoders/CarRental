@@ -311,10 +311,6 @@ const props = defineProps({
     type: Object,
     required: true
   },
-  totalPayments: {
-    type: Number,
-    default: 0
-  },
   allPayments: {
     type: Array,
     default: () => []
@@ -380,23 +376,22 @@ const getStatusVariant = (status) => {
   }
 };
 
+// Use all payments data if provided, otherwise use current page payments
+const allPaymentsData = computed(() => {
+  return props.allPayments.length > 0 ? props.allPayments : props.payments;
+});
+
 // Get all available currencies
 const availableCurrencies = computed(() => {
-  const allData = props.allPayments.length > 0 ? props.allPayments : props.payments;
-  if (!allData || !Array.isArray(allData)) return [];
+  if (!allPaymentsData.value || !Array.isArray(allPaymentsData.value)) return [];
 
   const currencies = new Set();
-  allData.forEach(payment => {
+  allPaymentsData.value.forEach(payment => {
     const currency = payment.currency || payment.booking?.booking_currency || 'USD';
     currencies.add(currency);
   });
 
   return Array.from(currencies).sort();
-});
-
-// Get all payments data (use allPayments if available, fallback to current payments)
-const allPaymentsData = computed(() => {
-  return props.allPayments.length > 0 ? props.allPayments : props.payments;
 });
 
 // Total revenue across all currencies (based on total_amount - full booking value)
@@ -452,7 +447,7 @@ const pendingAmountByCurrency = computed(() => {
 // Total transactions count (all data)
 const totalTransactionsAll = computed(() => {
   if (selectedCurrency.value === 'all') {
-    return props.totalPayments || allPaymentsData.value?.length || 0;
+    return allPaymentsData.value?.length || 0;
   } else {
     return allPaymentsData.value?.filter(payment => {
       const currency = payment.currency || payment.booking?.booking_currency || 'USD';
