@@ -1,178 +1,277 @@
 <template>
-  <MyProfileLayout>
-    <div class="flex justify-between items-center">
-      <h2 class="font-semibold text-xl text-gray-800">{{ _t('vendorprofilepages', 'my_vehicles_header') }}</h2>
-      <div class="flex space-x-2">
-        <button
-          v-if="selectedVehicleIds.length > 0"
-          @click="confirmBulkDeletion"
-          class="px-4 py-2 bg-red-600 border-red-600 border-[1px] text-white rounded-md hover:bg-white hover:text-red-600"
-        >
-          {{ _t('vendorprofilepages', 'delete_selected_button') }} ({{ selectedVehicleIds.length }})
-        </button>
-        <Link :href="route('vehicles.create', { locale: usePage().props.locale })"
-          class="px-4 py-2 bg-customPrimaryColor border-customPrimaryColor border-[1px] text-white rounded-md hover:bg-white hover:text-customPrimaryColor">
-        {{ _t('vendorprofilepages', 'add_new_vehicle_button') }}
-        </Link>
-      </div>
-    </div>
+    <MyProfileLayout>
+        <div class="container mx-auto p-6 space-y-6">
+            <!-- Flash Message -->
+            <div v-if="$page.props.flash.success" class="rounded-lg border border-green-200 bg-green-50 p-4 text-green-800">
+                {{ $page.props.flash.success }}
+            </div>
 
-    <div class="py-12">
-      <div class="mx-auto">
-        <div class="rounded-[12px] mb-4">
-          <input type="text" v-model="searchQuery" :placeholder="_t('vendorprofilepages', 'search_vehicles_placeholder')"
-            class="px-4 py-2 border border-gray-300 rounded-md w-full" />
-        </div>
-        <div class="rounded-[12px]">
-          <div v-if="filteredVehicles.length" class="overflow-x-auto">
-            <table class="min-w-full divide-y divide-gray-200">
-              <thead class="bg-gray-50">
-                <tr class="">
-                  <th class="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    <input type="checkbox" @change="toggleSelectAll" :checked="isAllSelected" class="rounded"/>
-                  </th>
-                  <th class="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">Sr. No</th>
-                  <th class="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">{{ _t('vendorprofilepages', 'table_id_header') }}</th>
-                  <th class="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">{{ _t('vendorprofilepages', 'table_image_header') }}</th>
-                  <th class="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">{{ _t('vendorprofilepages', 'table_brand_model_header') }}</th>
-                  <th class="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">
-                    {{ _t('vendorprofilepages', 'table_transmission_header') }}</th>
-                  <th class="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">{{ _t('vendorprofilepages', 'table_fuel_header') }}</th>
-                  <th class="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">{{ _t('vendorprofilepages', 'table_location_header') }}
-                  </th>
-                  <th class="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">{{ _t('vendorprofilepages', 'table_limited_km_header') }}
-                  </th>
-                  <th class="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">
-                    {{ _t('vendorprofilepages', 'table_cancellation_header') }}
-                  </th>
-                  <th class="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">{{ _t('vendorprofilepages', 'table_price_header') }}
-                  </th>
-                  <th class="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">{{ _t('vendorprofilepages', 'status_table_header') }}</th>
-                  <th class="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">Created At</th>
-                  <th class="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">{{ _t('vendorprofilepages', 'actions_table_header') }}
-                  </th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr v-for="(vehicle, index) in filteredVehicles" :key="vehicle.id" class="border-b" :class="{'bg-blue-100': selectedVehicleIds.includes(vehicle.id)}">
-                  <td class="px-2 py-4 whitespace-nowrap">
-                    <input type="checkbox" :value="vehicle.id" v-model="selectedVehicleIds" class="rounded"/>
-                  </td>
-                  <td class="px-2 py-4 whitespace-nowrap text-[0.875rem]">{{ (pagination.current_page - 1) *
-                    pagination.per_page + index + 1 }}</td>
-                  <td class="px-2 py-4 whitespace-nowrap text-[0.875rem]">{{ vehicle.id }}</td>
-                  <Link :href="route('vehicle.show', { locale: usePage().props.locale, id: vehicle.id })" class="w-full">
-                  <td class="px-2 py-4 whitespace-nowrap">
-                    <img :src="getPrimaryImage(vehicle)" :alt="_t('vendorprofilepages', 'alt_no_image')" class="h-12 w-24 object-cover rounded">
-                  </td>
-                  </Link>
-                  <td class="px-2 py-4 whitespace-nowrap text-[0.875rem]">{{ vehicle.brand }} {{ vehicle.model }}</td>
-                  <td class="px-2 py-4 whitespace-nowrap text-[0.875rem] capitalize">{{ vehicle.transmission }}</td>
-                  <td class="px-2 py-4 whitespace-nowrap text-[0.875rem] capitalize">{{ vehicle.fuel }}</td>
-                  <td class="px-2 py-4 whitespace-nowrap text-[0.875rem]">{{ vehicle.full_vehicle_address }}</td>
-                  <td class="px-2 py-4 whitespace-nowrap text-[0.875rem]">
-                    <template v-if="vehicle.benefits && (vehicle.benefits.limited_km_per_day_range || vehicle.benefits.limited_km_per_week_range || vehicle.benefits.limited_km_per_month_range)">
-                      <span v-if="vehicle.benefits.limited_km_per_day_range > 0">
-                        {{ vehicle.benefits.limited_km_per_day_range }} {{ _t('vendorprofilepages', 'unit_km_day') }}
-                      </span>
-                      <span
-                        v-if="vehicle.benefits.limited_km_per_day_range && (vehicle.benefits.limited_km_per_week_range || vehicle.benefits.limited_km_per_month_range)">
-                        |
-                      </span>
-                      <span v-if="vehicle.benefits.limited_km_per_week_range > 0">
-                        {{ vehicle.benefits.limited_km_per_week_range }} {{ _t('vendorprofilepages', 'unit_km_week') }}
-                      </span>
-                      <span
-                        v-if="vehicle.benefits.limited_km_per_week_range && vehicle.benefits.limited_km_per_month_range">
-                        
-                      </span>
-                      <span v-if="vehicle.benefits.limited_km_per_month_range > 0">
-                        |
-                        {{ vehicle.benefits.limited_km_per_month_range }} {{ _t('vendorprofilepages', 'unit_km_month') }}
-                      </span>
-                    </template>
-                    <span v-else-if="!vehicle.benefits || (vehicle.benefits && !vehicle.benefits.limited_km_per_day_range && !vehicle.benefits.limited_km_per_week_range && !vehicle.benefits.limited_km_per_month_range)">{{ _t('vendorprofilepages', 'unlimited_km_text') }}</span>
-                  </td>
-
-                  <td class="px-2 py-4 whitespace-nowrap text-[0.875rem]">
-                    <template v-if="vehicle.benefits && (vehicle.benefits.cancellation_available_per_day || vehicle.benefits.cancellation_available_per_week || vehicle.benefits.cancellation_available_per_month)">
-                      <span v-if="vehicle.benefits.cancellation_available_per_day">{{ _t('vendorprofilepages', 'cancellation_day') }}</span>
-                      <span
-                        v-if="vehicle.benefits.cancellation_available_per_day && (vehicle.benefits.cancellation_available_per_week || vehicle.benefits.cancellation_available_per_month)">
-                        | </span>
-                      <span v-if="vehicle.benefits.cancellation_available_per_week">{{ _t('vendorprofilepages', 'cancellation_week') }}</span>
-                      <span
-                        v-if="vehicle.benefits.cancellation_available_per_week && vehicle.benefits.cancellation_available_per_month">
-                        | </span>
-                      <span v-if="vehicle.benefits.cancellation_available_per_month">{{ _t('vendorprofilepages', 'cancellation_month') }}</span>
-                    </template>
-                    <span v-else-if="!vehicle.benefits || (vehicle.benefits && !vehicle.benefits.cancellation_available_per_day && !vehicle.benefits.cancellation_available_per_week && !vehicle.benefits.cancellation_available_per_month)">{{ _t('vendorprofilepages', 'not_available_text') }}</span>
-                  </td>
-
-
-                  <td class="px-2 py-4 whitespace-nowrap text-[0.875rem] text-customPrimaryColor font-bold">
-                    {{ formatPricing(vehicle) }}
-                  </td>
-
-                  <td class="px-2 py-4 whitespace-nowrap text-[0.875rem]">
-                    <span :class="getStatusBadgeClass(vehicle.status)" class="px-2 py-1 rounded text-xs capitalize">
-                      {{ vehicle.status }}
+            <!-- Header -->
+            <div class="flex items-center justify-between">
+                <h1 class="text-3xl font-bold tracking-tight">{{ _t('vendorprofilepages', 'my_vehicles_header') }}</h1>
+                <div class="flex items-center gap-4">
+                    <span v-if="selectedVehicleIds.length > 0" class="inline-flex items-center px-2.5 py-0.5 rounded-full bg-orange-100 text-orange-700">
+                        <CheckSquare class="w-4 h-4 mr-1" />
+                        {{ selectedVehicleIds.length }} Selected
                     </span>
-                  </td>
-                  <td class="px-2 py-4 whitespace-nowrap text-[0.875rem]">{{ formatDate(vehicle.created_at) }}</td>
-                  <td class="px-2 py-4 whitespace-nowrap text-xs font-medium">
-                    <Link :href="route('current-vendor-vehicles.edit', { locale: usePage().props.locale, 'current_vendor_vehicle': vehicle.id })"
-                      class="px-3 mr-2 py-1 bg-gray-600 text-white rounded hover:bg-gray-700">
-                    {{ _t('vendorprofilepages', 'edit_button') }}
+                    <Button
+                        v-if="selectedVehicleIds.length > 0"
+                        @click="confirmBulkDeletion"
+                        variant="destructive"
+                        class="flex items-center gap-2"
+                    >
+                        <Trash2 class="w-4 h-4" />
+                        {{ _t('vendorprofilepages', 'delete_selected_button') }}
+                    </Button>
+                    <Link :href="route('vehicles.create', { locale: usePage().props.locale })">
+                        <Button class="flex items-center gap-2">
+                            <Plus class="w-4 h-4" />
+                            {{ _t('vendorprofilepages', 'add_new_vehicle_button') }}
+                        </Button>
                     </Link>
-                    <button @click="confirmDeletion(vehicle)"
-                      class="px-3 py-1 bg-red-600 text-white rounded hover:bg-red-700">
-                      {{ _t('vendorprofilepages', 'delete_button_general') }}
-                    </button>
-                  </td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
-          <div v-else class="text-center py-12">
-            <p class="text-gray-500">{{ _t('vendorprofilepages', 'no_vehicles_found_text') }}</p>
-          </div>
-        </div>
-      </div>
-      <div class="mt-[1rem] flex justify-end">
-        <Pagination :current-page="pagination.current_page" :total-pages="pagination.last_page"
-          @page-change="handlePageChange" />
-      </div>
-    </div>
+                </div>
+            </div>
 
-    <!-- Delete Confirmation Modal -->
-    <Modal :show="showDeleteModal" @close="showDeleteModal = false">
-      <div class="p-6">
-        <h3 class="text-lg font-medium">{{ vehicleToDelete ? _t('vendorprofilepages', 'delete_vehicle_modal_title_single') : _t('vendorprofilepages', 'delete_vehicle_modal_title_bulk') }}</h3>
-        <p class="mt-2 text-gray-600">
-          {{ vehicleToDelete ? _t('vendorprofilepages', 'delete_vehicle_modal_confirm_single') : _t('vendorprofilepages', 'delete_vehicle_modal_confirm_bulk', {count: selectedVehicleIds.length}) }}
-          {{ _t('vendorprofilepages', 'action_cannot_be_undone_text') }}
-        </p>
-        <div class="mt-4 flex justify-end space-x-3">
-          <button @click="showDeleteModal = false; vehicleToDelete = null;" class="px-4 py-2 bg-gray-200 rounded hover:bg-gray-300">
-            {{ _t('vendorprofilepages', 'cancel_button') }}
-          </button>
-          <button @click="vehicleToDelete ? deleteVehicle() : deleteSelectedVehicles()" class="px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700">
-            {{ _t('vendorprofilepages', 'delete_button_general') }}
-          </button>
+            <!-- Enhanced Search -->
+            <div class="relative w-full max-w-md">
+                <Search class="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                <Input
+                    v-model="searchQuery"
+                    :placeholder="_t('vendorprofilepages', 'search_vehicles_placeholder')"
+                    class="pl-10 pr-4 h-12 text-base"
+                />
+            </div>
+            <!-- Enhanced Vehicles Table -->
+            <div v-if="filteredVehicles.length" class="rounded-xl border bg-card shadow-sm overflow-hidden">
+                <div class="overflow-x-auto max-w-full">
+                    <Table>
+                        <TableHeader>
+                            <TableRow class="bg-muted/50">
+                                <TableHead class="whitespace-nowrap px-4 py-3 font-semibold">
+                                    <input
+                                        type="checkbox"
+                                        @change="toggleSelectAll"
+                                        :checked="isAllSelected"
+                                        class="rounded border-gray-300 text-primary focus:ring-primary"
+                                    />
+                                </TableHead>
+                                <TableHead class="whitespace-nowrap px-4 py-3 font-semibold">Sr. No</TableHead>
+                                <TableHead class="whitespace-nowrap px-4 py-3 font-semibold">ID</TableHead>
+                                <TableHead class="whitespace-nowrap px-4 py-3 font-semibold">Image</TableHead>
+                                <TableHead class="whitespace-nowrap px-4 py-3 font-semibold">{{ _t('vendorprofilepages', 'table_brand_model_header') }}</TableHead>
+                                <TableHead class="whitespace-nowrap px-4 py-3 font-semibold">{{ _t('vendorprofilepages', 'table_transmission_header') }}</TableHead>
+                                <TableHead class="whitespace-nowrap px-4 py-3 font-semibold">{{ _t('vendorprofilepages', 'table_fuel_header') }}</TableHead>
+                                <TableHead class="whitespace-nowrap px-4 py-3 font-semibold">{{ _t('vendorprofilepages', 'table_location_header') }}</TableHead>
+                                <TableHead class="whitespace-nowrap px-4 py-3 font-semibold">{{ _t('vendorprofilepages', 'table_limited_km_header') }}</TableHead>
+                                <TableHead class="whitespace-nowrap px-4 py-3 font-semibold">{{ _t('vendorprofilepages', 'table_cancellation_header') }}</TableHead>
+                                <TableHead class="whitespace-nowrap px-4 py-3 font-semibold">{{ _t('vendorprofilepages', 'table_price_header') }}</TableHead>
+                                <TableHead class="whitespace-nowrap px-4 py-3 font-semibold">{{ _t('vendorprofilepages', 'status_table_header') }}</TableHead>
+                                <TableHead class="whitespace-nowrap px-4 py-3 font-semibold">Created At</TableHead>
+                                <TableHead class="whitespace-nowrap px-4 py-3 font-semibold text-right">{{ _t('vendorprofilepages', 'actions_table_header') }}</TableHead>
+                            </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                            <TableRow
+                                v-for="(vehicle, index) in filteredVehicles"
+                                :key="vehicle.id"
+                                class="hover:bg-muted/25 transition-colors"
+                                :class="{ 'bg-blue-50': selectedVehicleIds.includes(vehicle.id) }"
+                            >
+                                <TableCell class="whitespace-nowrap px-4 py-3">
+                                    <input
+                                        type="checkbox"
+                                        :value="vehicle.id"
+                                        v-model="selectedVehicleIds"
+                                        class="rounded border-gray-300 text-primary focus:ring-primary"
+                                    />
+                                </TableCell>
+                                <TableCell class="whitespace-nowrap px-4 py-3 font-medium">
+                                    {{ (pagination.current_page - 1) * pagination.per_page + index + 1 }}
+                                </TableCell>
+                                <TableCell class="whitespace-nowrap px-4 py-3">
+                                    <Badge variant="outline">#{{ vehicle.id }}</Badge>
+                                </TableCell>
+                                <TableCell class="whitespace-nowrap px-4 py-3">
+                                    <Link :href="route('vehicle.show', { locale: usePage().props.locale, id: vehicle.id })" class="block">
+                                        <div class="relative group h-12 w-20">
+                                            <img
+                                                :src="getPrimaryImage(vehicle)"
+                                                :alt="_t('vendorprofilepages', 'alt_no_image')"
+                                                class="h-12 w-20 object-cover rounded-md border shadow-sm cursor-pointer transition-all duration-200 hover:scale-105"
+                                            />
+                                            <div class="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-20 rounded-md transition-all duration-200 flex items-center justify-center pointer-events-none">
+                                                <Eye class="w-4 h-4 text-white opacity-0 group-hover:opacity-100 transition-opacity duration-200" />
+                                            </div>
+                                        </div>
+                                    </Link>
+                                </TableCell>
+                                <TableCell class="whitespace-nowrap px-4 py-3">
+                                    <div class="font-medium">{{ vehicle.brand }} {{ vehicle.model }}</div>
+                                </TableCell>
+                                <TableCell class="whitespace-nowrap px-4 py-3">
+                                    <Badge variant="secondary" class="capitalize">{{ vehicle.transmission }}</Badge>
+                                </TableCell>
+                                <TableCell class="whitespace-nowrap px-4 py-3">
+                                    <Badge variant="secondary" class="capitalize">{{ vehicle.fuel }}</Badge>
+                                </TableCell>
+                                <TableCell class="whitespace-nowrap px-4 py-3 max-w-xs">
+                                    <div class="flex items-center gap-1 truncate" :title="vehicle.full_vehicle_address">
+                                        <MapPin class="w-3 h-3 text-muted-foreground flex-shrink-0" />
+                                        <span class="text-sm">{{ vehicle.full_vehicle_address }}</span>
+                                    </div>
+                                </TableCell>
+                                <TableCell class="whitespace-nowrap px-4 py-3">
+                                    <template v-if="vehicle.benefits && (vehicle.benefits.limited_km_per_day_range || vehicle.benefits.limited_km_per_week_range || vehicle.benefits.limited_km_per_month_range)">
+                                        <div class="text-xs space-y-1">
+                                            <span v-if="vehicle.benefits.limited_km_per_day_range > 0" class="block">
+                                                {{ vehicle.benefits.limited_km_per_day_range }} {{ _t('vendorprofilepages', 'unit_km_day') }}
+                                            </span>
+                                            <span v-if="vehicle.benefits.limited_km_per_week_range > 0" class="block">
+                                                {{ vehicle.benefits.limited_km_per_week_range }} {{ _t('vendorprofilepages', 'unit_km_week') }}
+                                            </span>
+                                            <span v-if="vehicle.benefits.limited_km_per_month_range > 0" class="block">
+                                                {{ vehicle.benefits.limited_km_per_month_range }} {{ _t('vendorprofilepages', 'unit_km_month') }}
+                                            </span>
+                                        </div>
+                                    </template>
+                                    <span v-else class="text-xs text-muted-foreground">{{ _t('vendorprofilepages', 'unlimited_km_text') }}</span>
+                                </TableCell>
+                                <TableCell class="whitespace-nowrap px-4 py-3">
+                                    <template v-if="vehicle.benefits && (vehicle.benefits.cancellation_available_per_day || vehicle.benefits.cancellation_available_per_week || vehicle.benefits.cancellation_available_per_month)">
+                                        <div class="text-xs space-y-1">
+                                            <span v-if="vehicle.benefits.cancellation_available_per_day" class="block">{{ _t('vendorprofilepages', 'cancellation_day') }}</span>
+                                            <span v-if="vehicle.benefits.cancellation_available_per_week" class="block">{{ _t('vendorprofilepages', 'cancellation_week') }}</span>
+                                            <span v-if="vehicle.benefits.cancellation_available_per_month" class="block">{{ _t('vendorprofilepages', 'cancellation_month') }}</span>
+                                        </div>
+                                    </template>
+                                    <span v-else class="text-xs text-muted-foreground">{{ _t('vendorprofilepages', 'not_available_text') }}</span>
+                                </TableCell>
+                                <TableCell class="whitespace-nowrap px-4 py-3">
+                                    <span class="font-bold text-primary">{{ formatPricing(vehicle) }}</span>
+                                </TableCell>
+                                <TableCell class="whitespace-nowrap px-4 py-3">
+                                    <Badge :variant="getStatusBadgeVariant(vehicle.status)" class="capitalize">
+                                        {{ vehicle.status }}
+                                    </Badge>
+                                </TableCell>
+                                <TableCell class="whitespace-nowrap px-4 py-3 text-sm">{{ formatDate(vehicle.created_at) }}</TableCell>
+                                <TableCell class="whitespace-nowrap px-4 py-3">
+                                    <div class="flex justify-end gap-2">
+                                        <Link :href="route('current-vendor-vehicles.edit', { locale: usePage().props.locale, 'current_vendor_vehicle': vehicle.id })">
+                                            <Button size="sm" variant="outline" class="flex items-center gap-1">
+                                                <Edit class="w-3 h-3" />
+                                                {{ _t('vendorprofilepages', 'edit_button') }}
+                                            </Button>
+                                        </Link>
+                                        <Button
+                                            size="sm"
+                                            variant="destructive"
+                                            @click="confirmDeletion(vehicle)"
+                                            class="flex items-center gap-1"
+                                        >
+                                            <Trash2 class="w-3 h-3" />
+                                            {{ _t('vendorprofilepages', 'delete_button_general') }}
+                                        </Button>
+                                    </div>
+                                </TableCell>
+                            </TableRow>
+                        </TableBody>
+                    </Table>
+                </div>
+                <div class="flex justify-end pt-4 pr-2">
+                    <Pagination
+                        :current-page="pagination.current_page"
+                        :total-pages="pagination.last_page"
+                        @page-change="handlePageChange"
+                    />
+                </div>
+            </div>
+
+            <!-- Empty State -->
+            <div v-else class="rounded-xl border bg-card p-12 text-center">
+                <div class="flex flex-col items-center space-y-4">
+                    <Car class="w-16 h-16 text-muted-foreground" />
+                    <div class="space-y-2">
+                        <h3 class="text-xl font-semibold text-foreground">{{ _t('vendorprofilepages', 'no_vehicles_found_text') }}</h3>
+                        <p class="text-muted-foreground">Get started by adding your first vehicle to the fleet.</p>
+                    </div>
+                    <Link :href="route('vehicles.create', { locale: usePage().props.locale })">
+                        <Button class="flex items-center gap-2">
+                            <Plus class="w-4 h-4" />
+                            {{ _t('vendorprofilepages', 'add_new_vehicle_button') }}
+                        </Button>
+                    </Link>
+                </div>
+            </div>
+
+            <!-- Delete Confirmation Alert Dialog -->
+            <AlertDialog v-model:open="showDeleteModal">
+                <AlertDialogContent>
+                    <AlertDialogHeader>
+                        <AlertDialogTitle class="flex items-center gap-2">
+                            <AlertTriangle class="w-5 h-5 text-red-500" />
+                            {{ vehicleToDelete ? _t('vendorprofilepages', 'delete_vehicle_modal_title_single') : _t('vendorprofilepages', 'delete_vehicle_modal_title_bulk') }}
+                        </AlertDialogTitle>
+                        <AlertDialogDescription>
+                            {{ vehicleToDelete ? _t('vendorprofilepages', 'delete_vehicle_modal_confirm_single') : _t('vendorprofilepages', 'delete_vehicle_modal_confirm_bulk', {count: selectedVehicleIds.length}) }}
+                            {{ _t('vendorprofilepages', 'action_cannot_be_undone_text') }}
+                        </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter class="flex gap-2">
+                        <AlertDialogCancel @click="showDeleteModal = false; vehicleToDelete = null;" class="flex items-center gap-2">
+                            <X class="w-4 h-4" />
+                            {{ _t('vendorprofilepages', 'cancel_button') }}
+                        </AlertDialogCancel>
+                        <AlertDialogAction @click="vehicleToDelete ? deleteVehicle() : deleteSelectedVehicles()" class="flex items-center gap-2">
+                            <Trash2 class="w-4 h-4" />
+                            {{ _t('vendorprofilepages', 'delete_button_general') }}
+                        </AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
         </div>
-      </div>
-    </Modal>
-  </MyProfileLayout>
+    </MyProfileLayout>
 </template>
 
 <script setup>
 import { ref, computed, watch, getCurrentInstance } from 'vue'
 import { Link, usePage } from '@inertiajs/vue3'
 import { router } from '@inertiajs/vue3'
-import Modal from '@/Components/Modal.vue'
 import MyProfileLayout from '@/Layouts/MyProfileLayout.vue'
- import Pagination from '@/Components/ReusableComponents/Pagination.vue';
+import Pagination from '@/Pages/Vendor/Vehicles/Pagination.vue';
+import {
+    Table,
+    TableHeader,
+    TableRow,
+    TableHead,
+    TableBody,
+    TableCell,
+} from '@/Components/ui/table';
+import {
+    AlertDialog,
+    AlertDialogAction,
+    AlertDialogCancel,
+    AlertDialogContent,
+    AlertDialogDescription,
+    AlertDialogFooter,
+    AlertDialogHeader,
+    AlertDialogTitle,
+} from '@/Components/ui/alert-dialog';
+import { Input } from '@/Components/ui/input';
+import Badge from '@/Components/ui/badge/Badge.vue';
+import { Button } from '@/Components/ui/button';
+import {
+    Search,
+    Plus,
+    CheckSquare,
+    Trash2,
+    Edit,
+    Eye,
+    MapPin,
+    Car,
+    AlertTriangle,
+    X,
+} from 'lucide-vue-next';
 
 const { appContext } = getCurrentInstance();
 const _t = appContext.config.globalProperties._t;
@@ -253,13 +352,34 @@ const getPrimaryImage = (vehicle) => {
   return primaryImage ? `${primaryImage.image_url}` : '/images/placeholder.jpg'
 }
 
-const getStatusBadgeClass = (status) => {
-  const classes = {
-    available: 'bg-green-500 text-white',
-    rented: 'bg-blue-500 text-white',
-    maintenance: 'bg-yellow-500 text-white'
-  }
-  return classes[status] || 'bg-gray-500 text-white'
+const getStatusBadgeVariant = (status) => {
+    switch (status) {
+        case 'available':
+            return 'default';
+        case 'rented':
+            return 'secondary';
+        case 'maintenance':
+            return 'destructive';
+        default:
+            return 'outline';
+    }
+};
+
+// Clear flash message after 3 seconds
+const clearFlash = () => {
+    setTimeout(() => {
+        router.visit(window.location.pathname, {
+            preserveState: true,
+            preserveScroll: true,
+            replace: true,
+            data: { flash: null }
+        });
+    }, 3000);
+};
+
+// Call clearFlash when flash message exists
+if (usePage().props.flash?.success) {
+    clearFlash();
 }
 
 const confirmDeletion = (vehicle) => {

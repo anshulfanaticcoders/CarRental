@@ -1,15 +1,21 @@
 <template>
-    <div v-if="isLoading" class="fixed z-50 h-full w-full top-0 left-0 bg-[#0000009e]">
-        <div class="flex justify-center flex-col items-center h-full w-full">
-            <img :src=loader alt="" class="w-[150px]">
-            <p class="text-[white] text-[1.5rem]">{{ _t('vendorprofilepages', 'loader_updating_text') }}</p>
+    <!-- Loading Overlay -->
+    <div v-if="isLoading" class="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
+        <div class="bg-white rounded-2xl p-8 shadow-2xl flex flex-col items-center space-y-4 max-w-sm mx-4 border border-blue-100">
+            <div class="relative">
+                <div class="w-16 h-16 border-4 border-blue-100 rounded-full animate-pulse"></div>
+                <div class="absolute top-0 left-0 w-16 h-16 border-4 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
+            </div>
+            <div class="text-center space-y-2">
+                <h3 class="text-lg font-semibold text-gray-900">{{ _t('vendorprofilepages', 'loader_updating_text') }}</h3>
+                <p class="text-sm text-gray-500">{{ _t('vendorprofilepages', 'please_wait_message') }}</p>
+            </div>
         </div>
     </div>
+
     <MyProfileLayout>
-        <div class="flex justify-between items-center">
-            <h2 class="font-semibold text-xl text-gray-800">{{ _t('vendorprofilepages', 'edit_vehicle_header') }}</h2>
-        </div>
-        <div class="py-12">
+        <div class="container mx-auto p-6 space-y-6">
+          <div class="py-12">
             <div class="mx-auto">
                 <form @submit.prevent="updateVehicle">
                     <Tabs defaultValue="basic" class="w-full">
@@ -50,7 +56,19 @@
                                 </div>
                                 <div>
                                     <InputLabel for="color">{{ _t('vendorprofilepages', 'label_color') }}</InputLabel>
-                                    <Input type="text" v-model="form.color" id="color" required />
+                                    <Select v-model="form.color" required>
+                                        <SelectTrigger id="color">
+                                            <SelectValue :placeholder="_t('vendorprofilepages', 'placeholder_select_color')" />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            <SelectGroup>
+                                                <SelectLabel>{{ _t('vendorprofilepages', 'select_label_colors') }}</SelectLabel>
+                                                <SelectItem v-for="color in colors" :key="color.value" :value="color.value">
+                                                    {{ color.name }}
+                                                </SelectItem>
+                                            </SelectGroup>
+                                        </SelectContent>
+                                    </Select>
                                 </div>
                                 <div>
                                     <InputLabel for="mileage">{{ _t('vendorprofilepages', 'label_mileage') }}</InputLabel>
@@ -106,31 +124,46 @@
                                     </Select>
                                 </div>
 
-                                <div class="col-span-2 space-y-3">
-                                    <InputLabel for="location" class="text-gray-700 font-medium">{{ _t('vendorprofilepages', 'label_location') }}</InputLabel>
+                                <div class="col-span-2 space-y-4">
+                                    <div class="flex items-center gap-2 mb-2">
+                                        <MapPin class="w-4 h-4 text-blue-600" />
+                                        <InputLabel for="location" class="text-gray-700 font-medium">{{ _t('vendorprofilepages', 'label_location') }}</InputLabel>
+                                    </div>
 
                                     <div v-if="form.location"
-                                        class="p-4 bg-gray-50 rounded-lg border border-gray-200 shadow-sm">
-                                        <div class="grid grid-cols-2 gap-2 text-[1rem]">
-                                            <div class="col-span-2 font-medium text-gray-700">{{ _t('vendorprofilepages', 'current_location_label') }} {{ displayedFullAddress }}</div>
-                                            <div><span class="text-gray-500">{{ _t('vendorprofilepages', 'label_city') }}</span> {{ form.city }}</div>
-                                            <div><span class="text-gray-500">{{ _t('vendorprofilepages', 'label_state') }}</span> {{ form.state || 'N/A' }}</div> <!-- Still show individual state here for clarity if needed -->
-                                            <div><span class="text-gray-500">{{ _t('vendorprofilepages', 'label_country') }}</span> {{ form.country }}</div>
-                                            <div class=""><span class="text-gray-500">{{ _t('vendorprofilepages', 'label_coordinates') }}</span> {{
-                                                form.latitude }}, {{ form.longitude }}</div>
+                                        class="p-4 bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-100 rounded-xl shadow-sm">
+                                        <div class="space-y-3">
+                                            <div class="flex items-center gap-2">
+                                                <div class="w-2 h-2 bg-green-500 rounded-full"></div>
+                                                <span class="font-medium text-gray-900">{{ _t('vendorprofilepages', 'current_location_label') }}</span>
+                                            </div>
+                                            <div class="text-gray-700 font-medium">{{ displayedFullAddress }}</div>
+                                            <div class="grid grid-cols-2 gap-4 text-sm">
+                                                <div class="flex items-center gap-2">
+                                                    <span class="text-gray-500">{{ _t('vendorprofilepages', 'label_city') }}:</span>
+                                                    <span class="font-medium">{{ form.city }}</span>
+                                                </div>
+                                                <div class="flex items-center gap-2">
+                                                    <span class="text-gray-500">{{ _t('vendorprofilepages', 'label_state') }}:</span>
+                                                    <span class="font-medium">{{ form.state || 'N/A' }}</span>
+                                                </div>
+                                                <div class="flex items-center gap-2">
+                                                    <span class="text-gray-500">{{ _t('vendorprofilepages', 'label_country') }}:</span>
+                                                    <span class="font-medium">{{ form.country }}</span>
+                                                </div>
+                                                <div class="flex items-center gap-2">
+                                                    <span class="text-gray-500">{{ _t('vendorprofilepages', 'label_coordinates') }}:</span>
+                                                    <span class="font-medium text-xs">{{ form.latitude }}, {{ form.longitude }}</span>
+                                                </div>
+                                            </div>
                                         </div>
                                     </div>
 
-                                    <button type="button" @click="toggleLocationPicker"
-                                        class="flex items-center justify-center w-full sm:w-auto px-4 py-2.5 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition duration-200 shadow-sm">
-                                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" viewBox="0 0 20 20"
-                                            fill="currentColor">
-                                            <path fill-rule="evenodd"
-                                                d="M5.05 4.05a7 7 0 119.9 9.9L10 18.9l-4.95-4.95a7 7 0 010-9.9zM10 11a2 2 0 100-4 2 2 0 000 4z"
-                                                clip-rule="evenodd" />
-                                        </svg>
+                                    <Button type="button" @click="toggleLocationPicker"
+                                        class="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white shadow-sm transition-all duration-200 hover:shadow-md">
+                                        <MapPin class="w-4 h-4" />
                                         {{ showLocationPicker ? _t('vendorprofilepages', 'button_hide_location_picker') : _t('vendorprofilepages', 'button_change_location') }}
-                                    </button>
+                                    </Button>
 
                                     <transition name="slide-fade" enter-active-class="transition ease-out duration-200"
                                         enter-from-class="transform opacity-0 -translate-y-4"
@@ -472,55 +505,37 @@
                                         <!-- Pickup Times Section -->
                                         <label class="block text-lg font-semibold text-gray-800 mb-2">{{ _t('vendorprofilepages', 'label_pickup_times') }}</label>
                                         <div v-for="(time, index) in form.pickup_times" :key="'pickup-' + index"
-                                            class="time-input-group flex items-center mb-3">
+                                            class="time-input-group flex items-center mb-3 gap-2">
                                             <input type="time" v-model="form.pickup_times[index]"
-                                                class="time-input max-[768px]:text-[0.75rem] w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition duration-200 bg-white shadow-sm" />
-                                            <button type="button" @click="removePickupTime(index)" :title="_t('vendorprofilepages', 'title_remove_time')"
-                                                class="ml-1 text-red-600 hover:bg-red-50">
-                                                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20"
-                                                    viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                                                    stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
-                                                    class="lucide lucide-trash-2">
-                                                    <path d="M3 6h18"></path>
-                                                    <path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"></path>
-                                                    <path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"></path>
-                                                    <line x1="10" x2="10" y1="11" y2="17"></line>
-                                                    <line x1="14" x2="14" y1="11" y2="17"></line>
-                                                </svg>
-                                            </button>
+                                                class="time-input max-[768px]:text-[0.75rem] flex-1 p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition duration-200 bg-white shadow-sm" />
+                                            <Button type="button" @click="removePickupTime(index)" :title="_t('vendorprofilepages', 'title_remove_time')"
+                                                variant="outline" size="sm" class="text-red-600 hover:text-red-700 hover:bg-red-50">
+                                                <Trash2 class="w-4 h-4" />
+                                            </Button>
                                         </div>
 
-                                        <button type="button" @click="addPickupTime"
-                                            class="w-full py-2 max-[768px]:text-[0.75rem] bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition duration-200 font-medium shadow-md">
+                                        <Button type="button" @click="addPickupTime" class="w-full">
+                                            <Plus class="w-4 h-4 mr-2" />
                                             {{ _t('vendorprofilepages', 'button_add_pickup_time') }}
-                                        </button>
+                                        </Button>
                                     </div>
                                     <div>
                                         <!-- Return Times Section -->
                                         <label class="block text-lg font-semibold text-gray-800 mb-2">{{ _t('vendorprofilepages', 'label_return_times') }}</label>
                                         <div v-for="(time, index) in form.return_times" :key="'return-' + index"
-                                            class="time-input-group flex items-center mb-3">
+                                            class="time-input-group flex items-center mb-3 gap-2">
                                             <input type="time" v-model="form.return_times[index]"
-                                                class="time-input max-[768px]:text-[0.75rem] w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition duration-200 bg-white shadow-sm" />
-                                            <button type="button" @click="removeReturnTime(index)" :title="_t('vendorprofilepages', 'title_remove_time')"
-                                                class="ml-1 text-red-600 hover:bg-red-50">
-                                                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20"
-                                                    viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                                                    stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
-                                                    class="lucide lucide-trash-2">
-                                                    <path d="M3 6h18"></path>
-                                                    <path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"></path>
-                                                    <path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"></path>
-                                                    <line x1="10" x2="10" y1="11" y2="17"></line>
-                                                    <line x1="14" x2="14" y1="11" y2="17"></line>
-                                                </svg>
-                                            </button>
+                                                class="time-input max-[768px]:text-[0.75rem] flex-1 p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition duration-200 bg-white shadow-sm" />
+                                            <Button type="button" @click="removeReturnTime(index)" :title="_t('vendorprofilepages', 'title_remove_time')"
+                                                variant="outline" size="sm" class="text-red-600 hover:text-red-700 hover:bg-red-50">
+                                                <Trash2 class="w-4 h-4" />
+                                            </Button>
                                         </div>
 
-                                        <button type="button" @click="addReturnTime"
-                                            class="w-full py-2 max-[768px]:text-[0.75rem] bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition duration-200 font-medium shadow-md">
+                                        <Button type="button" @click="addReturnTime" class="w-full">
+                                            <Plus class="w-4 h-4 mr-2" />
                                             {{ _t('vendorprofilepages', 'button_add_return_time') }}
-                                        </button>
+                                        </Button>
                                     </div>
                                 </div>
 
@@ -540,23 +555,16 @@
                                             <img :src="`${image.image_url}`" :alt="_t('vendorprofilepages', 'alt_vehicle_image')"
                                                 class="w-full h-full object-cover" />
                                             <div class="absolute top-0 right-0 p-1 flex gap-1">
-                                                <button v-if="image.image_type !== 'primary'" type="button" @click="setExistingImageAsPrimary(image.id)"
-                                                    class="bg-white text-blue-600 rounded-full p-1 hover:bg-blue-50 transition-colors" :title="_t('vendorprofilepages', 'button_set_as_primary')">
-                                                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-star"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
-                                                </button>
-                                                <button type="button" @click="deleteImage(props.vehicle.id, image.id)"
-                                                    class="bg-white text-red-600 rounded-full p-1 hover:bg-red-50 transition-colors" :title="_t('vendorprofilepages', 'title_delete_image')">
-                                                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20"
-                                                        viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                                                        stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
-                                                        class="lucide lucide-trash-2">
-                                                        <path d="M3 6h18"></path>
-                                                        <path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"></path>
-                                                        <path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"></path>
-                                                        <line x1="10" x2="10" y1="11" y2="17"></line>
-                                                        <line x1="14" x2="14" y1="11" y2="17"></line>
-                                                    </svg>
-                                                </button>
+                                                <Button v-if="image.image_type !== 'primary'" type="button" @click="setExistingImageAsPrimary(image.id)"
+                                                    size="sm" class="bg-white text-blue-600 hover:bg-blue-50 rounded-full p-1 w-8 h-8"
+                                                    :title="_t('vendorprofilepages', 'button_set_as_primary')">
+                                                    <Star class="w-4 h-4" />
+                                                </Button>
+                                                <Button type="button" @click="deleteImage(props.vehicle.id, image.id)"
+                                                    size="sm" class="bg-white text-red-600 hover:bg-red-50 rounded-full p-1 w-8 h-8"
+                                                    :title="_t('vendorprofilepages', 'title_delete_image')">
+                                                    <Trash2 class="w-4 h-4" />
+                                                </Button>
                                             </div>
                                             <div
                                                 class="absolute bottom-0 left-0 right-0 bg-black/70 text-white p-1 text-center text-xs"
@@ -597,15 +605,17 @@
                                                 class="flex justify-between items-center py-1 border-b last:border-b-0">
                                                 <span class="truncate max-w-[200px]">{{ file.name }}</span>
                                                 <div class="flex items-center gap-2">
-                                                    <button type="button" @click="setNewImageAsPrimary(index)"
-                                                        :class="['text-xs px-2 py-1 rounded', form.primary_image_index === index ? 'bg-blue-500 text-white cursor-default' : 'bg-gray-200 hover:bg-gray-300']"
-                                                        :disabled="form.primary_image_index === index">
+                                                    <Button type="button" @click="setNewImageAsPrimary(index)" size="sm"
+                                                        :variant="form.primary_image_index === index ? 'default' : 'secondary'"
+                                                        :disabled="form.primary_image_index === index"
+                                                        :class="form.primary_image_index === index ? 'cursor-default' : ''">
+                                                        <Star class="w-3 h-3 mr-1" />
                                                         {{ form.primary_image_index === index ? _t('vendorprofilepages', 'text_image_type_primary') : _t('vendorprofilepages', 'button_set_as_primary') }}
-                                                    </button>
-                                                    <button type="button" @click="removeFile(index)"
-                                                        class="text-red-500 hover:text-red-700 text-xs px-2 py-1 rounded hover:bg-red-50">
+                                                    </Button>
+                                                    <Button type="button" @click="removeFile(index)" variant="destructive" size="sm">
+                                                        <Trash2 class="w-3 h-3 mr-1" />
                                                         {{ _t('vendorprofilepages', 'button_remove_file') }}
-                                                    </button>
+                                                    </Button>
                                                 </div>
                                             </li>
                                         </ul>
@@ -618,18 +628,23 @@
                         </TabsContent>
                     </Tabs>
 
-                    <div class="flex justify-between mt-8">
-                        <PrimaryButton type="submit" :disabled="form.limited_km && !form.price_per_km"
-                            :class="{ 'opacity-50 cursor-not-allowed': form.limited_km && !form.price_per_km }">
+                    <div class="flex justify-between gap-4 mt-8 p-6 bg-gray-50 rounded-xl border border-gray-200">
+                        <Button type="submit" :disabled="form.processing"
+                            class="flex items-center gap-2 px-6 py-3">
+                            <Loader2 v-if="form.processing" class="w-4 h-4 animate-spin" />
+                            <Save v-else class="w-4 h-4" />
                             {{ _t('vendorprofilepages', 'update_vehicle_button') }}
-                        </PrimaryButton>
-                        <Link :href="route('current-vendor-vehicles.index', { locale: usePage().props.locale })"
-                            class="px-4 flex justify-center items-center bg-[#EA3C3C] text-white rounded hover:bg-[#ea3c3ca2]">
-                        {{ _t('vendorprofilepages', 'cancel_button') }}
+                        </Button>
+                        <Link :href="route('current-vendor-vehicles.index', { locale: usePage().props.locale })">
+                            <Button variant="outline" class="flex items-center gap-2 px-6 py-3">
+                                <X class="w-4 h-4" />
+                                {{ _t('vendorprofilepages', 'cancel_button') }}
+                            </Button>
                         </Link>
                     </div>
                 </form>
             </div>
+        </div>
         </div>
     </MyProfileLayout>
 </template>
@@ -641,7 +656,6 @@ import { useForm } from '@inertiajs/vue3';
 import { useToast } from 'vue-toastification';
 import { usePage } from '@inertiajs/vue3';
 import InputLabel from '@/Components/InputLabel.vue';
-import PrimaryButton from '@/Components/PrimaryButton.vue';
 import MyProfileLayout from '@/Layouts/MyProfileLayout.vue';
 import axios from 'axios';
 import { Link } from '@inertiajs/vue3';
@@ -658,9 +672,23 @@ import {
 import loader from "../../../../assets/loader.gif";
 
 import { Input } from '@/Components/ui/input';
+import { Button } from '@/Components/ui/button';
+import { Badge } from '@/Components/ui/badge';
 import LocationPicker from '@/Components/LocationPicker.vue';
 import VueDatePicker from '@vuepic/vue-datepicker'
 import '@vuepic/vue-datepicker/dist/main.css'
+import predefinedColors from '../../../data/colors.json'
+import {
+    Edit,
+    X,
+    Loader2,
+    MapPin,
+    Save,
+    Plus,
+    Trash2,
+    Eye,
+    Star,
+} from 'lucide-vue-next';
 
 const { appContext } = getCurrentInstance();
 const _t = appContext.config.globalProperties._t;
@@ -672,6 +700,7 @@ const selectedFiles = ref([]);
 const maxImages = 20;
 const isLoading = ref(false);
 const allowFormSubmit = ref(true); // Flag to control form submission
+const colors = ref(predefinedColors);
 
 const formatDate = (value) => {
     if (!value) {
@@ -1027,6 +1056,15 @@ const displayedFullAddress = computed(() => {
     const parts = [form.location, form.city, form.state, form.country];
     return parts.filter(part => part !== null && part !== '').join(', ');
 });
+
+const getStatusBadgeVariant = (status) => {
+    switch (status) {
+        case 'available': return 'default';
+        case 'rented': return 'secondary';
+        case 'maintenance': return 'destructive';
+        default: return 'outline';
+    }
+};
 
 const updateVehicle = () => {
     if (!allowFormSubmit.value) {
