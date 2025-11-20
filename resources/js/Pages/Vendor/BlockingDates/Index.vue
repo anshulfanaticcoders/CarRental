@@ -14,17 +14,76 @@
                 </div>
             </div>
 
-            <!-- Search Section -->
+            <!-- Search and Filter Section -->
             <div>
                 <div class="rounded-xl border bg-card shadow-sm p-6">
-                    <div class="relative max-w-md">
+                    <!-- Search Bar -->
+                    <div class="relative max-w-md mb-4">
                         <Search class="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
                         <Input
                             v-model="searchQuery"
+                            @input="debouncedSearch"
                             type="text"
                             :placeholder="_t('vendorprofilepages', 'search_vehicles_placeholder')"
                             class="pl-10 w-full"
                         />
+                    </div>
+
+                    <!-- Filter Controls -->
+                    <div class="flex flex-wrap gap-4 items-end">
+                        <!-- Filter By Status -->
+                        <div class="min-w-0 flex-1 max-w-xs">
+                            <Label class="flex items-center gap-2 text-sm font-medium mb-2">
+                                <Filter class="w-4 h-4" />
+                                Filter By
+                            </Label>
+                            <Select v-model="filterBy" @update:modelValue="onFilterChange">
+                                <SelectTrigger class="w-full">
+                                    <SelectValue placeholder="Select filter" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="all">All Vehicles</SelectItem>
+                                    <SelectItem value="available">Available Only</SelectItem>
+                                    <SelectItem value="blocked">Currently Blocked</SelectItem>
+                                    <SelectItem value="booked">With Bookings</SelectItem>
+                                    <SelectItem value="active_blockings">Active Blockings</SelectItem>
+                                </SelectContent>
+                            </Select>
+                        </div>
+
+                        <!-- Sort By -->
+                        <div class="min-w-0 flex-1 max-w-xs">
+                            <Label class="flex items-center gap-2 text-sm font-medium mb-2">
+                                <ArrowUpDown class="w-4 h-4" />
+                                Sort By
+                            </Label>
+                            <Select v-model="sortBy" @update:modelValue="onSortChange">
+                                <SelectTrigger class="w-full">
+                                    <SelectValue placeholder="Sort by" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="id">Vehicle ID</SelectItem>
+                                    <SelectItem value="brand">Brand</SelectItem>
+                                    <SelectItem value="model">Model</SelectItem>
+                                    <SelectItem value="created_at">Date Added</SelectItem>
+                                    <SelectItem value="active_blockings_count">Active Blockings Count</SelectItem>
+                                </SelectContent>
+                            </Select>
+                        </div>
+
+                        <!-- Sort Order Toggle -->
+                        <div class="flex items-end">
+                            <Button
+                                variant="outline"
+                                size="sm"
+                                @click="toggleSortOrder"
+                                class="flex items-center gap-2"
+                            >
+                                <ArrowUp v-if="sortOrder === 'asc'" class="w-4 h-4" />
+                                <ArrowDown v-else class="w-4 h-4" />
+                                {{ sortOrder === 'asc' ? 'A-Z' : 'Z-A' }}
+                            </Button>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -341,6 +400,7 @@ import { Button } from '@/Components/ui/button';
 import { Input } from '@/Components/ui/input';
 import { Label } from '@/Components/ui/label';
 import { Badge } from '@/Components/ui/badge';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/Components/ui/select';
 import { Alert, AlertDescription } from '@/Components/ui/alert';
 import {
     Table,
@@ -361,6 +421,10 @@ import {
     Loader2,
     Trash2,
     AlertTriangle,
+    Filter,
+    ArrowUpDown,
+    ArrowUp,
+    ArrowDown,
 } from 'lucide-vue-next';
 import VueDatepicker from '@vuepic/vue-datepicker';
 import '@vuepic/vue-datepicker/dist/main.css';
@@ -376,20 +440,84 @@ const form = ref({
     blocking_end_date: '',
     processing: false
 });
-const searchQuery = ref('');
-
 const props = defineProps({
     vehicles: {
         type: Object,
         required: true
     },
+    statistics: {
+        type: Object,
+        required: true
+    },
+    filters: {
+        type: Object,
+        required: true
+    },
 });
 
-const handlePageChange = (page) => {
-    router.get(route('vendor.blocking-dates.index', { locale: usePage().props.locale }), 
-        { search: searchQuery.value, page }, 
+// Initialize filter values from props
+const searchQuery = ref(props.filters.search || '');
+const filterBy = ref(props.filters.filter_by || 'all');
+const sortBy = ref(props.filters.sort_by || 'id');
+const sortOrder = ref(props.filters.sort_order || 'desc');
+
+// Apply filters function
+const applyFilters = () => {
+    router.get(route('vendor.blocking-dates.index', { locale: usePage().props.locale }),
+        {
+            search: searchQuery.value,
+            filter_by: filterBy.value,
+            sort_by: sortBy.value,
+            sort_order: sortOrder.value,
+            page: 1
+        },
         { preserveState: true, preserveScroll: true }
     );
+};
+
+const handlePageChange = (page) => {
+    router.get(route('vendor.blocking-dates.index', { locale: usePage().props.locale }),
+        {
+            search: searchQuery.value,
+            filter_by: filterBy.value,
+            sort_by: sortBy.value,
+            sort_order: sortOrder.value,
+            page
+        },
+        { preserveState: true, preserveScroll: true }
+    );
+};
+
+// Simple debounce function
+const debounce = (func, wait) => {
+    let timeout;
+    return function executedFunction(...args) {
+        const later = () => {
+            clearTimeout(timeout);
+            func(...args);
+        };
+        clearTimeout(timeout);
+        timeout = setTimeout(later, wait);
+    };
+};
+
+// Search functionality
+const debouncedSearch = debounce(() => {
+    applyFilters();
+}, 300);
+
+// Filter change handlers
+const onFilterChange = () => {
+    applyFilters();
+};
+
+const onSortChange = () => {
+    applyFilters();
+};
+
+const toggleSortOrder = () => {
+    sortOrder.value = sortOrder.value === 'asc' ? 'desc' : 'asc';
+    applyFilters();
 };
 
 // Dialog state management
@@ -473,34 +601,11 @@ const filteredVehicles = computed(() => {
     return props.vehicles.data;
 });
 
-// Statistics computed properties
-const totalVehicles = computed(() => {
-    return props.vehicles.data?.length || 0;
-});
-
-const activeBlockings = computed(() => {
-    if (!props.vehicles.data) return 0;
-    return props.vehicles.data.reduce((total, vehicle) => {
-        const activeCount = vehicle.blockings?.filter(blocking => isBlockingActive(blocking)).length || 0;
-        return total + activeCount;
-    }, 0);
-});
-
-const vehiclesWithBookings = computed(() => {
-    if (!props.vehicles.data) return 0;
-    return props.vehicles.data.filter(vehicle =>
-        vehicle.bookings && vehicle.bookings.length > 0
-    ).length;
-});
-
-const availableVehicles = computed(() => {
-    if (!props.vehicles.data) return 0;
-    return props.vehicles.data.filter(vehicle => {
-        const hasBookings = vehicle.bookings && vehicle.bookings.length > 0;
-        const hasActiveBlockings = vehicle.blockings?.some(blocking => isBlockingActive(blocking));
-        return !hasBookings && !hasActiveBlockings;
-    }).length;
-});
+// Statistics from controller (totals across all pages)
+const totalVehicles = computed(() => props.statistics.totalVehicles || 0);
+const activeBlockings = computed(() => props.statistics.activeBlockings || 0);
+const vehiclesWithBookings = computed(() => props.statistics.vehiclesWithBookings || 0);
+const availableVehicles = computed(() => props.statistics.availableVehicles || 0);
 
 const getPrimaryImage = (vehicle) => {
     const primaryImage = vehicle.images?.find(img => img.image_type === 'primary');
@@ -611,10 +716,13 @@ const getDayClass = (date) => {
 };
 
 
-// Initialize searchQuery from URL params
+// Initialize filter values from URL params
 onMounted(() => {
     const urlParams = new URLSearchParams(window.location.search);
     searchQuery.value = urlParams.get('search') || '';
+    filterBy.value = urlParams.get('filter_by') || 'all';
+    sortBy.value = urlParams.get('sort_by') || 'id';
+    sortOrder.value = urlParams.get('sort_order') || 'desc';
 });
 </script>
 
