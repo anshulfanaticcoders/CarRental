@@ -36,6 +36,22 @@ class VendorVehicleController extends Controller
             ->latest()
             ->paginate(6); // Paginate with 6 items per page
 
+        // Get category statistics for ALL vehicles (not just current page)
+        $categoryStats = Vehicle::with('category')
+            ->where('vendor_id', $vendorId)
+            ->get()
+            ->groupBy('category.name')
+            ->map(function ($vehicles, $categoryName) {
+                return [
+                    'name' => $categoryName ?: 'Uncategorized',
+                    'count' => $vehicles->count()
+                ];
+            })
+            ->sortByDesc('count')
+            ->values()
+            ->take(8)
+            ->toArray();
+
         return Inertia::render('Vendor/Vehicles/Index', [
             'vehicles' => $vehicles->items(),  // Get only the vehicle data
             'pagination' => [
@@ -44,6 +60,8 @@ class VendorVehicleController extends Controller
                 'per_page' => $vehicles->perPage(),
                 'total' => $vehicles->total(),
             ],
+            'categoryStats' => $categoryStats, // Add category statistics
+            'totalVehicles' => $vehicles->total(), // Add total vehicles count
             'filters' => $request->all(), // Add the filters to the response
         ]);
     }

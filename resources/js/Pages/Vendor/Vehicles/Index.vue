@@ -32,6 +32,47 @@
                 </div>
             </div>
 
+            <!-- Category Statistics Cards -->
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                <!-- Total Vehicles Card (always first) -->
+                <div class="relative bg-gradient-to-br from-slate-700 to-slate-900 border border-slate-600 rounded-xl p-6 shadow-lg transition-all duration-200 hover:shadow-xl hover:scale-[1.02]">
+                    <div class="flex items-center justify-between mb-4">
+                        <div class="p-3 bg-white bg-opacity-20 rounded-lg">
+                            <Car class="w-6 h-6 text-white" />
+                        </div>
+                        <Badge class="bg-white text-slate-800 font-bold">
+                            {{ totalVehicles }}
+                        </Badge>
+                    </div>
+                    <div class="text-center">
+                        <p class="text-4xl font-bold text-white">{{ totalVehicles }}</p>
+                        <p class="text-lg font-semibold text-slate-200 mt-1">Total Vehicles</p>
+                        <p class="text-sm text-slate-400 mt-2">{{ totalVehicles === 1 ? 'Vehicle' : 'Vehicles' }} in Fleet</p>
+                    </div>
+                </div>
+
+                <!-- Category Cards -->
+                <div v-for="(category, index) in categoryStatsData" :key="category.name"
+                    :class="[
+                        'relative rounded-xl p-6 shadow-lg transition-all duration-200 hover:shadow-xl hover:scale-[1.02] border',
+                        getCategoryCardClass(index)
+                    ]">
+                    <div class="flex items-center justify-between mb-4">
+                        <div :class="getCategoryIconClass(index)">
+                            <Car class="w-6 h-6" />
+                        </div>
+                        <Badge :variant="getCategoryBadgeVariant(index)" class="text-white">
+                            {{ category.count }}
+                        </Badge>
+                    </div>
+                    <div class="text-center">
+                        <p :class="getCategoryCountClass(index)">{{ category.count }}</p>
+                        <p :class="getCategoryNameClass(index)">{{ category.name }}</p>
+                        <p :class="getCategoryLabelClass(index)">{{ category.count === 1 ? 'Vehicle' : 'Vehicles' }}</p>
+                    </div>
+                </div>
+            </div>
+
             <!-- Enhanced Search -->
             <div class="relative w-full max-w-md">
                 <Search class="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
@@ -284,6 +325,14 @@ const props = defineProps({
   pagination: {
     type: Object,
     required: true
+  },
+  categoryStats: {
+    type: Array,
+    default: () => []
+  },
+  totalVehicles: {
+    type: Number,
+    default: 0
   }
 })
 const searchQuery = ref('');
@@ -324,6 +373,105 @@ const isAllSelected = computed(() => {
   if (!filteredVehicles.value.length) return false;
   return filteredVehicles.value.every(vehicle => selectedVehicleIds.value.includes(vehicle.id));
 });
+
+// Use category stats from props if available, otherwise calculate from current vehicles (fallback)
+const categoryStatsData = computed(() => {
+  // If category stats are passed from backend, use them
+  if (props.categoryStats && props.categoryStats.length > 0) {
+    return props.categoryStats.slice(0, 7); // Show top 7 categories (plus total vehicles card = 8 total)
+  }
+
+  // Fallback: Calculate from current page vehicles (not ideal but better than nothing)
+  const categories = {};
+  props.vehicles.forEach(vehicle => {
+    const categoryName = vehicle.category?.name || 'Uncategorized';
+    if (!categories[categoryName]) {
+      categories[categoryName] = 0;
+    }
+    categories[categoryName]++;
+  });
+
+  return Object.entries(categories)
+    .map(([name, count]) => ({ name, count }))
+    .sort((a, b) => b.count - a.count)
+    .slice(0, 7); // Show top 7 categories (plus total vehicles card = 8 total)
+});
+
+// Helper functions for category card styling
+const getCategoryCardClass = (index) => {
+  const classes = [
+    'bg-gradient-to-br from-blue-50 to-indigo-50 border-blue-200',
+    'bg-gradient-to-br from-green-50 to-emerald-50 border-green-200',
+    'bg-gradient-to-br from-purple-50 to-pink-50 border-purple-200',
+    'bg-gradient-to-br from-orange-50 to-amber-50 border-orange-200',
+    'bg-gradient-to-br from-red-50 to-rose-50 border-red-200',
+    'bg-gradient-to-br from-cyan-50 to-teal-50 border-cyan-200',
+    'bg-gradient-to-br from-indigo-50 to-purple-50 border-indigo-200',
+    'bg-gradient-to-br from-gray-50 to-slate-50 border-gray-200'
+  ];
+  return classes[index % classes.length];
+};
+
+const getCategoryIconClass = (index) => {
+  const classes = [
+    'p-3 bg-blue-500 bg-opacity-20 rounded-lg text-blue-600',
+    'p-3 bg-green-500 bg-opacity-20 rounded-lg text-green-600',
+    'p-3 bg-purple-500 bg-opacity-20 rounded-lg text-purple-600',
+    'p-3 bg-orange-500 bg-opacity-20 rounded-lg text-orange-600',
+    'p-3 bg-red-500 bg-opacity-20 rounded-lg text-red-600',
+    'p-3 bg-cyan-500 bg-opacity-20 rounded-lg text-cyan-600',
+    'p-3 bg-indigo-500 bg-opacity-20 rounded-lg text-indigo-600',
+    'p-3 bg-gray-500 bg-opacity-20 rounded-lg text-gray-600'
+  ];
+  return classes[index % classes.length];
+};
+
+const getCategoryBadgeVariant = (index) => {
+  const variants = ['default', 'secondary', 'destructive', 'outline'];
+  return variants[index % variants.length];
+};
+
+const getCategoryCountClass = (index) => {
+  const classes = [
+    'text-3xl font-bold text-blue-900',
+    'text-3xl font-bold text-green-900',
+    'text-3xl font-bold text-purple-900',
+    'text-3xl font-bold text-orange-900',
+    'text-3xl font-bold text-red-900',
+    'text-3xl font-bold text-cyan-900',
+    'text-3xl font-bold text-indigo-900',
+    'text-3xl font-bold text-gray-900'
+  ];
+  return classes[index % classes.length];
+};
+
+const getCategoryNameClass = (index) => {
+  const classes = [
+    'text-sm font-medium text-blue-700 mt-1',
+    'text-sm font-medium text-green-700 mt-1',
+    'text-sm font-medium text-purple-700 mt-1',
+    'text-sm font-medium text-orange-700 mt-1',
+    'text-sm font-medium text-red-700 mt-1',
+    'text-sm font-medium text-cyan-700 mt-1',
+    'text-sm font-medium text-indigo-700 mt-1',
+    'text-sm font-medium text-gray-700 mt-1'
+  ];
+  return classes[index % classes.length];
+};
+
+const getCategoryLabelClass = (index) => {
+  const classes = [
+    'text-xs text-blue-600 mt-2',
+    'text-xs text-green-600 mt-2',
+    'text-xs text-purple-600 mt-2',
+    'text-xs text-orange-600 mt-2',
+    'text-xs text-red-600 mt-2',
+    'text-xs text-cyan-600 mt-2',
+    'text-xs text-indigo-600 mt-2',
+    'text-xs text-gray-600 mt-2'
+  ];
+  return classes[index % classes.length];
+};
 
 // Toggle select all vehicles
 const toggleSelectAll = (event) => {
