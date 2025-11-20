@@ -326,6 +326,32 @@ useScrollAnimation('.popular-places-trigger', '.popular-place-card', {
   y: 50,
   stagger: 0.5,
 });
+
+// Blog Section Animations
+useScrollAnimation('.blogs-trigger', '.blog-title-section', {
+  opacity: 0,
+  y: 30,
+  duration: 1,
+});
+
+useScrollAnimation('.blogs-trigger', '.blog-main-image', {
+  opacity: 0,
+  x: -50,
+  duration: 1.2,
+});
+
+useScrollAnimation('.blogs-trigger', '.blog-item', {
+  opacity: 0,
+  x: 50,
+  duration: 0.8,
+  stagger: 0.2,
+});
+
+useScrollAnimation('.blogs-trigger', '.more-button', {
+  opacity: 0,
+  y: 20,
+  duration: 0.6,
+});
 </script>
 
 <template>
@@ -600,9 +626,9 @@ useScrollAnimation('.popular-places-trigger', '.popular-place-card', {
         <!-- ------------------------Blogs Section-------------------------------- -->
         <!------------------------------ <Start>  -------------------------------------------------->
         <section
-            class="blogs min-h-[80vh] flex flex-col gap-10 items-center py-customVerticalSpacing max-[768px]:py-0 max-[768px]:gap-0">
+            class="blogs min-h-[80vh] flex flex-col gap-10 items-center py-customVerticalSpacing max-[768px]:py-0 max-[768px]:gap-0 blogs-trigger">
             <div
-                class="column text-center flex flex-col items-center w-[650px] py-8 max-[768px]:py-0 max-[768px]:w-full max-[768px]:mb-10">
+                class="column text-center flex flex-col items-center w-[650px] py-8 max-[768px]:py-0 max-[768px]:w-full max-[768px]:mb-10 blog-title-section">
                 <span class="text-[1.25rem] text-customPrimaryColor">-{{ _p('blogs_title') }}-</span>
                 <h3
                     class="max-w-[883px] text-[3rem] font-bold text-customDarkBlackColor max-[768px]:max-w-full max-[768px]:text-[1.5rem]">
@@ -611,10 +637,10 @@ useScrollAnimation('.popular-places-trigger', '.popular-place-card', {
             </div>
 
             <!-- Blog Section -->
-            <div class="flex gap-6 w-full full-w-container max-[768px]:flex-col">
+            <div class="flex gap-6 w-full full-w-container max-[768px]:flex-col blog-main-container">
                 <!-- First Blog (Large Left) -->
                 <Link :href="route('blog.show', { locale: page.props.locale, country: page.props.country || 'us', blog: blogs[0].translated_slug })" v-if="!isLoading && blogs.length > 0"
-                    class="w-1/2 h-[574px] relative rounded-lg overflow-hidden shadow-md blog-container max-[768px]:w-full max-[768px]:h-[380px]">
+                    class="w-1/2 h-[574px] relative rounded-lg overflow-hidden shadow-md blog-container blog-main-image max-[768px]:w-full max-[768px]:h-[380px]">
                 <img :src="blogs[0].image" :alt="blogs[0].title" class="w-full h-full object-cover rounded-lg" >
 
                 <div class="absolute bottom-0 bg-gradient-to-t from-black/70 to-transparent p-4 text-white w-full">
@@ -634,9 +660,9 @@ useScrollAnimation('.popular-places-trigger', '.popular-place-card', {
                 </div>
 
                 <!-- Other Blogs (Stacked Right, Dividing Height) -->
-                <div class="flex flex-col gap-6 w-1/2 max-[768px]:w-full max-[768px]:gap-0">
+                <div class="flex flex-col gap-6 w-1/2 max-[768px]:w-full max-[768px]:gap-0 blog-list-container">
                     <div v-for="index in 3" :key="index"
-                        class="relative rounded-lg h-[175px] flex justify-between gap-5 items-center">
+                        class="relative rounded-lg h-[175px] flex justify-between gap-5 items-center blog-item">
                         <div v-if="!isLoading && blogs.length > index"
                             class="w-[30%] h-full blog-container max-[768px]:w-[40%] max-[768px]:h-[120px]">
                             <Link :href="route('blog.show', { locale: page.props.locale, country: page.props.country || 'us', blog: blogs[index].translated_slug })">
@@ -671,7 +697,7 @@ useScrollAnimation('.popular-places-trigger', '.popular-place-card', {
             </div>
 
             <Link :href="route('blog', { locale: page.props.locale, country: page.props.country || 'us' })"
-                class="button-secondary text-center w-[10rem] mt-6 hover:bg-customPrimaryColor hover:text-white">{{ _p('more_blogs') }}</Link>
+                class="button-secondary more-button text-center w-[10rem] mt-6 hover:bg-customPrimaryColor hover:text-white">{{ _p('more_blogs') }}</Link>
         </section>
 
 
@@ -713,7 +739,7 @@ useScrollAnimation('.popular-places-trigger', '.popular-place-card', {
     display: none;
 }
 
-.hero-content, .hero-image, .search-bar-animation, .why-choose-us-title, .why-choose-us-card-left, .why-choose-us-image, .why-choose-us-card-right, .popular-place-card {
+.hero-content, .hero-image, .search-bar-animation, .why-choose-us-title, .why-choose-us-card-left, .why-choose-us-image, .why-choose-us-card-right, .popular-place-card, .blog-title-section, .blog-main-image, .blog-item, .more-button {
     will-change: transform, opacity;
 }
 

@@ -1,304 +1,326 @@
 <template>
     <MyProfileLayout>
-      <div class="flex flex-col gap-4 w-[95%] ml-[1.5rem] max-[768px]:w-full max-[768px]:ml-0">
-        <div class="flex items-center justify-between mt-[2rem]">
-          <span class="text-[1.5rem] font-semibold max-[768px]:text-[1.2rem]">{{ _t('customerprofilepages', 'my_documents_header') }}</span>
-          <div class="flex items-center gap-2">
-            <Button @click="openUploadDialog" :disabled="document && document.verification_status === 'verified'">
-              {{ document ? _t('customerprofilepages', 'edit_documents_button') : _t('customerprofilepages', 'upload_documents_button') }}
-            </Button>
-            <Button v-if="document" @click="openDeleteConfirmDialog" variant="destructive" :disabled="document.verification_status === 'verified'">
-              {{ _t('customerprofilepages', 'delete_all_documents_button') }}
-            </Button>
-          </div>
+        <div class="container mx-auto p-6 space-y-6">
+            <!-- Flash Message -->
+            <div v-if="$page.props.flash.success" class="rounded-lg border border-green-200 bg-green-50 p-4 text-green-800">
+                {{ $page.props.flash.success }}
+            </div>
+
+            <!-- Header -->
+            <div class="flex items-center justify-between">
+                <h1 class="text-3xl font-bold tracking-tight">{{ _t('customerprofilepages', 'my_documents_header') }}</h1>
+                <div class="flex items-center gap-4">
+                    <span class="inline-flex items-center px-2.5 py-0.5 rounded-full bg-blue-100 text-blue-700">
+                        <FileText class="w-4 h-4 mr-1" />
+                        {{ document ? 'Documents Uploaded' : 'No Documents' }}
+                    </span>
+                    <Button @click="openUploadDialog" :disabled="document && document.verification_status === 'verified'" class="flex items-center gap-2">
+                        <Upload class="w-4 h-4" />
+                        {{ document ? _t('customerprofilepages', 'edit_documents_button') : _t('customerprofilepages', 'upload_documents_button') }}
+                    </Button>
+                    <Button v-if="document" @click="openDeleteConfirmDialog" variant="destructive" :disabled="document.verification_status === 'verified'" class="flex items-center gap-2">
+                        <Trash2 class="w-4 h-4" />
+                        {{ _t('customerprofilepages', 'delete_all_documents_button') }}
+                    </Button>
+                </div>
+            </div>
+
+            <!-- Enhanced Status Card -->
+            <div v-if="document" class="relative bg-gradient-to-br from-blue-50 to-blue-100 border border-blue-200 rounded-xl p-6 shadow-lg transition-all duration-200 hover:shadow-xl hover:scale-[1.02]">
+                <div class="flex items-center justify-between mb-4">
+                    <div class="p-3 bg-blue-500 bg-opacity-20 rounded-lg">
+                        <Shield class="w-6 h-6 text-blue-600" />
+                    </div>
+                    <Badge :variant="getStatusBadgeVariant(document.verification_status)" class="capitalize">
+                        {{ document.verification_status }}
+                    </Badge>
+                </div>
+                <div class="text-center">
+                    <p class="text-2xl font-bold text-blue-900">Verification Status</p>
+                    <p class="text-sm text-blue-700 mt-1">{{ document.verification_status === 'verified' ? 'Your documents have been verified' : 'Your documents are under review' }}</p>
+                </div>
+            </div>
+  
+            <!-- Alert Dialog for Delete Confirmation -->
+            <AlertDialog v-model:open="isDeleteConfirmOpen">
+                <AlertDialogContent>
+                    <AlertDialogHeader>
+                        <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+                        <AlertDialogDescription>
+                            {{ _t('customerprofilepages', 'delete_documents_confirm_message') }}
+                        </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                        <AlertDialogCancel @click="isDeleteConfirmOpen = false">{{ _t('customerprofilepages', 'dialog_cancel_button') }}</AlertDialogCancel>
+                        <AlertDialogAction @click="deleteDocuments" :disabled="isLoading" class="flex items-center gap-2">
+                            <Loader2 v-if="isLoading" class="w-4 h-4 animate-spin" />
+                            {{ _t('customerprofilepages', 'delete_button_text') }}
+                        </AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
+  
+            <!-- Upload/Edit Document Dialog -->
+            <Dialog v-model:open="isDialogOpen">
+                <DialogContent class="sm:max-w-[700px] max-h-[90vh] overflow-y-auto">
+                    <DialogHeader>
+                        <DialogTitle class="flex items-center gap-2">
+                            <Upload class="w-5 h-5" />
+                            {{ document ? _t('customerprofilepages', 'edit_documents_dialog_title') : _t('customerprofilepages', 'upload_documents_dialog_title') }}
+                        </DialogTitle>
+                    </DialogHeader>
+                    <form @submit.prevent="submitDocuments" class="space-y-6">
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <!-- Driving License Front -->
+                            <div class="space-y-2">
+                                <Label class="text-sm font-medium">{{ _t('customerprofilepages', 'driving_license_front_label') }}</Label>
+                                <div
+                                    @click="$refs.drivingLicenseFrontInput.click()"
+                                    class="cursor-pointer border-2 border-dashed border-gray-300 p-6 rounded-lg text-center hover:border-gray-400 transition-colors"
+                                >
+                                    <Upload class="w-10 h-10 mx-auto text-gray-400" />
+                                    <p class="mt-2 text-sm text-gray-600">{{ _t('customerprofilepages', 'click_to_select_file') }}</p>
+                                    <p class="text-xs text-gray-500 mt-1">{{ _t('customerprofilepages', 'file_type_hint') }}</p>
+                                </div>
+                                <input
+                                    type="file"
+                                    ref="drivingLicenseFrontInput"
+                                    class="hidden"
+                                    accept=".jpg,.jpeg,.png,.pdf"
+                                    @change="handleFileChange('driving_license_front', $event)"
+                                />
+                                <div v-if="filePreviews.driving_license_front || (document && document.driving_license_front)" class="relative w-full mt-2">
+                                    <img
+                                        :src="filePreviews.driving_license_front || document.driving_license_front"
+                                        alt="Preview"
+                                        class="w-full h-[120px] object-cover rounded-md border shadow-md"
+                                    />
+                                    <Button
+                                        @click="removeFile('driving_license_front')"
+                                        size="sm"
+                                        variant="destructive"
+                                        class="absolute top-2 right-2 w-6 h-6 p-0"
+                                    >
+                                        <X class="w-3 h-3" />
+                                    </Button>
+                                </div>
+                            </div>
+  
+                            <!-- Driving License Back -->
+                            <div class="space-y-2">
+                                <Label class="text-sm font-medium">{{ _t('customerprofilepages', 'driving_license_back_label') }}</Label>
+                                <div
+                                    @click="$refs.drivingLicenseBackInput.click()"
+                                    class="cursor-pointer border-2 border-dashed border-gray-300 p-6 rounded-lg text-center hover:border-gray-400 transition-colors"
+                                >
+                                    <Upload class="w-10 h-10 mx-auto text-gray-400" />
+                                    <p class="mt-2 text-sm text-gray-600">{{ _t('customerprofilepages', 'click_to_select_file') }}</p>
+                                    <p class="text-xs text-gray-500 mt-1">{{ _t('customerprofilepages', 'file_type_hint') }}</p>
+                                </div>
+                                <input
+                                    type="file"
+                                    ref="drivingLicenseBackInput"
+                                    class="hidden"
+                                    accept=".jpg,.jpeg,.png,.pdf"
+                                    @change="handleFileChange('driving_license_back', $event)"
+                                />
+                                <div v-if="filePreviews.driving_license_back || (document && document.driving_license_back)" class="relative w-full mt-2">
+                                    <img
+                                        :src="filePreviews.driving_license_back || document.driving_license_back"
+                                        alt="Preview"
+                                        class="w-full h-[120px] object-cover rounded-md border shadow-md"
+                                    />
+                                    <Button
+                                        @click="removeFile('driving_license_back')"
+                                        size="sm"
+                                        variant="destructive"
+                                        class="absolute top-2 right-2 w-6 h-6 p-0"
+                                    >
+                                        <X class="w-3 h-3" />
+                                    </Button>
+                                </div>
+                            </div>
+
+                            <!-- Passport Front -->
+                            <div class="space-y-2">
+                                <Label class="text-sm font-medium">{{ _t('customerprofilepages', 'passport_front_label') }}</Label>
+                                <div
+                                    @click="$refs.passportFrontInput.click()"
+                                    class="cursor-pointer border-2 border-dashed border-gray-300 p-6 rounded-lg text-center hover:border-gray-400 transition-colors"
+                                >
+                                    <Upload class="w-10 h-10 mx-auto text-gray-400" />
+                                    <p class="mt-2 text-sm text-gray-600">{{ _t('customerprofilepages', 'click_to_select_file') }}</p>
+                                    <p class="text-xs text-gray-500 mt-1">{{ _t('customerprofilepages', 'file_type_hint') }}</p>
+                                </div>
+                                <input
+                                    type="file"
+                                    ref="passportFrontInput"
+                                    class="hidden"
+                                    accept=".jpg,.jpeg,.png,.pdf"
+                                    @change="handleFileChange('passport_front', $event)"
+                                />
+                                <div v-if="filePreviews.passport_front || (document && document.passport_front)" class="relative w-full mt-2">
+                                    <img
+                                        :src="filePreviews.passport_front || document.passport_front"
+                                        alt="Preview"
+                                        class="w-full h-[120px] object-cover rounded-md border shadow-md"
+                                    />
+                                    <Button
+                                        @click="removeFile('passport_front')"
+                                        size="sm"
+                                        variant="destructive"
+                                        class="absolute top-2 right-2 w-6 h-6 p-0"
+                                    >
+                                        <X class="w-3 h-3" />
+                                    </Button>
+                                </div>
+                            </div>
+
+                            <!-- Passport Back -->
+                            <div class="space-y-2">
+                                <Label class="text-sm font-medium">{{ _t('customerprofilepages', 'passport_back_label') }}</Label>
+                                <div
+                                    @click="$refs.passportBackInput.click()"
+                                    class="cursor-pointer border-2 border-dashed border-gray-300 p-6 rounded-lg text-center hover:border-gray-400 transition-colors"
+                                >
+                                    <Upload class="w-10 h-10 mx-auto text-gray-400" />
+                                    <p class="mt-2 text-sm text-gray-600">{{ _t('customerprofilepages', 'click_to_select_file') }}</p>
+                                    <p class="text-xs text-gray-500 mt-1">{{ _t('customerprofilepages', 'file_type_hint') }}</p>
+                                </div>
+                                <input
+                                    type="file"
+                                    ref="passportBackInput"
+                                    class="hidden"
+                                    accept=".jpg,.jpeg,.png,.pdf"
+                                    @change="handleFileChange('passport_back', $event)"
+                                />
+                                <div v-if="filePreviews.passport_back || (document && document.passport_back)" class="relative w-full mt-2">
+                                    <img
+                                        :src="filePreviews.passport_back || document.passport_back"
+                                        alt="Preview"
+                                        class="w-full h-[120px] object-cover rounded-md border shadow-md"
+                                    />
+                                    <Button
+                                        @click="removeFile('passport_back')"
+                                        size="sm"
+                                        variant="destructive"
+                                        class="absolute top-2 right-2 w-6 h-6 p-0"
+                                    >
+                                        <X class="w-3 h-3" />
+                                    </Button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Error Message -->
+                        <div v-if="errors.files" class="rounded-lg border border-red-200 bg-red-50 p-4 text-red-800">
+                            {{ _t('customerprofilepages', 'error_all_files_required') }}
+                        </div>
+
+                        <DialogFooter class="flex gap-2">
+                            <Button type="button" variant="outline" @click="isDialogOpen = false">
+                                {{ _t('customerprofilepages', 'dialog_cancel_button') }}
+                            </Button>
+                            <Button type="submit" :disabled="isLoading" class="flex items-center gap-2">
+                                <Loader2 v-if="isLoading" class="w-4 h-4 animate-spin" />
+                                {{ document ? _t('customerprofilepages', 'update_button_text') : _t('customerprofilepages', 'upload_button_text') }}
+                            </Button>
+                        </DialogFooter>
+                    </form>
+                </DialogContent>
+            </Dialog>
+  
+        <!-- Enhanced Document Table -->
+            <div v-if="document" class="rounded-xl border bg-card shadow-sm overflow-hidden">
+                <div class="overflow-x-auto max-w-full">
+                    <Table>
+                        <TableHeader>
+                            <TableRow class="bg-muted/50">
+                                <TableHead class="whitespace-nowrap px-4 py-3 font-semibold">{{ _t('customerprofilepages', 'table_header_doc_type') }}</TableHead>
+                                <TableHead class="whitespace-nowrap px-4 py-3 font-semibold">{{ _t('customerprofilepages', 'table_header_doc_image') }}</TableHead>
+                                <TableHead class="whitespace-nowrap px-4 py-3 font-semibold">{{ _t('customerprofilepages', 'table_header_status') }}</TableHead>
+                            </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                            <TableRow v-for="field in documentFields" :key="field.key" class="hover:bg-muted/25 transition-colors">
+                                <TableCell class="whitespace-nowrap px-4 py-3 font-medium">
+                                    <div class="flex items-center gap-2">
+                                        <FileText class="w-4 h-4 text-muted-foreground" />
+                                        {{ field.label }}
+                                    </div>
+                                </TableCell>
+                                <TableCell class="whitespace-nowrap px-4 py-3">
+                                    <div v-if="document[field.key]" class="relative group h-20 w-[150px]">
+                                        <img
+                                            :src="document[field.key]"
+                                            :alt="field.label"
+                                            class="h-20 w-[150px] object-cover rounded-md border shadow-sm cursor-pointer transition-all duration-200 hover:scale-105"
+                                            @click="openImagePreview(document[field.key], field.label)"
+                                        />
+                                        <div class="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-20 rounded-md transition-all duration-200 flex items-center justify-center pointer-events-none">
+                                            <Eye class="w-6 h-6 text-white opacity-0 group-hover:opacity-100 transition-opacity duration-200" />
+                                        </div>
+                                    </div>
+                                    <div v-else class="flex items-center gap-2 text-muted-foreground">
+                                        <FileX class="w-4 h-4" />
+                                        <span class="text-sm">{{ _t('customerprofilepages', 'no_file_uploaded_text') }}</span>
+                                    </div>
+                                </TableCell>
+                                <TableCell class="whitespace-nowrap px-4 py-3">
+                                    <div class="flex items-center gap-2">
+                                        <div
+                                            class="w-2 h-2 rounded-full"
+                                            :class="{
+                                                'bg-green-500': document.verification_status === 'verified',
+                                                'bg-yellow-500': document.verification_status === 'pending',
+                                                'bg-red-500': document.verification_status === 'rejected'
+                                            }"
+                                        ></div>
+                                        <Badge :variant="getStatusBadgeVariant(document.verification_status)" class="capitalize">
+                                            {{ document.verification_status }}
+                                        </Badge>
+                                    </div>
+                                </TableCell>
+                            </TableRow>
+                        </TableBody>
+                    </Table>
+                </div>
+            </div>
+
+            <!-- Empty State -->
+            <div v-else class="rounded-xl border bg-card p-12 text-center">
+                <div class="flex flex-col items-center space-y-4">
+                    <FileText class="w-16 h-16 text-muted-foreground" />
+                    <div class="space-y-2">
+                        <h3 class="text-xl font-semibold text-foreground">{{ _t('customerprofilepages', 'no_documents_uploaded_yet_text') }}</h3>
+                        <p class="text-muted-foreground">Get started by uploading your verification documents.</p>
+                    </div>
+                    <Button @click="openUploadDialog" class="flex items-center gap-2">
+                        <Upload class="w-4 h-4" />
+                        {{ _t('customerprofilepages', 'upload_documents_button') }}
+                    </Button>
+                </div>
+            </div>
+
+            <!-- Image Preview Dialog -->
+            <Dialog v-model:open="isImagePreviewOpen">
+                <DialogContent class="sm:max-w-[600px]">
+                    <DialogHeader>
+                        <DialogTitle>{{ imagePreviewTitle }}</DialogTitle>
+                    </DialogHeader>
+                    <div class="flex justify-center">
+                        <img
+                            :src="imagePreviewUrl"
+                            :alt="imagePreviewTitle"
+                            class="max-w-full h-auto rounded-lg border shadow-md"
+                        />
+                    </div>
+                    <DialogFooter>
+                        <Button @click="isImagePreviewOpen = false">Close</Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
         </div>
-  
-        <!-- Delete Confirmation Dialog -->
-        <Dialog v-model:open="isDeleteConfirmOpen">
-          <DialogContent class="sm:max-w-[400px]">
-            <DialogHeader>
-              <DialogTitle>{{ _t('customerprofilepages', 'delete_documents_confirm_title') }}</DialogTitle>
-            </DialogHeader>
-            <p>{{ _t('customerprofilepages', 'delete_documents_confirm_message') }}</p>
-            <DialogFooter class="mt-4">
-              <Button variant="outline" @click="isDeleteConfirmOpen = false">{{ _t('customerprofilepages', 'dialog_cancel_button') }}</Button>
-              <Button variant="destructive" @click="deleteDocuments" :disabled="isLoading">
-                <span v-if="isLoading" class="flex items-center">
-                  <svg class="animate-spin h-5 w-5 mr-2" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                  </svg>
-                  {{ _t('customerprofilepages', 'deleting_button_text') }}
-                </span>
-                <span v-else>{{ _t('customerprofilepages', 'delete_button_text') }}</span>
-              </Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
-  
-        <!-- Upload/Edit Document Dialog -->
-        <Dialog v-model:open="isDialogOpen">
-          <DialogContent class="sm:max-w-[600px] h-[60vh] overflow-y-auto">
-            <DialogHeader>
-              <DialogTitle>{{ document ? _t('customerprofilepages', 'edit_documents_dialog_title') : _t('customerprofilepages', 'upload_documents_dialog_title') }}</DialogTitle>
-            </DialogHeader>
-            <form @submit.prevent="submitDocuments">
-              <div class="grid grid-cols-2 gap-4">
-                <!-- Driving License Front -->
-                <div class="flex flex-col gap-2">
-                  <Label class="block text-sm font-medium">{{ _t('customerprofilepages', 'driving_license_front_label') }}</Label>
-                  <div
-                    @click="$refs.drivingLicenseFrontInput.click()"
-                    class="cursor-pointer border-2 border-dashed border-gray-400 p-4 rounded-lg text-center"
-                  >
-                    <svg
-                      xmlns="http://www.w3.org/2000/svg"
-                      fill="none"
-                      viewBox="0 0 24 24"
-                      stroke-width="1.5"
-                      stroke="currentColor"
-                      class="w-10 h-10 mx-auto text-gray-400"
-                    >
-                      <path
-                        stroke-linecap="round"
-                        stroke-linejoin="round"
-                        d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5"
-                      />
-                    </svg>
-                    <p class="mt-2 text-sm text-gray-600">{{ _t('customerprofilepages', 'click_to_select_file') }}</p>
-                    <p class="text-xs text-gray-500 mt-1">{{ _t('customerprofilepages', 'file_type_hint') }}</p>
-                  </div>
-                  <input
-                    type="file"
-                    ref="drivingLicenseFrontInput"
-                    class="hidden"
-                    accept=".jpg,.jpeg,.png,.pdf"
-                    @change="handleFileChange('driving_license_front', $event)"
-                  />
-                  <div v-if="filePreviews.driving_license_front || (document && document.driving_license_front)" class="relative w-[150px] mt-2">
-                    <img
-                      :src="filePreviews.driving_license_front || document.driving_license_front"
-                      alt="Preview"
-                      class="w-full h-[100px] object-cover rounded-md border shadow-md"
-                    />
-                    <button
-                      @click="removeFile('driving_license_front')"
-                      class="absolute top-1 right-1 bg-red-500 text-white w-5 h-5 rounded-full text-xs"
-                    >
-                      ✕
-                    </button>
-                  </div>
-                </div>
-  
-                <!-- Driving License Back -->
-                <div class="flex flex-col gap-2">
-                  <Label class="block text-sm font-medium">{{ _t('customerprofilepages', 'driving_license_back_label') }}</Label>
-                  <div
-                    @click="$refs.drivingLicenseBackInput.click()"
-                    class="cursor-pointer border-2 border-dashed border-gray-400 p-4 rounded-lg text-center"
-                  >
-                    <svg
-                      xmlns="http://www.w3.org/2000/svg"
-                      fill="none"
-                      viewBox="0 0 24 24"
-                      stroke-width="1.5"
-                      stroke="currentColor"
-                      class="w-10 h-10 mx-auto text-gray-400"
-                    >
-                      <path
-                        stroke-linecap="round"
-                        stroke-linejoin="round"
-                        d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5"
-                      />
-                    </svg>
-                    <p class="mt-2 text-sm text-gray-600">{{ _t('customerprofilepages', 'click_to_select_file') }}</p>
-                    <p class="text-xs text-gray-500 mt-1">{{ _t('customerprofilepages', 'file_type_hint') }}</p>
-                  </div>
-                  <input
-                    type="file"
-                    ref="drivingLicenseBackInput"
-                    class="hidden"
-                    accept=".jpg,.jpeg,.png,.pdf"
-                    @change="handleFileChange('driving_license_back', $event)"
-                  />
-                  <div v-if="filePreviews.driving_license_back || (document && document.driving_license_back)" class="relative w-[150px] mt-2">
-                    <img
-                      :src="filePreviews.driving_license_back || document.driving_license_back"
-                      alt="Preview"
-                      class="w-full h-[100px] object-cover rounded-md border shadow-md"
-                    />
-                    <button
-                      @click="removeFile('driving_license_back')"
-                      class="absolute top-1 right-1 bg-red-500 text-white w-5 h-5 rounded-full text-xs"
-                    >
-                      ✕
-                    </button>
-                  </div>
-                </div>
-  
-                <!-- Passport Front -->
-                <div class="flex flex-col gap-2">
-                  <Label class="block text-sm font-medium">{{ _t('customerprofilepages', 'passport_front_label') }}</Label>
-                  <div
-                    @click="$refs.passportFrontInput.click()"
-                    class="cursor-pointer border-2 border-dashed border-gray-400 p-4 rounded-lg text-center"
-                  >
-                    <svg
-                      xmlns="http://www.w3.org/2000/svg"
-                      fill="none"
-                      viewBox="0 0 24 24"
-                      stroke-width="1.5"
-                      stroke="currentColor"
-                      class="w-10 h-10 mx-auto text-gray-400"
-                    >
-                      <path
-                        stroke-linecap="round"
-                        stroke-linejoin="round"
-                        d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5"
-                      />
-                    </svg>
-                    <p class="mt-2 text-sm text-gray-600">{{ _t('customerprofilepages', 'click_to_select_file') }}</p>
-                    <p class="text-xs text-gray-500 mt-1">{{ _t('customerprofilepages', 'file_type_hint') }}</p>
-                  </div>
-                  <input
-                    type="file"
-                    ref="passportFrontInput"
-                    class="hidden"
-                    accept=".jpg,.jpeg,.png,.pdf"
-                    @change="handleFileChange('passport_front', $event)"
-                  />
-                  <div v-if="filePreviews.passport_front || (document && document.passport_front)" class="relative w-[150px] mt-2">
-                    <img
-                      :src="filePreviews.passport_front || document.passport_front"
-                      alt="Preview"
-                      class="w-full h-[100px] object-cover rounded-md border shadow-md"
-                    />
-                    <button
-                      @click="removeFile('passport_front')"
-                      class="absolute top-1 right-1 bg-red-500 text-white w-5 h-5 rounded-full text-xs"
-                    >
-                      ✕
-                    </button>
-                  </div>
-                </div>
-  
-                <!-- Passport Back -->
-                <div class="flex flex-col gap-2">
-                  <Label class="block text-sm font-medium">{{ _t('customerprofilepages', 'passport_back_label') }}</Label>
-                  <div
-                    @click="$refs.passportBackInput.click()"
-                    class="cursor-pointer border-2 border-dashed border-gray-400 p-4 rounded-lg text-center"
-                  >
-                    <svg
-                      xmlns="http://www.w3.org/2000/svg"
-                      fill="none"
-                      viewBox="0 0 24 24"
-                      stroke-width="1.5"
-                      stroke="currentColor"
-                      class="w-10 h-10 mx-auto text-gray-400"
-                    >
-                      <path
-                        stroke-linecap="round"
-                        stroke-linejoin="round"
-                        d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5"
-                      />
-                    </svg>
-                    <p class="mt-2 text-sm text-gray-600">{{ _t('customerprofilepages', 'click_to_select_file') }}</p>
-                    <p class="text-xs text-gray-500 mt-1">{{ _t('customerprofilepages', 'file_type_hint') }}</p>
-                  </div>
-                  <input
-                    type="file"
-                    ref="passportBackInput"
-                    class="hidden"
-                    accept=".jpg,.jpeg,.png,.pdf"
-                    @change="handleFileChange('passport_back', $event)"
-                  />
-                  <div v-if="filePreviews.passport_back || (document && document.passport_back)" class="relative w-[150px] mt-2">
-                    <img
-                      :src="filePreviews.passport_back || document.passport_back"
-                      alt="Preview"
-                      class="w-full h-[100px] object-cover rounded-md border shadow-md"
-                    />
-                    <button
-                      @click="removeFile('passport_back')"
-                      class="absolute top-1 right-1 bg-red-500 text-white w-5 h-5 rounded-full text-xs"
-                    >
-                      ✕
-                    </button>
-                  </div>
-                </div>
-  
-                <!-- Error Message -->
-                <div v-if="errors.files" class="text-red-500 text-sm text-center">{{ _t('customerprofilepages', 'error_all_files_required') }}</div>
-              </div>
-              <DialogFooter class="mt-4">
-                <Button type="button" variant="outline" @click="isDialogOpen = false">{{ _t('customerprofilepages', 'dialog_cancel_button') }}</Button>
-                <Button type="submit" :disabled="isLoading">
-                  <span v-if="isLoading" class="flex items-center">
-                    <svg
-                      class="animate-spin h-5 w-5 mr-2"
-                      xmlns="http://www.w3.org/2000/svg"
-                      fill="none"
-                      viewBox="0 0 24 24"
-                    >
-                      <circle
-                        class="opacity-25"
-                        cx="12"
-                        cy="12"
-                        r="10"
-                        stroke="currentColor"
-                        stroke-width="4"
-                      ></circle>
-                      <path
-                        class="opacity-75"
-                        fill="currentColor"
-                        d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                      ></path>
-                    </svg>
-                    {{ document ? _t('customerprofilepages', 'updating_button_text') : _t('customerprofilepages', 'uploading_button_text') }}
-                  </span>
-                  <span v-else>{{ document ? _t('customerprofilepages', 'update_button_text') : _t('customerprofilepages', 'upload_button_text') }}</span>
-                </Button>
-              </DialogFooter>
-            </form>
-          </DialogContent>
-        </Dialog>
-  
-        <!-- Document Display -->
-        <div class="rounded-md border p-5 mt-[1rem] bg-[#153B4F0D]">
-          <Table v-if="document">
-            <TableHeader>
-              <TableRow>
-                <TableHead>{{ _t('customerprofilepages', 'table_header_doc_type') }}</TableHead>
-                <TableHead>{{ _t('customerprofilepages', 'table_header_doc_image') }}</TableHead>
-                <TableHead>{{ _t('customerprofilepages', 'table_header_status') }}</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              <TableRow v-for="field in documentFields" :key="field.key">
-                <TableCell>{{ field.label }}</TableCell> 
-                <TableCell>
-                  <img
-                    v-if="document[field.key]"
-                    :src="document[field.key]"
-                    :alt="field.label"
-                    class="h-20 w-[150px] object-cover max-[768px]:w-[60px] max-[768px]:h-10"
-                  />
-                  <span v-else>{{ _t('customerprofilepages', 'no_file_uploaded_text') }}</span>
-                </TableCell>
-                <TableCell>
-                  <Badge :variant="getStatusBadgeVariant(document.verification_status)">
-                    {{ document.verification_status }} 
-                  </Badge>
-                </TableCell>
-              </TableRow>
-            </TableBody>
-          </Table>
-          <div v-else class="p-4 text-center">
-            <p>{{ _t('customerprofilepages', 'no_documents_uploaded_yet_text') }}</p>
-          </div>
-        </div>
-      </div>
     </MyProfileLayout>
   </template>
   
@@ -314,11 +336,32 @@
     TableCell,
   } from '@/Components/ui/table';
   import MyProfileLayout from '@/Layouts/MyProfileLayout.vue';
-  import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/Components/ui/dialog';
+  import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/Components/ui/dialog';
   import { Input } from '@/Components/ui/input';
   import Badge from '@/Components/ui/badge/Badge.vue';
   import { Button } from '@/Components/ui/button';
   import { Label } from '@/Components/ui/label';
+  import {
+    AlertDialog,
+    AlertDialogAction,
+    AlertDialogCancel,
+    AlertDialogContent,
+    AlertDialogDescription,
+    AlertDialogFooter,
+    AlertDialogHeader,
+    AlertDialogTitle,
+    AlertDialogTrigger,
+  } from '@/Components/ui/alert-dialog';
+  import {
+    FileText,
+    FileX,
+    Upload,
+    Shield,
+    Trash2,
+    Eye,
+    Loader2,
+    X,
+  } from 'lucide-vue-next';
   
   const { appContext } = getCurrentInstance();
   const _t = appContext.config.globalProperties._t;
@@ -326,9 +369,12 @@
   const document = ref(usePage().props.document);
   const isDialogOpen = ref(false);
   const isDeleteConfirmOpen = ref(false);
+  const isImagePreviewOpen = ref(false);
   const isLoading = ref(false);
   const errors = ref({});
-  
+  const imagePreviewUrl = ref('');
+  const imagePreviewTitle = ref('');
+
   // Initialize with empty objects, will be populated in openUploadDialog
   const filePreviews = ref({});
   const form = ref({});
@@ -476,28 +522,34 @@
   };
   
   const getStatusBadgeVariant = (status) => {
-    return status === 'verified' ? 'default' : status === 'pending' ? 'secondary' : 'destructive';
+    switch (status) {
+        case 'verified': return 'default';
+        case 'pending': return 'secondary';
+        case 'rejected': return 'destructive';
+        default: return 'secondary';
+    }
   };
+
+  const openImagePreview = (url, title) => {
+    imagePreviewUrl.value = url;
+    imagePreviewTitle.value = title;
+    isImagePreviewOpen.value = true;
+  };
+
+  // Clear flash message after 3 seconds
+  const clearFlash = () => {
+    setTimeout(() => {
+        router.visit(window.location.pathname, {
+            preserveState: true,
+            preserveScroll: true,
+            replace: true,
+            data: { flash: null }
+        });
+    }, 3000);
+  };
+
+  // Call clearFlash when flash message exists
+  if (usePage().props.flash?.success) {
+    clearFlash();
+  }
   </script>
-  
-  <style scoped>
-  .animate-spin {
-    animation: spin 1s linear infinite;
-  }
-  
-  @keyframes spin {
-    0% {
-      transform: rotate(0deg);
-    }
-    100% {
-      transform: rotate(360deg);
-    }
-  }
-  
-  @media screen and (max-width: 768px) {
-    th,
-    td {
-      font-size: 0.75rem;
-    }
-  }
-  </style>
