@@ -36,7 +36,7 @@ const { selectedCurrency } = useCurrency();
 
 onMounted(async () => {
     try {
-        const ratesResponse = await fetch(`https://v6.exchangerate-api.com/v6/01b88ff6c6507396d707e4b6/latest/USD`);
+        const ratesResponse = await fetch(`${import.meta.env.VITE_EXCHANGERATE_API_BASE_URL}/v6/${import.meta.env.VITE_EXCHANGERATE_API_KEY}/latest/USD`);
         const ratesData = await ratesResponse.json();
         if (ratesData.result === 'success') {
             exchangeRates.value = ratesData.conversion_rates;

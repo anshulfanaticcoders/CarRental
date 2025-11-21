@@ -1,13 +1,13 @@
 <template>
     <MyProfileLayout>
-        <div class="container mx-auto p-6 space-y-6">
+        <div class="container mx-auto p-4 sm:p-6 space-y-6">
             <!-- Flash Message -->
             <div v-if="$page.props.flash.success" class="rounded-lg border border-green-200 bg-green-50 p-4 text-green-800">
                 {{ $page.props.flash.success }}
             </div>
 
             <!-- Header -->
-            <div class="flex items-center justify-between">
+            <div class="flex items-center justify-between max-[768px]:flex-col max-[768px]:items-start max-[768px]:gap-4">
                 <h1 class="text-3xl font-bold tracking-tight">{{ _t('vendorprofilepages', 'vendor_overview_header') }}</h1>
                 <div class="flex items-center gap-4">
                     <span class="inline-flex items-center px-2.5 py-0.5 rounded-full bg-blue-100 text-blue-700">
@@ -18,9 +18,9 @@
             </div>
 
             <!-- Enhanced Stats Cards -->
-            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-6">
+            <div class="flex overflow-x-auto snap-x snap-mandatory space-x-4 pb-4 no-scrollbar">
                 <!-- Total Vehicles Card -->
-                <div class="relative bg-gradient-to-br from-blue-50 to-blue-100 border border-blue-200 rounded-xl p-6 shadow-lg transition-all duration-200 hover:shadow-xl hover:scale-[1.02]">
+                <div class="relative flex-shrink-0 w-[80vw] sm:w-[50vw] md:w-[calc(33.33%-1rem)] lg:w-[calc(20%-1rem)] bg-gradient-to-br from-blue-50 to-blue-100 border border-blue-200 rounded-xl p-6 shadow-lg transition-all duration-200 hover:shadow-xl hover:scale-[1.02] snap-start">
                     <div class="flex items-center justify-between mb-4">
                         <div class="p-3 bg-blue-500 bg-opacity-20 rounded-lg">
                             <Car class="w-6 h-6 text-blue-600" />
@@ -36,7 +36,7 @@
                 </div>
 
                 <!-- Available Vehicles Card -->
-                <div class="relative bg-gradient-to-br from-green-50 to-green-100 border border-green-200 rounded-xl p-6 shadow-lg transition-all duration-200 hover:shadow-xl hover:scale-[1.02]">
+                <div class="relative flex-shrink-0 w-[80vw] sm:w-[50vw] md:w-[calc(33.33%-1rem)] lg:w-[calc(20%-1rem)] bg-gradient-to-br from-green-50 to-green-100 border border-green-200 rounded-xl p-6 shadow-lg transition-all duration-200 hover:shadow-xl hover:scale-[1.02] snap-start">
                     <div class="flex items-center justify-between mb-4">
                         <div class="p-3 bg-green-500 bg-opacity-20 rounded-lg">
                             <CheckCircle class="w-6 h-6 text-green-600" />
@@ -52,7 +52,7 @@
                 </div>
 
                 <!-- Rented Vehicles Card -->
-                <div class="relative bg-gradient-to-br from-orange-50 to-orange-100 border border-orange-200 rounded-xl p-6 shadow-lg transition-all duration-200 hover:shadow-xl hover:scale-[1.02]">
+                <div class="relative flex-shrink-0 w-[80vw] sm:w-[50vw] md:w-[calc(33.33%-1rem)] lg:w-[calc(20%-1rem)] bg-gradient-to-br from-orange-50 to-orange-100 border border-orange-200 rounded-xl p-6 shadow-lg transition-all duration-200 hover:shadow-xl hover:scale-[1.02] snap-start">
                     <div class="flex items-center justify-between mb-4">
                         <div class="p-3 bg-orange-500 bg-opacity-20 rounded-lg">
                             <CarFront class="w-6 h-6 text-orange-600" />
@@ -68,7 +68,7 @@
                 </div>
 
                 <!-- Maintenance Vehicles Card -->
-                <div class="relative bg-gradient-to-br from-red-50 to-red-100 border border-red-200 rounded-xl p-6 shadow-lg transition-all duration-200 hover:shadow-xl hover:scale-[1.02]">
+                <div class="relative flex-shrink-0 w-[80vw] sm:w-[50vw] md:w-[calc(33.33%-1rem)] lg:w-[calc(20%-1rem)] bg-gradient-to-br from-red-50 to-red-100 border border-red-200 rounded-xl p-6 shadow-lg transition-all duration-200 hover:shadow-xl hover:scale-[1.02] snap-start">
                     <div class="flex items-center justify-between mb-4">
                         <div class="p-3 bg-red-500 bg-opacity-20 rounded-lg">
                             <Wrench class="w-6 h-6 text-red-600" />
@@ -84,7 +84,7 @@
                 </div>
 
                 <!-- Total Bookings Card -->
-                <div class="relative bg-gradient-to-br from-purple-50 to-purple-100 border border-purple-200 rounded-xl p-6 shadow-lg transition-all duration-200 hover:shadow-xl hover:scale-[1.02]">
+                <div class="relative flex-shrink-0 w-[80vw] sm:w-[50vw] md:w-[calc(33.33%-1rem)] lg:w-[calc(20%-1rem)] bg-gradient-to-br from-purple-50 to-purple-100 border border-purple-200 rounded-xl p-6 shadow-lg transition-all duration-200 hover:shadow-xl hover:scale-[1.02] snap-start">
                     <div class="flex items-center justify-between mb-4">
                         <div class="p-3 bg-purple-500 bg-opacity-20 rounded-lg">
                             <Calendar class="w-6 h-6 text-purple-600" />
@@ -100,7 +100,7 @@
                 </div>
 
                 <!-- Active Bookings Card -->
-                <div class="relative bg-gradient-to-br from-yellow-50 to-yellow-100 border border-yellow-200 rounded-xl p-6 shadow-lg transition-all duration-200 hover:shadow-xl hover:scale-[1.02]">
+                <div class="relative flex-shrink-0 w-[80vw] sm:w-[50vw] md:w-[calc(33.33%-1rem)] lg:w-[calc(20%-1rem)] bg-gradient-to-br from-yellow-50 to-yellow-100 border border-yellow-200 rounded-xl p-6 shadow-lg transition-all duration-200 hover:shadow-xl hover:scale-[1.02] snap-start">
                     <div class="flex items-center justify-between mb-4">
                         <div class="p-3 bg-yellow-500 bg-opacity-20 rounded-lg">
                             <Clock class="w-6 h-6 text-yellow-600" />
@@ -116,7 +116,7 @@
                 </div>
 
                 <!-- Completed Bookings Card -->
-                <div class="relative bg-gradient-to-br from-green-50 to-green-100 border border-green-200 rounded-xl p-6 shadow-lg transition-all duration-200 hover:shadow-xl hover:scale-[1.02]">
+                <div class="relative flex-shrink-0 w-[80vw] sm:w-[50vw] md:w-[calc(33.33%-1rem)] lg:w-[calc(20%-1rem)] bg-gradient-to-br from-green-50 to-green-100 border border-green-200 rounded-xl p-6 shadow-lg transition-all duration-200 hover:shadow-xl hover:scale-[1.02] snap-start">
                     <div class="flex items-center justify-between mb-4">
                         <div class="p-3 bg-green-500 bg-opacity-20 rounded-lg">
                             <CheckCircle class="w-6 h-6 text-green-600" />
@@ -132,7 +132,7 @@
                 </div>
 
                 <!-- Cancelled Bookings Card -->
-                <div class="relative bg-gradient-to-br from-red-50 to-red-100 border border-red-200 rounded-xl p-6 shadow-lg transition-all duration-200 hover:shadow-xl hover:scale-[1.02]">
+                <div class="relative flex-shrink-0 w-[80vw] sm:w-[50vw] md:w-[calc(33.33%-1rem)] lg:w-[calc(20%-1rem)] bg-gradient-to-br from-red-50 to-red-100 border border-red-200 rounded-xl p-6 shadow-lg transition-all duration-200 hover:shadow-xl hover:scale-[1.02] snap-start">
                     <div class="flex items-center justify-between mb-4">
                         <div class="p-3 bg-red-500 bg-opacity-20 rounded-lg">
                             <XCircle class="w-6 h-6 text-red-600" />
@@ -148,7 +148,7 @@
                 </div>
 
                 <!-- Total Revenue Card -->
-                <div class="relative bg-gradient-to-br from-indigo-50 to-indigo-100 border border-indigo-200 rounded-xl p-6 shadow-lg transition-all duration-200 hover:shadow-xl hover:scale-[1.02] md:col-span-2">
+                <div class="relative flex-shrink-0 w-[80vw] sm:w-[50vw] md:w-[calc(66.66%-1rem)] lg:w-[calc(40%-1rem)] bg-gradient-to-br from-indigo-50 to-indigo-100 border border-indigo-200 rounded-xl p-6 shadow-lg transition-all duration-200 hover:shadow-xl hover:scale-[1.02] snap-start">
                     <div class="flex items-center justify-between mb-4">
                         <div class="p-3 bg-indigo-500 bg-opacity-20 rounded-lg">
                             <DollarSign class="w-6 h-6 text-indigo-600" />

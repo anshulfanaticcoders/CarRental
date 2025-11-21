@@ -1,15 +1,15 @@
 <template>
     <MyProfileLayout>
-        <div class="container mx-auto p-6 space-y-6">
+        <div class="container mx-auto p-4 sm:p-6 space-y-6">
             <!-- Flash Message -->
             <div v-if="$page.props.flash.success" class="rounded-lg border border-green-200 bg-green-50 p-4 text-green-800">
                 {{ $page.props.flash.success }}
             </div>
 
             <!-- Header -->
-            <div class="flex items-center justify-between">
+            <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 sm:gap-0">
                 <h1 class="text-3xl font-bold tracking-tight">{{ _t('customerprofilepages', 'my_documents_header') }}</h1>
-                <div class="flex items-center gap-4">
+                <div class="flex flex-wrap items-center gap-2 sm:gap-4">
                     <span class="inline-flex items-center px-2.5 py-0.5 rounded-full bg-blue-100 text-blue-700">
                         <FileText class="w-4 h-4 mr-1" />
                         {{ document ? 'Documents Uploaded' : 'No Documents' }}
@@ -62,7 +62,7 @@
   
             <!-- Upload/Edit Document Dialog -->
             <Dialog v-model:open="isDialogOpen">
-                <DialogContent class="sm:max-w-[700px] max-h-[90vh] overflow-y-auto">
+                <DialogContent class="max-w-[90vw] sm:max-w-[700px] max-h-[90vh] overflow-y-auto">
                     <DialogHeader>
                         <DialogTitle class="flex items-center gap-2">
                             <Upload class="w-5 h-5" />
@@ -249,12 +249,12 @@
                                         {{ field.label }}
                                     </div>
                                 </TableCell>
-                                <TableCell class="whitespace-nowrap px-4 py-3">
-                                    <div v-if="document[field.key]" class="relative group h-20 w-[150px]">
+                                <TableCell class="px-4 py-3">
+                                    <div v-if="document[field.key]" class="relative group h-20 w-32 md:w-[150px]">
                                         <img
                                             :src="document[field.key]"
                                             :alt="field.label"
-                                            class="h-20 w-[150px] object-cover rounded-md border shadow-sm cursor-pointer transition-all duration-200 hover:scale-105"
+                                            class="h-20 w-32 md:w-[150px] object-cover rounded-md border shadow-sm cursor-pointer transition-all duration-200 hover:scale-105"
                                             @click="openImagePreview(document[field.key], field.label)"
                                         />
                                         <div class="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-20 rounded-md transition-all duration-200 flex items-center justify-center pointer-events-none">

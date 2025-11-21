@@ -105,7 +105,7 @@ const canonicalUrl = computed(() => currentUrl.value);
 // Fetch exchange rates
 const fetchExchangeRates = async () => {
     try {
-        const response = await fetch(`https://v6.exchangerate-api.com/v6/01b88ff6c6507396d707e4b6/latest/USD`);
+        const response = await fetch(`${import.meta.env.VITE_EXCHANGERATE_API_BASE_URL}/v6/${import.meta.env.VITE_EXCHANGERATE_API_KEY}/latest/USD`);
         const data = await response.json();
         if (data.result === 'success') {
             exchangeRates.value = data.conversion_rates;
