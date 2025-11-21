@@ -728,7 +728,7 @@ const addMarkers = () => {
 
         const primaryImage = (vehicle.source === 'greenmotion' || vehicle.source === 'wheelsys' || vehicle.source === 'adobe') ? vehicle.image : (vehicle.images?.find((image) => image.image_type === 'primary')?.image_url || '/default-image.png');
         const detailRoute = vehicle.source !== 'internal'
-            ? route(getProviderRoute(vehicle), { locale: page.props.locale, id: vehicle.id, location_id: vehicle.provider_pickup_id, start_date: form.date_from, end_date: form.date_to, start_time: form.start_time, end_time: form.end_time, dropoff_location_id: form.dropoff_location_id, rentalCode: form.rentalCode })
+            ? route(getProviderRoute(vehicle), { locale: page.props.locale, id: vehicle.id, provider: vehicle.source, location_id: vehicle.provider_pickup_id, start_date: form.date_from, end_date: form.date_to, start_time: form.start_time, end_time: form.end_time, dropoff_location_id: form.dropoff_location_id, rentalCode: form.rentalCode })
             : route('vehicle.show', { locale: page.props.locale, id: vehicle.id, package: form.package_type, pickup_date: form.date_from, return_date: form.date_to });
 
         let popupPrice = "N/A";
@@ -833,7 +833,7 @@ const addMobileMarkers = () => {
 
         const primaryImage = (vehicle.source === 'greenmotion' || vehicle.source === 'wheelsys' || vehicle.source === 'adobe') ? vehicle.image : (vehicle.images?.find((image) => image.image_type === 'primary')?.image_url || '/default-image.png');
         const detailRoute = vehicle.source !== 'internal'
-            ? route(getProviderRoute(vehicle), { locale: page.props.locale, id: vehicle.id, location_id: vehicle.provider_pickup_id, start_date: form.date_from, end_date: form.date_to, start_time: form.start_time, end_time: form.end_time, dropoff_location_id: form.dropoff_location_id, rentalCode: form.rentalCode })
+            ? route(getProviderRoute(vehicle), { locale: page.props.locale, id: vehicle.id, provider: vehicle.source, location_id: vehicle.provider_pickup_id, start_date: form.date_from, end_date: form.date_to, start_time: form.start_time, end_time: form.end_time, dropoff_location_id: form.dropoff_location_id, rentalCode: form.rentalCode })
             : route('vehicle.show', { locale: page.props.locale, id: vehicle.id, package: form.package_type, pickup_date: form.date_from, return_date: form.date_to });
 
         let popupPrice = "N/A";
@@ -1895,7 +1895,7 @@ watch(
                         </div>
                         <a
                             @click="saveSearchUrl"
-                            :href="vehicle.source !== 'internal' ? route(getProviderRoute(vehicle), { locale: page.props.locale, id: vehicle.id, location_id: vehicle.provider_pickup_id, start_date: form.date_from, end_date: form.date_to, start_time: form.start_time, end_time: form.end_time, dropoff_location_id: form.dropoff_location_id, rentalCode: form.rentalCode }) : route('vehicle.show', { locale: page.props.locale, id: vehicle.id, package: form.package_type, pickup_date: form.date_from, return_date: form.date_to })">
+                            :href="vehicle.source !== 'internal' ? route(getProviderRoute(vehicle), { locale: page.props.locale, id: vehicle.id, provider: vehicle.source, location_id: vehicle.provider_pickup_id, start_date: form.date_from, end_date: form.date_to, start_time: form.start_time, end_time: form.end_time, dropoff_location_id: form.dropoff_location_id, rentalCode: form.rentalCode }) : route('vehicle.show', { locale: page.props.locale, id: vehicle.id, package: form.package_type, pickup_date: form.date_from, return_date: form.date_to })">
                             <div class="column flex flex-col gap-5 items-start">
                                 <img :src="getImageSource(vehicle)"
                                     @error="handleImageError"
