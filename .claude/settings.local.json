@@ -17,7 +17,8 @@
       "Bash(php:*)",
       "mcp__consult7__consultation",
       "mcp__serena__activate_project",
-      "mcp__serena__initial_instructions"
+      "mcp__serena__initial_instructions",
+      "Bash(npm run dev:*)"
     ]
   },
   "enableAllProjectMcpServers": true,

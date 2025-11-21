@@ -28,10 +28,10 @@ class WheelsysCarController extends Controller
                 'all_params' => $request->all()
             ]);
 
-            // Extract group code from the ID (take first part before underscore)
+            // Extract group code from the ID (take second part after provider prefix)
             if (strpos($id, '_') !== false) {
                 $parts = explode('_', $id);
-                $groupCode = $parts[0]; // Use the first part as the group code (e.g., FFAR)
+                $groupCode = $parts[1] ?? $parts[0]; // Use the second part as group code (e.g., ICAR), fallback to first part
             } else {
                 $groupCode = $id;
             }

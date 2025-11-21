@@ -472,10 +472,16 @@ class GreenMotionController extends Controller
             ]);
         }
         $locationId = $request->input('location_id', 61627);
-        $startDate = $request->input('start_date', '2032-01-06');
+        $startDate = $request->input('start_date');
         $startTime = $request->input('start_time', '09:00');
-        $endDate = $request->input('end_date', '2032-01-08');
+        $endDate = $request->input('end_date');
         $endTime = $request->input('end_time', '09:00');
+
+        // Validate required parameters
+        if (!$startDate || !$endDate) {
+            return redirect()->route('search', $locale)
+                ->with('error', 'Pickup and return dates are required. Please search again.');
+        }
         $age = $request->input('age', 35);
         $rentalCode = $request->input('rentalCode', null);
 
@@ -514,7 +520,15 @@ class GreenMotionController extends Controller
             if ($xmlObject !== false) {
                 $vehicles = $this->parseVehicles($xmlObject);
                 Log::info('Parsed Vehicles in showGreenMotionCar: ' . json_encode(collect($vehicles)->pluck('id')));
-                $vehicle = collect($vehicles)->firstWhere('id', $id);
+
+                // Strip provider prefix from ID for matching
+                $actualVehicleId = $id;
+                if (strpos($id, 'greenmotion_') === 0) {
+                    $actualVehicleId = substr($id, strlen('greenmotion_'));
+                    Log::info("Stripped greenmotion_ prefix, searching for vehicle ID: {$actualVehicleId}");
+                }
+
+                $vehicle = collect($vehicles)->firstWhere('id', $actualVehicleId);
                 $optionalExtras = $this->parseOptionalExtras($xmlObject);
                 $quoteId = (string) $xmlObject->response->quoteid ?? null; // Extract quoteid from response
 
