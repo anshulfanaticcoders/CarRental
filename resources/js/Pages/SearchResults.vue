@@ -2224,13 +2224,13 @@ watch(
                                                     <span class="text-customPrimaryColor text-[1.875rem] font-medium max-[768px]:text-[1.3rem] max-[768px]:font-bold">
                                                         {{ getCurrencySymbol(selectedCurrency) }}{{ convertCurrency(vehicle.price_per_day, vehicle.currency || 'USD').toFixed(2) }}
                                                     </span>
-                                                    <span>/day</span>
+                                                    <span class="text-sm text-gray-600">per rental</span>
                                                 </div>
                                                 <div v-else-if="vehicle.products && vehicle.products[0]?.total && vehicle.products[0].total > 0">
                                                     <span class="text-customPrimaryColor text-[1.875rem] font-medium max-[768px]:text-[1.3rem] max-[768px]:font-bold">
                                                         {{ getCurrencySymbol(selectedCurrency) }}{{ convertCurrency((parseFloat(vehicle.products[0].total) / numberOfRentalDays), vehicle.products[0].currency).toFixed(2) }}
                                                     </span>
-                                                    <span>/day</span>
+                                                    <span class="text-sm text-gray-600">per rental</span>
                                                 </div>
                                                 <div v-else>
                                                     <span class="text-sm text-gray-500">Price not available</span>
@@ -2253,19 +2253,19 @@ watch(
                                                     <span class="text-customPrimaryColor text-lg font-semibold">
                                                         {{ getCurrencySymbol(selectedCurrency) }}{{ convertCurrency(vehicle.price_per_day, vehicle.currency || 'USD').toFixed(2) }}
                                                     </span>
-                                                    <span class="text-xs text-gray-600 ml-1">/day</span>
+                                                    <span class="text-xs text-gray-600 ml-1">per rental</span>
                                                 </div>
                                                 <div v-else-if="vehicle.source === 'adobe' && vehicle.tdr && vehicle.tdr > 0" class="flex items-baseline">
                                                     <span class="text-customPrimaryColor text-lg font-semibold">
                                                         {{ getCurrencySymbol(selectedCurrency) }}{{ convertCurrency(vehicle.tdr, 'USD').toFixed(2) }}
                                                     </span>
-                                                    <span class="text-xs text-gray-600 ml-1">/day</span>
+                                                    <span class="text-xs text-gray-600 ml-1">per rental</span>
                                                 </div>
                                                 <div v-else-if="vehicle.products && vehicle.products[0]?.total && vehicle.products[0].total > 0" class="flex items-baseline">
                                                     <span class="text-customPrimaryColor text-lg font-semibold">
                                                         {{ getCurrencySymbol(selectedCurrency) }}{{ convertCurrency((parseFloat(vehicle.products[0].total) / numberOfRentalDays), vehicle.products[0].currency).toFixed(2) }}
                                                     </span>
-                                                    <span class="text-xs text-gray-600 ml-1">/day</span>
+                                                    <span class="text-xs text-gray-600 ml-1">per rental</span>
                                                 </div>
                                                 <div v-else class="mt-1">
                                                     <span class="text-sm text-gray-500">Price not available</span>
