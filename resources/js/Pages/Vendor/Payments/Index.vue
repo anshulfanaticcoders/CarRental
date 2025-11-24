@@ -1,6 +1,6 @@
 <template>
   <MyProfileLayout>
-    <div class="p-6 space-y-6">
+    <div class="p-0 md:p-0 lg:p-6 space-y-6">
       <!-- Enhanced Header -->
       <div class="bg-gradient-to-r from-green-50 to-emerald-50 border border-green-100 rounded-xl p-6 shadow-sm">
         <div class="flex items-center gap-4">
@@ -269,7 +269,7 @@
 import { ref, computed, getCurrentInstance } from 'vue';
 import MyProfileLayout from '@/Layouts/MyProfileLayout.vue';
 import { defineProps } from 'vue'
-import Pagination from '@/Pages/Vendor/Plan/Pagination.vue';
+import Pagination from '@/Pages/Vendor/Payments/Pagination.vue';
 import { Link, router } from '@inertiajs/vue3';
 import { Button } from '@/Components/ui/button';
 import { Input } from '@/Components/ui/input';

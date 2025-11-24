@@ -1,6 +1,6 @@
 <template>
     <MyProfileLayout>
-        <div class="p-6 space-y-6">
+       <div class="p-0 md:p-0 lg:p-6 space-y-6">
             <!-- Enhanced Header -->
             <div class="bg-gradient-to-r from-orange-50 to-amber-50 border border-orange-100 rounded-xl p-6 shadow-sm">
                 <div class="flex items-center gap-4">
