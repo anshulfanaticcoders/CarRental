@@ -452,23 +452,23 @@ const bookingDataForStripe = computed(() => {
     <AuthenticatedHeaderLayout />
 
     <!-- Hero Section -->
-    <section class="bg-primary py-16 relative overflow-hidden">
+    <section class="bg-primary py-8 sm:py-12 md:py-16 relative overflow-hidden">
         <div class="absolute inset-0 bg-gradient-to-br from-primary to-primary-dark opacity-90"></div>
-        <div class="container relative z-10">
+        <div class="container relative z-10 px-4 sm:px-6 lg:px-8">
             <div class="max-w-4xl mx-auto text-center text-white">
-                <div class="inline-flex items-center px-4 py-2 bg-white/10 backdrop-blur-sm rounded-full mb-6">
-                    <svg class="w-5 h-5 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                <div class="inline-flex items-center px-3 sm:px-4 py-2 bg-white/10 backdrop-blur-sm rounded-full mb-4 sm:mb-6">
+                    <svg class="w-4 h-4 sm:w-5 sm:h-5 mr-2" fill="currentColor" viewBox="0 0 20 20">
                         <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/>
                     </svg>
-                    <span class="text-sm font-medium">Secure Booking Process</span>
+                    <span class="text-xs sm:text-sm font-medium">Secure Booking Process</span>
                 </div>
-                <h1 class="text-4xl md:text-5xl font-bold mb-4">Complete Your Reservation</h1>
-                <p class="text-xl opacity-90">{{ vehicle?.name }} - {{ location?.name }}</p>
+                <h1 class="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-bold mb-3 sm:mb-4">Complete Your Reservation</h1>
+                <p class="text-base sm:text-lg md:text-xl opacity-90">{{ vehicle?.name }} - {{ location?.name }}</p>
             </div>
         </div>
     </section>
 
-    <div class="container mx-auto py-12">
+    <div class="container mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-10 md:py-12">
         <div v-if="error" class="max-w-2xl mx-auto">
             <div class="bg-red-50 border border-red-200 rounded-xl p-8 text-center">
                 <div class="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
@@ -490,63 +490,98 @@ const bookingDataForStripe = computed(() => {
 
         <div v-else-if="vehicle" class=" mx-auto py-12">
             <!-- Progress Steps -->
-            <div class="mb-8">
-                <div class="flex items-center justify-center space-x-8 mb-8">
-                    <div v-for="step in 3" :key="step" 
-                         class="flex items-center cursor-pointer transition-all duration-300"
+            <div class="mb-6 sm:mb-8">
+                <!-- Mobile: Vertical steps -->
+                <div class="flex flex-col sm:hidden space-y-3 mb-6">
+                    <div v-for="step in 3" :key="step"
+                         class="flex items-center cursor-pointer transition-all duration-300 p-3 rounded-lg"
+                         :class="step <= currentStep ? 'bg-primary/5' : 'bg-gray-50'"
                          @click="goToStep(step)">
-                        <div class="flex items-center">
-                            <div class="w-10 h-10 rounded-full flex items-center justify-center font-semibold transition-all duration-300"
-                                 :class="step <= currentStep 
-                                   ? 'bg-primary text-white shadow-lg' 
+                        <div class="flex items-center flex-1">
+                            <div class="w-12 h-12 rounded-full flex items-center justify-center font-semibold transition-all duration-300"
+                                 :class="step <= currentStep
+                                   ? 'bg-primary text-white shadow-lg'
                                    : 'bg-gray-200 text-gray-600'">
                                 <svg v-if="step < currentStep" class="w-6 h-6" fill="currentColor" viewBox="0 0 20 20">
                                     <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/>
                                 </svg>
-                                <span v-else>{{ step }}</span>
+                                <span v-else class="text-lg">{{ step }}</span>
                             </div>
-                            <span class="ml-3 font-medium text-gray-700"
+                            <div class="ml-4 flex-1">
+                                <div class="font-medium text-gray-900 text-sm"
+                                     :class="step <= currentStep ? 'text-primary font-semibold' : 'text-gray-500'">
+                                    {{ step === 1 ? 'Select Package' : step === 2 ? 'Your Details' : 'Payment' }}
+                                </div>
+                                <div class="text-xs text-gray-500 mt-1">
+                                    {{ step === 1 ? 'Choose rental package' : step === 2 ? 'Enter your information' : 'Complete payment' }}
+                                </div>
+                            </div>
+                        </div>
+                        <div v-if="step < currentStep" class="ml-3">
+                            <svg class="w-5 h-5 text-green-500" fill="currentColor" viewBox="0 0 20 20">
+                                <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/>
+                            </svg>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Desktop/Tablet: Horizontal steps -->
+                <div class="hidden sm:flex items-center justify-center space-x-4 md:space-x-8 mb-6 sm:mb-8">
+                    <div v-for="step in 3" :key="step"
+                         class="flex items-center cursor-pointer transition-all duration-300"
+                         @click="goToStep(step)">
+                        <div class="flex items-center">
+                            <div class="w-10 h-10 sm:w-12 sm:h-12 rounded-full flex items-center justify-center font-semibold transition-all duration-300"
+                                 :class="step <= currentStep
+                                   ? 'bg-primary text-white shadow-lg'
+                                   : 'bg-gray-200 text-gray-600'">
+                                <svg v-if="step < currentStep" class="w-5 h-5 sm:w-6 sm:h-6" fill="currentColor" viewBox="0 0 20 20">
+                                    <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/>
+                                </svg>
+                                <span v-else class="text-sm sm:text-base">{{ step }}</span>
+                            </div>
+                            <span class="ml-2 sm:ml-3 font-medium text-gray-700 text-sm sm:text-base"
                                   :class="step <= currentStep ? 'text-primary' : 'text-gray-500'">
                                 {{ step === 1 ? 'Select Package' : step === 2 ? 'Your Details' : 'Payment' }}
                             </span>
                         </div>
-                        <div v-if="step < 3" class="w-20 h-0.5 ml-8"
+                        <div v-if="step < 3" class="w-12 sm:w-16 md:w-20 h-0.5 ml-2 sm:ml-4 md:ml-8"
                              :class="step < currentStep ? 'bg-primary' : 'bg-gray-200'"></div>
                     </div>
                 </div>
             </div>
 
-            <div class="grid grid-cols-1 lg:grid-cols-5 gap-8">
+            <div class="grid grid-cols-1 xl:grid-cols-5 gap-6 lg:gap-8">
                 <!-- Main Content -->
-                <div class="lg:col-span-3">
+                <div class="xl:col-span-3 lg:col-span-4">
                     <!-- Step 1: Package Selection -->
-                    <div v-show="currentStep === 1" class="space-y-8">
+                    <div v-show="currentStep === 1" class="space-y-6 sm:space-y-8">
                         <!-- Vehicle Summary Card -->
                         <div class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-                            <div class="p-6 bg-gradient-to-r from-gray-50 to-white border-b">
-                                <h2 class="text-2xl font-bold text-gray-900 mb-2">Your Selected Vehicle</h2>
-                                <p class="text-gray-600">Review your vehicle and rental details</p>
+                            <div class="p-4 sm:p-6 bg-gradient-to-r from-gray-50 to-white border-b">
+                                <h2 class="text-xl sm:text-2xl font-bold text-gray-900 mb-2">Your Selected Vehicle</h2>
+                                <p class="text-sm sm:text-base text-gray-600">Review your vehicle and rental details</p>
                             </div>
-                            <div class="p-6">
-                                <div class="flex flex-col md:flex-row gap-6">
+                            <div class="p-4 sm:p-6">
+                                <div class="flex flex-col md:flex-row gap-4 sm:gap-6">
                                     <div class="md:w-1/3">
-                                        <img :src="vehicle.image || '/default-car-image.jpg'" 
+                                        <img :src="vehicle.image || '/default-car-image.jpg'"
                                              :alt="vehicle.name"
-                                             class="w-full h-48 md:h-32 object-cover rounded-xl shadow-sm" />
+                                             class="w-full h-40 sm:h-48 md:h-32 object-cover rounded-xl shadow-sm" />
                                     </div>
                                     <div class="md:w-2/3 space-y-3">
                                         <div>
-                                            <h3 class="text-xl font-bold text-gray-900">{{ vehicle.name }}</h3>
-                                            <p class="text-gray-600">{{ vehicle.groupName }}</p>
+                                            <h3 class="text-lg sm:text-xl font-bold text-gray-900">{{ vehicle.name }}</h3>
+                                            <p class="text-sm sm:text-base text-gray-600">{{ vehicle.groupName }}</p>
                                         </div>
-                                        <div class="grid grid-cols-2 gap-4">
+                                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                                             <div class="bg-gray-50 rounded-lg p-3">
-                                                <p class="text-sm font-medium text-gray-500">Rental Duration</p>
-                                                <p class="text-lg font-semibold text-gray-900">{{ rentalDuration }} days</p>
+                                                <p class="text-xs sm:text-sm font-medium text-gray-500">Rental Duration</p>
+                                                <p class="text-base sm:text-lg font-semibold text-gray-900">{{ rentalDuration }} days</p>
                                             </div>
                                             <div class="bg-gray-50 rounded-lg p-3">
-                                                <p class="text-sm font-medium text-gray-500">Location</p>
-                                                <p class="text-lg font-semibold text-gray-900">{{ location?.name }}</p>
+                                                <p class="text-xs sm:text-sm font-medium text-gray-500">Location</p>
+                                                <p class="text-base sm:text-lg font-semibold text-gray-900 truncate">{{ location?.name }}</p>
                                             </div>
                                         </div>
                                     </div>
@@ -557,16 +592,16 @@ const bookingDataForStripe = computed(() => {
                         <!-- Package Selection -->
                         <div class="bg-white rounded-2xl shadow-sm border border-gray-100">
                             <div class="p-6 border-b bg-gradient-to-r from-gray-50 to-white">
-                                <h3 class="text-xl font-bold text-gray-900 mb-2">Choose Your Rental Package</h3>
+                                <h3 class="text-lg sm:text-xl font-bold text-gray-900 mb-2">Choose Your Rental Package</h3>
                                 <p class="text-gray-600">Select the package that best suits your needs</p>
                             </div>
                             <div class="p-6">
                                 <div v-if="formErrors.package" class="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg">
                                     <p class="text-red-700 text-sm">{{ formErrors.package }}</p>
                                 </div>
-                                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
                                     <div v-for="pkg in availablePackages" :key="pkg.type"
-                                         class="relative border-2 rounded-xl p-6 cursor-pointer transition-all duration-300 hover:shadow-lg"
+                                         class="relative border-2 rounded-xl p-4 sm:p-6 cursor-pointer transition-all duration-300 hover:shadow-lg"
                                          :class="selectedPackage?.type === pkg.type 
                                            ? 'border-primary bg-primary/5 shadow-md' 
                                            : 'border-gray-200 hover:border-gray-300'"
@@ -575,37 +610,37 @@ const bookingDataForStripe = computed(() => {
                                             <h4 :class="[
     'text-lg font-bold text-gray-900',
     getPackageFullName(pkg.type) === 'Premium Plus +' ? 'border-[2px] border-green-500 p-2 rounded' : ''
-  ]" class="text-lg font-bold text-gray-900">{{ getPackageFullName(pkg.type) }}</h4>
-                                            <div class="w-5 h-5 rounded-full border-2 flex items-center justify-center"
-                                                 :class="selectedPackage?.type === pkg.type 
-                                                   ? 'border-primary bg-primary' 
+  ]" class="text-base sm:text-lg font-bold text-gray-900">{{ getPackageFullName(pkg.type) }}</h4>
+                                            <div class="w-6 h-6 sm:w-5 sm:h-5 rounded-full border-2 flex items-center justify-center"
+                                                 :class="selectedPackage?.type === pkg.type
+                                                   ? 'border-primary bg-primary'
                                                    : 'border-gray-300'">
-                                                <div v-if="selectedPackage?.type === pkg.type" 
-                                                     class="w-2 h-2 bg-white rounded-full"></div>
+                                                <div v-if="selectedPackage?.type === pkg.type"
+                                                     class="w-3 h-3 sm:w-2 sm:h-2 bg-white rounded-full"></div>
                                             </div>
                                         </div>
                                         <div class="space-y-2">
                                             <div class="flex justify-between">
-                                                <span class="text-gray-600">Total Price</span>
-                                                <span class="font-semibold">{{ formatPrice(pkg.total, pkg.currency) }}</span>
+                                                <span class="text-sm sm:text-base text-gray-600">Total Price</span>
+                                                <span class="font-semibold text-sm sm:text-base">{{ formatPrice(pkg.total, pkg.currency) }}</span>
                                             </div>
                                             <div class="flex justify-between">
-                                                <span class="text-gray-600">Deposit</span>
-                                                <span class="font-semibold">{{ formatPrice(pkg.deposit, pkg.currency) }}</span>
+                                                <span class="text-sm sm:text-base text-gray-600">Deposit</span>
+                                                <span class="font-semibold text-sm sm:text-base">{{ formatPrice(pkg.deposit, pkg.currency) }}</span>
                                             </div>
                                             <div class="flex justify-between">
-                                                <span class="text-gray-600">Excess</span>
-                                                <span class="font-semibold">{{ formatPrice(pkg.excess, pkg.currency) }}</span>
+                                                <span class="text-sm sm:text-base text-gray-600">Excess</span>
+                                                <span class="font-semibold text-sm sm:text-base">{{ formatPrice(pkg.excess, pkg.currency) }}</span>
                                             </div>
                                             <div class="flex justify-between">
-                                                <span class="text-gray-600">Fuel Policy</span>
-                                                <span class="font-semibold">{{ pkg.fuelpolicy }} <span class="text-[0.75rem]">({{ getFuelPolicyName(pkg.fuelpolicy) }})</span></span>
+                                                <span class="text-sm sm:text-base text-gray-600">Fuel Policy</span>
+                                                <span class="font-semibold text-sm sm:text-base">{{ pkg.fuelpolicy }} <span class="text-xs">({{ getFuelPolicyName(pkg.fuelpolicy) }})</span></span>
                                             </div>
                                         </div>
                                         <div v-if="pkg.benefits" class="mt-4 pt-4 border-t border-gray-200">
                                             <h5 class="text-sm font-semibold text-gray-800 mb-2">Package Includes:</h5>
-                                            <ul class="space-y-2">
-                                                <li v-for="(value, key) in pkg.benefits" :key="key" class="flex items-center text-sm text-gray-600">
+                                            <ul class="space-y-1.5 sm:space-y-2">
+                                                <li v-for="(value, key) in pkg.benefits" :key="key" class="flex items-start sm:items-center text-xs sm:text-sm text-gray-600">
                                                     <svg v-if="value" class="w-4 h-4 mr-2 text-green-500" fill="currentColor" viewBox="0 0 20 20">
                                                         <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/>
                                                     </svg>
@@ -623,14 +658,14 @@ const bookingDataForStripe = computed(() => {
 
                         <!-- Optional Extras -->
                         <div class="bg-white rounded-2xl shadow-sm border border-gray-100">
-                            <div class="p-6 border-b bg-gradient-to-r from-gray-50 to-white">
-                                <h3 class="text-xl font-bold text-gray-900 mb-2">Optional Extras</h3>
-                                <p class="text-gray-600">Enhance your rental experience</p>
+                            <div class="p-4 sm:p-6 border-b bg-gradient-to-r from-gray-50 to-white">
+                                <h3 class="text-lg sm:text-xl font-bold text-gray-900 mb-2">Optional Extras</h3>
+                                <p class="text-sm sm:text-base text-gray-600">Enhance your rental experience</p>
                             </div>
-                            <div class="p-6">
-                                <div v-if="optionalExtras.length > 0" class="space-y-4">
+                            <div class="p-4 sm:p-6">
+                                <div v-if="optionalExtras.length > 0" class="space-y-3 sm:space-y-4">
                                     <div v-for="extra in optionalExtras" :key="extra.optionID || extra.Name"
-                                         class="relative flex items-center justify-between p-4 border border-gray-200 rounded-xl hover:bg-gray-50 transition-colors">
+                                         class="relative flex items-center justify-between p-3 sm:p-4 border border-gray-200 rounded-xl hover:bg-gray-50 transition-colors">
                                         <div v-if="freeExtras.includes(extra.optionID)" class="absolute top-0 right-0 bg-green-500 text-white text-xs font-bold px-2 py-1 rounded-bl-lg rounded-tr-lg">
                                             Free
                                         </div>
@@ -641,16 +676,16 @@ const bookingDataForStripe = computed(() => {
                                                 </svg>
                                             </div>
                                             <div>
-                                                <h4 class="font-semibold text-gray-900 text-[1.5rem]">{{ extra.Name }}</h4>
+                                                <h4 class="font-semibold text-gray-900 text-base sm:text-lg">{{ extra.Name }}</h4>
                                                 <p class="text-gray-600 text-sm">{{ extra.Description }}</p>
                                                 <p class="text-primary font-semibold mt-1">
                                                     {{ formatPrice(extra.Daily_rate, extra.Daily_rate_currency) }}/day
                                                 </p>
                                             </div>
                                         </div>
-                                        <label class="relative inline-flex items-center cursor-pointer">
+                                        <label class="relative inline-flex items-center cursor-pointer p-2 -m-2 rounded-lg">
                                             <input type="checkbox" :value="extra" v-model="selectedOptionalExtras" class="sr-only peer">
-                                            <div class="relative w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-primary/20 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary"></div>
+                                            <div class="relative w-12 h-7 sm:w-11 sm:h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-primary/20 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary"></div>
                                         </label>
                                     </div>
                                 </div>
@@ -667,24 +702,24 @@ const bookingDataForStripe = computed(() => {
                     </div>
 
                     <!-- Step 2: Customer Information -->
-                    <div v-show="currentStep === 2" class="space-y-8">
+                    <div v-show="currentStep === 2" class="space-y-6 sm:space-y-8">
                         <div class="bg-white rounded-2xl shadow-sm border border-gray-100">
-                            <div class="p-6 border-b bg-gradient-to-r from-gray-50 to-white">
-                                <h3 class="text-xl font-bold text-gray-900 mb-2">Your Details</h3>
-                                <p class="text-gray-600">Please provide your information to complete the booking</p>
+                            <div class="p-4 sm:p-6 border-b bg-gradient-to-r from-gray-50 to-white">
+                                <h3 class="text-lg sm:text-lg sm:text-xl font-bold text-gray-900 mb-2">Your Details</h3>
+                                <p class="text-sm sm:text-base text-gray-600">Please provide your information to complete the booking</p>
                             </div>
-                            <div class="p-6">
-                                <form class="space-y-6">
+                            <div class="p-4 sm:p-6">
+                                <form class="space-y-4 sm:space-y-6">
                                     <!-- Personal Information -->
                                     <div>
-                                        <h4 class="text-lg font-semibold text-gray-900 mb-4">Personal Information</h4>
-                                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                        <h4 class="text-base sm:text-lg font-semibold text-gray-900 mb-4">Personal Information</h4>
+                                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
                                             <div>
                                                 <label for="firstname" class="block text-sm font-medium text-gray-700 mb-2">
                                                     First Name <span class="text-red-500">*</span>
                                                 </label>
-                                                <input type="text" id="firstname" v-model="form.customer.firstname" 
-                                                       class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary transition-colors"
+                                                <input type="text" id="firstname" v-model="form.customer.firstname"
+                                                       class="w-full px-4 py-3 sm:py-4 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary transition-colors text-base sm:text-lg"
                                                        :class="{ 'border-red-300 bg-red-50': formErrors.firstname }"
                                                        placeholder="Enter your first name" />
                                                 <p v-if="formErrors.firstname" class="mt-1 text-sm text-red-600">{{ formErrors.firstname }}</p>
@@ -694,7 +729,7 @@ const bookingDataForStripe = computed(() => {
                                                     Last Name <span class="text-red-500">*</span>
                                                 </label>
                                                 <input type="text" id="surname" v-model="form.customer.surname" 
-                                                       class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary transition-colors"
+                                                       class="w-full px-4 py-3 sm:py-4 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary transition-colors text-base sm:text-lg"
                                                        :class="{ 'border-red-300 bg-red-50': formErrors.surname }"
                                                        placeholder="Enter your last name" />
                                                 <p v-if="formErrors.surname" class="mt-1 text-sm text-red-600">{{ formErrors.surname }}</p>
@@ -704,8 +739,8 @@ const bookingDataForStripe = computed(() => {
 
                                     <!-- Contact Information -->
                                     <div>
-                                        <h4 class="text-lg font-semibold text-gray-900 mb-4">Contact Information</h4>
-                                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                        <h4 class="text-base sm:text-lg font-semibold text-gray-900 mb-4">Contact Information</h4>
+                                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
                                             <div>
                                                 <label for="email" class="block text-sm font-medium text-gray-700 mb-2">
                                                     Email Address <span class="text-red-500">*</span>
@@ -721,7 +756,7 @@ const bookingDataForStripe = computed(() => {
                                                     Phone Number <span class="text-red-500">*</span>
                                                 </label>
                                                 <input type="tel" id="phone" v-model="form.customer.phone" 
-                                                       class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary transition-colors"
+                                                       class="w-full px-4 py-3 sm:py-4 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary transition-colors text-base sm:text-lg"
                                                        :class="{ 'border-red-300 bg-red-50': formErrors.phone }"
                                                        placeholder="+1 (555) 123-4567" />
                                                 <p v-if="formErrors.phone" class="mt-1 text-sm text-red-600">{{ formErrors.phone }}</p>
@@ -731,25 +766,25 @@ const bookingDataForStripe = computed(() => {
 
                                     <!-- Address Information -->
                                     <div>
-                                        <h4 class="text-lg font-semibold text-gray-900 mb-4">Address Information</h4>
+                                        <h4 class="text-base sm:text-lg font-semibold text-gray-900 mb-4">Address Information</h4>
                                         <div class="space-y-6">
                                             <div>
                                                 <label for="address1" class="block text-sm font-medium text-gray-700 mb-2">
                                                     Address Line 1 <span class="text-red-500">*</span>
                                                 </label>
                                                 <input type="text" id="address1" v-model="form.customer.address1" 
-                                                       class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary transition-colors"
+                                                       class="w-full px-4 py-3 sm:py-4 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary transition-colors text-base sm:text-lg"
                                                        :class="{ 'border-red-300 bg-red-50': formErrors.address1 }"
                                                        placeholder="Street address, P.O. box, company name" />
                                                 <p v-if="formErrors.address1" class="mt-1 text-sm text-red-600">{{ formErrors.address1 }}</p>
                                             </div>
-                                            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                                            <div class="grid grid-cols-1 md:grid-cols-3 gap-4 sm:gap-6">
                                                 <div>
                                                     <label for="town" class="block text-sm font-medium text-gray-700 mb-2">
                                                         Town/City <span class="text-red-500">*</span>
                                                     </label>
                                                     <input type="text" id="town" v-model="form.customer.town" 
-                                                           class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary transition-colors"
+                                                           class="w-full px-4 py-3 sm:py-4 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary transition-colors text-base sm:text-lg"
                                                            :class="{ 'border-red-300 bg-red-50': formErrors.town }"
                                                            placeholder="City" />
                                                     <p v-if="formErrors.town" class="mt-1 text-sm text-red-600">{{ formErrors.town }}</p>
@@ -759,7 +794,7 @@ const bookingDataForStripe = computed(() => {
                                                         Postcode <span class="text-red-500">*</span>
                                                     </label>
                                                     <input type="text" id="postcode" v-model="form.customer.postcode" 
-                                                           class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary transition-colors"
+                                                           class="w-full px-4 py-3 sm:py-4 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary transition-colors text-base sm:text-lg"
                                                            :class="{ 'border-red-300 bg-red-50': formErrors.postcode }"
                                                            placeholder="12345" />
                                                     <p v-if="formErrors.postcode" class="mt-1 text-sm text-red-600">{{ formErrors.postcode }}</p>
@@ -769,7 +804,7 @@ const bookingDataForStripe = computed(() => {
                                                         Country <span class="text-red-500">*</span>
                                                     </label>
                                                     <input type="text" id="country" v-model="form.customer.country" 
-                                                           class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary transition-colors"
+                                                           class="w-full px-4 py-3 sm:py-4 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary transition-colors text-base sm:text-lg"
                                                            :class="{ 'border-red-300 bg-red-50': formErrors.country }"
                                                            placeholder="Country" />
                                                     <p v-if="formErrors.country" class="mt-1 text-sm text-red-600">{{ formErrors.country }}</p>
@@ -780,14 +815,14 @@ const bookingDataForStripe = computed(() => {
 
                                     <!-- Driver Information -->
                                     <div>
-                                        <h4 class="text-lg font-semibold text-gray-900 mb-4">Driver Information</h4>
-                                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                        <h4 class="text-base sm:text-lg font-semibold text-gray-900 mb-4">Driver Information</h4>
+                                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
                                             <div>
                                                 <label for="driver_licence_number" class="block text-sm font-medium text-gray-700 mb-2">
                                                     Driver's Licence Number <span class="text-red-500">*</span>
                                                 </label>
                                                 <input type="text" id="driver_licence_number" v-model="form.customer.driver_licence_number" 
-                                                       class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary transition-colors"
+                                                       class="w-full px-4 py-3 sm:py-4 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary transition-colors text-base sm:text-lg"
                                                        :class="{ 'border-red-300 bg-red-50': formErrors.driver_licence_number }"
                                                        placeholder="Licence number" />
                                                 <p v-if="formErrors.driver_licence_number" class="mt-1 text-sm text-red-600">{{ formErrors.driver_licence_number }}</p>
@@ -797,7 +832,7 @@ const bookingDataForStripe = computed(() => {
                                                     Age <span class="text-red-500">*</span>
                                                 </label>
                                                 <input type="number" id="age" v-model="form.age" 
-                                                       class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary transition-colors"
+                                                       class="w-full px-4 py-3 sm:py-4 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary transition-colors text-base sm:text-lg"
                                                        placeholder="25" min="18" max="99" />
                                             </div>
                                         </div>
@@ -805,14 +840,14 @@ const bookingDataForStripe = computed(() => {
 
                                     <!-- Optional Information -->
                                     <div>
-                                        <h4 class="text-lg font-semibold text-gray-900 mb-4">Optional Information</h4>
-                                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                        <h4 class="text-base sm:text-lg font-semibold text-gray-900 mb-4">Optional Information</h4>
+                                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
                                             <div>
                                                 <label for="flight_number" class="block text-sm font-medium text-gray-700 mb-2">
                                                     Flight Number
                                                 </label>
                                                 <input type="text" id="flight_number" v-model="form.customer.flight_number" 
-                                                       class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary transition-colors"
+                                                       class="w-full px-4 py-3 sm:py-4 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary transition-colors text-base sm:text-lg"
                                                        placeholder="BA123" />
                                             </div>
                                             <div>
@@ -820,7 +855,7 @@ const bookingDataForStripe = computed(() => {
                                                     Special Requests
                                                 </label>
                                                 <textarea id="comments" v-model="form.customer.comments" rows="3"
-                                                          class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary transition-colors"
+                                                          class="w-full px-4 py-3 sm:py-4 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary transition-colors text-base sm:text-lg"
                                                           placeholder="Any special requests or comments..."></textarea>
                                             </div>
                                         </div>
@@ -831,12 +866,12 @@ const bookingDataForStripe = computed(() => {
                     </div>
 
                     <!-- Step 3: Payment -->
-                    <div v-show="currentStep === 3" class="space-y-8">
+                    <div v-show="currentStep === 3" class="space-y-6 sm:space-y-8">
                         <!-- Currency Selector -->
-                        <div class="flex items-center justify-end gap-2">
+                        <div class="flex flex-col sm:flex-row sm:items-center sm:justify-end gap-2 sm:gap-3 mb-4 sm:mb-0">
                             <label class="text-sm font-medium text-gray-700">Currency:</label>
                             <select v-model="selectedCurrency"
-                                class="px-3 py-1 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+                                class="px-3 py-2 sm:py-1 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 w-full sm:w-auto">
                                 <option value="USD">USD ($)</option>
                                 <option value="EUR">EUR (€)</option>
                                 <option value="GBP">GBP (£)</option>
@@ -856,31 +891,31 @@ const bookingDataForStripe = computed(() => {
                             </select>
                         </div>
                         <div class="bg-white rounded-2xl shadow-sm border border-gray-100">
-                            <div class="p-6 border-b bg-gradient-to-r from-gray-50 to-white">
-                                <h3 class="text-xl font-bold text-gray-900 mb-2">Complete Your Payment</h3>
-                                <p class="text-gray-600">Review your booking and complete the payment process</p>
+                            <div class="p-4 sm:p-6 border-b bg-gradient-to-r from-gray-50 to-white">
+                                <h3 class="text-lg sm:text-xl font-bold text-gray-900 mb-2">Complete Your Payment</h3>
+                                <p class="text-sm sm:text-base text-gray-600">Review your booking and complete the payment process</p>
                             </div>
-                            <div class="p-6">
+                            <div class="p-4 sm:p-6">
                                 <GreenMotionStripeCheckout :booking-data="bookingDataForStripe" @error="handleStripeError" />
                             </div>
                         </div>
                     </div>
 
                     <!-- Navigation Buttons -->
-                    <div class="flex justify-between pt-8">
-                        <button v-if="currentStep > 1" 
+                    <div class="flex flex-col sm:flex-row justify-between gap-4 pt-6 sm:pt-8">
+                        <button v-if="currentStep > 1"
                                 @click="prevStep"
-                                class="inline-flex items-center px-6 py-3 border border-gray-300 text-gray-700 font-medium rounded-lg hover:bg-gray-50 transition-colors">
+                                class="inline-flex items-center justify-center px-6 py-4 sm:py-3 border border-gray-300 text-gray-700 font-medium rounded-lg hover:bg-gray-50 transition-colors text-base sm:text-lg w-full sm:w-auto min-h-[44px]">
                             <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"/>
                             </svg>
                             Previous Step
                         </button>
-                        <div v-else></div>
+                        <div v-else class="hidden sm:block"></div>
 
-                        <button v-if="currentStep < 3" 
+                        <button v-if="currentStep < 3"
                                 @click="nextStep"
-                                class="inline-flex items-center px-6 py-3 bg-primary text-white font-medium rounded-lg hover:bg-primary-dark transition-colors">
+                                class="inline-flex items-center justify-center px-6 py-4 sm:py-3 bg-primary text-white font-medium rounded-lg hover:bg-primary-dark transition-colors text-base sm:text-lg w-full sm:w-auto min-h-[44px] shadow-lg">
                             Next Step
                             <svg class="w-5 h-5 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3"/>
@@ -890,32 +925,39 @@ const bookingDataForStripe = computed(() => {
                 </div>
 
                 <!-- Right Column: Booking Summary -->
-                <div class="lg:col-span-2">
+                <div class="xl:col-span-2 lg:col-span-1">
                     <!-- Mobile Summary Toggle -->
                     <button @click="showMobileBookingSummary = !showMobileBookingSummary"
-                            class="lg:hidden w-full mb-4 px-4 py-3 bg-primary text-white font-medium rounded-lg">
-                        <span v-if="!showMobileBookingSummary">Show Booking Summary</span>
-                        <span v-else>Hide Booking Summary</span>
+                            class="lg:hidden w-full mb-4 px-4 py-4 sm:py-5 bg-primary text-white font-medium rounded-lg flex items-center justify-between text-base sm:text-lg shadow-lg">
+                        <span class="flex items-center">
+                            <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/>
+                            </svg>
+                            {{ !showMobileBookingSummary ? 'Show Booking Summary' : 'Hide Booking Summary' }}
+                        </span>
+                        <svg class="w-5 h-5 transform transition-transform duration-200" :class="{ 'rotate-180': showMobileBookingSummary }" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+                        </svg>
                     </button>
 
-                    <div class="sticky top-4" :class="{ 'hidden lg:block': !showMobileBookingSummary }">
+                    <div class="sticky top-4 lg:sticky lg:top-4" :class="{ 'hidden lg:block': !showMobileBookingSummary }">
                         <div class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-                            <div class="p-6 bg-gradient-to-r from-primary to-primary-dark text-white">
-                                <h3 class="text-xl font-bold mb-2">Booking Summary</h3>
-                                <p class="opacity-90">Review your reservation details</p>
+                            <div class="p-4 sm:p-6 bg-gradient-to-r from-primary to-primary-dark text-white">
+                                <h3 class="text-lg sm:text-xl font-bold mb-2">Booking Summary</h3>
+                                <p class="text-sm sm:text-base opacity-90">Review your reservation details</p>
                             </div>
-                            
-                            <div class="p-6 space-y-6">
+
+                            <div class="p-4 sm:p-6 space-y-4 sm:space-y-6">
                                 <!-- Vehicle Info -->
                                 <div class="pb-6 border-b border-gray-100">
                                     <div class="flex gap-3 mb-4">
-                                        <div class="w-12 h-12 bg-primary/10 rounded-lg flex items-center justify-center px-2">
+                                        <div class="w-12 h-12 bg-primary/10 rounded-lg flex items-center justify-center px-2 flex-shrink-0">
                                             <svg class="w-6 h-6 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.031 9-11.622 0-1.042-.133-2.052-.382-3.016z"/>
                                             </svg>
                                         </div>
-                                        <div>
-                                            <h4 class="font-bold text-gray-900 text-[1.5rem]">{{ vehicle?.name }}</h4>
+                                        <div class="min-w-0 flex-1">
+                                            <h4 class="font-bold text-gray-900 text-base sm:text-lg truncate">{{ vehicle?.name }}</h4>
                                             <p class="text-gray-600 text-sm">{{ vehicle?.groupName }}</p>
                                         </div>
                                     </div>
@@ -945,7 +987,7 @@ const bookingDataForStripe = computed(() => {
 
                                 <!-- Package Details -->
                                 <div class="pt-4 border-t border-gray-100">
-                                    <h4 class="font-semibold text-gray-900 mb-3 text-[1.5rem]">Package Details</h4>
+                                    <h4 class="font-semibold text-gray-900 mb-3 text-base sm:text-lg">Package Details</h4>
                                     <div v-if="selectedPackage" class="space-y-2">
                                         <div class="flex justify-between">
                                             <span class="text-gray-600">{{ selectedPackage.type }}</span>
@@ -957,7 +999,7 @@ const bookingDataForStripe = computed(() => {
 
                                 <!-- Extras -->
                                 <div v-if="selectedOptionalExtras.length > 0" class="pt-4 border-t border-gray-100">
-                                    <h4 class="font-semibold text-gray-900 mb-3 text-[1.5rem]">Selected Extras</h4>
+                                    <h4 class="font-semibold text-gray-900 mb-3 text-base sm:text-lg">Selected Extras</h4>
                                     <div class="space-y-2">
                                         <div v-for="extra in selectedOptionalExtras" :key="extra.optionID" 
                                              class="flex justify-between text-sm">
@@ -1014,18 +1056,18 @@ const bookingDataForStripe = computed(() => {
     </div>
 
     <!-- Error Dialog -->
-    <div v-if="showErrorDialog" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-        <div class="bg-white rounded-2xl p-6 max-w-md w-full">
+    <div v-if="showErrorDialog" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4 sm:p-6">
+        <div class="bg-white rounded-2xl p-6 sm:p-8 max-w-md w-full mx-4 sm:mx-auto">
             <div class="text-center">
-                <div class="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                    <svg class="w-8 h-8 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <div class="w-16 h-16 sm:w-20 sm:h-20 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4 sm:mb-6">
+                    <svg class="w-8 h-8 sm:w-10 sm:h-10 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01"/>
                     </svg>
                 </div>
-                <h3 class="text-lg font-semibold text-gray-900 mb-2">Payment Error</h3>
-                <p class="text-gray-600 mb-6">{{ dialogErrorMessage }}</p>
-                <button @click="showErrorDialog = false" 
-                        class="w-full px-4 py-2 bg-red-600 text-white font-medium rounded-lg hover:bg-red-700 transition-colors">
+                <h3 class="text-lg sm:text-xl font-semibold text-gray-900 mb-2 sm:mb-3">Payment Error</h3>
+                <p class="text-gray-600 mb-6 sm:mb-8 text-sm sm:text-base">{{ dialogErrorMessage }}</p>
+                <button @click="showErrorDialog = false"
+                        class="w-full px-6 py-4 sm:py-3 bg-red-600 text-white font-medium rounded-lg hover:bg-red-700 transition-colors text-base sm:text-lg min-h-[44px] shadow-lg">
                     Close
                 </button>
             </div>
