@@ -1,6 +1,6 @@
 <script setup>
 import { Link, Head, useForm, usePage } from '@inertiajs/vue3';
-import { computed, ref, onMounted } from 'vue';
+import { computed, ref, onMounted, onBeforeUnmount } from 'vue';
 import AuthenticatedHeaderLayout from '@/Layouts/AuthenticatedHeaderLayout.vue';
 import Footer from '@/Components/Footer.vue';
 import { Button } from '@/Components/ui/button';
@@ -28,6 +28,8 @@ const props = defineProps({
 const page = usePage();
 const currentStep = ref(1);
 const formErrors = ref({});
+const showSummaryModal = ref(false);
+const isMobile = ref(false);
 
 // Currency conversion setup
 const currencySymbols = ref({});
@@ -35,6 +37,10 @@ const exchangeRates = ref(null);
 const { selectedCurrency } = useCurrency();
 
 onMounted(async () => {
+    // Initialize mobile detection
+    checkMobile();
+    window.addEventListener('resize', checkMobile);
+
     try {
         const ratesResponse = await fetch(`${import.meta.env.VITE_EXCHANGERATE_API_BASE_URL}/v6/${import.meta.env.VITE_EXCHANGERATE_API_KEY}/latest/USD`);
         const ratesData = await ratesResponse.json();
@@ -50,6 +56,11 @@ onMounted(async () => {
     } catch (error) {
         console.error('Failed to load currency data:', error);
     }
+});
+
+// Cleanup resize listener
+onBeforeUnmount(() => {
+    window.removeEventListener('resize', checkMobile);
 });
 
 const getCurrencySymbol = (code) => currencySymbols.value[code] || '$';
@@ -149,6 +160,11 @@ const goToStep = (step) => {
     }
 };
 
+// Mobile detection composable
+const checkMobile = () => {
+    isMobile.value = window.innerWidth < 1024; // lg breakpoint
+};
+
 const formatDate = (dateString) => {
     if (!dateString) return 'Invalid date';
     const parts = dateString.split('/');
@@ -228,7 +244,7 @@ const formatDate = (dateString) => {
         </div>
 
         <div class="grid grid-cols-1 xl:grid-cols-5 gap-6 sm:gap-8">
-            <div class="xl:col-span-3 space-y-6 sm:space-y-8">
+            <div class="xl:col-span-3 space-y-6 sm:space-y-8" :class="{ 'mobile-content-padding': isMobile }">
                 <!-- Step 1: Vehicle & Extras -->
                 <div v-show="currentStep === 1" class="space-y-6 sm:space-y-8">
                     <Card class="shadow-lg hover:shadow-xl transition-shadow duration-300">
@@ -337,17 +353,18 @@ const formatDate = (dateString) => {
                     </Card>
                 </div>
 
-                <div class="flex flex-col sm:flex-row justify-between gap-4 pt-6 sm:pt-8">
+                <!-- Navigation Buttons - Hidden on mobile, shown on desktop -->
+                <div class="hidden lg:flex flex-col lg:flex-row justify-between gap-4 pt-6 sm:pt-8">
                     <Button v-if="currentStep > 1" @click="prevStep" variant="outline"
-                            class="w-full sm:w-auto min-h-[44px] px-6 py-3 text-base sm:text-lg font-medium border-2 rounded-lg hover:bg-gray-50 transition-colors">
+                            class="w-full lg:w-auto min-h-[44px] px-6 py-3 text-base sm:text-lg font-medium border-2 rounded-lg hover:bg-gray-50 transition-colors">
                         <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/>
                         </svg>
                         Previous Step
                     </Button>
-                    <div v-else class="hidden sm:block"></div>
+                    <div v-else class="hidden lg:block"></div>
                     <Button v-if="currentStep < 3" @click="nextStep"
-                            class="w-full sm:w-auto min-h-[44px] px-6 py-3 text-base sm:text-lg font-medium bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors shadow-lg">
+                            class="w-full lg:w-auto min-h-[44px] px-6 py-3 text-base sm:text-lg font-medium bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors shadow-lg">
                         Next Step
                         <svg class="w-5 h-5 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
@@ -358,8 +375,8 @@ const formatDate = (dateString) => {
 
             <!-- Right Column: Booking Summary -->
             <div class="xl:col-span-2">
-                <!-- Mobile: Sticky booking summary toggle -->
-                <div class="lg:hidden w-full mb-4 px-4 py-3 sm:py-4 bg-primary text-white font-medium rounded-lg flex items-center justify-between text-base sm:text-lg shadow-lg">
+                <!-- Mobile: Hidden booking summary (moved to fixed bottom nav) -->
+                <!-- <div class="lg:hidden w-full mb-4 px-4 py-3 sm:py-4 bg-primary text-white font-medium rounded-lg flex items-center justify-between text-base sm:text-lg shadow-lg">
                     <div class="flex items-center">
                         <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/>
@@ -367,7 +384,7 @@ const formatDate = (dateString) => {
                         Booking Summary
                     </div>
                     <div class="font-bold">{{ formatPrice(grandTotal) }}</div>
-                </div>
+                </div> -->
 
                 <div class="sticky top-4">
                     <Card class="shadow-xl hover:shadow-2xl transition-all duration-300 hidden lg:block">
@@ -442,6 +459,168 @@ const formatDate = (dateString) => {
             </div>
         </div>
     </div>
+
+    <!-- Mobile Fixed Bottom Navigation -->
+    <div class="lg:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 z-40 safe-area-inset-bottom mobile-bottom-nav">
+        <div class="container mx-auto px-4 py-3">
+            <div class="flex items-center justify-between gap-3">
+                <!-- Summary Preview -->
+                <div class="flex-1">
+                    <div class="flex flex-col items-start">
+                        <div class="flex items-center gap-2">
+                            <span class="text-sm font-medium text-gray-600">Total</span>
+                            <span class="text-lg font-bold text-primary">{{ formatPrice(grandTotal) }}</span>
+                        </div>
+                        <button @click="showSummaryModal = true"
+                                class="flex items-center gap-1 text-primary hover:text-primary-dark transition-colors mt-1">
+                            <span class="text-sm font-medium">Show Summary</span>
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+                            </svg>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Navigation Buttons -->
+                <div class="flex gap-2">
+                    <Button v-if="currentStep > 1" @click="prevStep" variant="outline"
+                            class="px-3 py-2.5 border border-gray-300 text-gray-700 font-medium rounded-lg hover:bg-gray-50 transition-colors min-h-[44px] flex items-center">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/>
+                        </svg>
+                    </Button>
+                    <Button v-if="currentStep < 3" @click="nextStep"
+                            class="px-3 py-2.5 bg-primary text-white font-medium rounded-lg hover:bg-primary/90 transition-colors min-h-[44px] flex items-center">
+                        <span class="text-sm">{{ currentStep === 2 ? 'Pay Now' : 'Next' }}</span>
+                        <svg class="w-4 h-4 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+                        </svg>
+                    </Button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Mobile Summary Modal -->
+    <Transition name="modal-slide">
+        <div v-if="showSummaryModal" class="lg:hidden fixed inset-0 z-50">
+            <!-- Backdrop -->
+            <div class="absolute inset-0 bg-black bg-opacity-50" @click="showSummaryModal = false"></div>
+
+            <!-- Modal Content -->
+            <div class="absolute bottom-0 left-0 right-0 bg-white rounded-t-2xl max-h-[85vh] flex flex-col">
+                <!-- Drag Indicator -->
+                <div class="flex justify-center py-3">
+                    <div class="w-12 h-1 bg-gray-300 rounded-full"></div>
+                </div>
+
+                <!-- Header -->
+                <div class="px-4 pb-3 border-b border-gray-100">
+                    <div class="flex items-center justify-between">
+                        <h2 class="text-lg font-bold text-gray-900">Booking Summary</h2>
+                        <button @click="showSummaryModal = false" class="p-2 hover:bg-gray-100 rounded-lg transition-colors">
+                            <svg class="w-5 h-5 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                            </svg>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Scrollable Content -->
+                <div class="flex-1 overflow-y-auto px-4 py-4">
+                    <!-- Vehicle Info -->
+                    <div class="pb-6 border-b border-gray-100">
+                        <div class="flex gap-3 mb-4">
+                            <div class="w-12 h-12 bg-primary/10 rounded-lg flex items-center justify-center px-2 flex-shrink-0">
+                                <svg class="w-6 h-6 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.031 9-11.622 0-1.042-.133-2.052-.382-3.016z"/>
+                                </svg>
+                            </div>
+                            <div class="min-w-0 flex-1">
+                                <h3 class="font-bold text-gray-900 text-base truncate">{{ vehicle?.brand }} {{ vehicle?.model }}</h3>
+                                <p class="text-gray-600 text-sm">{{ vehicle?.category }}</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Rental Details -->
+                    <div class="space-y-4 pb-6">
+                        <div class="flex justify-between items-center">
+                            <span class="text-gray-600">Pickup</span>
+                            <div class="text-right">
+                                <p class="font-medium text-gray-900 text-sm">{{ formatDate(searchParams.date_from) }}</p>
+                                <p class="text-xs text-gray-500">{{ searchParams.time_from }} at {{ pickupStation.Name }}</p>
+                            </div>
+                        </div>
+                        <div class="flex justify-between items-center">
+                            <span class="text-gray-600">Return</span>
+                            <div class="text-right">
+                                <p class="font-medium text-gray-900 text-sm">{{ formatDate(searchParams.date_to) }}</p>
+                                <p class="text-xs text-gray-500">{{ searchParams.time_to }} at {{ returnStation.Name }}</p>
+                            </div>
+                        </div>
+                        <div class="flex justify-between items-center">
+                            <span class="text-gray-600">Duration</span>
+                            <span class="font-medium text-gray-900 text-sm">{{ rentalDays }} days</span>
+                        </div>
+                    </div>
+
+                    <!-- Extras -->
+                    <div v-if="selectedExtras.length > 0" class="pt-4 border-t border-gray-100 pb-6">
+                        <h3 class="font-semibold text-gray-900 mb-3 text-base">Selected Extras</h3>
+                        <div class="space-y-2">
+                            <div v-for="extra in selectedExtras" :key="extra.code"
+                                 class="flex justify-between text-sm">
+                                <span class="text-gray-600">{{ extra.name }}</span>
+                                <span class="font-medium">{{ formatPrice(extra.rate) }}</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Total -->
+                    <div class="pt-4 border-t border-gray-200">
+                        <div class="space-y-2">
+                            <div class="flex flex-col lg:flex-row lg:justify-between gap-1 lg:gap-0">
+                                <span class="text-sm sm:text-base text-gray-600">Vehicle Rental</span>
+                                <span class="text-sm sm:text-base font-medium text-gray-900">{{ formatPrice(baseTotal) }}</span>
+                            </div>
+                            <div v-if="extrasTotal > 0" class="flex flex-col lg:flex-row lg:justify-between gap-1 lg:gap-0">
+                                <span class="text-sm sm:text-base text-gray-600">Extras</span>
+                                <span class="text-sm sm:text-base font-medium text-gray-900">{{ formatPrice(extrasTotal) }}</span>
+                            </div>
+                            <div class="flex flex-col lg:flex-row lg:justify-between gap-1 lg:gap-0">
+                                <span class="text-sm sm:text-base text-gray-600">Taxes & Fees</span>
+                                <span class="text-sm sm:text-base font-medium text-gray-900">{{ formatPrice(taxesTotal) }}</span>
+                            </div>
+                        </div>
+                        <div class="flex flex-col sm:flex-row sm:justify-between gap-2 sm:gap-0 p-4 bg-primary/5 rounded-lg -mx-4 mt-4">
+                            <span class="text-lg sm:text-xl font-bold text-gray-900">Total Amount</span>
+                            <span class="text-xl sm:text-2xl font-bold text-primary">{{ formatPrice(grandTotal) }}</span>
+                        </div>
+                    </div>
+
+                    <!-- Trust Badges -->
+                    <div class="pt-4 border-t border-gray-100">
+                        <div class="flex items-center justify-center space-x-4 text-gray-500">
+                            <div class="flex items-center text-sm">
+                                <svg class="w-4 h-4 mr-1" fill="currentColor" viewBox="0 0 20 20">
+                                    <path fill-rule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" clip-rule="evenodd"/>
+                                </svg>
+                                Secure Payment
+                            </div>
+                            <div class="flex items-center text-sm">
+                                <svg class="w-4 h-4 mr-1" fill="currentColor" viewBox="0 0 20 20">
+                                    <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/>
+                                </svg>
+                                Instant Confirmation
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </Transition>
+
     <Footer />
 </template>
 
@@ -449,4 +628,63 @@ const formatDate = (dateString) => {
 .bg-primary { background-color: #153b4f; }
 .text-primary { color: #153b4f; }
 .border-primary { border-color: #153b4f; }
+
+/* Mobile Modal Transitions - hardware accelerated for smoother performance */
+.modal-slide-enter-active {
+    transition: transform 0.4s cubic-bezier(0.32, 0.72, 0, 1),
+                opacity 0.4s cubic-bezier(0.32, 0.72, 0, 1);
+}
+
+.modal-slide-leave-active {
+    transition: transform 0.3s cubic-bezier(0.4, 0, 1, 1),
+                opacity 0.3s cubic-bezier(0.4, 0, 1, 1);
+}
+
+.modal-slide-enter-from {
+    transform: translateY(100%) translateZ(0);
+    opacity: 0;
+}
+
+.modal-slide-leave-to {
+    transform: translateY(100%) translateZ(0);
+    opacity: 0;
+}
+
+/* Modal content animation for smoother entrance */
+.modal-slide-enter-active .fixed.bottom-0 {
+    animation: modalContentSlideUp 0.4s cubic-bezier(0.32, 0.72, 0, 1) forwards;
+}
+
+@keyframes modalContentSlideUp {
+    0% {
+        transform: translateY(30px) translateZ(0);
+        opacity: 0;
+    }
+    100% {
+        transform: translateY(0) translateZ(0);
+        opacity: 1;
+    }
+}
+
+/* Safe Area Support */
+.safe-area-inset-bottom {
+    padding-bottom: env(safe-area-inset-bottom);
+}
+
+/* Mobile Bottom Navigation */
+.mobile-bottom-nav {
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+}
+
+/* Ensure content doesn't get hidden behind fixed bottom nav */
+.mobile-content-padding {
+    padding-bottom: 80px; /* Height of fixed bottom nav */
+}
+
+@media (min-width: 1024px) {
+    .mobile-content-padding {
+        padding-bottom: 0;
+    }
+}
 </style>

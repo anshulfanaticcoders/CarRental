@@ -20,7 +20,9 @@ const toast = useToast();
 const currentStep = ref(1);
 const isFormValid = ref(false);
 const showMobileBookingSummary = ref(false);
+const showSummaryModal = ref(false);
 const isSubmitting = ref(false);
+const isMobile = ref(false);
 const selectedProtections = ref({});
 const selectedExtras = ref({});
 
@@ -90,6 +92,10 @@ const convertCurrency = (price, fromCurrency = 'USD') => {
 };
 
 onMounted(async () => {
+    // Initialize mobile detection
+    checkMobile();
+    window.addEventListener('resize', checkMobile);
+
     fetchExchangeRates();
 
     try {
@@ -102,6 +108,11 @@ onMounted(async () => {
     } catch (error) {
         console.error("Error loading currency symbols:", error);
     }
+});
+
+// Cleanup resize listener
+onBeforeUnmount(() => {
+    window.removeEventListener('resize', checkMobile);
 });
 
 const getCurrencySymbol = (code) => {
@@ -385,7 +396,24 @@ const goToStep = (step) => {
         }
     }
 
+    // If we reach here, all validations passed
     currentStep.value = step;
+};
+
+// Mobile detection composable
+const checkMobile = () => {
+    isMobile.value = window.innerWidth < 1024; // lg breakpoint
+};
+
+// Format date function
+const formatDate = (dateString) => {
+    if (!dateString) return '';
+    const date = new Date(dateString);
+    return date.toLocaleDateString('en-US', {
+        weekday: 'short',
+        month: 'short',
+        day: 'numeric'
+    });
 };
 
 const toggleProtection = (protectionCode) => {
@@ -570,7 +598,7 @@ const isStepComplete = (step) => {
         <!-- Main Grid: Content + Booking Summary -->
         <div class="grid grid-cols-1 xl:grid-cols-5 gap-6 lg:gap-8">
             <!-- Main Content -->
-            <div class="xl:col-span-3 lg:col-span-4">
+            <div class="xl:col-span-3 lg:col-span-4" :class="{ 'mobile-content-padding': isMobile }">
                     <!-- Step 1: Rental Details - Match GreenMotion Structure -->
                     <div v-show="currentStep === 1" class="space-y-6 sm:space-y-8">
                         <!-- Vehicle Summary Card - Exact Match -->
@@ -960,22 +988,23 @@ const isStepComplete = (step) => {
                             </div>
                         </div>
                     </div>
-                <!-- Navigation Buttons - Match GreenMotion -->
-                <div class="flex flex-col sm:flex-row justify-between gap-4 pt-6 sm:pt-8">
+                <!-- Navigation Buttons - Hidden on mobile, shown on desktop -->
+                <div class="hidden lg:flex flex-col lg:flex-row justify-between gap-4 pt-6 sm:pt-8">
                     <button v-if="currentStep > 1"
                             @click="prevStep"
-                            class="inline-flex items-center justify-center px-6 py-4 sm:py-3 border border-gray-300 text-gray-700 font-medium rounded-lg hover:bg-gray-50 transition-colors text-base sm:text-lg w-full sm:w-auto min-h-[44px]">
+                            class="inline-flex items-center justify-center px-6 py-4 sm:py-3 border border-gray-300 text-gray-700 font-medium rounded-lg hover:bg-gray-50 transition-colors text-base sm:text-lg w-full lg:w-auto min-h-[44px]">
                         <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"/>
                         </svg>
                         Previous Step
                     </button>
-                    <div v-else class="hidden sm:block"></div>
+                    <div v-else class="hidden lg:block"></div>
 
                     <button v-if="currentStep < 4"
                             @click="nextStep"
-                            class="inline-flex items-center justify-center px-6 py-4 sm:py-3 bg-primary text-white font-medium rounded-lg hover:bg-primary-dark transition-colors text-base sm:text-lg w-full sm:w-auto min-h-[44px] shadow-lg">
-                        Next Step
+                            class="inline-flex items-center justify-center px-6 py-4 sm:py-3 bg-primary text-white font-medium rounded-lg hover:bg-primary-dark transition-colors text-base sm:text-lg w-full lg:w-auto min-h-[44px] shadow-lg">
+                        <span v-if="currentStep < 3">Next Step</span>
+                        <span v-else>Complete Booking</span>
                         <svg class="w-5 h-5 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3"/>
                         </svg>
@@ -985,8 +1014,8 @@ const isStepComplete = (step) => {
                 <!-- Right Column: Booking Summary - Match GreenMotion Exactly -->
             </div>
             <div class="xl:col-span-2 lg:col-span-1">
-                <!-- Mobile Summary Toggle -->
-                <button @click="showMobileBookingSummary = !showMobileBookingSummary"
+                <!-- Mobile Summary Toggle - Hidden (moved to fixed bottom nav) -->
+                <!-- <button @click="showMobileBookingSummary = !showMobileBookingSummary"
                         class="lg:hidden w-full mb-4 px-4 py-4 sm:py-5 bg-primary text-white font-medium rounded-lg flex items-center justify-between text-base sm:text-lg shadow-lg">
                     <span class="flex items-center">
                         <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -997,7 +1026,7 @@ const isStepComplete = (step) => {
                     <svg class="w-5 h-5 transform transition-transform duration-200" :class="{ 'rotate-180': showMobileBookingSummary }" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
                     </svg>
-                </button>
+                </button> -->
 
                 <div class="sticky top-4 lg:sticky lg:top-4" :class="{ 'hidden lg:block': !showMobileBookingSummary }">
                     <div class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
@@ -1110,6 +1139,178 @@ const isStepComplete = (step) => {
         </div>
     </div>
 
+    <!-- Mobile Fixed Bottom Navigation -->
+    <div class="lg:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 z-40 safe-area-inset-bottom mobile-bottom-nav">
+        <div class="container mx-auto px-4 py-3">
+            <div class="flex items-center justify-between gap-3">
+                <!-- Summary Preview -->
+                <div class="flex-1">
+                    <div class="flex flex-col items-start">
+                        <div class="flex items-center gap-2">
+                            <span class="text-sm font-medium text-gray-600">Total</span>
+                            <span class="text-lg font-bold text-primary">{{ formatPrice(formData.grand_total) }}</span>
+                        </div>
+                        <button @click="showSummaryModal = true"
+                                class="flex items-center gap-1 text-primary hover:text-primary-dark transition-colors mt-1">
+                            <span class="text-sm font-medium">Show Summary</span>
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+                            </svg>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Navigation Buttons -->
+                <div class="flex gap-2">
+                    <button v-if="currentStep > 1"
+                            @click="prevStep"
+                            class="px-3 py-2.5 border border-gray-300 text-gray-700 font-medium rounded-lg hover:bg-gray-50 transition-colors min-h-[44px] flex items-center">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"/>
+                        </svg>
+                    </button>
+                    <button v-if="currentStep < 4"
+                            @click="nextStep"
+                            class="px-3 py-2.5 bg-primary text-white font-medium rounded-lg hover:bg-primary-dark transition-colors min-h-[44px] flex items-center">
+                        <span class="text-sm">{{ currentStep === 3 ? 'Complete' : 'Next' }}</span>
+                        <svg class="w-4 h-4 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+                        </svg>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Mobile Summary Modal -->
+    <Transition name="modal-slide">
+        <div v-if="showSummaryModal" class="lg:hidden fixed inset-0 z-50">
+            <!-- Backdrop -->
+            <div class="absolute inset-0 bg-black bg-opacity-50" @click="showSummaryModal = false"></div>
+
+            <!-- Modal Content -->
+            <div class="absolute bottom-0 left-0 right-0 bg-white rounded-t-2xl max-h-[85vh] flex flex-col">
+                <!-- Drag Indicator -->
+                <div class="flex justify-center py-3">
+                    <div class="w-12 h-1 bg-gray-300 rounded-full"></div>
+                </div>
+
+                <!-- Header -->
+                <div class="px-4 pb-3 border-b border-gray-100">
+                    <div class="flex items-center justify-between">
+                        <h2 class="text-lg font-bold text-gray-900">Booking Summary</h2>
+                        <button @click="showSummaryModal = false" class="p-2 hover:bg-gray-100 rounded-lg transition-colors">
+                            <svg class="w-5 h-5 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                            </svg>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Scrollable Content -->
+                <div class="flex-1 overflow-y-auto px-4 py-4">
+                    <!-- Vehicle Info -->
+                    <div class="pb-6 border-b border-gray-100">
+                        <div class="flex gap-3 mb-4">
+                            <div class="w-12 h-12 bg-primary/10 rounded-lg flex items-center justify-center px-2 flex-shrink-0">
+                                <svg class="w-6 h-6 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.031 9-11.622 0-1.042-.133-2.052-.382-3.016z"/>
+                                </svg>
+                            </div>
+                            <div class="min-w-0 flex-1">
+                                <h3 class="font-bold text-gray-900 text-base truncate">{{ vehicle?.model }}</h3>
+                                <p class="text-gray-600 text-sm">{{ vehicle?.category }}</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Rental Details -->
+                    <div class="space-y-4 pb-6">
+                        <div class="flex justify-between items-center">
+                            <span class="text-gray-600">Pickup</span>
+                            <div class="text-right">
+                                <p class="font-medium text-gray-900 text-sm">{{ formatDate(searchParams.date_from) }}</p>
+                                <p class="text-xs text-gray-500">{{ searchParams.time_from }}</p>
+                            </div>
+                        </div>
+                        <div class="flex justify-between items-center">
+                            <span class="text-gray-600">Return</span>
+                            <div class="text-right">
+                                <p class="font-medium text-gray-900 text-sm">{{ formatDate(searchParams.date_to) }}</p>
+                                <p class="text-xs text-gray-500">{{ searchParams.time_to }}</p>
+                            </div>
+                        </div>
+                        <div class="flex justify-between items-center">
+                            <span class="text-gray-600">Duration</span>
+                            <span class="font-medium text-gray-900 text-sm">{{ rentalDays }} days</span>
+                        </div>
+                    </div>
+
+                    <!-- Package Details -->
+                    <div class="pt-4 border-t border-gray-100 pb-6">
+                        <h3 class="font-semibold text-gray-900 mb-3 text-base">Vehicle Package</h3>
+                        <div class="space-y-2">
+                            <div class="flex justify-between">
+                                <span class="text-gray-600 text-sm">Vehicle Rental</span>
+                                <span class="font-medium text-sm">{{ formatPrice(formData.vehicle_total) }}</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Protection -->
+                    <div v-if="Object.keys(selectedProtections).length > 0" class="pt-4 border-t border-gray-100 pb-6">
+                        <h3 class="font-semibold text-gray-900 mb-3 text-base">Protection Coverage</h3>
+                        <div class="space-y-2">
+                            <div v-for="(protection, code) in selectedProtections" :key="code"
+                                 class="flex justify-between text-sm">
+                                <span class="text-gray-600">{{ protection.displayName || protection.name || protection.code }}</span>
+                                <span class="font-medium">{{ formatPrice(protection.total) }}</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Extras -->
+                    <div v-if="Object.keys(selectedExtras).length > 0" class="pt-4 border-t border-gray-100 pb-6">
+                        <h3 class="font-semibold text-gray-900 mb-3 text-base">Additional Extras</h3>
+                        <div class="space-y-2">
+                            <div v-for="(extra, code) in selectedExtras" :key="code"
+                                 class="flex justify-between text-sm">
+                                <span class="text-gray-600">{{ extra.displayName || extra.name || extra.code }}</span>
+                                <span class="font-medium">{{ formatPrice(extra.total) }}</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Total -->
+                    <div class="pt-4 border-t border-gray-200">
+                        <div class="flex flex-col sm:flex-row sm:justify-between gap-2 sm:gap-0 p-4 bg-primary/5 rounded-lg -mx-4">
+                            <span class="text-lg sm:text-xl font-bold text-gray-900">Total Amount</span>
+                            <span class="text-xl sm:text-2xl font-bold text-primary">{{ formatPrice(formData.grand_total) }}</span>
+                        </div>
+                    </div>
+
+                    <!-- Trust Badges -->
+                    <div class="pt-4 border-t border-gray-100">
+                        <div class="flex items-center justify-center space-x-4 text-gray-500">
+                            <div class="flex items-center text-sm">
+                                <svg class="w-4 h-4 mr-1" fill="currentColor" viewBox="0 0 20 20">
+                                    <path fill-rule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" clip-rule="evenodd"/>
+                                </svg>
+                                Secure Payment
+                            </div>
+                            <div class="flex items-center text-sm">
+                                <svg class="w-4 h-4 mr-1" fill="currentColor" viewBox="0 0 20 20">
+                                    <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/>
+                                </svg>
+                                Instant Confirmation
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </Transition>
+
     <Footer />
 </template>
 
@@ -1178,5 +1379,96 @@ input:focus, textarea:focus, select:focus {
 .sticky {
     position: sticky;
     top: 2rem;
+}
+
+/* Mobile-specific styles */
+@media (max-width: 1023px) {
+    /* Mobile padding for main content */
+    .mobile-content-padding {
+        padding-bottom: 5rem; /* Space for fixed bottom navigation */
+    }
+
+    /* Modal slide transitions - hardware accelerated for smoother performance */
+    .modal-slide-enter-active {
+        transition: transform 0.4s cubic-bezier(0.32, 0.72, 0, 1),
+                    opacity 0.4s cubic-bezier(0.32, 0.72, 0, 1);
+    }
+
+    .modal-slide-leave-active {
+        transition: transform 0.3s cubic-bezier(0.4, 0, 1, 1),
+                    opacity 0.3s cubic-bezier(0.4, 0, 1, 1);
+    }
+
+    .modal-slide-enter-from {
+        transform: translateY(100%) translateZ(0);
+        opacity: 0;
+    }
+
+    .modal-slide-leave-to {
+        transform: translateY(100%) translateZ(0);
+        opacity: 0;
+    }
+
+    /* Modal content animation for smoother entrance */
+    .modal-slide-enter-active .absolute.bottom-0 {
+        animation: modalContentSlideUp 0.4s cubic-bezier(0.32, 0.72, 0, 1) forwards;
+    }
+
+    @keyframes modalContentSlideUp {
+        0% {
+            transform: translateY(30px) translateZ(0);
+            opacity: 0;
+        }
+        100% {
+            transform: translateY(0) translateZ(0);
+            opacity: 1;
+        }
+    }
+
+    
+    /* Safe area support for modern phones */
+    .safe-area-bottom {
+        padding-bottom: env(safe-area-inset-bottom);
+    }
+
+    /* Backdrop blur for modal */
+    .backdrop-blur {
+        backdrop-filter: blur(4px);
+    }
+
+    /* Hide elements on mobile */
+    .mobile-hidden {
+        display: none !important;
+    }
+
+    /* Show elements only on mobile */
+    .mobile-only {
+        display: block !important;
+    }
+
+    /* Flex column for mobile navigation */
+    .mobile-flex-col {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 0.25rem;
+    }
+
+    /* Custom scrollbar for mobile modal */
+    .custom-scrollbar::-webkit-scrollbar {
+        width: 4px;
+    }
+
+    .custom-scrollbar::-webkit-scrollbar-track {
+        background: #f1f5f9;
+    }
+
+    .custom-scrollbar::-webkit-scrollbar-thumb {
+        background: #94a3b8;
+        border-radius: 2px;
+    }
+
+    .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+        background: #64748b;
+    }
 }
 </style>
