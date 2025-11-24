@@ -602,7 +602,7 @@ class SearchController extends Controller
 
                         // Add Adobe vehicles to the main provider vehicles collection
                         foreach ($adobeVehicles as $adobeVehicle) {
-                            $providerVehicles->push($adobeVehicle);
+                            $providerVehicles->push((object) $adobeVehicle);
                         }
 
                         Log::info('Adobe vehicles added to collection: ' . $adobeVehicles->count());
