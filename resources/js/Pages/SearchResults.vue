@@ -666,7 +666,7 @@ const createPopupContent = (vehicle, primaryImage, popupPrice, detailRoute) => {
         return `
             <div class="text-center popup-content">
                 <img src="${primaryImage}" alt="${vehicle.brand} ${vehicle.model}" class="popup-image !w-40 !h-20" />
-                <p class="rating !w-40">${vehicle.average_rating ? vehicle.average_rating.toFixed(1) : '0.0'} ★ (${vehicle.review_count} reviews)</p>
+                ${vehicle.source === 'internal' && vehicle.average_rating ? `<p class="rating !w-40">${vehicle.average_rating.toFixed(1)} ★ (${vehicle.review_count} reviews)</p>` : ''}
                 <p class="font-semibold !w-40">${vehicle.brand} ${vehicle.model}</p>
                 <p class="!w-40">${vehicle.full_vehicle_address || ''}</p>
                 <p class="!w-40">Price: ${popupPrice}</p>
@@ -1926,7 +1926,7 @@ watch(
                                 </h5>
 
                                 <!-- Add Reviews Here -->
-                                <div class="reviews mt-[1rem] flex gap-2 items-center" v-if="vehicle.source !== 'okmobility'">
+                                <div class="reviews mt-[1rem] flex gap-2 items-center" v-if="vehicle.source === 'internal'">
                                     <div class="flex items-center gap-1">
                                         <img v-for="n in 5" :key="n" :src="getStarIcon(
                                             vehicle.review_count > 0
@@ -1966,42 +1966,12 @@ watch(
 
                                 <!-- Show Wheelsys specific info -->
                                 <div class="mt-[1rem] text-sm text-gray-600" v-if="vehicle.source === 'wheelsys'">
-                                    <div v-if="vehicle.category">
-                                        <strong>Category:</strong> {{ vehicle.category }}
-                                    </div>
-                                    <div v-if="vehicle.group_code">
-                                        <strong>Group Code:</strong> {{ vehicle.group_code }}
-                                    </div>
-                                    <div v-if="vehicle.doors">
-                                        <strong>Doors:</strong> {{ vehicle.doors }}
-                                    </div>
                                     <div v-if="vehicle.bags || vehicle.suitcases">
                                         <strong>Luggage:</strong> {{ vehicle.bags || 0 }} bags, {{ vehicle.suitcases || 0 }} suitcases
                                     </div>
                                 </div>
 
-                                <!-- Show Adobe specific info -->
-                                <div class="mt-[1rem] text-sm text-gray-600" v-if="vehicle.source === 'adobe'">
-                                    <div v-if="vehicle.category && vehicle.category.trim()">
-                                        <strong>Category:</strong> {{ vehicle.category }}
-                                    </div>
-                                    <div v-if="vehicle.type && vehicle.type.trim()">
-                                        <strong>Type:</strong> {{ vehicle.type }}
-                                    </div>
-                                    <div v-if="vehicle.passengers && vehicle.passengers > 0">
-                                        <strong>Passengers:</strong> {{ vehicle.passengers }}
-                                    </div>
-                                    <div v-if="vehicle.doors && vehicle.doors > 0">
-                                        <strong>Doors:</strong> {{ vehicle.doors }}
-                                    </div>
-                                    <div v-if="vehicle.manual !== undefined">
-                                        <strong>Transmission:</strong> {{ vehicle.manual ? 'Manual' : 'Automatic' }}
-                                    </div>
-                                    <div v-if="vehicle.traction && vehicle.traction.trim()">
-                                        <strong>Traction:</strong> {{ vehicle.traction }}
-                                    </div>
-                                </div>
-
+    
                                  <div>
                                     <span class="italic font-medium">{{vehicle.full_vehicle_address}}</span>
                                  </div>
@@ -2186,11 +2156,7 @@ watch(
                                     <span v-else-if="vehicle.source === 'greenmotion' && vehicle.benefits?.fuel_policy" class="flex gap-3 items-center text-[12px]">
                                         <img :src="check" alt="" loading="lazy" />Fuel Policy: {{ vehicle.benefits.fuel_policy }}
                                     </span>
-                                    <!-- Wheelsys specific benefits -->
-                                    <span v-if="vehicle.source === 'wheelsys' && vehicle.benefits?.unlimited_mileage" class="flex gap-3 items-center text-[12px]">
-                                        <img :src="check" alt="" loading="lazy" />Unlimited mileage
-                                    </span>
-                                    <span v-else-if="vehicle.source === 'wheelsys' && vehicle.benefits?.included_km" class="flex gap-3 items-center text-[12px]">
+                                                <span v-else-if="vehicle.source === 'wheelsys' && vehicle.benefits?.included_km" class="flex gap-3 items-center text-[12px]">
                                         <img :src="check" alt="" loading="lazy" />{{ vehicle.benefits.included_km }} km included
                                     </span>
                                     <span v-if="vehicle.source === 'wheelsys' && vehicle.benefits?.cancellation_available_per_day" class="flex gap-3 items-center text-[12px]">
@@ -2202,11 +2168,7 @@ watch(
                                     <span v-else-if="vehicle.source === 'wheelsys' && vehicle.benefits?.minimum_driver_age" class="flex gap-3 items-center text-[12px]">
                                         <img :src="check" alt="" loading="lazy" />Min age: {{ vehicle.benefits.minimum_driver_age }} years
                                     </span>
-                                    <!-- Adobe specific benefits -->
-                                    <span v-if="vehicle.source === 'adobe'" class="flex gap-3 items-center text-[12px]">
-                                        <img :src="check" alt="" loading="lazy" />Unlimited mileage
-                                    </span>
-                                    <span v-if="vehicle.source === 'adobe'" class="flex gap-3 items-center text-[12px]">
+                                            <span v-if="vehicle.source === 'adobe'" class="flex gap-3 items-center text-[12px]">
                                         <img :src="check" alt="" loading="lazy" />Liability Protection included
                                     </span>
                                     <span v-if="vehicle.source === 'adobe'" class="flex gap-3 items-center text-[12px]">
