@@ -488,82 +488,117 @@ const isStepComplete = (step) => {
     <AuthenticatedHeaderLayout />
 
     <!-- Hero Section - Match GreenMotion Exactly -->
-    <section class="bg-primary py-16 relative overflow-hidden">
+    <section class="bg-primary py-12 sm:py-12 md:py-16 relative overflow-hidden">
         <div class="absolute inset-0 bg-gradient-to-br from-primary to-primary-dark opacity-90"></div>
-        <div class="container relative z-10">
+        <div class="container relative z-10 px-4 sm:px-6 lg:px-8">
             <div class="max-w-4xl mx-auto text-center text-white">
-                <div class="inline-flex items-center px-4 py-2 bg-white/10 backdrop-blur-sm rounded-full mb-6">
-                    <svg class="w-5 h-5 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                <div class="inline-flex items-center px-3 sm:px-4 py-2 bg-white/10 backdrop-blur-sm rounded-full mb-4 sm:mb-6">
+                    <svg class="w-4 h-4 sm:w-5 sm:h-5 mr-2" fill="currentColor" viewBox="0 0 20 20">
                         <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/>
                     </svg>
-                    <span class="text-sm font-medium">Secure Booking Process</span>
+                    <span class="text-xs sm:text-sm font-medium">Secure Booking Process</span>
                 </div>
-                <h1 class="text-4xl md:text-5xl font-bold mb-4">Complete Your Reservation</h1>
-                <p class="text-xl opacity-90">{{ vehicle?.model }} - Adobe Car Rental</p>
+                <h1 class="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-bold mb-3 sm:mb-4">Complete Your Reservation</h1>
+                <p class="text-base sm:text-lg md:text-xl opacity-90">{{ vehicle?.model }} - Adobe Car Rental</p>
             </div>
         </div>
     </section>
 
-    <div class="container mx-auto py-12">
+    <div class="container mx-auto px-4 sm:px-6 lg:px-8 sm:py-10 py-12">
         <!-- Progress Steps - Match GreenMotion Exactly -->
-        <div class="mb-8">
-            <div class="flex items-center justify-center space-x-8 mb-8">
+        <div class="mb-6 sm:mb-8">
+            <!-- Mobile: Vertical steps -->
+            <div class="flex flex-col sm:hidden space-y-3 mb-6">
                 <div v-for="step in 4" :key="step"
-                     class="flex items-center cursor-pointer transition-all duration-300"
+                     class="flex items-center cursor-pointer transition-all duration-300 p-3 rounded-lg"
+                     :class="step <= currentStep ? 'bg-primary/5' : 'bg-gray-50'"
                      @click="goToStep(step)">
-                    <div class="flex items-center">
-                        <div class="w-10 h-10 rounded-full flex items-center justify-center font-semibold transition-all duration-300"
+                    <div class="flex items-center flex-1">
+                        <div class="w-12 h-12 rounded-full flex items-center justify-center font-semibold transition-all duration-300"
                              :class="step <= currentStep
                                ? 'bg-primary text-white shadow-lg'
                                : 'bg-gray-200 text-gray-600'">
                             <svg v-if="step < currentStep" class="w-6 h-6" fill="currentColor" viewBox="0 0 20 20">
                                 <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/>
                             </svg>
-                            <span v-else>{{ step }}</span>
+                            <span v-else class="text-lg">{{ step }}</span>
                         </div>
-                        <span class="ml-3 font-medium text-gray-700"
+                        <div class="ml-4 flex-1">
+                            <div class="font-medium text-gray-900 text-sm"
+                                 :class="step <= currentStep ? 'text-primary font-semibold' : 'text-gray-500'">
+                                {{ step === 1 ? 'Rental Details' : step === 2 ? 'Your Details' : step === 3 ? 'Protection & Extras' : 'Payment' }}
+                            </div>
+                            <div class="text-xs sm:text-sm text-gray-500 mt-1">
+                                {{ step === 1 ? 'Review vehicle info' : step === 2 ? 'Enter your information' : step === 3 ? 'Select coverage' : 'Complete payment' }}
+                            </div>
+                        </div>
+                    </div>
+                    <div v-if="step < currentStep" class="ml-3">
+                        <svg class="w-5 h-5 text-green-500" fill="currentColor" viewBox="0 0 20 20">
+                            <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/>
+                        </svg>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Desktop/Tablet: Horizontal steps -->
+            <div class="hidden sm:flex items-center justify-center space-x-4 md:space-x-8 mb-6 sm:mb-8">
+                <div v-for="step in 4" :key="step"
+                     class="flex items-center cursor-pointer transition-all duration-300"
+                     @click="goToStep(step)">
+                    <div class="flex items-center">
+                        <div class="w-10 h-10 sm:w-12 sm:h-12 rounded-full flex items-center justify-center font-semibold transition-all duration-300"
+                             :class="step <= currentStep
+                               ? 'bg-primary text-white shadow-lg'
+                               : 'bg-gray-200 text-gray-600'">
+                            <svg v-if="step < currentStep" class="w-5 h-5 sm:w-6 sm:h-6" fill="currentColor" viewBox="0 0 20 20">
+                                <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/>
+                            </svg>
+                            <span v-else class="text-sm sm:text-base">{{ step }}</span>
+                        </div>
+                        <span class="ml-2 sm:ml-3 font-medium text-gray-700 text-sm sm:text-base"
                               :class="step <= currentStep ? 'text-primary' : 'text-gray-500'">
                             {{ step === 1 ? 'Rental Details' : step === 2 ? 'Your Details' : step === 3 ? 'Protection & Extras' : 'Payment' }}
                         </span>
                     </div>
-                    <div v-if="step < 4" class="w-20 h-0.5 ml-8"
+                    <div v-if="step < 4" class="w-12 sm:w-16 md:w-20 h-0.5 ml-2 sm:ml-4 md:ml-8"
                          :class="step < currentStep ? 'bg-primary' : 'bg-gray-200'"></div>
                 </div>
             </div>
         </div>
 
         <!-- Main Grid: Content + Booking Summary -->
-        <div class="grid grid-cols-3 gap-8">
+        <div class="grid grid-cols-1 xl:grid-cols-5 gap-6 lg:gap-8">
             <!-- Main Content -->
-            <div class="lg:col-span-2">
+            <div class="xl:col-span-3 lg:col-span-4">
                     <!-- Step 1: Rental Details - Match GreenMotion Structure -->
-                    <div v-show="currentStep === 1" class="space-y-8">
+                    <div v-show="currentStep === 1" class="space-y-6 sm:space-y-8">
                         <!-- Vehicle Summary Card - Exact Match -->
                         <div class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-                            <div class="p-6 bg-gradient-to-r from-gray-50 to-white border-b">
-                                <h2 class="text-2xl font-bold text-gray-900 mb-2">Your Selected Vehicle</h2>
-                                <p class="text-gray-600">Review your vehicle and rental details</p>
+                            <div class="p-4 sm:p-6 bg-gradient-to-r from-gray-50 to-white border-b">
+                                <h2 class="text-xl sm:text-2xl font-bold text-gray-900 mb-2">Your Selected Vehicle</h2>
+                                <p class="text-sm sm:text-base text-gray-600">Review your vehicle and rental details</p>
                             </div>
-                            <div class="p-6">
-                                <div class="flex flex-col md:flex-row gap-6">
+                            <div class="p-4 sm:p-6">
+                                <div class="flex flex-col md:flex-row gap-4 sm:gap-6">
                                     <div class="md:w-1/3">
                                         <img :src="vehicle.image || '/images/adobe-placeholder.jpg'"
                                              :alt="vehicle.model"
-                                             class="w-full h-48 md:h-32 object-cover rounded-xl shadow-sm" />
+                                             class="w-full h-40 sm:h-48 md:h-32 object-cover rounded-xl shadow-sm" />
                                     </div>
                                     <div class="md:w-2/3 space-y-3">
                                         <div>
-                                            <h3 class="text-xl font-bold text-gray-900">{{ vehicle?.model }}</h3>
-                                            <p class="text-gray-600">{{ vehicle?.category?.toUpperCase() }} • Adobe Car Rental</p>
+                                            <h3 class="text-lg sm:text-xl font-bold text-gray-900">{{ vehicle?.model }}</h3>
+                                            <p class="text-sm sm:text-base text-gray-600">{{ vehicle?.category?.toUpperCase() }} • Adobe Car Rental</p>
                                         </div>
-                                        <div class="grid grid-cols-2 gap-4">
+                                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                                             <div class="bg-gray-50 rounded-lg p-3">
-                                                <p class="text-sm font-medium text-gray-500">Rental Duration</p>
-                                                <p class="text-lg font-semibold text-gray-900">{{ rentalDuration }} days</p>
+                                                <p class="text-xs sm:text-sm font-medium text-gray-500">Rental Duration</p>
+                                                <p class="text-base sm:text-lg font-semibold text-gray-900">{{ rentalDuration }} days</p>
                                             </div>
                                             <div class="bg-gray-50 rounded-lg p-3">
-                                                <p class="text-sm font-medium text-gray-500">Total Rate</p>
-                                                <p class="text-lg font-semibold text-primary">{{ formatPrice(vehicle.tdr || 0) }}</p>
+                                                <p class="text-xs sm:text-sm font-medium text-gray-500">Total Rate</p>
+                                                <p class="text-base sm:text-lg font-semibold text-primary">{{ formatPrice(vehicle.tdr || 0) }}</p>
                                             </div>
                                         </div>
                                     </div>
@@ -573,23 +608,23 @@ const isStepComplete = (step) => {
 
                         <!-- Adobe Pricing Details - Match GreenMotion Package Style -->
                         <div class="bg-white rounded-2xl shadow-sm border border-gray-100">
-                            <div class="p-6 border-b bg-gradient-to-r from-gray-50 to-white">
-                                <h3 class="text-xl font-bold text-gray-900 mb-2">Adobe Pricing Package</h3>
-                                <p class="text-gray-600">Transparent pricing with no hidden fees</p>
+                            <div class="p-4 sm:p-6 border-b bg-gradient-to-r from-gray-50 to-white">
+                                <h3 class="text-lg sm:text-lg sm:text-xl font-bold text-gray-900 mb-2">Adobe Pricing Package</h3>
+                                <p class="text-sm sm:text-base text-gray-600">Transparent pricing with no hidden fees</p>
                             </div>
-                            <div class="p-6">
-                                <div class="space-y-4">
-                                    <div class="border-2 rounded-xl p-6 cursor-pointer transition-all duration-300 hover:shadow-lg border-primary bg-primary/5 shadow-md">
+                            <div class="p-4 sm:p-6">
+                                <div class="space-y-3 sm:space-y-4">
+                                    <div class="border-2 rounded-xl p-4 sm:p-6 cursor-pointer transition-all duration-300 hover:shadow-lg border-primary bg-primary/5 shadow-md">
                                         <div class="flex items-start justify-between mb-4">
-                                            <h4 class="text-lg font-bold text-gray-900">Adobe Standard Package</h4>
-                                            <div class="w-5 h-5 rounded-full border-2 flex items-center justify-center border-primary bg-primary">
-                                                <div class="w-2 h-2 bg-white rounded-full"></div>
+                                            <h4 class="text-base sm:text-lg font-bold text-gray-900">Adobe Standard Package</h4>
+                                            <div class="w-5 h-5 sm:w-4 sm:h-4 rounded-full border-2 flex items-center justify-center border-primary bg-primary">
+                                                <div class="w-2 h-2 sm:w-1.5 sm:h-1.5 bg-white rounded-full"></div>
                                             </div>
                                         </div>
                                         <div class="space-y-2">
                                             <div class="flex justify-between">
-                                                <span class="text-gray-600">Base Rate</span>
-                                                <span class="font-semibold">{{ formatPrice(vehicle.tdr || 0) }}</span>
+                                                <span class="text-sm sm:text-base text-gray-600">Base Rate</span>
+                                                <span class="font-semibold text-sm sm:text-base">{{ formatPrice(vehicle.tdr || 0) }}</span>
                                             </div>
                                             <!-- Show only selected protections from API data -->
                                             <template v-if="selectedProtections && Object.keys(selectedProtections).length > 0">
@@ -606,24 +641,24 @@ const isStepComplete = (step) => {
                     </div>
 
                     <!-- Step 2: Customer Information - Match GreenMotion Exactly -->
-                    <div v-show="currentStep === 2" class="space-y-8">
+                    <div v-show="currentStep === 2" class="space-y-6 sm:space-y-8">
                         <div class="bg-white rounded-2xl shadow-sm border border-gray-100">
-                            <div class="p-6 border-b bg-gradient-to-r from-gray-50 to-white">
-                                <h3 class="text-xl font-bold text-gray-900 mb-2">Your Details</h3>
-                                <p class="text-gray-600">Please provide your information to complete the booking</p>
+                            <div class="p-4 sm:p-6 border-b bg-gradient-to-r from-gray-50 to-white">
+                                <h3 class="text-lg sm:text-lg sm:text-xl font-bold text-gray-900 mb-2">Your Details</h3>
+                                <p class="text-sm sm:text-base text-gray-600">Please provide your information to complete the booking</p>
                             </div>
-                            <div class="p-6">
-                                <form class="space-y-6">
+                            <div class="p-4 sm:p-6">
+                                <form class="space-y-4 sm:space-y-6">
                                     <!-- Personal Information -->
                                     <div>
-                                        <h4 class="text-lg font-semibold text-gray-900 mb-4">Personal Information</h4>
-                                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                        <h4 class="text-base sm:text-lg font-semibold text-gray-900 mb-4">Personal Information</h4>
+                                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
                                             <div>
                                                 <label for="firstname" class="block text-sm font-medium text-gray-700 mb-2">
                                                     First Name <span class="text-red-500">*</span>
                                                 </label>
                                                 <input type="text" id="firstname" v-model="formData.customer.name"
-                                                       class="w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary transition-colors"
+                                                       class="w-full px-4 py-3 sm:py-4 border rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary transition-colors text-base sm:text-lg"
                                                        :class="formErrors.name ? 'border-red-500' : 'border-gray-300'"
                                                        placeholder="Enter your first name" />
                                                 <p v-if="formErrors.name" class="mt-1 text-sm text-red-600">{{ formErrors.name }}</p>
@@ -633,7 +668,7 @@ const isStepComplete = (step) => {
                                                     Last Name <span class="text-red-500">*</span>
                                                 </label>
                                                 <input type="text" id="surname" v-model="formData.customer.last_name"
-                                                       class="w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary transition-colors"
+                                                       class="w-full px-4 py-3 sm:py-4 border rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary transition-colors text-base sm:text-lg"
                                                        :class="formErrors.last_name ? 'border-red-500' : 'border-gray-300'"
                                                        placeholder="Enter your last name" />
                                                 <p v-if="formErrors.last_name" class="mt-1 text-sm text-red-600">{{ formErrors.last_name }}</p>
@@ -643,14 +678,14 @@ const isStepComplete = (step) => {
 
                                     <!-- Contact Information -->
                                     <div>
-                                        <h4 class="text-lg font-semibold text-gray-900 mb-4">Contact Information</h4>
-                                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                        <h4 class="text-base sm:text-lg font-semibold text-gray-900 mb-4">Contact Information</h4>
+                                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
                                             <div>
                                                 <label for="email" class="block text-sm font-medium text-gray-700 mb-2">
                                                     Email Address <span class="text-red-500">*</span>
                                                 </label>
                                                 <input type="email" id="email" v-model="formData.customer.email" readonly
-                                                       class="w-full px-4 py-3 border border-gray-300 rounded-lg bg-gray-50 text-gray-600 cursor-not-allowed"
+                                                       class="w-full px-3 sm:px-4 py-3 sm:py-4 border border-gray-300 rounded-lg bg-gray-50 text-gray-600 cursor-not-allowed text-base sm:text-lg"
                                                        placeholder="your.email@example.com" />
                                             </div>
                                             <div>
@@ -658,7 +693,7 @@ const isStepComplete = (step) => {
                                                     Phone Number <span class="text-red-500">*</span>
                                                 </label>
                                                 <input type="tel" id="phone" v-model="formData.customer.phone"
-                                                       class="w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary transition-colors"
+                                                       class="w-full px-4 py-3 sm:py-4 border rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary transition-colors text-base sm:text-lg"
                                                        :class="formErrors.phone ? 'border-red-500' : 'border-gray-300'"
                                                        placeholder="+1 (555) 123-4567" />
                                                 <p v-if="formErrors.phone" class="mt-1 text-sm text-red-600">{{ formErrors.phone }}</p>
@@ -668,25 +703,25 @@ const isStepComplete = (step) => {
 
                                     <!-- Address Information -->
                                     <div>
-                                        <h4 class="text-lg font-semibold text-gray-900 mb-4">Address Information</h4>
+                                        <h4 class="text-base sm:text-lg font-semibold text-gray-900 mb-4">Address Information</h4>
                                         <div class="space-y-6">
                                             <div>
                                                 <label for="address1" class="block text-sm font-medium text-gray-700 mb-2">
                                                     Address Line 1 <span class="text-red-500">*</span>
                                                 </label>
                                                 <input type="text" id="address1" v-model="formData.customer.address"
-                                                       class="w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary transition-colors"
+                                                       class="w-full px-4 py-3 sm:py-4 border rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary transition-colors text-base sm:text-lg"
                                                        :class="formErrors.address ? 'border-red-500' : 'border-gray-300'"
                                                        placeholder="Street address, P.O. box, company name" />
                                             <p v-if="formErrors.address" class="mt-1 text-sm text-red-600">{{ formErrors.address }}</p>
                                             </div>
-                                            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                                            <div class="grid grid-cols-1 md:grid-cols-3 gap-4 sm:gap-6">
                                                 <div>
                                                     <label for="town" class="block text-sm font-medium text-gray-700 mb-2">
                                                         Town/City <span class="text-red-500">*</span>
                                                     </label>
                                                     <input type="text" id="town" v-model="formData.customer.city"
-                                                           class="w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary transition-colors"
+                                                           class="w-full px-4 py-3 sm:py-4 border rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary transition-colors text-base sm:text-lg"
                                                            :class="formErrors.city ? 'border-red-500' : 'border-gray-300'"
                                                            placeholder="City" />
                                                     <p v-if="formErrors.city" class="mt-1 text-sm text-red-600">{{ formErrors.city }}</p>
@@ -696,7 +731,7 @@ const isStepComplete = (step) => {
                                                         Postcode <span class="text-red-500">*</span>
                                                     </label>
                                                     <input type="text" id="postcode" v-model="formData.customer.postcode"
-                                                           class="w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary transition-colors"
+                                                           class="w-full px-4 py-3 sm:py-4 border rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary transition-colors text-base sm:text-lg"
                                                            :class="formErrors.postcode ? 'border-red-500' : 'border-gray-300'"
                                                            placeholder="12345" />
                                                     <p v-if="formErrors.postcode" class="mt-1 text-sm text-red-600">{{ formErrors.postcode }}</p>
@@ -706,7 +741,7 @@ const isStepComplete = (step) => {
                                                         Country <span class="text-red-500">*</span>
                                                     </label>
                                                     <input type="text" id="country" v-model="formData.customer.country"
-                                                           class="w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary transition-colors"
+                                                           class="w-full px-4 py-3 sm:py-4 border rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary transition-colors text-base sm:text-lg"
                                                            :class="formErrors.country ? 'border-red-500' : 'border-gray-300'"
                                                            placeholder="Country" />
                                                     <p v-if="formErrors.country" class="mt-1 text-sm text-red-600">{{ formErrors.country }}</p>
@@ -717,14 +752,14 @@ const isStepComplete = (step) => {
 
                                     <!-- Optional Information -->
                                     <div>
-                                        <h4 class="text-lg font-semibold text-gray-900 mb-4">Optional Information</h4>
-                                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                        <h4 class="text-base sm:text-lg font-semibold text-gray-900 mb-4">Optional Information</h4>
+                                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
                                             <div>
                                                 <label for="flight_number" class="block text-sm font-medium text-gray-700 mb-2">
                                                     Flight Number
                                                 </label>
                                                 <input type="text" id="flight_number" v-model="formData.flight_number"
-                                                       class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary transition-colors"
+                                                       class="w-full px-3 sm:px-4 py-3 sm:py-4 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary transition-colors text-base sm:text-lg"
                                                        placeholder="AA123" />
                                             </div>
                                             <div>
@@ -732,7 +767,7 @@ const isStepComplete = (step) => {
                                                     Reference
                                                 </label>
                                                 <input type="text" id="reference" v-model="formData.reference"
-                                                       class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary transition-colors"
+                                                       class="w-full px-3 sm:px-4 py-3 sm:py-4 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary transition-colors text-base sm:text-lg"
                                                        placeholder="Business trip" />
                                             </div>
                                         </div>
@@ -741,7 +776,7 @@ const isStepComplete = (step) => {
                                                 Special Requests
                                             </label>
                                             <textarea id="customer_comment" v-model="formData.customer_comment" rows="3"
-                                                      class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary transition-colors"
+                                                      class="w-full px-4 py-3 sm:py-4 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary transition-colors text-base sm:text-lg"
                                                       placeholder="Any special requests or comments..."></textarea>
                                         </div>
                                     </div>
@@ -751,21 +786,21 @@ const isStepComplete = (step) => {
                     </div>
 
                          <!-- Step 3: Protection & Extras - Match GreenMotion Exactly -->
-                    <div v-show="currentStep === 3" class="space-y-8">
+                    <div v-show="currentStep === 3" class="space-y-6 sm:space-y-8">
                         <div class="bg-white rounded-2xl shadow-sm border border-gray-100">
-                            <div class="p-6 border-b bg-gradient-to-r from-gray-50 to-white">
-                                <h3 class="text-xl font-bold text-gray-900 mb-2">Protection & Extras</h3>
-                                <p class="text-gray-600">Enhance your rental with additional coverage and extras</p>
+                            <div class="p-4 sm:p-6 border-b bg-gradient-to-r from-gray-50 to-white">
+                                <h3 class="text-lg sm:text-lg sm:text-xl font-bold text-gray-900 mb-2">Protection & Extras</h3>
+                                <p class="text-sm sm:text-base text-gray-600">Enhance your rental with additional coverage and extras</p>
                             </div>
-                            <div class="p-6 space-y-6">
+                            <div class="p-4 sm:p-6 space-y-4 sm:space-y-6">
                                 <!-- Protections Section -->
                                 <div v-if="selectedProtections && Object.keys(selectedProtections).length > 0">
-                                    <h4 class="text-base font-semibold text-gray-900 mb-4">Protection Options</h4>
-                                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    <h4 class="text-base sm:text-base sm:text-lg font-semibold text-gray-900 mb-4">Protection Options</h4>
+                                    <div class="grid grid-cols-1 lg:grid-cols-2 gap-3 sm:gap-4">
                                         <div
                                             v-for="protection in (selectedProtections ? Object.values(selectedProtections) : [])"
                                             :key="protection.code"
-                                            class="relative p-4 border-2 rounded-xl transition-all duration-300"
+                                            class="relative p-3 sm:p-4 border-2 rounded-xl transition-all duration-300"
                                             :class="{
                                                 'border-primary bg-primary/5': protection.selected,
                                                 'border-gray-200 hover:border-gray-300': !protection.selected && !protection.required,
@@ -783,16 +818,16 @@ const isStepComplete = (step) => {
                                             <div class="flex items-start justify-between w-full mb-3">
                                                 <div class="flex items-start space-x-3">
                                                     <div class="mt-1">
-                                                        <div class="w-4 h-4 rounded-full border-2 flex items-center justify-center"
+                                                        <div class="w-5 h-5 sm:w-4 sm:h-4 rounded-full border-2 flex items-center justify-center"
                                                              :class="protection.selected
                                                                 ? 'border-primary bg-primary'
                                                                 : 'border-gray-300'">
-                                                            <div v-if="protection.selected" class="w-1.5 h-1.5 bg-white rounded-full"></div>
+                                                            <div v-if="protection.selected" class="w-2.5 h-2.5 sm:w-1.5 sm:h-1.5 bg-white rounded-full"></div>
                                                         </div>
                                                     </div>
                                                     <div class="flex-1">
-                                                        <h5 class="text-sm font-semibold text-gray-900">{{ protection.displayName || protection.name || protection.code }}</h5>
-                                                        <p class="text-xs text-gray-600 mt-1">
+                                                        <h5 class="text-sm sm:text-base font-semibold text-gray-900">{{ protection.displayName || protection.name || protection.code }}</h5>
+                                                        <p class="text-xs sm:text-sm text-gray-600 mt-1">
                                                             <span v-if="!protection.expanded">{{ truncateText(protection.displayDescription || protection.description, 60) }}</span>
                                                             <span v-else>{{ protection.displayDescription || protection.description }}</span>
                                                             <button
@@ -814,12 +849,12 @@ const isStepComplete = (step) => {
 
                                 <!-- Extras Section -->
                                 <div v-if="selectedExtras && Object.keys(selectedExtras).length > 0">
-                                    <h4 class="text-base font-semibold text-gray-900 mb-4">Additional Extras</h4>
-                                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    <h4 class="text-base sm:text-base sm:text-lg font-semibold text-gray-900 mb-4">Additional Extras</h4>
+                                    <div class="grid grid-cols-1 lg:grid-cols-2 gap-3 sm:gap-4">
                                         <div
                                             v-for="extra in (selectedExtras ? Object.values(selectedExtras) : [])"
                                             :key="extra.code"
-                                            class="relative p-4 border-2 rounded-xl cursor-pointer transition-all duration-300"
+                                            class="relative p-3 sm:p-4 border-2 rounded-xl cursor-pointer transition-all duration-300"
                                             :class="extra.selected
                                                 ? 'border-primary bg-primary/5'
                                                 : 'border-gray-200 hover:border-gray-300'"
@@ -828,16 +863,16 @@ const isStepComplete = (step) => {
                                                 <div class="flex items-start justify-between w-full mb-3">
                                                 <div class="flex items-start space-x-3">
                                                     <div class="mt-1">
-                                                        <div class="w-4 h-4 rounded-full border-2 flex items-center justify-center"
+                                                        <div class="w-5 h-5 sm:w-4 sm:h-4 rounded-full border-2 flex items-center justify-center"
                                                              :class="extra.selected
                                                                 ? 'border-primary bg-primary'
                                                                 : 'border-gray-300'">
-                                                            <div v-if="extra.selected" class="w-1.5 h-1.5 bg-white rounded-full"></div>
+                                                            <div v-if="extra.selected" class="w-2.5 h-2.5 sm:w-1.5 sm:h-1.5 bg-white rounded-full"></div>
                                                         </div>
                                                     </div>
                                                     <div class="flex-1">
-                                                        <h5 class="text-sm font-semibold text-gray-900">{{ extra.displayName || extra.name || extra.code }}</h5>
-                                                        <p class="text-xs text-gray-600 mt-1">
+                                                        <h5 class="text-sm sm:text-base font-semibold text-gray-900">{{ extra.displayName || extra.name || extra.code }}</h5>
+                                                        <p class="text-xs sm:text-sm text-gray-600 mt-1">
                                                             <span v-if="!extra.expanded">{{ truncateText(extra.displayDescription || extra.description, 50) }}</span>
                                                             <span v-else>{{ extra.displayDescription || extra.description }}</span>
                                                             <button
@@ -859,9 +894,9 @@ const isStepComplete = (step) => {
                                                             @click.stop
                                                             min="0"
                                                             max="10"
-                                                            class="w-16 px-2 py-1 border border-gray-300 rounded text-xs text-center"
+                                                            class="w-14 sm:w-16 px-2 py-1 sm:py-2 border border-gray-300 rounded text-xs text-center focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                                                         />
-                                                        <p class="text-xs text-gray-500 mt-1">Qty</p>
+                                                        <p class="text-xs sm:text-sm text-gray-500 mt-1">Qty</p>
                                                     </div>
                                                 </div>
                                             </div>
@@ -874,13 +909,13 @@ const isStepComplete = (step) => {
                 </div>
 
                  <!-- Step 4: Payment - Match GreenMotion Exactly -->
-                    <div v-show="currentStep === 4" class="space-y-8">
+                    <div v-show="currentStep === 4" class="space-y-6 sm:space-y-8">
                         <div class="bg-white rounded-2xl shadow-sm border border-gray-100">
                             <div class="p-6 border-b bg-gradient-to-r from-gray-50 to-white">
-                                <h3 class="text-xl font-bold text-gray-900 mb-2">Complete Your Payment</h3>
+                                <h3 class="text-lg sm:text-xl font-bold text-gray-900 mb-2">Complete Your Payment</h3>
                                 <p class="text-gray-600">Review your booking and complete the payment process</p>
                             </div>
-                            <div class="p-6">
+                            <div class="p-4 sm:p-6">
                                 <div class="space-y-4">
                                     <div v-for="item in pricingBreakdown" :key="item.label" class="flex justify-between items-center p-4 bg-gray-50 rounded-lg">
                                         <div>
@@ -912,7 +947,7 @@ const isStepComplete = (step) => {
                                 <button
                                     @click="submitBooking"
                                     :disabled="isSubmitting"
-                                    class="w-full mt-6 bg-primary text-white py-4 px-6 rounded-xl font-semibold hover:bg-primary-dark transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-lg">
+                                    class="w-full mt-6 bg-primary text-white py-4 sm:py-5 px-6 rounded-xl font-semibold hover:bg-primary-dark transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-base sm:text-lg min-h-[44px] shadow-lg">
                                     <span v-if="isSubmitting" class="flex items-center justify-center gap-2">
                                         <svg class="animate-spin h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                                             <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
@@ -926,20 +961,20 @@ const isStepComplete = (step) => {
                         </div>
                     </div>
                 <!-- Navigation Buttons - Match GreenMotion -->
-                <div class="flex justify-between pt-8">
+                <div class="flex flex-col sm:flex-row justify-between gap-4 pt-6 sm:pt-8">
                     <button v-if="currentStep > 1"
                             @click="prevStep"
-                            class="inline-flex items-center px-6 py-3 border border-gray-300 text-gray-700 font-medium rounded-lg hover:bg-gray-50 transition-colors">
+                            class="inline-flex items-center justify-center px-6 py-4 sm:py-3 border border-gray-300 text-gray-700 font-medium rounded-lg hover:bg-gray-50 transition-colors text-base sm:text-lg w-full sm:w-auto min-h-[44px]">
                         <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"/>
                         </svg>
                         Previous Step
                     </button>
-                    <div v-else></div>
-    
+                    <div v-else class="hidden sm:block"></div>
+
                     <button v-if="currentStep < 4"
                             @click="nextStep"
-                            class="inline-flex items-center px-6 py-3 bg-primary text-white font-medium rounded-lg hover:bg-primary-dark transition-colors">
+                            class="inline-flex items-center justify-center px-6 py-4 sm:py-3 bg-primary text-white font-medium rounded-lg hover:bg-primary-dark transition-colors text-base sm:text-lg w-full sm:w-auto min-h-[44px] shadow-lg">
                         Next Step
                         <svg class="w-5 h-5 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3"/>
@@ -949,36 +984,43 @@ const isStepComplete = (step) => {
                 
                 <!-- Right Column: Booking Summary - Match GreenMotion Exactly -->
             </div>
-            <div class="lg:col-span-1">
+            <div class="xl:col-span-2 lg:col-span-1">
                 <!-- Mobile Summary Toggle -->
                 <button @click="showMobileBookingSummary = !showMobileBookingSummary"
-                        class="lg:hidden w-full mb-4 px-4 py-3 bg-primary text-white font-medium rounded-lg">
-                    <span v-if="!showMobileBookingSummary">Show Booking Summary</span>
-                    <span v-else>Hide Booking Summary</span>
+                        class="lg:hidden w-full mb-4 px-4 py-4 sm:py-5 bg-primary text-white font-medium rounded-lg flex items-center justify-between text-base sm:text-lg shadow-lg">
+                    <span class="flex items-center">
+                        <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/>
+                        </svg>
+                        {{ !showMobileBookingSummary ? 'Show Booking Summary' : 'Hide Booking Summary' }}
+                    </span>
+                    <svg class="w-5 h-5 transform transition-transform duration-200" :class="{ 'rotate-180': showMobileBookingSummary }" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+                    </svg>
                 </button>
 
-                <div class="sticky top-4" :class="{ 'hidden lg:block': !showMobileBookingSummary }">
+                <div class="sticky top-4 lg:sticky lg:top-4" :class="{ 'hidden lg:block': !showMobileBookingSummary }">
                     <div class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-                        <div class="p-6 bg-gradient-to-r from-primary to-primary-dark text-white">
-                            <h3 class="text-xl font-bold mb-2">Booking Summary</h3>
-                            <p class="opacity-90">Review your reservation details</p>
+                        <div class="p-4 sm:p-6 bg-gradient-to-r from-primary to-primary-dark text-white">
+                            <h3 class="text-lg sm:text-xl font-bold mb-2">Booking Summary</h3>
+                            <p class="text-sm sm:text-base opacity-90">Review your reservation details</p>
                         </div>
 
-                        <div class="p-6">
+                        <div class="p-4 sm:p-6">
                             <!-- Vehicle Info -->
                             <div class="border-b border-gray-200 pb-6 mb-6">
-                                <div class="flex items-center justify-between mb-4">
-                                    <div>
-                                        <h4 class="font-bold text-gray-900 text-lg">{{ vehicle?.model }}</h4>
+                                <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-4">
+                                    <div class="min-w-0 flex-1">
+                                        <h4 class="font-bold text-gray-900 text-base sm:text-lg truncate">{{ vehicle?.model }}</h4>
                                         <p class="text-gray-600 text-sm">{{ vehicle?.category?.toUpperCase() }} • Adobe Car Rental</p>
                                     </div>
                                     <img :src="vehicle.image || '/images/adobe-placeholder.jpg'"
                                          :alt="vehicle.model"
-                                         class="w-20 h-20 object-cover rounded-lg" />
+                                         class="w-16 h-16 sm:w-20 sm:h-20 object-cover rounded-lg flex-shrink-0" />
                                 </div>
 
                                 <!-- Adobe Vehicle Features -->
-                                <div class="grid grid-cols-3 gap-4 text-center">
+                                <div class="grid grid-cols-3 gap-3 sm:gap-4 text-center">
                                     <div>
                                         <div class="flex items-center justify-center w-8 h-8 bg-gray-100 rounded-full mx-auto mb-1">
                                             <svg class="w-4 h-4 text-gray-600" fill="currentColor" viewBox="0 0 20 20">
@@ -1080,7 +1122,7 @@ const isStepComplete = (step) => {
 
 @media (max-width: 768px) {
     .container {
-        padding: 0 2rem;
+        padding: 2rem;
     }
 }
 
