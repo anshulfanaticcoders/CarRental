@@ -41,7 +41,20 @@ class LoginRequest extends FormRequest
     {
         $this->ensureIsNotRateLimited();
 
-        if (! Auth::attempt($this->only('email', 'password'), $this->boolean('remember'))) {
+        $credentials = $this->only('email', 'password');
+
+        // Find user first to check status before authentication
+        $user = \App\Models\User::where('email', $credentials['email'])->first();
+
+        // Check if user exists and has proper status
+        if ($user && $user->status !== 'active') {
+            throw ValidationException::withMessages([
+                'email' => $this->getStatusErrorMessage($user->status),
+            ]);
+        }
+
+        // Proceed with normal authentication
+        if (!Auth::attempt($credentials, $this->boolean('remember'))) {
             RateLimiter::hit($this->throttleKey());
 
             throw ValidationException::withMessages([
@@ -73,6 +86,21 @@ class LoginRequest extends FormRequest
                 'minutes' => ceil($seconds / 60),
             ]),
         ]);
+    }
+
+    /**
+     * Get status-specific error message for user.
+     *
+     * @param string $status
+     * @return string
+     */
+    private function getStatusErrorMessage(string $status): string
+    {
+        return match($status) {
+            'inactive' => 'Your account is inactive. Please contact support for assistance.',
+            'suspended' => 'Your account has been suspended. Please contact support for assistance.',
+            default => 'Account access denied. Please contact support for assistance.',
+        };
     }
 
     /**
