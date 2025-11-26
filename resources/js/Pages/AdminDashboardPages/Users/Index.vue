@@ -343,7 +343,15 @@ const filterByStatus = () => {
 };
 
 const openEditDialog = (user) => {
-    editForm.value = { ...user };
+    editForm.value = {
+        ...user,
+        // Add profile fields if available
+        address: user.profile?.address_line1 || '',
+        city: user.profile?.city || '',
+        postal_code: user.profile?.postal_code || '',
+        country: user.profile?.country || '',
+        date_of_birth: user.profile?.date_of_birth || '',
+    };
     isEditDialogOpen.value = true;
 };
 

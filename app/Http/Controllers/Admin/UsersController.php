@@ -38,7 +38,7 @@ class UsersController extends Controller
             $query->where('status', $status);
         }
 
-        $users = $query->orderBy('created_at', 'desc')->paginate(7);
+        $users = $query->with('profile')->orderBy('created_at', 'desc')->paginate(7);
 
         // Get accurate status counts
         $statusCounts = [
@@ -65,28 +65,42 @@ class UsersController extends Controller
             'last_name' => 'required|string|max:255',
             'email' => 'required|email|unique:users,email',
             'phone' => 'required|unique:users,phone',
+            'phone_code' => 'required|string|max:10',
             'password' => 'required|min:8|confirmed',
             'role' => 'required|in:admin,vendor,customer',
             'status' => 'required|in:active,inactive,suspended',
-            'email_verified_at' => now(),
-            'phone_verified_at' => now(),
-            'last_login_at' => now(),
-            'created_at' => now(),
+
+            // New profile fields validation
+            'date_of_birth' => 'required|date|before:18 years ago',
+            'address' => 'required|string|max:500',
+            'city' => 'required|string|max:255',
+            'postal_code' => 'required|string|max:20',
+            'country' => 'required|string|max:2',
         ]);
 
-        $data = $request->all();
+        // Extract phone code and number from combined phone field
+        $phoneData = explode(' ', $request->phone, 2);
+        $phoneCode = $phoneData[0] ?? '';
+        $phoneNumber = $phoneData[1] ?? '';
+
+        $data = $request->except(['date_of_birth', 'address', 'city', 'postal_code', 'country']);
         $data['password'] = Hash::make($request->password);
+        $data['phone_code'] = $phoneCode;
+        $data['phone'] = $phoneNumber;
+        $data['email_verified_at'] = now();
+        $data['phone_verified_at'] = now();
+        $data['last_login_at'] = now();
 
         $user = User::create($data);
 
-        // Create UserProfile with country
+        // Create UserProfile with provided data instead of defaults
         UserProfile::create([
             'user_id' => $user->id,
             'country' => $request->country,
-            'address_line1' => 'N/A',
-            'city' => 'N/A',
-            'postal_code' => '00000',
-            'date_of_birth' => now()->subYears(18)->toDateString(),
+            'address_line1' => $request->address,
+            'city' => $request->city,
+            'postal_code' => $request->postal_code,
+            'date_of_birth' => $request->date_of_birth,
         ]);
 
         // Log the activity
@@ -105,12 +119,25 @@ class UsersController extends Controller
             'last_name' => 'required|string|max:255',
             'email' => 'required|email|unique:users,email,' . $user->id,
             'phone' => 'required|unique:users,phone,' . $user->id,
+            'phone_code' => 'nullable|string|max:10',
             // 'role' => 'required|in:admin,vendor,customer',
             'status' => 'required|in:active,inactive,suspended',
             'password' => 'nullable|min:8|confirmed',
+
+            // New profile fields validation - make them optional for existing users
+            'date_of_birth' => 'nullable|date|before:18 years ago',
+            'address' => 'nullable|string|max:500',
+            'city' => 'nullable|string|max:255',
+            'postal_code' => 'nullable|string|max:20',
+            'country' => 'nullable|string|max:2',
         ]);
 
-        $data = $request->all();
+        // Extract phone code and number from combined phone field
+        $phoneData = explode(' ', $request->phone, 2);
+        $phoneCode = $phoneData[0] ?? '';
+        $phoneNumber = $phoneData[1] ?? '';
+
+        $data = $request->except(['date_of_birth', 'address', 'city', 'postal_code', 'country']);
 
         if ($request->filled('password')) {
             $data['password'] = Hash::make($request->password);
@@ -118,7 +145,38 @@ class UsersController extends Controller
             unset($data['password']);
         }
 
+        $data['phone_code'] = $phoneCode;
+        $data['phone'] = $phoneNumber;
+
         $user->update($data);
+
+        // Update or create UserProfile with provided data
+        $profileData = [];
+
+        if ($request->filled('country')) {
+            $profileData['country'] = $request->country;
+        }
+        if ($request->filled('address')) {
+            $profileData['address_line1'] = $request->address;
+        }
+        if ($request->filled('city')) {
+            $profileData['city'] = $request->city;
+        }
+        if ($request->filled('postal_code')) {
+            $profileData['postal_code'] = $request->postal_code;
+        }
+        if ($request->filled('date_of_birth')) {
+            $profileData['date_of_birth'] = $request->date_of_birth;
+        }
+
+        if (!empty($profileData)) {
+            if ($user->profile) {
+                $user->profile->update($profileData);
+            } else {
+                UserProfile::create(array_merge(['user_id' => $user->id], $profileData));
+            }
+        }
+
         // Log the activity
         ActivityLogHelper::logActivity('update', 'Updated a user', $user, $request);
 
