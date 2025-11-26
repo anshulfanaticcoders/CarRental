@@ -28,6 +28,7 @@ import {
 import VueDatePicker from '@vuepic/vue-datepicker';
 import '@vuepic/vue-datepicker/dist/main.css';
 import loaderVariant from '../../../assets/loader-variant.svg';
+import Footer from "@/Components/Footer.vue";
 
 const stepIndex = ref(1);
 const showPassword = ref(false);
@@ -172,6 +173,10 @@ const canNavigateTo = (targetStep) => {
         }
     }
     return true;
+};
+
+const isStepCompleted = (stepNumber) => {
+    return stepNumber < stepIndex.value;
 };
 
 const handleStepChange = (newStep) => {
@@ -328,7 +333,7 @@ watch(dateOfBirth, (newValue) => {
     </Head>
     <AuthenticatedHeaderLayout />
 
-    <div class="flex justify-center items-center register py-customVerticalSpacing">
+    <div class="flex justify-center items-center register py-customVerticalSpacing min-h-[100vh]">
         <div class="w-[60rem] max-w-full mx-auto px-4 max-[768px]:px-[1.5rem]">
             <Stepper v-model="stepIndex" class="block w-full">
                 <form @submit.prevent="submit">
@@ -348,15 +353,26 @@ watch(dateOfBirth, (newValue) => {
                                     ? 'default'
                                     : 'outline'
                                     " size="icon"
-                                    class="z-10 rounded-full shrink-0 max-[768px]:size-8 flex items-center justify-center"
+                                    class="z-10 rounded-full shrink-0 max-[768px]:size-8 flex items-center justify-center relative stepper-button"
                                     :class="[
                                         state === 'active' &&
-                                        'ring-2 ring-ring ring-offset-2 ring-offset-background',
+                                        'ring-2 ring-ring ring-offset-2 ring-offset-background stepper-active',
                                         !canNavigateTo(step.step) &&
                                         'opacity-50 cursor-not-allowed',
+                                        isStepCompleted(step.step) && 'bg-green-500 text-white border-green-500',
+                                        isStepCompleted(step.step) && state !== 'active' && '!bg-green-500'
                                     ]" :disabled="!canNavigateTo(step.step)">
-                                    <!-- Replace icons with numbers -->
-                                    <span class="text-sm font-medium">{{
+                                    <!-- Show checkmark for completed steps -->
+                                    <svg v-if="isStepCompleted(step.step) && state !== 'active'"
+                                         class="w-5 h-5"
+                                         fill="currentColor"
+                                         viewBox="0 0 20 20">
+                                        <path fill-rule="evenodd"
+                                              d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
+                                              clip-rule="evenodd" />
+                                    </svg>
+                                    <!-- Show number for active/inactive steps -->
+                                    <span v-else class="text-sm font-medium">{{
                                         index + 1
                                     }}</span>
                                 </Button>
@@ -658,6 +674,8 @@ watch(dateOfBirth, (newValue) => {
     <div v-if="form.processing" class="fixed inset-0 z-50 flex items-center justify-center bg-white bg-opacity-70">
         <img :src="loaderVariant" alt="Loading..." class="h-20 w-20" />
     </div>
+
+    <Footer/>
 </template>
 
 <style scoped>
@@ -690,9 +708,9 @@ watch(dateOfBirth, (newValue) => {
 }
 :deep(.dp__input) {
     padding: 1rem 1rem 1rem 2.5rem;
-    border-radius: 12px; 
+    border-radius: 12px;
     border: 1px solid #2b2b2b99;
-    width: 100%; 
+    width: 100%;
 }
 
 :deep(.dp__menu) {
@@ -704,10 +722,74 @@ watch(dateOfBirth, (newValue) => {
     display: none !important;
 }
 
+/* Ripple effect for active stepper button - positioned outside */
+.stepper-button {
+    position: relative;
+}
+
+.stepper-active::before {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 0;
+    height: 0;
+    border-radius: 50%;
+    background: rgba(21, 59, 79, 0.2);
+    transform: translate(-50%, -50%);
+    animation: ripple 2s ease-out infinite;
+    z-index: -1;
+}
+
+.stepper-active::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 0;
+    height: 0;
+    border-radius: 50%;
+    background: rgba(21, 59, 79, 0.1);
+    transform: translate(-50%, -50%);
+    animation: ripple 2s ease-out infinite 0.5s;
+    z-index: -1;
+}
+
+@keyframes ripple {
+    0% {
+        width: 0;
+        height: 0;
+        opacity: 1;
+    }
+    100% {
+        width: 120px;
+        height: 120px;
+        opacity: 0;
+    }
+}
 
 @media screen and (max-width:768px) {
     :deep(.dp__input){
         font-size: 0.75rem;
+    }
+
+    /* Adjust ripple size for mobile */
+    .stepper-active::before,
+    .stepper-active::after {
+        animation-duration: 1.5s;
+    }
+
+    @keyframes ripple {
+        0% {
+            width: 0;
+            height: 0;
+            opacity: 1;
+        }
+        100% {
+            width: 80px;
+            height: 80px;
+            opacity: 0;
+        }
     }
 }
 </style>
