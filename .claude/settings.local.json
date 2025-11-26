@@ -18,7 +18,8 @@
       "mcp__consult7__consultation",
       "mcp__serena__activate_project",
       "mcp__serena__initial_instructions",
-      "Bash(npm run dev:*)"
+      "Bash(npm run dev:*)",
+      "mcp__sequential-thinking__process_thought"
     ]
   },
   "enableAllProjectMcpServers": true,

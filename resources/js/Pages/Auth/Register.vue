@@ -28,11 +28,15 @@ import {
 import VueDatePicker from '@vuepic/vue-datepicker';
 import '@vuepic/vue-datepicker/dist/main.css';
 import loaderVariant from '../../../assets/loader-variant.svg';
+import { Vue3Lottie } from 'vue3-lottie';
+import universalLoader from '../../../../public/animations/universal-loader.json';
 import Footer from "@/Components/Footer.vue";
 
 const stepIndex = ref(1);
 const showPassword = ref(false);
 const showconfirmPassword = ref(false);
+const isRegistering = ref(false);
+const isValidating = ref(false);
 const _t = (section, key) => {
     const { props } = usePage();
     if (props.translations && props.translations[section] && props.translations[section][key]) {
@@ -191,6 +195,7 @@ const nextStep = () => {
         if (stepIndex.value === 2) {
             // Clear existing errors before validation
             form.clearErrors();
+            isValidating.value = true;
 
             axios
                 .post(route("validate-contact"), {
@@ -200,8 +205,10 @@ const nextStep = () => {
                 })
                 .then(() => {
                     stepIndex.value++;
+                    isValidating.value = false;
                 })
                 .catch((error) => {
+                    isValidating.value = false;
                     if (error.response && error.response.data.errors) {
                         // Only set errors if they come from the server
                         if (error.response.data.errors.email) {
@@ -234,6 +241,8 @@ const prevStep = () => {
 const submit = () => {
     if (!canNavigateNext.value) return;
 
+    isRegistering.value = true; // Set loading state
+
     if (dateOfBirth.value) {
         form.date_of_birth = dateOfBirth.value.toISOString().split('T')[0];
     }
@@ -248,11 +257,13 @@ const submit = () => {
         },
         onFinish: () => {
             form.reset("password", "password_confirmation");
+            isRegistering.value = false; // Reset loading state
         },
         onError: (errors) => {
             Object.keys(errors).forEach((field) => {
                 form.errors[field] = errors[field];
             });
+            isRegistering.value = false; // Reset loading state on error
         },
     });
 };
@@ -658,12 +669,12 @@ watch(dateOfBirth, (newValue) => {
                         </Button>
                         <div class="flex items-center gap-3 max-[768px]:w-full max-[768px]:order-1">
                             <Button v-if="stepIndex !== 4" size="lg" class="w-[100%]" @click="nextStep"
-                                :disabled="!isStepValid">
-                                {{ _t('registerUser', 'continue_button') }}
+                                :disabled="!isStepValid || isValidating">
+                                {{ stepIndex === 2 && isValidating ? 'Validating...' : _t('registerUser', 'continue_button') }}
                             </Button>
                             <PrimaryButton v-if="stepIndex === 4" class="w-[100%]"
-                                :disabled="form.processing || !isStepValid" @click="submit">
-                                {{ _t('registerUser', 'register_button') }}
+                                :disabled="isRegistering || !isStepValid" @click="submit">
+                                {{ isRegistering ? 'Registering...' : _t('registerUser', 'register_button') }}
                             </PrimaryButton>
                         </div>
                     </div>
@@ -671,14 +682,27 @@ watch(dateOfBirth, (newValue) => {
             </Stepper>
         </div>
     </div>
-    <div v-if="form.processing" class="fixed inset-0 z-50 flex items-center justify-center bg-white bg-opacity-70">
-        <img :src="loaderVariant" alt="Loading..." class="h-20 w-20" />
+    <div v-if="isRegistering" class="loader-overlay">
+        <Vue3Lottie :animation-data="universalLoader" :height="200" :width="200" />
     </div>
 
     <Footer/>
 </template>
 
 <style scoped>
+.loader-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(0, 0, 0, 0.5);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 9999;
+}
+
 .register label {
     margin-bottom: 0.5rem;
     color: #2b2b2bbf;

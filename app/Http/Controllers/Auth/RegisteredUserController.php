@@ -15,6 +15,7 @@ use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\Rules;
 use Illuminate\Support\Facades\Notification;
 use Inertia\Inertia;
@@ -91,16 +92,27 @@ class RegisteredUserController extends Controller
         // Log the activity
         ActivityLogHelper::logActivity('create', 'New User Created', $user, $request);
 
-        // Notify the admin
-        $adminEmail = env('VITE_ADMIN_EMAIL', 'default@admin.com');
-        $admin = User::where('email', $adminEmail)->first();
-        if ($admin) {
-            $admin->notify(new AccountCreatedNotification($user));
+        // Notify the admin - wrapped in try-catch to prevent errors on screen
+        try {
+            $adminEmail = env('VITE_ADMIN_EMAIL', 'default@admin.com');
+            $admin = User::where('email', $adminEmail)->first();
+            if ($admin) {
+                $admin->notify(new AccountCreatedNotification($user));
+            }
+
+            // Notify the user - wrapped in try-catch to prevent errors on screen
+            Notification::route('mail', $user->email)
+                ->notify(new AccountCreatedUserConfirmation($user));
+        } catch (\Exception $e) {
+            // Log the notification error but don't show it to user
+            Log::error('Registration notification failed: ' . $e->getMessage(), [
+                'user_id' => $user->id,
+                'email' => $user->email,
+                'trace' => $e->getTraceAsString()
+            ]);
+            // Continue with registration flow even if notification fails
         }
 
-        // Notify the user
-        Notification::route('mail', $user->email)
-            ->notify(new AccountCreatedUserConfirmation($user));
         return redirect(RouteServiceProvider::HOME);
     }
 
