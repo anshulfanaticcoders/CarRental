@@ -7,6 +7,8 @@ import { Head, Link, useForm, usePage } from '@inertiajs/vue3';
 import loginBg from '../../../assets/loginpageImage.jpg'
 import GuestHeader from '@/Layouts/GuestHeader.vue';
 import { ref } from 'vue';
+import { Vue3Lottie } from 'vue3-lottie';
+import universalLoader from '../../../../public/animations/universal-loader.json';
 
 const page = usePage();
 
@@ -24,7 +26,7 @@ defineProps({
 });
 
 const showPassword = ref(false);
-
+const isLoggingIn = ref(false);
 
 const form = useForm({
     email: '',
@@ -33,8 +35,16 @@ const form = useForm({
 });
 
 const submit = () => {
+    isLoggingIn.value = true;
+
     form.post(route('login'), {
-        onFinish: () => form.reset('password'),
+        onFinish: () => {
+            form.reset('password');
+            isLoggingIn.value = false;
+        },
+        onError: () => {
+            isLoggingIn.value = false;
+        }
     });
 };
 </script>
@@ -118,8 +128,13 @@ const submit = () => {
                     <div class="flex flex-col gap-4 justify-end mt-4">
                         <button
                             class="button-primary w-full p-4 text-[1.15rem] max-[768px]:text-[1rem] max-[768px]:mt-5"
-                            :class="{ 'opacity-25': form.processing }" :disabled="form.processing">
-                            {{ _t('login', 'sign_in_button') }}
+                            :class="{ 'opacity-25': form.processing || isLoggingIn }"
+                            :disabled="form.processing || isLoggingIn">
+                            <span v-if="isLoggingIn" class="flex items-center justify-center gap-2">
+                                <div class="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                                Signing in...
+                            </span>
+                            <span v-else>{{ _t('login', 'sign_in_button') }}</span>
                         </button>
                     </div>
                 </form>
@@ -130,6 +145,11 @@ const submit = () => {
                 <img :src=loginBg alt=""
                     class="w-full h-full brightness-90 object-cover repeat-0 max-[768px]:brightness-50">
             </div>
+        </div>
+
+        <!-- Loader Overlay -->
+        <div v-if="isLoggingIn" class="loader-overlay">
+            <Vue3Lottie :animation-data="universalLoader" :height="200" :width="200" />
         </div>
 
     </main>
@@ -145,5 +165,18 @@ const submit = () => {
 
 .sign_in label {
     color: #2B2B2BBF;
+}
+
+.loader-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.5);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 9999;
 }
 </style>

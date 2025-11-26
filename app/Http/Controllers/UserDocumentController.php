@@ -8,6 +8,7 @@ use App\Models\UserDocument;
 use Illuminate\Support\Facades\Auth;
 use Inertia\Inertia;
 use Inertia\Response;
+use Illuminate\Http\UploadedFile;
 
 class UserDocumentController extends Controller
 {
@@ -41,27 +42,23 @@ class UserDocumentController extends Controller
             $userId = Auth::id();
             $folderName = 'documents';
 
-            // Handle file uploads
+            // Handle file uploads with image compression
             $drivingLicenseFront = null;
             $drivingLicenseBack = null;
             $passportFront = null;
             $passportBack = null;
 
             if ($request->hasFile('driving_license_front')) {
-                $path = $request->file('driving_license_front')->store($folderName, 'upcloud');
-                $drivingLicenseFront = Storage::disk('upcloud')->url($path);
+                $drivingLicenseFront = $this->handleDocumentUpload($request->file('driving_license_front'), $folderName);
             }
             if ($request->hasFile('driving_license_back')) {
-                $path = $request->file('driving_license_back')->store($folderName, 'upcloud');
-                $drivingLicenseBack = Storage::disk('upcloud')->url($path);
+                $drivingLicenseBack = $this->handleDocumentUpload($request->file('driving_license_back'), $folderName);
             }
             if ($request->hasFile('passport_front')) {
-                $path = $request->file('passport_front')->store($folderName, 'upcloud');
-                $passportFront = Storage::disk('upcloud')->url($path);
+                $passportFront = $this->handleDocumentUpload($request->file('passport_front'), $folderName);
             }
             if ($request->hasFile('passport_back')) {
-                $path = $request->file('passport_back')->store($folderName, 'upcloud');
-                $passportBack = Storage::disk('upcloud')->url($path);
+                $passportBack = $this->handleDocumentUpload($request->file('passport_back'), $folderName);
             }
 
             // Create or update the document record
@@ -121,15 +118,14 @@ class UserDocumentController extends Controller
                 $newFileUrl = $currentFileUrl; // Default to current URL
 
                 if ($request->hasFile($field)) {
-                    // New file uploaded
+                    // New file uploaded - delete old file and upload new compressed file
                     if ($currentFileUrl) {
-                        Storage::disk('upcloud')->delete(parse_url($currentFileUrl, PHP_URL_PATH));
+                        $this->deleteOldDocument($currentFileUrl);
                     }
-                    $path = $request->file($field)->store($folderName, 'upcloud');
-                    $newFileUrl = Storage::disk('upcloud')->url($path);
+                    $newFileUrl = $this->handleDocumentUpload($request->file($field), $folderName);
                 } elseif ($request->exists($field) && ($request->input($field) === '' || $request->input($field) === null) && $currentFileUrl) {
                     // Field was sent as an empty string or is null after validation (due to nullable), indicating removal
-                    Storage::disk('upcloud')->delete(parse_url($currentFileUrl, PHP_URL_PATH));
+                    $this->deleteOldDocument($currentFileUrl);
                     $newFileUrl = null;
                 }
                 // If field not in request or not an empty string/null, $newFileUrl remains $currentFileUrl (no change)
@@ -162,16 +158,16 @@ class UserDocumentController extends Controller
 
             // Delete associated files
             if ($document->driving_license_front) {
-                Storage::disk('upcloud')->delete(parse_url($document->driving_license_front, PHP_URL_PATH));
+                $this->deleteOldDocument($document->driving_license_front);
             }
             if ($document->driving_license_back) {
-                Storage::disk('upcloud')->delete(parse_url($document->driving_license_back, PHP_URL_PATH));
+                $this->deleteOldDocument($document->driving_license_back);
             }
             if ($document->passport_front) {
-                Storage::disk('upcloud')->delete(parse_url($document->passport_front, PHP_URL_PATH));
+                $this->deleteOldDocument($document->passport_front);
             }
             if ($document->passport_back) {
-                Storage::disk('upcloud')->delete(parse_url($document->passport_back, PHP_URL_PATH));
+                $this->deleteOldDocument($document->passport_back);
             }
 
             $document->delete();
@@ -186,6 +182,61 @@ class UserDocumentController extends Controller
                 'message' => 'Something went wrong during deletion. Please try again.',
                 'type' => 'error',
             ]);
+        }
+    }
+
+    /**
+     * Handle document upload with image compression
+     *
+     * @param UploadedFile $file
+     * @param string $folderName
+     * @return string
+     * @throws \Exception
+     */
+    private function handleDocumentUpload(UploadedFile $file, string $folderName): string
+    {
+        $fileExtension = strtolower($file->getClientOriginalExtension());
+
+        // Handle PDF files without compression
+        if ($fileExtension === 'pdf') {
+            $path = $file->store($folderName, 'upcloud');
+            return Storage::disk('upcloud')->url($path);
+        }
+
+        // Handle image files with compression
+        // Use lower quality for PNG to ensure compression works
+        $imageQuality = ($fileExtension === 'png') ? 60 : 85;
+
+        $compressedPath = \App\Helpers\ImageCompressionHelper::compressImage(
+            $file,
+            $folderName,
+            quality: $imageQuality,        // Lower quality for PNG, moderate for JPEG
+            maxWidth: 1200,     // Smaller dimensions for file size
+            maxHeight: 900
+        );
+
+        if (!$compressedPath) {
+            throw new \Exception('Image compression failed for: ' . $file->getClientOriginalName());
+        }
+
+        return Storage::disk('upcloud')->url($compressedPath);
+    }
+
+    /**
+     * Delete old document file from storage
+     *
+     * @param string $fileUrl
+     * @return void
+     */
+    private function deleteOldDocument(string $fileUrl): void
+    {
+        try {
+            $filePath = parse_url($fileUrl, PHP_URL_PATH);
+            if ($filePath && Storage::disk('upcloud')->exists($filePath)) {
+                Storage::disk('upcloud')->delete($filePath);
+            }
+        } catch (\Exception $e) {
+            \Log::warning('Failed to delete old document: ' . $fileUrl . ' - ' . $e->getMessage());
         }
     }
 }
