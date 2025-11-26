@@ -3,11 +3,14 @@ import { ref, defineProps, onMounted, computed, watch, getCurrentInstance } from
 import { Head, useForm } from "@inertiajs/vue3";
 import { useToast } from 'vue-toastification';
 import TextInput from "@/Components/TextInput.vue";
+import InputError from "@/Components/InputError.vue";
 import InputLabel from "@/Components/InputLabel.vue";
 import PrimaryButton from "@/Components/PrimaryButton.vue";
 import AuthenticatedHeaderLayout from "@/Layouts/AuthenticatedHeaderLayout.vue";
 import vendorBgimage from "../../../assets/vendorRegisterbgImage.png";
 import warningSign from "../../../assets/WhiteWarningCircle.svg";
+import { Vue3Lottie } from 'vue3-lottie';
+import universalLoader from '../../../../public/animations/universal-loader.json';
 import {
     Select,
     SelectContent,
@@ -97,6 +100,19 @@ const errors = ref({});
 
 const nextStep = () => {
     errors.value = {}; // Clear previous errors
+
+    if (currentStep.value === 1) {
+        // Validate phone field
+        if (!userProfilePhoneCode.value || !userProfilePhoneNumber.value || userProfilePhoneNumber.value.trim().length < 7) {
+            errors.value.phone = _t('authpages', 'error_phone_invalid');
+            return;
+        }
+        // Validate address field
+        if (!form.address || form.address.trim().length < 5) {
+            errors.value.address = _t('authpages', 'error_address_required');
+            return;
+        }
+    }
 
     if (currentStep.value === 2) {
         const allFilesSelected = requiredFiles.every(
@@ -201,6 +217,9 @@ const submit = () => {
             console.error(errors);
             isLoading.value = false;
         },
+        onFinish: () => {
+            isLoading.value = false;
+        },
     });
 };
 
@@ -208,10 +227,21 @@ const submit = () => {
 const countries = ref([]);
 const selectedPhoneCode = ref("");
 const phoneNumber = ref("");
+
+// Phone field for user profile (step 1)
+const userProfilePhoneCode = ref(props.user.phone_code || "");
+const userProfilePhoneNumber = ref(props.user.phone ? props.user.phone.replace(props.user.phone_code || "", "") : "");
+
 const fullPhone = computed({
     get: () => `${selectedPhoneCode.value}${phoneNumber.value}`,
     set: (value) => { },
 });
+
+const userProfileFullPhone = computed({
+    get: () => `${userProfilePhoneCode.value}${userProfilePhoneNumber.value}`,
+    set: (value) => { },
+});
+
 // Restrict phone number input to digits only
 const restrictToNumbers = (event) => {
   const value = event.target.value;
@@ -219,19 +249,45 @@ const restrictToNumbers = (event) => {
   phoneNumber.value = value.replace(/[^0-9]/g, "");
 };
 
+const restrictToNumbersUserProfile = (event) => {
+  const value = event.target.value;
+  // Remove all non-numeric characters including spaces, dashes, parentheses
+  userProfilePhoneNumber.value = value.replace(/[^0-9]/g, "");
+};
+
+const restrictToNumbersKeyPress = (event) => {
+  // Allow only numbers, backspace, delete, tab, escape, enter
+  const charCode = (event.which) ? event.which : event.keyCode;
+  if ((charCode < 48 || charCode > 57) &&
+      charCode !== 8 && // backspace
+      charCode !== 46 && // delete
+      charCode !== 9 && // tab
+      charCode !== 27 && // escape
+      charCode !== 13) { // enter
+    event.preventDefault();
+  }
+};
 
 // Update form.company_phone_number when phone code or number changes
 watch([selectedPhoneCode, phoneNumber], ([newCode, newNumber]) => {
     form.company_phone_number = newCode && newNumber ? `${newCode}${newNumber}` : "";
 });
 
+// Update form.phone when user profile phone code or number changes
+watch([userProfilePhoneCode, userProfilePhoneNumber], ([newCode, newNumber]) => {
+    form.phone = newCode && newNumber ? `${newCode}${newNumber}` : "";
+});
+
 const fetchCountries = async () => {
     try {
         const response = await fetch("/countries.json");
         countries.value = await response.json();
-        // Set default phone code (optional, e.g., first country)
-        if (countries.value.length > 0) {
+        // Set default phone code if not already set
+        if (countries.value.length > 0 && !selectedPhoneCode.value) {
             selectedPhoneCode.value = countries.value[0].phone_code;
+        }
+        if (countries.value.length > 0 && !userProfilePhoneCode.value) {
+            userProfilePhoneCode.value = countries.value[0].phone_code;
         }
     } catch (error) {
         console.error("Error loading countries:", error);
@@ -245,6 +301,12 @@ const getFlagUrl = (countryCode) => {
 const selectedCountryCode = computed(() => {
     if (!selectedPhoneCode.value || !countries.value || countries.value.length === 0) return null;
     const country = countries.value.find((c) => c.phone_code === selectedPhoneCode.value);
+    return country ? country.code : null;
+});
+
+const selectedCountryCodeUserProfile = computed(() => {
+    if (!userProfilePhoneCode.value || !countries.value || countries.value.length === 0) return null;
+    const country = countries.value.find((c) => c.phone_code === userProfilePhoneCode.value);
     return country ? country.code : null;
 });
 
@@ -282,22 +344,62 @@ onMounted(() => {
                         <div class="grid grid-cols-1 gap-5">
                             <div class="column w-full">
                                 <InputLabel for="full_name">{{ _t('authpages', 'full_name_label') }}</InputLabel>
-                                <TextInput type="text" v-model="fullName" readonly class="w-full" />
+                                <TextInput type="text" v-model="fullName" readonly class="w-full bg-gray-100" />
                             </div>
 
                             <div class="column w-full">
-                                <InputLabel for="phone">{{ _t('authpages', 'phone_number_label') }}</InputLabel>
-                                <TextInput type="tel" v-model="form.phone" class="w-full" readonly />
+                                <InputLabel for="phone" class="whitespace-nowrap">{{ _t('authpages', 'phone_number_label') }}</InputLabel>
+                                <div class="flex items-end">
+                                    <div class="w-[8rem]">
+                                        <Select v-model="userProfilePhoneCode">
+                                            <SelectTrigger
+                                                class="w-full p-[1.75rem] border-customLightGrayColor bg-customPrimaryColor text-white rounded-[12px] !rounded-r-none border-r-0">
+                                                <div class="flex items-center">
+                                                    <img v-if="selectedCountryCodeUserProfile"
+                                                        :src="getFlagUrl(selectedCountryCodeUserProfile)" alt="Country Flag"
+                                                        class="mr-2 w-6 h-4 rounded" />
+                                                    <SelectValue placeholder="Select Code">
+                                                        {{ userProfilePhoneCode }}
+                                                    </SelectValue>
+                                                </div>
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                                <SelectGroup>
+                                                    <SelectLabel>{{ _t('authpages', 'phone_code_label') }}</SelectLabel>
+                                                    <SelectItem v-for="country in countries" :key="country.phone_code"
+                                                        :value="country.phone_code" class="flex items-center">
+                                                        <div class="flex items-center w-full">
+                                                            <img :src="getFlagUrl(country.code)" alt="Country Flag"
+                                                                class="mr-2 w-6 h-4 rounded" />
+                                                            <span>{{ country.name }} ({{ country.phone_code }})</span>
+                                                        </div>
+                                                    </SelectItem>
+                                                </SelectGroup>
+                                            </SelectContent>
+                                        </Select>
+                                    </div>
+                                    <div class="column w-full">
+                                        <TextInput id="phone" type="tel" v-model="userProfilePhoneNumber" class="w-full !rounded-l-none"
+                                            :placeholder="_t('authpages', 'enter_phone_number_placeholder')" @input="restrictToNumbersUserProfile"
+                                            @keypress="restrictToNumbersKeyPress"/>
+                                    </div>
+                                </div>
+                                <!-- Display full phone number -->
+                                <div class="mt-2 text-sm text-gray-500" v-if="userProfilePhoneCode && userProfilePhoneNumber">
+                                    {{ _t('authpages', 'full_phone_number_display') }}{{ userProfileFullPhone }}
+                                </div>
+                                <InputError class="mt-2" :message="errors.phone" />
                             </div>
 
                             <div class="column w-full">
                                 <InputLabel for="email">{{ _t('authpages', 'email_label') }}</InputLabel>
-                                <TextInput type="email" v-model="form.email" readonly class="w-full" />
+                                <TextInput type="email" v-model="form.email" readonly class="w-full bg-gray-100" />
                             </div>
 
                             <div class="column w-full">
                                 <InputLabel for="address">{{ _t('authpages', 'address_label') }}</InputLabel>
-                                <textarea v-model="form.address" class="w-full" readonly></textarea>
+                                <textarea v-model="form.address" class="w-full"></textarea>
+                                <InputError class="mt-2" :message="errors.address" />
                             </div>
 
                             <div class="flex justify-between gap-[1.5rem]">
@@ -433,7 +535,7 @@ onMounted(() => {
                                     </div>
                                     <div class="w-full">
                                         <TextInput id="company_phone_number" type="tel" v-model="phoneNumber"
-                                            class="w-full !rounded-l-none" :placeholder="_t('authpages', 'enter_phone_number_placeholder')" required @input="restrictToNumbers"/>
+                                            class="w-full !rounded-l-none" :placeholder="_t('authpages', 'enter_phone_number_placeholder')" required @input="restrictToNumbers" @keypress="restrictToNumbersKeyPress"/>
                                     </div>
                                 </div>
                                 <div class="mt-2 text-sm text-gray-500" v-if="selectedPhoneCode && phoneNumber">
@@ -461,7 +563,7 @@ onMounted(() => {
                                     @click="prevStep">
                                     {{ _t('authpages', 'back_button') }}
                                 </button>
-                                <PrimaryButton class="w-[15rem] max-[768px]:w-[10rem]" type="submit">
+                                <PrimaryButton class="w-[15rem] max-[768px]:w-[10rem]" type="submit" :disabled="isLoading">
                                     <!-- Show loader or text based on isLoading -->
                                     <span v-if="isLoading" class="flex items-center justify-center">
                                         <svg class="animate-spin h-5 w-5 mr-2 text-white"
@@ -506,6 +608,11 @@ onMounted(() => {
                 max-[768px]:top-[-5.5rem]" />
             </div>
         </div>
+
+        <!-- Universal Loader Overlay -->
+        <div v-if="isLoading" class="loader-overlay">
+            <Vue3Lottie :animation-data="universalLoader" :height="200" :width="200" />
+        </div>
     </div>
 </template>
 
@@ -522,12 +629,37 @@ select {
     padding: 1rem;
 }
 
+/* Gray background for readonly fields */
+input:read-only,
+textarea:read-only {
+    background-color: #f3f4f6 !important;
+    cursor: not-allowed !important;
+}
+
+input.bg-gray-100 {
+    background-color: #f3f4f6 !important;
+    cursor: not-allowed !important;
+}
+
 .document-div svg {
     transition: transform 0.3s ease-in-out;
 }
 
 .document-div:hover svg {
     transform: scale(1.1);
+}
+
+.loader-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.5);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 9999;
 }
 
 .animate-spin {

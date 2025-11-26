@@ -736,7 +736,7 @@ Route::group([
         Route::inertia('vendor-pending', 'Vendor/VendorPending');
         Route::inertia('vendor-rejected', 'Vendor/VendorRejected');
         Route::get('/vendor/documents', [VendorController::class, 'index'])->name('vendor.documents.index');
-        Route::post('/vendor/update', [VendorController::class, 'update'])->name('vendor.update');
+        Route::match(['post', 'put'], '/vendor/update', [VendorController::class, 'update'])->name('vendor.update');
         Route::get('/vehicle-categories', [VehicleController::class, 'getCategories'])->name('vehicle.categories');
 
         // Vendor Bookings

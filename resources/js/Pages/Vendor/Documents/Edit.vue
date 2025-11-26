@@ -259,7 +259,7 @@ const confirmUpdate = () => {
 };
 
 const updateDocuments = () => {
-    form.post('/vendor/update', {
+    form.post(route('vendor.update'), {
         onSuccess: () => {
             emit('close');
         },

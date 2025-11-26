@@ -8,6 +8,7 @@ use App\Notifications\VendorRegisteredUserConfirmation;
 use Illuminate\Support\Facades\Notification;
 use App\Providers\RouteServiceProvider;
 use Illuminate\Http\Request;
+use Illuminate\Http\UploadedFile;
 use App\Models\User;
 use Illuminate\Support\Facades\Storage;
 use Inertia\Inertia;
@@ -39,37 +40,50 @@ class VendorController extends Controller
                 'company_email' => 'required|email|max:255',
                 'company_address' => 'required|string|max:255',
                 'company_gst_number' => 'required|string|max:15',
+                // User profile validation
+                'phone' => 'required|string|max:20|regex:/^[+]?[\d\s\-\(\)]+$/',
+                'address' => 'required|string|min:5|max:500',
             ]);
 
             $userId = auth()->id();
 
-            // Define folder path - use the same folder as in update method
-            $folderName = 'vehicle_images';
+            // Update UserProfile with changed data
+            $user = User::find($userId);
+            $userProfile = $user->profile;
 
-            // Handle file uploads with the same pattern as update method
+            if ($userProfile) {
+                $userProfile->update([
+                    'phone' => $request->phone,
+                    'address_line1' => $request->address,
+                ]);
+            }
+
+            // Update User phone if changed
+            if ($user->phone !== $request->phone) {
+                $user->update(['phone' => $request->phone]);
+            }
+
+            // Define folder path
+            $folderName = 'vendor_documents';
+
+            // Handle file uploads with filename preservation and compression
             $drivingLicenseFront = null;
             $drivingLicenseBack = null;
             if ($request->hasFile('driving_license_front')) {
-                $path = $request->file('driving_license_front')->store($folderName, 'upcloud');
-                $drivingLicenseFront = Storage::disk('upcloud')->url($path);
+                $drivingLicenseFront = $this->handleDocumentUpload($request->file('driving_license_front'), $folderName);
             }
             if ($request->hasFile('driving_license_back')) {
-                $path = $request->file('driving_license_back')->store($folderName, 'upcloud');
-                $drivingLicenseBack = Storage::disk('upcloud')->url($path);
+                $drivingLicenseBack = $this->handleDocumentUpload($request->file('driving_license_back'), $folderName);
             }
-
-            
 
             $passport_front = null;
             if ($request->hasFile('passport_front')) {
-                $path = $request->file('passport_front')->store($folderName, 'upcloud');
-                $passport_front = Storage::disk('upcloud')->url($path);
+                $passport_front = $this->handleDocumentUpload($request->file('passport_front'), $folderName);
             }
 
             $passport_back = null;
             if ($request->hasFile('passport_back')) {
-                $path = $request->file('passport_back')->store($folderName, 'upcloud');
-                $passport_back = Storage::disk('upcloud')->url($path);
+                $passport_back = $this->handleDocumentUpload($request->file('passport_back'), $folderName);
             }
 
             // Create the vendor document
@@ -174,46 +188,39 @@ class VendorController extends Controller
             $document = VendorDocument::where('user_id', $userId)->first();
 
             // Define folder path
-            $folderName = 'vehicle_images';
+            $folderName = 'vendor_documents';
 
-            // Handle file uploads
+            // Handle file uploads with proper cleanup and filename preservation
             $drivingLicenseFront = $document ? $document->driving_license_front : null;
             $drivingLicenseBack = $document ? $document->driving_license_back : null;
             $passport_front = $document ? $document->passport_front : null;
             $passport_back = $document ? $document->passport_back : null;
-            // $passportPhoto = $document ? $document->passport_photo : null;
 
             if ($request->hasFile('driving_license_front')) {
                 if ($document && $document->driving_license_front) {
-                    Storage::disk('upcloud')->delete($document->driving_license_front);
+                    $this->deleteOldDocument($document->driving_license_front);
                 }
-                $path = $request->file('driving_license_front')->store($folderName, 'upcloud');
-                $drivingLicenseFront = Storage::disk('upcloud')->url($path);
+                $drivingLicenseFront = $this->handleDocumentUpload($request->file('driving_license_front'), $folderName);
             }
             if ($request->hasFile('driving_license_back')) {
                 if ($document && $document->driving_license_back) {
-                    Storage::disk('upcloud')->delete($document->driving_license_back);
+                    $this->deleteOldDocument($document->driving_license_back);
                 }
-                $path = $request->file('driving_license_back')->store($folderName, 'upcloud');
-                $drivingLicenseBack = Storage::disk('upcloud')->url($path);
+                $drivingLicenseBack = $this->handleDocumentUpload($request->file('driving_license_back'), $folderName);
             }
-
-            
 
             if ($request->hasFile('passport_front')) {
                 if ($document && $document->passport_front) {
-                    Storage::disk('upcloud')->delete($document->passport_front);
+                    $this->deleteOldDocument($document->passport_front);
                 }
-                $path = $request->file('passport_front')->store($folderName, 'upcloud');
-                $passport_front = Storage::disk('upcloud')->url($path);
+                $passport_front = $this->handleDocumentUpload($request->file('passport_front'), $folderName);
             }
 
             if ($request->hasFile('passport_back')) {
                 if ($document && $document->passport_back) {
-                    Storage::disk('upcloud')->delete($document->passport_back);
+                    $this->deleteOldDocument($document->passport_back);
                 }
-                $path = $request->file('passport_back')->store($folderName, 'upcloud');
-                $passport_back = Storage::disk('upcloud')->url($path);
+                $passport_back = $this->handleDocumentUpload($request->file('passport_back'), $folderName);
             }
             // Update or create the vendor document
             VendorDocument::updateOrCreate(
@@ -274,6 +281,71 @@ class VendorController extends Controller
             'vendorProfile' => $vendorProfile,
             'vendorDocument' => $vendorDocument,
         ]);
+    }
+
+    /**
+     * Handle document upload with image compression and filename preservation
+     *
+     * @param UploadedFile $file
+     * @param string $folderName
+     * @return string
+     * @throws \Exception
+     */
+    private function handleDocumentUpload(UploadedFile $file, string $folderName): string
+    {
+        $fileExtension = strtolower($file->getClientOriginalExtension());
+
+        // Handle PDF files without compression
+        if ($fileExtension === 'pdf') {
+            $originalName = pathinfo($file->getClientOriginalName(), PATHINFO_FILENAME);
+            $filename = $originalName . '.' . $fileExtension;
+
+            // Handle duplicate filenames
+            $counter = 1;
+            while (Storage::disk('upcloud')->exists($folderName . '/' . $filename)) {
+                $filename = $originalName . $counter . '.' . $fileExtension;
+                $counter++;
+            }
+
+            $path = $file->storeAs($folderName, $filename, 'upcloud');
+            return Storage::disk('upcloud')->url($path);
+        }
+
+        // Handle image files with compression
+        // Use lower quality for PNG to ensure compression works
+        $imageQuality = ($fileExtension === 'png') ? 60 : 85;
+
+        $compressedPath = \App\Helpers\ImageCompressionHelper::compressImage(
+            $file,
+            $folderName,
+            quality: $imageQuality,        // Lower quality for PNG, moderate for JPEG
+            maxWidth: 1200,     // Smaller dimensions for file size
+            maxHeight: 900
+        );
+
+        if (!$compressedPath) {
+            throw new \Exception('Image compression failed for: ' . $file->getClientOriginalName());
+        }
+
+        return Storage::disk('upcloud')->url($compressedPath);
+    }
+
+    /**
+     * Delete old document file from storage
+     *
+     * @param string $fileUrl
+     * @return void
+     */
+    private function deleteOldDocument(string $fileUrl): void
+    {
+        try {
+            $filePath = parse_url($fileUrl, PHP_URL_PATH);
+            if ($filePath && Storage::disk('upcloud')->exists($filePath)) {
+                Storage::disk('upcloud')->delete($filePath);
+            }
+        } catch (\Exception $e) {
+            \Log::warning('Failed to delete old vendor document: ' . $fileUrl . ' - ' . $e->getMessage());
+        }
     }
 
 
