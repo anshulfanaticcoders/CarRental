@@ -293,18 +293,20 @@ public function show($locale, $bookingId)
     $otherUserId = ($user->id === $customerId) ? $vendorId : $customerId;
     $otherUser = User::select('id', 'first_name', 'last_login_at')->find($otherUserId); // Use last_login_at
 
-    $messages = Message::where(function ($query) use ($user, $otherUserId) {
-        $query->where('sender_id', $user->id)
-            ->where('receiver_id', $otherUserId);
-    })
-    ->orWhere(function ($query) use ($user, $otherUserId) {
-        $query->where('sender_id', $otherUserId)
-            ->where('receiver_id', $user->id);
-    })
-    ->where('booking_id', $bookingId)
-    ->with(['sender', 'receiver'])
-    ->orderBy('created_at', 'asc')
-    ->get();
+    $messages = Message::where('booking_id', $bookingId)
+        ->where(function ($query) use ($user, $otherUserId) {
+            $query->where(function ($subQuery) use ($user, $otherUserId) {
+                $subQuery->where('sender_id', $user->id)
+                       ->where('receiver_id', $otherUserId);
+            })
+            ->orWhere(function ($subQuery) use ($user, $otherUserId) {
+                $subQuery->where('sender_id', $otherUserId)
+                       ->where('receiver_id', $user->id);
+            });
+        })
+        ->with(['sender', 'receiver'])
+        ->orderBy('created_at', 'asc')
+        ->get();
 
     Message::where('receiver_id', $user->id)
         ->where('booking_id', $bookingId)
