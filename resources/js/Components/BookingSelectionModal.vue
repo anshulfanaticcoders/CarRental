@@ -119,19 +119,19 @@ watch(() => props.isVisible, (newValue) => {
             <div class="absolute inset-0 bg-black bg-opacity-50 transition-opacity"></div>
 
             <!-- Modal -->
-            <div class="relative bg-white rounded-xl shadow-xl max-w-4xl w-full mx-4 max-h-[90vh] overflow-hidden flex flex-col">
+            <div class="relative bg-white rounded-xl shadow-xl max-w-4xl w-full mx-2 sm:mx-4 md:mx-auto max-h-[90vh] sm:max-h-[85vh] md:max-h-[80vh] overflow-hidden flex flex-col">
                 <!-- Header -->
-                <div class="bg-gradient-to-r from-blue-600 to-blue-700 text-white p-6">
-                    <div class="flex items-center justify-between">
-                        <div>
-                            <h2 class="text-2xl font-bold">Select Booking</h2>
-                            <p class="text-blue-100 mt-1">
+                <div class="bg-gradient-to-r from-blue-600 to-blue-700 text-white p-4 sm:p-6">
+                    <div class="flex items-start sm:items-center justify-between gap-3">
+                        <div class="flex-1 min-w-0">
+                            <h2 class="text-xl sm:text-2xl font-bold leading-tight">Select Booking</h2>
+                            <p class="text-blue-100 mt-1 text-sm sm:text-base leading-snug">
                                 Choose which booking you'd like to discuss with {{ selectedPartner?.user?.first_name }} {{ selectedPartner?.user?.last_name }}
                             </p>
                         </div>
                         <button @click="emit('close')"
-                                class="text-white hover:text-gray-200 transition-colors p-2 hover:bg-white/10 rounded-lg">
-                            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                class="text-white hover:text-gray-200 transition-colors p-2 hover:bg-white/10 rounded-lg flex-shrink-0">
+                            <svg class="w-5 h-5 sm:w-6 sm:h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
                             </svg>
                         </button>
@@ -139,15 +139,15 @@ watch(() => props.isVisible, (newValue) => {
                 </div>
 
                 <!-- Search Bar -->
-                <div class="p-4 border-b bg-gray-50">
+                <div class="p-3 sm:p-4 border-b bg-gray-50">
                     <div class="relative">
-                        <svg class="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <svg class="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 sm:w-5 sm:h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
                         </svg>
                         <input v-model="searchQuery"
                                type="text"
                                placeholder="Search by vehicle name, brand, model..."
-                               class="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                               class="w-full pl-9 sm:pl-10 pr-4 py-2.5 sm:py-3 text-sm sm:text-base border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent">
                     </div>
                 </div>
 
@@ -163,26 +163,26 @@ watch(() => props.isVisible, (newValue) => {
                         <p class="text-gray-400 text-sm mt-2">Try adjusting your search terms</p>
                     </div>
 
-                    <div v-else class="space-y-3">
+                    <div v-else class="space-y-3 sm:space-y-4">
                         <div v-for="booking in filteredBookings"
                              :key="booking.id"
                              @click="selectBooking(booking)"
                              :class="[
-                                 'border rounded-lg p-4 cursor-pointer transition-all duration-200',
+                                 'border rounded-lg p-3 sm:p-4 cursor-pointer transition-all duration-200 active:scale-98',
                                  selectedBookingId === booking.id
                                      ? 'border-blue-500 bg-blue-50 ring-2 ring-blue-200'
                                      : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'
                              ]">
-                            <div class="flex gap-4">
+                            <div class="flex gap-3 sm:gap-4">
                                 <!-- Vehicle Image -->
                                 <div class="flex-shrink-0">
                                     <img v-if="booking.vehicle.image"
                                          :src="booking.vehicle.image"
                                          :alt="booking.vehicle.name"
-                                         class="w-20 h-20 object-cover rounded-lg">
+                                         class="w-16 h-16 sm:w-20 sm:h-20 object-cover rounded-lg">
                                     <div v-else
-                                         class="w-20 h-20 bg-gray-200 rounded-lg flex items-center justify-center">
-                                        <svg class="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                         class="w-16 h-16 sm:w-20 sm:h-20 bg-gray-200 rounded-lg flex items-center justify-center">
+                                        <svg class="w-6 h-6 sm:w-8 sm:h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
                                         </svg>
                                     </div>
@@ -191,14 +191,14 @@ watch(() => props.isVisible, (newValue) => {
                                 <!-- Booking Details -->
                                 <div class="flex-1 min-w-0">
                                     <!-- Vehicle Info -->
-                                    <div class="flex items-start justify-between mb-2">
-                                        <div class="flex-1">
-                                            <h3 class="font-semibold text-gray-900 text-lg truncate">{{ booking.vehicle.name }}</h3>
-                                            <p class="text-gray-600 text-sm">{{ booking.vehicle.brand }} {{ booking.vehicle.model }}</p>
+                                    <div class="flex items-start justify-between gap-2 mb-2">
+                                        <div class="flex-1 min-w-0">
+                                            <h3 class="font-semibold text-gray-900 text-base sm:text-lg truncate">{{ booking.vehicle.name }}</h3>
+                                            <p class="text-gray-600 text-xs sm:text-sm">{{ booking.vehicle.brand }} {{ booking.vehicle.model }}</p>
                                             <p class="text-gray-500 text-xs">{{ booking.vehicle.category }}</p>
                                         </div>
                                         <!-- Status Badge -->
-                                        <span :class="`px-2 py-1 rounded-full text-xs font-medium ${getBookingStatusColor(booking.booking_status)}`">
+                                        <span :class="`px-2 py-1 rounded-full text-xs font-medium flex-shrink-0 ${getBookingStatusColor(booking.booking_status)}`">
                                             {{ getBookingStatusIcon(booking.booking_status) }} {{ booking.booking_status.charAt(0).toUpperCase() + booking.booking_status.slice(1) }}
                                         </span>
                                     </div>
@@ -259,20 +259,20 @@ watch(() => props.isVisible, (newValue) => {
                 </div>
 
                 <!-- Footer -->
-                <div class="bg-gray-50 border-t p-4">
-                    <div class="flex justify-between items-center">
-                        <p class="text-sm text-gray-600">
+                <div class="bg-gray-50 border-t p-3 sm:p-4">
+                    <div class="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3">
+                        <p class="text-sm text-gray-600 order-2 sm:order-1">
                             {{ filteredBookings.length }} booking{{ filteredBookings.length !== 1 ? 's' : '' }} available
                         </p>
-                        <div class="flex gap-3">
+                        <div class="flex gap-2 sm:gap-3 order-1 sm:order-2">
                             <button @click="emit('close')"
-                                    class="px-4 py-2 text-gray-700 bg-gray-200 hover:bg-gray-300 rounded-lg transition-colors">
+                                    class="flex-1 sm:flex-none px-3 sm:px-4 py-2 text-gray-700 bg-gray-200 hover:bg-gray-300 rounded-lg transition-colors text-sm sm:text-base">
                                 Cancel
                             </button>
                             <PrimaryButton
                                 @click="confirmSelection"
                                 :disabled="!selectedBookingId"
-                                class="px-6 py-2">
+                                class="flex-1 sm:flex-none px-3 sm:px-6 py-2 text-sm sm:text-base">
                                 Start Chat
                             </PrimaryButton>
                         </div>
@@ -300,5 +300,51 @@ watch(() => props.isVisible, (newValue) => {
 
 .overflow-y-auto::-webkit-scrollbar-thumb:hover {
     background: #a8a8a8;
+}
+
+/* Mobile responsive improvements */
+@media (max-width: 640px) {
+    /* Full-screen modal on very small screens */
+    .fixed.inset-0 .bg-white {
+        margin: 8px;
+        max-height: calc(100vh - 16px);
+        border-radius: 12px;
+    }
+}
+
+@media (max-width: 480px) {
+    /* Full-screen modal on tiny screens */
+    .fixed.inset-0 .bg-white {
+        margin: 0;
+        max-height: 100vh;
+        border-radius: 0;
+    }
+}
+
+/* Tablet responsiveness */
+@media (min-width: 768px) and (max-width: 1024px) {
+    /* Slightly smaller modal on tablets */
+    .bg-white {
+        max-width: 90vw;
+    }
+}
+
+/* Touch-friendly improvements */
+@media (hover: none) and (pointer: coarse) {
+    /* Better touch targets for mobile devices */
+    button {
+        min-height: 44px;
+    }
+
+    .cursor-pointer {
+        min-height: 44px;
+    }
+}
+
+/* Prevent horizontal scrolling on mobile */
+@media (max-width: 640px) {
+    body {
+        overflow-x: hidden;
+    }
 }
 </style>

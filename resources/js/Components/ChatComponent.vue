@@ -647,54 +647,55 @@ onUnmounted(() => {
                     class="absolute -bottom-1 -right-1 w-4 h-4 bg-green-500 rounded-full border-2 border-white"></div>
             </div>
 
-            <div class="flex-grow">
-                <div class="flex items-center justify-between">
-                    <div>
-                        <h2 class="text-lg font-semibold text-gray-800">
+            <div class="flex-grow min-w-0">
+                <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+                    <div class="min-w-0 flex-1">
+                        <h2 class="text-base sm:text-lg font-semibold text-gray-800 truncate">
                             {{ otherUser?.first_name || 'Chat Partner' }} {{ otherUser?.last_name || '' }}
                         </h2>
-                        <p class="text-sm text-gray-500">{{ lastSeenText }}</p>
+                        <p class="text-xs sm:text-sm text-gray-500 truncate">{{ lastSeenText }}</p>
                     </div>
 
                     <!-- Booking Context Dropdown (if multiple bookings) -->
-                    <div v-if="allBookings.length > 1" class="booking-dropdown relative">
+                    <div v-if="allBookings.length > 1" class="booking-dropdown relative flex-shrink-0">
                         <button @click="toggleBookingDropdown"
-                            class="flex items-center gap-2 px-3 py-2 bg-blue-50 hover:bg-blue-100 rounded-lg transition-colors duration-200 text-sm"
+                            class="flex items-center gap-1.5 px-2 sm:px-3 py-1.5 sm:py-2 bg-blue-50 hover:bg-blue-100 rounded-lg transition-colors duration-200 text-xs sm:text-sm"
                             title="Switch booking">
-                            <svg class="w-4 h-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <svg class="w-3.5 h-3.5 sm:w-4 sm:h-4 text-blue-600 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4"></path>
                             </svg>
-                            <span class="text-blue-800 font-medium">{{ allBookings.length }} Bookings</span>
-                            <svg class="w-4 h-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <span class="text-blue-800 font-medium hidden xs:inline sm:inline">{{ allBookings.length }} Bookings</span>
+                            <span class="text-blue-800 font-medium xs:hidden sm:hidden">{{ allBookings.length }}</span>
+                            <svg class="w-3.5 h-3.5 sm:w-4 sm:h-4 text-blue-600 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
                             </svg>
                         </button>
 
                         <!-- Dropdown Menu -->
                         <div v-if="showBookingDropdown"
-                             class="absolute right-0 top-full mt-1 w-80 bg-white rounded-lg shadow-xl border border-gray-200 z-50">
+                             class="absolute right-0 top-full mt-1 w-72 sm:w-80 lg:w-96 bg-white rounded-lg shadow-xl border border-gray-200 z-50 max-h-[60vh] overflow-hidden">
                             <div class="p-3 border-b border-gray-100">
                                 <h3 class="text-sm font-semibold text-gray-800">Switch Booking</h3>
                                 <p class="text-xs text-gray-500">Select a different booking to chat about</p>
                             </div>
-                            <div class="max-h-64 overflow-y-auto">
+                            <div class="max-h-64 sm:max-h-80 overflow-y-auto">
                                 <div v-for="booking in allBookings" :key="booking.id"
                                      @click="switchBooking(booking)"
                                      :class="[
-                                         'p-3 border-b border-gray-50 last:border-b-0 cursor-pointer transition-colors duration-150',
+                                         'p-3 sm:p-4 border-b border-gray-50 last:border-b-0 cursor-pointer transition-colors duration-150 active:scale-95',
                                          'hover:bg-gray-50',
                                          booking.id === bookingId ? 'bg-blue-50' : 'bg-white'
                                      ]">
-                                    <div class="flex items-center gap-3">
+                                    <div class="flex gap-3 sm:gap-4">
                                         <!-- Vehicle Image -->
                                         <div class="flex-shrink-0">
                                             <img v-if="booking.vehicle?.image"
                                                  :src="booking.vehicle.image"
                                                  :alt="booking.vehicle.name"
-                                                 class="w-12 h-12 object-cover rounded-lg">
+                                                 class="w-12 h-12 sm:w-14 sm:h-14 object-cover rounded-lg">
                                             <div v-else
-                                                 class="w-12 h-12 bg-gray-200 rounded-lg flex items-center justify-center">
-                                                <svg class="w-6 h-6 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                 class="w-12 h-12 sm:w-14 sm:h-14 bg-gray-200 rounded-lg flex items-center justify-center">
+                                                <svg class="w-5 h-5 sm:w-6 sm:h-6 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
                                                 </svg>
                                             </div>
@@ -702,14 +703,14 @@ onUnmounted(() => {
 
                                         <!-- Booking Info -->
                                         <div class="flex-grow min-w-0">
-                                            <div class="flex items-center gap-2">
-                                                <h4 class="font-semibold text-sm text-gray-900 truncate">{{ booking.vehicle?.name }}</h4>
+                                            <div class="flex items-start justify-between gap-2 mb-1">
+                                                <h4 class="font-semibold text-sm sm:text-base text-gray-900 truncate leading-tight">{{ booking.vehicle?.name }}</h4>
                                                 <span v-if="booking.id === bookingId"
-                                                      class="text-xs bg-blue-600 text-white px-2 py-0.5 rounded-full">Current</span>
+                                                      class="text-xs bg-blue-600 text-white px-2 py-1 rounded-full flex-shrink-0">Current</span>
                                             </div>
-                                            <p class="text-xs text-gray-600">{{ booking.vehicle?.brand }} {{ booking.vehicle?.model }}</p>
-                                            <div class="flex items-center gap-2 mt-1">
-                                                <span :class="`text-xs px-2 py-0.5 rounded-full ${getBookingStatusColor(booking.booking_status)}`">
+                                            <p class="text-xs sm:text-sm text-gray-600 mb-2">{{ booking.vehicle?.brand }} {{ booking.vehicle?.model }}</p>
+                                            <div class="flex flex-wrap items-center gap-2">
+                                                <span :class="`text-xs px-2 py-1 rounded-full ${getBookingStatusColor(booking.booking_status)}`">
                                                     {{ getBookingStatusIcon(booking.booking_status) }} {{ booking.booking_status?.charAt(0).toUpperCase() + booking.booking_status?.slice(1) }}
                                                 </span>
                                                 <span class="text-xs text-gray-500">{{ formatDate(booking.pickup_date) }}</span>
@@ -1169,5 +1170,156 @@ textarea {
 
 .animate-pulse {
     animation: pulse 1s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+/* Enhanced mobile and tablet responsiveness */
+@media (max-width: 480px) {
+    /* Very small screens */
+    .p-4 {
+        padding: 12px;
+    }
+
+    .w-12.h-12 {
+        width: 40px;
+        height: 40px;
+    }
+
+    .text-lg {
+        font-size: 1rem;
+    }
+
+    .text-base {
+        font-size: 0.875rem;
+    }
+
+    /* Improve dropdown on very small screens */
+    .booking-dropdown .absolute {
+        left: auto;
+        right: 0;
+        width: calc(100vw - 32px);
+        max-width: 300px;
+    }
+}
+
+@media (max-width: 640px) {
+    /* Small screens */
+    .gap-3 {
+        gap: 12px;
+    }
+
+    .px-3 {
+        padding-left: 12px;
+        padding-right: 12px;
+    }
+
+    .py-2 {
+        padding-top: 8px;
+        padding-bottom: 8px;
+    }
+}
+
+/* Tablet responsiveness */
+@media (min-width: 768px) and (max-width: 1024px) {
+    /* Medium tablets */
+    .max-w-\[75\%\] {
+        max-width: 80%;
+    }
+
+    .flex-1.overflow-y-auto {
+        padding-bottom: 100px; /* More space for fixed input on tablets */
+    }
+}
+
+/* Large tablets and desktop */
+@media (min-width: 1025px) {
+    .max-w-\[75\%\] {
+        max-width: 70%;
+    }
+}
+
+/* Dropdown positioning improvements */
+@media (max-width: 640px) {
+    .booking-dropdown .absolute.right-0 {
+        left: 0;
+        right: 0;
+        width: 100%;
+        max-width: none;
+    }
+
+    /* Ensure dropdown doesn't overflow viewport */
+    .booking-dropdown .absolute {
+        max-height: 50vh;
+        overflow-y: auto;
+    }
+}
+
+/* Touch-friendly improvements */
+@media (hover: none) and (pointer: coarse) {
+    /* Better touch targets for mobile devices */
+    .hover\\:bg-gray-100 {
+        background-color: transparent;
+    }
+
+    .hover\\:bg-blue-100 {
+        background-color: transparent;
+    }
+
+    .active\\:scale-95 {
+        transform: scale(0.95);
+    }
+
+    /* Ensure all interactive elements are touch-friendly */
+    button, .cursor-pointer {
+        min-height: 44px;
+        min-width: 44px;
+    }
+}
+
+/* Prevent horizontal scrolling */
+@media (max-width: 640px) {
+    body {
+        overflow-x: hidden;
+    }
+
+    /* Ensure dropdown stays within viewport */
+    .absolute {
+        max-width: calc(100vw - 32px);
+    }
+}
+
+/* Header layout improvements */
+@media (max-width: 640px) {
+    .flex-grow {
+        min-width: 0;
+    }
+
+    /* Stack header elements vertically on very small screens */
+    .flex-row {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+}
+
+/* Input area improvements */
+@media (max-width: 640px) {
+    .w-full.p-3 {
+        padding-left: 12px;
+        padding-right: 12px;
+    }
+
+    textarea {
+        font-size: 16px; /* Prevent zoom on iOS */
+    }
+}
+
+/* Message bubble improvements */
+@media (max-width: 480px) {
+    .p-4 {
+        padding: 12px;
+    }
+
+    .max-w-\[75\%\] {
+        max-width: 90%;
+    }
 }
 </style>
