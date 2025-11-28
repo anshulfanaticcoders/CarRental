@@ -187,6 +187,40 @@ const handleBookingSelection = (selectedBooking) => {
     loadChatForBooking(selectedBooking.id, selectedPartner.value);
 };
 
+// NEW: Handle booking change from ChatComponent dropdown
+const handleBookingChange = async (newBooking) => {
+    if (!selectedPartner.value || newBooking.id === selectedBookingId.value) {
+        return;
+    }
+
+    // Update selected booking ID
+    selectedBookingId.value = newBooking.id;
+
+    // Update selected partner's booking details
+    if (selectedPartner.value.bookings) {
+        const bookingDetails = selectedPartner.value.bookings.find(b => b.id === newBooking.id);
+        if (bookingDetails) {
+            selectedPartner.value.booking = bookingDetails;
+        }
+    }
+
+    // Load messages for the new booking
+    try {
+        loadingChat.value = true;
+        const response = await axios.get(route('messages.show', { locale: usePage().props.locale, booking: newBooking.id }));
+        if (response.data && response.data.props) {
+            messages.value = response.data.props.messages || [];
+        } else {
+            messages.value = [];
+        }
+    } catch (error) {
+        console.error('Failed to load messages for booking:', error);
+        messages.value = [];
+    } finally {
+        loadingChat.value = false;
+    }
+};
+
 const backToInbox = () => {
     showChat.value = false;
     showBookingSelectionModal.value = false; // Also close modal if open
@@ -407,10 +441,12 @@ onUnmounted(() => {
                     :messages="messages"
                     :otherUser="otherUser"
                     :bookingDetails="selectedPartner?.booking"
+                    :allBookings="selectedPartner?.bookings || []"
                     :showBackButton="isMobile"
                     @back="backToInbox"
                     @messageSent="messages.push($event)"
                     @messageReceived="handleMessageReceived"
+                    @bookingChanged="handleBookingChange"
                     class="flex-grow"
                 />
             </div>

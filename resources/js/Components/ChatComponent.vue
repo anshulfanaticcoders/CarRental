@@ -365,6 +365,113 @@ const closeBookingDropdown = () => {
     showBookingDropdown.value = false;
 };
 
+// Function to setup Echo channel listeners
+let currentChannel = null;
+
+const setupChannelListeners = () => {
+    if (!props.bookingId) return;
+
+    // Leave existing channel if any
+    if (currentChannel) {
+        window.Echo.leave(`chat.${currentChannel}`);
+    }
+
+    currentChannel = props.bookingId;
+    const channel = window.Echo.private(`chat.${props.bookingId}`);
+
+    channel.listen('NewMessage', (e) => {
+        if (e.message && e.message.booking_id == props.bookingId) {
+            if (!messageList.value.some(msg => msg.id === e.message.id)) {
+                messageList.value.push(e.message);
+                emit('messageReceived', e.message);
+                scrollToBottom();
+            }
+        }
+    });
+
+    channel.listen('.messages.read', (e) => {
+        if (e.bookingId == props.bookingId && e.readerId == props.otherUser.id) {
+            messageList.value.forEach(message => {
+                if (message.sender_id === page.props.auth.user.id && message.receiver_id === e.readerId && !message.read_at) {
+                    message.read_at = e.readAtTimestamp;
+                }
+            });
+        }
+    });
+
+    channel.listen('.message.deleted', (e) => {
+        const messageIndex = messageList.value.findIndex(msg => msg.id === e.message_id);
+        if (messageIndex !== -1) {
+            messageList.value[messageIndex].deleted_at = e.deleted_at;
+            if (messageList.value[messageIndex].message !== "This message was deleted.") {
+                messageList.value[messageIndex].message_original_content_temp = messageList.value[messageIndex].message;
+                messageList.value[messageIndex].message = "This message was deleted.";
+            }
+        }
+    });
+
+    channel.listen('.message.restored', (e) => {
+        const messageIndex = messageList.value.findIndex(msg => msg.id === e.message.id);
+        if (messageIndex !== -1) {
+            messageList.value[messageIndex] = e.message;
+        }
+    });
+
+    // Listen for typing indicators
+    channel.listen('typing.indicator', (e) => {
+        if (e.user_id !== page.props.auth.user.id && e.booking_id == props.bookingId) {
+            if (e.is_typing) {
+                // Add user to typing list
+                if (!typingUsers.value.some(user => user.user_id === e.user_id)) {
+                    typingUsers.value.push({
+                        user_id: e.user_id,
+                        user_name: e.user_name,
+                        timestamp: new Date(e.timestamp)
+                    });
+                }
+            } else {
+                // Remove user from typing list
+                typingUsers.value = typingUsers.value.filter(user => user.user_id !== e.user_id);
+            }
+
+            // Auto-remove typing indicators after 10 seconds
+            setTimeout(() => {
+                typingUsers.value = typingUsers.value.filter(user =>
+                    user.user_id !== e.user_id ||
+                    new Date() - new Date(user.timestamp) < 10000
+                );
+            }, 10000);
+        }
+    });
+
+    // Listen for enhanced read receipts
+    channel.listen('message.read', (e) => {
+        if (e.user_id !== page.props.auth.user.id && e.booking_id == props.bookingId) {
+            // Update message read status
+            const messageIndex = messageList.value.findIndex(msg => msg.id === e.message_id);
+            if (messageIndex !== -1) {
+                messageList.value[messageIndex].read_at = e.read_at;
+            }
+
+            // Update enhanced read receipts
+            readReceipts.value[e.message_id] = {
+                ...readReceipts.value[e.message_id],
+                [e.user_id]: {
+                    read_at: e.read_at,
+                    user_name: e.user_name
+                }
+            };
+        }
+    });
+};
+
+// Watch for bookingId changes
+watch(() => props.bookingId, (newBookingId, oldBookingId) => {
+    if (newBookingId !== oldBookingId) {
+        setupChannelListeners();
+    }
+}, { immediate: false });
+
 const formatBookingDate = (dateString) => {
     const date = new Date(dateString);
     return date.toLocaleDateString('en-US', {
@@ -500,107 +607,27 @@ onMounted(() => {
         }
     });
 
-    if (props.bookingId) {
-        const channel = window.Echo.private(`chat.${props.bookingId}`);
-        
-        channel.listen('NewMessage', (e) => {
-            if (e.message && e.message.booking_id == props.bookingId) {
-                if (!messageList.value.some(msg => msg.id === e.message.id)) {
-                    messageList.value.push(e.message);
-                    emit('messageReceived', e.message);
-                    scrollToBottom();
-                }
-            }
-        });
-
-        channel.listen('.messages.read', (e) => {
-            if (e.bookingId == props.bookingId && e.readerId == props.otherUser.id) {
-                messageList.value.forEach(message => {
-                    if (message.sender_id === page.props.auth.user.id && message.receiver_id === e.readerId && !message.read_at) {
-                        message.read_at = e.readAtTimestamp;
-                    }
-                });
-            }
-        });
-
-        channel.listen('.message.deleted', (e) => {
-            const messageIndex = messageList.value.findIndex(msg => msg.id === e.message_id);
-            if (messageIndex !== -1) {
-                messageList.value[messageIndex].deleted_at = e.deleted_at;
-                if (messageList.value[messageIndex].message !== "This message was deleted.") {
-                    messageList.value[messageIndex].message_original_content_temp = messageList.value[messageIndex].message;
-                    messageList.value[messageIndex].message = "This message was deleted.";
-                }
-            }
-        });
-
-        channel.listen('.message.restored', (e) => {
-            const messageIndex = messageList.value.findIndex(msg => msg.id === e.message.id);
-            if (messageIndex !== -1) {
-                messageList.value[messageIndex] = e.message;
-            }
-        });
-
-        // Listen for typing indicators
-        channel.listen('typing.indicator', (e) => {
-            if (e.user_id !== page.props.auth.user.id && e.booking_id == props.bookingId) {
-                if (e.is_typing) {
-                    // Add user to typing list
-                    if (!typingUsers.value.some(user => user.user_id === e.user_id)) {
-                        typingUsers.value.push({
-                            user_id: e.user_id,
-                            user_name: e.user_name,
-                            timestamp: new Date(e.timestamp)
-                        });
-                    }
-                } else {
-                    // Remove user from typing list
-                    typingUsers.value = typingUsers.value.filter(user => user.user_id !== e.user_id);
-                }
-
-                // Auto-remove typing indicators after 10 seconds
-                setTimeout(() => {
-                    typingUsers.value = typingUsers.value.filter(user =>
-                        user.user_id !== e.user_id ||
-                        new Date() - new Date(user.timestamp) < 10000
-                    );
-                }, 10000);
-            }
-        });
-
-        // Listen for enhanced read receipts
-        channel.listen('message.read', (e) => {
-            if (e.user_id !== page.props.auth.user.id && e.booking_id == props.bookingId) {
-                // Update message read status
-                const messageIndex = messageList.value.findIndex(msg => msg.id === e.message_id);
-                if (messageIndex !== -1) {
-                    messageList.value[messageIndex].read_at = e.read_at;
-                }
-
-                // Update enhanced read receipts
-                readReceipts.value[e.message_id] = {
-                    ...readReceipts.value[e.message_id],
-                    [e.user_id]: {
-                        read_at: e.read_at,
-                        user_name: e.user_name
-                    }
-                };
-            }
-        });
-    }
+    // Setup channel listeners
+    setupChannelListeners();
 });
 
 onUnmounted(() => {
-    if (props.bookingId) {
-        window.Echo.leave(`chat.${props.bookingId}`);
-        // Stop typing when component unmounts
-        stopTyping();
+    // Clean up current channel
+    if (currentChannel) {
+        window.Echo.leave(`chat.${currentChannel}`);
+        currentChannel = null;
     }
+
+    // Stop typing when component unmounts
+    stopTyping();
 
     // Clear typing timeout
     if (typingTimeout) {
         clearTimeout(typingTimeout);
     }
+
+    // Remove global click handler
+    document.removeEventListener('click', closeBookingDropdown);
 });
 </script>
 
