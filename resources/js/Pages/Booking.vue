@@ -122,6 +122,7 @@ const paymentPercentage = ref(0.00); // Initialize with 0, will be fetched from 
 
 const sessionBookingDetails = ref(null); // To store parsed session data
 const isBookingDataReady = ref(false); // Flag to control rendering of StripeCheckout
+const termsAccepted = ref(false); // Track terms and conditions acceptance
 
 
 // Convert dates to Date objects and calculate the difference in days
@@ -1167,7 +1168,7 @@ const bookingData = computed(() => {
                             You will be redirected to Stripe's secure checkout page to complete your payment.
                         </p>
                         <div class="flex items-center gap-2 mb-4 max-[768px]:items-start">
-                            <input type="checkbox" id="terms" class="rounded border-gray-300 max-[768px]:mt-1"
+                            <input type="checkbox" id="terms" v-model="termsAccepted" class="rounded border-gray-300 max-[768px]:mt-1"
                                 required />
                             <label for="terms" class="text-sm">
                                 I have read, understood, and accepted vroome.com
@@ -1180,7 +1181,17 @@ const bookingData = computed(() => {
                             class="flex justify-between gap-4 mt-4 max-[768px]:fixed max-[768px]:bottom-0 max-[768px]:left-0 max-[768px]:bg-white max-[768px]:w-full max-[768px]:z-10 max-[768px]:py-2 max-[768px]:px-[1.5rem]">
                             <button type="button" @click="moveToPrevStep"
                                 class="button-secondary w-[15rem] max-[768px]:text-[0.75rem]">Back</button>
-                            <StripeCheckout :booking-data="bookingData" @error="handleStripeError" />
+                            <div v-if="termsAccepted">
+                                <StripeCheckout :booking-data="bookingData" @error="handleStripeError" />
+                            </div>
+                            <div v-else>
+                                <PrimaryButton
+                                    disabled
+                                    class="w-[15rem] max-[768px]:text-[0.75rem] opacity-50 cursor-not-allowed"
+                                >
+                                    Book Now
+                                </PrimaryButton>
+                            </div>
                         </div>
                     </div>
                 </div>
