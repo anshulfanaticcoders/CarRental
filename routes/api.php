@@ -108,4 +108,44 @@ Route::get('/{provider}/dropoff-locations/{location_id}', [GreenMotionController
 // Route for unified location search
 Route::get('/unified-locations', [App\Http\Controllers\SearchController::class, 'searchUnifiedLocations'])->name('api.unified-locations.search');
 
+// Booking Chat API Routes
+Route::middleware('auth:sanctum')->prefix('booking-chats')->group(function () {
+    Route::get('/', [App\Http\Controllers\API\BookingChatController::class, 'index']);
+    Route::post('/', [App\Http\Controllers\API\BookingChatController::class, 'store']);
+    Route::get('/search', [App\Http\Controllers\API\BookingChatController::class, 'search']);
+    Route::get('/stats', [App\Http\Controllers\API\BookingChatController::class, 'getStats']);
+    Route::get('/unread-count', [App\Http\Controllers\API\BookingChatController::class, 'getUnreadCount']);
+    Route::post('/find-or-create', [App\Http\Controllers\API\BookingChatController::class, 'findOrCreateForBooking']);
+    Route::get('/{id}', [App\Http\Controllers\API\BookingChatController::class, 'show']);
+    Route::put('/{id}', [App\Http\Controllers\API\BookingChatController::class, 'update']);
+    Route::delete('/{id}', [App\Http\Controllers\API\BookingChatController::class, 'destroy']);
+
+    // Message routes within chats
+    Route::get('/{chatId}/messages', [App\Http\Controllers\API\ChatMessageController::class, 'index']);
+    Route::post('/{chatId}/messages', [App\Http\Controllers\API\ChatMessageController::class, 'store']);
+    Route::get('/{chatId}/messages/search', [App\Http\Controllers\API\ChatMessageController::class, 'search']);
+    Route::get('/{chatId}/messages/typing-users', [App\Http\Controllers\API\ChatMessageController::class, 'getTypingUsers']);
+    Route::post('/{chatId}/mark-as-read', [App\Http\Controllers\API\ChatMessageController::class, 'markAsRead']);
+});
+
+// Chat Messages API Routes
+Route::middleware('auth:sanctum')->prefix('chat-messages')->group(function () {
+    Route::get('/{id}', [App\Http\Controllers\API\ChatMessageController::class, 'show']);
+    Route::put('/{id}', [App\Http\Controllers\API\ChatMessageController::class, 'update']);
+    Route::delete('/{id}', [App\Http\Controllers\API\ChatMessageController::class, 'destroy']);
+    Route::post('/{id}/undo', [App\Http\Controllers\API\ChatMessageController::class, 'undo']);
+    Route::post('/{id}/restore', [App\Http\Controllers\API\ChatMessageController::class, 'restore']);
+});
+
+// Chat Attachments API Routes
+Route::middleware('auth:sanctum')->prefix('chat-attachments')->group(function () {
+    Route::post('/upload', [App\Http\Controllers\API\ChatAttachmentController::class, 'store']);
+    Route::get('/{id}', [App\Http\Controllers\API\ChatAttachmentController::class, 'show']);
+    Route::get('/{id}/download', [App\Http\Controllers\API\ChatAttachmentController::class, 'download']);
+    Route::get('/{id}/thumbnail', [App\Http\Controllers\API\ChatAttachmentController::class, 'thumbnail']);
+    Route::get('/{id}/progress', [App\Http\Controllers\API\ChatAttachmentController::class, 'uploadProgress']);
+    Route::delete('/{id}', [App\Http\Controllers\API\ChatAttachmentController::class, 'destroy']);
+    Route::get('/allowed-types', [App\Http\Controllers\API\ChatAttachmentController::class, 'allowedFileTypes']);
+});
+
 // Vendor API routes - Note: Moved to web.php for proper authentication

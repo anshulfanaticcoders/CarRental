@@ -1,9 +1,6 @@
 <template>
-    <div v-if="isLoading" class="fixed z-50 h-full w-full top-0 left-0 bg-[#0000009e]">
-        <div class="flex justify-center flex-col items-center h-full w-full">
-            <img :src=loader alt="" class="w-[200px] max-[768px]:w-[70px]">
-            <p class="text-[white] text-[1.5rem] max-[768px]:text-[1rem]">Please do not refresh the page. Wait....</p>
-        </div>
+    <div v-if="isLoading" class="loader-overlay">
+        <Vue3Lottie :animation-data="universalLoader" :height="200" :width="200" />
     </div>
 
     <Head>
@@ -1616,7 +1613,8 @@ import { useToast } from 'vue-toastification'; // Add this import
 import Select from "@/Components/ui/select/Select.vue";
 import SelectItem from "@/Components/ui/select/SelectItem.vue";
 import { SelectContent, SelectGroup, SelectLabel, SelectTrigger, SelectValue } from "@/Components/ui/select";
-import loader from "../../../assets/loader.gif";
+import { Vue3Lottie } from 'vue3-lottie';
+import universalLoader from '../../../../public/animations/universal-loader.json';
 import { usePage } from '@inertiajs/vue3';
 import AuthenticatedHeaderLayout from "@/Layouts/AuthenticatedHeaderLayout.vue";
 import VueDatePicker from '@vuepic/vue-datepicker';
@@ -2832,6 +2830,19 @@ select {
 
 :deep(.dp__menu) {
     border-radius: 0.5rem;
+}
+
+.loader-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(0, 0, 0, 0.5);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 9999;
 }
 
 ::-webkit-scrollbar {

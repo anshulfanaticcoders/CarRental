@@ -532,12 +532,16 @@ const calculateTotal = computed(() => {
 
 const calculateAmountPaid = computed(() => {
     const total = calculateTotal.value;
-    return Number((total * (paymentPercentage.value / 100)).toFixed(2));
+    // When payment percentage is 0%, treat as 100% payable (full amount now)
+    const effectivePercentage = paymentPercentage.value === 0 ? 100 : paymentPercentage.value;
+    return Number((total * (effectivePercentage / 100)).toFixed(2));
 });
 
 const calculatePendingAmount = computed(() => {
     const total = calculateTotal.value;
-    return Number((total * (1 - (paymentPercentage.value / 100))).toFixed(2));
+    // When payment percentage is 0%, pending is 0 (full amount paid now)
+    const effectivePercentage = paymentPercentage.value === 0 ? 100 : paymentPercentage.value;
+    return Number((total * (1 - (effectivePercentage / 100))).toFixed(2));
 });
 
 

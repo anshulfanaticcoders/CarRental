@@ -288,20 +288,35 @@ class VehicleController extends Controller
 
 
         // Notify the admin
-        $adminEmail = env('VITE_ADMIN_EMAIL', 'default@admin.com');
-        $admin = User::where('email', $adminEmail)->first();
-        if ($admin) {
-            $admin->notify(new VehicleCreatedNotification($vehicle));
+        try {
+            $adminEmail = env('VITE_ADMIN_EMAIL', 'default@admin.com');
+            $admin = User::where('email', $adminEmail)->first();
+            if ($admin) {
+                $admin->notify(new VehicleCreatedNotification($vehicle));
+            }
+        } catch (\Exception $e) {
+            // Log the error but don't expose it to the user
+            \Log::error('Failed to send admin notification for vehicle creation: ' . $e->getMessage());
         }
 
         // Notify the vendor
-        $request->user()->notify(new VendorVehicleCreateNotification($vehicle, $request->user()));
+        try {
+            $request->user()->notify(new VendorVehicleCreateNotification($vehicle, $request->user()));
+        } catch (\Exception $e) {
+            // Log the error but don't expose it to the user
+            \Log::error('Failed to send vendor notification for vehicle creation: ' . $e->getMessage());
+        }
 
         // Notify the company
-        $vendorProfile = VendorProfile::where('user_id', $request->user()->id)->first();
-        if ($vendorProfile && $vendorProfile->company_email) {
-            Notification::route('mail', $vendorProfile->company_email)
-                ->notify(new VendorVehicleCreateCompanyNotification($vehicle, $request->user()));
+        try {
+            $vendorProfile = VendorProfile::where('user_id', $request->user()->id)->first();
+            if ($vendorProfile && $vendorProfile->company_email) {
+                Notification::route('mail', $vendorProfile->company_email)
+                    ->notify(new VendorVehicleCreateCompanyNotification($vehicle, $request->user()));
+            }
+        } catch (\Exception $e) {
+            // Log the error but don't expose it to the user
+            \Log::error('Failed to send company notification for vehicle creation: ' . $e->getMessage());
         }
 
 
