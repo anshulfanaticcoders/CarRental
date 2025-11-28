@@ -88,11 +88,38 @@ class MessageController extends Controller
                 ->orderBy('created_at', 'desc')
                 ->first();
 
-            // Prepare vehicle image
+            // Prepare vehicle image for active booking
             $vehicleImage = null;
             if ($activeBooking->vehicle->images && $activeBooking->vehicle->images->isNotEmpty()) {
                 $vehicleImage = $activeBooking->vehicle->images->first()->image_url;
             }
+
+            // NEW: Build array of ALL bookings for this vendor
+            $allBookings = $vendorBookings->map(function ($booking) {
+                $bookingVehicleImage = null;
+                if ($booking->vehicle->images && $booking->vehicle->images->isNotEmpty()) {
+                    $bookingVehicleImage = $booking->vehicle->images->first()->image_url;
+                }
+
+                return [
+                    'id' => $booking->id,
+                    'vehicle' => [
+                        'id' => $booking->vehicle->id,
+                        'name' => $booking->vehicle->name,
+                        'brand' => $booking->vehicle->brand,
+                        'model' => $booking->vehicle->model,
+                        'category' => $booking->vehicle->category->name ?? 'Unknown',
+                        'image' => $bookingVehicleImage,
+                    ],
+                    'booking_status' => $booking->booking_status,
+                    'pickup_date' => $booking->pickup_date,
+                    'return_date' => $booking->return_date,
+                    'pickup_time' => $booking->pickup_time,
+                    'return_time' => $booking->return_time,
+                    'total_amount' => $booking->total_amount,
+                    'amount_paid' => $booking->amount_paid,
+                ];
+            })->toArray();
 
             return [
                 // $vendorUser already has profile and chatStatus loaded due to eager loading: 'vehicle.vendor.profile', 'vehicle.vendor.chatStatus'
@@ -117,6 +144,9 @@ class MessageController extends Controller
                     'total_amount' => $activeBooking->total_amount,
                     'amount_paid' => $activeBooking->amount_paid,
                 ],
+                // NEW: Include all bookings for booking selection modal
+                'bookings' => $allBookings,
+                'has_multiple_active_bookings' => $activeBookings->count() > 1, // NEW: Flag for multiple active bookings
                 'has_active_bookings' => $activeBookings->count() > 0,
                 'active_bookings_count' => $activeBookings->count(),
                 'completed_bookings_count' => $completedBookings->count(),
@@ -175,11 +205,38 @@ class MessageController extends Controller
             ->orderBy('created_at', 'desc')
             ->first();
 
-        // Prepare vehicle image
+        // Prepare vehicle image for active booking
         $vehicleImage = null;
         if ($activeBooking->vehicle->images && $activeBooking->vehicle->images->isNotEmpty()) {
             $vehicleImage = $activeBooking->vehicle->images->first()->image_url;
         }
+
+        // NEW: Build array of ALL bookings for this customer
+        $allBookings = $customerBookings->map(function ($booking) {
+            $bookingVehicleImage = null;
+            if ($booking->vehicle->images && $booking->vehicle->images->isNotEmpty()) {
+                $bookingVehicleImage = $booking->vehicle->images->first()->image_url;
+            }
+
+            return [
+                'id' => $booking->id,
+                'vehicle' => [
+                    'id' => $booking->vehicle->id,
+                    'name' => $booking->vehicle->name,
+                    'brand' => $booking->vehicle->brand,
+                    'model' => $booking->vehicle->model,
+                    'category' => $booking->vehicle->category->name ?? 'Unknown',
+                    'image' => $bookingVehicleImage,
+                ],
+                'booking_status' => $booking->booking_status,
+                'pickup_date' => $booking->pickup_date,
+                'return_date' => $booking->return_date,
+                'pickup_time' => $booking->pickup_time,
+                'return_time' => $booking->return_time,
+                'total_amount' => $booking->total_amount,
+                'amount_paid' => $booking->amount_paid,
+            ];
+        })->toArray();
 
         return [
             'user' => $customerUser->load(['profile', 'chatStatus']), // Pass the customer's user model with profile and chatStatus
@@ -203,6 +260,9 @@ class MessageController extends Controller
                 'total_amount' => $activeBooking->total_amount,
                 'amount_paid' => $activeBooking->amount_paid,
             ],
+            // NEW: Include all bookings for booking selection modal
+            'bookings' => $allBookings,
+            'has_multiple_active_bookings' => $activeBookings->count() > 1, // NEW: Flag for multiple active bookings
             'has_active_bookings' => $activeBookings->count() > 0,
             'active_bookings_count' => $activeBookings->count(),
             'completed_bookings_count' => $completedBookings->count(),

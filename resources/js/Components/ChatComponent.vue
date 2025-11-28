@@ -22,10 +22,14 @@ const props = defineProps({
     bookingDetails: {
         type: Object,
         default: null
+    },
+    allBookings: {
+        type: Array,
+        default: () => []
     }
 });
 
-const emit = defineEmits(['back', 'messageReceived']);
+const emit = defineEmits(['back', 'messageReceived', 'bookingChanged']);
 
 const messageList = ref(props.messages || []);
 const newMessage = ref('');
@@ -38,6 +42,7 @@ const error = ref(null);
 const showOptions = ref(null);
 const isSearchVisible = ref(false);
 const showBookingDetails = ref(false);
+const showBookingDropdown = ref(false);
 
 // Voice Note State
 const isRecording = ref(false);
@@ -345,6 +350,21 @@ const toggleBookingDetails = () => {
     showBookingDetails.value = !showBookingDetails.value;
 };
 
+const toggleBookingDropdown = () => {
+    showBookingDropdown.value = !showBookingDropdown.value;
+};
+
+const switchBooking = (booking) => {
+    if (booking.id !== props.bookingId) {
+        emit('bookingChanged', booking);
+        showBookingDropdown.value = false;
+    }
+};
+
+const closeBookingDropdown = () => {
+    showBookingDropdown.value = false;
+};
+
 const formatBookingDate = (dateString) => {
     const date = new Date(dateString);
     return date.toLocaleDateString('en-US', {
@@ -473,6 +493,13 @@ onMounted(() => {
     recordingStartAudio = new Audio(recordingStartSound);
     recordingStartAudio.load();
 
+    // Add global click handler to close booking dropdown
+    document.addEventListener('click', (e) => {
+        if (!e.target.closest('.booking-dropdown')) {
+            showBookingDropdown.value = false;
+        }
+    });
+
     if (props.bookingId) {
         const channel = window.Echo.private(`chat.${props.bookingId}`);
         
@@ -581,7 +608,7 @@ onUnmounted(() => {
     <div class="flex flex-col h-full bg-gradient-to-b from-gray-50 to-gray-100 rounded-xl shadow-lg overflow-hidden">
         <!-- Header - Fixed -->
         <div class="p-4 bg-white border-b border-gray-200 flex items-center gap-3 shadow-sm flex-shrink-0">
-            <button v-if="showBackButton" @click="goBack" 
+            <button v-if="showBackButton" @click="goBack"
                 class="p-2 rounded-full hover:bg-gray-100 transition-colors duration-200">
                 <img :src="arrowBackIcon" alt="Back" class="w-5 h-5" />
             </button>
@@ -589,15 +616,92 @@ onUnmounted(() => {
             <div class="relative">
                 <img :src="getProfileImage(otherUser)"
                     alt="User Avatar" class="w-12 h-12 rounded-full object-cover ring-2 ring-blue-100" />
-                <div v-if="otherUser?.chat_status?.is_online" 
+                <div v-if="otherUser?.chat_status?.is_online"
                     class="absolute -bottom-1 -right-1 w-4 h-4 bg-green-500 rounded-full border-2 border-white"></div>
             </div>
 
             <div class="flex-grow">
-                <h2 class="text-lg font-semibold text-gray-800">
-                    {{ otherUser?.first_name || 'Chat Partner' }} {{ otherUser?.last_name || '' }}
-                </h2>
-                <p class="text-sm text-gray-500">{{ lastSeenText }}</p>
+                <div class="flex items-center justify-between">
+                    <div>
+                        <h2 class="text-lg font-semibold text-gray-800">
+                            {{ otherUser?.first_name || 'Chat Partner' }} {{ otherUser?.last_name || '' }}
+                        </h2>
+                        <p class="text-sm text-gray-500">{{ lastSeenText }}</p>
+                    </div>
+
+                    <!-- Booking Context Dropdown (if multiple bookings) -->
+                    <div v-if="allBookings.length > 1" class="booking-dropdown relative">
+                        <button @click="toggleBookingDropdown"
+                            class="flex items-center gap-2 px-3 py-2 bg-blue-50 hover:bg-blue-100 rounded-lg transition-colors duration-200 text-sm"
+                            title="Switch booking">
+                            <svg class="w-4 h-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4"></path>
+                            </svg>
+                            <span class="text-blue-800 font-medium">{{ allBookings.length }} Bookings</span>
+                            <svg class="w-4 h-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+                            </svg>
+                        </button>
+
+                        <!-- Dropdown Menu -->
+                        <div v-if="showBookingDropdown"
+                             class="absolute right-0 top-full mt-1 w-80 bg-white rounded-lg shadow-xl border border-gray-200 z-50">
+                            <div class="p-3 border-b border-gray-100">
+                                <h3 class="text-sm font-semibold text-gray-800">Switch Booking</h3>
+                                <p class="text-xs text-gray-500">Select a different booking to chat about</p>
+                            </div>
+                            <div class="max-h-64 overflow-y-auto">
+                                <div v-for="booking in allBookings" :key="booking.id"
+                                     @click="switchBooking(booking)"
+                                     :class="[
+                                         'p-3 border-b border-gray-50 last:border-b-0 cursor-pointer transition-colors duration-150',
+                                         'hover:bg-gray-50',
+                                         booking.id === bookingId ? 'bg-blue-50' : 'bg-white'
+                                     ]">
+                                    <div class="flex items-center gap-3">
+                                        <!-- Vehicle Image -->
+                                        <div class="flex-shrink-0">
+                                            <img v-if="booking.vehicle?.image"
+                                                 :src="booking.vehicle.image"
+                                                 :alt="booking.vehicle.name"
+                                                 class="w-12 h-12 object-cover rounded-lg">
+                                            <div v-else
+                                                 class="w-12 h-12 bg-gray-200 rounded-lg flex items-center justify-center">
+                                                <svg class="w-6 h-6 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
+                                                </svg>
+                                            </div>
+                                        </div>
+
+                                        <!-- Booking Info -->
+                                        <div class="flex-grow min-w-0">
+                                            <div class="flex items-center gap-2">
+                                                <h4 class="font-semibold text-sm text-gray-900 truncate">{{ booking.vehicle?.name }}</h4>
+                                                <span v-if="booking.id === bookingId"
+                                                      class="text-xs bg-blue-600 text-white px-2 py-0.5 rounded-full">Current</span>
+                                            </div>
+                                            <p class="text-xs text-gray-600">{{ booking.vehicle?.brand }} {{ booking.vehicle?.model }}</p>
+                                            <div class="flex items-center gap-2 mt-1">
+                                                <span :class="`text-xs px-2 py-0.5 rounded-full ${getBookingStatusColor(booking.booking_status)}`">
+                                                    {{ getBookingStatusIcon(booking.booking_status) }} {{ booking.booking_status?.charAt(0).toUpperCase() + booking.booking_status?.slice(1) }}
+                                                </span>
+                                                <span class="text-xs text-gray-500">{{ formatDate(booking.pickup_date) }}</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Single Booking Indicator -->
+                    <div v-else-if="bookingDetails" class="flex items-center gap-2 px-3 py-2 bg-green-50 rounded-lg">
+                        <svg class="w-4 h-4 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                        </svg>
+                        <span class="text-green-800 font-medium text-sm">1 Booking</span>
+                    </div>
+                </div>
             </div>
 
             <button @click="toggleSearch"

@@ -1,6 +1,7 @@
 <script setup>
 import { ref, computed, onMounted, onUnmounted } from "vue";
 import ChatComponent from '@/Components/ChatComponent.vue';
+import BookingSelectionModal from '@/Components/BookingSelectionModal.vue';
 import axios from 'axios';
 import { Link, usePage, Head } from '@inertiajs/vue3';
 import arrowBackIcon from '../../../assets/arrowBack.svg'; // Assuming path relative to Pages/Messages
@@ -18,6 +19,10 @@ const loadingChat = ref(false);
 const showChat = ref(false); // Controls mobile chat visibility
 const isMobile = ref(false); // Track if we're on mobile
 const showRecentChats = ref(false); // Toggle between active and recent chats
+
+// NEW: Booking selection modal state
+const showBookingSelectionModal = ref(false);
+const availableBookings = ref([]);
 
 const activeChatPartners = computed(() => {
     if (!props.chatPartners) return [];
@@ -113,38 +118,56 @@ const getVehicleImage = (partner) => {
 };
 
 const loadChat = async (partner) => {
-    if (!partner || !partner.active_booking_id) {
-        console.error("Invalid partner or missing booking ID for chat.", partner);
+    if (!partner) {
+        console.error("Invalid partner for chat.", partner);
         return;
     }
-    loadingChat.value = true;
+
     selectedPartner.value = partner;
-    selectedBookingId.value = partner.active_booking_id; // Use active_booking_id for better context
     otherUser.value = partner.user; // This is the vendor user object
+
+    // Check if partner has multiple active bookings
+    if (partner.has_multiple_active_bookings && partner.bookings && partner.bookings.length > 1) {
+        // Show booking selection modal
+        showBookingSelectionModal.value = true;
+        availableBookings.value = partner.bookings;
+        return;
+    }
+
+    // For single booking, proceed directly (backwards compatibility)
+    loadChatForBooking(partner.active_booking_id, partner);
+};
+
+// NEW: Load chat for specific booking
+const loadChatForBooking = async (bookingId, partner) => {
+    if (!bookingId) {
+        console.error("Invalid booking ID for chat.", bookingId);
+        return;
+    }
+
+    loadingChat.value = true;
+    selectedBookingId.value = bookingId;
     showChat.value = true;
 
     // Mark messages as read
-    if (partner.unread_count > 0) {
+    if (partner && partner.unread_count > 0) {
         try {
-            // console.log(`Marking messages as read for booking ID: ${partner.latest_booking_id}`);
-            await axios.post(route('messages.mark-as-read', { locale: usePage().props.locale, booking: partner.active_booking_id }));
+            await axios.post(route('messages.mark-as-read', { locale: usePage().props.locale, booking: bookingId }));
             // Optimistically update the unread count on the client side
-            const partnerInList = props.chatPartners.find(p => p.latest_booking_id === partner.latest_booking_id);
+            const partnerInList = props.chatPartners.find(p => p.user.id === partner.user.id);
             if (partnerInList) {
                 partnerInList.unread_count = 0;
             }
-            // If the selectedPartner is from filtered list, ensure its unread_count is also updated
-            if (selectedPartner.value && selectedPartner.value.active_booking_id === partner.active_booking_id) {
+            if (selectedPartner.value) {
                  selectedPartner.value.unread_count = 0;
             }
         } catch (error) {
             console.error('Failed to mark messages as read:', error);
-            // Optionally, handle the error, e.g., by not clearing the count or showing a notification
         }
     }
-    
+
     try {
-        const response = await axios.get(route('messages.show', { locale: usePage().props.locale, booking: partner.active_booking_id }));
+        const response = await axios.get(route('messages.show', { locale: usePage().props.locale, booking: bookingId }));
         if (response.data && response.data.props) {
             messages.value = response.data.props.messages || [];
         } else {
@@ -158,8 +181,15 @@ const loadChat = async (partner) => {
     }
 };
 
+// NEW: Handle booking selection from modal
+const handleBookingSelection = (selectedBooking) => {
+    showBookingSelectionModal.value = false;
+    loadChatForBooking(selectedBooking.id, selectedPartner.value);
+};
+
 const backToInbox = () => {
     showChat.value = false;
+    showBookingSelectionModal.value = false; // Also close modal if open
     selectedPartner.value = null;
     selectedBookingId.value = null;
     showRecentChats.value = false; // Reset to active chats when going back
@@ -385,6 +415,15 @@ onUnmounted(() => {
                 />
             </div>
         </div>
+
+        <!-- Booking Selection Modal -->
+        <BookingSelectionModal
+            :isVisible="showBookingSelectionModal"
+            :bookings="availableBookings"
+            :selectedPartner="selectedPartner"
+            @close="showBookingSelectionModal = false"
+            @booking-selected="handleBookingSelection"
+        />
     </div>
 </template>
 
