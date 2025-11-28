@@ -800,12 +800,7 @@ Route::group([
         Route::post('/bulk-vehicle-images/bulk-destroy', [VendorBulkImageController::class, 'bulkDestroy'])->name('vendor.bulk-vehicle-images.bulk-destroy');
     });
 
-    // Vendor Booking Chat Routes
-    Route::middleware(['auth', 'role:vendor'])->group(function () {
-        Route::inertia('/vendor/booking-chats', 'BookingChat/Index')->name('vendor.booking-chats.index');
-        Route::inertia('/vendor/booking-chats/{id}', 'BookingChat/Show')->name('vendor.booking-chats.show');
-    });
-
+  
     // Customer Routes
     Route::middleware(['auth', 'role:customer'])->group(function () {
         // User Profile routes
@@ -826,10 +821,7 @@ Route::group([
         Route::get('/favourites', [FavoriteController::class, 'getFavorites'])->name('profile.favourites');
         Route::inertia('inbox', 'Profile/Inbox');
 
-        // New Booking Chat Routes
-        Route::inertia('/booking-chats', 'BookingChat/Index')->name('booking-chats.index');
-        Route::inertia('/booking-chats/{id}', 'BookingChat/Show')->name('booking-chats.show');
-        Route::post('/reviews', [ReviewController::class, 'store'])->name('reviews.store');
+                Route::post('/reviews', [ReviewController::class, 'store'])->name('reviews.store');
         Route::get('/profile/reviews', [ReviewController::class, 'userReviews'])->name('profile.reviews');
 
         // Booking confirmation routes

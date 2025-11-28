@@ -26,11 +26,6 @@ Broadcast::channel('chat.{bookingId}', function ($user, $bookingId) {
     return $user->id === $booking->customer->user_id || $user->id === $booking->vehicle->vendor_id;
 });
 
-// New booking chat channels
-Broadcast::channel('booking-chat.{chatId}', function ($user, $chatId) {
-    $chat = BookingChat::findOrFail($chatId);
-    return $chat->hasParticipant($user->id);
-});
 
 // User presence channels for online status
 Broadcast::channel('presence-users.{userId}', function ($user, $userId) {
