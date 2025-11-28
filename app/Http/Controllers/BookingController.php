@@ -12,12 +12,14 @@ use App\Notifications\Booking\BookingCreatedAdminNotification;
 use App\Notifications\Booking\BookingCreatedCompanyNotification;
 use App\Notifications\Booking\BookingCreatedCustomerNotification;
 use App\Notifications\Booking\BookingCreatedVendorNotification;
+use App\Events\NewMessage;
 use Illuminate\Http\Request;
 use App\Models\Booking;
 use App\Models\BookingPayment;
 use App\Models\BookingExtra;
 use App\Models\Customer;
 use Illuminate\Support\Facades\Notification;
+use Illuminate\Support\Facades\Log;
 use Stripe\Stripe;
 use Stripe\PaymentIntent;
 use Stripe\Customer as StripeCustomer;
@@ -225,6 +227,26 @@ class BookingController extends Controller
             Notification::route('mail', $customer->email)
                 ->notify(new BookingCreatedCustomerNotification($booking, $customer, $vehicle));
 
+            // Create welcome chat message from vendor to customer
+            try {
+                if ($vendor && $customer->user_id) {
+                    $welcomeMessage = Message::create([
+                        'sender_id' => $vendor->id,
+                        'receiver_id' => $customer->user_id,
+                        'booking_id' => $booking->id,
+                        'message' => 'Hello, Thank you for booking! Feel free to ask anything about your rental.',
+                    ]);
+
+                    $welcomeMessage->load(['sender', 'receiver']);
+                    broadcast(new NewMessage($welcomeMessage))->toOthers();
+                }
+            } catch (\Exception $e) {
+                Log::warning('BookingController::store - Failed to create welcome message', [
+                    'error' => $e->getMessage(),
+                    'booking_id' => $booking->id
+                ]);
+                // Don't fail the booking if welcome message fails
+            }
 
             return response()->json([
                 'clientSecret' => $paymentIntent->client_secret,
