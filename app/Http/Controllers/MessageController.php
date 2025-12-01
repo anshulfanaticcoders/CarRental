@@ -20,6 +20,36 @@ use App\Events\MessageRestored; // Added import
 
 class MessageController extends Controller
 {
+    /**
+     * Validate if a booking is eligible for chat functionality
+     *
+     * @param Booking $booking
+     * @param User $user
+     * @return array
+     */
+    private function validateBookingChatEligibility($booking, $user)
+    {
+        $allowedStatuses = ['pending', 'confirmed'];
+
+        if (!in_array($booking->booking_status, $allowedStatuses)) {
+            return [
+                'allowed' => false,
+                'reason' => 'Chat is not available for ' . $booking->booking_status . ' bookings',
+                'readOnly' => true
+            ];
+        }
+
+        if ($user->id !== $booking->customer->user_id && $user->id !== $booking->vehicle->vendor_id) {
+            return [
+                'allowed' => false,
+                'reason' => 'Unauthorized access',
+                'readOnly' => false
+            ];
+        }
+
+        return ['allowed' => true, 'readOnly' => false];
+    }
+
     public function index($locale)
     {
         // This will now also pass initial chat partners data
@@ -65,7 +95,7 @@ class MessageController extends Controller
                 return in_array($booking->booking_status, ['pending', 'confirmed']);
             });
             $completedBookings = $vendorBookings->filter(function ($booking) {
-                return $booking->booking_status === 'completed';
+                return in_array($booking->booking_status, ['completed', 'cancelled']);
             });
 
             // Get the most recent active booking, or fallback to latest completed
@@ -94,8 +124,8 @@ class MessageController extends Controller
                 $vehicleImage = $activeBooking->vehicle->images->first()->image_url;
             }
 
-            // NEW: Build array of ALL bookings for this vendor
-            $allBookings = $vendorBookings->map(function ($booking) {
+            // NEW: Build array of only ACTIVE bookings for this vendor (for booking selection dropdown)
+            $allBookings = $activeBookings->map(function ($booking) {
                 $bookingVehicleImage = null;
                 if ($booking->vehicle->images && $booking->vehicle->images->isNotEmpty()) {
                     $bookingVehicleImage = $booking->vehicle->images->first()->image_url;
@@ -143,6 +173,14 @@ class MessageController extends Controller
                     'return_time' => $activeBooking->return_time,
                     'total_amount' => $activeBooking->total_amount,
                     'amount_paid' => $activeBooking->amount_paid,
+                    'chat_allowed' => in_array($activeBooking->booking_status, ['pending', 'confirmed']),
+                    'chat_restrictions' => [
+                        'can_send_messages' => in_array($activeBooking->booking_status, ['pending', 'confirmed']),
+                        'reason' => !in_array($activeBooking->booking_status, ['pending', 'confirmed'])
+                            ? 'Chat is not available for ' . $activeBooking->booking_status . ' bookings'
+                            : null,
+                        'read_only' => !in_array($activeBooking->booking_status, ['pending', 'confirmed'])
+                    ]
                 ],
                 // NEW: Include all bookings for booking selection modal
                 'bookings' => $allBookings,
@@ -181,7 +219,7 @@ class MessageController extends Controller
             return in_array($booking->booking_status, ['pending', 'confirmed']);
         });
         $completedBookings = $customerBookings->filter(function ($booking) {
-            return $booking->booking_status === 'completed';
+            return in_array($booking->booking_status, ['completed', 'cancelled']);
         });
 
         // Get the most recent active booking, or fallback to latest completed
@@ -211,8 +249,8 @@ class MessageController extends Controller
             $vehicleImage = $activeBooking->vehicle->images->first()->image_url;
         }
 
-        // NEW: Build array of ALL bookings for this customer
-        $allBookings = $customerBookings->map(function ($booking) {
+        // NEW: Build array of only ACTIVE bookings for this customer (for booking selection dropdown)
+        $allBookings = $activeBookings->map(function ($booking) {
             $bookingVehicleImage = null;
             if ($booking->vehicle->images && $booking->vehicle->images->isNotEmpty()) {
                 $bookingVehicleImage = $booking->vehicle->images->first()->image_url;
@@ -259,6 +297,14 @@ class MessageController extends Controller
                 'return_time' => $activeBooking->return_time,
                 'total_amount' => $activeBooking->total_amount,
                 'amount_paid' => $activeBooking->amount_paid,
+                'chat_allowed' => in_array($activeBooking->booking_status, ['pending', 'confirmed']),
+                'chat_restrictions' => [
+                    'can_send_messages' => in_array($activeBooking->booking_status, ['pending', 'confirmed']),
+                    'reason' => !in_array($activeBooking->booking_status, ['pending', 'confirmed'])
+                        ? 'Chat is not available for ' . $activeBooking->booking_status . ' bookings'
+                        : null,
+                    'read_only' => !in_array($activeBooking->booking_status, ['pending', 'confirmed'])
+                ]
             ],
             // NEW: Include all bookings for booking selection modal
             'bookings' => $allBookings,
@@ -374,6 +420,16 @@ public function show($locale, $bookingId)
 
     $booking = Booking::with(['vehicle.vendor', 'customer'])->findOrFail($validated['booking_id']);
     $user = Auth::user();
+
+    // Check chat eligibility before allowing message
+    $eligibility = $this->validateBookingChatEligibility($booking, $user);
+    if (!$eligibility['allowed']) {
+        return response()->json([
+            'error' => $eligibility['reason'],
+            'chat_allowed' => false,
+            'read_only' => $eligibility['readOnly']
+        ], 403);
+    }
 
     if ($user->id !== $booking->customer->user_id && $user->id !== $booking->vehicle->vendor_id) {
         abort(403, 'Unauthorized access to this conversation');
@@ -670,4 +726,93 @@ public function getTypingUsers(Request $request, $locale, $bookingId)
     }
 }
 
+    /**
+     * DEBUG: Get raw chat partners data with detailed counts
+     */
+    public function debugChatPartners($locale)
+    {
+        $user = Auth::user();
+
+        if ($user->hasRole('vendor')) {
+            // Get vendor chat data
+            $vendorId = auth()->id();
+            $bookings = Booking::whereHas('vehicle', function ($query) use ($vendorId) {
+                $query->where('vendor_id', $vendorId);
+            })
+            ->with(['customer.user.profile', 'customer.user.chatStatus', 'vehicle', 'vehicle.category', 'vehicle.images'])
+            ->orderBy('created_at', 'desc')
+            ->get();
+
+            $customersData = $bookings->groupBy('customer.user_id')->map(function ($customerBookings) use ($vendorId) {
+                $latestBooking = $customerBookings->first();
+                $customerUser = $latestBooking->customer->user;
+
+                $activeBookings = $customerBookings->filter(function ($booking) {
+                    return in_array($booking->booking_status, ['pending', 'confirmed']);
+                });
+                $completedBookings = $customerBookings->filter(function ($booking) {
+                    return in_array($booking->booking_status, ['completed', 'cancelled']);
+                });
+
+                return [
+                    'debug_info' => [
+                        'customer_name' => $customerUser->first_name . ' ' . $customerUser->last_name,
+                        'total_bookings' => $customerBookings->count(),
+                        'active_bookings_count' => $activeBookings->count(),
+                        'completed_bookings_count' => $completedBookings->count(),
+                        'active_bookings' => $activeBookings->pluck('id')->toArray(),
+                        'completed_bookings' => $completedBookings->pluck('id')->toArray(),
+                        'booking_statuses' => $customerBookings->pluck('booking_status')->toArray(),
+                    ],
+                    'active_bookings_count' => $activeBookings->count(),
+                    'completed_bookings_count' => $completedBookings->count(),
+                ];
+            })->values();
+
+            return response()->json([
+                'user_type' => 'vendor',
+                'chat_partners' => $customersData,
+            ]);
+        } else {
+            // Get customer chat data
+            $customerId = auth()->id();
+            $bookings = Booking::where('customer_id', function ($query) use ($customerId) {
+                $query->select('id')->from('customers')->where('user_id', $customerId)->latest()->limit(1);
+            })
+            ->with(['vehicle.vendor.profile', 'vehicle.vendor.chatStatus', 'vehicle', 'vehicle.category', 'vehicle.images'])
+            ->orderBy('created_at', 'desc')
+            ->get();
+
+            $vendorsData = $bookings->groupBy('vehicle.vendor_id')->map(function ($vendorBookings) use ($customerId) {
+                $latestBooking = $vendorBookings->first();
+                $vendorUser = $latestBooking->vehicle->vendor;
+
+                $activeBookings = $vendorBookings->filter(function ($booking) {
+                    return in_array($booking->booking_status, ['pending', 'confirmed']);
+                });
+                $completedBookings = $vendorBookings->filter(function ($booking) {
+                    return in_array($booking->booking_status, ['completed', 'cancelled']);
+                });
+
+                return [
+                    'debug_info' => [
+                        'vendor_name' => $vendorUser->first_name . ' ' . $vendorUser->last_name,
+                        'total_bookings' => $vendorBookings->count(),
+                        'active_bookings_count' => $activeBookings->count(),
+                        'completed_bookings_count' => $completedBookings->count(),
+                        'active_bookings' => $activeBookings->pluck('id')->toArray(),
+                        'completed_bookings' => $completedBookings->pluck('id')->toArray(),
+                        'booking_statuses' => $vendorBookings->pluck('booking_status')->toArray(),
+                    ],
+                    'active_bookings_count' => $activeBookings->count(),
+                    'completed_bookings_count' => $completedBookings->count(),
+                ];
+            })->values();
+
+            return response()->json([
+                'user_type' => 'customer',
+                'chat_partners' => $vendorsData,
+            ]);
+        }
+    }
 }

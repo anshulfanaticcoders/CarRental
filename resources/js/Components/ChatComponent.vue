@@ -26,6 +26,14 @@ const props = defineProps({
     allBookings: {
         type: Array,
         default: () => []
+    },
+    bookingRestrictions: {
+        type: Object,
+        default: () => ({
+            can_send_messages: true,
+            reason: null,
+            read_only: false
+        })
     }
 });
 
@@ -111,6 +119,12 @@ const scrollToBottom = () => {
 };
 
 const sendMessage = async () => {
+    // Check chat eligibility before sending
+    if (!canSendMessage.value) {
+        error.value = props.bookingRestrictions?.reason || 'Messaging is not available for this booking.';
+        return;
+    }
+
     if (!newMessage.value.trim() && !selectedFile.value && !audioBlob.value) return;
     isLoading.value = true;
     error.value = null;
@@ -588,6 +602,10 @@ const lastSeenText = computed(() => {
     return `Last seen on ${formatDate(chatStatus.last_logout_at)}`;
 });
 
+const canSendMessage = computed(() => {
+    return props.bookingRestrictions?.can_send_messages !== false;
+});
+
 watch(() => props.messages, (newMessages) => {
     if (newMessages) {
         messageList.value = newMessages;
@@ -1017,23 +1035,39 @@ onUnmounted(() => {
             </div>
         </div>
 
-        <!-- Input Area -->
-        <div class="bg-white border-t border-gray-200 p-2 flex-shrink-0 chat-input-area">
+        <!-- Chat Restriction Notice -->
+        <div v-if="!canSendMessage" class="bg-yellow-50 border-l-4 border-yellow-400 p-4 m-4">
+            <div class="flex">
+                <div class="flex-shrink-0">
+                    <svg class="h-5 w-5 text-yellow-400" fill="currentColor" viewBox="0 0 20 20">
+                        <path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd" />
+                    </svg>
+                </div>
+                <div class="ml-3">
+                    <p class="text-sm text-yellow-700">
+                        {{ props.bookingRestrictions?.reason || 'Messaging is not available for this booking.' }}
+                    </p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Input Area - Only show for eligible bookings -->
+        <div v-if="canSendMessage" class="bg-white border-t border-gray-200 p-2 flex-shrink-0 chat-input-area">
             <div class="flex items-center gap-3">
                 <!-- Hidden File Input -->
-                <input type="file" ref="fileInput" @change="handleFileChange" class="hidden" 
+                <input type="file" ref="fileInput" @change="handleFileChange" class="hidden"
                     accept="image/*,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,text/plain" />
-                
+
                 <!-- Attachment Button -->
-                <button @click="fileInput.click()" 
-                    :disabled="isRecording || audioUrl" 
+                <button @click="fileInput.click()"
+                    :disabled="isRecording || audioUrl"
                     class="p-3 rounded-full bg-gray-100 hover:bg-gray-100 transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed">
                     <img :src="attachmentIcon" alt="Attach File" class="w-5 h-5" />
                 </button>
 
                 <!-- Voice Recording Button -->
-                <button v-if="!isRecording && !audioUrl" @click="startRecording" 
-                    :disabled="selectedFile || newMessage.trim().length > 0" 
+                <button v-if="!isRecording && !audioUrl" @click="startRecording"
+                    :disabled="selectedFile || newMessage.trim().length > 0"
                     class="p-3 rounded-full bg-gray-100 hover:bg-gray-100 transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed">
                     <img :src="microphoneIcon" alt="Record Voice" class="w-5 h-5" />
                 </button>
@@ -1048,9 +1082,9 @@ onUnmounted(() => {
                         @blur="stopTyping"
                         rows="1" />
                 </div>
-                
+
                 <!-- Send Voice Note Button -->
-                <button v-if="audioUrl" @click="sendVoiceNote" 
+                <button v-if="audioUrl" @click="sendVoiceNote"
                     :disabled="isLoading"
                     class="p-3 rounded-full bg-blue-600 hover:bg-blue-700 text-white transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed">
                     <img :src="sendVoiceNoteIcon" alt="Send Voice Note" class="w-5 h-5" v-if="!isLoading" />
@@ -1059,7 +1093,7 @@ onUnmounted(() => {
                         <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                     </svg>
                 </button>
-                
+
                 <!-- Send Message Button -->
                 <button v-else @click="sendMessage"
                     :disabled="isLoading || (!newMessage.trim() && !selectedFile)"

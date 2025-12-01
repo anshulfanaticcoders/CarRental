@@ -31,7 +31,18 @@ const activeChatPartners = computed(() => {
 
 const recentChatPartners = computed(() => {
     if (!props.chatPartners) return [];
-    return props.chatPartners.filter(partner => partner.active_bookings_count === 0 && partner.completed_bookings_count > 0);
+
+    // DEBUG: Log the raw chat partners data
+    console.log('DEBUG: Raw chatPartners data:', props.chatPartners);
+
+    const recentPartners = props.chatPartners.filter(partner => {
+        const isRecent = partner.active_bookings_count === 0 && partner.completed_bookings_count > 0;
+        console.log(`DEBUG: Partner ${partner.user.first_name} - active: ${partner.active_bookings_count}, completed: ${partner.completed_bookings_count}, isRecent: ${isRecent}`);
+        return isRecent;
+    });
+
+    console.log('DEBUG: Filtered recent partners:', recentPartners);
+    return recentPartners;
 });
 
 const filteredChatPartners = computed(() => {
@@ -118,6 +129,16 @@ const getVehicleImage = (partner) => {
     return '/images/vehicles/default-vehicle.jpg';
 };
 
+const getBookingStatusBadgeClass = (status) => {
+    switch (status) {
+        case 'pending': return 'bg-yellow-100 text-yellow-800';
+        case 'confirmed': return 'bg-green-100 text-green-800';
+        case 'completed': return 'bg-blue-100 text-blue-800';
+        case 'cancelled': return 'bg-red-100 text-red-800';
+        default: return 'bg-gray-100 text-gray-800';
+    }
+};
+
 const loadChat = async (partner) => {
     if (!partner) {
         console.error("Invalid partner for chat.", partner);
@@ -171,6 +192,15 @@ const loadChatForBooking = async (bookingId, partner) => {
         const response = await axios.get(route('messages.show', { locale: usePage().props.locale, booking: bookingId }));
         if (response.data && response.data.props) {
             messages.value = response.data.props.messages || [];
+
+            // Set booking restrictions from response
+            if (response.data.props.booking && selectedPartner.value) {
+                selectedPartner.value.booking.chat_restrictions = {
+                    can_send_messages: response.data.props.booking.chat_allowed,
+                    reason: response.data.props.booking.chat_restrictions?.reason,
+                    read_only: response.data.props.booking.chat_restrictions?.read_only
+                };
+            }
         } else {
             messages.value = [];
         }
@@ -202,6 +232,16 @@ const handleBookingChange = async (newBooking) => {
         const bookingDetails = selectedPartner.value.bookings.find(b => b.id === newBooking.id);
         if (bookingDetails) {
             selectedPartner.value.booking = bookingDetails;
+
+            // Set chat restrictions for the new booking
+            const allowedStatuses = ['pending', 'confirmed'];
+            selectedPartner.value.booking.chat_restrictions = {
+                can_send_messages: allowedStatuses.includes(bookingDetails.booking_status),
+                reason: !allowedStatuses.includes(bookingDetails.booking_status)
+                    ? 'Chat is not available for ' + bookingDetails.booking_status + ' bookings'
+                    : null,
+                read_only: !allowedStatuses.includes(bookingDetails.booking_status)
+            };
         }
     }
 
@@ -314,90 +354,119 @@ onUnmounted(() => {
                         </p>
                     </div>
                     <div v-else v-for="partner in filteredChatPartners" :key="partner.user.id"
-                        class="border-b cursor-pointer"
+                        class="border-b cursor-pointer hover:bg-gray-50 transition-colors"
                         :class="{'bg-blue-50': selectedPartner && partner.user.id === selectedPartner.user.id}"
                         @click="loadChat(partner)">
-                        <div class="flex items-start gap-3 w-full py-3 px-3 hover:bg-gray-50">
-                            <!-- Vehicle Thumbnail -->
+
+                        <!-- Enhanced Partner Card -->
+                        <div class="flex gap-4 w-full py-4 px-4">
+                            <!-- Vehicle Image with Status Badge -->
                             <div class="relative flex-shrink-0">
                                 <img :src="getVehicleImage(partner)"
                                     :alt="partner.vehicle?.name || 'Vehicle'"
-                                    class="w-12 h-12 rounded-lg object-cover" />
+                                    class="w-16 h-16 rounded-xl object-cover shadow-sm" />
+
+                                <!-- Booking Status Badge -->
                                 <div v-if="partner.booking?.status"
-                                     :class="`absolute -top-1 -right-1 px-1 py-0.5 rounded-full text-xs ${getBookingStatusColor(partner.booking.status)}`"
-                                     :title="`Booking Status: ${partner.booking.status}`">
+                                     class="absolute -top-1 -right-1 w-6 h-6 rounded-full flex items-center justify-center text-xs"
+                                     :class="getBookingStatusBadgeClass(partner.booking.status)">
                                     {{ getBookingStatusIcon(partner.booking.status) }}
                                 </div>
                             </div>
 
-                            <div class="w-full overflow-hidden flex-grow">
-                                <!-- Customer Name and Status -->
-                                <div class="flex justify-between items-center w-full">
-                                    <div class="flex items-center gap-2">
+                            <!-- Detailed Chat Information -->
+                            <div class="flex-1 min-w-0">
+                                <!-- Header Row: Customer Name + Timestamp + Unread -->
+                                <div class="flex items-center justify-between mb-2">
+                                    <div class="flex items-center gap-2 min-w-0">
+                                        <!-- Customer Avatar -->
                                         <img :src="getProfileImage(partner.user)"
                                             :alt="partner.user.first_name"
-                                            class="w-6 h-6 rounded-full object-cover" />
-                                        <span class="text-gray-800 font-semibold text-sm truncate" :title="`${partner.user.first_name} ${partner.user.last_name || ''}`">
-                                            {{ partner.user.first_name }} {{ partner.user.last_name || '' }}
+                                            class="w-8 h-8 rounded-full object-cover ring-2 ring-white" />
+
+                                        <!-- Customer Name with Online Status -->
+                                        <div class="min-w-0">
+                                            <div class="flex items-center gap-2">
+                                                <span class="font-semibold text-gray-900 truncate">
+                                                    {{ partner.user.first_name }} {{ partner.user.last_name || '' }}
+                                                </span>
+                                                <div class="w-2 h-2 rounded-full"
+                                                     :class="partner.user?.chat_status?.is_online ? 'bg-green-500' : 'bg-gray-400'">
+                                                </div>
+                                            </div>
+                                            <p class="text-xs text-gray-500">
+                                                {{ formatLastSeen(partner.user?.chat_status) }}
+                                            </p>
+                                        </div>
+                                    </div>
+
+                                    <div class="flex items-center gap-2 flex-shrink-0">
+                                        <span class="text-xs text-gray-500">
+                                            {{ formatTime(partner.last_message_at) }}
+                                        </span>
+                                        <span v-if="partner.unread_count > 0"
+                                            class="bg-blue-600 text-white rounded-full min-w-[24px] h-6 flex items-center justify-center text-xs font-medium px-2">
+                                            {{ partner.unread_count }}
                                         </span>
                                     </div>
-                                    <span class="text-gray-500 text-xs flex-shrink-0 ml-2">{{ formatTime(partner.last_message_at) }}</span>
                                 </div>
 
-                                <!-- Vehicle Info -->
-                                <div v-if="partner.vehicle" class="flex items-center gap-2 mt-1">
-                                    <span class="text-xs text-gray-600 truncate">
-                                        {{ partner.vehicle.brand }} {{ partner.vehicle.model }}
-                                    </span>
-                                    <span v-if="partner.vehicle.category" class="text-xs text-gray-400">•</span>
-                                    <span v-if="partner.vehicle.category" class="text-xs text-gray-400 truncate">
-                                        {{ partner.vehicle.category }}
-                                    </span>
-                                </div>
-
-                                <!-- Booking Dates for Active Bookings -->
-                                <div v-if="partner.booking && (partner.booking.status === 'pending' || partner.booking.status === 'confirmed')"
-                                     class="flex items-center gap-2 mt-1 text-xs">
-                                    <span class="text-gray-500">📅</span>
-                                    <span class="text-gray-600">{{ formatDate(partner.booking.pickup_date) }}</span>
-                                    <span class="text-gray-400">→</span>
-                                    <span class="text-gray-600">{{ formatDate(partner.booking.return_date) }}</span>
-                                </div>
-
-                                <!-- Online Status and Last Message -->
-                                <div class="flex justify-between items-center mt-1">
-                                    <div class="flex items-center gap-1">
-                                        <span v-if="partner.user?.chat_status?.is_online"
-                                              class="w-2 h-2 bg-green-500 rounded-full" title="Online"></span>
-                                        <span v-else
-                                              class="w-2 h-2 bg-gray-400 rounded-full" title="Offline"></span>
-                                        <p class="text-gray-500 text-xs truncate" :title="formatLastSeen(partner.user?.chat_status)">
-                                            {{ formatLastSeen(partner.user?.chat_status) }}
-                                        </p>
+                                <!-- Vehicle Details -->
+                                <div class="mb-2">
+                                    <h4 class="font-medium text-gray-900 text-sm mb-1">
+                                        {{ partner.vehicle?.name }}
+                                    </h4>
+                                    <div class="flex items-center gap-3 text-xs text-gray-600">
+                                        <span>{{ partner.vehicle?.brand }} {{ partner.vehicle?.model }}</span>
+                                        <span>•</span>
+                                        <span>{{ partner.vehicle?.category }}</span>
                                     </div>
                                 </div>
 
-                                <!-- Last Message and Unread Count -->
-                                <div class="flex justify-between items-end mt-1">
-                                    <p class="text-gray-600 text-xs truncate pr-2" :title="partner.last_message_preview">
-                                        {{ partner.last_message_preview }}
-                                    </p>
-                                    <span v-if="partner.unread_count > 0"
-                                        class="bg-blue-600 text-white rounded-full min-w-[20px] h-5 flex items-center justify-center text-xs px-1.5">
-                                        {{ partner.unread_count }}
-                                    </span>
+                                <!-- Booking Information -->
+                                <div v-if="partner.booking" class="mb-2">
+                                    <div class="flex items-center justify-between">
+                                        <div class="flex items-center gap-2">
+                                            <span :class="`text-xs px-2 py-1 rounded-full font-medium ${getBookingStatusColor(partner.booking.status)}`">
+                                                {{ getBookingStatusIcon(partner.booking.status) }}
+                                                {{ partner.booking.status?.charAt(0).toUpperCase() + partner.booking.status?.slice(1) }}
+                                            </span>
+                                            <!-- NEW: Chat Disabled Indicator -->
+                                            <span v-if="partner.booking.chat_allowed === false" class="text-xs text-orange-600 flex items-center gap-1">
+                                                <svg class="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+                                                    <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clip-rule="evenodd" />
+                                                </svg>
+                                                Chat disabled
+                                            </span>
+                                        </div>
+                                    </div>
+
+                                    <!-- Booking Dates (for active bookings) -->
+                                    <div v-if="partner.booking.status === 'pending' || partner.booking.status === 'confirmed'"
+                                         class="flex items-center gap-2 mt-1 text-xs text-gray-600">
+                                        <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                                        </svg>
+                                        <span>{{ partner.booking.pickup_date ? formatDate(partner.booking.pickup_date) : 'Date not available' }} - {{ partner.booking.return_date ? formatDate(partner.booking.return_date) : 'Date not available' }}</span>
+                                    </div>
                                 </div>
 
-                                <!-- Active/Completed Booking Indicators -->
-                                <div v-if="partner.active_bookings_count > 0 || partner.completed_bookings_count > 0"
-                                     class="flex gap-2 mt-1">
+                                <!-- Last Message Preview -->
+                                <div class="flex items-start justify-between">
+                                    <p class="text-sm text-gray-600 truncate pr-2 flex-1" :title="partner.last_message_preview">
+                                        {{ partner.last_message_preview || 'No messages yet' }}
+                                    </p>
+                                </div>
+
+                                <!-- Booking Count Indicators -->
+                                <div class="flex gap-2 mt-2">
                                     <span v-if="partner.active_bookings_count > 0"
-                                          class="text-xs bg-green-100 text-green-800 px-2 py-0.5 rounded-full">
-                                        {{ partner.active_bookings_count }} Active
+                                        class="text-xs bg-green-100 text-green-800 px-2 py-1 rounded-full">
+                                        {{ partner.active_bookings_count }} active
                                     </span>
                                     <span v-if="partner.completed_bookings_count > 0"
-                                          class="text-xs bg-gray-100 text-gray-600 px-2 py-0.5 rounded-full">
-                                        {{ partner.completed_bookings_count }} Completed
+                                        class="text-xs bg-gray-100 text-gray-600 px-2 py-1 rounded-full">
+                                        {{ partner.completed_bookings_count }} completed
                                     </span>
                                 </div>
                             </div>
@@ -425,6 +494,7 @@ onUnmounted(() => {
                     :otherUser="otherUser"
                     :bookingDetails="selectedPartner?.booking"
                     :allBookings="selectedPartner?.bookings || []"
+                    :bookingRestrictions="selectedPartner?.booking?.chat_restrictions || { can_send_messages: true, reason: null, read_only: false }"
                     :showBackButton="isMobile"
                     @back="backToInbox"
                     @messageSent="messages.push($event)"

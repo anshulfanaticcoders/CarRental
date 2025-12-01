@@ -364,6 +364,9 @@ Route::group([
         Route::post('/messages/stop-typing', [MessageController::class, 'stopTyping'])->name('messages.typing.stop');
         Route::get('/messages/{booking}/typing-users', [MessageController::class, 'getTypingUsers'])->name('messages.typing.users');
 
+        // DEBUG route
+        Route::get('/messages/debug', [MessageController::class, 'debugChatPartners'])->name('messages.debug');
+
         // Notification routes
         Route::get('/notifications', [NotificationController::class, 'index'])->name('notifications.index');
         Route::post('/notifications/mark-read/{id}', [NotificationController::class, 'markAsRead'])->name('notifications.mark-read');
