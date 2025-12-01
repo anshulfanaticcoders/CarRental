@@ -737,14 +737,7 @@ onUnmounted(() => {
                 <img :src="searchIcon" alt="Search" class="w-5 h-5" />
             </button>
 
-            <button v-if="bookingDetails" @click="toggleBookingDetails"
-                class="p-2 rounded-full hover:bg-gray-100 transition-colors duration-200"
-                title="View Booking Details">
-                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-                </svg>
-            </button>
-        </div>
+          </div>
 
         <!-- Search Bar - Conditional -->
         <div v-if="isSearchVisible" class="p-3 bg-white border-b border-gray-200">
@@ -1239,17 +1232,42 @@ textarea {
 
 /* Dropdown positioning improvements */
 @media (max-width: 640px) {
-    .booking-dropdown .absolute.right-0 {
-        left: 0;
-        right: 0;
-        width: 100%;
-        max-width: none;
+    /* Ensure parent containers don't clip dropdown */
+    body {
+        overflow-x: hidden;
     }
 
-    /* Ensure dropdown doesn't overflow viewport */
+    /* Ensure dropdown is on top */
+    .booking-dropdown {
+        position: static !important;
+    }
+
     .booking-dropdown .absolute {
-        max-height: 50vh;
-        overflow-y: auto;
+        position: fixed !important;
+        top: 80px !important;
+        left: 50% !important;
+        transform: translateX(-50%) !important;
+        width: 90vw !important;
+        max-width: 400px !important;
+        z-index: 999999 !important;
+        box-shadow: 0 20px 60px rgba(0,0,0,0.4) !important;
+        border-radius: 16px !important;
+        max-height: 60vh !important;
+        overflow-y: auto !important;
+        background: white !important;
+        border: 1px solid #e5e7eb !important;
+    }
+
+    /* Add backdrop overlay */
+    .booking-dropdown .absolute::before {
+        content: '';
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(0, 0, 0, 0.3);
+        z-index: -1;
     }
 }
 
@@ -1291,6 +1309,17 @@ textarea {
 @media (max-width: 640px) {
     .flex-grow {
         min-width: 0;
+    }
+
+    /* Ensure header maintains fixed height but allows dropdown to show */
+    .bg-white.border-b {
+        min-height: 80px !important;
+        overflow: visible !important;
+    }
+
+    /* Header container should allow dropdown to escape */
+    .border-b.border-gray-200 {
+        overflow: visible !important;
     }
 
     /* Stack header elements vertically on very small screens */
