@@ -61,7 +61,7 @@ class MessageRead implements ShouldBroadcast
             'user_name' => $this->user->first_name . ' ' . $this->user->last_name,
             'recipient_id' => $this->recipientId,
             'booking_id' => $this->message->booking_id,
-            'read_at' => now()->toISOString(),
+            'read_at' => $this->message->read_at ? $this->message->read_at->toISOString() : now()->toISOString(),
         ];
     }
 }
