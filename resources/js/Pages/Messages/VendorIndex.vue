@@ -199,14 +199,14 @@ const loadChatForBooking = async (bookingId, partner) => {
                 const booking = response.data.props.booking;
 
                 // Only disable messaging for completed/cancelled bookings, regardless of tab
-                const isCompletedBooking = !['pending', 'confirmed'].includes(booking.status);
+                const isCompletedBooking = !['pending', 'confirmed'].includes(booking.booking_status);
 
                 selectedPartner.value.booking.chat_restrictions = {
-                    can_send_messages: !isCompletedBooking && booking.chat_allowed,
+                    can_send_messages: !isCompletedBooking,
                     reason: isCompletedBooking
-                        ? 'Chat is not available for ' + booking.status + ' bookings'
-                        : booking.chat_restrictions?.reason,
-                    read_only: isCompletedBooking || booking.chat_restrictions?.read_only
+                        ? 'Chat is not available for ' + booking.booking_status + ' bookings'
+                        : null,
+                    read_only: isCompletedBooking
                 };
             }
         } else {
@@ -509,7 +509,7 @@ onUnmounted(() => {
                     :messages="messages"
                     :otherUser="otherUser"
                     :bookingDetails="selectedPartner?.booking"
-                    :allBookings="selectedPartner?.bookings || []"
+                    :allBookings="Array.isArray(selectedPartner?.bookings) ? selectedPartner.bookings : []"
                     :bookingRestrictions="selectedPartner?.booking?.chat_restrictions || { can_send_messages: true, reason: null, read_only: false }"
                     :showBackButton="isMobile"
                     @back="backToInbox"

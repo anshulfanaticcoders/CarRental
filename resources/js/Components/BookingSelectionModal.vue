@@ -13,7 +13,7 @@ const props = defineProps({
     },
     selectedPartner: {
         type: Object,
-        required: true
+        default: null
     }
 });
 
