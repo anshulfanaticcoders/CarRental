@@ -362,10 +362,21 @@ public function show($locale, $bookingId)
         ->orderBy('created_at', 'asc')
         ->get();
 
+    $unreadMessages = Message::where('receiver_id', $user->id)
+        ->where('booking_id', $bookingId)
+        ->whereNull('read_at')
+        ->get();
+
+    // Update read_at timestamp
     Message::where('receiver_id', $user->id)
         ->where('booking_id', $bookingId)
         ->whereNull('read_at')
         ->update(['read_at' => now()]);
+
+    // Broadcast read status for real-time updates
+    foreach ($unreadMessages as $message) {
+        broadcast(new MessageRead($message, $user, ($user->id === $customerId) ? $vendorId : $customerId))->toOthers();
+    }
 
     if (request()->ajax()) {
         return response()->json([

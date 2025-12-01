@@ -483,11 +483,23 @@ const setupChannelListeners = () => {
 
     // Listen for enhanced read receipts
     channel.listen('message.read', (e) => {
+        console.log('DEBUG: Received message.read event:', e);
+        console.log('DEBUG: Current bookingId:', props.bookingId);
+        console.log('DEBUG: Event booking_id:', e.booking_id);
+        console.log('DEBUG: Event read_at:', e.read_at);
+        console.log('DEBUG: Current messageList:', messageList.value);
+
         if (e.user_id !== page.props.auth.user.id && e.booking_id == props.bookingId) {
+            console.log('DEBUG: Processing read receipt for message:', e.message_id);
+
             // Update message read status
             const messageIndex = messageList.value.findIndex(msg => msg.id === e.message_id);
+            console.log('DEBUG: Found message at index:', messageIndex);
+
             if (messageIndex !== -1) {
+                console.log('DEBUG: Before update - message.read_at:', messageList.value[messageIndex].read_at);
                 messageList.value[messageIndex].read_at = e.read_at;
+                console.log('DEBUG: After update - message.read_at:', messageList.value[messageIndex].read_at);
             }
 
             // Update enhanced read receipts
@@ -498,6 +510,8 @@ const setupChannelListeners = () => {
                     user_name: e.user_name
                 }
             };
+        } else {
+            console.log('DEBUG: Skipping read receipt - conditions not met');
         }
     });
 };
@@ -507,23 +521,15 @@ const markAsRead = async () => {
     if (!props.bookingId) return;
 
     try {
-        await axios.post(route('messages.mark-as-read', {
+        console.log('DEBUG: Calling mark-as-read API for booking:', props.bookingId);
+        const response = await axios.post(route('messages.mark-as-read', {
             locale: page.props.locale,
             booking: props.bookingId
         }));
+        console.log('DEBUG: mark-as-read API response:', response.data);
     } catch (error) {
         console.error('Failed to mark messages as read:', error);
     }
-};
-
-// Mark messages as read after WebSocket is ready
-const markMessagesAsReadOnLoad = () => {
-    if (!props.messages || props.messages.length === 0) return;
-
-    // Wait a bit for WebSocket to be fully connected
-    setTimeout(() => {
-        markAsRead();
-    }, 500);
 };
 
 // Watch for bookingId changes
@@ -532,14 +538,6 @@ watch(() => props.bookingId, (newBookingId, oldBookingId) => {
         setupChannelListeners();
     }
 }, { immediate: false });
-
-// Watch for messages and mark as read when loaded
-watch(() => props.messages, (newMessages) => {
-    if (newMessages && newMessages.length > 0) {
-        // Call markMessagesAsReadOnLoad to ensure proper timing with WebSocket
-        markMessagesAsReadOnLoad();
-    }
-}, { immediate: true });
 
 const formatBookingDate = (dateString) => {
     const date = new Date(dateString);
