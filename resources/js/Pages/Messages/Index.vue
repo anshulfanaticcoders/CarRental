@@ -184,22 +184,7 @@ const loadChatForBooking = async (bookingId, partner) => {
     selectedBookingId.value = bookingId;
     showChat.value = true;
 
-    // Mark messages as read
-    if (partner && partner.unread_count > 0) {
-        try {
-            await axios.post(route('messages.mark-as-read', { locale: usePage().props.locale, booking: bookingId }));
-            // Optimistically update the unread count on the client side
-            const partnerInList = props.chatPartners.find(p => p.user.id === partner.user.id);
-            if (partnerInList) {
-                partnerInList.unread_count = 0;
-            }
-            if (selectedPartner.value) {
-                 selectedPartner.value.unread_count = 0;
-            }
-        } catch (error) {
-            console.error('Failed to mark messages as read:', error);
-        }
-    }
+    // Note: markMessagesAsRead is now handled in ChatComponent to ensure proper WebSocket timing
 
     try {
         const response = await axios.get(route('messages.show', { locale: usePage().props.locale, booking: bookingId }));

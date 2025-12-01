@@ -94,8 +94,17 @@ const formatDate = (dateString) => {
 const formatTime = (dateString) => {
     if (!dateString) return '';
 
+    // Handle different timestamp formats from backend
+    let processedDateString = dateString;
+
+    // If the timestamp doesn't have timezone info, assume it's UTC
+    if (!dateString.includes('Z') && !dateString.includes('+') && !dateString.includes('T')) {
+        // Convert "2025-12-01 06:34:00" to "2025-12-01T06:34:00Z"
+        processedDateString = dateString.replace(' ', 'T') + 'Z';
+    }
+
     // Parse the date string and handle UTC properly
-    const date = new Date(dateString);
+    const date = new Date(processedDateString);
 
     // Check if the date is valid
     if (isNaN(date.getTime())) {
@@ -493,12 +502,44 @@ const setupChannelListeners = () => {
     });
 };
 
+// Mark messages as read
+const markAsRead = async () => {
+    if (!props.bookingId) return;
+
+    try {
+        await axios.post(route('messages.mark-as-read', {
+            locale: page.props.locale,
+            booking: props.bookingId
+        }));
+    } catch (error) {
+        console.error('Failed to mark messages as read:', error);
+    }
+};
+
+// Mark messages as read after WebSocket is ready
+const markMessagesAsReadOnLoad = () => {
+    if (!props.messages || props.messages.length === 0) return;
+
+    // Wait a bit for WebSocket to be fully connected
+    setTimeout(() => {
+        markAsRead();
+    }, 500);
+};
+
 // Watch for bookingId changes
 watch(() => props.bookingId, (newBookingId, oldBookingId) => {
     if (newBookingId !== oldBookingId) {
         setupChannelListeners();
     }
 }, { immediate: false });
+
+// Watch for messages and mark as read when loaded
+watch(() => props.messages, (newMessages) => {
+    if (newMessages && newMessages.length > 0) {
+        // Call markMessagesAsReadOnLoad to ensure proper timing with WebSocket
+        markMessagesAsReadOnLoad();
+    }
+}, { immediate: true });
 
 const formatBookingDate = (dateString) => {
     const date = new Date(dateString);
