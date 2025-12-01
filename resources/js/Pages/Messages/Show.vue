@@ -31,10 +31,21 @@ const formatDate = (dateString) => {
 };
 
 const formatTime = (dateString) => {
+  if (!dateString) return '';
+
+  // Parse the date string and handle UTC properly
   const date = new Date(dateString);
+
+  // Check if the date is valid
+  if (isNaN(date.getTime())) {
+    return '';
+  }
+
+  // Format using user's local timezone
   return date.toLocaleTimeString('en-US', {
     hour: '2-digit',
-    minute: '2-digit'
+    minute: '2-digit',
+    hour12: true
   });
 };
 
