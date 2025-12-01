@@ -98,8 +98,11 @@ class MessageController extends Controller
                 return in_array($booking->booking_status, ['completed', 'cancelled']);
             });
 
-            // Get the most recent active booking, or fallback to latest completed
-            $activeBooking = $activeBookings->first() ?: $completedBookings->first();
+            // Get the most recent active booking
+            $activeBooking = $activeBookings->first();
+
+            // Get the most recent completed booking (for Recent tab context)
+            $latestCompletedBooking = $completedBookings->first();
 
             // Calculate unread messages from this specific vendor to the customer
             $unreadCount = Message::where('sender_id', $vendorUser->id)
@@ -155,31 +158,32 @@ class MessageController extends Controller
                 // $vendorUser already has profile and chatStatus loaded due to eager loading: 'vehicle.vendor.profile', 'vehicle.vendor.chatStatus'
                 'user' => $vendorUser,
                 'latest_booking_id' => $latestBooking->id, // ID of the latest booking for linking
-                'active_booking_id' => $activeBooking->id, // ID of the active booking for context
+                'active_booking_id' => $activeBooking ? $activeBooking->id : null, // ID of the active booking for context
+                'latest_completed_booking_id' => $latestCompletedBooking ? $latestCompletedBooking->id : null, // ID of the latest completed booking
                 'vehicle' => [
-                    'id' => $activeBooking->vehicle->id,
-                    'name' => $activeBooking->vehicle->name,
-                    'brand' => $activeBooking->vehicle->brand,
-                    'model' => $activeBooking->vehicle->model,
-                    'category' => $activeBooking->vehicle->category->name ?? 'Unknown',
+                    'id' => $activeBooking ? $activeBooking->vehicle->id : ($latestCompletedBooking ? $latestCompletedBooking->vehicle->id : null),
+                    'name' => $activeBooking ? $activeBooking->vehicle->name : ($latestCompletedBooking ? $latestCompletedBooking->vehicle->name : null),
+                    'brand' => $activeBooking ? $activeBooking->vehicle->brand : ($latestCompletedBooking ? $latestCompletedBooking->vehicle->brand : null),
+                    'model' => $activeBooking ? $activeBooking->vehicle->model : ($latestCompletedBooking ? $latestCompletedBooking->vehicle->model : null),
+                    'category' => ($activeBooking ? $activeBooking->vehicle->category : $latestCompletedBooking->vehicle->category)->name ?? 'Unknown',
                     'image' => $vehicleImage,
                 ],
                 'booking' => [
-                    'id' => $activeBooking->id,
-                    'status' => $activeBooking->booking_status,
-                    'pickup_date' => $activeBooking->pickup_date,
-                    'return_date' => $activeBooking->return_date,
-                    'pickup_time' => $activeBooking->pickup_time,
-                    'return_time' => $activeBooking->return_time,
-                    'total_amount' => $activeBooking->total_amount,
-                    'amount_paid' => $activeBooking->amount_paid,
-                    'chat_allowed' => in_array($activeBooking->booking_status, ['pending', 'confirmed']),
+                    'id' => $activeBooking ? $activeBooking->id : ($latestCompletedBooking ? $latestCompletedBooking->id : null),
+                    'status' => $activeBooking ? $activeBooking->booking_status : ($latestCompletedBooking ? $latestCompletedBooking->booking_status : null),
+                    'pickup_date' => $activeBooking ? $activeBooking->pickup_date : ($latestCompletedBooking ? $latestCompletedBooking->pickup_date : null),
+                    'return_date' => $activeBooking ? $activeBooking->return_date : ($latestCompletedBooking ? $latestCompletedBooking->return_date : null),
+                    'pickup_time' => $activeBooking ? $activeBooking->pickup_time : ($latestCompletedBooking ? $latestCompletedBooking->pickup_time : null),
+                    'return_time' => $activeBooking ? $activeBooking->return_time : ($latestCompletedBooking ? $latestCompletedBooking->return_time : null),
+                    'total_amount' => $activeBooking ? $activeBooking->total_amount : ($latestCompletedBooking ? $latestCompletedBooking->total_amount : null),
+                    'amount_paid' => $activeBooking ? $activeBooking->amount_paid : ($latestCompletedBooking ? $latestCompletedBooking->amount_paid : null),
+                    'chat_allowed' => $activeBooking ? in_array($activeBooking->booking_status, ['pending', 'confirmed']) : false,
                     'chat_restrictions' => [
-                        'can_send_messages' => in_array($activeBooking->booking_status, ['pending', 'confirmed']),
-                        'reason' => !in_array($activeBooking->booking_status, ['pending', 'confirmed'])
-                            ? 'Chat is not available for ' . $activeBooking->booking_status . ' bookings'
-                            : null,
-                        'read_only' => !in_array($activeBooking->booking_status, ['pending', 'confirmed'])
+                        'can_send_messages' => $activeBooking ? in_array($activeBooking->booking_status, ['pending', 'confirmed']) : false,
+                        'reason' => ($activeBooking && in_array($activeBooking->booking_status, ['pending', 'confirmed']))
+                            ? null
+                            : 'Chat is not available for ' . ($activeBooking ? $activeBooking->booking_status : 'completed') . ' bookings',
+                        'read_only' => $activeBooking ? !in_array($activeBooking->booking_status, ['pending', 'confirmed']) : true
                     ]
                 ],
                 // NEW: Include all bookings for booking selection modal
@@ -222,8 +226,11 @@ class MessageController extends Controller
             return in_array($booking->booking_status, ['completed', 'cancelled']);
         });
 
-        // Get the most recent active booking, or fallback to latest completed
-        $activeBooking = $activeBookings->first() ?: $completedBookings->first();
+        // Get the most recent active booking
+        $activeBooking = $activeBookings->first();
+
+        // Get the most recent completed booking (for Recent tab context)
+        $latestCompletedBooking = $completedBookings->first();
 
         // Calculate unread messages from this specific customer to the vendor
         // across all bookings with this customer.
@@ -279,31 +286,32 @@ class MessageController extends Controller
         return [
             'user' => $customerUser->load(['profile', 'chatStatus']), // Pass the customer's user model with profile and chatStatus
             'latest_booking_id' => $latestBooking->id, // ID of the latest booking for linking
-            'active_booking_id' => $activeBooking->id, // ID of the active booking for context
+            'active_booking_id' => $activeBooking ? $activeBooking->id : null, // ID of the active booking for context
+            'latest_completed_booking_id' => $latestCompletedBooking ? $latestCompletedBooking->id : null, // ID of the latest completed booking
             'vehicle' => [
-                'id' => $activeBooking->vehicle->id,
-                'name' => $activeBooking->vehicle->name,
-                'brand' => $activeBooking->vehicle->brand,
-                'model' => $activeBooking->vehicle->model,
-                'category' => $activeBooking->vehicle->category->name ?? 'Unknown',
+                'id' => $activeBooking ? $activeBooking->vehicle->id : ($latestCompletedBooking ? $latestCompletedBooking->vehicle->id : null),
+                'name' => $activeBooking ? $activeBooking->vehicle->name : ($latestCompletedBooking ? $latestCompletedBooking->vehicle->name : null),
+                'brand' => $activeBooking ? $activeBooking->vehicle->brand : ($latestCompletedBooking ? $latestCompletedBooking->vehicle->brand : null),
+                'model' => $activeBooking ? $activeBooking->vehicle->model : ($latestCompletedBooking ? $latestCompletedBooking->vehicle->model : null),
+                'category' => ($activeBooking ? $activeBooking->vehicle->category : $latestCompletedBooking->vehicle->category)->name ?? 'Unknown',
                 'image' => $vehicleImage,
             ],
             'booking' => [
-                'id' => $activeBooking->id,
-                'status' => $activeBooking->booking_status,
-                'pickup_date' => $activeBooking->pickup_date,
-                'return_date' => $activeBooking->return_date,
-                'pickup_time' => $activeBooking->pickup_time,
-                'return_time' => $activeBooking->return_time,
-                'total_amount' => $activeBooking->total_amount,
-                'amount_paid' => $activeBooking->amount_paid,
-                'chat_allowed' => in_array($activeBooking->booking_status, ['pending', 'confirmed']),
+                'id' => $activeBooking ? $activeBooking->id : ($latestCompletedBooking ? $latestCompletedBooking->id : null),
+                'status' => $activeBooking ? $activeBooking->booking_status : ($latestCompletedBooking ? $latestCompletedBooking->booking_status : null),
+                'pickup_date' => $activeBooking ? $activeBooking->pickup_date : ($latestCompletedBooking ? $latestCompletedBooking->pickup_date : null),
+                'return_date' => $activeBooking ? $activeBooking->return_date : ($latestCompletedBooking ? $latestCompletedBooking->return_date : null),
+                'pickup_time' => $activeBooking ? $activeBooking->pickup_time : ($latestCompletedBooking ? $latestCompletedBooking->pickup_time : null),
+                'return_time' => $activeBooking ? $activeBooking->return_time : ($latestCompletedBooking ? $latestCompletedBooking->return_time : null),
+                'total_amount' => $activeBooking ? $activeBooking->total_amount : ($latestCompletedBooking ? $latestCompletedBooking->total_amount : null),
+                'amount_paid' => $activeBooking ? $activeBooking->amount_paid : ($latestCompletedBooking ? $latestCompletedBooking->amount_paid : null),
+                'chat_allowed' => $activeBooking ? in_array($activeBooking->booking_status, ['pending', 'confirmed']) : false,
                 'chat_restrictions' => [
-                    'can_send_messages' => in_array($activeBooking->booking_status, ['pending', 'confirmed']),
-                    'reason' => !in_array($activeBooking->booking_status, ['pending', 'confirmed'])
-                        ? 'Chat is not available for ' . $activeBooking->booking_status . ' bookings'
-                        : null,
-                    'read_only' => !in_array($activeBooking->booking_status, ['pending', 'confirmed'])
+                    'can_send_messages' => $activeBooking ? in_array($activeBooking->booking_status, ['pending', 'confirmed']) : false,
+                    'reason' => ($activeBooking && in_array($activeBooking->booking_status, ['pending', 'confirmed']))
+                        ? null
+                        : 'Chat is not available for ' . ($activeBooking ? $activeBooking->booking_status : 'completed') . ' bookings',
+                    'read_only' => $activeBooking ? !in_array($activeBooking->booking_status, ['pending', 'confirmed']) : true
                 ]
             ],
             // NEW: Include all bookings for booking selection modal

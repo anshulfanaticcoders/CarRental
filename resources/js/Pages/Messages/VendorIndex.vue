@@ -139,16 +139,26 @@ const loadChat = async (partner) => {
     selectedPartner.value = partner;
     otherUser.value = partner.user; // Store the other user's details
 
-    // Check if partner has multiple active bookings
-    if (partner.has_multiple_active_bookings && partner.bookings && partner.bookings.length > 1) {
+    // Determine which booking ID to use based on current tab
+    let bookingIdToUse;
+    if (showRecentChats.value) {
+        // In Recent tab, use the latest completed booking
+        bookingIdToUse = partner.latest_completed_booking_id;
+    } else {
+        // In Active tab, use the active booking
+        bookingIdToUse = partner.active_booking_id;
+    }
+
+    // Check if partner has multiple active bookings (only for Active tab)
+    if (!showRecentChats.value && partner.has_multiple_active_bookings && partner.bookings && partner.bookings.length > 1) {
         // Show booking selection modal
         showBookingSelectionModal.value = true;
         availableBookings.value = partner.bookings;
         return;
     }
 
-    // For single booking, proceed directly (backwards compatibility)
-    loadChatForBooking(partner.active_booking_id, partner);
+    // Load the appropriate booking
+    loadChatForBooking(bookingIdToUse, partner);
 };
 
 // NEW: Load chat for specific booking
@@ -186,10 +196,17 @@ const loadChatForBooking = async (bookingId, partner) => {
 
             // Set booking restrictions from response
             if (response.data.props.booking && selectedPartner.value) {
+                const booking = response.data.props.booking;
+
+                // Only disable messaging for completed/cancelled bookings, regardless of tab
+                const isCompletedBooking = !['pending', 'confirmed'].includes(booking.status);
+
                 selectedPartner.value.booking.chat_restrictions = {
-                    can_send_messages: response.data.props.booking.chat_allowed,
-                    reason: response.data.props.booking.chat_restrictions?.reason,
-                    read_only: response.data.props.booking.chat_restrictions?.read_only
+                    can_send_messages: !isCompletedBooking && booking.chat_allowed,
+                    reason: isCompletedBooking
+                        ? 'Chat is not available for ' + booking.status + ' bookings'
+                        : booking.chat_restrictions?.reason,
+                    read_only: isCompletedBooking || booking.chat_restrictions?.read_only
                 };
             }
         } else {
