@@ -32,17 +32,8 @@ const activeChatPartners = computed(() => {
 const recentChatPartners = computed(() => {
     if (!props.chatPartners) return [];
 
-    // DEBUG: Log the raw chat partners data
-    console.log('DEBUG: Raw chatPartners data:', props.chatPartners);
-
-    const recentPartners = props.chatPartners.filter(partner => {
-        const isRecent = partner.active_bookings_count === 0 && partner.completed_bookings_count > 0;
-        console.log(`DEBUG: Partner ${partner.user.first_name} - active: ${partner.active_bookings_count}, completed: ${partner.completed_bookings_count}, isRecent: ${isRecent}`);
-        return isRecent;
-    });
-
-    console.log('DEBUG: Filtered recent partners:', recentPartners);
-    return recentPartners;
+    // FIXED: Show partners with completed bookings, regardless of whether they also have active bookings
+    return props.chatPartners.filter(partner => partner.completed_bookings_count > 0);
 });
 
 const filteredChatPartners = computed(() => {
@@ -427,11 +418,19 @@ onUnmounted(() => {
                                 <div v-if="partner.booking" class="mb-2">
                                     <div class="flex items-center justify-between">
                                         <div class="flex items-center gap-2">
-                                            <span :class="`text-xs px-2 py-1 rounded-full font-medium ${getBookingStatusColor(partner.booking.status)}`">
+                                            <!-- NEW: Recent Tab Indicator for Completed Bookings -->
+                                            <span v-if="showRecentChats && partner.completed_bookings_count > 0"
+                                                  class="text-xs px-2 py-1 rounded-full font-medium bg-gray-100 text-gray-700 flex items-center gap-1">
+                                                <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                                </svg>
+                                                {{ partner.completed_bookings_count }} completed
+                                            </span>
+                                            <span v-else :class="`text-xs px-2 py-1 rounded-full font-medium ${getBookingStatusColor(partner.booking.status)}`">
                                                 {{ getBookingStatusIcon(partner.booking.status) }}
                                                 {{ partner.booking.status?.charAt(0).toUpperCase() + partner.booking.status?.slice(1) }}
                                             </span>
-                                            <!-- NEW: Chat Disabled Indicator -->
+                                            <!-- Chat Disabled Indicator -->
                                             <span v-if="partner.booking.chat_allowed === false" class="text-xs text-orange-600 flex items-center gap-1">
                                                 <svg class="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
                                                     <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clip-rule="evenodd" />
