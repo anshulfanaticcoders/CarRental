@@ -37,7 +37,7 @@ const props = defineProps({
     }
 });
 
-const emit = defineEmits(['back', 'messageReceived', 'bookingChanged']);
+const emit = defineEmits(['back', 'messageReceived', 'bookingChanged', 'messagesRead']);
 
 const messageList = ref(props.messages || []);
 const newMessage = ref('');
@@ -426,16 +426,7 @@ const setupChannelListeners = () => {
         }
     });
 
-    channel.listen('.messages.read', (e) => {
-        if (e.bookingId == props.bookingId && e.readerId == props.otherUser.id) {
-            messageList.value.forEach(message => {
-                if (message.sender_id === page.props.auth.user.id && message.receiver_id === e.readerId && !message.read_at) {
-                    message.read_at = e.readAtTimestamp;
-                }
-            });
-        }
-    });
-
+    
     channel.listen('.message.deleted', (e) => {
         const messageIndex = messageList.value.findIndex(msg => msg.id === e.message_id);
         if (messageIndex !== -1) {
@@ -483,23 +474,12 @@ const setupChannelListeners = () => {
 
     // Listen for enhanced read receipts
     channel.listen('message.read', (e) => {
-        console.log('DEBUG: Received message.read event:', e);
-        console.log('DEBUG: Current bookingId:', props.bookingId);
-        console.log('DEBUG: Event booking_id:', e.booking_id);
-        console.log('DEBUG: Event read_at:', e.read_at);
-        console.log('DEBUG: Current messageList:', messageList.value);
-
         if (e.user_id !== page.props.auth.user.id && e.booking_id == props.bookingId) {
-            console.log('DEBUG: Processing read receipt for message:', e.message_id);
-
             // Update message read status
             const messageIndex = messageList.value.findIndex(msg => msg.id === e.message_id);
-            console.log('DEBUG: Found message at index:', messageIndex);
 
             if (messageIndex !== -1) {
-                console.log('DEBUG: Before update - message.read_at:', messageList.value[messageIndex].read_at);
                 messageList.value[messageIndex].read_at = e.read_at;
-                console.log('DEBUG: After update - message.read_at:', messageList.value[messageIndex].read_at);
             }
 
             // Update enhanced read receipts
@@ -510,10 +490,15 @@ const setupChannelListeners = () => {
                     user_name: e.user_name
                 }
             };
-        } else {
-            console.log('DEBUG: Skipping read receipt - conditions not met');
         }
     });
+
+    // Trigger immediate read receipt when chat opens
+    setTimeout(() => {
+        if (props.bookingId && props.messages && props.messages.length > 0) {
+            markAsRead();
+        }
+    }, 500);
 };
 
 // Mark messages as read
@@ -521,21 +506,31 @@ const markAsRead = async () => {
     if (!props.bookingId) return;
 
     try {
-        console.log('DEBUG: Calling mark-as-read API for booking:', props.bookingId);
         const response = await axios.post(route('messages.mark-as-read', {
             locale: page.props.locale,
             booking: props.bookingId
         }));
-        console.log('DEBUG: mark-as-read API response:', response.data);
+
+        // Emit event to parent components to update sidebar unread counts
+        emit('messagesRead', {
+            bookingId: props.bookingId,
+            messagesMarked: response.data.messages_marked
+        });
     } catch (error) {
         console.error('Failed to mark messages as read:', error);
     }
 };
 
 // Watch for bookingId changes
-watch(() => props.bookingId, (newBookingId, oldBookingId) => {
-    if (newBookingId !== oldBookingId) {
+watch(() => props.bookingId, (newBookingId) => {
+    if (newBookingId) {
         setupChannelListeners();
+        // Add immediate read receipt trigger for booking changes
+        setTimeout(() => {
+            if (newBookingId && props.messages && props.messages.length > 0) {
+                markAsRead();
+            }
+        }, 500);
     }
 }, { immediate: false });
 

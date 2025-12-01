@@ -12,6 +12,7 @@ use App\Models\ChatTypingStatus;
 use App\Models\MessageReadReceipt;
 use App\Notifications\NewMessageNotification;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Schema;
 use Inertia\Inertia;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Storage; // Added import for Storage
@@ -362,22 +363,7 @@ public function show($locale, $bookingId)
         ->orderBy('created_at', 'asc')
         ->get();
 
-    $unreadMessages = Message::where('receiver_id', $user->id)
-        ->where('booking_id', $bookingId)
-        ->whereNull('read_at')
-        ->get();
-
-    // Update read_at timestamp
-    Message::where('receiver_id', $user->id)
-        ->where('booking_id', $bookingId)
-        ->whereNull('read_at')
-        ->update(['read_at' => now()]);
-
-    // Broadcast read status for real-time updates
-    foreach ($unreadMessages as $message) {
-        broadcast(new MessageRead($message, $user, ($user->id === $customerId) ? $vendorId : $customerId))->toOthers();
-    }
-
+  
     if (request()->ajax()) {
         return response()->json([
             'props' => [
@@ -595,22 +581,34 @@ public function markMessagesAsRead($locale, $bookingId)
         ->update(['read_at' => $now]);
 
     // Create detailed read receipts for each message with error handling
-    foreach ($unreadMessages as $message) {
-        try {
-            MessageReadReceipt::markAsRead($message->id, $user->id);
-        } catch (\Exception $e) {
-            \Log::error('Failed to create read receipt: ' . $e->getMessage());
-            // Continue even if read receipt fails
+    // Only try to use MessageReadReceipt if the table exists
+    if (Schema::hasTable('message_read_receipts')) {
+        foreach ($unreadMessages as $message) {
+            try {
+                MessageReadReceipt::markAsRead($message->id, $user->id);
+            } catch (\Exception $e) {
+                \Log::error('Failed to create read receipt for message ' . $message->id . ': ' . $e->getMessage());
+                // Continue even if individual read receipt fails
+            }
         }
     }
 
     // Broadcast read status update for other participants
     $otherUserId = ($user->id === $customerId) ? $vendorId : $customerId;
 
+    // Temporarily disable broadcasting to isolate the issue
+    // TODO: Re-enable broadcasting once Pusher/queue is configured properly
+    /*
     foreach ($unreadMessages as $message) {
-        // Broadcast message read event
-        broadcast(new MessageRead($message, $user, $otherUserId))->toOthers();
+        try {
+            // Broadcast message read event
+            broadcast(new MessageRead($message, $user, $otherUserId))->toOthers();
+        } catch (\Exception $e) {
+            \Log::error('Failed to broadcast MessageRead event: ' . $e->getMessage());
+            // Continue even if broadcasting fails
+        }
     }
+    */
 
     return response()->json([
         'success' => 'Messages marked as read.',

@@ -268,6 +268,13 @@ const handleBookingChange = async (newBooking) => {
     }
 };
 
+// Handle messages read event from ChatComponent
+const handleMessagesRead = (data) => {
+    // Update unread count in chat partners list
+    if (selectedPartner.value && selectedPartner.value.user) {
+        selectedPartner.value.unread_count = 0;
+    }
+};
 
 const backToInbox = () => {
     showChat.value = false;
@@ -293,8 +300,7 @@ const handleMessageReceived = (message) => {
 };
 
 onMounted(() => {
-    // console.log("Chat Partners Data:", props.chatPartners);
-    
+        
     checkIfMobile();
     window.addEventListener('resize', checkIfMobile);
     
@@ -514,6 +520,7 @@ onUnmounted(() => {
                     @messageSent="messages.push($event)"
                     @messageReceived="handleMessageReceived"
                     @bookingChanged="handleBookingChange"
+                    @messagesRead="handleMessagesRead"
                     class="flex-grow"
                 />
             </div>
