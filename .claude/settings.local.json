@@ -19,7 +19,8 @@
       "mcp__serena__activate_project",
       "mcp__serena__initial_instructions",
       "Bash(npm run dev:*)",
-      "mcp__sequential-thinking__process_thought"
+      "mcp__sequential-thinking__process_thought",
+      "Skill(superpowers:systematic-debugging)"
     ]
   },
   "enableAllProjectMcpServers": true,

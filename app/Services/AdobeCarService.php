@@ -13,9 +13,9 @@ class AdobeCarService
 
     public function __construct()
     {
-        $this->baseUrl = env('ADOBE_URL');
-        $this->username = env('ADOBE_USERNAME');
-        $this->password = env('ADOBE_PASSWORD');
+        $this->baseUrl = env('ADOBE_URL', 'https://adobecar.cr:42800');
+        $this->username = env('ADOBE_USERNAME', 'Z11338');
+        $this->password = env('ADOBE_PASSWORD', '11338');
     }
 
     /**
@@ -27,7 +27,7 @@ class AdobeCarService
     protected function getAccessToken(): ?string
     {
         return Cache::remember('adobe_api_token', 55, function () { // Cache for 55 minutes
-            $response = Http::post("{$this->baseUrl}/Auth/Login", [
+            $response = Http::post(rtrim($this->baseUrl, '/') . '/Auth/Login', [
                 'userName' => $this->username,
                 'password' => $this->password,
             ]);
@@ -58,7 +58,7 @@ class AdobeCarService
             return [];
         }
 
-        $response = Http::withToken($token)->get("{$this->baseUrl}/Offices");
+        $response = Http::withToken($token)->get(rtrim($this->baseUrl, '/') . '/Offices');
 
         if ($response->successful()) {
             return $response->json();
@@ -108,7 +108,7 @@ class AdobeCarService
 
         logger()->info('Adobe API: Query parameters', ['queryParams' => $queryParams]);
 
-        $response = Http::withToken($token)->get("{$this->baseUrl}/Client/GetAvailabilityWithPrice", $queryParams);
+        $response = Http::withToken($token)->get(rtrim($this->baseUrl, '/') . '/Client/GetAvailabilityWithPrice', $queryParams);
 
         logger()->info('Adobe API: Response received', [
             'status' => $response->status(),
@@ -150,7 +150,7 @@ class AdobeCarService
         }
 
         // Create a mock booking to get detailed vehicle info
-        $response = Http::withToken($token)->post("{$this->baseUrl}/Booking", $params);
+        $response = Http::withToken($token)->post(rtrim($this->baseUrl, '/') . '/Booking', $params);
 
         if ($response->successful()) {
             $bookingData = $response->json();
@@ -183,7 +183,7 @@ class AdobeCarService
             return [];
         }
 
-        $response = Http::withToken($token)->get("{$this->baseUrl}/Booking", [
+        $response = Http::withToken($token)->get(rtrim($this->baseUrl, '/') . '/Booking', [
             'bookingNumber' => $bookingNumber,
             'customerCode' => 'Z11338' // Valid Adobe customer code for details lookup
         ]);
@@ -237,7 +237,7 @@ class AdobeCarService
 
         logger()->info('Adobe API: Calling GetCategoryWithFare', ['queryParams' => $queryParams]);
 
-        $response = Http::withToken($token)->get("{$this->baseUrl}/Client/GetCategoryWithFare", $queryParams);
+        $response = Http::withToken($token)->get(rtrim($this->baseUrl, '/') . '/Client/GetCategoryWithFare', $queryParams);
 
         if ($response->successful()) {
             logger()->info('Adobe API: GetCategoryWithFare successful');

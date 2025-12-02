@@ -75,10 +75,13 @@ class UpdateUnifiedLocationsCommand extends Command
             ->whereNotNull('country')
             ->get()
             ->map(function ($vehicle) {
+                // Use the location field for the label as requested
+                $label = !empty($vehicle->location) ? $vehicle->location : $vehicle->city;
+
                 return [
                     'id' => 'internal_' . md5($vehicle->city . $vehicle->state . $vehicle->country . $vehicle->location),
-                    'label' => $vehicle->city,
-                    'below_label' => implode(', ', array_filter([$vehicle->state, $vehicle->country])),
+                    'label' => $label,
+                    'below_label' => implode(', ', array_filter([$vehicle->city, $vehicle->state, $vehicle->country])),
                     'location' => $vehicle->location,
                     'city' => $vehicle->city,
                     'state' => $vehicle->state,
@@ -86,7 +89,7 @@ class UpdateUnifiedLocationsCommand extends Command
                     'latitude' => (float) $vehicle->latitude,
                     'longitude' => (float) $vehicle->longitude,
                     'source' => 'internal',
-                    'matched_field' => 'city', // Default to city for internal vehicles
+                    'matched_field' => 'location',
                 ];
             })
             ->unique(function ($item) {

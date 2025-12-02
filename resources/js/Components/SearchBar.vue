@@ -115,28 +115,10 @@
             {{ _t('homepage', 'no_location_found') }}
           </div>
 
-          <!-- Show popular places only if no search has been performed or input is empty -->
-          <div v-else-if="popularPlaces.length > 0 && !isSearching">
-            <div class="text-sm font-medium mb-2 text-customPrimaryColor">{{ _t('homepage', 'popular_searches_header') }}</div>
-            <div v-for="place in popularPlaces" :key="place.unified_location_id" @click="selectLocation(place)"
-              class="p-2 hover:bg-customPrimaryColor hover:text-white cursor-pointer flex gap-3 group rounded-[12px] hover:scale-[1.02] transition-transform">
-              <div class="h-10 w-10 md:h-12 md:w-12 bg-gray-100 text-gray-300 rounded flex justify-center items-center max-[768px]:flex-[0.2]">
-                <img :src="flighIcon" v-if="place.name.toLowerCase().includes('airport')" class="w-1/2 h-1/2" />
-                <svg v-else viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" class="w-1/2 h-1/2 group-hover:stroke-white">
-                  <path clip-rule="evenodd"
-                    d="M7.838 9.79c0 2.497 1.946 4.521 4.346 4.521 2.401 0 4.347-2.024 4.347-4.52 0-2.497-1.946-4.52-4.346-4.52-2.401 0-4.347 2.023-4.347 4.52Z"
-                    stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path>
-                  <path clip-rule="evenodd"
-                    d="M20.879 9.79c0 7.937-6.696 12.387-8.335 13.36a.7.7 0 0 1-.718 0c-1.64-.973-8.334-5.425-8.334-13.36 0-4.992 3.892-9.04 8.693-9.04s8.694 4.048 8.694 9.04Z"
-                    stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path>
-                </svg>
-              </div>
-              <div class="flex flex-col max-[768px]:flex-1">
-                <div class="font-medium">{{ place.name }}</div>
-                <div class="text-sm text-gray-500 group-hover:text-white">
-                  {{ [place.city, place.country].filter(Boolean).join(', ') }}
-                </div>
-              </div>
+          <!-- Show search prompt when no search has been performed -->
+          <div v-else-if="!searchPerformed && !isSearching && showSearchBox" class="p-3 text-center">
+            <div class="text-sm text-gray-600">
+              {{ _t('homepage', 'start_typing_to_search_all_locations') }}
             </div>
           </div>
         </div>
@@ -259,9 +241,7 @@ const clearError = () => {
 const handleInputClick = () => {
   showSearchBox.value = !showSearchBox.value;
   showDropoffSearchBox.value = false; // Close other dropdown
-  if (showSearchBox.value && !isSearching.value && !searchPerformed.value) {
-    fetchPopularPlaces();
-  }
+  // No need to fetch popular places since we want search-only behavior
 };
 
 const handleDropoffInputClick = () => {
@@ -272,10 +252,9 @@ const handleDropoffInputClick = () => {
 const fetchPopularPlaces = async () => {
   try {
     const response = await axios.get(`/unified_locations.json`);
-    // popularPlaces.value = response.data.filter(place => place.our_location_id !== null || (place.providers && place.providers.length > 0));
-    popularPlaces.value = response.data;
+    popularPlaces.value = []; // Don't show any popular places
   } catch (error) {
-    console.error("Error fetching popular places:", error);
+    console.error("Error fetching locations:", error);
     popularPlaces.value = [];
   }
 };
