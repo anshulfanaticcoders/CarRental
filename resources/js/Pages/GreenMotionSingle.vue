@@ -44,7 +44,8 @@ import CardContent from "@/Components/ui/card/CardContent.vue";
 import CardHeader from "@/Components/ui/card/CardHeader.vue";
 import CardTitle from "@/Components/ui/card/CardTitle.vue";
 import { ChevronRight, ImageIcon, ZoomIn } from 'lucide-vue-next';
-import { Alert, AlertDescription } from '@/Components/ui/alert';
+import { Alert, AlertDescription, AlertTitle } from '@/Components/ui/alert';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/Components/ui/tooltip";
 import { Button } from "@/Components/ui/button";
 import Lightbox from "@/Components/Lightbox.vue";
 import AuthenticatedHeaderLayout from "@/Layouts/AuthenticatedHeaderLayout.vue";
@@ -984,16 +985,50 @@ onBeforeUnmount(() => {
                             </div>
                             <div class="flex items-center gap-3 p-4 bg-orange-50 rounded-xl border border-orange-200">
                                 <img :src="check" alt="Check" class="w-5 h-5 text-orange-600" loading="lazy" />
-                                <div>
-                                    <span class="text-sm font-medium text-orange-800">Deposit</span>
+                                <div class="flex-1">
+                                    <div class="flex items-center gap-2">
+                                        <span class="text-sm font-medium text-orange-800">Deposit</span>
+                                        <TooltipProvider>
+                                            <Tooltip>
+                                                <TooltipTrigger>
+                                                    <div class="w-4 h-4 bg-orange-200 rounded-full flex items-center justify-center cursor-help info-badge">
+                                                        <span class="text-orange-700 text-xs">?</span>
+                                                    </div>
+                                                </TooltipTrigger>
+                                                <TooltipContent class="tooltip-content">
+                                                    <p class="text-sm">✅ Security hold, not a charge</p>
+                                                    <p class="text-sm">🎯 Can be reduced with insurance</p>
+                                                    <p class="text-sm">💰 Refundable upon return</p>
+                                                </TooltipContent>
+                                            </Tooltip>
+                                        </TooltipProvider>
+                                    </div>
                                     <p class="text-orange-900">{{ formatPrice(vehicleProduct.deposit) }}</p>
+                                    <p class="text-xs text-orange-700 mt-1">Only authorized, not charged</p>
                                 </div>
                             </div>
                             <div class="flex items-center gap-3 p-4 bg-red-50 rounded-xl border border-red-200">
                                 <img :src="check" alt="Check" class="w-5 h-5 text-red-600" loading="lazy" />
-                                <div>
-                                    <span class="text-sm font-medium text-red-800">Excess</span>
+                                <div class="flex-1">
+                                    <div class="flex items-center gap-2">
+                                        <span class="text-sm font-medium text-red-800">Excess</span>
+                                        <TooltipProvider>
+                                            <Tooltip>
+                                                <TooltipTrigger>
+                                                    <div class="w-4 h-4 bg-red-200 rounded-full flex items-center justify-center cursor-help info-badge">
+                                                        <span class="text-red-700 text-xs">?</span>
+                                                    </div>
+                                                </TooltipTrigger>
+                                                <TooltipContent class="tooltip-content">
+                                                    <p class="text-sm">🛡️ Maximum damage liability</p>
+                                                    <p class="text-sm">🎯 Reduces to €0 with insurance</p>
+                                                    <p class="text-sm">💡 Choose protection at checkout</p>
+                                                </TooltipContent>
+                                            </Tooltip>
+                                        </TooltipProvider>
+                                    </div>
                                     <p class="text-red-900">{{ formatPrice(vehicleProduct.excess) }}</p>
+                                    <p class="text-xs text-red-700 mt-1">Reduce with insurance options</p>
                                 </div>
                             </div>
                             <div v-if="vehicle.driveandgo === 'Yes'" class="flex items-center gap-3 p-4 bg-green-50 rounded-xl border border-green-200">
@@ -1630,16 +1665,61 @@ img {
     .marquee-content {
         animation: none;
     }
-    
+
     .transition-all,
     .transition-colors,
     .transition-transform,
     .transition-opacity {
         transition: none;
     }
-    
+
     .animate-spin {
         animation: none;
     }
+}
+
+/* Tooltip enhancements */
+.tooltip-content {
+    max-width: 250px;
+    line-height: 1.4;
+}
+
+/* Reassurance alert animation */
+@keyframes slideDown {
+    from {
+        opacity: 0;
+        transform: translateY(-10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.reassurance-alert {
+    animation: slideDown 0.3s ease-out;
+}
+
+/* Hover effects for info badges */
+.info-badge:hover {
+    transform: scale(1.1);
+    transition: transform 0.2s ease;
+}
+
+/* Enhanced tooltip styling */
+.data-state-closed {
+    opacity: 0;
+    transform: scale(0.95);
+}
+
+.data-state-open {
+    opacity: 1;
+    transform: scale(1);
+}
+
+/* Better tooltip arrow styling */
+[data-side]::before {
+    background-color: hsl(var(--popover-background));
+    border: 1px solid hsl(var(--popover-border));
 }
 </style>
