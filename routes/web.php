@@ -75,6 +75,7 @@ use App\Http\Controllers\GreenMotionBookingController; // Import the new GreenMo
 use App\Http\Controllers\OkMobilityController; // Import the OkMobilityController
 use App\Http\Controllers\AdobeCarController; // Import the AdobeCarController
 use App\Http\Controllers\AdobeBookingController; // Import the AdobeBookingController
+use App\Http\Controllers\LocautoRentController; // Import the LocautoRentController
 use App\Http\Controllers\AdminProfileController; // Import the AdminProfileController
 use App\Http\Controllers\Affiliate\AffiliateBusinessController; // Import the AffiliateBusinessController
 use App\Http\Controllers\Admin\AffiliateBusinessModelController; // Import the AffiliateBusinessModelController
@@ -957,6 +958,27 @@ Route::group([
 
     // OK Mobility Check Availability
     Route::post('/ok-mobility-car/check-availability', [OkMobilityController::class, 'checkAvailability'])->name('ok-mobility-car.check-availability');
+
+    // Locauto Rent Cars Page
+    Route::get('/locauto-rent-cars', [LocautoRentController::class, 'showVehicles'])->name('locauto-rent-cars');
+
+    // Locauto Rent Single Car Page
+    Route::get('/locauto-rent-car/{id}', [LocautoRentController::class, 'showVehicle'])
+        ->name('locauto-rent-car.show');
+
+    // Locauto Rent Booking Page
+    Route::get('/locauto-rent-booking/{id}/checkout', [LocautoRentController::class, 'showBookingPage'])
+        ->where('id', '[0-9]+') // Ensure ID is numeric
+        ->name('locauto-rent-booking.checkout');
+
+    // Locauto Rent Booking Success Page
+    Route::get('/locauto-rent-booking-success/{confirmation}', [LocautoRentController::class, 'bookingSuccess'])
+        ->name('locauto-rent-booking-success');
+
+    // Locauto Rent API Routes
+    Route::post('/locauto-rent-booking', [LocautoRentController::class, 'processBooking'])->name('locauto-rent-booking');
+    Route::post('/locauto-rent-car/check-availability', [LocautoRentController::class, 'checkAvailability'])->name('locauto-rent-car.check-availability');
+    Route::get('/api/locauto-rent/vehicles', [LocautoRentController::class, 'getVehicles'])->name('api.locauto-rent.vehicles');
 
 
 }); // End of locale group

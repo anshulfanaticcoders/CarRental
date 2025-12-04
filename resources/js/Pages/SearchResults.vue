@@ -662,6 +662,22 @@ const createPopupContent = (vehicle, primaryImage, popupPrice, detailRoute) => {
                 </a>
             </div>
         `;
+    } else if (vehicle.source === 'locauto') {
+        return `
+            <div class="text-center popup-content">
+                <img src="${primaryImage}" alt="${vehicle.brand} ${vehicle.model}" class="popup-image !w-40 !h-20" />
+                <p class="font-semibold !w-40">${vehicle.brand} ${vehicle.model}</p>
+                ${vehicle.sipp_code ? `<p class="!w-40 text-sm">SIPP: ${vehicle.sipp_code}</p>` : ''}
+                ${vehicle.benefits?.pay_on_arrival ? `<p class="!w-40 text-sm text-green-600">Pay on Arrival</p>` : ''}
+                <p class="!w-40">${vehicle.full_vehicle_address || ''}</p>
+                <p class="!w-40 font-semibold">Price: ${popupPrice}</p>
+                <a href="${detailRoute}"
+                   class="text-blue-500 hover:text-blue-700 block mt-2"
+                   onclick="event.preventDefault(); window.location.href = this.href;">
+                    View Details
+                </a>
+            </div>
+        `;
         } else {
         return `
             <div class="text-center popup-content">
@@ -726,7 +742,7 @@ const addMarkers = () => {
             displayLng = lng + effectiveRadius * Math.cos(angle);
         }
 
-        const primaryImage = (vehicle.source === 'greenmotion' || vehicle.source === 'wheelsys' || vehicle.source === 'adobe') ? vehicle.image : (vehicle.images?.find((image) => image.image_type === 'primary')?.image_url || '/default-image.png');
+        const primaryImage = (vehicle.source === 'greenmotion' || vehicle.source === 'wheelsys' || vehicle.source === 'adobe' || vehicle.source === 'locauto') ? vehicle.image : (vehicle.images?.find((image) => image.image_type === 'primary')?.image_url || '/default-image.png');
         const detailRoute = vehicle.source !== 'internal'
             ? route(getProviderRoute(vehicle), { locale: page.props.locale, id: vehicle.id, provider: vehicle.source, location_id: vehicle.provider_pickup_id, start_date: form.date_from, end_date: form.date_to, start_time: form.start_time, end_time: form.end_time, dropoff_location_id: form.dropoff_location_id, rentalCode: form.rentalCode })
             : route('vehicle.show', { locale: page.props.locale, id: vehicle.id, package: form.package_type, pickup_date: form.date_from, return_date: form.date_to });
@@ -831,7 +847,7 @@ const addMobileMarkers = () => {
             displayLng = lng + effectiveRadius * Math.cos(angle);
         }
 
-        const primaryImage = (vehicle.source === 'greenmotion' || vehicle.source === 'wheelsys' || vehicle.source === 'adobe') ? vehicle.image : (vehicle.images?.find((image) => image.image_type === 'primary')?.image_url || '/default-image.png');
+        const primaryImage = (vehicle.source === 'greenmotion' || vehicle.source === 'wheelsys' || vehicle.source === 'adobe' || vehicle.source === 'locauto') ? vehicle.image : (vehicle.images?.find((image) => image.image_type === 'primary')?.image_url || '/default-image.png');
         const detailRoute = vehicle.source !== 'internal'
             ? route(getProviderRoute(vehicle), { locale: page.props.locale, id: vehicle.id, provider: vehicle.source, location_id: vehicle.provider_pickup_id, start_date: form.date_from, end_date: form.date_to, start_time: form.start_time, end_time: form.end_time, dropoff_location_id: form.dropoff_location_id, rentalCode: form.rentalCode })
             : route('vehicle.show', { locale: page.props.locale, id: vehicle.id, package: form.package_type, pickup_date: form.date_from, return_date: form.date_to });
@@ -1252,6 +1268,9 @@ const getProviderRoute = (vehicle) => {
     }
     if (vehicle.source === 'adobe') {
         return 'adobe-car.show';
+    }
+    if (vehicle.source === 'locauto') {
+        return 'locauto-rent-car.show';
     }
     // Add other providers here as needed
     // if (vehicle.source === 'usave') {
@@ -2173,6 +2192,18 @@ watch(
                                     </span>
                                     <span v-if="vehicle.source === 'adobe'" class="flex gap-3 items-center text-[12px]">
                                         <img :src="check" alt="" loading="lazy" />24/7 Roadside Assistance
+                                    </span>
+                                    <span v-if="vehicle.source === 'locauto'" class="flex gap-3 items-center text-[12px]">
+                                        <img :src="check" alt="" loading="lazy" />Pay on Arrival
+                                    </span>
+                                    <span v-if="vehicle.source === 'locauto'" class="flex gap-3 items-center text-[12px]">
+                                        <img :src="check" alt="" loading="lazy" />No Credit Card Fees
+                                    </span>
+                                    <span v-if="vehicle.source === 'locauto'" class="flex gap-3 items-center text-[12px]">
+                                        <img :src="check" alt="" loading="lazy" />Free Cancellation
+                                    </span>
+                                    <span v-if="vehicle.source === 'locauto' && vehicle.benefits?.minimum_driver_age" class="flex gap-3 items-center text-[12px]">
+                                        <img :src="check" alt="" loading="lazy" />Min age: {{ vehicle.benefits.minimum_driver_age }} years
                                     </span>
                                 </div>
 

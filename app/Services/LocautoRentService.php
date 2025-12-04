@@ -15,10 +15,10 @@ class LocautoRentService
 
     public function __construct()
     {
-        $this->baseUrl = config('services.locauto_rent.test_url', 'https://nextrent1.locautorent.com/webservices/nextRentOTAService.asmx');
-        $this->username = config('services.locauto_rent.username', 'dpp_vrooem.com');
-        $this->password = config('services.locauto_rent.password', 'fssgfs99');
-        $this->testMode = true;
+        $this->baseUrl = env('LOCAUTO_RENT_PRODUCTION_URL');
+        $this->username = env('LOCAUTO_RENT_USERNAME');
+        $this->password = env('LOCAUTO_RENT_PASSWORD');
+        $this->testMode = false;
     }
 
     /**
@@ -45,7 +45,7 @@ class LocautoRentService
 
             $response = Http::withHeaders([
                 'Content-Type' => 'text/xml; charset=utf-8',
-                'SOAPAction' => '"http://www.opentravel.org/OTA/2003/05/OTA_VehAvailRateRS"',
+                'SOAPAction' => '"https://nextrent.locautorent.com/OTA_VehAvailRateRS"',
             ])->send('POST', $this->baseUrl, [
                 'body' => $xmlRequest,
             ]);
@@ -77,7 +77,7 @@ class LocautoRentService
 
             $response = Http::withHeaders([
                 'Content-Type' => 'text/xml; charset=utf-8',
-                'SOAPAction' => '"http://www.opentravel.org/OTA/2003/05/OTA_VehResRS"',
+                'SOAPAction' => '"https://nextrent.locautorent.com/OTA_VehResRS"',
             ])->send('POST', $this->baseUrl, [
                 'body' => $xmlRequest,
             ]);
@@ -109,7 +109,9 @@ class LocautoRentService
       <OTA_VehLocSearchRQ EchoToken="' . uniqid() . '" TimeStamp="' . now()->toISOString() . '" Target="' . ($this->testMode ? 'Test' : 'Production') . '" Version="1.0" xmlns="http://www.opentravel.org/OTA/2003/05">
         <POS>
           <Source>
-            <RequestorID ID_Context="' . $this->username . '" MessagePassword="' . $this->password . '"/>
+            <RequestorID ID="' . $this->username . '" Password="' . $this->password . '">
+              <CompanyName>DPP</CompanyName>
+            </RequestorID>
           </Source>
         </POS>
       </OTA_VehLocSearchRQ>
@@ -130,10 +132,12 @@ class LocautoRentService
 <soap:Envelope xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:soap="http://schemas.xmlsoap.org/soap/envelope/">
   <soap:Body>
     <OTA_VehAvailRateRS xmlns="https://nextrent.locautorent.com">
-      <OTA_VehAvailRateRQ EchoToken="' . uniqid() . '" TimeStamp="' . now()->toISOString() . '" Target="' . ($this->testMode ? 'Test' : 'Production') . '" Version="1.0" xmlns="http://www.opentravel.org/OTA/2003/05">
+      <OTA_VehAvailRateRQ EchoToken="' . uniqid() . '" TimeStamp="' . now()->toISOString() . '" Target="Production" Version="1.0" xmlns="http://www.opentravel.org/OTA/2003/05">
         <POS>
           <Source>
-            <RequestorID ID_Context="' . $this->username . '" MessagePassword="' . $this->password . '"/>
+            <RequestorID ID="' . $this->username . '" Password="' . $this->password . '">
+              <CompanyName>DPP</CompanyName>
+            </RequestorID>
           </Source>
         </POS>
         <VehAvailRQCore>
@@ -173,7 +177,9 @@ class LocautoRentService
       <OTA_VehResRQ EchoToken="' . uniqid() . '" TimeStamp="' . now()->toISOString() . '" Target="Production" Version="1.0" xmlns="http://www.opentravel.org/OTA/2003/05">
         <POS>
           <Source>
-            <RequestorID ID_Context="' . $this->username . '" MessagePassword="' . $this->password . '"/>
+            <RequestorID ID="' . $this->username . '" Password="' . $this->password . '">
+              <CompanyName>DPP</CompanyName>
+            </RequestorID>
           </Source>
         </POS>
         <VehResRQCore>

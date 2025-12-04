@@ -15,6 +15,7 @@ use App\Services\OkMobilityService;
 use App\Services\LocationSearchService; // Import LocationSearchService
 use App\Services\AdobeCarService; // Import AdobeCarService
 use App\Services\WheelsysService; // Import WheelsysService
+use App\Services\LocautoRentService; // Import LocautoRentService
 use Illuminate\Support\Facades\Log; // Import Log facade
 
 class SearchController extends Controller
@@ -24,14 +25,16 @@ class SearchController extends Controller
     protected $locationSearchService;
     protected $adobeCarService;
     protected $wheelsysService;
+    protected $locautoRentService;
 
-    public function __construct(GreenMotionService $greenMotionService, OkMobilityService $okMobilityService, LocationSearchService $locationSearchService, AdobeCarService $adobeCarService, WheelsysService $wheelsysService)
+    public function __construct(GreenMotionService $greenMotionService, OkMobilityService $okMobilityService, LocationSearchService $locationSearchService, AdobeCarService $adobeCarService, WheelsysService $wheelsysService, LocautoRentService $locautoRentService)
     {
         $this->greenMotionService = $greenMotionService;
         $this->okMobilityService = $okMobilityService;
         $this->locationSearchService = $locationSearchService;
         $this->adobeCarService = $adobeCarService;
         $this->wheelsysService = $wheelsysService;
+        $this->locautoRentService = $locautoRentService;
     }
 
     public function search(Request $request)
@@ -843,6 +846,100 @@ class SearchController extends Controller
                         Log::info('Continuing search with other providers after Wheelsys failure');
                     }
                 } // Close Wheelsys elseif
+                elseif ($providerToFetch === 'locauto') {
+                    try {
+                        Log::info('Attempting to fetch Locauto vehicles for location ID: ' . $providerLocationId);
+                        Log::info('Search params: ', [
+                            'pickup_id' => $providerLocationId,
+                            'date_from' => $validated['date_from'],
+                            'start_time' => $validated['start_time'] ?? '09:00',
+                            'date_to' => $validated['date_to'],
+                            'end_time' => $validated['end_time'] ?? '09:00',
+                            'age' => $validated['age'] ?? 35
+                        ]);
+
+                        $locautoResponse = $this->locautoRentService->getVehicles(
+                            $providerLocationId,
+                            $validated['date_from'],
+                            $validated['start_time'] ?? '09:00',
+                            $validated['date_to'],
+                            $validated['end_time'] ?? '09:00',
+                            $validated['age'] ?? 35,
+                            []
+                        );
+
+                        if ($locautoResponse) {
+                            Log::info('LocautoRent API response received successfully');
+
+                            // Parse the vehicle response
+                            $locautoVehicles = $this->locautoRentService->parseVehicleResponse($locautoResponse);
+
+                            if (!empty($locautoVehicles)) {
+                                Log::info('Parsed ' . count($locautoVehicles) . ' Locauto vehicles');
+
+                                foreach ($locautoVehicles as $vehicle) {
+                                    // Extract brand from model or use a default
+                                    $brandName = 'Locauto';
+                                    if (!empty($vehicle['brand'])) {
+                                        $brandName = $vehicle['brand'];
+                                    } elseif (!empty($vehicle['model'])) {
+                                        $brandName = explode(' ', $vehicle['model'])[0];
+                                    }
+
+                                    // Convert total amount to per day if needed
+                                    $pricePerDay = $vehicle['total_amount'] ?? 0;
+
+                                    $providerVehicles->push((object) [
+                                        'id' => 'locauto_' . $vehicle['id'],
+                                        'source' => 'locauto',
+                                        'brand' => $brandName,
+                                        'model' => $vehicle['model'] ?? 'Locauto Vehicle',
+                                        'image' => $vehicle['image'] ?? '/images/default-car.jpg',
+                                        'price_per_day' => (float) $pricePerDay,
+                                        'price_per_week' => null,
+                                        'price_per_month' => null,
+                                        'currency' => $vehicle['currency'] ?? 'EUR',
+                                        'transmission' => $vehicle['transmission'] ?? 'manual',
+                                        'fuel' => $vehicle['fuel'] ?? 'petrol',
+                                        'seating_capacity' => (int) ($vehicle['seating_capacity'] ?? 4),
+                                        'mileage' => 'unlimited',
+                                        'latitude' => (float) $locationLat,
+                                        'longitude' => (float) $locationLng,
+                                        'full_vehicle_address' => $locationAddress,
+                                        'provider_pickup_id' => $providerLocationId,
+                                        'sipp_code' => $vehicle['sipp_code'] ?? '',
+                                        'benefits' => (object) [
+                                            'cancellation_available_per_day' => true,
+                                            'limited_km_per_day' => false,
+                                            'minimum_driver_age' => (int) ($validated['age'] ?? 21),
+                                            'fuel_policy' => 'Pay on Arrival',
+                                            'pay_on_arrival' => true,
+                                        ],
+                                        'review_count' => 0,
+                                        'average_rating' => 0,
+                                        'products' => [[
+                                            'type' => 'POA',
+                                            'total' => (string) $pricePerDay,
+                                            'currency' => $vehicle['currency'] ?? 'EUR',
+                                            'deposit' => (string) ($vehicle['deposit_amount'] ?? 0),
+                                            'payment_type' => 'POA',
+                                        ]],
+                                        'options' => [],
+                                        'insurance_options' => [],
+                                        'availability' => true,
+                                    ]);
+                                }
+                            } else {
+                                Log::warning("LocautoRent API response for vehicles was empty or malformed for location ID: " . $providerLocationId, ['response' => $locautoResponse]);
+                            }
+                        }
+                    } catch (\Exception $e) {
+                        Log::error("Error fetching LocautoRent vehicles: " . $e->getMessage(), [
+                            'provider_location_id' => $providerLocationId,
+                            'trace' => $e->getTraceAsString()
+                        ]);
+                    }
+                } // Close LocautoRent elseif
             } // Close foreach $providersToFetch
         }
 
