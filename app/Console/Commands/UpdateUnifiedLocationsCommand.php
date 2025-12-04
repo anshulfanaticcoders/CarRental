@@ -24,18 +24,21 @@ class UpdateUnifiedLocationsCommand extends Command
     protected $okMobilityService;
     protected $locationSearchService;
     protected $adobeCarService;
+    protected $locautoRentService;
 
     public function __construct(
         \App\Services\GreenMotionService $greenMotionService,
         \App\Services\OkMobilityService $okMobilityService,
         \App\Services\LocationSearchService $locationSearchService,
-        \App\Services\AdobeCarService $adobeCarService
+        \App\Services\AdobeCarService $adobeCarService,
+        \App\Services\LocautoRentService $locautoRentService
     ) {
         parent::__construct();
         $this->greenMotionService = $greenMotionService;
         $this->okMobilityService = $okMobilityService;
         $this->locationSearchService = $locationSearchService;
         $this->adobeCarService = $adobeCarService;
+        $this->locautoRentService = $locautoRentService;
     }
 
     /**
@@ -60,7 +63,10 @@ class UpdateUnifiedLocationsCommand extends Command
         $adobeLocations = $this->fetchAdobeLocations();
         $this->info('Fetched ' . count($adobeLocations) . ' Adobe locations.');
 
-        $unifiedLocations = $this->mergeAndNormalizeLocations($internalLocations, $greenMotionLocations, $usaveLocations, $okMobilityLocations, $adobeLocations);
+        $locautoLocations = $this->fetchLocautoLocations();
+        $this->info('Fetched ' . count($locautoLocations) . ' Locauto Rent locations.');
+
+        $unifiedLocations = $this->mergeAndNormalizeLocations($internalLocations, $greenMotionLocations, $usaveLocations, $okMobilityLocations, $adobeLocations, $locautoLocations);
         $this->info('Merged into ' . count($unifiedLocations) . ' unique unified locations.');
 
         $this->saveUnifiedLocations(array_values($unifiedLocations));
@@ -439,6 +445,21 @@ class UpdateUnifiedLocationsCommand extends Command
                 'provider_location_id' => $office['code'],
             ];
         }
+
+        return $locations;
+    }
+
+    private function fetchLocautoLocations(): array
+    {
+        $this->info('Fetching Locauto Rent locations...');
+
+        // Locauto uses predefined locations, not API
+        $xmlResponse = $this->locautoRentService->getLocations();
+
+        // For Locauto, null response is expected since we use predefined locations
+        $locations = $this->locautoRentService->parseLocationResponse($xmlResponse);
+
+        $this->info('Fetched ' . count($locations) . ' Locauto Rent locations (predefined).');
 
         return $locations;
     }

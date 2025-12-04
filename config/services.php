@@ -56,6 +56,14 @@ return [
         'base_url' => env('WHEELSYS_BASE_URL'),
     ],
 
+    'locauto_rent' => [
+        'username' => env('LOCAUTO_RENT_USERNAME', 'dpp_vrooem.com'),
+        'password' => env('LOCAUTO_RENT_PASSWORD', 'fssgfs99'),
+        'test_url' => env('LOCAUTO_RENT_TEST_URL', 'https://nextrent1.locautorent.com/webservices/nextRentOTAService.asmx'),
+        'production_url' => env('LOCAUTO_RENT_PRODUCTION_URL', 'https://nextrent.locautorent.com/webservices/nextRentOTAService.asmx'),
+        'timeout' => env('LOCAUTO_RENT_TIMEOUT', 30),
+    ],
+
     'esim_access' => [
         'api_key' => env('ESIM_ACCESS_API_KEY'),
         'base_url' => env('ESIM_ACCESS_API_URL'),

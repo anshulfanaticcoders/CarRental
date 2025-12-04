@@ -1,488 +1,0 @@
-
-
-Control version
-
-VersionDateAffected pagesReason1.02017-01-01Initial versión1.12017-12-153Removed getPriceQuote2.02018-04-039Removed country operation2.12018-04-0310Removed getExtrasOperation since it is included in getMultiplePrice3.02018-04-035-8-9-10Attached examples to all operations3.02018-04-033-4-6-7Added token node 
-Your information 
-
-FieldMust useValueObservationsEndpoint URLAsk for the value to your contact in OK Rent a CarWSDL DefinitionEndpoint URL + /getWSDL (Note that there are more operations than the current document. These operations are not neccesary)customerCodeYesAsk for the value to your contact in OK Rent a CarcompanyCodeYes9937
-* The response is always in GZIP format.
-
-The following document contains more operations as needed to integrate with us, note that you can use only getMultiplePrices and createReservation operations.
-
-Note that we do not report all the nodes that you will receive these nodes are set at WSDL, but you should not use them.
-
-getMultiplePrices (Availability process)
- 
-Request
-Field Type/Size Observations customerCode S Customer CodepickUp -->--> DateSPickup Date (yyyy-MM-dd HH:mm)--> rentalStationSRental Station for the request. This field should be filled with the Rental Station IDdropOff  --> --> Date S End Date (yyyy-MM-dd HH:mm) --> RentalStation  S Rental Station for the request. This field should be filled with the Rental Station ID groupID S/4 (Optional) Group ID 
-List the groups for request. This field should be filled with the GroupID separated by a comma (,), 
-	? 	EX.: A, B 
-If this field is omitted, then the system will be list for all Groups Available. City S/25 (Optional) City rateCode S/15 (Optional) Rate Code  promotionCode S/50 (Optional) this field is used to check on the database what the discount is applied for the customer with the promotion code. Date_of_BirthS(Optional) Format (yyyy-MM-dd)countryIDS(Optional) Country Code 
-Response
-FieldType/SizeObservationsgetMultiplePrice-->Attribute rowNumberstationIDI/6Station IDStationS/25StationweekDayOpenS/5Open hour for weekweekDayCloseS/5Close hour for weektokenS/150Token to use with reservationSupplier_CodeI/4Supplier Code - When the station is outboundGroupIDS/4Group IDGroup_NameS/40Group NameSIPPS/10SIPP CodeimageURLSImage URL, address for image of a vehicle example of the grouprateCodeS/15Rate CodedynamicRateS/BooleanReturn true or false according to the rate is Dynamic or notnrDaysI/Numbers of days calculated by the ratedayValueD/18,2Day value (Without tax)totalDayValueWithTaxD/18,2Total day value with taxi s equal preview value divided by number of daysKmsValueI/18,2Kms value (without tax)kmsIncludedSInform if kms are included in the rate (True/False)upsellingToGroupsGroup namepreviewValueD/18,2Preview value with all tax and mandatory extrasvalueWithoutTaxD/18,2Preview value without taxtaxRateI/5Tax RateotherTaxValueI/5Other tax value (this value is included in the taxValue)taxValueD/18,2Tax valuepreviewValueWithoutExtrasD/18,2previewValueWithoutExtraspreviewValueWithoutExtrasWithoutTaxD/18,2previewValueWithoutExtrasWithoutTaxextrasIncludedS/200List of extras included in the rate. This field should be fill with the extras code separated by a comma (,)
-EX.: CDW, ADD
-This field show values only if customer does not have the Dynamic Price associated.extrasRequiredS/200List of Extras Required in the rate. This field should be fill with the extra's codes separated by a comma (,) EX.: CDW, ADD This field show values only if customer does not have the Dynamic Price associated.extrasAcceptedS/200This field returns the list of Accepted Extras codes separately by a comma (,). Extras accepted are optional extras that can be removed. EX.: CDW, ADDextrasAvailableS/200This field returns the list of Available Extras codes separately by a comma (,) EX.: CDW, ADDdayValueWithDiscountD/18,2Day value with discount from promotion code (without tax)previewValueWithDiscountD/Preview value with all tax and extras with the discount from promotion codevalueWithDiscountWithoutTaxD/18,2Preview Value without tax with the discount from promotion code (without tax).percentualDiscountI/Show what the discount from promotion is appliedprepaidRateS/(true/false) Inform if the rate is a pre-paid rate.allExtras-->Attribute count--> Allextra-->Attribute rowNumber--> --> groupIDS/4GroupID--> --> extraIDS/5ExtraID--> --> extraS/30Extra name--> --> descriptionS/70Extra description--> --> valueD/18,2Value of extra--> --> taxRateI/5Tax Rate--> --> extra_IncludedS/True/false Indicate if extra is included--> --> extra_RequiredS/True/false Indicate if extra is required--> --> extra_AcceptedS/True/false Indicate if extra is accepted--> --> Accept_quantityS/True/false Indicate if extra accept quantity--> --> insuranceS/True/false Indicate if extra is insurance--> --> excessI/Amount for the excess when insurance--> --> pricePerContractBIf false extra value will be per day, if true extra value will be per Rental--> --> percentualDiscountS/5Show what the discount from promotion is applied.
-
-Example for availability
-
-getMultiplePrices request:
-
-<?xml version="1.0" encoding="utf-8"?>
-<soap:Envelope xmlns:soap="http://www.w3.org/2003/05/soap-envelope" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
-	<soap:Body>
-		<getMultiplePrices xmlns="http://tempuri.org/">
-			<Value>
-				<companyCode>9937</companyCode>
-				<customerCode>XXXX</customerCode>
-				<onlyDynamicRate>false</onlyDynamicRate>
-				<PickUpDate>2018-05-10 11:00:00</PickUpDate>
-				<PickUpStation>61</PickUpStation>
-				<DropOffDate>2018-05-16 11:00:00</DropOffDate>
-				<DropOffStation>54</DropOffStation>
-			</Value>
-		</getMultiplePrices>
-	</soap:Body>
-</soap:Envelope>
-
-getMultiplePrices response:
-
-<soap:Envelope xmlns:soap="http://schemas.xmlsoap.org/soap/envelope/" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:get="http://www.OKGroup.es/RentaCarWebService/getWSDL">
-   <soap:Body>
-      <get:getMultiplePricesResultResponse>
-         <getMultiplePricesResult>
-            <getMultiplePrice rowNumber="1">
-               <stationID>61</stationID>
-               <Station>Valencia - Airport VLC</Station>
-               <weekDayOpen>07:00</weekDayOpen>
-               <weekDayClose>22:00</weekDayClose>
-               <supplier_Code>0</supplier_Code>
-               <GroupID>ESMS</GroupID>
-               <Group_Name>Nissan Micra</Group_Name>
-               <SIPP>ESMS</SIPP>
-               <imageURL/>
-               <rateCode>WEB VALENCIA</rateCode>
-               <token>OK-30044-636583698126035645-4463|</token>
-               <dynamicRate>false</dynamicRate>
-               <nrDays>6</nrDays>
-               <dayValue>4.5388</dayValue>
-               <totalDayValueWithTax>5.4919</totalDayValueWithTax>
-               <kmsValue>0</kmsValue>
-               <kmsIncluded>false</kmsIncluded>
-               <upsellingToGroup>EMMS</upsellingToGroup>
-               <previewValue>72.9515</previewValue>
-               <valueWithoutTax>60.2905</valueWithoutTax>
-               <taxRate>21</taxRate>
-               <otherTaxValue>0</otherTaxValue>
-               <taxValue>12.661</taxValue>
-               <previewValueWithoutExtras>32.9514</previewValueWithoutExtras>
-               <previewValueWithoutExtrasWithoutTax>27.2326</previewValueWithoutExtrasWithoutTax>
-               <extrasIncluded/>
-               <extrasRequired>COL</extrasRequired>
-               <extrasAccepted/>
-               <extrasAvailable>OPC,CGT,SCDW,CAR,ADD,GPS,SDIN,BSEAT,CAD,CJV,AFT,VATO,COL</extrasAvailable>
-               <dayValueWithDiscount>4.5388</dayValueWithDiscount>
-               <previewValueWithDiscount>72.9515</previewValueWithDiscount>
-               <valueWithDiscountWithoutTax>60.2905</valueWithDiscountWithoutTax>
-               <percentualDiscount>0</percentualDiscount>
-               <prepaidRate>false</prepaidRate>
-               <allExtras count="13">
-                  <allExtra rowNumber="1">
-                     <groupID>ESMS</groupID>
-                     <extraID>OPC</extraID>
-                     <extra>OK Premium Cover</extra>
-                     <description>Wheels, windscreen, bodywork and paint coverage. Excess Removal and Road Assistance. (Price per day)</description>
-                     <value>12.3967</value>
-                     <valueWithTax>15</valueWithTax>
-                     <taxRate>21</taxRate>
-                     <extra_Included>false</extra_Included>
-                     <extra_Required>false</extra_Required>
-                     <extra_Accepted>false</extra_Accepted>
-                     <accept_quantity>false</accept_quantity>
-                     <insurance>false</insurance>
-                     <excess>0</excess>
-                     <pricePerContract>false</pricePerContract>
-                     <percentualDiscount>0</percentualDiscount>
-                  </allExtra>
-                  <allExtra rowNumber="2">
-                     <groupID>ESMS</groupID>
-                     <extraID>CGT</extraID>
-                     <extra>Windows and tires</extra>
-                     <description>Protect your vehicle against damage on wheels and windscreens. (Price per day)</description>
-                     <value>5.7851</value>
-                     <valueWithTax>7</valueWithTax>
-                     <taxRate>21</taxRate>
-                     <extra_Included>false</extra_Included>
-                     <extra_Required>false</extra_Required>
-                     <extra_Accepted>false</extra_Accepted>
-                     <accept_quantity>false</accept_quantity>
-                     <insurance>false</insurance>
-                     <excess>0</excess>
-                     <pricePerContract>false</pricePerContract>
-                     <percentualDiscount>0</percentualDiscount>
-                  </allExtra>
-                  <allExtra rowNumber="3">
-                     <groupID>ESMS</groupID>
-                     <extraID>SCDW</extraID>
-                     <extra>Excess Elimination</extra>
-                     <description>No need to block the amount of the franchise on your credit card. (Price per day)</description>
-                     <value>8.2645</value>
-                     <valueWithTax>10</valueWithTax>
-                     <taxRate>21</taxRate>
-                     <extra_Included>false</extra_Included>
-                     <extra_Required>false</extra_Required>
-                     <extra_Accepted>false</extra_Accepted>
-                     <accept_quantity>false</accept_quantity>
-                     <insurance>false</insurance>
-                     <excess>0</excess>
-                     <pricePerContract>false</pricePerContract>
-                     <percentualDiscount>0</percentualDiscount>
-                  </allExtra>
-                  <allExtra rowNumber="4">
-                     <groupID>ESMS</groupID>
-                     <extraID>CAR</extraID>
-                     <extra>Road Assistance</extra>
-                     <description>In case of a breakdown we replace your vehicle with another one of our fleet. (Price per booking)</description>
-                     <value>11.57</value>
-                     <valueWithTax>13.9997</valueWithTax>
-                     <taxRate>21</taxRate>
-                     <extra_Included>false</extra_Included>
-                     <extra_Required>false</extra_Required>
-                     <extra_Accepted>false</extra_Accepted>
-                     <accept_quantity>false</accept_quantity>
-                     <insurance>false</insurance>
-                     <excess>0</excess>
-                     <pricePerContract>true</pricePerContract>
-                     <percentualDiscount>0</percentualDiscount>
-                  </allExtra>
-                  <allExtra rowNumber="5">
-                     <groupID>ESMS</groupID>
-                     <extraID>ADD</extraID>
-                     <extra>Additional Driver</extra>
-                     <description>Add a second driver to your booking. (Price per day)</description>
-                     <value>5.7851</value>
-                     <valueWithTax>7</valueWithTax>
-                     <taxRate>21</taxRate>
-                     <extra_Included>false</extra_Included>
-                     <extra_Required>false</extra_Required>
-                     <extra_Accepted>false</extra_Accepted>
-                     <accept_quantity>true</accept_quantity>
-                     <insurance>false</insurance>
-                     <excess>0</excess>
-                     <pricePerContract>false</pricePerContract>
-                     <percentualDiscount>0</percentualDiscount>
-                  </allExtra>
-                  <allExtra rowNumber="6">
-                     <groupID>ESMS</groupID>
-                     <extraID>GPS</extraID>
-                     <extra>GPS</extra>
-                     <description>Add a GPS to your booking and discover the best routes during your trip. (Price per day)</description>
-                     <value>4.96</value>
-                     <valueWithTax>6.0016</valueWithTax>
-                     <taxRate>21</taxRate>
-                     <extra_Included>false</extra_Included>
-                     <extra_Required>false</extra_Required>
-                     <extra_Accepted>false</extra_Accepted>
-                     <accept_quantity>false</accept_quantity>
-                     <insurance>false</insurance>
-                     <excess>0</excess>
-                     <pricePerContract>false</pricePerContract>
-                     <percentualDiscount>0</percentualDiscount>
-                  </allExtra>
-                  <allExtra rowNumber="7">
-                     <groupID>ESMS</groupID>
-                     <extraID>SDIN</extraID>
-                     <extra>Speedy Check In</extra>
-                     <description>Benefit from a preferential treatment when arriving at our offices. (Price per booking)</description>
-                     <value>14.876</value>
-                     <valueWithTax>18</valueWithTax>
-                     <taxRate>21</taxRate>
-                     <extra_Included>false</extra_Included>
-                     <extra_Required>false</extra_Required>
-                     <extra_Accepted>false</extra_Accepted>
-                     <accept_quantity>false</accept_quantity>
-                     <insurance>false</insurance>
-                     <excess>0</excess>
-                     <pricePerContract>true</pricePerContract>
-                     <percentualDiscount>0</percentualDiscount>
-                  </allExtra>
-                  <allExtra rowNumber="8">
-                     <groupID>ESMS</groupID>
-                     <extraID>BSEAT</extraID>
-                     <extra>Baby Seat</extra>
-                     <description>If you are traveling with children under 12 years or up to 135 cm in height, include a child seat in your reservation and travel safely. We remind you that in Spain children under 36 kg of weight must use a safety seat.</description>
-                     <value>4.96</value>
-                     <valueWithTax>6.0016</valueWithTax>
-                     <taxRate>21</taxRate>
-                     <extra_Included>false</extra_Included>
-                     <extra_Required>false</extra_Required>
-                     <extra_Accepted>false</extra_Accepted>
-                     <accept_quantity>true</accept_quantity>
-                     <insurance>false</insurance>
-                     <excess>0</excess>
-                     <pricePerContract>false</pricePerContract>
-                     <percentualDiscount>0</percentualDiscount>
-                  </allExtra>
-                  <allExtra rowNumber="9">
-                     <groupID>ESMS</groupID>
-                     <extraID>CAD</extraID>
-                     <extra>Snow Chains</extra>
-                     <description>Snow chains (according to disponibility). (Price per day)</description>
-                     <value>9.6419</value>
-                     <valueWithTax>11.6667</valueWithTax>
-                     <taxRate>21</taxRate>
-                     <extra_Included>false</extra_Included>
-                     <extra_Required>false</extra_Required>
-                     <extra_Accepted>false</extra_Accepted>
-                     <accept_quantity>false</accept_quantity>
-                     <insurance>false</insurance>
-                     <excess>0</excess>
-                     <pricePerContract>false</pricePerContract>
-                     <percentualDiscount>0</percentualDiscount>
-                  </allExtra>
-                  <allExtra rowNumber="10">
-                     <groupID>ESMS</groupID>
-                     <extraID>CJV</extraID>
-                     <extra>Young Driver</extra>
-                     <description>If you are between 19 and 25 years old, you must include this extra to your booking (Price per day)</description>
-                     <value>8.2645</value>
-                     <valueWithTax>10</valueWithTax>
-                     <taxRate>21</taxRate>
-                     <extra_Included>false</extra_Included>
-                     <extra_Required>false</extra_Required>
-                     <extra_Accepted>false</extra_Accepted>
-                     <accept_quantity>true</accept_quantity>
-                     <insurance>false</insurance>
-                     <excess>0</excess>
-                     <pricePerContract>false</pricePerContract>
-                     <percentualDiscount>0</percentualDiscount>
-                  </allExtra>
-                  <allExtra rowNumber="11">
-                     <groupID>ESMS</groupID>
-                     <extraID>AFT</extraID>
-                     <extra>After Hours</extra>
-                     <description>Charge applied when picking up and / or returning your vehicle when our offices are closed</description>
-                     <value>33.06</value>
-                     <valueWithTax>40.0026</valueWithTax>
-                     <taxRate>21</taxRate>
-                     <extra_Included>false</extra_Included>
-                     <extra_Required>false</extra_Required>
-                     <extra_Accepted>false</extra_Accepted>
-                     <accept_quantity>true</accept_quantity>
-                     <insurance>false</insurance>
-                     <excess>0</excess>
-                     <pricePerContract>true</pricePerContract>
-                     <percentualDiscount>0</percentualDiscount>
-                  </allExtra>
-                  <allExtra rowNumber="12">
-                     <groupID>ESMS</groupID>
-                     <extraID>VATO</extraID>
-                     <extra>Automatic Vehicle</extra>
-                     <description>No excess and no charging a deposit to your card.</description>
-                     <value>8.26</value>
-                     <valueWithTax>9.9946</valueWithTax>
-                     <taxRate>21</taxRate>
-                     <extra_Included>false</extra_Included>
-                     <extra_Required>false</extra_Required>
-                     <extra_Accepted>false</extra_Accepted>
-                     <accept_quantity>false</accept_quantity>
-                     <insurance>false</insurance>
-                     <excess>0</excess>
-                     <pricePerContract>true</pricePerContract>
-                     <percentualDiscount>0</percentualDiscount>
-                  </allExtra>
-                  <allExtra rowNumber="13">
-                     <groupID>ESMS</groupID>
-                     <extraID>COL</extraID>
-                     <extra>One way</extra>
-                     <description>Returning the vehicle to another office</description>
-                     <value>33.0579</value>
-                     <valueWithTax>40.0001</valueWithTax>
-                     <taxRate>21</taxRate>
-                     <extra_Included>false</extra_Included>
-                     <extra_Required>true</extra_Required>
-                     <extra_Accepted>false</extra_Accepted>
-                     <accept_quantity>false</accept_quantity>
-                     <insurance>false</insurance>
-                     <excess>0</excess>
-                     <pricePerContract>true</pricePerContract>
-                     <percentualDiscount>0</percentualDiscount>
-                  </allExtra>
-               </allExtras>
-            </getMultiplePrice>
-            <getMultiplePrice rowNumber="2">
-               <stationID>61</stationID>
-               <Station>Valencia - Airport VLC</Station>
-               <weekDayOpen>07:00</weekDayOpen>
-               <weekDayClose>22:00</weekDayClose>
-               <supplier_Code>0</supplier_Code>
-               <GroupID>ESMS</GroupID>
-               <Group_Name>Nissan Micra</Group_Name>
-               <SIPP>ESMS</SIPP>
-               <imageURL/>
-               <rateCode>WEB VLC 105</rateCode>
-               <token>OK-30044-636583698126035645-4463|</token>
-               <dynamicRate>false</dynamicRate>
-               <nrDays>6</nrDays>
-               <dayValue>5.0431</dayValue>
-               <totalDayValueWithTax>6.1021</totalDayValueWithTax>
-               <kmsValue>0</kmsValue>
-               <kmsIncluded>false</kmsIncluded>
-               <upsellingToGroup>EMMS</upsellingToGroup>
-               <previewValue>76.6128</previewValue>
-               <valueWithoutTax>63.3163</valueWithoutTax>
-               <taxRate>21</taxRate>
-               <otherTaxValue>0</otherTaxValue>
-               <taxValue>13.2964</taxValue>
-               <previewValueWithoutExtras>36.6127</previewValueWithoutExtras>
-               <previewValueWithoutExtrasWithoutTax>30.2584</previewValueWithoutExtrasWithoutTax>
-               <extrasIncluded/>
-               <extrasRequired>COL</extrasRequired>
-               <extrasAccepted/>
-               <extrasAvailable>OPC,CGT,SCDW,CAR,ADD,GPS,SDIN,BSEAT,CAD,CJV,AFT,VATO,COL</extrasAvailable>
-               <dayValueWithDiscount>5.0431</dayValueWithDiscount>
-               <previewValueWithDiscount>76.6128</previewValueWithDiscount>
-               <valueWithDiscountWithoutTax>63.3163</valueWithDiscountWithoutTax>
-               <percentualDiscount>0</percentualDiscount>
-               <prepaidRate>false</prepaidRate>
-               <allExtras count="13">
-                  <allExtra rowNumber="1">
-                     <groupID>ESMS</groupID>
-                     <extraID>OPC</extraID>
-                     <extra>OK Premium Cover</extra>
-                     <description>Wheels, windscreen, bodywork and paint coverage. Excess Removal and Road Assistance. (Price per day)</description>
-                     <value>12.3967</value>
-                     <valueWithTax>15</valueWithTax>
-                     <taxRate>21</taxRate>
-                     <extra_Included>false</extra_Included>
-                     <extra_Required>false</extra_Required>
-                     <extra_Accepted>false</extra_Accepted>
-                     <accept_quantity>false</accept_quantity>
-                     <insurance>false</insurance>
-                     <excess>0</excess>
-                     <pricePerContract>false</pricePerContract>
-                     <percentualDiscount>0</percentualDiscount>
-                  </allExtra>
-                  <allExtra rowNumber="2">
-                     <groupID>ESMS</groupID>
-                     <extraID>CGT</extraID>
-                     <extra>Windows and tires</extra>
-                     <description>Protect your vehicle against damage on wheels and windscreens. (Price per day)</description>
-                     <value>5.7851</value>
-                     <valueWithTax>7</valueWithTax>
-                     <taxRate>21</taxRate>
-                     <extra_Included>false</extra_Included>
-                     <extra_Required>false</extra_Required>
-                     <extra_Accepted>false</extra_Accepted>
-                     <accept_quantity>false</accept_quantity>
-                     <insurance>false</insurance>
-                     <excess>0</excess>
-                     <pricePerContract>false</pricePerContract>
-                     <percentualDiscount>0</percentualDiscount>
-                  </allExtra>
-                  <allExtra rowNumber="3">
-                     <groupID>ESMS</groupID>
-                     <extraID>SCDW</extraID>
-                     <extra>Excess Elimination</extra>
-                     <description>No need to block the amount of the franchise on your credit card. (Price per day)</description>
-                     <value>8.2645</value>
-                     <valueWithTax>10</valueWithTax>
-                     <taxRate>21</taxRate>
-                     <extra_Included>false</extra_Included>
-                     <extra_Required>false</extra_Required>
-                     <extra_Accepted>false</extra_Accepted>
-                     <accept_quantity>false</accept_quantity>
-                     <insurance>false</insurance>
-                     <excess>0</excess>
-                     <pricePerContract>false</pricePerContract>
-                     <percentualDiscount>0</percentualDiscount>
-                  </allExtra>
-                </allExtras>
-            </getMultiplePrice>
-         </getMultiplePricesResult>
-      </get:getMultiplePricesResultResponse>
-   </soap:Body>
-</soap:Envelope>
-
-
-createReservationOperation (Reservation process)
-
-Request for create/modify reservation
-Field Type/Size Observations CustomerCodeSCustomer CodeMessageTypeS/1Message Type:
-* N - new
-* P - Prolongation/ModificationReservation_NumberS/10(Do not use at messageType N) 
-
-Reservation_number (Unique identifier for the customer) Required for MessageType (P) if not send Reference.groupCodeS/10SIPP codeReferenceS/30(Optional for message type N) 
-
-Reference (Unique identifier for the customer) Required for MessageType (P) if not send Reservation_Number.TokenS/150Token number which you have received from the Availability ProccessPickUp-->--> DateS/4Pickup Date (yyyy-MM-dd HH:mm)--> rentalStationS/4Rental station identifier--> FlightS(Optional) Flight numberDropOff-->--> DateSEnd Date (yyyy-MM-dd HH:mm)--> rentalStationSRental station identifierDriver -->(Optional) All the driver node is Optional; this information is for the main driver--> NameS/45-->AddressS/45--> CityS/25--> Postal_CodeS/15--> PhoneS--> IdDocNumberS/25--> IdDocDateSFormat (yyyy-MM-dd)--> ID_DocPlaceS/25--> DriverLicenceNumberS--> DriverLicenceDateSFormat (yyyy-MM-dd)--> DriverLicencePlaceS/25--> PassportDataNumberS/25--> PassportDataDateSFormat (yyyy-MM-dd)--> PassportDataPlaceS/25--> MobileS/15--> EMailS/45--> CountryS--> Date_of_BrithSFormat (yyyy-MM-dd)DriverAdd-->(Optional) All the DriverAdd node is Optional, this information is for the additional driver.--> NameS/45--> DriverLicenceNumberS--> DriverLicenceDateS(yyyy-MM-dd)--> DriverLicencePlaceS/25ObservationsS(optional)rateCodeS/15Rate code identifierExtrasS(optional) List of requested Extras to be charged to the Driver. This field should be separated by comma (,). Example: OPC, GPSUsernameS/10(optional) Use only if we set credentials for youPasswordS/10(optional) Use only if we set credentials for youExtras_To_InvoiceS(optional) List of requested Extras to be charged to the customer. This field should be separated by comma (,). Example: OPC, GPS
-
-
-Request for cancelate/verify reservation
-
-Field Type/Size Observations CustomerCodeSCustomer CodeMessageTypeS/1Message Type:
-* C - Cancelation
-* V- Verify StatusReservation_NumberS/10Reservation_number (Unique identifier for the customer) Required for MessageType (C, V) if not send Reference.ReferenceS/30Reference (Unique identifier for the customer) Required for MessageType (C, V) if not send Reservation_Number.
-Response
-Field Type/Size Observations RefrenceS/30ReferenceReservation_NrIReservation nr.Reservation_ValueD/18,2Reservation Value (Total value with taxes)Reservation_Value_InvoiceD/18,2Reservation_Value_CashierD/18,2Reservation_PrepaidSStatusSStatus
-* C - Confirmed
-* P - Pending
-* D - Deleted
-* NC - Not Confirmed
-* RA - Reservation with Rental Agreement created
-* OK - Reservation has been cancelled (Only for cancellation)
-* "ERROR: errorCode"MessageTypeSMessage Type
-• N - New
-• P - Prolongated
-• C - Canceled
-• V - Verify StatusInAnalisysB 
-Examples for reservation 
-
-
-getGroupsOperation
-
-Request
-Field Type/Size Observations customerCodeICustomer code
-Response
-Field Type/Size Observations Group-->Attribute rowNumberGroupCodeSSIPP codeDescriptionSSIPPS
-Example for Groups
-
-
-getStations
- 
-Request
-Field Type/Size Observations customerCode S Customer Code
-Response
-Field Type/Size Observations RentalStation-->Attribute RowNumberStationIDSStationSAddressSZoneSStationTypeSCountryIDSCitySZipcodeSPhoneSFaxSLatitudeSLongitudeS
-Example for Stations
-
-
-Return Messages (Status/error)
- 
-MessageDescriptionCOMPANY DOES NOT EXIST This occurs when you invoke the Webservice and the 
-"companyCode" is not valid or not enabled to use the service. THE COMPANY CODE IS REQUIRED! This occurs when the "companyCode" is missing. THE CUSTOMER CODE IS REQUIRED! This occurs when the "customerCode" is missing. THE CLIENTID OR SEARCH NAME MUST BE INFORMED This occurs when use the service "ClientInformation" and the "clientID" or "searchName" is missing. CLIENT NOT FOUND This occurs when "customerCode" is wrong or does not exist on the database. This occurs to when use the service 
-"ClientInformation" and the "clientID" or "searchName" is wrong or does not exist on the database. INVALID RENTAL DATES This occurs when try to create a new reservation and send the invalid date format for pickup and dropoff dates. INVALID PICKUP DATE! This occurs when invoke the services with invalid pickup date. INVALID DROPOFF DATE! This occurs when invoke the services with invalid dropoff date. THE PICKUP DATE CAN'T BE PREVIOUS THAN CURRENT DATE! This occurs when the pickup date is less than the current date. THE PICKUP DATE CAN'T BE GREATER THAN DROPOFF DATE! This occurs when the pickup date is bigger than the dropoff date. THE PICKUP STATION IS REQUIRED! This occurs when the "pickupStation" is missing. THE GROUPID IS REQUIRED! This occurs when the "groupID" is missing. NO RATE IS AVAILABLE FOR YOUR SELECTION. This occurs when the Webservice does not found the rates with the requested data. RESERVATION NOT AUTHORIZED. RELEASE AUTHORIZATION! This occurs when try to create a reservation and the release is greater than the interval between the creation date and pickup date. RESERVATION ALREADY EXIST! This occurs when try to create a reservation and the reference already exist on the database. MODIFICATION FOR RESERVATION WITH CLOSED RENTAL AGREEMENT! This occurs when try to modify a reservation that have a closed rental agreement associated. MODIFICATION FOR RESERVATION WITH OPEN RENTAL AGREEMENT! This occurs when try to modify a reservation that have a rental agreement associated and the user or company does not have the permission to make this change. CANCELATION NOT ALLOWED FOR RESERVATION WITH RENTAL AGREEMENT! This occurs when try cancel a reservation that have a rental agreement associated. CANCELATION FOR RESERVATION ALREADY CANCELLED! This occurs when try cancel a reservation already cancelled. THE EXTENSION DATE CAN'T BE LESSER TO THE CURRET DATE OF THE RENTAL AGREEMENT! This occurs when try to modify a reservation that have an open rental agreement and the dropoff date is less than the return date from the rental agreement. CUSTOMER NOT AUTHORIZED This occurs when the "customerCode" is not allowed to use the Webservice. INVALID USERNAME OR PASSWORD! This occurs when try login and the username or password is invalid. USERNAME OR PASSWORD IS MISSING! This occurs when try login and username or password is missing. INVALID MESSAGE TYPE This occurs when try to create, modify, view or cancel a reservation and the "MessageType" is not in (N, P, C or V). REFERENCE AND/OR RESERVATION NUMBER IS MISSING! This occurs when try to modify, cancel or view a reservation and the "Reference" or "Reservation_Number" is missing. REFERENCE CAN'T HAVE MORE THAN 30 CHARACTERS! This occurs when try to modify a reservation and the "Reference" sent have more than 30 characters. PICK UP STATION DOES NOT EXIST This occurs when try to create, modify a reservation and the "pickup rental station" request is wrong or does not exist on the database. DROPOFF STATION DOES NOT EXIST This occurs when try to create, modify a reservation and the "dropoff rental station" request is wrong or does not exist on the database. THE PICK UP STATION WILL BE CLOSED ON THE REQUESTED DATE This occurs when try to create, modify a reservation or get prices and the "pickup rental station" will be closed on the requested date and time. THE DROPOFF STATION WILL BE CLOSED ON THE REQUESTED DATE This occurs when try to create, modify a reservation or get prices and the "dropoff rental station" will be closed on the requested date and time. ONEWAY NOT DEFINED BETWEEN PICKUP AND DROPOFF STATIONS This occurs when try to create, modify a reservation or get prices and the "pickup rental stations" are different from the "dropoff rental station" and does not are defined the One Way between the rental stations. INVALID CREDIT CARD NUMBER This occurs when try to create a reservation and the "Credit Card Number" is not valid. INVALID RENTAL GROUP This occurs when try to create a reservation and the "groupID" is not valid for internet reservations or does not exist on the database. THE USER ARE LOGGED DOES NOT HAVE PERMISSION TO MODIFY DAY VALUE! This occurs when try to create or modify a reservation and the user logged associated with the customerCode does not have permission to use a "day value" different from the "rate day value". THE USER LOGGED DOES NOT HAVE PERMISSION TO MODIFY OPEN RENTAL AGREEMENT! This occurs when try to modify a reservation and the user logged associated with the customerCode does not have permission to modify the reservation associated with an open rental agreement. THE USER ARE LOGGED DOES NOT HAVE PERMISSION TO MODIFY RESERVATIONS! This occurs when try to modify a reservation and the user logged associated with the customerCode does not have permission to modify the reservation. DAY VALUE SENT IS LESS THAN THE DAY VALUE AUTHORIZED This occurs when try to create or modify a reservation and the "day value" sent is less than the "rate day value" and this is not authorized. ACCOUNT IN STOP SELL FOR THE REQUESTED RESERVATION This occurs when try to create a reservation and there is no more availability. ERROR CREATING THE NEW RESERVATION This occurs when try to create a reservation and something wrong happens on the service. Continuing at this message is returned the message that caused the error. ERROR UPDATING THE RESERVATION This occurs when try to modify a reservation and something wrong happens on the service. Continuing at this message is returned the message that caused the error. STOP SELL ACCOUNT This occurs when try to create a reservation and there is no more availability. IN RESERVATION CANCEL This occurs when try cancel a reservation and something wrong happens on the service. Continuing at this message is returned the message that caused the error. THE FIELD PASSWORD MUST BE BETWEEN 6 AND 10 CHARACTERS This occurs when try change password and the "password" are less than 6 characters or greater than 10 characters. UPDATE PASSWORD:01 / UPDATE PASSWORD:02 This occurs when try change password and something wrong happens on the service. Continuing at this message is returned the message that caused the error. DRIVER NOT FOUND This occurs when try to create a reservation and the "driverID" informed does not exist on the database. DRIVER'S COUNTRY MUST BE INFORMED This occurs when try to create a new driver and the "country code" is missing. DRIVER'S COUNTRY INFORMED DOES NOT EXISTS This occurs when try to create a new driver and the informed country code does not exist on the database. DRIVER'S E-MAIL MUST BE INFORMED This occurs when try to create a new driver and the "email" is missing. DRIVER'S PASSWORD MUST BE INFORMED This occurs when try to create a new driver and the "password" is missing. THE PROMOTION CODE INFORMED IS NOT VALID This occurs when try to create a reservation and the 
-"promotionCode" is wrong or does not exist on the database. INSERT NEW VERSION OF RESERVATION This occurs when try to modify a reservation with rental agreement associated and the service try to create a new version of current reservation. Continuing at this message is returned the message that caused the error. INSERT RESERVATIONS VALUES This occurs when try to modify a reservation with rental agreement associated and the service try insert the values to reservation. Continuing at this message is returned the message that caused the error. WHILE SEARCH CLIENT TO (PAID BY CLIENT) This occurs when try to create or modify a reservation and the data sent on the "paidByClient" caused an error. Continuing at this message is returned the message that caused the error. THE RESERVATION NUMBER IS REQUIRED! This occurs when try to use updateReservationByOperator and the resNumber not sent. EXIST A RENTAL AGREEMENT ASSOCIATED TO THIS RESERVATION! This occurs when try to use updateReservationByOperator and the reservation is associated to a rental agreement. A RECORD WITH THIS DOCUMENT NUMBER ALREADY EXISTS! This occurs when try to update driver information and the already exist a record with the document number. THE MESSAGE TYPE IS REQUIRED This occurs when using the webservice ClientInformation and the "messageType" is missing. CUSTOMER'S SEARCH NAME MUST BE INFORMED This occurs when using the webservice ClientInformation and the "searchName" is missing. CUSTOMER'S NAME MUST BE INFORMED This occurs when using the webservice ClientInformation and the "name" is missing. CUSTOMER'S TAX NUMBER MUST BE INFORMED This occurs when using the webservice ClientInformation and the "taxNumber" is missing. CUSTOMER'S USERNAME MUST BE INFORMED This occurs when using the webservice ClientInformation and the "username" is missing. CUSTOMER'S PASSWORD MUST BE INFORMED This occurs when using the webservice ClientInformation and the "pasword" is missing. CUSTOMER'S PASSWORD MUST BE INFORMED This occurs when using the webservice ClientInformation and the "pasword" is missing.  
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
