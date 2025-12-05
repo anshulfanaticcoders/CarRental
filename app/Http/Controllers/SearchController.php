@@ -846,7 +846,7 @@ class SearchController extends Controller
                         Log::info('Continuing search with other providers after Wheelsys failure');
                     }
                 } // Close Wheelsys elseif
-                elseif ($providerToFetch === 'locauto') {
+                elseif ($providerToFetch === 'locauto_rent') {
                     try {
                         Log::info('Attempting to fetch Locauto vehicles for location ID: ' . $providerLocationId);
                         Log::info('Search params: ', [
@@ -890,8 +890,8 @@ class SearchController extends Controller
                                     $pricePerDay = $vehicle['total_amount'] ?? 0;
 
                                     $providerVehicles->push((object) [
-                                        'id' => 'locauto_' . $vehicle['id'],
-                                        'source' => 'locauto',
+                                        'id' => 'locauto_rent_' . $vehicle['id'],
+                                        'source' => 'locauto_rent',
                                         'brand' => $brandName,
                                         'model' => $vehicle['model'] ?? 'Locauto Vehicle',
                                         'image' => $vehicle['image'] ?? '/images/default-car.jpg',

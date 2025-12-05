@@ -15,10 +15,11 @@ class LocautoRentService
 
     public function __construct()
     {
-        $this->baseUrl = env('LOCAUTO_RENT_PRODUCTION_URL');
+        // Use test URL for now since we're testing
+        $this->baseUrl = env('LOCAUTO_RENT_TEST_URL');
         $this->username = env('LOCAUTO_RENT_USERNAME');
         $this->password = env('LOCAUTO_RENT_PASSWORD');
-        $this->testMode = false;
+        $this->testMode = true; // Always use test mode for now
     }
 
     /**
@@ -129,37 +130,29 @@ class LocautoRentService
         $returnDateTime = $returnDate . 'T' . $returnTime . ':00+02:00';
 
         return '<?xml version="1.0" encoding="utf-8"?>
-<soap:Envelope xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:soap="http://schemas.xmlsoap.org/soap/envelope/">
-  <soap:Body>
-    <OTA_VehAvailRateRS xmlns="https://nextrent.locautorent.com">
-      <OTA_VehAvailRateRQ EchoToken="' . uniqid() . '" TimeStamp="' . now()->toISOString() . '" Target="Production" Version="1.0" xmlns="http://www.opentravel.org/OTA/2003/05">
-        <POS>
-          <Source>
-            <RequestorID ID="' . $this->username . '" Password="' . $this->password . '">
-              <CompanyName>DPP</CompanyName>
-            </RequestorID>
-          </Source>
-        </POS>
-        <VehAvailRQCore>
-          <PickUpDateTime>' . $pickupDateTime . '</PickUpDateTime>
-          <ReturnDateTime>' . $returnDateTime . '</ReturnDateTime>
-          <PickUpLocation LocationCode="' . $locationCode . '"/>
-          <ReturnLocation LocationCode="' . $locationCode . '"/>
-        </VehAvailRQCore>
-        <VehAvailRQInfo>
-          <Customer>
-            <Primary>
-              <PersonName>
-                <GivenName>Test</GivenName>
-                <Surname>User</Surname>
-              </PersonName>
-            </Primary>
-          </Customer>
-        </VehAvailRQInfo>
-      </OTA_VehAvailRateRQ>
-    </OTA_VehAvailRateRS>
-  </soap:Body>
-</soap:Envelope>';
+<SOAP-ENV:Envelope xmlns:SOAP-ENV="http://schemas.xmlsoap.org/soap/envelope/" xmlns:ns1="http://www.opentravel.org/OTA/2003/05" xmlns:ns2="https://nextrent.locautorent.com">
+  <SOAP-ENV:Body>
+    <ns2:OTA_VehAvailRateRS>
+      <ns1:OTA_VehAvailRateRQ MaxResponses="100" Version="1.0" Target="Test" SequenceNmbr="1" PrimaryLangID="en">
+        <ns1:POS>
+          <ns1:Source ISOCountry="IT" ISOCurrency="EUR">
+            <ns1:RequestorID ID_Context="' . $this->username . '" MessagePassword="' . $this->password . '"/>
+          </ns1:Source>
+        </ns1:POS>
+        <ns1:VehAvailRQCore Status="Available">
+          <ns1:VehRentalCore PickUpDateTime="' . $pickupDateTime . '" ReturnDateTime="' . $returnDateTime . '">
+            <ns1:PickUpLocation LocationCode="' . $locationCode . '"/>
+            <ns1:ReturnLocation LocationCode="' . $locationCode . '"/>
+          </ns1:VehRentalCore>
+          <ns1:DriverType Age="' . $age . '"/>
+          <ns1:VendorPrefs>
+            <ns1:VendorPref CompanyName="Locauto"/>
+          </ns1:VendorPrefs>
+        </ns1:VehAvailRQCore>
+      </ns1:OTA_VehAvailRateRQ>
+    </ns2:OTA_VehAvailRateRS>
+  </SOAP-ENV:Body>
+</SOAP-ENV:Envelope>';
     }
 
     /**
@@ -171,46 +164,44 @@ class LocautoRentService
         $returnDateTime = $data['return_date'] . 'T' . $data['return_time'] . ':00+02:00';
 
         $xml = '<?xml version="1.0" encoding="utf-8"?>
-<soap:Envelope xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:soap="http://schemas.xmlsoap.org/soap/envelope/">
-  <soap:Body>
-    <OTA_VehResRS xmlns="https://nextrent.locautorent.com">
-      <OTA_VehResRQ EchoToken="' . uniqid() . '" TimeStamp="' . now()->toISOString() . '" Target="Production" Version="1.0" xmlns="http://www.opentravel.org/OTA/2003/05">
-        <POS>
-          <Source>
-            <RequestorID ID="' . $this->username . '" Password="' . $this->password . '">
-              <CompanyName>DPP</CompanyName>
-            </RequestorID>
-          </Source>
-        </POS>
-        <VehResRQCore>
-          <VehRentalCore PickUpDateTime="' . $pickupDateTime . '" ReturnDateTime="' . $returnDateTime . '">
-            <PickUpLocation LocationCode="' . $data['pickup_location_code'] . '"/>
-            <ReturnLocation LocationCode="' . $data['return_location_code'] . '"/>
-          </VehRentalCore>
-          <Customer>
-            <Primary>
-              <PersonName>
-                <GivenName>' . htmlspecialchars($data['first_name']) . '</GivenName>
-                <Surname>' . htmlspecialchars($data['last_name']) . '</Surname>
-              </PersonName>
-            </Primary>
-          </Customer>
-          <VehPref Code="' . $data['sipp_code'] . '" CodeContext="SIPP"/>';
+<SOAP-ENV:Envelope xmlns:SOAP-ENV="http://schemas.xmlsoap.org/soap/envelope/" xmlns:ns1="http://www.opentravel.org/OTA/2003/05" xmlns:ns2="https://nextrent.locautorent.com">
+  <SOAP-ENV:Body>
+    <ns2:OTA_VehResRS>
+      <ns1:OTA_VehResRQ EchoToken="' . uniqid() . '" TimeStamp="' . now()->toISOString() . '" Target="Production" Version="1.0">
+        <ns1:POS>
+          <ns1:Source ISOCountry="IT" ISOCurrency="EUR">
+            <ns1:RequestorID ID_Context="' . $this->username . '" MessagePassword="' . $this->password . '"/>
+          </ns1:Source>
+        </ns1:POS>
+        <ns1:VehResRQCore>
+          <ns1:VehRentalCore PickUpDateTime="' . $pickupDateTime . '" ReturnDateTime="' . $returnDateTime . '">
+            <ns1:PickUpLocation LocationCode="' . $data['pickup_location_code'] . '"/>
+            <ns1:ReturnLocation LocationCode="' . $data['return_location_code'] . '"/>
+          </ns1:VehRentalCore>
+          <ns1:Customer>
+            <ns1:Primary>
+              <ns1:PersonName>
+                <ns1:GivenName>' . htmlspecialchars($data['first_name']) . '</ns1:GivenName>
+                <ns1:Surname>' . htmlspecialchars($data['last_name']) . '</ns1:Surname>
+              </ns1:PersonName>
+            </ns1:Primary>
+          </ns1:Customer>
+          <ns1:VehPref Code="' . $data['sipp_code'] . '" CodeContext="SIPP"/>';
 
         // Add special equipment if provided
         if (!empty($data['extras'])) {
-            $xml .= '<SpecialEquipPrefs>';
+            $xml .= '<ns1:SpecialEquipPrefs>';
             foreach ($data['extras'] as $extra) {
-                $xml .= '<SpecialEquipPref Code="' . $extra['code'] . '" Quantity="' . ($extra['quantity'] ?? 1) . '"/>';
+                $xml .= '<ns1:SpecialEquipPref Code="' . $extra['code'] . '" Quantity="' . ($extra['quantity'] ?? 1) . '"/>';
             }
-            $xml .= '</SpecialEquipPrefs>';
+            $xml .= '</ns1:SpecialEquipPrefs>';
         }
 
-        $xml .= '</VehResRQCore>
-      </OTA_VehResRQ>
-    </OTA_VehResRS>
-  </soap:Body>
-</soap:Envelope>';
+        $xml .= '</ns1:VehResRQCore>
+      </ns1:OTA_VehResRQ>
+    </ns2:OTA_VehResRS>
+  </SOAP-ENV:Body>
+</SOAP-ENV:Envelope>';
 
         return $xml;
     }
@@ -250,8 +241,8 @@ class LocautoRentService
             if (!empty($vehicleNodes)) {
                 foreach ($vehicleNodes as $vehicleNode) {
                     $vehicle = [
-                        'id' => uniqid('locauto_'),
-                        'source' => 'locauto',
+                        'id' => uniqid('locauto_rent_'),
+                        'source' => 'locauto_rent',
                         'provider_pickup_id' => (string) $vehicleNode['Status'] ?? '',
                         'brand' => (string) $vehicleNode['Make'] ?? '',
                         'model' => (string) $vehicleNode['Model'] ?? '',
@@ -395,7 +386,7 @@ class LocautoRentService
                 'country' => 'Italy',
                 'latitude' => $loc['lat'],
                 'longitude' => $loc['lng'],
-                'source' => 'locauto',
+                'source' => 'locauto_rent',
                 'matched_field' => 'location',
                 'provider_location_id' => $loc['code'],
             ];

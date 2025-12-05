@@ -1,0 +1,44 @@
+[
+    {
+        "code": "9",
+        "name": "Additional Driver",
+        "price": 9,
+        "unit": "day",
+        "max_days": null
+    },
+    {
+        "code": "19",
+        "name": "GPS Navigation",
+        "price": 7,
+        "unit": "day",
+        "max_days": 18
+    },
+    {
+        "code": "78",
+        "name": "Child Seat",
+        "price": 11.25,
+        "unit": "day",
+        "max_days": 4
+    },
+    {
+        "code": "136",
+        "name": "Don't Worry Cover",
+        "price": 38,
+        "unit": "day",
+        "max_days": null
+    },
+    {
+        "code": "137",
+        "name": "Additional Driver (Alternative)",
+        "price": 9,
+        "unit": "day",
+        "max_days": null
+    },
+    {
+        "code": "139",
+        "name": "Young Driver Fee",
+        "price": 15,
+        "unit": "day",
+        "max_days": null
+    }
+]
