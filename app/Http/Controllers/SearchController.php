@@ -74,6 +74,7 @@ class SearchController extends Controller
             'matched_field' => 'nullable|string|in:location,city,state,country',
             'provider' => 'nullable|string', // Replaces 'source'
             'provider_pickup_id' => 'nullable|string', // Replaces 'greenmotion_location_id'
+            'unified_location_id' => 'nullable|integer', // Unified location ID for multi-provider search
         ]);
 
         $internalVehiclesQuery = Vehicle::query()->whereIn('status', ['available', 'rented'])
@@ -257,11 +258,16 @@ class SearchController extends Controller
         $transmissions = $potentialVehiclesForOptions->pluck('transmission')->unique()->filter()->values()->all();
         $fuels = $potentialVehiclesForOptions->pluck('fuel')->unique()->filter()->values()->all();
         $mileages = $potentialVehiclesForOptions->pluck('mileage')->unique()->filter()->map(function ($mileage) {
-            if ($mileage >= 0 && $mileage <= 25) return '0-25';
-            if ($mileage > 25 && $mileage <= 50) return '25-50';
-            if ($mileage > 50 && $mileage <= 75) return '50-75';
-            if ($mileage > 75 && $mileage <= 100) return '75-100';
-            if ($mileage > 100 && $mileage <= 120) return '100-120';
+            if ($mileage >= 0 && $mileage <= 25)
+                return '0-25';
+            if ($mileage > 25 && $mileage <= 50)
+                return '25-50';
+            if ($mileage > 50 && $mileage <= 75)
+                return '50-75';
+            if ($mileage > 75 && $mileage <= 100)
+                return '75-100';
+            if ($mileage > 100 && $mileage <= 120)
+                return '100-120';
             return null;
         })->filter()->unique()->values()->all();
         $categoriesFromOptions = [];
@@ -329,56 +335,105 @@ class SearchController extends Controller
         $providerVehicles = collect();
         $okMobilityVehicles = collect(); // Separate collection for OK Mobility vehicles
         $providerName = $validated['provider'] ?? null;
-        $providerLocationId = $validated['provider_pickup_id'] ?? null;
+        $currentProviderLocationId = $validated['provider_pickup_id'] ?? null;
         $locationLat = $validated['latitude'] ?? null;
         $locationLng = $validated['longitude'] ?? null;
         $locationAddress = $validated['where'] ?? null;
 
         // Fallback: If no provider ID, try to find one from the 'where' text
-        if (!$providerLocationId && !empty($validated['where'])) {
+        if (!$currentProviderLocationId && !empty($validated['where'])) {
             $searchParam = $validated['where'];
             $unifiedLocations = $this->locationSearchService->searchLocations($searchParam);
-            
-            $matchedLocation = collect($unifiedLocations)->first(function($loc) {
+
+            $matchedLocation = collect($unifiedLocations)->first(function ($loc) {
                 return isset($loc['providers']) && count($loc['providers']) > 0;
             });
 
             if ($matchedLocation && isset($matchedLocation['providers'][0])) {
                 $providerName = $matchedLocation['providers'][0]['provider'];
-                $providerLocationId = $matchedLocation['providers'][0]['pickup_id'];
+                $currentProviderLocationId = $matchedLocation['providers'][0]['pickup_id'];
                 $locationLat = $matchedLocation['latitude'];
                 $locationLng = $matchedLocation['longitude'];
                 $locationAddress = $matchedLocation['name'];
             }
         }
 
-        if ($providerName && $providerName !== 'internal' && $providerLocationId && !empty($validated['date_from']) && !empty($validated['date_to'])) {
-            $providersToFetch = [];
-            if ($providerName === 'mixed') {
-                $allLocations = json_decode(file_get_contents(public_path('unified_locations.json')), true);
-                $matchedLocation = collect($allLocations)->first(function ($location) use ($providerLocationId) {
+        if ($providerName && $providerName !== 'internal' && $currentProviderLocationId && !empty($validated['date_from']) && !empty($validated['date_to'])) {
+            // allProviderEntries will store all provider locations to fetch from
+            $allProviderEntries = [];
+
+            // Load unified locations
+            $allLocations = json_decode(file_get_contents(public_path('unified_locations.json')), true);
+
+            // Find the unified location - prefer by unified_location_id, fallback to pickup_id
+            $matchedLocation = null;
+            $unifiedLocationId = $validated['unified_location_id'] ?? null;
+
+            if ($unifiedLocationId) {
+                // Find by unified_location_id (most reliable)
+                $matchedLocation = collect($allLocations)->first(function ($location) use ($unifiedLocationId) {
+                    return ($location['unified_location_id'] ?? null) == $unifiedLocationId;
+                });
+            }
+
+            if (!$matchedLocation) {
+                // Fallback: Find by any provider's pickup_id
+                $matchedLocation = collect($allLocations)->first(function ($location) use ($currentProviderLocationId) {
                     if (isset($location['providers'])) {
                         foreach ($location['providers'] as $provider) {
-                            if ($provider['pickup_id'] == $providerLocationId) {
+                            if ($provider['pickup_id'] == $currentProviderLocationId) {
                                 return true;
                             }
                         }
                     }
                     return false;
                 });
-
-                if ($matchedLocation && !empty($matchedLocation['providers'])) {
-                    foreach ($matchedLocation['providers'] as $provider) {
-                        $providersToFetch[] = $provider['provider'];
-                    }
-                }
-            } else {
-                $providersToFetch[] = $providerName;
             }
 
-            Log::info('Providers to fetch: ' . json_encode($providersToFetch));
+            if ($matchedLocation && !empty($matchedLocation['providers'])) {
+                // Fetch from ALL provider locations for this unified location
+                // Each entry in providers array is a separate location (e.g., Terminal 1, Terminal 2)
+                $allProviderEntries = []; // Store all entries, not just one per provider
 
-            foreach ($providersToFetch as $providerToFetch) {
+                foreach ($matchedLocation['providers'] as $index => $provider) {
+                    $allProviderEntries[] = [
+                        'provider' => $provider['provider'],
+                        'pickup_id' => $provider['pickup_id'],
+                        'original_name' => $provider['original_name'] ?? $matchedLocation['name'] ?? $locationAddress,
+                    ];
+                }
+
+                // Update location info from unified location
+                $locationLat = $matchedLocation['latitude'] ?? $locationLat;
+                $locationLng = $matchedLocation['longitude'] ?? $locationLng;
+                $locationAddress = $matchedLocation['name'] ?? $locationAddress;
+
+                Log::info('Unified location matched', [
+                    'unified_id' => $matchedLocation['unified_location_id'] ?? 'N/A',
+                    'name' => $matchedLocation['name'] ?? 'Unknown',
+                    'total_provider_entries' => count($allProviderEntries),
+                ]);
+            } elseif ($providerName !== 'mixed') {
+                // Single provider fallback
+                $allProviderEntries = [
+                    [
+                        'provider' => $providerName,
+                        'pickup_id' => $currentProviderLocationId,
+                        'original_name' => $locationAddress,
+                    ]
+                ];
+            } else {
+                $allProviderEntries = [];
+            }
+
+            Log::info('Provider entries to fetch: ' . count($allProviderEntries));
+
+            foreach ($allProviderEntries as $providerEntry) {
+                // Get the provider name, location ID and original name for this entry
+                $providerToFetch = $providerEntry['provider'];
+                $currentProviderLocationId = $providerEntry['pickup_id'];
+                $currentProviderLocationName = $providerEntry['original_name'];
+
                 if ($providerToFetch === 'greenmotion' || $providerToFetch === 'usave') {
                     try {
                         $this->greenMotionService->setProvider($providerToFetch);
@@ -395,7 +450,7 @@ class SearchController extends Controller
                         ];
 
                         $gmResponse = $this->greenMotionService->getVehicles(
-                            $providerLocationId,
+                            $currentProviderLocationId,
                             $validated['date_from'],
                             $validated['start_time'] ?? '09:00',
                             $validated['date_to'],
@@ -431,7 +486,7 @@ class SearchController extends Controller
                                         }
                                     }
 
-                                    $minDriverAge = !empty($products) ? (int)($products[0]['minage'] ?? 0) : 0;
+                                    $minDriverAge = !empty($products) ? (int) ($products[0]['minage'] ?? 0) : 0;
                                     $fuelPolicy = !empty($products) ? ($products[0]['fuelpolicy'] ?? '') : '';
                                     $brandName = explode(' ', (string) $vehicle['name'])[0];
 
@@ -441,18 +496,18 @@ class SearchController extends Controller
                                         'brand' => $brandName,
                                         'model' => (string) $vehicle['name'],
                                         'image' => urldecode((string) $vehicle['image']),
-                                        'price_per_day' => (isset($vehicle->total) && is_numeric((string)$vehicle->total)) ? (float) (string)$vehicle->total : 0.0,
+                                        'price_per_day' => (isset($vehicle->total) && is_numeric((string) $vehicle->total)) ? (float) (string) $vehicle->total : 0.0,
                                         'price_per_week' => null,
                                         'price_per_month' => null,
-                                        'currency' => (isset($vehicle->total['currency']) && !empty((string)$vehicle->total['currency'])) ? (string) $vehicle->total['currency'] : 'EUR',
+                                        'currency' => (isset($vehicle->total['currency']) && !empty((string) $vehicle->total['currency'])) ? (string) $vehicle->total['currency'] : 'EUR',
                                         'transmission' => (string) $vehicle->transmission,
                                         'fuel' => (string) $vehicle->fuel,
                                         'seating_capacity' => (int) $vehicle->adults + (int) $vehicle->children,
                                         'mileage' => (string) $vehicle->mpg,
                                         'latitude' => (float) $locationLat,
                                         'longitude' => (float) $locationLng,
-                                        'full_vehicle_address' => $locationAddress,
-                                        'provider_pickup_id' => $providerLocationId,
+                                        'full_vehicle_address' => $currentProviderLocationName,
+                                        'provider_pickup_id' => $currentProviderLocationId,
                                         'benefits' => (object) [
                                             'cancellation_available_per_day' => true,
                                             'limited_km_per_day' => false,
@@ -467,7 +522,7 @@ class SearchController extends Controller
                                     ]);
                                 }
                             } else {
-                                Log::warning("{$providerToFetch} API response for vehicles was empty or malformed for location ID: " . $providerLocationId, ['response' => $gmResponse]);
+                                Log::warning("{$providerToFetch} API response for vehicles was empty or malformed for location ID: " . $currentProviderLocationId, ['response' => $gmResponse]);
                             }
                         }
                     } catch (\Exception $e) {
@@ -475,9 +530,9 @@ class SearchController extends Controller
                     }
                 } elseif ($providerToFetch === 'adobe') {
                     try {
-                        Log::info('Attempting to fetch Adobe vehicles for location ID: ' . $providerLocationId);
+                        Log::info('Attempting to fetch Adobe vehicles for location ID: ' . $currentProviderLocationId);
                         Log::info('Search params: ', [
-                            'pickup_id' => $providerLocationId,
+                            'pickup_id' => $currentProviderLocationId,
                             'date_from' => $validated['date_from'],
                             'start_time' => $validated['start_time'] ?? '09:00',
                             'date_to' => $validated['date_to'],
@@ -485,25 +540,25 @@ class SearchController extends Controller
                         ]);
 
                         // First, check if we have cached data
-                        $cachedAdobeData = $this->adobeCarService->getCachedVehicleData($providerLocationId, 60); // 60 minutes cache
+                        $cachedAdobeData = $this->adobeCarService->getCachedVehicleData($currentProviderLocationId, 60); // 60 minutes cache
 
                         if ($cachedAdobeData && !empty($cachedAdobeData['vehicles'])) {
-                            Log::info('Using cached Adobe vehicle data for location: ' . $providerLocationId);
+                            Log::info('Using cached Adobe vehicle data for location: ' . $currentProviderLocationId);
                             $adobeVehicles = collect($cachedAdobeData['vehicles']);
                         } else {
                             Log::info('Fetching fresh Adobe vehicle data from API');
 
                             // Prepare search parameters for Adobe API
                             $adobeSearchParams = [
-                                'pickupoffice' => $providerLocationId,
-                                'returnoffice' => $providerLocationId,
+                                'pickupoffice' => $currentProviderLocationId,
+                                'returnoffice' => $currentProviderLocationId,
                                 'startdate' => $validated['date_from'] . ' ' . ($validated['start_time'] ?? '09:00'),
                                 'enddate' => $validated['date_to'] . ' ' . ($validated['end_time'] ?? '09:00'),
                                 'promotionCode' => $validated['promocode'] ?? null
                             ];
 
                             // Filter out null values
-                            $adobeSearchParams = array_filter($adobeSearchParams, function($value) {
+                            $adobeSearchParams = array_filter($adobeSearchParams, function ($value) {
                                 return $value !== null && $value !== '';
                             });
 
@@ -522,7 +577,7 @@ class SearchController extends Controller
                                 foreach ($adobeVehicles as $vehicle) {
                                     // Get detailed vehicle information including protections and extras
                                     $vehicleDetails = $this->adobeCarService->getProtectionsAndExtras(
-                                        $providerLocationId,
+                                        $currentProviderLocationId,
                                         $vehicle['category'] ?? '',
                                         [
                                             'startdate' => $adobeSearchParams['startdate'],
@@ -531,7 +586,7 @@ class SearchController extends Controller
                                     );
 
                                     $processedVehicle = [
-                                        'id' => 'adobe_' . $providerLocationId . '_' . ($vehicle['category'] ?? 'unknown'),
+                                        'id' => 'adobe_' . $currentProviderLocationId . '_' . ($vehicle['category'] ?? 'unknown'),
                                         'source' => 'adobe',
                                         'brand' => $this->extractBrandFromModel($vehicle['model'] ?? ''),
                                         'model' => $vehicle['model'] ?? 'Adobe Vehicle',
@@ -547,8 +602,8 @@ class SearchController extends Controller
                                         'mileage' => 'unlimited', // Default mileage
                                         'latitude' => (float) $locationLat,
                                         'longitude' => (float) $locationLng,
-                                        'full_vehicle_address' => $locationAddress,
-                                        'provider_pickup_id' => $providerLocationId,
+                                        'full_vehicle_address' => $currentProviderLocationName,
+                                        'provider_pickup_id' => $currentProviderLocationId,
                                         'benefits' => (object) [
                                             'cancellation_available_per_day' => true,
                                             'limited_km_per_day' => false,
@@ -586,7 +641,7 @@ class SearchController extends Controller
                                 }
 
                                 // Update the JSON cache with fresh data
-                                $this->adobeCarService->updateAdobeDetailsJson($providerLocationId, [
+                                $this->adobeCarService->updateAdobeDetailsJson($currentProviderLocationId, [
                                     'vehicles' => $processedVehicles,
                                     'protections' => $allProtections,
                                     'extras' => $allExtras
@@ -596,7 +651,7 @@ class SearchController extends Controller
                                 Log::info('Adobe vehicles processed and cached: ' . $adobeVehicles->count());
 
                             } else {
-                                Log::warning("Adobe API response for vehicles was empty or malformed for location ID: " . $providerLocationId, [
+                                Log::warning("Adobe API response for vehicles was empty or malformed for location ID: " . $currentProviderLocationId, [
                                     'response' => $adobeResponse
                                 ]);
                                 $adobeVehicles = collect([]);
@@ -612,15 +667,15 @@ class SearchController extends Controller
 
                     } catch (\Exception $e) {
                         Log::error("Error fetching Adobe vehicles: " . $e->getMessage(), [
-                            'provider_location_id' => $providerLocationId,
+                            'provider_location_id' => $currentProviderLocationId,
                             'trace' => $e->getTraceAsString()
                         ]);
                     }
                 } elseif ($providerToFetch === 'okmobility') {
                     try {
-                        Log::info('Attempting to fetch OK Mobility vehicles for location ID: ' . $providerLocationId);
+                        Log::info('Attempting to fetch OK Mobility vehicles for location ID: ' . $currentProviderLocationId);
                         Log::info('Search params: ', [
-                            'pickup_id' => $providerLocationId,
+                            'pickup_id' => $currentProviderLocationId,
                             'date_from' => $validated['date_from'],
                             'start_time' => $validated['start_time'] ?? '09:00',
                             'date_to' => $validated['date_to'],
@@ -628,8 +683,8 @@ class SearchController extends Controller
                         ]);
 
                         $okMobilityResponse = $this->okMobilityService->getVehicles(
-                            $providerLocationId,
-                            $providerLocationId, // OK Mobility is one-way rental only
+                            $currentProviderLocationId,
+                            $currentProviderLocationId, // OK Mobility is one-way rental only
                             $validated['date_from'],
                             $validated['start_time'] ?? '09:00',
                             $validated['date_to'],
@@ -649,8 +704,8 @@ class SearchController extends Controller
 
                                 // Try both possible XPath patterns
                                 $vehicles = $xmlObject->xpath('//get:getMultiplePrice') ?:
-                                          $xmlObject->xpath('//getMultiplePricesResult/getMultiplePrice') ?:
-                                          $xmlObject->xpath('//ns:getMultiplePrice');
+                                    $xmlObject->xpath('//getMultiplePricesResult/getMultiplePrice') ?:
+                                    $xmlObject->xpath('//ns:getMultiplePrice');
 
                                 Log::info('OK Mobility vehicles found in XML: ' . count($vehicles));
 
@@ -701,8 +756,8 @@ class SearchController extends Controller
                                         'mileage' => $mileage,
                                         'latitude' => (float) $locationLat,
                                         'longitude' => (float) $locationLng,
-                                        'full_vehicle_address' => $locationAddress,
-                                        'provider_pickup_id' => $providerLocationId,
+                                        'full_vehicle_address' => $currentProviderLocationName,
+                                        'provider_pickup_id' => $currentProviderLocationId,
                                         'station' => $vehicleData['Station'] ?? 'OK Mobility Station',
                                         'week_day_open' => $vehicleData['weekDayOpen'] ?? null,
                                         'week_day_close' => $vehicleData['weekDayClose'] ?? null,
@@ -713,13 +768,15 @@ class SearchController extends Controller
                                             'limited_km_per_day' => $vehicleData['kmsIncluded'] !== 'true',
                                         ],
                                         // Don't include review_count and average_rating as OK Mobility doesn't provide these
-                                        'products' => [[
-                                            'type' => 'BAS',
-                                            'total' => (string) $pricePerDay,
-                                            'currency' => 'EUR',
-                                            'token' => $token,
-                                            'group_id' => $groupId,
-                                        ]],
+                                        'products' => [
+                                            [
+                                                'type' => 'BAS',
+                                                'total' => (string) $pricePerDay,
+                                                'currency' => 'EUR',
+                                                'token' => $token,
+                                                'group_id' => $groupId,
+                                            ]
+                                        ],
                                         'extras' => $extras,
                                         'insurance_options' => [],
                                         'ok_mobility_token' => $token,
@@ -729,7 +786,7 @@ class SearchController extends Controller
                                     ]);
                                 }
                             } else {
-                                Log::warning("OK Mobility API response for vehicles was empty or malformed for location ID: " . $providerLocationId, [
+                                Log::warning("OK Mobility API response for vehicles was empty or malformed for location ID: " . $currentProviderLocationId, [
                                     'response' => $okMobilityResponse,
                                     'xml_errors' => libxml_get_errors()
                                 ]);
@@ -740,80 +797,80 @@ class SearchController extends Controller
                         Log::info('OK Mobility vehicles added to collection: ' . $okMobilityVehicles->count());
                     } catch (\Exception $e) {
                         Log::error("Error fetching OK Mobility vehicles: " . $e->getMessage(), [
-                            'provider_location_id' => $providerLocationId,
+                            'provider_location_id' => $currentProviderLocationId,
                             'trace' => $e->getTraceAsString()
                         ]);
                     }
                 } elseif ($providerToFetch === 'wheelsys') {
-                        Log::info('Attempting to fetch Wheelsys vehicles for location ID: ' . $providerLocationId);
-                        Log::info('Search params: ', [
-                            'pickup_id' => $providerLocationId,
-                            'date_from' => $validated['date_from'],
-                            'start_time' => $validated['start_time'] ?? '10:00',
-                            'date_to' => $validated['date_to'],
-                            'end_time' => $validated['end_time'] ?? '10:00'
-                        ]);
+                    Log::info('Attempting to fetch Wheelsys vehicles for location ID: ' . $currentProviderLocationId);
+                    Log::info('Search params: ', [
+                        'pickup_id' => $currentProviderLocationId,
+                        'date_from' => $validated['date_from'],
+                        'start_time' => $validated['start_time'] ?? '10:00',
+                        'date_to' => $validated['date_to'],
+                        'end_time' => $validated['end_time'] ?? '10:00'
+                    ]);
 
-                        // Convert date format from YYYY-MM-DD to DD/MM/YYYY for Wheelsys
-                        $dateFromFormatted = date('d/m/Y', strtotime($validated['date_from']));
-                        $dateToFormatted = date('d/m/Y', strtotime($validated['date_to']));
+                    // Convert date format from YYYY-MM-DD to DD/MM/YYYY for Wheelsys
+                    $dateFromFormatted = date('d/m/Y', strtotime($validated['date_from']));
+                    $dateToFormatted = date('d/m/Y', strtotime($validated['date_to']));
 
-                        try {
-                            $wheelsysResponse = $this->wheelsysService->getVehicles(
-                                $providerLocationId,
-                                $validated['dropoff_location_id'] ?? $providerLocationId,
-                                $dateFromFormatted,
-                                $validated['start_time'] ?? '10:00',
-                                $dateToFormatted,
-                                $validated['end_time'] ?? '10:00'
-                            );
+                    try {
+                        $wheelsysResponse = $this->wheelsysService->getVehicles(
+                            $currentProviderLocationId,
+                            $validated['dropoff_location_id'] ?? $currentProviderLocationId,
+                            $dateFromFormatted,
+                            $validated['start_time'] ?? '10:00',
+                            $dateToFormatted,
+                            $validated['end_time'] ?? '10:00'
+                        );
 
-                            Log::info('Wheelsys API response received successfully');
+                        Log::info('Wheelsys API response received successfully');
 
-                            // Handle different response structures
-                            $ratesData = null;
-                            if (isset($wheelsysResponse['vehicles']['Rates'])) {
-                                $ratesData = $wheelsysResponse['vehicles']['Rates'];
-                            } elseif (isset($wheelsysResponse['Rates'])) {
-                                $ratesData = $wheelsysResponse['Rates'];
+                        // Handle different response structures
+                        $ratesData = null;
+                        if (isset($wheelsysResponse['vehicles']['Rates'])) {
+                            $ratesData = $wheelsysResponse['vehicles']['Rates'];
+                        } elseif (isset($wheelsysResponse['Rates'])) {
+                            $ratesData = $wheelsysResponse['Rates'];
+                        }
+
+                        if ($ratesData && !empty($ratesData)) {
+                            $wheelsysRates = collect($ratesData);
+
+                            // Process each rate and convert to standard vehicle format
+                            foreach ($wheelsysRates as $rate) {
+                                $standardVehicle = $this->wheelsysService->convertToStandardVehicle(
+                                    $rate,
+                                    $currentProviderLocationId,
+                                    $locationLat,
+                                    $locationLng,
+                                    $locationAddress
+                                );
+
+                                if ($standardVehicle) {
+                                    $providerVehicles->push((object) $standardVehicle);
+                                }
                             }
 
-                            if ($ratesData && !empty($ratesData)) {
-                                $wheelsysRates = collect($ratesData);
+                            Log::info('Wheelsys vehicles processed and added: ' . $providerVehicles->count());
 
-                                // Process each rate and convert to standard vehicle format
-                                foreach ($wheelsysRates as $rate) {
-                                    $standardVehicle = $this->wheelsysService->convertToStandardVehicle(
-                                        $rate,
-                                        $providerLocationId,
-                                        $locationLat,
-                                        $locationLng,
-                                        $locationAddress
-                                    );
+                            /// Debug: Log the first few vehicles to see their structure
+                            $wheelsysVehiclesDebug = $providerVehicles->where('source', 'wheelsys')->take(3);
+                            foreach ($wheelsysVehiclesDebug as $debugVehicle) {
+                                Log::info('Wheelsys Vehicle Debug', [
+                                    'id' => $debugVehicle->id,
+                                    'source' => $debugVehicle->source,
+                                    'brand' => $debugVehicle->brand,
+                                    'model' => $debugVehicle->model,
+                                    'price_per_day' => $debugVehicle->price_per_day,
+                                    'image' => $debugVehicle->image,
+                                    'availability' => $debugVehicle->availability ?? 'N/A'
+                                ]);
+                            }
 
-                                    if ($standardVehicle) {
-                                        $providerVehicles->push((object) $standardVehicle);
-                                    }
-                                }
-
-                                Log::info('Wheelsys vehicles processed and added: ' . $providerVehicles->count());
-
-                                /// Debug: Log the first few vehicles to see their structure
-                                $wheelsysVehiclesDebug = $providerVehicles->where('source', 'wheelsys')->take(3);
-                                foreach ($wheelsysVehiclesDebug as $debugVehicle) {
-                                    Log::info('Wheelsys Vehicle Debug', [
-                                        'id' => $debugVehicle->id,
-                                        'source' => $debugVehicle->source,
-                                        'brand' => $debugVehicle->brand,
-                                        'model' => $debugVehicle->model,
-                                        'price_per_day' => $debugVehicle->price_per_day,
-                                        'image' => $debugVehicle->image,
-                                        'availability' => $debugVehicle->availability ?? 'N/A'
-                                    ]);
-                                }
-
-                            } else {
-                            Log::warning("Wheelsys API response for vehicles was empty or no rates found for location ID: " . $providerLocationId, [
+                        } else {
+                            Log::warning("Wheelsys API response for vehicles was empty or no rates found for location ID: " . $currentProviderLocationId, [
                                 'has_response' => !empty($wheelsysResponse),
                                 'response_keys' => $wheelsysResponse ? array_keys($wheelsysResponse) : [],
                                 'has_rates' => isset($ratesData) && !empty($ratesData)
@@ -826,17 +883,17 @@ class SearchController extends Controller
 
                         if (str_contains($errorMessage, 'temporarily unavailable due to repeated failures')) {
                             Log::warning('Wheelsys API circuit breaker is open - API temporarily unavailable', [
-                                'provider_location_id' => $providerLocationId,
+                                'provider_location_id' => $currentProviderLocationId,
                                 'circuit_breaker_status' => $this->wheelsysService->getCircuitBreakerStatus()
                             ]);
                         } else if (str_contains($errorMessage, 'Invalid API response structure')) {
                             Log::error('Wheelsys API response validation failed', [
-                                'provider_location_id' => $providerLocationId,
+                                'provider_location_id' => $currentProviderLocationId,
                                 'error' => $errorMessage
                             ]);
                         } else {
                             Log::error('Wheelsys API error after retries', [
-                                'provider_location_id' => $providerLocationId,
+                                'provider_location_id' => $currentProviderLocationId,
                                 'error' => $errorMessage,
                                 'circuit_breaker_status' => $this->wheelsysService->getCircuitBreakerStatus()
                             ]);
@@ -848,9 +905,9 @@ class SearchController extends Controller
                 } // Close Wheelsys elseif
                 elseif ($providerToFetch === 'locauto_rent') {
                     try {
-                        Log::info('Attempting to fetch Locauto vehicles for location ID: ' . $providerLocationId);
+                        Log::info('Attempting to fetch Locauto vehicles for location ID: ' . $currentProviderLocationId);
                         Log::info('Search params: ', [
-                            'pickup_id' => $providerLocationId,
+                            'pickup_id' => $currentProviderLocationId,
                             'date_from' => $validated['date_from'],
                             'start_time' => $validated['start_time'] ?? '09:00',
                             'date_to' => $validated['date_to'],
@@ -859,7 +916,7 @@ class SearchController extends Controller
                         ]);
 
                         $locautoResponse = $this->locautoRentService->getVehicles(
-                            $providerLocationId,
+                            $currentProviderLocationId,
                             $validated['date_from'],
                             $validated['start_time'] ?? '09:00',
                             $validated['date_to'],
@@ -905,8 +962,8 @@ class SearchController extends Controller
                                         'mileage' => 'unlimited',
                                         'latitude' => (float) $locationLat,
                                         'longitude' => (float) $locationLng,
-                                        'full_vehicle_address' => $locationAddress,
-                                        'provider_pickup_id' => $providerLocationId,
+                                        'full_vehicle_address' => $currentProviderLocationName,
+                                        'provider_pickup_id' => $currentProviderLocationId,
                                         'sipp_code' => $vehicle['sipp_code'] ?? '',
                                         'benefits' => (object) [
                                             'cancellation_available_per_day' => true,
@@ -917,63 +974,77 @@ class SearchController extends Controller
                                         ],
                                         'review_count' => 0,
                                         'average_rating' => 0,
-                                        'products' => [[
-                                            'type' => 'POA',
-                                            'total' => (string) $pricePerDay,
-                                            'currency' => $vehicle['currency'] ?? 'EUR',
-                                            'deposit' => (string) ($vehicle['deposit_amount'] ?? 0),
-                                            'payment_type' => 'POA',
-                                        ]],
+                                        'products' => [
+                                            [
+                                                'type' => 'POA',
+                                                'total' => (string) $pricePerDay,
+                                                'currency' => $vehicle['currency'] ?? 'EUR',
+                                                'deposit' => (string) ($vehicle['deposit_amount'] ?? 0),
+                                                'payment_type' => 'POA',
+                                            ]
+                                        ],
                                         'options' => [],
                                         'insurance_options' => [],
                                         'availability' => true,
                                     ]);
                                 }
                             } else {
-                                Log::warning("LocautoRent API response for vehicles was empty or malformed for location ID: " . $providerLocationId, ['response' => $locautoResponse]);
+                                Log::warning("LocautoRent API response for vehicles was empty or malformed for location ID: " . $currentProviderLocationId, ['response' => $locautoResponse]);
                             }
                         }
                     } catch (\Exception $e) {
                         Log::error("Error fetching LocautoRent vehicles: " . $e->getMessage(), [
-                            'provider_location_id' => $providerLocationId,
+                            'provider_location_id' => $currentProviderLocationId,
                             'trace' => $e->getTraceAsString()
                         ]);
                     }
                 } // Close LocautoRent elseif
-            } // Close foreach $providersToFetch
+            } // Close foreach $allProviderEntries
         }
 
         $filteredProviderVehicles = $providerVehicles->filter(function ($vehicle) use ($validated) {
-            if (!empty($validated['seating_capacity']) && $vehicle->seating_capacity != $validated['seating_capacity']) return false;
-            if (!empty($validated['brand']) && strcasecmp($vehicle->brand, $validated['brand']) != 0) return false;
-            if (!empty($validated['transmission']) && strcasecmp($vehicle->transmission, $validated['transmission']) != 0) return false;
-            if (!empty($validated['fuel']) && strcasecmp($vehicle->fuel, $validated['fuel']) != 0) return false;
+            if (!empty($validated['seating_capacity']) && $vehicle->seating_capacity != $validated['seating_capacity'])
+                return false;
+            if (!empty($validated['brand']) && strcasecmp($vehicle->brand, $validated['brand']) != 0)
+                return false;
+            if (!empty($validated['transmission']) && strcasecmp($vehicle->transmission, $validated['transmission']) != 0)
+                return false;
+            if (!empty($validated['fuel']) && strcasecmp($vehicle->fuel, $validated['fuel']) != 0)
+                return false;
             if (!empty($validated['price_range'])) {
                 $range = explode('-', $validated['price_range']);
-                if ($vehicle->price_per_day < (int) $range[0] || $vehicle->price_per_day > (int) $range[1]) return false;
+                if ($vehicle->price_per_day < (int) $range[0] || $vehicle->price_per_day > (int) $range[1])
+                    return false;
             }
             if (!empty($validated['mileage'])) {
                 $range = explode('-', $validated['mileage']);
                 $mileageValue = (int) $vehicle->mileage;
-                if ($mileageValue < (int) $range[0] || $mileageValue > (int) $range[1]) return false;
+                if ($mileageValue < (int) $range[0] || $mileageValue > (int) $range[1])
+                    return false;
             }
             return true;
         });
 
         // Filter OK Mobility vehicles separately
         $filteredOkMobilityVehicles = $okMobilityVehicles->filter(function ($vehicle) use ($validated) {
-            if (!empty($validated['seating_capacity']) && $vehicle->seating_capacity != $validated['seating_capacity']) return false;
-            if (!empty($validated['brand']) && strcasecmp($vehicle->brand, $validated['brand']) != 0) return false;
-            if (!empty($validated['transmission']) && strcasecmp($vehicle->transmission, $validated['transmission']) != 0) return false;
-            if (!empty($validated['fuel']) && strcasecmp($vehicle->fuel, $validated['fuel']) != 0) return false;
+            if (!empty($validated['seating_capacity']) && $vehicle->seating_capacity != $validated['seating_capacity'])
+                return false;
+            if (!empty($validated['brand']) && strcasecmp($vehicle->brand, $validated['brand']) != 0)
+                return false;
+            if (!empty($validated['transmission']) && strcasecmp($vehicle->transmission, $validated['transmission']) != 0)
+                return false;
+            if (!empty($validated['fuel']) && strcasecmp($vehicle->fuel, $validated['fuel']) != 0)
+                return false;
             if (!empty($validated['price_range'])) {
                 $range = explode('-', $validated['price_range']);
-                if ($vehicle->price_per_day < (int) $range[0] || $vehicle->price_per_day > (int) $range[1]) return false;
+                if ($vehicle->price_per_day < (int) $range[0] || $vehicle->price_per_day > (int) $range[1])
+                    return false;
             }
             if (!empty($validated['mileage'])) {
                 $range = explode('-', $validated['mileage']);
                 $mileageValue = (int) $vehicle->mileage;
-                if ($mileageValue < (int) $range[0] || $mileageValue > (int) $range[1]) return false;
+                if ($mileageValue < (int) $range[0] || $mileageValue > (int) $range[1])
+                    return false;
             }
             return true;
         });
@@ -1170,7 +1241,7 @@ class SearchController extends Controller
             } elseif ($validated['source'] === 'greenmotion') {
                 $internalVehiclesQuery->whereRaw('1 = 0');
             }
-        } else { 
+        } else {
             if (!empty($validated['matched_field'])) {
                 $fieldToQuery = null;
                 $valueToQuery = null;
@@ -1240,11 +1311,16 @@ class SearchController extends Controller
         $transmissions = $potentialVehiclesForOptionsCategory->pluck('transmission')->unique()->filter()->values()->all();
         $fuels = $potentialVehiclesForOptionsCategory->pluck('fuel')->unique()->filter()->values()->all();
         $mileages = $potentialVehiclesForOptionsCategory->pluck('mileage')->unique()->filter()->map(function ($mileage) {
-            if ($mileage >= 0 && $mileage <= 25) return '0-25';
-            if ($mileage > 25 && $mileage <= 50) return '25-50';
-            if ($mileage > 50 && $mileage <= 75) return '50-75';
-            if ($mileage > 75 && $mileage <= 100) return '75-100';
-            if ($mileage > 100 && $mileage <= 120) return '100-120';
+            if ($mileage >= 0 && $mileage <= 25)
+                return '0-25';
+            if ($mileage > 25 && $mileage <= 50)
+                return '25-50';
+            if ($mileage > 50 && $mileage <= 75)
+                return '50-75';
+            if ($mileage > 75 && $mileage <= 100)
+                return '75-100';
+            if ($mileage > 100 && $mileage <= 120)
+                return '100-120';
             return null;
         })->filter()->unique()->values()->all();
         $categoriesFromOptions = [];
@@ -1321,7 +1397,7 @@ class SearchController extends Controller
                 if (!$gmLocationId && (!empty($validated['where']) || (!empty($validated['latitude']) && !empty($validated['longitude'])))) {
                     $searchParam = $validated['where'] ?? ($validated['latitude'] . ',' . $validated['longitude']);
                     $unifiedLocations = $this->locationSearchService->searchLocations($searchParam);
-                    $matchedGmLocation = collect($unifiedLocations)->first(function($loc) {
+                    $matchedGmLocation = collect($unifiedLocations)->first(function ($loc) {
                         return $loc['source'] === 'greenmotion' && !empty($loc['greenmotion_location_id']);
                     });
                     if ($matchedGmLocation) {
@@ -1405,10 +1481,10 @@ class SearchController extends Controller
                                         'brand' => $brandName,
                                         'model' => (string) $vehicle['name'],
                                         'image' => urldecode((string) $vehicle['image']),
-                                        'price_per_day' => (isset($vehicle->total) && is_numeric((string)$vehicle->total)) ? (float) (string)$vehicle->total : 0.0,
+                                        'price_per_day' => (isset($vehicle->total) && is_numeric((string) $vehicle->total)) ? (float) (string) $vehicle->total : 0.0,
                                         'price_per_week' => null,
                                         'price_per_month' => null,
-                                        'currency' => (isset($vehicle->total['currency']) && !empty((string)$vehicle->total['currency'])) ? (string) $vehicle->total['currency'] : 'EUR',
+                                        'currency' => (isset($vehicle->total['currency']) && !empty((string) $vehicle->total['currency'])) ? (string) $vehicle->total['currency'] : 'EUR',
                                         'transmission' => (string) $vehicle->transmission,
                                         'fuel' => (string) $vehicle->fuel,
                                         'seating_capacity' => (int) $vehicle->adults + (int) $vehicle->children,
@@ -1442,18 +1518,24 @@ class SearchController extends Controller
         }
 
         $filteredGreenMotionVehicles = $greenMotionVehicles->filter(function ($vehicle) use ($validated) {
-            if (!empty($validated['seating_capacity']) && $vehicle->seating_capacity != $validated['seating_capacity']) return false;
-            if (!empty($validated['brand']) && strcasecmp($vehicle->brand, $validated['brand']) != 0) return false;
-            if (!empty($validated['transmission']) && strcasecmp($vehicle->transmission, $validated['transmission']) != 0) return false;
-            if (!empty($validated['fuel']) && strcasecmp($vehicle->fuel, $validated['fuel']) != 0) return false;
+            if (!empty($validated['seating_capacity']) && $vehicle->seating_capacity != $validated['seating_capacity'])
+                return false;
+            if (!empty($validated['brand']) && strcasecmp($vehicle->brand, $validated['brand']) != 0)
+                return false;
+            if (!empty($validated['transmission']) && strcasecmp($vehicle->transmission, $validated['transmission']) != 0)
+                return false;
+            if (!empty($validated['fuel']) && strcasecmp($vehicle->fuel, $validated['fuel']) != 0)
+                return false;
             if (!empty($validated['price_range'])) {
                 $range = explode('-', $validated['price_range']);
-                if ($vehicle->price_per_day < (int) $range[0] || $vehicle->price_per_day > (int) $range[1]) return false;
+                if ($vehicle->price_per_day < (int) $range[0] || $vehicle->price_per_day > (int) $range[1])
+                    return false;
             }
             if (!empty($validated['mileage'])) {
                 $range = explode('-', $validated['mileage']);
                 $mileageValue = (int) $vehicle->mileage;
-                if ($mileageValue < (int) $range[0] || $mileageValue > (int) $range[1]) return false;
+                if ($mileageValue < (int) $range[0] || $mileageValue > (int) $range[1])
+                    return false;
             }
             return true;
         });

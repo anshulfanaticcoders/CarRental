@@ -526,6 +526,9 @@ class GreenMotionController extends Controller
                 if (strpos($id, 'greenmotion_') === 0) {
                     $actualVehicleId = substr($id, strlen('greenmotion_'));
                     Log::info("Stripped greenmotion_ prefix, searching for vehicle ID: {$actualVehicleId}");
+                } elseif (strpos($id, 'usave_') === 0) {
+                    $actualVehicleId = substr($id, strlen('usave_'));
+                    Log::info("Stripped usave_ prefix, searching for vehicle ID: {$actualVehicleId}");
                 }
 
                 $vehicle = collect($vehicles)->firstWhere('id', $actualVehicleId);

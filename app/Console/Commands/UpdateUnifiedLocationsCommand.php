@@ -18,11 +18,12 @@ class UpdateUnifiedLocationsCommand extends Command
      *
      * @var string
      */
-    protected $description = 'Updates the unified_locations.json file with data from internal vehicles and GreenMotion API.';
+    protected $description = 'Updates the unified_locations.json file with fuzzy matching to merge similar locations across providers.';
 
     protected $greenMotionService;
     protected $okMobilityService;
     protected $locationSearchService;
+    protected $locationMatchingService;
     protected $adobeCarService;
     protected $locautoRentService;
 
@@ -30,6 +31,7 @@ class UpdateUnifiedLocationsCommand extends Command
         \App\Services\GreenMotionService $greenMotionService,
         \App\Services\OkMobilityService $okMobilityService,
         \App\Services\LocationSearchService $locationSearchService,
+        \App\Services\LocationMatchingService $locationMatchingService,
         \App\Services\AdobeCarService $adobeCarService,
         \App\Services\LocautoRentService $locautoRentService
     ) {
@@ -37,6 +39,7 @@ class UpdateUnifiedLocationsCommand extends Command
         $this->greenMotionService = $greenMotionService;
         $this->okMobilityService = $okMobilityService;
         $this->locationSearchService = $locationSearchService;
+        $this->locationMatchingService = $locationMatchingService;
         $this->adobeCarService = $adobeCarService;
         $this->locautoRentService = $locautoRentService;
     }
@@ -270,54 +273,46 @@ class UpdateUnifiedLocationsCommand extends Command
 
     private function mergeAndNormalizeLocations(array ...$locationGroups): array
     {
-        $unifiedLocations = [];
         $allLocations = array_merge(...$locationGroups);
+        
+        if (empty($allLocations)) {
+            return [];
+        }
 
-        foreach ($allLocations as $location) {
-            $normalizedName = $this->locationSearchService->normalizeString($location['label']);
-            if (empty($normalizedName)) {
-                continue;
-            }
+        $this->info('Starting fuzzy matching with ' . count($allLocations) . ' total locations...');
+        $this->info('Using similarity threshold: ' . ($this->locationMatchingService->getSimilarityThreshold() * 100) . '%');
 
-            if (!isset($unifiedLocations[$normalizedName])) {
-                $unifiedLocations[$normalizedName] = [
-                    'unified_location_id' => crc32($normalizedName),
-                    'name' => $location['label'],
-                    'city' => $location['city'],
-                    'country' => $location['country'],
-                    'latitude' => $location['latitude'],
-                    'longitude' => $location['longitude'],
-                    'providers' => [],
-                    'our_location_id' => null,
-                ];
-            }
+        // Use fuzzy matching to cluster similar locations
+        $clusters = $this->locationMatchingService->clusterLocations($allLocations);
 
-            if ($location['source'] === 'internal') {
-                $unifiedLocations[$normalizedName]['our_location_id'] = $location['id'];
-            } else {
-                $providerData = [
-                    'provider' => $location['source'],
-                    'pickup_id' => $location['provider_location_id'],
-                    'dropoffs' => [], // This would require another API call per location to get dropoffs.
-                ];
+        $this->info('Created ' . count($clusters) . ' location clusters.');
+        $this->info('Merged ' . (count($allLocations) - count($clusters)) . ' duplicate locations.');
 
-                // Avoid adding duplicate providers
-                $providerExists = false;
-                foreach ($unifiedLocations[$normalizedName]['providers'] as $existingProvider) {
-                    if ($existingProvider['provider'] === $providerData['provider'] && $existingProvider['pickup_id'] === $providerData['pickup_id']) {
-                        $providerExists = true;
-                        break;
-                    }
-                }
-
-                if (!$providerExists) {
-                    $unifiedLocations[$normalizedName]['providers'][] = $providerData;
+        // Build unified locations from clusters
+        $unifiedLocations = [];
+        foreach ($clusters as $index => $cluster) {
+            $unified = $this->locationMatchingService->buildUnifiedLocation($cluster);
+            
+            if (!empty($unified['name'])) {
+                $unifiedLocations[] = $unified;
+                
+                // Log significant merges (clusters with more than 1 location)
+                if (count($cluster) > 1) {
+                    $providerNames = collect($unified['providers'])->pluck('provider')->unique()->join(', ');
+                    $this->comment(sprintf(
+                        '  Merged %d locations into: "%s" [%s]%s',
+                        count($cluster),
+                        $unified['name'],
+                        $providerNames ?: 'internal',
+                        $unified['our_location_id'] ? ' (+ internal)' : ''
+                    ));
                 }
             }
         }
 
         return $unifiedLocations;
     }
+
 
     private function saveUnifiedLocations(array $locations)
     {

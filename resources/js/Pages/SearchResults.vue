@@ -323,6 +323,7 @@ const form = useForm({
     location: usePage().props.filters.location || "",
     provider: usePage().props.filters.provider || null,
     provider_pickup_id: usePage().props.filters.provider_pickup_id || null,
+    unified_location_id: usePage().props.filters.unified_location_id || null,
     start_time: usePage().props.filters?.start_time || '09:00',
     end_time: usePage().props.filters?.end_time || '09:00',
     age: usePage().props.filters?.age || 35,

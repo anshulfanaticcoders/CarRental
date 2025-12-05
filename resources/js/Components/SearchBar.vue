@@ -180,6 +180,7 @@ const form = ref({
   country: null,
   provider: null, // Replaces 'source'
   provider_pickup_id: null, // Replaces 'greenmotion_location_id'
+  unified_location_id: null, // For multi-provider unified location search
   start_time: '09:00',
   end_time: '09:00',
   age: 35,
@@ -353,35 +354,43 @@ const selectLocation = (result) => {
   form.value.longitude = result.longitude;
   form.value.city = result.city;
   form.value.country = result.country;
+  
+  // Always set the unified_location_id for multi-provider matching
+  form.value.unified_location_id = result.unified_location_id || null;
 
   showSearchBox.value = false;
   searchPerformed.value = false;
   searchResults.value = [];
 
-  // If it's our own location, we can submit directly.
-  if (result.our_location_id) {
+  // Check if it has our own location and/or external providers
+  const hasInternalLocation = !!result.our_location_id;
+  const hasProviders = result.providers && result.providers.length > 0;
+
+  if (hasInternalLocation && !hasProviders) {
+    // Only internal location, no external providers
     form.value.provider = 'internal';
+    form.value.provider_pickup_id = null;
     isProviderLocation.value = false;
-    // Potentially auto-submit or enable submit button here if desired.
     return;
   }
 
-  // If there are external providers
-  if (result.providers && result.providers.length > 0) {
-    // For both single and multiple providers, we want to show the dropoff location.
-    // We'll use the first provider to fetch potential dropoff locations.
+  if (hasProviders) {
+    // Has external providers - always use 'mixed' to fetch from ALL providers
+    // (including internal if hasInternalLocation is true)
+    form.value.provider = 'mixed';
+    
+    // Use first provider's pickup_id as the reference (backend will find all)
+    form.value.provider_pickup_id = result.providers[0].pickup_id;
+    dropoffProvider.value = result.providers[0].provider;
+    
+    // Fetch dropoff locations for the first provider
     selectProvider(result.providers[0]);
-
-    // If there are multiple providers, we set the provider type to 'mixed' for the search query.
-    if (result.providers.length > 1) {
-      form.value.provider = 'mixed';
-      dropoffProvider.value = result.providers[0].provider;
-    }
   } else {
     // No providers and not an internal location, reset
     isProviderLocation.value = false;
     form.value.provider = null;
     form.value.provider_pickup_id = null;
+    form.value.unified_location_id = null;
     dropoffProvider.value = null;
   }
 };
