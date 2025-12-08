@@ -509,13 +509,10 @@ class SearchController extends Controller
                                         'full_vehicle_address' => $currentProviderLocationName,
                                         'provider_pickup_id' => $currentProviderLocationId,
                                         'benefits' => (object) [
-                                            'cancellation_available_per_day' => true,
-                                            'limited_km_per_day' => false,
                                             'minimum_driver_age' => $minDriverAge,
                                             'fuel_policy' => $fuelPolicy,
                                         ],
-                                        'review_count' => 0,
-                                        'average_rating' => 0,
+                                        // review_count and average_rating omitted - not provided by API
                                         'products' => $products,
                                         'options' => [],
                                         'insurance_options' => [],
@@ -597,24 +594,19 @@ class SearchController extends Controller
                                         'price_per_month' => (float) (($vehicle['pli'] ?? 0) * 30),
                                         'currency' => 'USD', // Adobe uses USD
                                         'transmission' => ($vehicle['manual'] ?? false) ? 'manual' : 'automatic',
-                                        'fuel' => 'petrol', // Default fuel type
+                                        'fuel' => null, // Adobe doesn't provide fuel type
                                         'seating_capacity' => (int) ($vehicle['passengers'] ?? 4),
-                                        'mileage' => 'unlimited', // Default mileage
+                                        'mileage' => null, // Adobe doesn't provide mileage info
                                         'latitude' => (float) $locationLat,
                                         'longitude' => (float) $locationLng,
                                         'full_vehicle_address' => $currentProviderLocationName,
                                         'provider_pickup_id' => $currentProviderLocationId,
                                         'benefits' => (object) [
-                                            'cancellation_available_per_day' => true,
-                                            'limited_km_per_day' => false,
-                                            'minimum_driver_age' => 21,
-                                            'fuel_policy' => 'full_to_full',
                                             'vehicle_type' => $vehicle['type'] ?? '',
                                             'traction' => $vehicle['traction'] ?? '',
                                             'doors' => (int) ($vehicle['doors'] ?? 4),
                                         ],
-                                        'review_count' => 0,
-                                        'average_rating' => 0,
+                                        // review_count and average_rating omitted - not provided by API
                                         'products' => [],
                                         'protections' => $vehicleDetails['protections'] ?? [],
                                         'extras' => $vehicleDetails['extras'] ?? [],
@@ -956,24 +948,20 @@ class SearchController extends Controller
                                         'price_per_week' => null,
                                         'price_per_month' => null,
                                         'currency' => $vehicle['currency'] ?? 'EUR',
-                                        'transmission' => $vehicle['transmission'] ?? 'manual',
-                                        'fuel' => $vehicle['fuel'] ?? 'petrol',
-                                        'seating_capacity' => (int) ($vehicle['seating_capacity'] ?? 4),
-                                        'mileage' => 'unlimited',
+                                        'transmission' => $vehicle['transmission'] ?? null,
+                                        'fuel' => $vehicle['fuel'] ?? null,
+                                        'seating_capacity' => isset($vehicle['seating_capacity']) ? (int) $vehicle['seating_capacity'] : null,
+                                        'mileage' => $vehicle['mileage'] ?? null, // Only show if provided by API
                                         'latitude' => (float) $locationLat,
                                         'longitude' => (float) $locationLng,
                                         'full_vehicle_address' => $currentProviderLocationName,
                                         'provider_pickup_id' => $currentProviderLocationId,
                                         'sipp_code' => $vehicle['sipp_code'] ?? '',
                                         'benefits' => (object) [
-                                            'cancellation_available_per_day' => true,
-                                            'limited_km_per_day' => false,
                                             'minimum_driver_age' => (int) ($validated['age'] ?? 21),
-                                            'fuel_policy' => 'Pay on Arrival',
                                             'pay_on_arrival' => true,
                                         ],
-                                        'review_count' => 0,
-                                        'average_rating' => 0,
+                                        // review_count and average_rating omitted - not provided by API
                                         'products' => [
                                             [
                                                 'type' => 'POA',
@@ -1494,13 +1482,10 @@ class SearchController extends Controller
                                         'full_vehicle_address' => $gmLocationAddress,
                                         'greenmotion_location_id' => $gmLocationId,
                                         'benefits' => (object) [
-                                            'cancellation_available_per_day' => true,
-                                            'limited_km_per_day' => false,
                                             'minimum_driver_age' => $minDriverAge,
                                             'fuel_policy' => $fuelPolicy,
                                         ],
-                                        'review_count' => 0,
-                                        'average_rating' => 0,
+                                        // review_count and average_rating omitted
                                         'products' => $products,
                                         'options' => [],
                                         'insurance_options' => [],

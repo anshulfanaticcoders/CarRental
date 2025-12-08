@@ -2016,37 +2016,33 @@ watch(
                                                 <span v-if="vehicle.traction && vehicle.traction.trim()"><template v-if="(vehicle.manual !== undefined) || (vehicle.passengers && vehicle.passengers > 0) || (vehicle.doors && vehicle.doors > 0)"> . </template>{{ vehicle.traction }}</span>
                                             </template>
                                             <template v-else>
-                                                {{ vehicle.transmission }} .
-                                                {{ vehicle.source === 'greenmotion' ? vehicle.fuel : vehicle.fuel }} .
-                                                {{ vehicle.seating_capacity }} Seats
+                                                <span v-if="vehicle.transmission">{{ vehicle.transmission }}</span>
+                                                <span v-if="vehicle.fuel"><template v-if="vehicle.transmission"> . </template>{{ vehicle.fuel }}</span>
+                                                <span v-if="vehicle.seating_capacity"><template v-if="vehicle.transmission || vehicle.fuel"> . </template>{{ vehicle.seating_capacity }} Seats</span>
+                                                <span v-if="!vehicle.transmission && !vehicle.fuel && !vehicle.seating_capacity">Vehicle specs not available</span>
                                             </template>
                                         </span>
                                     </div>
                                 </div>
                                 <div class="extra_details flex gap-5 mt-[1rem] items-center">
-                                    <div class="col flex gap-3" v-if="vehicle.source !== 'okmobility' && vehicle.source !== 'wheelsys' && vehicle.source !== 'adobe'">
+                                    <div class="col flex gap-3" v-if="vehicle.source !== 'okmobility' && vehicle.source !== 'wheelsys' && vehicle.source !== 'adobe' && vehicle.mileage">
                                         <img :src="mileageIcon" alt="" loading="lazy" /><span
                                             class="text-[1.15rem] max-[768px]:text-[0.95rem]">
                                             {{ vehicle.source === 'greenmotion' ? vehicle.mileage + ' MPG' : vehicle.mileage + ' km/L' }}</span>
                                     </div>
-                                    <!-- OK Mobility mileage display -->
-                                    <div class="col flex gap-3" v-else-if="vehicle.source === 'okmobility' && vehicle.mileage === 'Unlimited'">
+                                    <!-- OK Mobility mileage - only show if actually provided -->
+                                    <div class="col flex gap-3" v-else-if="vehicle.source === 'okmobility' && vehicle.mileage && vehicle.mileage !== 'Unlimited'">
                                         <img :src="mileageIcon" alt="" loading="lazy" /><span
                                             class="text-[1.15rem] max-[768px]:text-[0.95rem]">
-                                            Unlimited mileage</span>
+                                            {{ vehicle.mileage }}</span>
                                     </div>
-                                    <!-- Wheelsys mileage display -->
-                                    <div class="col flex gap-3" v-else-if="vehicle.source === 'wheelsys'">
+                                    <!-- Wheelsys mileage - only show if actually provided -->
+                                    <div class="col flex gap-3" v-else-if="vehicle.source === 'wheelsys' && vehicle.mileage">
                                         <img :src="mileageIcon" alt="" loading="lazy" /><span
                                             class="text-[1.15rem] max-[768px]:text-[0.95rem]">
-                                            {{ vehicle.mileage || 'Unlimited mileage' }}</span>
+                                            {{ vehicle.mileage }}</span>
                                     </div>
-                                    <!-- Adobe mileage display -->
-                                    <div class="col flex gap-3" v-else-if="vehicle.source === 'adobe'">
-                                        <img :src="mileageIcon" alt="" loading="lazy" /><span
-                                            class="text-[1.15rem] max-[768px]:text-[0.95rem]">
-                                            Unlimited mileage</span>
-                                    </div>
+                                    <!-- Adobe mileage - removed as API doesn't provide this -->
                                     <!-- <div class="col flex gap-3" v-if="vehicle.distance_in_km !== undefined">
                                         <img :src="walkIcon" alt="" /><span
                                             class="text-[1.15rem] max-[768px]:text-[0.95rem]">
@@ -2097,8 +2093,11 @@ watch(
                                     <!-- Mileage information based on the selected package type -->
                                     <span v-if="
                                         vehicle.source !== 'okmobility' &&
+                                        vehicle.source !== 'wheelsys' &&
+                                        vehicle.source !== 'adobe' &&
+                                        vehicle.source !== 'locauto_rent' &&
                                         vehicle.benefits &&
-                                        !vehicle.benefits.limited_km_per_day
+                                        vehicle.benefits.limited_km_per_day === false
                                     " class="flex gap-3 items-center text-[12px]">
                                         <img :src="check" alt="" loading="lazy" />Unlimited
                                         mileage
@@ -2115,13 +2114,7 @@ watch(
                                         }}
                                         km/day
                                     </span>
-                                    <span v-else-if="vehicle.source === 'greenmotion' && !vehicle.benefits?.limited_km_per_day" class="flex gap-3 items-center text-[12px]">
-                                        <img :src="check" alt="" loading="lazy" />Unlimited mileage
-                                    </span>
-                                    <!-- OK Mobility mileage info -->
-                                    <span v-else-if="vehicle.source === 'okmobility' && vehicle.benefits?.limited_km_per_day === false" class="flex gap-3 items-center text-[12px]">
-                                        <img :src="check" alt="" loading="lazy" />Unlimited mileage
-                                    </span>
+                                    <!-- OK Mobility mileage info - only show if limited -->
                                     <span v-else-if="vehicle.source === 'okmobility' && vehicle.benefits?.limited_km_per_day === true" class="flex gap-3 items-center text-[12px]">
                                         <img :src="check" alt="" loading="lazy" />Limited mileage
                                     </span>
