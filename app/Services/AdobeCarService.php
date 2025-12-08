@@ -94,10 +94,10 @@ class AdobeCarService
 
         // Adobe API expects query parameters for GetAvailabilityWithPrice
         $queryParams = [
-            'pickupoffice' => $params['pickupoffice'] ?? '',
-            'returnoffice' => $params['returnoffice'] ?? $params['pickupoffice'] ?? '',
-            'startdate' => $params['startdate'] ?? '',
-            'enddate' => $params['enddate'] ?? '',
+            'pickupOffice' => $params['pickupOffice'] ?? $params['pickupoffice'] ?? '',
+            'returnOffice' => $params['returnOffice'] ?? $params['returnoffice'] ?? $params['pickupOffice'] ?? $params['pickupoffice'] ?? '',
+            'startDate' => $params['startDate'] ?? $params['startdate'] ?? '',
+            'endDate' => $params['endDate'] ?? $params['enddate'] ?? '',
             'customerCode' => 'Z11338' // Valid Adobe customer code
         ];
 
@@ -226,11 +226,11 @@ class AdobeCarService
 
         // Adobe API GetCategoryWithFare parameters
         $queryParams = [
-            'pickupoffice' => $locationCode,
+            'pickupOffice' => $locationCode,
             'returnOffice' => $locationCode, // Required field
             'category' => $category,
-            'startdate' => $dates['startdate'],
-            'enddate' => $dates['enddate'],
+            'startDate' => $dates['startDate'] ?? $dates['startdate'] ?? '',
+            'endDate' => $dates['endDate'] ?? $dates['enddate'] ?? '',
             'customerCode' => 'Z11338', // Valid Adobe customer code
             'idioma' => 'en' // Required language field
         ];

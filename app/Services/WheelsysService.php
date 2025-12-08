@@ -53,7 +53,7 @@ class WheelsysService
             'format' => 'json'
         ];
 
-        return $this->executeWithRetry(function() use ($url, $params) {
+        return $this->executeWithRetry(function () use ($url, $params) {
             Log::info('Wheelsys API Request (getVehicles): ' . $url, ['params' => $params]);
 
             $response = Http::timeout(30)->get($url, $params);
@@ -100,7 +100,7 @@ class WheelsysService
             'format' => 'json'
         ];
 
-        return $this->executeWithRetry(function() use ($url, $params) {
+        return $this->executeWithRetry(function () use ($url, $params) {
             Log::info('Wheelsys API Request (getStations): ' . $url);
 
             $response = Http::timeout(30)->get($url, $params);
@@ -137,7 +137,7 @@ class WheelsysService
             'format' => 'json'
         ];
 
-        return $this->executeWithRetry(function() use ($url, $params) {
+        return $this->executeWithRetry(function () use ($url, $params) {
             Log::info('Wheelsys API Request (getVehicleGroups): ' . $url);
 
             $response = Http::timeout(30)->get($url, $params);
@@ -174,7 +174,7 @@ class WheelsysService
             'format' => 'json'
         ];
 
-        return $this->executeWithRetry(function() use ($url, $params) {
+        return $this->executeWithRetry(function () use ($url, $params) {
             Log::info('Wheelsys API Request (getOptions): ' . $url);
 
             $response = Http::timeout(30)->get($url, $params);
@@ -220,6 +220,9 @@ class WheelsysService
             'availability' => $rate['Availability'] ?? 'N/A'
         ]);
 
+        $acrissCode = $rate['Acriss'] ?? '';
+        $parsedAcriss = $this->parseAcrissCode($acrissCode);
+
         return [
             'id' => 'wheelsys_' . $rate['GroupCode'] . '_' . uniqid(),
             'source' => 'wheelsys',
@@ -233,12 +236,13 @@ class WheelsysService
             'price_per_week' => $pricePerDay * 7,
             'price_per_month' => $pricePerDay * 30,
             'currency' => 'USD',
-            'seating_capacity' => (int) ($rate['Pax'] ?? 4),
+
             'doors' => (int) ($rate['Doors'] ?? 4),
             'bags' => (int) ($rate['Bags'] ?? 0),
             'suitcases' => (int) ($rate['Suitcases'] ?? 0),
-            'transmission' => 'automatic', // Default as not provided by Wheelsys
-            'fuel' => 'petrol', // Default as not provided by Wheelsys
+            'transmission' => $parsedAcriss['transmission'],
+            'fuel' => $parsedAcriss['fuel'],
+            'seating_capacity' => (int) ($rate['Pax'] ?? $parsedAcriss['seating_capacity']),
             'mileage' => 'unlimited',
             'latitude' => (float) $locationLat,
             'longitude' => (float) $locationLng,
@@ -423,7 +427,7 @@ class WheelsysService
             'format' => 'json'
         ];
 
-        return $this->executeWithRetry(function() use ($url, $params) {
+        return $this->executeWithRetry(function () use ($url, $params) {
             Log::info('Wheelsys API Request (createReservation): ' . $url, ['params' => $params]);
 
             $response = Http::timeout(30)->post($url, $params);
@@ -530,11 +534,12 @@ class WheelsysService
 
         // Based on the actual API response structure you showed me
         // The response might be directly the vehicles object, not wrapped in 'vehicles' key
-        if (!isset($responseData['Rates']) && !isset($responseData['vehicles'])) {
+        if (!isset($responseData['Rates']) && !isset($responseData['vehicles']) && !isset($responseData['Stations'])) {
             Log::warning('Wheelsys API response structure unexpected - checking available keys');
             Log::debug('Available response keys: ' . implode(', ', array_keys($responseData)));
             return true; // Allow processing - let the controller handle it
         }
+
 
         return true; // Response seems valid for processing
     }
@@ -551,5 +556,39 @@ class WheelsysService
             'last_failure_time' => $this->lastFailureTime,
             'timeout' => $this->circuitBreakerTimeout
         ];
+    }
+    /**
+     * Parse ACRISS/SIPP code to get vehicle details
+     */
+    private function parseAcrissCode($code)
+    {
+        $code = strtoupper($code ?? '');
+        $data = [
+            'transmission' => 'manual', // Default
+            'fuel' => 'petrol', // Default
+            'seating_capacity' => 4, // Default
+        ];
+
+        if (strlen($code) < 4) {
+            return $data;
+        }
+
+        // 3rd letter: Transmission
+        $transmissionChar = $code[2];
+        if (in_array($transmissionChar, ['A', 'B', 'D'])) {
+            $data['transmission'] = 'automatic';
+        }
+
+        // 4th letter: Fuel/AC
+        $fuelChar = $code[3];
+        if (in_array($fuelChar, ['D', 'Q'])) {
+            $data['fuel'] = 'diesel';
+        } elseif (in_array($fuelChar, ['H', 'I'])) {
+            $data['fuel'] = 'hybrid';
+        } elseif (in_array($fuelChar, ['E', 'C'])) {
+            $data['fuel'] = 'electric';
+        }
+
+        return $data;
     }
 }

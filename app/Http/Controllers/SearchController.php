@@ -592,9 +592,14 @@ class SearchController extends Controller
                                         'price_per_day' => (float) ($vehicle['pli'] ?? 0), // pli = base daily rate
                                         'price_per_week' => (float) (($vehicle['pli'] ?? 0) * 7),
                                         'price_per_month' => (float) (($vehicle['pli'] ?? 0) * 30),
+
                                         'currency' => 'USD', // Adobe uses USD
                                         'transmission' => ($vehicle['manual'] ?? false) ? 'manual' : 'automatic',
-                                        'fuel' => null, // Adobe doesn't provide fuel type
+                                        // Adobe doesn't seem to provide fuel info, default to petrol if unknown or try to guess from type?
+                                        // For now, let's leave it nullable or 'petrol' if we want to force it.
+                                        // But wait, the filter requires 'petrol', 'diesel', 'electric'.
+                                        // Let's check 'type' field?
+                                        'fuel' => 'petrol', // Defaulting to petrol as most rental cars are, minimizing 'N/A' issues
                                         'seating_capacity' => (int) ($vehicle['passengers'] ?? 4),
                                         'mileage' => null, // Adobe doesn't provide mileage info
                                         'latitude' => (float) $locationLat,
@@ -724,6 +729,10 @@ class SearchController extends Controller
                                         $mileage = $vehicleData['kmsIncluded'] === 'true' ? 'Unlimited' : 'Limited';
                                     }
 
+                                    // Parse SIPP code for vehicle details
+                                    $sippCode = $vehicleData['SIPP'] ?? null;
+                                    $parsedSipp = $this->parseSippCode($sippCode);
+
                                     // Extract extras if available
                                     $extras = [];
                                     if (isset($vehicleData['allExtras']['allExtra'])) {
@@ -738,13 +747,16 @@ class SearchController extends Controller
                                         'source' => 'okmobility',
                                         'brand' => $vehicleName, // Use the full Group_Name as provided by API
                                         'model' => $vehicleName, // Same as brand since OK Mobility provides full descriptive name
-                                        'sipp_code' => $vehicleData['SIPP'] ?? null,
+                                        'sipp_code' => $sippCode,
                                         'image' => !empty($vehicleData['imageURL']) ? $vehicleData['imageURL'] : $this->getOkMobilityImageUrl($groupId),
                                         'price_per_day' => $pricePerDay,
                                         'price_per_week' => $pricePerDay * 7, // Calculate weekly price
                                         'price_per_month' => $pricePerDay * 30, // Calculate monthly price
                                         'currency' => 'EUR', // OK Mobility uses EUR
-                                        // Don't include transmission, fuel, seating_capacity as OK Mobility doesn't provide these
+                                        'transmission' => $parsedSipp['transmission'],
+                                        'fuel' => $parsedSipp['fuel'],
+                                        'seating_capacity' => $parsedSipp['seating_capacity'] ?? 4, // Use parsed seating or default
+                                        'category' => $parsedSipp['category'] ?? 'Unknown', // Use parsed SIPP category
                                         'mileage' => $mileage,
                                         'latitude' => (float) $locationLat,
                                         'longitude' => (float) $locationLng,
@@ -938,6 +950,16 @@ class SearchController extends Controller
                                     // Convert total amount to per day if needed
                                     $pricePerDay = $vehicle['total_amount'] ?? 0;
 
+                                    // Parse SIPP if available to fill holes
+                                    $sippCode = $vehicle['sipp_code'] ?? '';
+                                    $parsedSipp = $this->parseSippCode($sippCode);
+
+                                    $transmission = $vehicle['transmission'] ?? $parsedSipp['transmission'];
+                                    $fuel = $vehicle['fuel'] ?? $parsedSipp['fuel'];
+                                    // Ensure lowercase
+                                    $transmission = strtolower($transmission ?? 'manual');
+                                    $fuel = strtolower($fuel ?? 'petrol');
+
                                     $providerVehicles->push((object) [
                                         'id' => 'locauto_rent_' . $vehicle['id'],
                                         'source' => 'locauto_rent',
@@ -948,15 +970,16 @@ class SearchController extends Controller
                                         'price_per_week' => null,
                                         'price_per_month' => null,
                                         'currency' => $vehicle['currency'] ?? 'EUR',
-                                        'transmission' => $vehicle['transmission'] ?? null,
-                                        'fuel' => $vehicle['fuel'] ?? null,
+                                        'transmission' => $transmission,
+                                        'fuel' => $fuel,
+                                        'category' => $parsedSipp['category'] ?? ($vehicle['category'] ?? 'Unknown'), // Use SIPP or fallback
                                         'seating_capacity' => isset($vehicle['seating_capacity']) ? (int) $vehicle['seating_capacity'] : null,
                                         'mileage' => $vehicle['mileage'] ?? null, // Only show if provided by API
                                         'latitude' => (float) $locationLat,
                                         'longitude' => (float) $locationLng,
                                         'full_vehicle_address' => $currentProviderLocationName,
                                         'provider_pickup_id' => $currentProviderLocationId,
-                                        'sipp_code' => $vehicle['sipp_code'] ?? '',
+                                        'sipp_code' => $sippCode,
                                         'benefits' => (object) [
                                             'minimum_driver_age' => (int) ($validated['age'] ?? 21),
                                             'pay_on_arrival' => true,
@@ -999,12 +1022,24 @@ class SearchController extends Controller
                 return false;
             if (!empty($validated['fuel']) && strcasecmp($vehicle->fuel, $validated['fuel']) != 0)
                 return false;
+            if (!empty($validated['category_id'])) {
+                if (is_numeric($validated['category_id'])) {
+                    return false; // Metric ID usually implies internal category
+                } else {
+                    if (strcasecmp($vehicle->category ?? '', $validated['category_id']) != 0) {
+                        return false;
+                    }
+                }
+            }
             if (!empty($validated['price_range'])) {
                 $range = explode('-', $validated['price_range']);
-                if ($vehicle->price_per_day < (int) $range[0] || $vehicle->price_per_day > (int) $range[1])
+                $price = (float) $vehicle->price_per_day;
+                if ($price < (float) $range[0] || $price > (float) $range[1])
                     return false;
             }
             if (!empty($validated['mileage'])) {
+                if ($vehicle->mileage === null || $vehicle->mileage === 'Unknown')
+                    return true;
                 $range = explode('-', $validated['mileage']);
                 $mileageValue = (int) $vehicle->mileage;
                 if ($mileageValue < (int) $range[0] || $mileageValue > (int) $range[1])
@@ -1023,12 +1058,24 @@ class SearchController extends Controller
                 return false;
             if (!empty($validated['fuel']) && strcasecmp($vehicle->fuel, $validated['fuel']) != 0)
                 return false;
+            if (!empty($validated['category_id'])) {
+                if (is_numeric($validated['category_id'])) {
+                    return false; // Metric ID usually implies internal category
+                } else {
+                    if (strcasecmp($vehicle->category ?? '', $validated['category_id']) != 0) {
+                        return false;
+                    }
+                }
+            }
             if (!empty($validated['price_range'])) {
                 $range = explode('-', $validated['price_range']);
-                if ($vehicle->price_per_day < (int) $range[0] || $vehicle->price_per_day > (int) $range[1])
+                $price = (float) $vehicle->price_per_day;
+                if ($price < (float) $range[0] || $price > (float) $range[1])
                     return false;
             }
             if (!empty($validated['mileage'])) {
+                if ($vehicle->mileage === null || $vehicle->mileage === 'Unknown')
+                    return true;
                 $range = explode('-', $validated['mileage']);
                 $mileageValue = (int) $vehicle->mileage;
                 if ($mileageValue < (int) $range[0] || $mileageValue > (int) $range[1])
@@ -1058,6 +1105,28 @@ class SearchController extends Controller
         $combinedSeatingCapacities = collect($seatingCapacities)->merge($allProviderSeatingCapacities)->unique()->sort()->values()->all();
         $combinedTransmissions = collect($transmissions)->merge($allProviderTransmissions)->map(fn($val) => trim($val))->unique(fn($val) => strtolower($val))->sort()->values()->all();
         $combinedFuels = collect($fuels)->merge($allProviderFuels)->map(fn($val) => trim($val))->unique(fn($val) => strtolower($val))->sort()->values()->all();
+
+        $categoriesFromOptions = [];
+        if ($internalVehiclesCollection->isNotEmpty()) {
+            $categoryIds = $internalVehiclesCollection->pluck('category_id')->unique()->filter();
+            if ($categoryIds->isNotEmpty()) {
+                $categoriesFromOptions = VehicleCategory::whereIn('id', $categoryIds)->select('id', 'name')->get()->toArray();
+            }
+        }
+
+        // Add Provider Categories to Options
+        $providerCategories = $providerVehicles->pluck('category')->merge($okMobilityVehicles->pluck('category'))
+            ->unique()
+            ->filter()
+            ->map(function ($cat) {
+                return ['id' => $cat, 'name' => ucfirst($cat)];
+            })
+            ->values()
+            ->all();
+
+        $categoriesFromOptions = array_merge($categoriesFromOptions, $providerCategories);
+        // Ensure unique
+        $categoriesFromOptions = collect($categoriesFromOptions)->unique('id')->values()->all();
 
         $seoMeta = \App\Models\SeoMeta::with('translations')->where('url_slug', '/s')->first();
 
@@ -1316,6 +1385,7 @@ class SearchController extends Controller
         if ($categoryIds->isNotEmpty()) {
             $categoriesFromOptions = VehicleCategory::whereIn('id', $categoryIds)->select('id', 'name')->get()->toArray();
         }
+
         $allCategoriesForPage = VehicleCategory::select('id', 'name', 'slug')->get()->toArray();
 
 
@@ -1330,6 +1400,19 @@ class SearchController extends Controller
         }
         if (!empty($validated['fuel'])) {
             $internalVehiclesQuery->where('fuel', $validated['fuel']);
+        }
+        if (!empty($validated['category_id'])) {
+            // If filter is numeric, use vehicle_category_id/category_id
+            // If filter is string, internal vehicles might not match unless we search by category name?
+            // For internal, we usually use ID.
+            if (is_numeric($validated['category_id'])) {
+                $internalVehiclesQuery->where('vehicle_category_id', $validated['category_id']);
+            } else {
+                // Try to find category ID by name if a string is passed (unlikely for internal logic but good callback)
+                // Or just fail for internal if string is used (assuming user selected a provider category like "Mini")
+                // Let's assume mismatch -> no internal results
+                $internalVehiclesQuery->where('id', -1); // Force empty
+            }
         }
         if (!empty($validated['price_range'])) {
             $range = explode('-', $validated['price_range']);
@@ -1631,5 +1714,71 @@ class SearchController extends Controller
         }
 
         return $photo;
+    }
+    /**
+     * Parse SIPP/ACRISS code to get vehicle details
+     */
+    private function parseSippCode($sipp)
+    {
+        $sipp = strtoupper($sipp ?? '');
+        $data = [
+            'transmission' => 'manual', // Default
+            'fuel' => 'petrol', // Default
+            'seating_capacity' => 4, // Default
+            'category' => 'Unknown'
+        ];
+
+        if (strlen($sipp) < 4) {
+            return $data;
+        }
+
+        // 1st letter: Category
+        // M=Mini, N=Mini, E=Economy, H=Economy, C=Compact, I=Intermediate, S=Standard, F=Fullsize, P=Premium, L=Luxury, X=Special
+        $categoryChar = $sipp[0];
+        $categories = [
+            'M' => 'Mini',
+            'N' => 'Mini', // Reverted to standard SIPP/ACRISS default or 'Mini'
+            'E' => 'Economy',
+            'H' => 'Economy',
+            'C' => 'Compact',
+            'I' => 'Intermediate',
+            'S' => 'Standard',
+            'F' => 'Fullsize',
+            'P' => 'Premium',
+            'L' => 'Luxury',
+            'X' => 'Special',
+            'J' => 'SUV',
+            // Proprietary/Group Mappings - Keeping these generic keys if they don't conflict, or remove if user wants full reset.
+            // User specifically mentioned companies have their own SIPP.
+            // Safe to revert to cleaner state.
+            'A' => 'Mini', // Keeping generic Group A
+            'B' => 'Economy', // Keeping generic Group B
+            'D' => 'Intermediate', // Keeping generic Group D
+            'G' => 'Fullsize', // Keeping generic Group G
+            'K' => 'Van', // Keeping generic Group K
+        ];
+        if (isset($categories[$categoryChar])) {
+            $data['category'] = $categories[$categoryChar];
+        }
+
+        // 3rd letter: Transmission
+        // M=Manual, N=Manual, C=Manual, A=Automatic, B=Automatic, D=Automatic
+        $transmissionChar = $sipp[2];
+        if (in_array($transmissionChar, ['A', 'B', 'D'])) {
+            $data['transmission'] = 'automatic';
+        }
+
+        // 4th letter: Fuel/AC
+        // R=Petrol+AC, N=Petrol, D=Diesel+AC, Q=Diesel, H=Hybrid, I=Hybrid, E=Electric, C=Electric, L=LPG, S=LPG, M=Multi fuel, F=Multi fuel, V=Petrol+AC
+        $fuelChar = $sipp[3];
+        if (in_array($fuelChar, ['D', 'Q'])) {
+            $data['fuel'] = 'diesel';
+        } elseif (in_array($fuelChar, ['H', 'I'])) {
+            $data['fuel'] = 'hybrid';
+        } elseif (in_array($fuelChar, ['E', 'C'])) {
+            $data['fuel'] = 'electric';
+        }
+
+        return $data;
     }
 }

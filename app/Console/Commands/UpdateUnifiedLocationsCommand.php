@@ -26,6 +26,7 @@ class UpdateUnifiedLocationsCommand extends Command
     protected $locationMatchingService;
     protected $adobeCarService;
     protected $locautoRentService;
+    protected $wheelsysService;
 
     public function __construct(
         \App\Services\GreenMotionService $greenMotionService,
@@ -33,7 +34,8 @@ class UpdateUnifiedLocationsCommand extends Command
         \App\Services\LocationSearchService $locationSearchService,
         \App\Services\LocationMatchingService $locationMatchingService,
         \App\Services\AdobeCarService $adobeCarService,
-        \App\Services\LocautoRentService $locautoRentService
+        \App\Services\LocautoRentService $locautoRentService,
+        \App\Services\WheelsysService $wheelsysService
     ) {
         parent::__construct();
         $this->greenMotionService = $greenMotionService;
@@ -42,6 +44,7 @@ class UpdateUnifiedLocationsCommand extends Command
         $this->locationMatchingService = $locationMatchingService;
         $this->adobeCarService = $adobeCarService;
         $this->locautoRentService = $locautoRentService;
+        $this->wheelsysService = $wheelsysService;
     }
 
     /**
@@ -69,7 +72,10 @@ class UpdateUnifiedLocationsCommand extends Command
         $locautoLocations = $this->fetchLocautoLocations();
         $this->info('Fetched ' . count($locautoLocations) . ' Locauto Rent locations.');
 
-        $unifiedLocations = $this->mergeAndNormalizeLocations($internalLocations, $greenMotionLocations, $usaveLocations, $okMobilityLocations, $adobeLocations, $locautoLocations);
+        $wheelsysLocations = $this->fetchWheelsysLocations();
+        $this->info('Fetched ' . count($wheelsysLocations) . ' Wheelsys locations.');
+
+        $unifiedLocations = $this->mergeAndNormalizeLocations($internalLocations, $greenMotionLocations, $usaveLocations, $okMobilityLocations, $adobeLocations, $locautoLocations, $wheelsysLocations);
         $this->info('Merged into ' . count($unifiedLocations) . ' unique unified locations.');
 
         $this->saveUnifiedLocations(array_values($unifiedLocations));
@@ -274,7 +280,7 @@ class UpdateUnifiedLocationsCommand extends Command
     private function mergeAndNormalizeLocations(array ...$locationGroups): array
     {
         $allLocations = array_merge(...$locationGroups);
-        
+
         if (empty($allLocations)) {
             return [];
         }
@@ -292,10 +298,10 @@ class UpdateUnifiedLocationsCommand extends Command
         $unifiedLocations = [];
         foreach ($clusters as $index => $cluster) {
             $unified = $this->locationMatchingService->buildUnifiedLocation($cluster);
-            
+
             if (!empty($unified['name'])) {
                 $unifiedLocations[] = $unified;
-                
+
                 // Log significant merges (clusters with more than 1 location)
                 if (count($cluster) > 1) {
                     $providerNames = collect($unified['providers'])->pluck('provider')->unique()->join(', ');
@@ -457,5 +463,55 @@ class UpdateUnifiedLocationsCommand extends Command
         $this->info('Fetched ' . count($locations) . ' Locauto Rent locations (predefined).');
 
         return $locations;
+    }
+
+    private function fetchWheelsysLocations(): array
+    {
+        $this->info('Fetching Wheelsys locations...');
+        try {
+            $response = $this->wheelsysService->getStations();
+
+            if (empty($response) || !isset($response['Stations'])) {
+                $this->error('Failed to retrieve stations from Wheelsys API or empty response.');
+                \Illuminate\Support\Facades\Log::warning('Wheelsys API response missing Stations key.', ['response' => $response]);
+                return [];
+            }
+
+            $locations = [];
+            foreach ($response['Stations'] as $station) {
+                // Safety checks for required fields
+                if (empty($station['Code']) || empty($station['Name'])) {
+                    continue;
+                }
+
+                $stationInfo = $station['StationInformation'] ?? [];
+                $city = $stationInfo['City'] ?? null;
+                // Country code is in the root station object in the docs example
+                $country = $station['Country'] ?? null;
+                $address = $stationInfo['Address'] ?? null;
+                $zip = $stationInfo['ZipCode'] ?? null;
+
+                $locations[] = [
+                    'id' => 'wheelsys_' . $station['Code'],
+                    'label' => $station['Name'],
+                    'below_label' => implode(', ', array_filter([$address, $city, $country])),
+                    'location' => $station['Name'],
+                    'city' => $city,
+                    'state' => null, // Not provided directly
+                    'country' => $country,
+                    'latitude' => (float) ($station['Lat'] ?? 0),
+                    'longitude' => (float) ($station['Long'] ?? 0),
+                    'source' => 'wheelsys',
+                    'matched_field' => 'location',
+                    'provider_location_id' => $station['Code'],
+                ];
+            }
+
+            return $locations;
+
+        } catch (\Exception $e) {
+            $this->error('Error fetching Wheelsys locations: ' . $e->getMessage());
+            return [];
+        }
     }
 }
