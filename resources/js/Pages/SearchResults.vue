@@ -551,11 +551,20 @@ const createCustomIcon = (vehicle, isHighlighted = false) => {
         priceValue = convertCurrency(vehicle.price_per_day, originalCurrency);
         currencySymbol = getCurrencySymbol(selectedCurrency.value);
     } else if (vehicle.source !== 'internal') {
-        const currencyCode = vehicle.products[0]?.currency || 'USD';
-        // Calculate price per day for provider vehicles
-        const totalProviderPrice = parseFloat(vehicle.products[0]?.total || 0);
-        priceValue = totalProviderPrice / numberOfRentalDays.value;
-        priceValue = convertCurrency(priceValue, currencyCode);
+        // Handle specific providers that don't use the standard products array structure
+        if (vehicle.source === 'adobe') {
+            const total = parseFloat(vehicle.tdr || 0);
+            const dailyPrice = numberOfRentalDays.value > 0 ? total / numberOfRentalDays.value : total;
+            priceValue = convertCurrency(dailyPrice, 'USD');
+        } else if ((vehicle.source === 'wheelsys' || vehicle.source === 'locauto_rent') && vehicle.price_per_day) {
+            priceValue = convertCurrency(vehicle.price_per_day, vehicle.currency || 'USD');
+        } else {
+             const currencyCode = vehicle.products?.[0]?.currency || 'USD';
+            // Calculate price per day for provider vehicles
+            const totalProviderPrice = parseFloat(vehicle.products?.[0]?.total || 0);
+            priceValue = numberOfRentalDays.value > 0 ? totalProviderPrice / numberOfRentalDays.value : totalProviderPrice;
+            priceValue = convertCurrency(priceValue, currencyCode);
+        }
         currencySymbol = getCurrencySymbol(selectedCurrency.value);
     } else {
         const originalCurrency = vehicle.vendor_profile?.currency || 'USD';
