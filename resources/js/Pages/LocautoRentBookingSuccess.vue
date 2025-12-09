@@ -1,52 +1,11 @@
-<script setup lang="ts">
+<script setup>
 import { Head, Link } from '@inertiajs/vue3'
 import { computed } from 'vue'
-import AuthenticatedLayout from '@/layouts/AuthenticatedLayout.vue'
+import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue'
 
-// Define interfaces
-interface Booking {
-  id: number
-  confirmation_number: string
-  pickup_location_code: string
-  dropoff_location_code: string
-  pickup_date: string
-  pickup_time: string
-  return_date: string
-  return_time: string
-  vehicle_code: string
-  vehicle_details: {
-    veh_make_model?: {
-      '@name'?: string
-    }
-    picture_url?: string
-    sipp_code?: string
-    passenger_quantity?: number
-    transmission_type?: string
-    air_condition_ind?: boolean
-  }
-  customer_details: {
-    first_name: string
-    last_name: string
-    email: string
-    phone: string
-  }
-  selected_extras?: Array<{
-    name: string
-    quantity: number
-    total: number
-  }>
-  total_amount: number
-  currency: string
-  status: string
-  payment_type: string
-  created_at: string
-}
-
-interface Props {
-  booking: Booking
-}
-
-const props = defineProps<Props>()
+const props = defineProps({
+  booking: Object
+})
 
 // Computed properties
 const vehicle = computed(() => props.booking.vehicle_details)
@@ -63,18 +22,18 @@ const extrasTotal = computed(() => {
 })
 
 // Methods
-function formatPrice(amount: number, currency: string): string {
+function formatPrice(amount, currency) {
   return new Intl.NumberFormat('en-US', {
     style: 'currency',
     currency: currency
   }).format(amount)
 }
 
-function formatDateTime(date: string, time: string): string {
+function formatDateTime(date, time) {
   return new Date(date + ' ' + time).toLocaleString()
 }
 
-function formatDate(date: string): string {
+function formatDate(date) {
   return new Date(date).toLocaleDateString('en-US', {
     weekday: 'long',
     year: 'numeric',
@@ -83,7 +42,7 @@ function formatDate(date: string): string {
   })
 }
 
-function getTransmissionType(type: string): string {
+function getTransmissionType(type) {
   const types = {
     'Automatic': 'Automatic',
     'Manual': 'Manual'
@@ -91,11 +50,11 @@ function getTransmissionType(type: string): string {
   return types[type] || type
 }
 
-function printBooking(): void {
+function printBooking() {
   window.print()
 }
 
-function addToCalendar(): void {
+function addToCalendar() {
   // Create calendar event
   const event = {
     title: `Car Rental - ${vehicle.value.veh_make_model?.['@name'] || 'Locauto Rent'}`,

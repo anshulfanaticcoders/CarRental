@@ -1,65 +1,27 @@
-<script setup lang="ts">
+<script setup>
 import { Head, Link, useForm } from '@inertiajs/vue3'
 import { computed, ref } from 'vue'
 import { route } from 'ziggy-js'
-import AuthenticatedLayout from '@/layouts/AuthenticatedLayout.vue'
+import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue'
 import { usePage } from '@inertiajs/vue3'
 
-// Define interfaces
-interface Vehicle {
-  veh_avail: {
-    vehicle: {
-      veh_make_model: {
-        '@code': string
-        '@name': string
-      }
-      picture_url: string
-      sipp_code: string
-      air_condition_ind: boolean
-      transmission_type: string
-      fuel_type: string
-      passenger_quantity: number
-      baggage_quantity: number
-      door_count: number
-    }
-    total_charge: {
-      rate_total_amount: {
-        '@currency_code': string
-        '#text': string
-      }
-      estimated_total_amount: {
-        '@currency_code': string
-        '#text': string
-      }
-    }
-    rate_qualifiers: {
-      rate_qualifier: Array<{
-        rate_category: string
-        rate_period: string
-      }>
-    }
-  }
-}
-
-interface Props {
-  vehicle: Vehicle
-  pickupLocation: string
-  dropoffLocation: string
-  pickupDate: string
-  pickupTime: string
-  returnDate: string
-  returnTime: string
-  driverAge: number
-  sippDescription: string
-}
-
-const props = defineProps<Props>()
+const props = defineProps({
+  vehicle: Object,
+  pickupLocation: String,
+  dropoffLocation: String,
+  pickupDate: String,
+  pickupTime: String,
+  returnDate: String,
+  returnTime: String,
+  driverAge: Number,
+  sippDescription: String
+})
 
 const page = usePage()
 const baseUrl = page.props.appUrl || window.location.origin
 
 // State
-const selectedExtras = ref<Record<string, boolean>>({})
+const selectedExtras = ref({})
 const loading = ref(false)
 
 // Computed properties
@@ -127,8 +89,8 @@ const grandTotal = computed(() => {
 })
 
 // Methods
-function decodeSIPP(sipp: string): string {
-  const codes = {
+function decodeSIPP(sipp) {
+  const codes1 = {
     'M': 'Mini',
     'E': 'Economy',
     'C': 'Compact',
@@ -137,7 +99,10 @@ function decodeSIPP(sipp: string): string {
     'F': 'Fullsize',
     'P': 'Premium',
     'L': 'Luxury',
-    'X': 'Special',
+    'X': 'Special'
+  }
+
+  const codes2 = {
     'B': '2 doors',
     'C': '2/4 doors',
     'D': '4/5 doors',
@@ -148,28 +113,43 @@ function decodeSIPP(sipp: string): string {
     'T': 'Convertible',
     'F': 'SUV',
     'X': 'Special',
-    'J': 'Open air all terrain',
+    'J': 'Open air all terrain'
+  }
+
+  const codes3 = {
     'M': 'Manual',
     'N': 'Manual',
     'C': 'Automatic',
     'A': 'Automatic',
+    'B': 'Auto-4WD'
+  }
+
+  const codes4 = {
     'R': 'Manual stick shift',
-    'B': 'Diesel',
+    'N': 'No AC',
     'D': 'Diesel',
-    'F': 'Unleaded',
+    'Q': 'Diesel',
     'H': 'Hybrid',
     'I': 'Hybrid electric',
-    'L': 'LPG/Gas',
     'E': 'Electric',
     'C': 'Air conditioning',
-    'R': 'No air conditioning'
+    'L': 'LPG/Gas',
+    'S': 'LPG/Gas',
+    'A': 'Hydrogen',
+    'B': 'Hydrogen',
+    'M': 'Multi fuel',
+    'F': 'Unleaded',
+    'V': 'Petrol',
+    'Z': 'Petrol',
+    'U': 'Ethanol',
+    'X': 'Ethanol'
   }
 
   let description = ''
-  if (codes[sipp[0]]) description += codes[sipp[0]] + ' - '
-  if (codes[sipp[1]]) description += codes[sipp[1]] + ', '
-  if (codes[sipp[2]]) description += codes[sipp[2]] + ', '
-  if (codes[sipp[3]]) description += codes[sipp[3]]
+  if (codes1[sipp[0]]) description += codes1[sipp[0]] + ' - '
+  if (codes2[sipp[1]]) description += codes2[sipp[1]] + ', '
+  if (codes3[sipp[2]]) description += codes3[sipp[2]] + ', '
+  if (codes4[sipp[3]]) description += codes4[sipp[3]]
 
   return description
 }
@@ -204,14 +184,14 @@ function proceedToBooking() {
   })
 }
 
-function formatPrice(amount: number, currency: string): string {
+function formatPrice(amount, currency) {
   return new Intl.NumberFormat('en-US', {
     style: 'currency',
     currency: currency
   }).format(amount)
 }
 
-function getTransmissionType(type: string): string {
+function getTransmissionType(type) {
   const types = {
     'Automatic': 'Automatic',
     'Manual': 'Manual'
@@ -219,7 +199,7 @@ function getTransmissionType(type: string): string {
   return types[type] || type
 }
 
-function getFuelType(type: string): string {
+function getFuelType(type) {
   const types = {
     'Petrol': 'Petrol',
     'Diesel': 'Diesel',

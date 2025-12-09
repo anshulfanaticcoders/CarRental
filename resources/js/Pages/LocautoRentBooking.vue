@@ -1,36 +1,12 @@
-<script setup lang="ts">
+<script setup>
 import { Head, Link, useForm } from '@inertiajs/vue3'
 import { computed, ref } from 'vue'
 import { route } from 'ziggy-js'
-import AuthenticatedLayout from '@/layouts/AuthenticatedLayout.vue'
+import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue'
 
-// Define interfaces
-interface BookingData {
-  vehicle_code: string
-  vehicle_details: Record<string, any>
-  pickup_location_code: string
-  dropoff_location_code: string
-  pickup_date: string
-  pickup_time: string
-  return_date: string
-  return_time: string
-  driver_age: number
-  selected_extras: Array<{
-    code: string
-    name: string
-    price: number
-    quantity: number
-    total: number
-  }>
-  total_amount: number
-  currency: string
-}
-
-interface Props {
-  bookingData: BookingData
-}
-
-const props = defineProps<Props>()
+const props = defineProps({
+  bookingData: Object
+})
 
 // State
 const currentStep = ref(1)
@@ -140,18 +116,18 @@ function submitBooking() {
   })
 }
 
-function formatPrice(amount: number, currency: string): string {
+function formatPrice(amount, currency) {
   return new Intl.NumberFormat('en-US', {
     style: 'currency',
     currency: currency
   }).format(amount)
 }
 
-function formatDateTime(date: string, time: string): string {
+function formatDateTime(date, time) {
   return new Date(date + ' ' + time).toLocaleString()
 }
 
-function getTransmissionType(type: string): string {
+function getTransmissionType(type) {
   const types = {
     'Automatic': 'Automatic',
     'Manual': 'Manual'

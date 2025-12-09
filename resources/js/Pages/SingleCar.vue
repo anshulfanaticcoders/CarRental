@@ -2094,6 +2094,8 @@ const searchUrl = computed(() => {
 </template>
 
 <style scoped>
+@import 'leaflet/dist/leaflet.css';
+
 .loader-overlay {
   position: fixed;
   top: 0;
@@ -2128,7 +2130,7 @@ const searchUrl = computed(() => {
     box-shadow: 0px 0px 32px 0px rgba(196, 196, 196, 0.24);
 }
 
-@import 'leaflet/dist/leaflet.css';
+
 
 .marker-pin {
     width: auto;

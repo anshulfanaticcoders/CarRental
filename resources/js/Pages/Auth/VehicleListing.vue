@@ -2570,6 +2570,8 @@ Object.keys(form).forEach(key => {
 
 
 <style scoped>
+@import 'leaflet/dist/leaflet.css';
+
 select {
     width: 100%;
 }
@@ -2678,7 +2680,7 @@ input[type="range"]::-webkit-slider-runnable-track {
     cursor: pointer;
 }
 
-@import 'leaflet/dist/leaflet.css';
+
 
 .marker-pin {
     width: auto;
