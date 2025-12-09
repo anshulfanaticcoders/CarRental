@@ -379,6 +379,10 @@ const data = {
           title: 'Header/Footer Scripts',
           url: '/admin/header-footer-scripts',
         },
+        {
+          title: 'Home Page Settings', // Added Home Page Settings
+          url: '/admin/settings/homepage',
+        },
       ],
     },
   ],

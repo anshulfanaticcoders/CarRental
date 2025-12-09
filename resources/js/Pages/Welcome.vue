@@ -25,11 +25,7 @@ const plugin = Autoplay({
     stopOnMouseEnter: true,
     stopOnInteraction: false,
 });
-const categoryAutoplay = Autoplay({
-    delay: 4000,
-    stopOnMouseEnter: true,
-    stopOnInteraction: false,
-});
+
 
 const props = defineProps({
     canLogin: {
@@ -38,10 +34,6 @@ const props = defineProps({
     canRegister: {
         type: Boolean,
     },
-    categories: {
-        type: Array,
-        default: () => []
-    },
     blogs: Array,
     testimonials: Array,
     popularPlaces: Array,
@@ -49,6 +41,7 @@ const props = defineProps({
     schema: Array,
     seoMeta: Object,
     pages: Object,
+    heroImage: String, // Dynamic hero image from backend
 });
 
 
@@ -78,27 +71,15 @@ const Testimonials = defineAsyncComponent(() => import('@/Components/Testimonial
 const Faq = defineAsyncComponent(() => import('@/Components/Faq.vue'));
 
 
-// Category Carousel
-// Categories are now passed as a prop from the server.
-// isLoading can be set based on the presence of props.categories.
-const isLoading = ref(!props.categories || props.categories.length === 0);
+// isLoading can be set based on the presence of props.blogs or other data.
+const isLoading = ref(!props.blogs || props.blogs.length === 0);
 
 onMounted(() => {
-    // If categories are passed via props, isLoading should be false.
-    if (props.categories && props.categories.length > 0) {
+    // If blogs are passed via props, isLoading should be false.
+    if (props.blogs && props.blogs.length > 0) {
         isLoading.value = false;
     }
-    // If categories were not passed or are empty, and you still wanted a client-side fallback,
-    // you could add it here. For now, we assume server-side props are the source.
 });
-
-
-// Popular Places data is now passed as a prop from the server.
-// The client-side fetch logic for popularPlaces has been removed.
-
-// FAQs are now passed as a prop from the server.
-// The Faq.vue component might need to be updated to accept `faqs` as a prop
-// if it currently fetches its own data.
 
 const _t = (key) => {
     const { props } = usePage();
@@ -182,6 +163,9 @@ onBeforeUnmount(() => {
 
 import GreenMotionSearchComponent from "@/Components/GreenMotionSearchComponent.vue";
 
+const heroImageSource = computed(() => {
+    return props.heroImage ? props.heroImage : heroImg;
+});
 
 const page = usePage();
 
@@ -272,9 +256,7 @@ const updateSearchUrl = (place) => {
     }
 };
 
-const updateCategorySearchUrl = (category) => {
-    sessionStorage.setItem('searchurl', `/search/category/${category.slug}`);
-};
+
 
 // Animations
 useScrollAnimation('.hero_section', '.hero-content', {
@@ -401,7 +383,7 @@ useScrollAnimation('.blogs-trigger', '.more-button', {
                 </div>
                 <div
                     class="column h-[46rem] w-full relative max-[768px]:h-auto max-[768px]:pb-[2rem] max-[768px]:px-[1.5rem] hero-image">
-                    <img class="rounded-bl-[20px] h-full w-full object-cover max-[768px]:rounded-[20px]" :src="heroImg"
+                    <img class="rounded-bl-[20px] h-full w-full object-cover max-[768px]:rounded-[20px]" :src="heroImageSource"
                         alt="Hero Image" />
                     <div class="bg-customOverlayColor absolute top-0 w-full h-full rounded-bl-[20px]"></div>
                 </div>
@@ -414,66 +396,7 @@ useScrollAnimation('.blogs-trigger', '.more-button', {
                 <SearchBar class="search-bar-animation" />
         </section>
 
-        <section
-            class="ml-[2%] max-[768px]:ml-0 w-[105%] max-[768px]:w-full category-carousel mt-[8rem] min-h-[50vh] py-customVerticalSpacing overflow-hidden max-[768px]:mt-0">
-            <div
-                class="flex min-h-[inherit] items-center gap-24 max-[768px]:flex-col max-[768px]:gap-10 max-[768px]:items-start">
-                <div class="column max-[768px]:px-[1.5rem]">
-                    <h2 class="leading-[1em]">{{ _p('our_categories') }}</h2>
-                </div>
-                <div class="column carousel rounded-[20px] p-6 max-[768px]:rounded-none max-[768px]:pl-3 max-[768px]:py-6"
-                    style="background: linear-gradient(90deg, rgba(21, 59, 79, 0.2) 0%, rgba(21, 59, 79, 0) 94.4%);">
-                    <Carousel class="relative w-full max-[768px]:h-[17rem]" :opts="{ align: 'start' }"
-                        :plugins="[categoryAutoplay]" @mouseenter="categoryAutoplay.stop"
-                        @mouseleave="[categoryAutoplay.reset(), categoryAutoplay.play()]">
-                        <CarouselContent class="max-[768px]:pr-10 max-[768px]:pl-3">
-                            <!-- If data is loaded, show categories from props -->
-                            <template v-if="!isLoading && props.categories && props.categories.length > 0">
-                                <CarouselItem v-for="category in props.categories" :key="category.id"
-                                    class="md:basis-1/2 lg:basis-1/3">
-                                    <div class="p-1">
-                                        <Link :href="route('search.category', { locale: page.props.locale, category_slug: category.slug })" @click="updateCategorySearchUrl(category)" class="category-card-hover">
-                                        <Card class="bg-transparent shadow-none border-none">
-                                            <CardContent
-                                                class="cardContent flex h-[515px] max-[768px]:h-[17rem] items-center justify-center p-6 relative">
-                                                <img class="rounded-[20px] h-full w-full object-cover"
-                                                    :src="`${category.image}`" :alt="category.alt_text || category.name" />
-                                                <div
-                                                    class="category_name absolute bottom-10 left-0 flex justify-between w-full px-8">
-                                                    <span class="text-white text-[2rem] font-semibold">
-                                                        {{ category.name }}
-                                                    </span>
-                                                    <img :src="goIcon" alt=""  />
-                                                </div>
-                                            </CardContent>
-                                        </Card>
-                                        </Link>
-                                    </div>
-                                </CarouselItem>
-                            </template>
 
-                            <!-- If loading, show skeletons -->
-                            <template v-else>
-                                <CarouselItem v-for="index in 3" :key="index" class="md:basis-1/2 lg:basis-1/3">
-                                    <div class="p-1">
-                                        <Card class="bg-transparent shadow-none border-none">
-                                            <CardContent
-                                                class="cardContent flex h-[515px] max-[768px]:h-[20rem] items-center justify-center p-6 relative">
-                                                <Skeleton class="h-[515px] w-[30rem] rounded-xl" />
-                                            </CardContent>
-                                        </Card>
-                                    </div>
-                                </CarouselItem>
-                            </template>
-                        </CarouselContent>
-
-                        <CarouselPrevious />
-                        <CarouselNext />
-                    </Carousel>
-
-                </div>
-            </div>
-        </section>
 
 
         <!------------------------------- Top Destination Places -------------------------------------->
@@ -483,8 +406,7 @@ useScrollAnimation('.blogs-trigger', '.more-button', {
                 <h3 class="text-customDarkBlackColor max-[768px]:text-[1.75rem] max-[768px]:mt-[1rem]">{{ _p('popular_places') }}</h3>
             </div>
             <div class="column max-[768px]:px-[1.5rem]">
-                <Carousel class="relative w-full" :plugins="[plugin]" @mouseenter="plugin.stop"
-                    @mouseleave="[plugin.reset(), plugin.play(), console.log('Running')]">
+                <Carousel class="relative w-full" :plugins="[plugin]">
                     <CarouselContent class="pl-10 pt-[2rem] max-[768px]:pr-10 max-[768px]:pl-2 max-[768px]:pt-0">
                         <!-- Show actual places when data is loaded from props -->
                         <template v-if="props.popularPlaces && props.popularPlaces.length > 0">

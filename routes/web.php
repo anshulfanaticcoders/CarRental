@@ -238,6 +238,10 @@ Route::middleware(['auth', 'role:admin'])->group(function () {
         ->parameters(['header-footer-scripts' => 'headerFooterScript'])
         ->names('admin.header-footer-scripts');
 
+    // Home Page Settings
+    Route::get('/admin/settings/homepage', [\App\Http\Controllers\Admin\HomePageController::class, 'index'])->name('admin.settings.homepage');
+    Route::post('/admin/settings/homepage/hero-image', [\App\Http\Controllers\Admin\HomePageController::class, 'updateHeroImage'])->name('admin.settings.homepage.hero-image');
+
     // Schema Management Routes
     Route::resource('admin/schemas', SchemaController::class)->names('admin.schemas');
 
@@ -257,7 +261,7 @@ Route::middleware(['auth', 'role:admin'])->group(function () {
     Route::post('/admin/affiliate/businesses/{businessId}/model', [AffiliateBusinessModelController::class, 'updateBusinessModel'])->name('admin.affiliate.businesses.model.update');
     Route::delete('/admin/affiliate/businesses/{businessId}/model', [AffiliateBusinessModelController::class, 'deleteBusinessModel'])->name('admin.affiliate.businesses.model.delete');
     Route::get('/admin/affiliate/statistics', [AffiliateBusinessModelController::class, 'getBusinessStatistics'])->name('admin.affiliate.statistics');
-  Route::get('/admin/affiliate/statistics-data', [AffiliateBusinessModelController::class, 'getBusinessStatisticsData'])->name('admin.affiliate.statistics-data');
+    Route::get('/admin/affiliate/statistics-data', [AffiliateBusinessModelController::class, 'getBusinessStatisticsData'])->name('admin.affiliate.statistics-data');
     Route::get('/admin/affiliate/businesses/{businessId}/preview', [AffiliateBusinessModelController::class, 'previewBusinessRates'])->name('admin.affiliate.businesses.preview');
     Route::get('/admin/affiliate/businesses/{businessId}', [AffiliateBusinessModelController::class, 'getBusinessDetails'])->name('admin.affiliate.businesses.show');
     Route::put('/admin/affiliate/businesses/{businessId}', [AffiliateBusinessModelController::class, 'updateBusinessDetails'])->name('admin.affiliate.businesses.update');
@@ -447,7 +451,7 @@ Route::group([
         Route::get('/debug-token/{token}', [AffiliateBusinessController::class, 'debugToken'])->name('debug.token');
     });
 
-  
+
     // Show Blogs on Home page
     Route::get('/', [BlogController::class, 'homeBlogs'])->name('welcome');
     // Route::get('/blog/{blog:slug}', [BlogController::class, 'show'])->name('blog.show');
@@ -456,7 +460,7 @@ Route::group([
     Route::get('/api/footer-categories', [VehicleCategoriesController::class, 'getFooterCategories']);
     Route::get('/api/vehicles/search-locations', [VehicleController::class, 'searchLocations']);
 
-    
+
     // Public QR Code Tracking Routes (with locale prefix)
     Route::get('/affiliate/track/{trackingData}', [AffiliateQrCodeController::class, 'track'])->name('affiliate.qr.track');
     Route::get('/affiliate/qr/{shortCode}', [AffiliateQrCodeController::class, 'qrLanding'])->name('affiliate.qr.landing');
@@ -559,9 +563,9 @@ Route::group([
         // Test the exact query used in controllers
         $blogsQuery = \App\Models\Blog::with('translations')
             ->where('is_published', true)
-            ->where(function($query) use ($currentCountry) {
+            ->where(function ($query) use ($currentCountry) {
                 $query->whereJsonContains('countries', $currentCountry)
-                      ->orWhereNull('countries');
+                    ->orWhereNull('countries');
             });
 
         $allBlogs = \App\Models\Blog::with('translations')
@@ -723,7 +727,7 @@ Route::group([
         Route::get('/{country}/blog/{blog:slug}', [BlogController::class, 'show'])
             ->where('country', '[a-zA-Z]{2}')
             ->name('blog.show');
-        
+
     });
 
     // Stripe Routes
@@ -751,7 +755,7 @@ Route::group([
         // Vendor Payments
         Route::get('/vendor/payments', [BookingController::class, 'getVendorPaymentHistory'])->name('vendor.payments');
 
-    
+
         // Vendor Vehicles
         Route::resource('current-vendor-vehicles', VendorVehicleController::class);
         Route::post('current-vendor-vehicles/bulk-destroy', [VendorVehicleController::class, 'bulkDestroy'])->name('current-vendor-vehicles.bulk-destroy');
@@ -804,7 +808,7 @@ Route::group([
         Route::post('/bulk-vehicle-images/bulk-destroy', [VendorBulkImageController::class, 'bulkDestroy'])->name('vendor.bulk-vehicle-images.bulk-destroy');
     });
 
-  
+
     // Customer Routes
     Route::middleware(['auth', 'role:customer'])->group(function () {
         // User Profile routes
@@ -825,7 +829,7 @@ Route::group([
         Route::get('/favourites', [FavoriteController::class, 'getFavorites'])->name('profile.favourites');
         Route::inertia('inbox', 'Profile/Inbox');
 
-                Route::post('/reviews', [ReviewController::class, 'store'])->name('reviews.store');
+        Route::post('/reviews', [ReviewController::class, 'store'])->name('reviews.store');
         Route::get('/profile/reviews', [ReviewController::class, 'userReviews'])->name('profile.reviews');
 
         // Booking confirmation routes
@@ -864,9 +868,9 @@ Route::group([
         Route::get('/favorites', [FavoriteController::class, 'getFavorites']);
         Route::get('/favorites/status', [FavoriteController::class, 'getFavoriteStatus'])->name('favorites.status');
 
-         // GreenMotion Booking Routes
-    Route::post('/green-motion-booking/charge', [GreenMotionBookingController::class, 'processGreenMotionBookingPayment'])->name('greenmotion.booking.charge');
-     Route::get('/green-motion-booking-success', [GreenMotionBookingController::class, 'greenMotionBookingSuccess'])->name('greenmotion.booking.success');
+        // GreenMotion Booking Routes
+        Route::post('/green-motion-booking/charge', [GreenMotionBookingController::class, 'processGreenMotionBookingPayment'])->name('greenmotion.booking.charge');
+        Route::get('/green-motion-booking-success', [GreenMotionBookingController::class, 'greenMotionBookingSuccess'])->name('greenmotion.booking.success');
         Route::get('/green-motion-booking-cancel', [GreenMotionBookingController::class, 'greenMotionBookingCancel'])->name('greenmotion.booking.cancel');
 
         // Adobe Booking Routes
@@ -876,9 +880,9 @@ Route::group([
         Route::get('/adobe-booking-cancel', [AdobeBookingController::class, 'adobeBookingCancel'])->name('adobe.booking.cancel');
 
         // OK Mobility Booking Routes
-    Route::post('/ok-mobility-booking/charge', [OkMobilityBookingController::class, 'processBookingPayment'])->name('okmobility.booking.charge');
-    Route::get('/ok-mobility-booking-success', [OkMobilityBookingController::class, 'bookingSuccess'])->name('okmobility.booking.success');
-    Route::get('/ok-mobility-booking-cancel', [OkMobilityBookingController::class, 'bookingCancel'])->name('okmobility.booking.cancel');
+        Route::post('/ok-mobility-booking/charge', [OkMobilityBookingController::class, 'processBookingPayment'])->name('okmobility.booking.charge');
+        Route::get('/ok-mobility-booking-success', [OkMobilityBookingController::class, 'bookingSuccess'])->name('okmobility.booking.success');
+        Route::get('/ok-mobility-booking-cancel', [OkMobilityBookingController::class, 'bookingCancel'])->name('okmobility.booking.cancel');
     });
 
     // Vendor status check for vehicle creation
@@ -936,7 +940,7 @@ Route::group([
     Route::get('/green-motion-booking/{id}/checkout', [GreenMotionController::class, 'showGreenMotionBookingPage'])
         ->where('id', '[0-9]+') // Ensure ID is numeric
         ->name('green-motion-booking.checkout');
-    
+
     // Route::get('/{slug}', [ContactUsPageController::class, 'show'])->name('contact.show');
 
     // GreenMotion Single Car Page
@@ -987,13 +991,13 @@ Route::group([
 Route::get('/affiliate/track/{trackingData}', [AffiliateQrCodeController::class, 'track'])->name('affiliate.qr.track.legacy');
 Route::get('/affiliate/qr/{shortCode}', [AffiliateQrCodeController::class, 'qrLanding'])->name('affiliate.qr.landing.legacy');
 
-    Route::get('/green-motion-vehicles', [GreenMotionController::class, 'getGreenMotionVehicles'])->name('green-motion-vehicles');
-    Route::get('/green-motion-countries', [GreenMotionController::class, 'getGreenMotionCountries'])->name('green-motion-countries');
-    Route::get('/green-motion-locations', [GreenMotionController::class, 'getGreenMotionLocations'])->name('green-motion-locations');
-    Route::get('/green-motion-terms-and-conditions', [GreenMotionController::class, 'getGreenMotionTermsAndConditions'])->name('green-motion-terms-and-conditions');
-    Route::get('/green-motion-regions', [GreenMotionController::class, 'getGreenMotionRegions'])->name('green-motion-regions');
-    Route::get('/green-motion-service-areas', [GreenMotionController::class, 'getGreenMotionServiceAreas'])->name('green-motion-service-areas');
-    Route::post('/green-motion-booking', [GreenMotionController::class, 'makeGreenMotionBooking'])->name('green-motion-booking');
+Route::get('/green-motion-vehicles', [GreenMotionController::class, 'getGreenMotionVehicles'])->name('green-motion-vehicles');
+Route::get('/green-motion-countries', [GreenMotionController::class, 'getGreenMotionCountries'])->name('green-motion-countries');
+Route::get('/green-motion-locations', [GreenMotionController::class, 'getGreenMotionLocations'])->name('green-motion-locations');
+Route::get('/green-motion-terms-and-conditions', [GreenMotionController::class, 'getGreenMotionTermsAndConditions'])->name('green-motion-terms-and-conditions');
+Route::get('/green-motion-regions', [GreenMotionController::class, 'getGreenMotionRegions'])->name('green-motion-regions');
+Route::get('/green-motion-service-areas', [GreenMotionController::class, 'getGreenMotionServiceAreas'])->name('green-motion-service-areas');
+Route::post('/green-motion-booking', [GreenMotionController::class, 'makeGreenMotionBooking'])->name('green-motion-booking');
 
 Route::get('/fetch-ok-mobility-stations', function () {
     $okMobilityService = app(\App\Services\OkMobilityService::class);
@@ -1057,7 +1061,7 @@ Route::get('/sitemap-blogs-{country}.xml', [App\Http\Controllers\SiteMapControll
 Route::get('/sitemap-blog-listings.xml', [App\Http\Controllers\SiteMapController::class, 'blogListings']);
 
 // Simple test route to verify routes are working
-Route::get('/test-business-debug/{token}', function($token) {
+Route::get('/test-business-debug/{token}', function ($token) {
     $business = \App\Models\Affiliate\AffiliateBusiness::where('dashboard_access_token', $token)->first();
     if ($business) {
         return response()->json(['found' => true, 'business_id' => $business->id, 'name' => $business->name]);
