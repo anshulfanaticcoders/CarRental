@@ -7,14 +7,14 @@ return [
     'typewriter_text_2' => 'Step 1: Book online. Step 2: Pick it up. Step 3: Drop it off.',
     'typewriter_text_3' => 'No hidden fees. No stress. Vrooem\'s got you covered.',
     'our_partner' => 'Green Motion Trusted Car Rental Partner',
-    
+
     // Categories Section
     'our_categories' => 'Our Categories',
-    
+
     // Popular Places Section
     'top_destinations' => 'Top Destinations',
     'popular_places' => 'Popular places',
-    
+
     // Why Choose Us Section
     'why_choose_us' => 'Why Choose Us',
     'why_subtitle' => "From luxury sedans to budget-friendly compacts, we've got something for every journey",
@@ -26,13 +26,13 @@ return [
     'modern_fleet_text' => 'Select your desired pickup and return dates, along with the time.',
     'insurance_coverage' => 'Insurance Coverage',
     'insurance_coverage_text' => 'Select your desired pickup and return dates, along with the time.',
-    
+
     // Blogs Section
     'latest_articles' => 'Latest Articles',
     'blogs_heading' => 'Stay informed and inspired for your next journey',
     'read_story' => 'Read Story',
     'more_blogs' => 'More',
-    
+
     // HowItWorks translations
     'how_it_works_title' => 'How It Works',
     'how_it_works_subtitle' => 'Streamlined processes for a hassle-free experience',
@@ -57,7 +57,7 @@ return [
 
     // Search Bar translations
     'search_bar_header' => 'Do you need a rental car?',
-    'pickup_return_location_label' => 'Pickup & Return Location',
+    'pickup_return_location_label' => 'Pickup Location',
     'pickup_location_placeholder' => 'Pickup Location',
     'searching_placeholder' => 'Searching...',
     'pickup_date_label' => 'Pickup Date',
@@ -69,5 +69,5 @@ return [
     'search_around_me' => 'Search around me..',
     'popular_searches_header' => 'Popular Searches',
     'no_location_found' => 'No location found. Please try another search.',
-    
+
 ];

@@ -6,17 +6,17 @@ return [
     'typewriter_text_1' => 'In een flits geboekt. Weg in een Vrooem.',
     'typewriter_text_2' => 'Stap 1: Boek online. Stap 2: Ophalen. Stap 3: Afleveren.',
     'typewriter_text_3' => 'Geen verborgen kosten. Geen stress. Vrooem regelt alles.',
-    
+
     // Categories Section
     'our_categories' => 'Onze Categorieën',
-    
+
     // Popular Places Section
     'top_destinations' => 'Top Bestemmingen',
     'popular_places' => 'Populaire plaatsen',
-    
+
     // Why Choose Us Section
     'why_choose_us' => 'Waarom Ons Kiezen',
-    'why_subtitle' =>'Van luxe sedans tot budgetvriendelijke compacts, wij hebben iets voor elke reis',
+    'why_subtitle' => 'Van luxe sedans tot budgetvriendelijke compacts, wij hebben iets voor elke reis',
     'convenient_locations' => 'Handige Locaties',
     'convenient_locations_text' => 'Met meerdere verhuurlocaties op luchthavens, in stadscentra en op populaire bestemmingen is het ophalen en terugbrengen van uw huurauto snel en eenvoudig.',
     'fast_booking' => 'Snelle en Eenvoudige Boekingsprocedure',
@@ -25,7 +25,7 @@ return [
     'modern_fleet_text' => 'Selecteer uw gewenste ophaal- en retourdatum, samen met het tijdstip.',
     'insurance_coverage' => 'Verzekeringsdekking',
     'insurance_coverage_text' => 'Selecteer uw gewenste ophaal- en retourdatum, samen met het tijdstip.',
-    
+
     // Blogs Section
     'latest_articles' => 'Laatste Artikelen',
     'blogs_heading' => 'Blijf geïnformeerd en geïnspireerd voor uw volgende reis',
@@ -55,7 +55,7 @@ return [
 
     // Search Bar translations
     'search_bar_header' => 'Heeft u een huurauto nodig?',
-    'pickup_return_location_label' => 'Ophaal- en inleverlocatie',
+    'pickup_return_location_label' => 'Ophaallocatie',
     'pickup_location_placeholder' => 'Ophaallocatie',
     'searching_placeholder' => 'Zoeken...',
     'pickup_date_label' => 'Ophaaldatum',

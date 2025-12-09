@@ -7,84 +7,133 @@
           <span class="text-[1.75rem] font-medium max-[768px]:text-[1.5rem]">{{ _t('homepage', 'search_bar_header') }}</span>
         </div>
         <form @submit.prevent="submit"
-          class="column w-[80%] max-[768px]:w-[100%] px-[2rem] py-[1rem] rounded-tr-[16px] rounded-br-[16px] bg-white grid grid-cols-7 max-[768px]:flex max-[768px]:flex-col max-[768px]:gap-10 max-[768px]:rounded-tr-[0] max-[768px]:rounded-bl-[16px] max-[768px]:px-[1rem]">
-          <div class="col col-span-2 flex flex-col justify-center">
-            <div class="flex flex-col">
-              <div class="col">
-                <label for="" class="mb-4 inline-block text-customLightGrayColor font-medium">{{ _t('homepage', 'pickup_return_location_label') }}</label>
-                <div class="flex items-end relative">
-                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"
-                    class="absolute left-[-0.35rem] top-[-0.15rem]">
-                    <path
-                      d="M5.25 21.75H18.75M15 9.75C15 11.4069 13.6569 12.75 12 12.75C10.3431 12.75 9 11.4069 9 9.75C9 8.09315 10.3431 6.75 12 6.75C13.6569 6.75 15 8.09315 15 9.75ZM19.5 9.75C19.5 16.5 12 21.75 12 21.75C12 21.75 4.5 16.5 4.5 9.75C4.5 7.76088 5.29018 5.85322 6.6967 4.4467C8.10322 3.04018 10.0109 2.25 12 2.25C13.9891 2.25 15.8968 3.04018 17.3033 4.4467C18.7098 5.85322 19.5 7.76088 19.5 9.75Z"
-                      stroke="#153B4F" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" />
-                  </svg>
-                  <input type="text" v-model="form.where" @input="handleSearchInput" @click="handleInputClick"
-                    :placeholder="isSearching ? _t('homepage', 'searching_placeholder') : _t('homepage', 'pickup_location_placeholder')"
-                    class="pl-7 border-b border-customLightGrayColor focus:outline-none w-[80%] max-[768px]:w-full"
-                    required />
-                  <!-- <span v-if="isSearching" class="absolute right-[1rem] top-0 text-customLightGrayColor">Searching...</span> -->
+          class="column w-[80%] max-[768px]:w-[100%] px-[2rem] py-[1.5rem] rounded-tr-[16px] rounded-br-[16px] bg-white grid grid-cols-12 gap-6 items-center max-[768px]:flex max-[768px]:flex-col max-[768px]:gap-6 max-[768px]:rounded-tr-[0] max-[768px]:rounded-bl-[16px] max-[768px]:px-[1.5rem] shadow-sm">
+          
+          <!-- Locations Section -->
+          <div class="col-span-6 flex gap-4 relative" :class="{'flex-col': !isProviderLocation, 'flex-row': isProviderLocation}">
+             <!-- Pickup Location -->
+             <div class="w-full relative group">
+                <label class="block text-xs font-semibold text-customLightGrayColor uppercase tracking-wider mb-2 pl-1">{{ _t('homepage', 'pickup_return_location_label') }}</label>
+                <div class="flex items-center bg-gray-50 border border-gray-200 rounded-xl px-3 py-3 transition-colors group-hover:border-customPrimaryColor focus-within:border-customPrimaryColor focus-within:ring-1 focus-within:ring-customPrimaryColor/20">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" class="text-customPrimaryColor mr-3 flex-shrink-0">
+                        <path d="M12 21.75C12 21.75 19.5 16.5 19.5 9.75C19.5 7.76088 18.7098 5.85322 17.3033 4.4467C15.8968 3.04018 13.9891 2.25 12 2.25C10.0109 2.25 8.10322 3.04018 6.6967 4.4467C5.29018 5.85322 4.5 7.76088 4.5 9.75C4.5 16.5 12 21.75 12 21.75ZM15 9.75C15 11.4069 13.6569 12.75 12 12.75C10.3431 12.75 9 11.4069 9 9.75C9 8.09315 10.3431 6.75 12 6.75C13.6569 6.75 15 8.09315 15 9.75Z" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" />
+                    </svg>
+                    <input type="text" v-model="form.where" @input="handleSearchInput" @click="handleInputClick"
+                        :placeholder="isSearching ? _t('homepage', 'searching_placeholder') : _t('homepage', 'pickup_location_placeholder')"
+                        class="bg-transparent border-none p-0 w-full text-customDarkBlackColor placeholder-gray-400 focus:ring-0 focus:border-none focus:outline-none text-sm font-medium" required />
                 </div>
-              </div>
-              <div v-if="isProviderLocation" class="col mt-4">
-                <label for="" class="mb-4 inline-block text-customLightGrayColor font-medium">Dropoff Location</label>
-                <div class="flex items-end relative">
-                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"
-                    class="absolute left-[-0.35rem] top-[-0.15rem]">
-                    <path
-                      d="M5.25 21.75H18.75M15 9.75C15 11.4069 13.6569 12.75 12 12.75C10.3431 12.75 9 11.4069 9 9.75C9 8.09315 10.3431 6.75 12 6.75C13.6569 6.75 15 8.09315 15 9.75ZM19.5 9.75C19.5 16.5 12 21.75 12 21.75C12 21.75 4.5 16.5 4.5 9.75C4.5 7.76088 5.29018 5.85322 6.6967 4.4467C8.10322 3.04018 10.0109 2.25 12 2.25C13.9891 2.25 15.8968 3.04018 17.3033 4.4467C18.7098 5.85322 19.5 7.76088 19.5 9.75Z"
-                      stroke="#153B4F" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" />
-                  </svg>
-                  <input type="text" v-model="form.dropoff_where" @click="handleDropoffInputClick"
-                    placeholder="Enter dropoff location"
-                    class="pl-7 border-b border-customLightGrayColor focus:outline-none w-[80%] max-[768px]:w-full"
-                    readonly />
+             </div>
+
+             <!-- Dropoff Location -->
+             <div v-if="isProviderLocation" class="w-full relative group">
+                <label class="block text-xs font-semibold text-customLightGrayColor uppercase tracking-wider mb-2 pl-1">Dropoff Location</label>
+                <div class="flex items-center bg-gray-50 border border-gray-200 rounded-xl px-3 py-3 transition-colors group-hover:border-customPrimaryColor focus-within:border-customPrimaryColor focus-within:ring-1 focus-within:ring-customPrimaryColor/20">
+                     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" class="text-customPrimaryColor mr-3 flex-shrink-0">
+                        <path d="M12 21.75C12 21.75 19.5 16.5 19.5 9.75C19.5 7.76088 18.7098 5.85322 17.3033 4.4467C15.8968 3.04018 13.9891 2.25 12 2.25C10.0109 2.25 8.10322 3.04018 6.6967 4.4467C5.29018 5.85322 4.5 7.76088 4.5 9.75C4.5 16.5 12 21.75 12 21.75ZM15 9.75C15 11.4069 13.6569 12.75 12 12.75C10.3431 12.75 9 11.4069 9 9.75C9 8.09315 10.3431 6.75 12 6.75C13.6569 6.75 15 8.09315 15 9.75Z" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" />
+                    </svg>
+                    <input type="text" v-model="form.dropoff_where" @click="handleDropoffInputClick"
+                        placeholder="Enter dropoff location"
+                        class="bg-transparent border-none p-0 w-full text-customDarkBlackColor placeholder-gray-400 focus:ring-0 focus:border-none focus:outline-none text-sm font-medium" readonly />
                 </div>
-              </div>
+             </div>
+          </div>
+
+          <!-- Date Picker Section -->
+          <div class="col-span-4 relative rental-dates-container">
+            <div class="flex flex-col w-full group">
+              <label class="block text-xs font-semibold text-customLightGrayColor uppercase tracking-wider mb-2 pl-1">Rental dates</label>
+              <VueDatePicker
+                v-model="dateRange"
+                range
+                multi-calendars="2"
+                :enable-time-picker="false"
+                :min-date="new Date()"
+                :format="formatRangeDate"
+                :close-on-click-outside="true"
+                @internal-model-change="handleDateUpdate"
+                placeholder="Select dates"
+                class="w-full"
+                ref="datepicker"
+              >
+                  <template #trigger>
+                      <div class="flex items-center justify-between bg-gray-50 border border-gray-200 rounded-xl px-3 py-3 cursor-pointer transition-colors group-hover:border-customPrimaryColor hover:bg-gray-100">
+                          <div class="flex items-center gap-2 overflow-hidden">
+                              <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-customPrimaryColor flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                              </svg>
+                              <span v-if="dateRange && dateRange[0] && dateRange[1]" class="text-customDarkBlackColor font-medium text-sm truncate">
+                                  {{ formatRangeDate(dateRange) }}
+                                  <span class="text-xs text-customPrimaryColor font-semibold ml-1 bg-customPrimaryColor/10 px-1.5 py-0.5 rounded">
+                                    {{ totalDays }} {{ totalDays > 1 ? 'days' : 'day' }}
+                                  </span>
+                              </span>
+                              <span v-else class="text-gray-400 text-sm">
+                                  Select Rental Dates
+                              </span>
+                          </div>
+                      </div>
+                  </template>
+
+                  <template #action-row="{ selectDate, closePicker }">
+                      <div class="flex flex-col bg-[#0F2936] text-white rounded-[3px] overflow-hidden w-full">
+                          <!-- Time Selection Row -->
+                          <div class="grid grid-cols-2 gap-4 p-5 border-b border-white/10">
+                              <!-- Pick-up time -->
+                              <div class="flex flex-col">
+                                  <label class="text-[11px] uppercase tracking-wider text-gray-300 font-bold mb-2">Pick-up time</label>
+                                  <div class="relative group">
+                                      <select v-model="selectedStartTime" class="w-full appearance-none bg-[#1a3b4b] border border-[#2c5265] rounded-lg px-4 py-2.5 text-sm text-white font-medium focus:ring-2 focus:ring-customPrimaryColor focus:border-customPrimaryColor outline-none cursor-pointer transition-all hover:bg-[#23485a]">
+                                          <option v-for="time in timeOptions" :key="`start-${time}`" :value="time" class="bg-[#0F2936] text-white">{{ time }}</option>
+                                      </select>
+                                      <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-3 text-white/50 group-hover:text-white transition-colors">
+                                          <svg class="fill-current h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20"><path d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z"/></svg>
+                                      </div>
+                                  </div>
+                              </div>
+                              <!-- Drop-off time -->
+                              <div class="flex flex-col">
+                                  <label class="text-[11px] uppercase tracking-wider text-gray-300 font-bold mb-2">Drop-off time</label>
+                                  <div class="relative group">
+                                      <select v-model="selectedEndTime" class="w-full appearance-none bg-[#1a3b4b] border border-[#2c5265] rounded-lg px-4 py-2.5 text-sm text-white font-medium focus:ring-2 focus:ring-customPrimaryColor focus:border-customPrimaryColor outline-none cursor-pointer transition-all hover:bg-[#23485a]">
+                                          <option v-for="time in timeOptions" :key="`end-${time}`" :value="time" class="bg-[#0F2936] text-white">{{ time }}</option>
+                                      </select>
+                                      <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-3 text-white/50 group-hover:text-white transition-colors">
+                                           <svg class="fill-current h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20"><path d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z"/></svg>
+                                      </div>
+                                  </div>
+                              </div>
+                          </div>
+                          
+                          <!-- Total Duration Row -->
+                          <div class="px-5 py-4 bg-[#0b202a] flex justify-between items-center">
+                              <span class="text-sm text-gray-300 font-medium">Total Rental Duration:</span>
+                              <span class="text-lg font-bold text-white tracking-wide">{{ totalDays }} <span class="text-sm font-normal text-gray-400">{{ totalDays > 1 ? 'Days' : 'Day' }}</span></span>
+                          </div>
+                      </div>
+                  </template>
+              </VueDatePicker>
             </div>
           </div>
 
-          <div class="col-span-2 flex items-center gap-4 mr-4 max-[768px]:mr-0">
-            <div class="flex flex-col">
-              <label class="mb-2 inline-block text-customLightGrayColor font-medium">{{ _t('homepage', 'pickup_date_label') }}</label>
-              <VueDatePicker v-model="pickupDate" :enable-time-picker="false" uid="pickup-date" auto-apply
-                :placeholder="_t('homepage', 'pickup_date_placeholder')" class="w-full" :min-date="new Date()" :format="formatDate" />
-            </div>
-            <div class="flex flex-col">
-              <label class="mb-2 inline-block text-customLightGrayColor font-medium">Start Time</label>
-              <VueDatePicker v-model="startTime" time-picker auto-apply placeholder="Select time" uid="start-time" :minutes-increment="5" :minutes-grid-increment="5" />
-            </div>
-          </div>
-
-          <div class="col-span-2 flex items-center gap-4">
-            <div class="flex flex-col">
-              <label class="mb-2 inline-block text-customLightGrayColor font-medium">{{ _t('homepage', 'return_date_label') }}</label>
-              <VueDatePicker v-model="returnDate" :enable-time-picker="false" uid="return-date" auto-apply
-                :placeholder="_t('homepage', 'return_date_placeholder')" class="w-full" :min-date="getMinReturnDate()" :format="formatDate" />
-            </div>
-            <div class="flex flex-col">
-              <label class="mb-2 inline-block text-customLightGrayColor font-medium">End Time</label>
-              <VueDatePicker v-model="endTime" time-picker auto-apply placeholder="Select time" uid="end-time" :minutes-increment="5" :minutes-grid-increment="5" />
-            </div>
-          </div>
-
-          <div class="inner-col flex justify-center items-center col-span-1">
+          <!-- Submit Button -->
+          <div class="col-span-2 flex justify-end items-center mt-[20px]">
             <button type="submit"
-              class="bg-customPrimaryColor text-customPrimaryColor-foreground rounded-[40px] w-[138px] max-[768px]:w-full py-4 text-center"
+              class="bg-customPrimaryColor text-white rounded-xl w-full py-3.5 text-base font-bold shadow-md hover:bg-customPrimaryColor/90 hover:shadow-lg transition-all transform active:scale-[0.98] flex justify-center items-center gap-2"
               :disabled="isLoading">
-              {{ _t('homepage', 'search_button') }}
+              <span v-if="!isLoading">{{ _t('homepage', 'search_button') }}</span>
+              <Vue3Lottie v-else :animation-data="LoaderAnimation" :height="40" :width="40" />
             </button>
           </div>
         </form>
 
-        <!-- Loader Overlay -->
-        <div v-if="isLoading" class="loader-overlay">
+        <!-- Loader Overlay (Global) -->
+        <div v-if="isLoading && false" class="loader-overlay"> <!-- Disabled global loader in favor of button state -->
           <Vue3Lottie :animation-data="LoaderAnimation" :height="200" :width="200" />
         </div>
 
         <!-- Search results dropdown -->
         <div v-if="showSearchBox && (searchResults.length > 0 || popularPlaces.length > 0 || searchPerformed)"
-          class="search-results absolute z-20 top-[105%] w-[50%] rounded-[12px] border-[1px] border-white left-[20%] p-5 bg-white text-customDarkBlackColor max-h-[400px] overflow-y-auto max-[768px]:w-full max-[768px]:top-[45%] max-[768px]:left-0">
+          class="search-results absolute z-20 top-[105%] w-[50%] rounded-[12px] border border-gray-100 left-[20%] p-5 bg-white text-customDarkBlackColor max-h-[400px] overflow-y-auto shadow-xl max-[768px]:w-full max-[768px]:top-[45%] max-[768px]:left-0">
 
           <!-- Existing search results -->
           <div v-if="searchResults.length > 0">
@@ -200,10 +249,65 @@ const props = defineProps({
   prefill: Object,
 });
 
-const pickupDate = ref(null);
-const returnDate = ref(null);
-const startTime = ref({ hours: 9, minutes: 0 });
-const endTime = ref({ hours: 9, minutes: 0 });
+const dateRange = ref(null);
+const selectedStartTime = ref('09:00');
+const selectedEndTime = ref('09:00');
+
+// Generate time options (00:00 to 23:30)
+const timeOptions = [];
+for (let i = 0; i < 24; i++) {
+    for (let j = 0; j < 60; j += 30) {
+        const hour = i.toString().padStart(2, '0');
+        const minute = j.toString().padStart(2, '0');
+        timeOptions.push(`${hour}:${minute}`);
+    }
+}
+
+const totalDays = computed(() => {
+    if (!dateRange.value || !dateRange.value[0] || !dateRange.value[1]) return 0;
+    const start = new Date(dateRange.value[0]);
+    const end = new Date(dateRange.value[1]);
+    const diffTime = Math.abs(end - start);
+    return Math.ceil(diffTime / (1000 * 60 * 60 * 24)) || 1; // Minimum 1 day
+});
+
+const formatRangeDate = (dates) => {
+    if (!dates || !dates[0] || !dates[1]) return "";
+    const start = dates[0];
+    const end = dates[1];
+    
+    // Format: DD/MM/YYYY - DD/MM/YYYY
+    const fmt = (d) => `${d.getDate().toString().padStart(2, '0')}/${(d.getMonth()+1).toString().padStart(2, '0')}/${d.getFullYear()}`;
+    return `${fmt(start)} - ${fmt(end)}`;
+};
+
+const applyDateSelection = (selectDate) => {
+    if (dateRange.value && dateRange.value[0] && dateRange.value[1]) {
+        // Update form values
+        form.value.date_from = dateRange.value[0].toISOString().split('T')[0];
+        form.value.date_to = dateRange.value[1].toISOString().split('T')[0];
+        form.value.start_time = selectedStartTime.value;
+        form.value.end_time = selectedEndTime.value;
+        
+        selectDate(); // Close picker
+    }
+};
+
+const handleDateUpdate = (val) => {
+    // Check if we have a valid range selection (2 dates)
+    if (val && Array.isArray(val) && val.length === 2 && val[0] && val[1]) {
+        // PREVENT RECURSION: Only update if values actually changed
+        const currentStart = dateRange.value?.[0]?.getTime();
+        const currentEnd = dateRange.value?.[1]?.getTime();
+        const newStart = val[0].getTime();
+        const newEnd = val[1].getTime();
+
+        if (currentStart !== newStart || currentEnd !== newEnd) {
+             dateRange.value = val;
+        }
+    }
+};
+
 const searchResults = ref([]);
 const dateError = ref(false);
 const isSearching = ref(false);
@@ -213,7 +317,7 @@ const searchPerformed = ref(false);
 const showSearchBox = ref(false);
 const popularPlaces = ref([]);
 const locationError = ref(null);
-const isProviderLocation = ref(false);
+const isProviderLocation = ref(true);
 const dropoffSearchResults = ref([]);
 const showDropoffSearchBox = ref(false);
 const selectedLocationProviders = ref([]);
@@ -225,7 +329,7 @@ const selectedPickupLocation = ref(null);
 // Compute error message to display in dialog
 const errorMessage = computed(() => {
   if (dateError.value) {
-    return "Please fill in all fields: location, pickup date, and return date.";
+    return "Please fill in all fields: location and rental dates.";
   }
   if (locationError.value) {
     return locationError.value;
@@ -260,44 +364,20 @@ const fetchPopularPlaces = async () => {
   }
 };
 
-const formatDate = (dateString) => {
-  if (!dateString) return "Select date";
-  const date = new Date(dateString);
-  return date.toLocaleDateString('en-GB', { year: 'numeric', month: '2-digit', day: '2-digit' });
-};
-
-watch(pickupDate, (newPickupDate) => {
-  if (newPickupDate) {
-    form.value.date_from = newPickupDate.toISOString().split('T')[0];
-    const newReturnDate = new Date(newPickupDate);
-    newReturnDate.setDate(newReturnDate.getDate() + 1);
-    
-    if (!returnDate.value || newReturnDate > returnDate.value) {
-        returnDate.value = newReturnDate;
+// Watchers for dateRange to update form immediately if needed, mainly for debugging or live updates
+watch(dateRange, (newVal) => {
+    if (newVal && newVal[0] && newVal[1]) {
+        form.value.date_from = newVal[0].toISOString().split('T')[0];
+        form.value.date_to = newVal[1].toISOString().split('T')[0];
     }
-  }
-}, { deep: true });
-
-watch(returnDate, (newValue) => {
-  if (newValue) {
-    form.value.date_to = newValue.toISOString().split('T')[0];
-  }
-}, { deep: true });
-
-watch(startTime, (newTime) => {
-  if (newTime) {
-    const hours = newTime.hours.toString().padStart(2, '0');
-    const minutes = newTime.minutes.toString().padStart(2, '0');
-    form.value.start_time = `${hours}:${minutes}`;
-  }
 });
 
-watch(endTime, (newTime) => {
-  if (newTime) {
-    const hours = newTime.hours.toString().padStart(2, '0');
-    const minutes = newTime.minutes.toString().padStart(2, '0');
-    form.value.end_time = `${hours}:${minutes}`;
-  }
+watch(selectedStartTime, (newVal) => {
+    form.value.start_time = newVal;
+});
+
+watch(selectedEndTime, (newVal) => {
+    form.value.end_time = newVal;
 });
 
 const handleSearchInput = () => {
@@ -492,14 +572,7 @@ const submit = async () => {
   }
 };
 
-const getMinReturnDate = () => {
-  if (pickupDate.value) {
-    const minReturnDate = new Date(pickupDate.value);
-    minReturnDate.setDate(minReturnDate.getDate() + 1);
-    return minReturnDate;
-  }
-  return new Date();
-};
+
 
 const closeSearchResults = (event) => {
   if (searchBarContainer.value && !searchBarContainer.value.contains(event.target)) {
@@ -520,20 +593,20 @@ onMounted(async () => {
   // Set default dates if not prefilled
   if (!props.prefill?.date_from) {
     const today = new Date();
-    pickupDate.value = today;
     const tomorrow = new Date(today);
     tomorrow.setDate(tomorrow.getDate() + 1);
-    returnDate.value = tomorrow;
+    dateRange.value = [today, tomorrow];
+    form.value.date_from = today.toISOString().split('T')[0];
+    form.value.date_to = tomorrow.toISOString().split('T')[0];
   }
 
   if (props.prefill) {
     form.value.where = props.prefill.where || '';
-    if (props.prefill.date_from) {
-      pickupDate.value = new Date(props.prefill.date_from);
+    
+    if (props.prefill.date_from && props.prefill.date_to) {
+      dateRange.value = [new Date(props.prefill.date_from), new Date(props.prefill.date_to)];
     }
-    if (props.prefill.date_to) {
-      returnDate.value = new Date(props.prefill.date_to);
-    }
+    
     form.value.latitude = props.prefill.latitude || null;
     form.value.longitude = props.prefill.longitude || null;
     form.value.radius = props.prefill.radius || 5000;
@@ -542,17 +615,16 @@ onMounted(async () => {
     form.value.country = props.prefill.country || null;
     form.value.provider = props.prefill.provider || null;
     form.value.provider_pickup_id = props.prefill.provider_pickup_id || null;
-    form.value.start_time = props.prefill.start_time || '09:00';
-    form.value.end_time = props.prefill.end_time || '09:00';
-
+    
     if (props.prefill.start_time) {
-        const [hours, minutes] = props.prefill.start_time.split(':');
-        startTime.value = { hours: parseInt(hours), minutes: parseInt(minutes) };
+        selectedStartTime.value = props.prefill.start_time;
+        form.value.start_time = props.prefill.start_time;
     }
     if (props.prefill.end_time) {
-        const [hours, minutes] = props.prefill.end_time.split(':');
-        endTime.value = { hours: parseInt(hours), minutes: parseInt(minutes) };
+        selectedEndTime.value = props.prefill.end_time;
+        form.value.end_time = props.prefill.end_time;
     }
+    
     form.value.dropoff_location_id = props.prefill.dropoff_location_id || null;
     form.value.dropoff_where = props.prefill.dropoff_where || "";
 
@@ -583,11 +655,9 @@ onUnmounted(() => {
   }
 });
 
-watch(pickupDate, (newPickupDate) => {
-  if (returnDate.value && newPickupDate && returnDate.value <= newPickupDate) {
-    returnDate.value = null;
-  }
-});
+// Removed individual date watchers as we now use dateRange watcher defined above.
+// Also removed invalid date range watcher as date picker handles much of this, but logic can be re-added inside the dateRange watcher if strict invalidation is needed.
+// VueDatePicker range mode generally prevents selecting end date before start date effectively.
 
 
 // Error Dialog Component

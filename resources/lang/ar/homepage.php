@@ -6,14 +6,14 @@ return [
     'typewriter_text_1' => 'تم الحجز في لمح البصر. انطلق في Vrooem.',
     'typewriter_text_2' => 'الخطوة 1: احجز عبر الإنترنت. الخطوة 2: استلمها. الخطوة 3: أعدها.',
     'typewriter_text_3' => 'لا توجد رسوم خفية. لا يوجد توتر. Vrooem يغطيك.',
-    
+
     // Categories Section
     'our_categories' => 'فئاتنا',
-    
+
     // Popular Places Section
     'top_destinations' => 'أهم الوجهات',
     'popular_places' => 'أماكن شعبية',
-    
+
     // Why Choose Us Section
     'why_choose_us' => 'لماذا تختارنا',
     'why_subtitle' => "من سيارات السيدان الفاخرة إلى السيارات المدمجة ذات الميزانية المحدودة، لدينا ما يناسب كل رحلة",
@@ -25,13 +25,13 @@ return [
     'modern_fleet_text' => 'اختر تواريخ الاستلام والإرجاع المطلوبة، بالإضافة إلى الوقت.',
     'insurance_coverage' => 'تغطية تأمينية',
     'insurance_coverage_text' => 'اختر تواريخ الاستلام والإرجاع المطلوبة، بالإضافة إلى الوقت.',
-    
+
     // Blogs Section
     'latest_articles' => 'أحدث المقالات',
     'blogs_heading' => 'ابق على اطلاع واستلهم لرحلتك القادمة',
     'read_story' => 'قراءة القصة',
     'more_blogs' => 'المزيد',
-    
+
     // HowItWorks translations
     'how_it_works_title' => 'كيف تعمل',
     'how_it_works_subtitle' => 'عمليات مبسطة لتجربة خالية من المتاعب',
@@ -56,7 +56,7 @@ return [
 
     // Search Bar translations
     'search_bar_header' => 'هل تحتاج إلى سيارة للإيجار؟',
-    'pickup_return_location_label' => 'موقع الاستلام والإرجاع',
+    'pickup_return_location_label' => 'موقع الاستلام',
     'pickup_location_placeholder' => 'موقع الاستلام',
     'searching_placeholder' => 'جاري البحث...',
     'pickup_date_label' => 'تاريخ الاستلام',
@@ -68,5 +68,5 @@ return [
     'search_around_me' => 'البحث من حولي..',
     'popular_searches_header' => 'عمليات البحث الشائعة',
     'no_location_found' => 'لم يتم العثور على موقع. الرجاء المحاولة ببحث آخر.',
-    
+
 ];

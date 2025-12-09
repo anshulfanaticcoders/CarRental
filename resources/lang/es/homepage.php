@@ -6,14 +6,14 @@ return [
     'typewriter_text_1' => 'Reservado en un instante. Desaparecido en un Vrooem.',
     'typewriter_text_2' => 'Paso 1: Reserva online. Paso 2: Recógelo. Paso 3: Devuélvelo.',
     'typewriter_text_3' => 'Sin cargos ocultos. Sin estrés. Vrooem te cubre.',
-    
+
     // Categories Section
     'our_categories' => 'Nuestras Categorías',
-    
+
     // Popular Places Section
     'top_destinations' => 'Principales Destinos',
     'popular_places' => 'Lugares Populares',
-    
+
     // Why Choose Us Section
     'why_choose_us' => 'Por Qué Elegirnos',
     'why_subtitle' => "Desde sedanes de lujo hasta compactos económicos, tenemos algo para cada viaje",
@@ -25,13 +25,13 @@ return [
     'modern_fleet_text' => 'Selecciona las fechas de recogida y devolución deseadas, junto con la hora.',
     'insurance_coverage' => 'Cobertura de Seguro',
     'insurance_coverage_text' => 'Selecciona las fechas de recogida y devolución deseadas, junto con la hora.',
-    
+
     // Blogs Section
     'latest_articles' => 'Últimos Artículos',
     'blogs_heading' => 'Mantente informado e inspirado para tu próximo viaje',
     'read_story' => 'Leer Historia',
     'more_blogs' => 'Más',
-    
+
     // HowItWorks translations
     'how_it_works_title' => 'Cómo Funciona',
     'how_it_works_subtitle' => 'Procesos optimizados para una experiencia sin complicaciones',
@@ -56,7 +56,7 @@ return [
 
     // Search Bar translations
     'search_bar_header' => '¿Necesitas un coche de alquiler?',
-    'pickup_return_location_label' => 'Ubicación de Recogida y Devolución',
+    'pickup_return_location_label' => 'Ubicación de Recogida',
     'pickup_location_placeholder' => 'Ubicación de Recogida',
     'searching_placeholder' => 'Buscando...',
     'pickup_date_label' => 'Fecha de Recogida',
@@ -68,5 +68,5 @@ return [
     'search_around_me' => 'Buscar a mi alrededor..',
     'popular_searches_header' => 'Búsquedas Populares',
     'no_location_found' => 'No se encontró la ubicación. Por favor, intenta otra búsqueda.',
-    
+
 ];
