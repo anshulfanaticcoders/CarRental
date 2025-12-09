@@ -45,7 +45,7 @@
               <VueDatePicker
                 v-model="dateRange"
                 range
-                multi-calendars="2"
+                :multi-calendars="isMobile ? 0 : 2"
                 :enable-time-picker="false"
                 :min-date="new Date()"
                 :format="formatRangeDate"
@@ -121,7 +121,7 @@
               class="bg-customPrimaryColor text-white rounded-xl w-full py-3.5 text-base font-bold shadow-md hover:bg-customPrimaryColor/90 hover:shadow-lg transition-all transform active:scale-[0.98] flex justify-center items-center gap-2"
               :disabled="isLoading">
               <span v-if="!isLoading">{{ _t('homepage', 'search_button') }}</span>
-              <Vue3Lottie v-else :animation-data="LoaderAnimation" :height="40" :width="40" />
+              <Vue3Lottie v-else :animation-data="LoaderAnimation" :height="40" :width="40"/>
             </button>
           </div>
         </form>
@@ -318,6 +318,7 @@ const showSearchBox = ref(false);
 const popularPlaces = ref([]);
 const locationError = ref(null);
 const isProviderLocation = ref(true);
+const isMobile = ref(false);
 const dropoffSearchResults = ref([]);
 const showDropoffSearchBox = ref(false);
 const selectedLocationProviders = ref([]);
@@ -581,6 +582,10 @@ const closeSearchResults = (event) => {
   }
 };
 
+const checkMobile = () => {
+  isMobile.value = window.innerWidth < 768;
+};
+
 onMounted(async () => {
   document.addEventListener('click', closeSearchResults);
   fetchPopularPlaces();
@@ -645,11 +650,14 @@ onMounted(async () => {
     }
 
   }
+  
+  checkMobile();
+  window.addEventListener('resize', checkMobile);
 });
-
 
 onUnmounted(() => {
   document.removeEventListener("click", closeSearchResults);
+  window.removeEventListener('resize', checkMobile); // Clean up resize listener
   if (searchTimeout.value) {
     clearTimeout(searchTimeout.value);
   }
