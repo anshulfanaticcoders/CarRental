@@ -70,7 +70,7 @@ class SearchController extends Controller
             'longitude' => 'nullable|numeric',
             'radius' => 'nullable|numeric',
             'package_type' => 'nullable|string|in:day,week,month',
-            'category_id' => 'nullable|exists:vehicle_categories,id',
+            'category_id' => 'nullable|string', // Allow both numeric IDs and string category names (for providers)
             'matched_field' => 'nullable|string|in:location,city,state,country',
             'provider' => 'nullable|string', // Replaces 'source'
             'provider_pickup_id' => 'nullable|string', // Replaces 'greenmotion_location_id'
@@ -288,10 +288,11 @@ class SearchController extends Controller
         if (!empty($validated['fuel'])) {
             $internalVehiclesQuery->where('fuel', $validated['fuel']);
         }
-        if (!empty($validated['price_range'])) {
-            $range = explode('-', $validated['price_range']);
-            $internalVehiclesQuery->whereBetween('price_per_day', [(int) $range[0], (int) $range[1]]);
-        }
+        // Note: price_range filtering removed from backend - handled on frontend with currency conversion
+        // if (!empty($validated['price_range'])) {
+        //     $range = explode('-', $validated['price_range']);
+        //     $internalVehiclesQuery->whereBetween('price_per_day', [(int) $range[0], (int) $range[1]]);
+        // }
         if (!empty($validated['color'])) {
             $internalVehiclesQuery->where('color', $validated['color']);
         }
@@ -536,123 +537,113 @@ class SearchController extends Controller
                             'end_time' => $validated['end_time'] ?? '09:00'
                         ]);
 
-                        // First, check if we have cached data
-                        $cachedAdobeData = $this->adobeCarService->getCachedVehicleData($currentProviderLocationId, 60); // 60 minutes cache
+                        Log::info('Fetching Adobe vehicle data from API');
 
-                        if ($cachedAdobeData && !empty($cachedAdobeData['vehicles'])) {
-                            Log::info('Using cached Adobe vehicle data for location: ' . $currentProviderLocationId);
-                            $adobeVehicles = collect($cachedAdobeData['vehicles']);
-                        } else {
-                            Log::info('Fetching fresh Adobe vehicle data from API');
+                        // Prepare search parameters for Adobe API
+                        $adobeSearchParams = [
+                            'pickupoffice' => $currentProviderLocationId,
+                            'returnoffice' => $currentProviderLocationId,
+                            'startdate' => $validated['date_from'] . ' ' . ($validated['start_time'] ?? '09:00'),
+                            'enddate' => $validated['date_to'] . ' ' . ($validated['end_time'] ?? '09:00'),
+                            'promotionCode' => $validated['promocode'] ?? null
+                        ];
 
-                            // Prepare search parameters for Adobe API
-                            $adobeSearchParams = [
-                                'pickupoffice' => $currentProviderLocationId,
-                                'returnoffice' => $currentProviderLocationId,
-                                'startdate' => $validated['date_from'] . ' ' . ($validated['start_time'] ?? '09:00'),
-                                'enddate' => $validated['date_to'] . ' ' . ($validated['end_time'] ?? '09:00'),
-                                'promotionCode' => $validated['promocode'] ?? null
-                            ];
+                        // Filter out null values
+                        $adobeSearchParams = array_filter($adobeSearchParams, function ($value) {
+                            return $value !== null && $value !== '';
+                        });
 
-                            // Filter out null values
-                            $adobeSearchParams = array_filter($adobeSearchParams, function ($value) {
-                                return $value !== null && $value !== '';
-                            });
+                        $adobeResponse = $this->adobeCarService->getAvailableVehicles($adobeSearchParams);
 
-                            $adobeResponse = $this->adobeCarService->getAvailableVehicles($adobeSearchParams);
+                        Log::info('Adobe API response received: ' . ($adobeResponse ? 'SUCCESS' : 'NULL/EMPTY'));
 
-                            Log::info('Adobe API response received: ' . ($adobeResponse ? 'SUCCESS' : 'NULL/EMPTY'));
+                        if ($adobeResponse && isset($adobeResponse['result']) && $adobeResponse['result'] && !empty($adobeResponse['data'])) {
+                            $adobeVehicles = collect($adobeResponse['data']);
 
-                            if ($adobeResponse && isset($adobeResponse['result']) && $adobeResponse['result'] && !empty($adobeResponse['data'])) {
-                                $adobeVehicles = collect($adobeResponse['data']);
+                            // Process vehicles to get detailed information including protections and extras
+                            $processedVehicles = [];
+                            $allProtections = [];
+                            $allExtras = [];
 
-                                // Process vehicles to get detailed information including protections and extras
-                                $processedVehicles = [];
-                                $allProtections = [];
-                                $allExtras = [];
+                            foreach ($adobeVehicles as $vehicle) {
+                                // Get detailed vehicle information including protections and extras
+                                $vehicleDetails = $this->adobeCarService->getProtectionsAndExtras(
+                                    $currentProviderLocationId,
+                                    $vehicle['category'] ?? '',
+                                    [
+                                        'startdate' => $adobeSearchParams['startdate'],
+                                        'enddate' => $adobeSearchParams['enddate']
+                                    ]
+                                );
 
-                                foreach ($adobeVehicles as $vehicle) {
-                                    // Get detailed vehicle information including protections and extras
-                                    $vehicleDetails = $this->adobeCarService->getProtectionsAndExtras(
-                                        $currentProviderLocationId,
-                                        $vehicle['category'] ?? '',
-                                        [
-                                            'startdate' => $adobeSearchParams['startdate'],
-                                            'enddate' => $adobeSearchParams['enddate']
-                                        ]
-                                    );
+                                // Calculate rental duration in days for price-per-day calculation
+                                $startDate = \Carbon\Carbon::parse($adobeSearchParams['startdate']);
+                                $endDate = \Carbon\Carbon::parse($adobeSearchParams['enddate']);
+                                $rentalDays = $startDate->diffInDays($endDate) ?: 1; // Ensure details at least 1 day divisor
 
-                                    $processedVehicle = [
-                                        'id' => 'adobe_' . $currentProviderLocationId . '_' . ($vehicle['category'] ?? 'unknown'),
-                                        'source' => 'adobe',
-                                        'brand' => $this->extractBrandFromModel($vehicle['model'] ?? ''),
-                                        'model' => $vehicle['model'] ?? 'Adobe Vehicle',
-                                        'category' => $vehicle['category'] ?? '',
-                                        'image' => $this->getAdobeVehicleImage($vehicle['photo'] ?? ''),
-                                        'price_per_day' => (float) ($vehicle['pli'] ?? 0), // pli = base daily rate
-                                        'price_per_week' => (float) (($vehicle['pli'] ?? 0) * 7),
-                                        'price_per_month' => (float) (($vehicle['pli'] ?? 0) * 30),
+                                $processedVehicle = [
+                                    'id' => 'adobe_' . $currentProviderLocationId . '_' . ($vehicle['category'] ?? 'unknown'),
+                                    'source' => 'adobe',
+                                    'brand' => $this->extractBrandFromModel($vehicle['model'] ?? ''),
+                                    'model' => $vehicle['model'] ?? 'Adobe Vehicle',
+                                    'category' => isset($vehicle['type']) ? ucwords(strtolower($vehicle['type'])) : ($vehicle['category'] ?? ''),
+                                    'image' => $this->getAdobeVehicleImage($vehicle['photo'] ?? ''),
+                                    'price_per_day' => (float) (($vehicle['tdr'] ?? 0) / $rentalDays), // Derive daily rate from Total Daily Rate (total price)
+                                    'price_per_week' => (float) (($vehicle['tdr'] ?? 0) / $rentalDays * 7),
+                                    'price_per_month' => (float) (($vehicle['tdr'] ?? 0) / $rentalDays * 30),
 
-                                        'currency' => 'USD', // Adobe uses USD
-                                        'transmission' => ($vehicle['manual'] ?? false) ? 'manual' : 'automatic',
-                                        // Adobe doesn't seem to provide fuel info, default to petrol if unknown or try to guess from type?
-                                        // For now, let's leave it nullable or 'petrol' if we want to force it.
-                                        // But wait, the filter requires 'petrol', 'diesel', 'electric'.
-                                        // Let's check 'type' field?
-                                        'fuel' => 'petrol', // Defaulting to petrol as most rental cars are, minimizing 'N/A' issues
-                                        'seating_capacity' => (int) ($vehicle['passengers'] ?? 4),
-                                        'mileage' => null, // Adobe doesn't provide mileage info
-                                        'latitude' => (float) $locationLat,
-                                        'longitude' => (float) $locationLng,
-                                        'full_vehicle_address' => $currentProviderLocationName,
-                                        'provider_pickup_id' => $currentProviderLocationId,
-                                        'benefits' => (object) [
-                                            'vehicle_type' => $vehicle['type'] ?? '',
-                                            'traction' => $vehicle['traction'] ?? '',
-                                            'doors' => (int) ($vehicle['doors'] ?? 4),
-                                        ],
-                                        // review_count and average_rating omitted - not provided by API
-                                        'products' => [],
-                                        'protections' => $vehicleDetails['protections'] ?? [],
-                                        'extras' => $vehicleDetails['extras'] ?? [],
-                                        'adobe_category' => $vehicle['category'] ?? '',
-                                        // Adobe-specific fields
-                                        'pli' => (float) ($vehicle['pli'] ?? 0),
-                                        'ldw' => (float) ($vehicle['ldw'] ?? 0),
-                                        'spp' => (float) ($vehicle['spp'] ?? 0),
-                                        'tdr' => (float) ($vehicle['tdr'] ?? 0),
-                                        'dro' => (float) ($vehicle['dro'] ?? 0),
-                                        // Direct fields for frontend template access
-                                        'type' => $vehicle['type'] ?? '',
-                                        'passengers' => (int) ($vehicle['passengers'] ?? 4),
-                                        'doors' => (int) ($vehicle['doors'] ?? 4),
-                                        'manual' => (bool) ($vehicle['manual'] ?? false),
+                                    'currency' => 'USD', // Adobe uses USD
+                                    'transmission' => ($vehicle['manual'] ?? false) ? 'manual' : 'automatic',
+                                    // Adobe doesn't seem to provide fuel info, default to petrol if unknown or try to guess from type?
+                                    // For now, let's leave it nullable or 'petrol' if we want to force it.
+                                    // But wait, the filter requires 'petrol', 'diesel', 'electric'.
+                                    // Let's check 'type' field?
+                                    'fuel' => 'petrol', // Defaulting to petrol as most rental cars are, minimizing 'N/A' issues
+                                    'seating_capacity' => (int) ($vehicle['passengers'] ?? 4),
+                                    'mileage' => null, // Adobe doesn't provide mileage info
+                                    'latitude' => (float) $locationLat,
+                                    'longitude' => (float) $locationLng,
+                                    'full_vehicle_address' => $currentProviderLocationName,
+                                    'provider_pickup_id' => $currentProviderLocationId,
+                                    'benefits' => (object) [
+                                        'vehicle_type' => $vehicle['type'] ?? '',
                                         'traction' => $vehicle['traction'] ?? '',
-                                    ];
+                                        'doors' => (int) ($vehicle['doors'] ?? 4),
+                                    ],
+                                    // review_count and average_rating omitted - not provided by API
+                                    'products' => [],
+                                    'protections' => $vehicleDetails['protections'] ?? [],
+                                    'extras' => $vehicleDetails['extras'] ?? [],
+                                    'adobe_category' => $vehicle['category'] ?? '',
+                                    // Adobe-specific fields
+                                    'pli' => (float) ($vehicle['pli'] ?? 0),
+                                    'ldw' => (float) ($vehicle['ldw'] ?? 0),
+                                    'spp' => (float) ($vehicle['spp'] ?? 0),
+                                    'tdr' => (float) ($vehicle['tdr'] ?? 0),
+                                    'dro' => (float) ($vehicle['dro'] ?? 0),
+                                    // Direct fields for frontend template access
+                                    'type' => $vehicle['type'] ?? '',
+                                    'passengers' => (int) ($vehicle['passengers'] ?? 4),
+                                    'doors' => (int) ($vehicle['doors'] ?? 4),
+                                    'manual' => (bool) ($vehicle['manual'] ?? false),
+                                    'traction' => $vehicle['traction'] ?? '',
+                                ];
 
-                                    $processedVehicles[] = (object) $processedVehicle;
+                                $processedVehicles[] = (object) $processedVehicle;
 
-                                    // Collect protections and extras for caching
-                                    $allProtections = array_merge($allProtections, $vehicleDetails['protections'] ?? []);
-                                    $allExtras = array_merge($allExtras, $vehicleDetails['extras'] ?? []);
-                                }
-
-                                // Update the JSON cache with fresh data
-                                $this->adobeCarService->updateAdobeDetailsJson($currentProviderLocationId, [
-                                    'vehicles' => $processedVehicles,
-                                    'protections' => $allProtections,
-                                    'extras' => $allExtras
-                                ]);
-
-                                $adobeVehicles = collect($processedVehicles);
-                                Log::info('Adobe vehicles processed and cached: ' . $adobeVehicles->count());
-
-                            } else {
-                                Log::warning("Adobe API response for vehicles was empty or malformed for location ID: " . $currentProviderLocationId, [
-                                    'response' => $adobeResponse
-                                ]);
-                                $adobeVehicles = collect([]);
+                                // Collect protections and extras for caching
+                                $allProtections = array_merge($allProtections, $vehicleDetails['protections'] ?? []);
+                                $allExtras = array_merge($allExtras, $vehicleDetails['extras'] ?? []);
                             }
+
+                            $adobeVehicles = collect($processedVehicles);
+                            Log::info('Adobe vehicles processed: ' . $adobeVehicles->count());
+
+                        } else {
+                            Log::warning("Adobe API response for vehicles was empty or malformed for location ID: " . $currentProviderLocationId, [
+                                'response' => $adobeResponse
+                            ]);
+                            $adobeVehicles = collect([]);
                         }
 
                         // Add Adobe vehicles to the main provider vehicles collection
@@ -1031,12 +1022,13 @@ class SearchController extends Controller
                     }
                 }
             }
-            if (!empty($validated['price_range'])) {
-                $range = explode('-', $validated['price_range']);
-                $price = (float) $vehicle->price_per_day;
-                if ($price < (float) $range[0] || $price > (float) $range[1])
-                    return false;
-            }
+            // Note: price_range filtering removed from backend - handled on frontend with currency conversion
+            // if (!empty($validated['price_range'])) {
+            //     $range = explode('-', $validated['price_range']);
+            //     $price = (float) $vehicle->price_per_day;
+            //     if ($price < (float) $range[0] || $price > (float) $range[1])
+            //         return false;
+            // }
             if (!empty($validated['mileage'])) {
                 if ($vehicle->mileage === null || $vehicle->mileage === 'Unknown')
                     return true;
@@ -1067,12 +1059,13 @@ class SearchController extends Controller
                     }
                 }
             }
-            if (!empty($validated['price_range'])) {
-                $range = explode('-', $validated['price_range']);
-                $price = (float) $vehicle->price_per_day;
-                if ($price < (float) $range[0] || $price > (float) $range[1])
-                    return false;
-            }
+            // Note: price_range filtering removed from backend - handled on frontend with currency conversion
+            // if (!empty($validated['price_range'])) {
+            //     $range = explode('-', $validated['price_range']);
+            //     $price = (float) $vehicle->price_per_day;
+            //     if ($price < (float) $range[0] || $price > (float) $range[1])
+            //         return false;
+            // }
             if (!empty($validated['mileage'])) {
                 if ($vehicle->mileage === null || $vehicle->mileage === 'Unknown')
                     return true;

@@ -384,6 +384,82 @@ const allVehiclesForMap = computed(() => {
     return [...internalOnly, ...greenMotion, ...providerVehicles];
 });
 
+// Helper to get vehicle price in selected currency
+const getVehiclePriceConverted = (vehicle) => {
+    if (!vehicle) return null;
+    
+    let originalPrice = null;
+    let originalCurrency = 'USD';
+    
+    // Determine price and currency based on source
+    if (vehicle.source === 'adobe' && vehicle.tdr) {
+        // For Adobe, use tdr / rental days (or use price_per_day if already calculated)
+        originalPrice = vehicle.price_per_day || (vehicle.tdr / (numberOfRentalDays.value || 1));
+        originalCurrency = 'USD';
+    } else if (vehicle.source === 'wheelsys' || vehicle.source === 'locauto_rent') {
+        originalPrice = vehicle.price_per_day;
+        originalCurrency = vehicle.currency || 'USD';
+    } else if (vehicle.source === 'greenmotion') {
+        const total = parseFloat(vehicle.products?.[0]?.total || 0);
+        originalPrice = numberOfRentalDays.value > 0 ? total / numberOfRentalDays.value : total;
+        originalCurrency = vehicle.products?.[0]?.currencyCode || 'USD';
+    } else if (vehicle.source === 'okmobility') {
+        originalPrice = vehicle.price_per_day;
+        originalCurrency = 'EUR';
+    } else {
+        // Internal vehicles
+        originalPrice = vehicle.price_per_day;
+        originalCurrency = vehicle.currency || 'USD';
+    }
+    
+    if (originalPrice === null || isNaN(parseFloat(originalPrice))) return null;
+    
+    return convertCurrency(parseFloat(originalPrice), originalCurrency);
+};
+
+// Compute dynamic min/max price range from all vehicles
+const dynamicPriceRange = computed(() => {
+    const vehicles = allVehiclesForMap.value || [];
+    
+    if (vehicles.length === 0) {
+        return { min: 0, max: 1000 };
+    }
+    
+    const prices = vehicles
+        .map(v => getVehiclePriceConverted(v))
+        .filter(p => p !== null && p > 0);
+    
+    if (prices.length === 0) {
+        return { min: 0, max: 1000 };
+    }
+    
+    const min = Math.floor(Math.min(...prices));
+    const max = Math.ceil(Math.max(...prices));
+    
+    // Add some padding for better UX
+    return {
+        min: Math.max(0, min - 10),
+        max: max + 50
+    };
+});
+
+// Client-side filtered vehicles based on price range
+const priceFilteredVehicles = computed(() => {
+    if (!form.price_range || form.price_range === `${dynamicPriceRange.value.min}-${dynamicPriceRange.value.max}`) {
+        // No filter applied, return all
+        return allVehiclesForMap.value;
+    }
+    
+    const [minPrice, maxPrice] = form.price_range.split('-').map(Number);
+    
+    return allVehiclesForMap.value.filter(vehicle => {
+        const convertedPrice = getVehiclePriceConverted(vehicle);
+        if (convertedPrice === null) return true; // Include vehicles with unknown prices
+        return convertedPrice >= minPrice && convertedPrice <= maxPrice;
+    });
+});
+
+
 const isValidCoordinate = (coord) => {
     const num = parseFloat(coord);
     return !isNaN(num) && isFinite(num);
@@ -622,9 +698,9 @@ const resetFilters = () => {
     form.package_type = "";
     form.category_id = "";
 
-    // Reset UI components
-    priceRangeValues.value = [0, 20000];
-    tempPriceRangeValues.value = [0, 20000];
+    // Reset UI components to dynamic range
+    priceRangeValues.value = [dynamicPriceRange.value.min, dynamicPriceRange.value.max];
+    tempPriceRangeValues.value = [dynamicPriceRange.value.min, dynamicPriceRange.value.max];
 
     // Reset other non-essential GreenMotion params to default
     form.currency = null;
@@ -1290,16 +1366,36 @@ const getProviderRoute = (vehicle) => {
 };
 
 const showPriceSlider = ref(false);
-const priceRangeMin = ref(0);
-const priceRangeMax = ref(20000);
-const priceRangeValues = ref([0, 20000]);
-const tempPriceRangeValues = ref([0, 20000]);
+// These will be initialized dynamically based on vehicle prices
+const priceRangeValues = ref([0, 1000]);
+const tempPriceRangeValues = ref([0, 1000]);
+
+// Initialize price range based on dynamic values when vehicles are loaded
+watch(() => dynamicPriceRange.value, (newRange) => {
+    if (newRange) {
+        // Always update to dynamic range when it changes (vehicles loaded)
+        if (!form.price_range || priceRangeValues.value[1] === 1000) {
+            priceRangeValues.value = [newRange.min, newRange.max];
+            tempPriceRangeValues.value = [newRange.min, newRange.max];
+        }
+    }
+}, { immediate: true });
+
+// Watch for currency changes to reset price range
+watch(selectedCurrency, () => {
+    // When currency changes, recalculate will happen automatically via dynamicPriceRange
+    // Reset slider to new range
+    const newRange = dynamicPriceRange.value;
+    priceRangeValues.value = [newRange.min, newRange.max];
+    tempPriceRangeValues.value = [newRange.min, newRange.max];
+    form.price_range = ''; // Clear filter when currency changes
+});
 
 onMounted(() => {
     if (form.price_range) {
         const [min, max] = form.price_range.split('-').map(Number);
-        priceRangeValues.value = [min || 0, max || 20000];
-        tempPriceRangeValues.value = [min || 0, max || 20000];
+        priceRangeValues.value = [min || dynamicPriceRange.value.min, max || dynamicPriceRange.value.max];
+        tempPriceRangeValues.value = [min || dynamicPriceRange.value.min, max || dynamicPriceRange.value.max];
     }
 });
 
@@ -1307,12 +1403,14 @@ const applyPriceRange = () => {
     priceRangeValues.value = [...tempPriceRangeValues.value];
     form.price_range = `${priceRangeValues.value[0]}-${priceRangeValues.value[1]}`;
     showPriceSlider.value = false;
+    // Don't submit to backend - we filter client-side
 };
 
 const resetPriceRange = () => {
-    tempPriceRangeValues.value = [0, 20000];
-    priceRangeValues.value = [0, 20000];
-    form.price_range = '0-20000';
+    const range = dynamicPriceRange.value;
+    tempPriceRangeValues.value = [range.min, range.max];
+    priceRangeValues.value = [range.min, range.max];
+    form.price_range = '';
     showPriceSlider.value = false;
 };
 
@@ -1619,8 +1717,8 @@ watch(
                         <button type="button" @click="showPriceSlider = !showPriceSlider"
                             class="pl-10 pr-4 py-2 w-full text-left flex gap-4 items-center justify-between bg-white border border-gray-200 rounded-lg shadow-sm hover:border-customPrimaryColor transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-customPrimaryColor/20">
                             <span class="text-gray-700 font-medium">
-                                {{ priceRangeValues[0] === 0 && priceRangeValues[1] === 20000 ? 'Set Price Range' :
-                                    `$${priceRangeValues[0]} - $${priceRangeValues[1]}` }}
+                                {{ priceRangeValues[0] === dynamicPriceRange.min && priceRangeValues[1] === dynamicPriceRange.max ? 'Set Price Range' :
+                                    `${getCurrencySymbol(selectedCurrency)}${priceRangeValues[0]} - ${getCurrencySymbol(selectedCurrency)}${priceRangeValues[1]}` }}
                             </span>
                             <img :src="CaretDown" alt="Caret Down"
                                 class="w-5 h-5 text-gray-500 transition-transform duration-300 ease-in-out pointer-events-none"
@@ -1634,18 +1732,18 @@ watch(
                                     <div class="flex flex-col">
                                         <span class="text-sm text-gray-500">Minimum</span>
                                         <span class="text-lg font-semibold text-gray-800">
-                                            {{ tempPriceRangeValues[0] }}
+                                            {{ getCurrencySymbol(selectedCurrency) }}{{ tempPriceRangeValues[0] }}
                                         </span>
                                     </div>
                                     <div class="flex flex-col items-end">
                                         <span class="text-sm text-gray-500">Maximum</span>
                                         <span class="text-lg font-semibold text-gray-800">
-                                            {{ tempPriceRangeValues[1] }}
+                                            {{ getCurrencySymbol(selectedCurrency) }}{{ tempPriceRangeValues[1] }}
                                         </span>
                                     </div>
                                 </div>
-                                <VueSlider v-model="tempPriceRangeValues" :min="priceRangeMin" :max="priceRangeMax"
-                                    :interval="500" :tooltip="'none'" :height="8" :dot-size="20"
+                                <VueSlider v-model="tempPriceRangeValues" :min="dynamicPriceRange.min" :max="dynamicPriceRange.max"
+                                    :interval="1" :tooltip="'none'" :height="8" :dot-size="20"
                                     :process-style="{ backgroundColor: '#153b4f', borderRadius: '4px' }"
                                     :rail-style="{ backgroundColor: '#e5e7eb', borderRadius: '4px' }"
                                     :dot-style="{ backgroundColor: '#ffffff', border: '2px solid #153b4f', boxShadow: '0 2px 4px rgba(0,0,0,0.1)' }"
@@ -1681,17 +1779,6 @@ watch(
                         :options="$page.props.mileages.map(mileage => ({ value: mileage, label: `${mileage} km/L` }))"
                         placeholder="Any Mileage" :left-icon="mileageIcon2" :right-icon="CaretDown"
                         class="hover:border-customPrimaryColor transition-all duration-300" />
-                </div>
-
-                <!-- Package Type Filter -->
-                <div class="relative w-48 filter-group">
-                    <div class="text-xs font-medium text-gray-500 mb-1 ml-1">Rental Period</div>
-                    <CustomDropdown v-model="form.package_type" unique-id="package-type" :options="[
-                        { value: 'day', label: 'Daily Rate' },
-                        { value: 'week', label: 'Weekly Rate' },
-                        { value: 'month', label: 'Monthly Rate' }
-                    ]" placeholder="Any Rate" :left-icon="priceperdayicon" :right-icon="CaretDown"
-                    class="hover:border-customPrimaryColor bg-customPrimaryColor/5 transition-all duration-300" />
                 </div>
                 
             </div>
@@ -1763,8 +1850,8 @@ watch(
                         <button type="button" @click="showPriceSlider = !showPriceSlider"
                             class="pl-10 pr-4 py-2 w-full text-left flex gap-4 items-center justify-between bg-white border border-gray-200 rounded-lg shadow-sm hover:border-customPrimaryColor transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-customPrimaryColor/20">
                             <span class="text-gray-700 font-medium">
-                                {{ priceRangeValues[0] === 0 && priceRangeValues[1] === 20000 ? 'Set Price Range' :
-                                    `$${priceRangeValues[0]} - $${priceRangeValues[1]}` }}
+                                {{ priceRangeValues[0] === dynamicPriceRange.min && priceRangeValues[1] === dynamicPriceRange.max ? 'Set Price Range' :
+                                    `${getCurrencySymbol(selectedCurrency)}${priceRangeValues[0]} - ${getCurrencySymbol(selectedCurrency)}${priceRangeValues[1]}` }}
                             </span>
                             <img :src="CaretDown" alt="Caret Down"
                                 class="w-5 h-5 text-gray-500 transition-transform duration-300 ease-in-out pointer-events-none"
@@ -1778,18 +1865,18 @@ watch(
                                     <div class="flex flex-col">
                                         <span class="text-sm text-gray-500">Minimum</span>
                                         <span class="text-lg font-semibold text-gray-800">
-                                            {{ tempPriceRangeValues[0] }}
+                                            {{ getCurrencySymbol(selectedCurrency) }}{{ tempPriceRangeValues[0] }}
                                         </span>
                                     </div>
                                     <div class="flex flex-col items-end">
                                         <span class="text-sm text-gray-500">Maximum</span>
                                         <span class="text-lg font-semibold text-gray-800">
-                                            {{ tempPriceRangeValues[1] }}
+                                            {{ getCurrencySymbol(selectedCurrency) }}{{ tempPriceRangeValues[1] }}
                                         </span>
                                     </div>
                                 </div>
-                                <VueSlider v-model="tempPriceRangeValues" :min="priceRangeMin" :max="priceRangeMax"
-                                    :interval="500" :tooltip="'none'" :height="8" :dot-size="20"
+                                <VueSlider v-model="tempPriceRangeValues" :min="dynamicPriceRange.min" :max="dynamicPriceRange.max"
+                                    :interval="1" :tooltip="'none'" :height="8" :dot-size="20"
                                     :process-style="{ backgroundColor: '#153b4f', borderRadius: '4px' }"
                                     :rail-style="{ backgroundColor: '#e5e7eb', borderRadius: '4px' }"
                                     :dot-style="{ backgroundColor: '#ffffff', border: '2px solid #153b4f', boxShadow: '0 2px 4px rgba(0,0,0,0.1)' }"
@@ -1823,16 +1910,6 @@ watch(
                         <CustomDropdown v-model="form.mileage" unique-id="mileage-mobile"
                             :options="$page.props.mileages.map(mileage => ({ value: mileage, label: `${mileage} km/L` }))"
                             placeholder="Any Mileage" :left-icon="mileageIcon2" :right-icon="CaretDown" />
-                    </div>
-
-                    <!-- Package Type Filter -->
-                    <div class="filter-item">
-                        <label class="text-sm font-medium text-gray-700 mb-1 block">Rental Period</label>
-                        <CustomDropdown v-model="form.package_type" unique-id="package-type-mobile" :options="[
-                            { value: 'day', label: 'Daily Rate' },
-                            { value: 'week', label: 'Weekly Rate' },
-                            { value: 'month', label: 'Monthly Rate' }
-                        ]" placeholder="Daily Rate" :left-icon="priceperdayicon" :right-icon="CaretDown" />
                     </div>
 
                     <!-- Action Buttons -->
