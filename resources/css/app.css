@@ -233,6 +233,10 @@ input[type='time'] {
     color: #153b4f !important;
 }
 
+.dp__action_row {
+    padding: 0!important;
+}
+
 .dp__today {
     border-color: #153b4f !important;
 }

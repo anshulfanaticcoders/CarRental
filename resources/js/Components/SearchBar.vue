@@ -39,13 +39,16 @@
           </div>
 
           <!-- Date Picker Section -->
-          <div class="col-span-4 relative rental-dates-container">
+          <div class="col-span-4 relative rental-dates-container max-[768px]:w-full">
             <div class="flex flex-col w-full group">
               <label class="block text-xs font-semibold text-customLightGrayColor uppercase tracking-wider mb-2 pl-1">Rental dates</label>
+              
+              <!-- Desktop Version -->
               <VueDatePicker
+                v-if="!isMobile"
                 v-model="dateRange"
                 range
-                :multi-calendars="isMobile ? 0 : 2"
+                :multi-calendars="2"
                 :enable-time-picker="false"
                 :min-date="new Date()"
                 :format="formatRangeDate"
@@ -112,11 +115,96 @@
                       </div>
                   </template>
               </VueDatePicker>
+
+              <!-- Mobile Version -->
+              <div v-else>
+                  <!-- Trigger -->
+                  <div @click="openMobileDatePicker" class="flex items-center justify-between bg-gray-50 border border-gray-200 rounded-xl px-3 py-3 cursor-pointer transition-colors group-hover:border-customPrimaryColor hover:bg-gray-100">
+                      <div class="flex items-center gap-2 overflow-hidden">
+                          <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-customPrimaryColor flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                          </svg>
+                          <span v-if="dateRange && dateRange[0] && dateRange[1]" class="text-customDarkBlackColor font-medium text-sm truncate">
+                              {{ formatRangeDate(dateRange) }}
+                              <span class="text-xs text-customPrimaryColor font-semibold ml-1 bg-customPrimaryColor/10 px-1.5 py-0.5 rounded">
+                                {{ totalDays }} {{ totalDays > 1 ? 'days' : 'day' }}
+                              </span>
+                          </span>
+                          <span v-else class="text-gray-400 text-sm">
+                              Select Rental Dates
+                          </span>
+                      </div>
+                  </div>
+
+                  <!-- Full Screen Modal -->
+                  <Teleport to="body">
+                      <div v-if="showMobileDatePicker" class="fixed inset-0 z-[99999] bg-white flex flex-col">
+                          <!-- Header -->
+                          <div class="flex justify-between items-center p-4 border-b border-gray-100">
+                              <h3 class="text-lg font-bold text-customPrimaryColor m-0 leading-none">Select Rental Dates</h3>
+                              <button @click="closeMobileDatePicker" class="p-2 -mr-2 text-gray-400 hover:text-gray-600">
+                                  <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                              </button>
+                          </div>
+
+                          <!-- Scrollable Body -->
+                          <div class="flex-1 overflow-y-auto p-4 flex flex-col gap-6">
+                              <!-- Calendar -->
+                              <VueDatePicker
+                                  v-model="mobileDateRange"
+                                  inline
+                                  auto-apply
+                                  range
+                                  :enable-time-picker="false"
+                                  :min-date="new Date()"
+                                  :multi-calendars="0"
+                                  :month-change-on-scroll="false"
+                                  class="w-full justify-center flex"
+                              />
+
+                              <!-- Time Selection -->
+                              <div class="bg-[#153B4F1A] rounded-xl p-4">
+                                  <div class="grid grid-cols-2 gap-4 mb-4">
+                                      <!-- Pick-up time -->
+                                      <div class="flex flex-col">
+                                          <label class="text-[11px] uppercase tracking-wider text-customPrimaryColor font-bold mb-2">Pick-up time</label>
+                                          <div class="relative">
+                                              <select v-model="selectedStartTime" class="w-full appearance-none bg-[#1a3b4b] border border-[#2c5265] rounded-lg px-3 py-2.5 text-sm text-white font-medium focus:ring-0 outline-none">
+                                                  <option v-for="time in timeOptions" :key="`start-${time}`" :value="time" class="bg-[#0F2936]">{{ time }}</option>
+                                              </select>
+                                          </div>
+                                      </div>
+                                      <!-- Drop-off time -->
+                                      <div class="flex flex-col">
+                                          <label class="text-[11px] uppercase tracking-wider text-customPrimaryColor font-bold mb-2">Drop-off time</label>
+                                          <div class="relative">
+                                              <select v-model="selectedEndTime" class="w-full appearance-none bg-[#1a3b4b] border border-[#2c5265] rounded-lg px-3 py-2.5 text-sm text-white font-medium focus:ring-0 outline-none">
+                                                  <option v-for="time in timeOptions" :key="`end-${time}`" :value="time" class="bg-[#0F2936]">{{ time }}</option>
+                                              </select>
+                                          </div>
+                                      </div>
+                                  </div>
+                                  <div class="pt-4 border-t border-white/10 flex justify-between items-center text-customPrimaryColor">
+                                      <span class="text-sm font-semibold">Total Duration:</span>
+                                      <span class="text-lg font-bold">{{ mobileTotalDays }} Days</span>
+                                  </div>
+                              </div>
+                          </div>
+
+                          <!-- Footer -->
+                          <div class="p-4 border-t border-gray-100 bg-white">
+                              <button @click="confirmMobileDateSelection" class="w-full py-4 bg-customPrimaryColor text-white font-bold rounded-xl shadow-lg active:scale-95 transition-transform text-lg">
+                                  Confirm & Select
+                              </button>
+                          </div>
+                      </div>
+                  </Teleport>
+              </div>
             </div>
           </div>
 
           <!-- Submit Button -->
-          <div class="col-span-2 flex justify-end items-center mt-[20px]">
+          <div class="col-span-2 flex justify-end items-center mt-[20px] max-[768px]:w-full">
             <button type="submit"
               class="bg-customPrimaryColor text-white rounded-xl w-full py-3.5 text-base font-bold shadow-md hover:bg-customPrimaryColor/90 hover:shadow-lg transition-all transform active:scale-[0.98] flex justify-center items-center gap-2"
               :disabled="isLoading">
@@ -379,6 +467,34 @@ watch(selectedStartTime, (newVal) => {
 
 watch(selectedEndTime, (newVal) => {
     form.value.end_time = newVal;
+});
+
+const showMobileDatePicker = ref(false);
+const mobileDateRange = ref(null);
+
+const openMobileDatePicker = () => {
+    // Sync mobile range with current selected range
+    mobileDateRange.value = dateRange.value;
+    showMobileDatePicker.value = true;
+};
+
+const closeMobileDatePicker = () => {
+    showMobileDatePicker.value = false;
+};
+
+const confirmMobileDateSelection = () => {
+    if (mobileDateRange.value) {
+        dateRange.value = mobileDateRange.value;
+    }
+    showMobileDatePicker.value = false;
+};
+
+const mobileTotalDays = computed(() => {
+    if (!mobileDateRange.value || !mobileDateRange.value[0] || !mobileDateRange.value[1]) return 0;
+    const start = new Date(mobileDateRange.value[0]);
+    const end = new Date(mobileDateRange.value[1]);
+    const diffTime = Math.abs(end - start);
+    return Math.ceil(diffTime / (1000 * 60 * 60 * 24)) || 1; 
 });
 
 const handleSearchInput = () => {
@@ -769,6 +885,68 @@ const ErrorDialog = {
   }
   40% {
     opacity: 1;
+  }
+}
+
+/* Running Border Animation */
+@property --border-angle {
+  syntax: "<angle>";
+  inherits: false;
+  initial-value: 0deg;
+}
+
+.search_bar {
+  position: relative;
+  z-index: 0; /* Create stacking context */
+  box-shadow: 5px 5px 10px rgba(0, 0, 0, 0.2);
+  /* Ensure border radius is consistent for the pseudo element */
+  border-radius: 20px; 
+}
+
+.search_bar::before {
+  content: "";
+  position: absolute;
+  inset: -2px; /* Border width */
+  z-index: -1; /* Behind content */
+  background: conic-gradient(
+    from var(--border-angle),
+    transparent 0%,
+    transparent 80%,
+    red 90%,    /* The shining tail */
+    transparent 100%
+  );
+  border-radius: inherit; /* Matches parent 20px */
+  /* Animation: 3s duration * 3 iterations = 9s total. 
+     Then fadeOut triggers at 9s and holds opacity: 0. */
+  animation: borderRotate 3s linear 3, fadeOut 0.5s ease-in-out 9s forwards;
+}
+
+/* Ensure background covers the middle so only border shows */
+/* The children divs (column) already have backgrounds (bg-customPrimaryColor, bg-white), so they act as the cover. */
+
+@keyframes borderRotate {
+  from {
+    --border-angle: 0deg;
+  }
+  to {
+    --border-angle: 360deg;
+  }
+}
+
+@keyframes fadeOut {
+  to {
+    opacity: 0;
+  }
+}
+
+/* Keep existing media query at the end if needed or merge */
+@media screen and (max-width:768px) {
+  .search_bar {
+    box-shadow: none;
+    /* User mentioned existing max-[768px]:border-[1px], we can keep or override. 
+       If we want the animation to replace the static border, we might need to unset border. 
+       But current HTML class has 'max-[768px]:border-[1px]'. 
+       The ::before might cover it or sit behind it. */
   }
 }
 </style>

@@ -243,19 +243,20 @@ class WheelsysService
             'transmission' => $parsedAcriss['transmission'],
             'fuel' => $parsedAcriss['fuel'],
             'seating_capacity' => (int) ($rate['Pax'] ?? $parsedAcriss['seating_capacity']),
-            'mileage' => 'unlimited',
+            'mileage' => null, // Removed hardcoded 'unlimited' as it was appearing in Fuel Consumption slot
             'latitude' => (float) $locationLat,
             'longitude' => (float) $locationLng,
             'full_vehicle_address' => $locationAddress,
             'provider_pickup_id' => $pickupStation,
             'availability' => $rate['Availability'] === 'AVAILABLE',
             'benefits' => (object) [
-                'cancellation_available_per_day' => true,
-                'limited_km_per_day' => false,
-                'minimum_driver_age' => 21,
-                'fuel_policy' => $rate['FuelPolicy'] ?? 'full_to_full',
-                'unlimited_mileage' => $rate['Unlimited'] ?? true,
-                'included_km' => isset($rate['IncKlm']) ? (int) $rate['IncKlm'] : 99999,
+                'cancellation_available_per_day' => false, // Default false as API key is unknown
+                'limited_km_per_day' => isset($rate['Unlimited']) ? !$rate['Unlimited'] : true, // limited if NOT unlimited
+                'minimum_driver_age' => null, // Removed hardcoded 21
+                'fuel_policy' => isset($rate['FuelPolicy']) ? ucwords(str_replace('_', ' ', strtolower($rate['FuelPolicy']))) : 'Full to Full',
+                'unlimited_mileage' => $rate['Unlimited'] ?? false,
+                // If Unlimited is true, ignore IncKlm (even if it's 99999). Only show IncKlm if it's NOT unlimited.
+                'included_km' => ($rate['Unlimited'] ?? false) ? null : (isset($rate['IncKlm']) ? (int) $rate['IncKlm'] : null),
                 'currency' => 'USD',
                 'tax_inclusive' => $rate['TaxInclusive'] ?? true,
             ],

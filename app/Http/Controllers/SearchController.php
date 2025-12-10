@@ -603,6 +603,7 @@ class SearchController extends Controller
                                     // Adobe doesn't seem to provide fuel info, default to petrol if unknown or try to guess from type?
                                     // For now, let's leave it nullable or 'petrol' if we want to force it.
                                     // But wait, the filter requires 'petrol', 'diesel', 'electric'.
+                                    // But wait, the filter requires 'petrol', 'diesel', 'electric'.
                                     // Let's check 'type' field?
                                     'fuel' => 'petrol', // Defaulting to petrol as most rental cars are, minimizing 'N/A' issues
                                     'seating_capacity' => (int) ($vehicle['passengers'] ?? 4),
@@ -629,8 +630,10 @@ class SearchController extends Controller
                                     'dro' => (float) ($vehicle['dro'] ?? 0),
                                     // Direct fields for frontend template access
                                     'type' => $vehicle['type'] ?? '',
-                                    'passengers' => (int) ($vehicle['passengers'] ?? 4),
-                                    'doors' => (int) ($vehicle['doors'] ?? 4),
+                                    // Adobe API 'passengers' often means comfort limit (4), but we want Seats capacity (5). 
+                                    // User confirmed 5/7 seats. Mapping 4 -> 5 to match 'Seats' display vs 'Passengers'.
+                                    'passengers' => (isset($vehicle['passengers']) && $vehicle['passengers'] == 4) ? 5 : ($vehicle['passengers'] ?? null),
+                                    'doors' => isset($vehicle['doors']) ? (int) $vehicle['doors'] : null,
                                     'manual' => (bool) ($vehicle['manual'] ?? false),
                                     'traction' => $vehicle['traction'] ?? '',
                                 ];
