@@ -103,6 +103,12 @@ class LocationMatchingService
      */
     public function calculateSimilarityScore(array $loc1, array $loc2): float
     {
+        // Check for terminal conflict FIRST - different terminals should NEVER merge
+        // e.g., "Dubai Terminal 1" and "Dubai Terminal 2" should stay separate
+        if ($this->hasTerminalConflict($loc1, $loc2)) {
+            return 0;
+        }
+
         // Calculate individual scores
         $gpsScore = $this->calculateGpsSimilarity($loc1, $loc2);
         $nameScore = $this->calculateNameSimilarity($loc1, $loc2);
@@ -552,7 +558,7 @@ class LocationMatchingService
         $avgLon = $coordCount > 0 ? $lonSum / $coordCount : ($bestLocation['longitude'] ?? 0);
 
         return [
-            'unified_location_id' => crc32($this->normalizeLocationName($bestName)),
+            'unified_location_id' => crc32(strtolower($bestName)), // Use full name with terminal number for unique ID
             'name' => $bestName,
             'aliases' => $aliases,
             'city' => $bestLocation['city'] ?? null,

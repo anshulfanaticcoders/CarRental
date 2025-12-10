@@ -526,11 +526,11 @@ const handleDateTo = (date) => {
 const pricingPackages = computed(() => [
     {
         id: 'day',
-        label: 'Total Rental Price',
+        label: `Total for ${rentalDuration.value} ${rentalDuration.value === 1 ? 'day' : 'days'}`,
         description: 'Price for the selected rental period',
         price: vehicleProduct.value?.total,
         icon: Clock,
-        priceLabel: '/rental'
+        priceLabel: ''
     }
 ].filter(pkg => pkg.price));
 
@@ -1218,7 +1218,7 @@ onBeforeUnmount(() => {
                                         <img :src="pickupLocationIcon" alt="Pickup" class="w-5 h-5 mt-1" loading="lazy" />
                                         <div class="flex-1">
                                             <span class="text-sm font-medium text-green-800">Pickup Location</span>
-                                            <p class="font-semibold text-green-900">{{ filters.where || location?.address_1 }}</p>
+                                            <p class="font-semibold text-green-900">{{ location?.name || filters.where }}</p>
                                             <p class="text-sm text-green-700">{{ location?.address_city }}</p>
                                             <p class="text-sm text-green-600 mt-1">{{ form.start_date }} at {{ form.start_time }}</p>
                                         </div>
@@ -1227,8 +1227,8 @@ onBeforeUnmount(() => {
                                         <img :src="returnLocationIcon" alt="Return" class="w-5 h-5 mt-1" loading="lazy" />
                                         <div class="flex-1">
                                             <span class="text-sm font-medium text-blue-800">Return Location</span>
-                                            <p class="font-semibold text-blue-900">{{ dropoffLocation ? dropoffLocation.name : (filters.where || location?.name) }}</p>
-                                            <p class="text-sm text-blue-700">{{ dropoffLocation ? dropoffLocation.address_city : location?.address_city }}</p>
+                                            <p class="font-semibold text-blue-900">{{ dropoffLocation?.name || location?.name || filters.where }}</p>
+                                            <p class="text-sm text-blue-700">{{ dropoffLocation?.address_city || location?.address_city }}</p>
                                             <p class="text-sm text-blue-600 mt-1">{{ form.end_date }} at {{ form.end_time }}</p>
                                         </div>
                                     </div>

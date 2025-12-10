@@ -75,12 +75,12 @@
                   </template>
 
                   <template #action-row="{ selectDate, closePicker }">
-                      <div class="flex flex-col bg-[#0F2936] text-white rounded-[3px] overflow-hidden w-full">
+                      <div class="flex flex-col bg-[#153B4F1A] text-white rounded-[3px] overflow-hidden w-full">
                           <!-- Time Selection Row -->
                           <div class="grid grid-cols-2 gap-4 p-5 border-b border-white/10">
                               <!-- Pick-up time -->
                               <div class="flex flex-col">
-                                  <label class="text-[11px] uppercase tracking-wider text-gray-300 font-bold mb-2">Pick-up time</label>
+                                  <label class="text-[11px] uppercase tracking-wider text-customPrimaryColor font-bold mb-2">Pick-up time</label>
                                   <div class="relative group">
                                       <select v-model="selectedStartTime" class="w-full appearance-none bg-[#1a3b4b] border border-[#2c5265] rounded-lg px-4 py-2.5 text-sm text-white font-medium focus:ring-2 focus:ring-customPrimaryColor focus:border-customPrimaryColor outline-none cursor-pointer transition-all hover:bg-[#23485a]">
                                           <option v-for="time in timeOptions" :key="`start-${time}`" :value="time" class="bg-[#0F2936] text-white">{{ time }}</option>
@@ -92,7 +92,7 @@
                               </div>
                               <!-- Drop-off time -->
                               <div class="flex flex-col">
-                                  <label class="text-[11px] uppercase tracking-wider text-gray-300 font-bold mb-2">Drop-off time</label>
+                                  <label class="text-[11px] uppercase tracking-wider text-customPrimaryColor font-bold mb-2">Drop-off time</label>
                                   <div class="relative group">
                                       <select v-model="selectedEndTime" class="w-full appearance-none bg-[#1a3b4b] border border-[#2c5265] rounded-lg px-4 py-2.5 text-sm text-white font-medium focus:ring-2 focus:ring-customPrimaryColor focus:border-customPrimaryColor outline-none cursor-pointer transition-all hover:bg-[#23485a]">
                                           <option v-for="time in timeOptions" :key="`end-${time}`" :value="time" class="bg-[#0F2936] text-white">{{ time }}</option>
@@ -105,7 +105,7 @@
                           </div>
                           
                           <!-- Total Duration Row -->
-                          <div class="px-5 py-4 bg-[#0b202a] flex justify-between items-center">
+                          <div class="px-5 py-4 bg-customPrimaryColor flex justify-between items-center">
                               <span class="text-sm text-gray-300 font-medium">Total Rental Duration:</span>
                               <span class="text-lg font-bold text-white tracking-wide">{{ totalDays }} <span class="text-sm font-normal text-gray-400">{{ totalDays > 1 ? 'Days' : 'Day' }}</span></span>
                           </div>
@@ -121,7 +121,7 @@
               class="bg-customPrimaryColor text-white rounded-xl w-full py-3.5 text-base font-bold shadow-md hover:bg-customPrimaryColor/90 hover:shadow-lg transition-all transform active:scale-[0.98] flex justify-center items-center gap-2"
               :disabled="isLoading">
               <span v-if="!isLoading">{{ _t('homepage', 'search_button') }}</span>
-              <Vue3Lottie v-else :animation-data="LoaderAnimation" :height="40" :width="40"/>
+              <span v-else class="searching-text">Searching<span class="dot dot-1">.</span><span class="dot dot-2">.</span><span class="dot dot-3">.</span></span>
             </button>
           </div>
         </form>
@@ -737,6 +737,38 @@ const ErrorDialog = {
 @media screen and (max-width:768px) {
   .search_bar {
     box-shadow: none;
+  }
+}
+
+/* Searching animation */
+.searching-text {
+  display: inline-flex;
+  align-items: center;
+}
+
+.searching-text .dot {
+  animation: dotPulse 1.4s infinite ease-in-out;
+  opacity: 0;
+}
+
+.searching-text .dot-1 {
+  animation-delay: 0s;
+}
+
+.searching-text .dot-2 {
+  animation-delay: 0.2s;
+}
+
+.searching-text .dot-3 {
+  animation-delay: 0.4s;
+}
+
+@keyframes dotPulse {
+  0%, 80%, 100% {
+    opacity: 0;
+  }
+  40% {
+    opacity: 1;
   }
 }
 </style>

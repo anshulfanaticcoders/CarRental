@@ -399,10 +399,10 @@ const getVehiclePriceConverted = (vehicle) => {
     } else if (vehicle.source === 'wheelsys' || vehicle.source === 'locauto_rent') {
         originalPrice = vehicle.price_per_day;
         originalCurrency = vehicle.currency || 'USD';
-    } else if (vehicle.source === 'greenmotion') {
-        const total = parseFloat(vehicle.products?.[0]?.total || 0);
-        originalPrice = numberOfRentalDays.value > 0 ? total / numberOfRentalDays.value : total;
-        originalCurrency = vehicle.products?.[0]?.currencyCode || 'USD';
+    } else if (vehicle.source === 'greenmotion' || vehicle.source === 'usave') {
+        // For GreenMotion/USave, use the total rental price directly
+        originalPrice = parseFloat(vehicle.products?.[0]?.total || 0);
+        originalCurrency = vehicle.products?.[0]?.currency || 'USD';
     } else if (vehicle.source === 'okmobility') {
         originalPrice = vehicle.price_per_day;
         originalCurrency = 'EUR';
@@ -635,11 +635,10 @@ const createCustomIcon = (vehicle, isHighlighted = false) => {
         } else if ((vehicle.source === 'wheelsys' || vehicle.source === 'locauto_rent') && vehicle.price_per_day) {
             priceValue = convertCurrency(vehicle.price_per_day, vehicle.currency || 'USD');
         } else {
-             const currencyCode = vehicle.products?.[0]?.currency || 'USD';
-            // Calculate price per day for provider vehicles
+            // For GreenMotion/USave, show total rental price
+            const currencyCode = vehicle.products?.[0]?.currency || 'USD';
             const totalProviderPrice = parseFloat(vehicle.products?.[0]?.total || 0);
-            priceValue = numberOfRentalDays.value > 0 ? totalProviderPrice / numberOfRentalDays.value : totalProviderPrice;
-            priceValue = convertCurrency(priceValue, currencyCode);
+            priceValue = convertCurrency(totalProviderPrice, currencyCode);
         }
         currencySymbol = getCurrencySymbol(selectedCurrency.value);
     } else {
@@ -846,12 +845,12 @@ const addMarkers = () => {
             popupCurrencySymbol = getCurrencySymbol(selectedCurrency.value);
             popupPrice = `${popupCurrencySymbol}${convertedPrice.toFixed(2)}`; // Display price per day
         } else if (vehicle.source !== 'internal' && vehicle.products && vehicle.products[0]?.total && vehicle.products[0].total > 0) {
+            // For GreenMotion/USave, show total rental price
             const currencyCode = vehicle.products[0]?.currency || 'USD';
             const totalProviderPrice = parseFloat(vehicle.products[0]?.total || 0);
-            const pricePerDay = totalProviderPrice / numberOfRentalDays.value;
-            const convertedPrice = convertCurrency(pricePerDay, currencyCode);
+            const convertedPrice = convertCurrency(totalProviderPrice, currencyCode);
             popupCurrencySymbol = getCurrencySymbol(selectedCurrency.value);
-            popupPrice = `${popupCurrencySymbol}${convertedPrice.toFixed(2)}`; // Display price per day
+            popupPrice = `${popupCurrencySymbol}${convertedPrice.toFixed(2)} total`; // Display total price
         } else if (vehicle.source === 'internal' && vehicle.price_per_day && vehicle.price_per_day > 0) {
             const originalCurrency = vehicle.vendor_profile?.currency || 'USD';
             const convertedPrice = convertCurrency(vehicle.price_per_day, originalCurrency);
@@ -951,12 +950,12 @@ const addMobileMarkers = () => {
             popupCurrencySymbol = getCurrencySymbol(selectedCurrency.value);
             popupPrice = `${popupCurrencySymbol}${convertedPrice.toFixed(2)}`; // Display price per day
         } else if (vehicle.source !== 'internal' && vehicle.products && vehicle.products[0]?.total && vehicle.products[0].total > 0) {
+            // For GreenMotion/USave, show total rental price
             const currencyCode = vehicle.products[0]?.currency || 'USD';
             const totalProviderPrice = parseFloat(vehicle.products[0]?.total || 0);
-            const pricePerDay = totalProviderPrice / numberOfRentalDays.value;
-            const convertedPrice = convertCurrency(pricePerDay, currencyCode);
+            const convertedPrice = convertCurrency(totalProviderPrice, currencyCode);
             popupCurrencySymbol = getCurrencySymbol(selectedCurrency.value);
-            popupPrice = `${popupCurrencySymbol}${convertedPrice.toFixed(2)}`;
+            popupPrice = `${popupCurrencySymbol}${convertedPrice.toFixed(2)} total`;
         } else if (vehicle.source === 'internal' && vehicle.price_per_day && vehicle.price_per_day > 0) {
             const originalCurrency = vehicle.vendor_profile?.currency || 'USD';
             const convertedPrice = convertCurrency(vehicle.price_per_day, originalCurrency);
@@ -2301,9 +2300,9 @@ watch(
                                                 </div>
                                                 <div v-else-if="vehicle.products && vehicle.products[0]?.total && vehicle.products[0].total > 0">
                                                     <span class="text-customPrimaryColor text-[1.875rem] font-medium max-[768px]:text-[1.3rem] max-[768px]:font-bold">
-                                                        {{ getCurrencySymbol(selectedCurrency) }}{{ convertCurrency((parseFloat(vehicle.products[0].total) / numberOfRentalDays), vehicle.products[0].currency).toFixed(2) }}
+                                                        {{ getCurrencySymbol(selectedCurrency) }}{{ convertCurrency(parseFloat(vehicle.products[0].total), vehicle.products[0].currency).toFixed(2) }}
                                                     </span>
-                                                    <span class="text-sm text-gray-600">per rental</span>
+                                                    <span class="text-sm text-gray-600">total for {{ numberOfRentalDays }} {{ numberOfRentalDays === 1 ? 'day' : 'days' }}</span>
                                                 </div>
                                                 <div v-else>
                                                     <span class="text-sm text-gray-500">Price not available</span>
@@ -2334,11 +2333,11 @@ watch(
                                                     </span>
                                                     <span class="text-xs text-gray-600 ml-1">per rental</span>
                                                 </div>
-                                                <div v-else-if="vehicle.products && vehicle.products[0]?.total && vehicle.products[0].total > 0" class="flex items-baseline">
+                                                <div v-else-if="vehicle.products && vehicle.products[0]?.total && vehicle.products[0].total > 0" class="flex items-baseline flex-wrap">
                                                     <span class="text-customPrimaryColor text-lg font-semibold">
-                                                        {{ getCurrencySymbol(selectedCurrency) }}{{ convertCurrency((parseFloat(vehicle.products[0].total) / numberOfRentalDays), vehicle.products[0].currency).toFixed(2) }}
+                                                        {{ getCurrencySymbol(selectedCurrency) }}{{ convertCurrency(parseFloat(vehicle.products[0].total), vehicle.products[0].currency).toFixed(2) }}
                                                     </span>
-                                                    <span class="text-xs text-gray-600 ml-1">per rental</span>
+                                                    <span class="text-xs text-gray-600 ml-1">total for {{ numberOfRentalDays }} {{ numberOfRentalDays === 1 ? 'day' : 'days' }}</span>
                                                 </div>
                                                 <div v-else class="mt-1">
                                                     <span class="text-sm text-gray-500">Price not available</span>
