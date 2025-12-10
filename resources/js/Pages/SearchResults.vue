@@ -2419,7 +2419,7 @@ watch(
 @import "leaflet/dist/leaflet.css";
 
 .marker-pin {
-    width: max-content; /* Fixed width to ensure consistent iconSize */
+    width: 80px; /* Fixed width to match iconSize */
     height: 30px;
     /* background color is now controlled by Tailwind classes in HTML */
     border: 2px solid #666;
@@ -2428,13 +2428,16 @@ watch(
     align-items: center;
     justify-content: center;
     box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
 
 .marker-pin span {
     /* text color is now controlled by Tailwind classes in HTML */
     font-weight: bold;
-    font-size: 12px;
-    padding: 0 8px;
+    font-size: 11px;
+    padding: 0 4px;
 }
 
 .custom-div-icon {

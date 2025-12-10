@@ -491,11 +491,17 @@ class SearchController extends Controller
                                     $fuelPolicy = !empty($products) ? ($products[0]['fuelpolicy'] ?? '') : '';
                                     $brandName = explode(' ', (string) $vehicle['name'])[0];
 
+                                    // Parse ACRISS code to get category
+                                    $acrissCode = (string) $vehicle->acriss;
+                                    $parsedCategory = $this->parseSippCode($acrissCode);
+                                    $categoryName = $parsedCategory['category'] ?? 'Unknown';
+
                                     $providerVehicles->push((object) [
                                         'id' => $providerToFetch . '_' . (string) $vehicle['id'],
                                         'source' => $providerToFetch,
                                         'brand' => $brandName,
                                         'model' => (string) $vehicle['name'],
+                                        'category' => $categoryName, // Add category for filtering
                                         'image' => urldecode((string) $vehicle['image']),
                                         'price_per_day' => (isset($vehicle->total) && is_numeric((string) $vehicle->total)) ? (float) (string) $vehicle->total : 0.0,
                                         'price_per_week' => null,
