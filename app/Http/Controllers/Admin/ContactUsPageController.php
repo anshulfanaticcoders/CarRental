@@ -30,7 +30,7 @@ class ContactUsPageController extends Controller
         } else {
             $contactPage = new ContactUsPage();
         }
-        
+
         return Inertia::render('AdminDashboardPages/ContactUs/Index', [
             'contactPage' => $contactPage,
             'translation' => $translation,
@@ -43,7 +43,7 @@ class ContactUsPageController extends Controller
         $translations = $contactPage->translations->keyBy('locale');
         $locale = app()->getLocale();
         $allLocales = ['en', 'fr', 'nl', 'es', 'ar'];
-        
+
         $seoMeta = SeoMeta::with('translations')->where('url_slug', 'contact-us')->first();
 
         $seoTranslations = [];
@@ -51,14 +51,14 @@ class ContactUsPageController extends Controller
             foreach ($allLocales as $l) {
                 $translation = $seoMeta->translations->firstWhere('locale', $l);
                 $seoTranslations[$l] = [
-                    'url_slug'         => $translation->url_slug ?? 'contact-us',
-                    'seo_title'        => $translation->seo_title ?? null,
+                    'url_slug' => $translation->url_slug ?? 'contact-us',
+                    'seo_title' => $translation->seo_title ?? null,
                     'meta_description' => $translation->meta_description ?? null,
-                    'keywords'         => $translation->keywords ?? null,
+                    'keywords' => $translation->keywords ?? null,
                 ];
             }
         }
-        
+
         return Inertia::render('AdminDashboardPages/ContactUs/Edit', [
             'contactPage' => $contactPage,
             'translations' => $translations,
@@ -86,11 +86,11 @@ class ContactUsPageController extends Controller
             'translations.*.intro_text' => 'nullable|string',
             'translations.*.contact_points' => 'nullable|array',
             'translations.*.contact_points.*.title' => 'nullable|string|max:255',
-            'seo_title'       => 'nullable|string|max:60',
-            'meta_description'=> 'nullable|string|max:160',
-            'keywords'        => 'nullable|string|max:255',
-            'canonical_url'   => 'nullable|url|max:255',
-            'seo_image_url'   => 'nullable|url|max:255',
+            'seo_title' => 'nullable|string|max:60',
+            'meta_description' => 'nullable|string|max:160',
+            'keywords' => 'nullable|string|max:255',
+            'canonical_url' => 'nullable|url|max:255',
+            'seo_image_url' => 'nullable|url|max:255',
         ]);
 
         $contactPage = ContactUsPage::first();
@@ -120,13 +120,13 @@ class ContactUsPageController extends Controller
         $allTranslationsData = $request->input('translations', []);
         foreach ($allTranslationsData as $locale => $translatableDataForLocale) {
             $allowedTranslatableFields = [
-                'hero_title', 
-                'hero_description', 
-                'intro_text', 
+                'hero_title',
+                'hero_description',
+                'intro_text',
                 'contact_points'
             ];
             $filteredData = array_intersect_key($translatableDataForLocale, array_flip($allowedTranslatableFields));
-            
+
             $contactPage->translations()->updateOrCreate(
                 ['locale' => $locale],
                 $filteredData
@@ -134,7 +134,7 @@ class ContactUsPageController extends Controller
         }
 
         $seoData = $request->only(['seo_title', 'meta_description', 'keywords', 'canonical_url', 'seo_image_url']);
-        
+
         if (array_filter($seoData) || SeoMeta::where('url_slug', $fixedSlug)->exists()) {
             $seoMeta = SeoMeta::updateOrCreate(
                 ['url_slug' => $fixedSlug],
@@ -156,10 +156,10 @@ class ContactUsPageController extends Controller
                     $seoMeta->translations()->updateOrCreate(
                         ['locale' => $locale],
                         [
-                            'url_slug'         => \Illuminate\Support\Str::slug($translationInput['url_slug'] ?? 'contact-us'),
-                            'seo_title'        => $translationInput['seo_title'] ?? null,
+                            'url_slug' => \Illuminate\Support\Str::slug($translationInput['url_slug'] ?? 'contact-us'),
+                            'seo_title' => $translationInput['seo_title'] ?? null,
                             'meta_description' => $translationInput['meta_description'] ?? null,
-                            'keywords'         => $translationInput['keywords'] ?? null,
+                            'keywords' => $translationInput['keywords'] ?? null,
                         ]
                     );
                 }
@@ -173,7 +173,7 @@ class ContactUsPageController extends Controller
     public function destroy()
     {
         $contactPage = ContactUsPage::first();
-        
+
         if ($contactPage) {
             if ($contactPage->hero_image_url) {
                 Storage::disk('upcloud')->delete(
@@ -246,6 +246,24 @@ class ContactUsPageController extends Controller
             'contactPage' => $pageData,
             'seoMeta' => $seoMeta,
             'pages' => $pages,
+        ]);
+    }
+    public function getContactInfo()
+    {
+        $contactPage = ContactUsPage::first();
+
+        if (!$contactPage) {
+            return response()->json([
+                'phone_number' => null,
+                'email' => null,
+                'address' => null,
+            ]);
+        }
+
+        return response()->json([
+            'phone_number' => $contactPage->phone_number,
+            'email' => $contactPage->email,
+            'address' => $contactPage->address,
         ]);
     }
 }

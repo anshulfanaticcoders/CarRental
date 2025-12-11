@@ -20,6 +20,7 @@ use App\Http\Controllers\Api\SeoMetaController; // Added for SEO Meta
 use App\Http\Controllers\Admin\PayableSettingController; // Import PayableSettingController
 use App\Http\Controllers\GreenMotionController; // Import GreenMotionController
 use App\Http\Controllers\Vendor\VendorOverviewController; // Import VendorOverviewController
+use App\Http\Controllers\Admin\ContactUsPageController;
 use Illuminate\Http\Request;
 use App\Models\User;
 use Illuminate\Support\Facades\Route;
@@ -111,3 +112,5 @@ Route::get('/unified-locations', [App\Http\Controllers\SearchController::class, 
 
 // Vendor API routes - Note: Moved to web.php for proper authentication
 Route::get('/advertisement', [\App\Http\Controllers\AdvertisementController::class, 'index']);
+Route::get('/footer-contact-info', [ContactUsPageController::class, 'getContactInfo']);
+

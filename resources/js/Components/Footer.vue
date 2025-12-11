@@ -10,6 +10,7 @@ import instagramLogoColored from "../../assets/instagramColored.png";
 import paypalLogos from "../../assets/paymentIcons.svg";
 import { onMounted, ref, computed } from "vue";
 import { usePage } from '@inertiajs/vue3';
+import { Phone, Mail, MapPin } from 'lucide-vue-next';
 
 const isFacebookHovered = ref(false);
 const isTwitterHovered = ref(false);
@@ -65,9 +66,15 @@ const getTranslatedSlug = (pageSlug) => {
 
 // Fetch footer places and categories data
 const footerPlaces = ref([]);
+const footerContactInfo = ref({
+    phone_number: '',
+    email: '',
+    address: ''
+});
+
 import { defineExpose } from 'vue';
 
-const footerCategories = ref([]);
+
 const unifiedLocations = ref([]);
 
 const navigateToSearch = (place) => {
@@ -116,26 +123,24 @@ const updateSearchUrl = (place) => {
     }
 };
 
-const updateCategorySearchUrl = (category) => {
-    sessionStorage.setItem('searchurl', `/search/category/${category.slug}`);
-};
+
 
 defineExpose({
     updateSearchUrl,
-    updateCategorySearchUrl,
+
     navigateToSearch
 });
 
 onMounted(async () => {
     try {
-        const [placesResponse, categoriesResponse, locationsResponse] = await Promise.all([
+        const [placesResponse, locationsResponse, contactInfoResponse] = await Promise.all([
             axios.get(`/${page.props.locale}/api/footer-places`),
-            axios.get(`/${page.props.locale}/api/footer-categories`),
-            axios.get('/unified_locations.json')
+            axios.get('/unified_locations.json'),
+            axios.get('/api/footer-contact-info')
         ]);
 
         footerPlaces.value = placesResponse.data;
-        footerCategories.value = categoriesResponse.data;
+        footerContactInfo.value = contactInfoResponse.data;
         unifiedLocations.value = locationsResponse.data;
     } catch (error) {
         console.error('Failed to fetch footer data:', error);
@@ -184,7 +189,7 @@ onMounted(async () => {
                         </div>
                     </div>
                 </div>
-                <div class="col w-[50%] flex justify-between gap-10
+                <div class="col w-[50%] grid grid-cols-4 gap-4
                 max-[768px]:grid max-[768px]:grid-cols-2 max-[768px]:w-full max-[768px]:mt-5">
                     <div class="col flex flex-col gap-8 max-[768px]:gap-4">
                         <label for="" class="text-[1.25rem] font-medium max-[768px]:text-[1rem]">Company</label>
@@ -252,19 +257,19 @@ onMounted(async () => {
                         </ul>
                     </div>
                     <div class="col flex flex-col gap-8 max-[768px]:gap-4">
-                        <label for="" class="text-[1.25rem] font-medium max-[768px]:text-[1rem]">Categories</label>
+                        <label for="" class="text-[1.25rem] font-medium max-[768px]:text-[1rem]">Contact</label>
                         <ul class="flex flex-col gap-4 max-[768px]:text-[0.875rem]">
-                            <li v-for="category in footerCategories" :key="category.id" class="relative group">
-                                <Link
-                                    :href="route('search.category', { locale: page.props.locale, category_slug: category.slug })"
-                                    @click="updateCategorySearchUrl(category)"
-                                    class="footer-link-underline">{{ category.name }}</Link>
+                            <li v-if="footerContactInfo.phone_number" class="flex gap-2 items-center">
+                                <Phone :size="20" />
+                                <a :href="`tel:${footerContactInfo.phone_number}`" class="footer-link-underline">{{ footerContactInfo.phone_number }}</a>
                             </li>
-                            <!-- Fallback if no categories are selected -->
-                            <li v-if="footerCategories.length === 0" class="relative group">
-                                <Link :href="route('welcome', { locale: page.props.locale })"
-                                    class="footer-link-underline">No categories available
-                                </Link>
+                            <li v-if="footerContactInfo.email" class="flex gap-2 items-center">
+                                <Mail :size="20" />
+                                <a :href="`mailto:${footerContactInfo.email}`" class="footer-link-underline">{{ footerContactInfo.email }}</a>
+                            </li>
+                            <li v-if="footerContactInfo.address" class="flex gap-2 items-start">
+                                <MapPin :size="20" class="shrink-0 mt-1" />
+                                <span class="whitespace-pre-line">{{ footerContactInfo.address }}</span>
                             </li>
                         </ul>
                     </div>
