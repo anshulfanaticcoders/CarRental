@@ -162,6 +162,7 @@ onBeforeUnmount(() => {
 
 
 import GreenMotionSearchComponent from "@/Components/GreenMotionSearchComponent.vue";
+import AdvertisementSection from "@/Components/AdvertisementSection.vue";
 
 const heroImageSource = computed(() => {
     return props.heroImage ? props.heroImage : heroImg;
@@ -201,13 +202,31 @@ const seoImageUrl = computed(() => {
 
 const unifiedLocations = ref([]);
 
+const advertisements = ref([]);
+
 onMounted(async () => {
-  try {
-    const response = await axios.get('/unified_locations.json');
-    unifiedLocations.value = response.data;
-  } catch (error) {
-    console.error('Error fetching unified locations:', error);
-  }
+    // If blogs are passed via props, isLoading should be false.
+    if (props.blogs && props.blogs.length > 0) {
+        isLoading.value = false;
+    }
+
+    try {
+        const response = await axios.get('/unified_locations.json');
+        unifiedLocations.value = response.data;
+    } catch (error) {
+        console.error('Error fetching unified locations:', error);
+    }
+
+    // Fetch active advertisements via API
+    try {
+        const adResponse = await axios.get('/api/advertisement');
+        if (adResponse.data) {
+            // Ensure response is always an array
+            advertisements.value = Array.isArray(adResponse.data) ? adResponse.data : [adResponse.data];
+        }
+    } catch (error) {
+        console.error('Error fetching advertisement:', error);
+    }
 });
 
 const navigateToSearch = (place) => {
@@ -392,11 +411,16 @@ useScrollAnimation('.blogs-trigger', '.more-button', {
 
 
         <section
-            class="mt-[-14rem] mb-[12rem] max-[768px]:mb-[0] max-[768px]:mt-[-1rem] max-[768px]:pt-[2rem] max-[768px]:bg-customPrimaryColor relative z-10 search-bar-section">
+            class="mt-[-14rem] mb-[6rem] max-[768px]:mb-[0] max-[768px]:mt-[-1rem] max-[768px]:pt-[2rem] max-[768px]:bg-customPrimaryColor relative z-10 search-bar-section">
                 <SearchBar class="search-bar-animation" />
         </section>
 
 
+        <!------------------------------- Advertisement Section -------------------------------------->
+        <!------------------------------ <Start>  -------------------------------------------------->
+        <!-- Advertisement Section -->
+        <AdvertisementSection :advertisements="advertisements" :heroImage="heroImageSource" />
+        <!------------------------------ <End>  -------------------------------------------------->
 
 
         <!------------------------------- Top Destination Places -------------------------------------->

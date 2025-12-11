@@ -47,7 +47,8 @@ import {
   CameraIcon,
   ShieldPlusIcon,
   Target,
-  Building
+  Building,
+  Megaphone
 } from 'lucide-vue-next'
 import { onMounted, ref } from 'vue';
 import ApplicationLogo from "./ApplicationLogo.vue";
@@ -351,6 +352,17 @@ const data = {
         {
           title: 'All Activities',
           url: '/activity-logs',
+        },
+      ],
+    },
+    {
+      title: 'Advertisements',
+      url: '#',
+      icon: Megaphone,
+      items: [
+        {
+          title: 'Manage Ads',
+          url: '/admin/advertisements',
         },
       ],
     },

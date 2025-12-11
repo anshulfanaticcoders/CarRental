@@ -71,9 +71,9 @@ class OkMobilityService
             Log::info('OK Mobility API Request (getMultiplePrices): ' . $xmlRequest);
 
             $response = Http::withHeaders([
-                    'Content-Type' => 'text/xml; charset=utf-8',
-                    'SOAPAction' => 'http://www.OKGroup.es/RentaCarWebService/getWSDL/getMultiplePrices',
-                ])
+                'Content-Type' => 'text/xml; charset=utf-8',
+                'SOAPAction' => 'http://www.OKGroup.es/RentaCarWebService/getWSDL/getMultiplePrices',
+            ])
                 ->send('POST', $this->baseUrl . '/okrentacar', [
                     'body' => $xmlRequest
                 ]);
@@ -150,9 +150,9 @@ class OkMobilityService
             Log::info('OK Mobility API Request (createReservation): ' . $xmlRequest);
 
             $response = Http::withHeaders([
-                    'Content-Type' => 'application/soap+xml; charset=utf-8',
-                    'SOAPAction' => 'http://tempuri.org/createReservation',
-                ])
+                'Content-Type' => 'application/soap+xml; charset=utf-8',
+                'SOAPAction' => 'http://tempuri.org/createReservation',
+            ])
                 ->send('POST', $this->baseUrl . '/createReservation', [
                     'body' => $xmlRequest
                 ]);
@@ -199,9 +199,9 @@ class OkMobilityService
             Log::info('OK Mobility API Request (getStations): ' . $xmlRequest);
 
             $response = Http::withHeaders([
-                    'Content-Type' => 'text/xml; charset=utf-8',
-                    'SOAPAction' => 'http://www.OKGroup.es/RentaCarWebService/getWSDL/getStations',
-                ])
+                'Content-Type' => 'text/xml; charset=utf-8',
+                'SOAPAction' => 'http://www.OKGroup.es/RentaCarWebService/getWSDL/getStations',
+            ])
                 ->send('POST', $this->baseUrl . '/okrentacar', [
                     'body' => $xmlRequest
                 ]);

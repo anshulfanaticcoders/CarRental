@@ -26,6 +26,7 @@ use App\Http\Controllers\Admin\VehicleDashboardController;
 use App\Http\Controllers\Admin\DamageProtectionController as AdminDamageProtectionController;
 use App\Http\Controllers\Admin\SeoMetaController;
 use App\Http\Controllers\Admin\VendorsReportController;
+use App\Http\Controllers\Admin\AdminAdvertisementController; // Import the controller
 use App\Http\Controllers\Auth\AuthenticatedSessionController;
 use App\Http\Controllers\Auth\EmailValidationController;
 use App\Http\Controllers\Auth\VerifyEmailController;
@@ -63,6 +64,7 @@ use App\Http\Controllers\Admin\PayableSettingController;
 use App\Http\Controllers\WheelsysCarController;
 use App\Http\Controllers\WheelsysBookingController;
 use App\Models\Booking;
+use App\Models\Advertisement;
 use App\Models\Message;
 use App\Models\Page;
 use Illuminate\Foundation\Application;
@@ -248,6 +250,9 @@ Route::middleware(['auth', 'role:admin'])->group(function () {
     // Admin Profile Settings
     Route::get('/admin/settings/profile', [AdminProfileController::class, 'index'])->name('admin.settings.profile');
     Route::post('/admin/settings/profile', [AdminProfileController::class, 'update'])->name('admin.settings.profile');
+
+    // Advertisements Management
+    Route::resource('admin/advertisements', AdminAdvertisementController::class)->names('admin.advertisements');
 
     // Payable Amount Settings
     Route::get('/admin/settings/payable-amount', [PayableSettingController::class, 'index'])->name('admin.settings.payable-amount.index');
