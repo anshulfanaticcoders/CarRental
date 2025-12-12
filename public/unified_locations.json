@@ -3693,12 +3693,6 @@
                 "original_name": "Bergamo-Orio al Serio International Airport",
                 "dropoffs": []
             },
-            {
-                "provider": "locauto_rent",
-                "pickup_id": "BGY",
-                "original_name": "Bergamo Orio al Serio Airport",
-                "dropoffs": []
-            }
         ],
         "our_location_id": null
     },
@@ -3737,12 +3731,6 @@
                 "original_name": "Brindisi Airport",
                 "dropoffs": []
             },
-            {
-                "provider": "locauto_rent",
-                "pickup_id": "BDS",
-                "original_name": "Brindisi Airport",
-                "dropoffs": []
-            }
         ],
         "our_location_id": null
     },
@@ -3762,12 +3750,6 @@
                 "original_name": "Cagliari Airport",
                 "dropoffs": []
             },
-            {
-                "provider": "locauto_rent",
-                "pickup_id": "CAG",
-                "original_name": "Cagliari Airport",
-                "dropoffs": []
-            }
         ],
         "our_location_id": null
     },
@@ -3808,12 +3790,6 @@
                 "original_name": "Firenze Airport",
                 "dropoffs": []
             },
-            {
-                "provider": "locauto_rent",
-                "pickup_id": "FLR",
-                "original_name": "Florence Airport",
-                "dropoffs": []
-            }
         ],
         "our_location_id": null
     },
@@ -3836,18 +3812,6 @@
                 "original_name": "Milano Malpensa Airport",
                 "dropoffs": []
             },
-            {
-                "provider": "locauto_rent",
-                "pickup_id": "MXP",
-                "original_name": "Milan Malpensa Airport T1",
-                "dropoffs": []
-            },
-            {
-                "provider": "locauto_rent",
-                "pickup_id": "MXP2",
-                "original_name": "Milan Malpensa Airport T2",
-                "dropoffs": []
-            }
         ],
         "our_location_id": null
     },
@@ -3876,12 +3840,6 @@
                 "original_name": "Naples Capodichino Airport",
                 "dropoffs": []
             },
-            {
-                "provider": "locauto_rent",
-                "pickup_id": "NAP",
-                "original_name": "Naples Airport",
-                "dropoffs": []
-            }
         ],
         "our_location_id": null
     },
@@ -3926,12 +3884,6 @@
                 "original_name": "Pisa Airport",
                 "dropoffs": []
             },
-            {
-                "provider": "locauto_rent",
-                "pickup_id": "PI",
-                "original_name": "Pisa Airport",
-                "dropoffs": []
-            }
         ],
         "our_location_id": null
     },
@@ -3959,12 +3911,6 @@
                 "original_name": "Rome Fiumicino Airport",
                 "dropoffs": []
             },
-            {
-                "provider": "locauto_rent",
-                "pickup_id": "FCO",
-                "original_name": "Rome Fiumicino Airport",
-                "dropoffs": []
-            }
         ],
         "our_location_id": null
     },
@@ -3986,12 +3932,6 @@
                 "original_name": "Venezia Airport",
                 "dropoffs": []
             },
-            {
-                "provider": "locauto_rent",
-                "pickup_id": "VCE",
-                "original_name": "Venice Airport",
-                "dropoffs": []
-            }
         ],
         "our_location_id": null
     },
@@ -4032,12 +3972,6 @@
                 "original_name": "Firenze Downtown",
                 "dropoffs": []
             },
-            {
-                "provider": "locauto_rent",
-                "pickup_id": "FID",
-                "original_name": "Florence Downtown",
-                "dropoffs": []
-            }
         ],
         "our_location_id": null
     },
@@ -10501,12 +10435,6 @@
                 "original_name": "Bari Palese International Airport",
                 "dropoffs": []
             },
-            {
-                "provider": "locauto_rent",
-                "pickup_id": "BAAPT",
-                "original_name": "Bari Airport",
-                "dropoffs": []
-            }
         ],
         "our_location_id": null
     },
@@ -10526,12 +10454,6 @@
                 "original_name": "Bologna Airport",
                 "dropoffs": []
             },
-            {
-                "provider": "locauto_rent",
-                "pickup_id": "BLQ",
-                "original_name": "Bologna Airport",
-                "dropoffs": []
-            }
         ],
         "our_location_id": null
     },
@@ -10551,12 +10473,6 @@
                 "original_name": "Catania Airport",
                 "dropoffs": []
             },
-            {
-                "provider": "locauto_rent",
-                "pickup_id": "CT",
-                "original_name": "Catania Airport",
-                "dropoffs": []
-            }
         ],
         "our_location_id": null
     },
@@ -10595,12 +10511,6 @@
                 "original_name": "Lamezia Terme Airport",
                 "dropoffs": []
             },
-            {
-                "provider": "locauto_rent",
-                "pickup_id": "SUF",
-                "original_name": "Lamezia Terme Airport",
-                "dropoffs": []
-            }
         ],
         "our_location_id": null
     },
@@ -10660,12 +10570,6 @@
                 "original_name": "Bologna Train Station",
                 "dropoffs": []
             },
-            {
-                "provider": "locauto_rent",
-                "pickup_id": "BOC",
-                "original_name": "Bologna Centrale Train Station",
-                "dropoffs": []
-            }
         ],
         "our_location_id": null
     },
@@ -10783,18 +10687,6 @@
                 "original_name": "Rome Termini Train station",
                 "dropoffs": []
             },
-            {
-                "provider": "locauto_rent",
-                "pickup_id": "RMT",
-                "original_name": "Rome Termini Station",
-                "dropoffs": []
-            },
-            {
-                "provider": "locauto_rent",
-                "pickup_id": "RMTIB",
-                "original_name": "Rome Tiburtina Station",
-                "dropoffs": []
-            }
         ],
         "our_location_id": null
     },
@@ -12211,5 +12103,5 @@
             }
         ],
         "our_location_id": null
-    }
+    },
 ]
