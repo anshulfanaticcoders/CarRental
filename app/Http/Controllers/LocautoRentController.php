@@ -90,12 +90,13 @@ class LocautoRentController extends Controller
      */
     public function showVehicle(Request $request, $locale, $id)
     {
+        // Accept parameters as sent by the frontend
         $validated = $request->validate([
-            'pickup_location_id' => 'required|string',
+            'location_id' => 'required|string',
             'dropoff_location_id' => 'nullable|string',
-            'date_from' => 'required|date',
+            'start_date' => 'required|date',
             'start_time' => 'required|string',
-            'date_to' => 'required|date|after:date_from',
+            'end_date' => 'required|date|after:start_date',
             'end_time' => 'required|string',
             'age' => 'nullable|integer|min:18|max:99',
             'currency' => 'nullable|string|max:3',
@@ -104,10 +105,10 @@ class LocautoRentController extends Controller
         try {
             // Since Locauto doesn't have a single vehicle API, we'll get all vehicles and filter by ID
             $response = $this->locautoRentService->getVehicles(
-                $validated['pickup_location_id'],
-                $validated['date_from'],
+                $validated['location_id'],
+                $validated['start_date'],
                 $validated['start_time'],
-                $validated['date_to'],
+                $validated['end_date'],
                 $validated['end_time'],
                 $validated['age'] ?? 35,
                 []
@@ -123,11 +124,11 @@ class LocautoRentController extends Controller
 
             $allVehicles = $this->locautoRentService->parseVehicleResponse($response);
 
-            // Find the specific vehicle by ID
+            // Find the specific vehicle by ID (SIPP code)
             $vehicle = collect($allVehicles)->firstWhere('id', $id);
 
             if (!$vehicle) {
-                Log::warning('Vehicle not found: ' . $id);
+                Log::warning('Vehicle not found: ' . $id, ['available_ids' => collect($allVehicles)->pluck('id')->toArray()]);
                 return Inertia::render('LocautoRentSingle', [
                     'vehicle' => null,
                     'error' => 'Vehicle not found.',
@@ -135,10 +136,10 @@ class LocautoRentController extends Controller
             }
 
             // Add additional details that might be useful
-            $vehicle['pickup_location_id'] = $validated['pickup_location_id'];
-            $vehicle['dropoff_location_id'] = $validated['dropoff_location_id'] ?? $validated['pickup_location_id'];
-            $vehicle['date_from'] = $validated['date_from'];
-            $vehicle['date_to'] = $validated['date_to'];
+            $vehicle['pickup_location_id'] = $validated['location_id'];
+            $vehicle['dropoff_location_id'] = $validated['dropoff_location_id'] ?? $validated['location_id'];
+            $vehicle['date_from'] = $validated['start_date'];
+            $vehicle['date_to'] = $validated['end_date'];
             $vehicle['start_time'] = $validated['start_time'];
             $vehicle['end_time'] = $validated['end_time'];
             $vehicle['age'] = $validated['age'] ?? 35;

@@ -961,7 +961,7 @@ class SearchController extends Controller
                                     $fuel = strtolower($fuel ?? 'petrol');
 
                                     $providerVehicles->push((object) [
-                                        'id' => 'locauto_rent_' . $vehicle['id'],
+                                        'id' => $vehicle['id'], // Use SIPP code directly as stable ID
                                         'source' => 'locauto_rent',
                                         'brand' => $brandName,
                                         'model' => $vehicle['model'] ?? 'Locauto Vehicle',

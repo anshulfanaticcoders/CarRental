@@ -1,0 +1,9 @@
+{
+  "agents": {
+    "general-purpose": {
+      "model": "gpt-5.1",
+      "skills": ["code", "shell", "browser", "analysis"],
+      "description": "A general-purpose agent for coding, debugging, planning, and automation tasks."
+    }
+  }
+}
