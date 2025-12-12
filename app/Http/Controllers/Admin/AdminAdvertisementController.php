@@ -36,6 +36,7 @@ class AdminAdvertisementController extends Controller
             'start_date' => 'required|date',
             'end_date' => 'required|date|after:start_date',
             'image' => 'required|image|mimes:jpeg,png,jpg,gif,webp|max:5120',
+            'is_external' => 'boolean',
         ]);
 
         $imagePath = null;
@@ -72,6 +73,7 @@ class AdminAdvertisementController extends Controller
             'end_date' => $request->end_date,
             'image_path' => $imagePath,
             'is_active' => $request->has('is_active') ? $request->is_active : true,
+            'is_external' => $request->has('is_external') ? $request->is_external : false,
         ]);
 
         return redirect()->back()->with('success', 'Advertisement created successfully.');
@@ -91,6 +93,7 @@ class AdminAdvertisementController extends Controller
             'start_date' => 'required|date',
             'end_date' => 'required|date|after:start_date',
             'image' => 'nullable|image|mimes:jpeg,png,jpg,gif,webp|max:5120',
+            'is_external' => 'boolean',
         ]);
 
         $data = $request->except('image');

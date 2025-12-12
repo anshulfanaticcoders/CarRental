@@ -4,13 +4,16 @@ use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
 
-return new class extends Migration
-{
+return new class extends Migration {
     /**
      * Run the migrations.
      */
     public function up(): void
     {
+        if (Schema::hasColumn('messages', 'booking_chat_id')) {
+            return;
+        }
+
         Schema::table('messages', function (Blueprint $table) {
             // Add booking_chat_id foreign key
             $table->foreignId('booking_chat_id')->nullable()->after('id')->constrained()->onDelete('cascade');

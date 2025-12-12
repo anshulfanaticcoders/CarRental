@@ -17,12 +17,14 @@ class Advertisement extends Model
         'start_date',
         'end_date',
         'is_active',
+        'is_external',
     ];
 
     protected $casts = [
         'start_date' => 'datetime',
         'end_date' => 'datetime',
         'is_active' => 'boolean',
+        'is_external' => 'boolean',
     ];
 
     /**

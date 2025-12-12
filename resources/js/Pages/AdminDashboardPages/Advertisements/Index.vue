@@ -42,7 +42,11 @@
                                     <!-- Button Link -->
                                     <div>
                                         <label class="block text-sm font-medium">Button Link</label>
-                                        <Input v-model="form.button_link" placeholder="/search" />
+                                        <Input v-model="form.button_link" placeholder="/search or https://google.com" />
+                                        <div class="flex items-center gap-2 mt-2">
+                                            <input type="checkbox" v-model="form.is_external" id="is_external" class="rounded border-gray-300 text-blue-600 shadow-sm focus:border-blue-300 focus:ring focus:ring-blue-200 focus:ring-opacity-50">
+                                            <label for="is_external" class="text-xs text-gray-600">External Link (opens in new tab)</label>
+                                        </div>
                                     </div>
                                     <!-- Dates -->
                                     <div>
@@ -115,6 +119,13 @@
                                 <TableCell class="px-4 py-3 font-medium">{{ ad.offer_type }}</TableCell>
                                 <TableCell class="px-4 py-3">{{ ad.title }}</TableCell>
                                 <TableCell class="px-4 py-3 max-w-[200px] truncate" :title="ad.description">{{ ad.description }}</TableCell>
+                                <TableCell class="px-4 py-3 text-sm">
+                                    <div class="flex flex-col">
+                                        <span class="text-xs text-gray-500" v-if="ad.is_external">External Link</span>
+                                        <span class="text-xs text-gray-500" v-else>Internal Link</span>
+                                        <a :href="ad.button_link" target="_blank" class="text-blue-600 hover:underline truncate max-w-[150px]">{{ ad.button_link }}</a>
+                                    </div>
+                                </TableCell>
                                 <TableCell class="px-4 py-3 text-sm">
                                     <div class="flex flex-col">
                                         <span class="text-green-600">Start: {{ formatDate(ad.start_date) }}</span>
@@ -222,6 +233,7 @@ const form = reactive({
     image: null,
     imagePreview: null,
     is_active: true,
+    is_external: false,
 });
 
 const formatDate = (date) => {
@@ -276,6 +288,7 @@ const openEditDialog = (ad) => {
     form.imagePreview = ad.image_path;
     form.image = null;
     form.is_active = Boolean(ad.is_active);
+    form.is_external = Boolean(ad.is_external);
 };
 
 const handleImageChange = (event) => {
@@ -296,7 +309,9 @@ const resetForm = () => {
     form.end_date = '';
     form.image = null;
     form.imagePreview = null;
+    form.imagePreview = null;
     form.is_active = true;
+    form.is_external = false;
     if (imageInput.value) imageInput.value.value = '';
 };
 
@@ -312,6 +327,7 @@ const saveAdvertisement = () => {
     formData.append('start_date', dayjs(form.start_date).toISOString());
     formData.append('end_date', dayjs(form.end_date).toISOString());
     formData.append('is_active', form.is_active ? '1' : '0');
+    formData.append('is_external', form.is_external ? '1' : '0');
     
     if (form.image) {
         formData.append('image', form.image);
@@ -380,6 +396,7 @@ const toggleStatus = (ad, checked) => {
     formData.append('start_date', ad.start_date); // Already ISO strings due to cast
     formData.append('end_date', ad.end_date);
     formData.append('is_active', checked ? '1' : '0'); 
+    formData.append('is_external', ad.is_external ? '1' : '0');
     formData.append('_method', 'PUT');
 
     router.post(route('admin.advertisements.update', ad.id), formData, {
@@ -407,6 +424,7 @@ const reactivateAd = (ad) => {
     formData.append('start_date', newStartDate);
     formData.append('end_date', newEndDate);
     formData.append('is_active', '1');
+    formData.append('is_external', ad.is_external ? '1' : '0');
     formData.append('_method', 'PUT');
     
     router.post(route('admin.advertisements.update', ad.id), formData, {

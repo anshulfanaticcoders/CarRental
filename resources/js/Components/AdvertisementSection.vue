@@ -98,7 +98,18 @@ onUnmounted(() => {
                                         {{ currentAd.description }}
                                     </p>
                                     
-                                    <a :href="`/${page.props.locale}${currentAd.button_link || ''}`" class="group/btn flex items-center gap-2 sm:gap-3 bg-white text-customPrimaryColor px-4 sm:px-6 lg:px-8 py-2.5 sm:py-3 lg:py-4 rounded-lg sm:rounded-xl font-bold text-sm sm:text-base transition-all hover:bg-blue-50 hover:gap-3 sm:hover:gap-4 w-fit shadow-lg hover:shadow-white/20">
+                                    <a  v-if="currentAd.is_external"
+                                        :href="currentAd.button_link" 
+                                        target="_blank"
+                                        class="group/btn flex items-center gap-2 sm:gap-3 bg-white text-customPrimaryColor px-4 sm:px-6 lg:px-8 py-2.5 sm:py-3 lg:py-4 rounded-lg sm:rounded-xl font-bold text-sm sm:text-base transition-all hover:bg-blue-50 hover:gap-3 sm:hover:gap-4 w-fit shadow-lg hover:shadow-white/20">
+                                        {{ currentAd.button_text }}
+                                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 sm:h-5 sm:w-5 transform transition-transform group-hover/btn:translate-x-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                                        </svg>
+                                    </a>
+                                    <a  v-else
+                                        :href="`/${page.props.locale}${currentAd.button_link || ''}`" 
+                                        class="group/btn flex items-center gap-2 sm:gap-3 bg-white text-customPrimaryColor px-4 sm:px-6 lg:px-8 py-2.5 sm:py-3 lg:py-4 rounded-lg sm:rounded-xl font-bold text-sm sm:text-base transition-all hover:bg-blue-50 hover:gap-3 sm:hover:gap-4 w-fit shadow-lg hover:shadow-white/20">
                                         {{ currentAd.button_text }}
                                         <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 sm:h-5 sm:w-5 transform transition-transform group-hover/btn:translate-x-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 8l4 4m0 0l-4 4m4-4H3" />
