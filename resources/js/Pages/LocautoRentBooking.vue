@@ -4,6 +4,7 @@ import { computed, ref, onMounted } from 'vue'
 import AuthenticatedHeaderLayout from '@/Layouts/AuthenticatedHeaderLayout.vue'
 import Footer from '@/Components/Footer.vue'
 import { useCurrency } from '@/composables/useCurrency'
+import LocautoStripeCheckout from '@/Components/LocautoStripeCheckout.vue'
 
 // Icons
 import check from "../../assets/Check.svg"
@@ -32,6 +33,8 @@ const agreedToCancellation = ref(false)
 const isSubmitting = ref(false)
 const selectedProtection = ref(null) // Single protection selection
 const selectedExtras = ref([])
+const stripeError = ref('') // For Stripe error handling
+const showErrorDialog = ref(false)
 
 // Check if vehicle exists
 const hasVehicle = computed(() => props.vehicle && Object.keys(props.vehicle).length > 0)
@@ -65,11 +68,15 @@ const protectionTotal = computed(() => {
     return plan ? plan.amount : 0
 })
 
-// Extras total
+// Extras total (includes both optional extras and safety/assistance items)
 const extrasTotal = computed(() => {
     let total = 0
+    // Safety and assistance items come from protectionPlans after the first 2
+    const safetyAssistanceItems = (props.protectionPlans || []).slice(2)
+    const allExtras = [...(props.optionalExtras || []), ...safetyAssistanceItems]
+    
     selectedExtras.value.forEach(code => {
-        const extra = (props.optionalExtras || []).find(e => e.code === code)
+        const extra = allExtras.find(e => e.code === code)
         if (extra) total += extra.amount
     })
     return total
@@ -83,6 +90,7 @@ const bookingForm = useForm({
   last_name: '',
   email: page.props.auth?.user?.email || '',
   phone: '',
+  driver_age: 30, // Default driver age
   date_of_birth: '',
   address: '',
   city: '',
@@ -94,6 +102,39 @@ const bookingForm = useForm({
   flight_number: '',
   special_requests: '',
 })
+
+// Error handling
+const handleStripeError = (message) => {
+    stripeError.value = message || 'Something went wrong, please try again later.'
+    showErrorDialog.value = true
+    isSubmitting.value = false
+}
+
+// Computed property for Stripe booking data
+const bookingDataForStripe = computed(() => ({
+    customer: {
+        first_name: bookingForm.first_name,
+        last_name: bookingForm.last_name,
+        email: bookingForm.email,
+        phone: bookingForm.phone,
+        driver_age: bookingForm.driver_age,
+        driver_license_number: bookingForm.driver_license_number,
+        flight_number: bookingForm.flight_number,
+    },
+    pickup_location_code: props.location?.code || props.filters?.location_id || '',
+    dropoff_location_code: props.filters?.dropoff_location_id || props.location?.code || '',
+    pickup_date: pickupDate.value,
+    pickup_time: pickupTime.value,
+    return_date: returnDate.value,
+    return_time: returnTime.value,
+    vehicle_code: sippCode.value || props.vehicle?.id || '',
+    vehicle_model: vehicleModel.value,
+    sipp_code: sippCode.value,
+    selected_protection: selectedProtection.value,
+    selected_extras: selectedExtras.value,
+    grand_total: grandTotal.value,
+    currency: currency.value,
+}))
 
 // Price formatting
 const currencySymbols = ref({})
@@ -452,6 +493,10 @@ const backToVehicle = computed(() => {
               <input v-model="bookingForm.driver_license_number" type="text" class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-customPrimaryColor focus:border-transparent" required />
             </div>
             <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">Driver Age *</label>
+              <input v-model="bookingForm.driver_age" type="number" min="18" max="99" class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-customPrimaryColor focus:border-transparent" required />
+            </div>
+            <div>
               <label class="block text-sm font-medium text-gray-700 mb-1">Issuing Country *</label>
               <input v-model="bookingForm.driver_license_country" type="text" class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-customPrimaryColor focus:border-transparent" required />
             </div>
@@ -476,8 +521,8 @@ const backToVehicle = computed(() => {
           <h2 class="text-xl font-bold text-gray-900 mb-6">Confirm Your Booking</h2>
 
           <div class="bg-green-50 border border-green-200 rounded-xl p-4 mb-6">
-            <h3 class="font-semibold text-green-800 mb-2">✓ Pay on Arrival</h3>
-            <p class="text-sm text-green-700">No payment is required now. You will pay {{ formatPrice(grandTotal, currency) }} when you pick up the vehicle.</p>
+            <h3 class="font-semibold text-green-800 mb-2">✓ Secure Online Payment</h3>
+            <p class="text-sm text-green-700">You will be redirected to a secure payment page to complete your booking of {{ formatPrice(grandTotal, currency) }}.</p>
           </div>
 
           <!-- Booking Summary -->
@@ -532,10 +577,15 @@ const backToVehicle = computed(() => {
             </svg>
           </button>
 
-          <button v-if="currentStep === totalSteps" @click="submitBooking" :disabled="!canProceed || isSubmitting"
-                  class="px-8 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:bg-gray-400 disabled:cursor-not-allowed font-semibold">
-            <span v-if="isSubmitting">Processing...</span>
-            <span v-else>Confirm Booking - Pay on Arrival</span>
+          <div v-if="currentStep === totalSteps && canProceed" class="w-full">
+            <LocautoStripeCheckout 
+              :booking-data="bookingDataForStripe" 
+              @error="handleStripeError" 
+            />
+          </div>
+          <button v-else-if="currentStep === totalSteps" disabled
+                  class="px-8 py-3 bg-gray-400 text-white rounded-lg cursor-not-allowed font-semibold">
+            Please complete all required fields
           </button>
         </div>
       </div>
@@ -543,4 +593,22 @@ const backToVehicle = computed(() => {
   </div>
 
   <Footer />
+
+  <!-- Error Dialog -->
+  <div v-if="showErrorDialog" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+    <div class="bg-white rounded-lg p-6 max-w-md mx-4">
+      <div class="flex items-center gap-3 mb-4">
+        <div class="w-10 h-10 bg-red-100 rounded-full flex items-center justify-center">
+          <svg class="w-5 h-5 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+          </svg>
+        </div>
+        <h3 class="text-lg font-semibold text-gray-900">Payment Error</h3>
+      </div>
+      <p class="text-gray-600 mb-6">{{ stripeError }}</p>
+      <button @click="showErrorDialog = false" class="w-full px-4 py-2 bg-customPrimaryColor text-white rounded-lg hover:bg-blue-700">
+        Close
+      </button>
+    </div>
+  </div>
 </template>

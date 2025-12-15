@@ -303,7 +303,7 @@ const proceedToBooking = () => {
 <template>
     <Head>
         <title>{{ vehicleModel }} - Locauto Rent</title>
-        <meta name="description" :content="`Rent ${vehicleModel} from Locauto - Pay on Arrival`" />
+        <meta name="description" :content="`Rent ${vehicleModel} from Locauto - Pay on the Spot`" />
     </Head>
 
     <AuthenticatedHeaderLayout />
@@ -312,13 +312,13 @@ const proceedToBooking = () => {
     <section class="bg-gradient-to-r from-customPrimaryColor to-blue-700 py-16">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
             <h1 class="text-white text-4xl md:text-5xl font-bold mb-4">{{ vehicleModel }}</h1>
-            <p class="text-blue-100 text-lg md:text-xl">Italian quality rental with Pay on Arrival</p>
+            <p class="text-blue-100 text-lg md:text-xl">Italian quality rental with Pay on the Spot</p>
             <div class="mt-6 flex items-center justify-center gap-4 flex-wrap">
                 <div v-if="sippInfo.category" class="bg-white/20 backdrop-blur-sm rounded-full px-4 py-2 text-white">
                     <span class="font-medium">{{ sippInfo.category }}</span>
                 </div>
                 <div class="bg-green-500/20 backdrop-blur-sm rounded-full px-4 py-2 text-white">
-                    <span class="font-medium">Pay on Arrival</span>
+                    <span class="font-medium">Pay on the Spot</span>
                 </div>
             </div>
         </div>
@@ -453,13 +453,13 @@ const proceedToBooking = () => {
                         </div>
                     </div>
 
-                    <!-- Pay on Arrival Info -->
+                    <!-- Pay on the Spot Info -->
                     <div class="bg-gradient-to-r from-green-50 to-blue-50 rounded-2xl shadow-lg p-8 border border-green-200">
                         <h2 class="text-2xl font-bold text-gray-900 mb-6 flex items-center gap-3">
                             <div class="w-10 h-10 bg-green-100 rounded-full flex items-center justify-center">
                                 <img :src="check" alt="Check" class="w-6 h-6" loading="lazy" />
                             </div>
-                            Pay on Arrival
+                            Pay on the Spot
                         </h2>
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <div class="flex items-center gap-3 p-4 bg-white/50 rounded-xl">
@@ -634,7 +634,7 @@ const proceedToBooking = () => {
                                         <p class="text-sm text-gray-600 mb-3">Total for {{ rentalDays }} {{ rentalDays === 1 ? 'day' : 'days' }}</p>
                                         <div class="flex items-center justify-center gap-2 text-xs text-green-700">
                                             <div class="w-2 h-2 bg-green-500 rounded-full"></div>
-                                            <span>Pay on Arrival</span>
+                                            <span>Pay on the Spot</span>
                                         </div>
                                     </div>
                                 </div>
@@ -647,7 +647,7 @@ const proceedToBooking = () => {
                                 >
                                     <div class="flex items-center justify-center gap-2">
                                         <span v-if="isBooking">Processing...</span>
-                                        <span v-else>Reserve Now - Pay on Arrival</span>
+                                        <span v-else>Reserve Now</span>
                                         <ChevronRight v-if="!isBooking" class="w-5 h-5" />
                                     </div>
                                 </Button>

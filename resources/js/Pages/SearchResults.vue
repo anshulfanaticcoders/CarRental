@@ -752,7 +752,7 @@ const createPopupContent = (vehicle, primaryImage, popupPrice, detailRoute) => {
                 <img src="${primaryImage}" alt="${vehicle.brand} ${vehicle.model}" class="popup-image !w-40 !h-20" />
                 <p class="font-semibold !w-40">${vehicle.brand} ${vehicle.model}</p>
                 ${vehicle.sipp_code ? `<p class="!w-40 text-sm">SIPP: ${vehicle.sipp_code}</p>` : ''}
-                ${vehicle.benefits?.pay_on_arrival ? `<p class="!w-40 text-sm text-green-600">Pay on Arrival</p>` : ''}
+                
                 <p class="!w-40">${vehicle.full_vehicle_address || ''}</p>
                 <p class="!w-40 font-semibold">Price: ${popupPrice}</p>
                 <a href="${detailRoute}"
@@ -1588,7 +1588,7 @@ watch(
         <img :src="moneyExchangeSymbol" alt="Loading..." class="w-16 h-16 animate-spin" />
     </div>
     <SchemaInjector v-if="schema" :schema="schema" />
-    <section class="bg-customPrimaryColor py-customVerticalSpacing">
+    <section class="bg-customPrimaryColor py-customVerticalSpacing relative z-50">
         <div class="">
             <SearchBar class="border-[2px] rounded-[20px] border-white mt-0 mb-0 max-[768px]:border-none"
                 :prefill="searchQuery"
@@ -2255,9 +2255,7 @@ watch(
                                     <span v-if="vehicle.source === 'adobe'" class="flex gap-3 items-center text-[12px]">
                                         <img :src="check" alt="" loading="lazy" />24/7 Roadside Assistance
                                     </span>
-                                    <span v-if="vehicle.source === 'locauto_rent'" class="flex gap-3 items-center text-[12px]">
-                                        <img :src="check" alt="" loading="lazy" />Pay on Arrival
-                                    </span>
+                                    
                                     <span v-if="vehicle.source === 'locauto_rent'" class="flex gap-3 items-center text-[12px]">
                                         <img :src="check" alt="" loading="lazy" />No Credit Card Fees
                                     </span>

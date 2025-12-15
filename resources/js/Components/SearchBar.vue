@@ -53,6 +53,7 @@
                 :min-date="new Date()"
                 :format="formatRangeDate"
                 :close-on-click-outside="true"
+                :teleport="true"
                 @internal-model-change="handleDateUpdate"
                 placeholder="Select dates"
                 class="w-full"
@@ -837,6 +838,11 @@ const ErrorDialog = {
   box-shadow: 5px 5px 10px rgba(0, 0, 0, 0.349);
 }
 
+/* Ensure VueDatePicker dropdown appears above other page elements */
+:deep(.dp__menu) {
+  z-index: 9999 !important;
+}
+
 .loader-overlay {
   position: fixed;
   top: 0;
@@ -893,6 +899,11 @@ const ErrorDialog = {
   syntax: "<angle>";
   inherits: false;
   initial-value: 0deg;
+}
+
+.full-w-container {
+  position: relative;
+  z-index: 100; /* Ensure dropdowns appear above other page elements */
 }
 
 .search_bar {

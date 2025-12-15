@@ -989,6 +989,10 @@ Route::group([
     Route::post('/locauto-rent-car/check-availability', [LocautoRentController::class, 'checkAvailability'])->name('locauto-rent-car.check-availability');
     Route::get('/api/locauto-rent/vehicles', [LocautoRentController::class, 'getVehicles'])->name('api.locauto-rent.vehicles');
 
+    // Locauto Rent Stripe Payment Routes
+    Route::post('/locauto-rent-booking/charge', [LocautoRentController::class, 'processStripePayment'])->name('locauto-rent-booking.charge');
+    Route::get('/locauto-rent-booking/success', [LocautoRentController::class, 'handlePaymentSuccess'])->name('locauto-rent-booking.success');
+    Route::get('/locauto-rent-booking/cancel', [LocautoRentController::class, 'handlePaymentCancel'])->name('locauto-rent-booking-cancel');
 
 }); // End of locale group
 

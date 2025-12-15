@@ -115,7 +115,7 @@ const getSIPPDescription = (sippCode) => {
                     <div class="flex items-center justify-between">
                         <div>
                             <h1 class="text-4xl font-bold mb-4">Locauto Rent Cars</h1>
-                            <p class="text-xl mb-2">Pay on Arrival - No Credit Card Fees</p>
+                            <p class="text-xl mb-2">Pay on the Spot - No Credit Card Fees</p>
                             <p class="text-lg opacity-90">Free Cancellation - 24/7 Customer Support</p>
                         </div>
                         <div class="text-right">
@@ -177,7 +177,7 @@ const getSIPPDescription = (sippCode) => {
 
                             <!-- Badges -->
                             <div class="absolute top-2 left-2 space-y-1">
-                                <span class="bg-green-500 text-white text-xs px-2 py-1 rounded-full">Pay on Arrival</span>
+                                <span class="bg-green-500 text-white text-xs px-2 py-1 rounded-full">Pay on the Spot</span>
                                 <span class="bg-blue-500 text-white text-xs px-2 py-1 rounded-full">No Credit Card Fees</span>
                             </div>
                         </div>

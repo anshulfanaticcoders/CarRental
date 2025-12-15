@@ -193,7 +193,7 @@ function addToCalendar() {
                   </div>
                   <div>
                     <p class="text-sm text-gray-600">Payment Type</p>
-                    <p class="font-medium">{{ booking.payment_type === 'POA' ? 'Pay on Arrival' : booking.payment_type }}</p>
+                    <p class="font-medium">{{ booking.payment_type === 'Paid Online' ? 'Paid Online' : (booking.payment_type === 'POA' ? 'Pay on the Spot' : booking.payment_type) }}</p>
                   </div>
                 </div>
               </div>
@@ -243,7 +243,7 @@ function addToCalendar() {
                 <li>• Present your valid driver's license, credit card, and booking confirmation</li>
                 <li>• A security deposit will be held on your credit card at pickup</li>
                 <li>• Free cancellation up to 24 hours before pickup time</li>
-                <li>• Payment will be collected at the rental counter (Pay on Arrival)</li>
+                <li>• Payment will be collected at the rental counter (Pay on the Spot)</li>
               </ul>
             </div>
 
