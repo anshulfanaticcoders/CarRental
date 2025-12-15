@@ -222,7 +222,7 @@
 
         <!-- Search results dropdown -->
         <div v-if="showSearchBox && (searchResults.length > 0 || popularPlaces.length > 0 || searchPerformed)"
-          class="search-results absolute z-20 top-[105%] w-[50%] rounded-[12px] border border-gray-100 left-[20%] p-5 bg-white text-customDarkBlackColor max-h-[400px] overflow-y-auto shadow-xl max-[768px]:w-full max-[768px]:top-[45%] max-[768px]:left-0">
+          class="search-results absolute z-[9999] top-[105%] w-[50%] rounded-[12px] border border-gray-100 left-[20%] p-5 bg-white text-customDarkBlackColor max-h-[400px] overflow-y-auto shadow-xl max-[768px]:w-full max-[768px]:top-[45%] max-[768px]:left-0">
 
           <!-- Existing search results -->
           <div v-if="searchResults.length > 0">
@@ -263,7 +263,7 @@
         
         <!-- Dropoff search results dropdown -->
         <div v-if="showDropoffSearchBox && dropoffSearchResults.length > 0"
-          class="search-results absolute z-20 top-[105%] w-[50%] rounded-[12px] border-[1px] border-white left-[20%] p-5 bg-white text-customDarkBlackColor max-h-[400px] overflow-y-auto max-[768px]:w-full max-[768px]:top-[60%] max-[768px]:left-0">
+          class="search-results absolute z-[9999] top-[105%] w-[50%] rounded-[12px] border-[1px] border-white left-[20%] p-5 bg-white text-customDarkBlackColor max-h-[400px] overflow-y-auto max-[768px]:w-full max-[768px]:top-[60%] max-[768px]:left-0">
             <div v-for="result in dropoffSearchResults" :key="result.unified_location_id" @click="selectDropoffLocation(result)"
               class="p-2 hover:bg-customPrimaryColor hover:text-white cursor-pointer flex gap-3 group rounded-[12px] hover:scale-[1.02] transition-transform">
               <div class="h-10 w-10 md:h-12 md:w-12 bg-gray-100 text-gray-300 rounded flex justify-center items-center">
@@ -901,10 +901,7 @@ const ErrorDialog = {
   initial-value: 0deg;
 }
 
-.full-w-container {
-  position: relative;
-  z-index: 100; /* Ensure dropdowns appear above other page elements */
-}
+
 
 .search_bar {
   position: relative;

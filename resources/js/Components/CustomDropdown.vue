@@ -64,7 +64,7 @@ onMounted(() => {
     <!-- Dropdown Menu -->
     <div
       v-if="activeDropdown === uniqueId"
-      class="absolute z-20 mt-2 w-[15rem] max-[768px]:w-full bg-white shadow-xl rounded-lg border border-gray-100 animate-fade-in max-h-60 overflow-y-auto"
+      class="absolute z-50 mt-2 w-[15rem] max-[768px]:w-full bg-white shadow-xl rounded-lg border border-gray-100 animate-fade-in max-h-60 overflow-y-auto"
     >
       <ul class="py-1">
         <!-- Placeholder Option -->

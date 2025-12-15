@@ -1598,7 +1598,7 @@ watch(
     </section>
 
     <section>
-    <div id="filter-section" class="full-w-container py-8">
+    <div id="filter-section" class="full-w-container py-8 relative z-40">
         <!-- Mobile filter button (visible only on mobile, hidden when fixed button appears) -->
         <div class="md:hidden mb-4 flex items-center justify-between gap-2" v-if="!showFixedMobileFilterButton">
             <button @click="showMobileFilters = true"
