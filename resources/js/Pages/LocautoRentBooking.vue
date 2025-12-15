@@ -1,88 +1,179 @@
 <script setup>
-import { Head, Link, useForm } from '@inertiajs/vue3'
-import { computed, ref } from 'vue'
-import { route } from 'ziggy-js'
-import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue'
+import { Head, Link, useForm, usePage, router } from '@inertiajs/vue3'
+import { computed, ref, onMounted } from 'vue'
+import AuthenticatedHeaderLayout from '@/Layouts/AuthenticatedHeaderLayout.vue'
+import Footer from '@/Components/Footer.vue'
+import { useCurrency } from '@/composables/useCurrency'
+
+// Icons
+import check from "../../assets/Check.svg"
+import carIcon from "../../assets/carIcon.svg"
+import pickupLocationIcon from "../../assets/pickupLocationIcon.svg"
+import returnLocationIcon from "../../assets/returnLocationIcon.svg"
 
 const props = defineProps({
-  bookingData: Object
+  vehicle: Object,
+  location: Object,
+  protectionPlans: Array,
+  optionalExtras: Array,
+  filters: Object,
+  error: String
 })
+
+const page = usePage()
+const locale = page.props.locale || 'en'
+const { selectedCurrency } = useCurrency()
 
 // State
 const currentStep = ref(1)
 const agreedToTerms = ref(false)
 const agreedToPrivacy = ref(false)
 const agreedToCancellation = ref(false)
+const isSubmitting = ref(false)
+const selectedProtection = ref(null) // Single protection selection
+const selectedExtras = ref([])
 
+// Check if vehicle exists
+const hasVehicle = computed(() => props.vehicle && Object.keys(props.vehicle).length > 0)
+
+// Vehicle computed properties
+const vehicleModel = computed(() => props.vehicle?.model || 'Locauto Vehicle')
+const vehicleImage = computed(() => props.vehicle?.image || '/images/default-car.jpg')
+const sippCode = computed(() => props.vehicle?.sipp_code || '')
+const transmission = computed(() => props.vehicle?.transmission === 'automatic' ? 'Automatic' : 'Manual')
+const totalAmount = computed(() => parseFloat(props.vehicle?.total_amount || 0))
+const currency = computed(() => props.vehicle?.currency || 'EUR')
+
+// Dates
+const pickupDate = computed(() => props.vehicle?.date_from || props.filters?.start_date || '')
+const returnDate = computed(() => props.vehicle?.date_to || props.filters?.end_date || '')
+const pickupTime = computed(() => props.vehicle?.start_time || props.filters?.start_time || '09:00')
+const returnTime = computed(() => props.vehicle?.end_time || props.filters?.end_time || '09:00')
+
+const rentalDays = computed(() => {
+    if (!pickupDate.value || !returnDate.value) return 1
+    const pickup = new Date(pickupDate.value)
+    const returnD = new Date(returnDate.value)
+    const diffTime = Math.abs(returnD.getTime() - pickup.getTime())
+    return Math.max(1, Math.ceil(diffTime / (1000 * 60 * 60 * 24)))
+})
+
+// Protection total (single selection)
+const protectionTotal = computed(() => {
+    if (!selectedProtection.value) return 0
+    const plan = (props.protectionPlans || []).find(p => p.code === selectedProtection.value)
+    return plan ? plan.amount : 0
+})
+
+// Extras total
+const extrasTotal = computed(() => {
+    let total = 0
+    selectedExtras.value.forEach(code => {
+        const extra = (props.optionalExtras || []).find(e => e.code === code)
+        if (extra) total += extra.amount
+    })
+    return total
+})
+
+const grandTotal = computed(() => totalAmount.value + protectionTotal.value + extrasTotal.value)
+
+// Form
 const bookingForm = useForm({
-  // Customer Details
   first_name: '',
   last_name: '',
-  email: '',
+  email: page.props.auth?.user?.email || '',
   phone: '',
   date_of_birth: '',
   address: '',
   city: '',
   postal_code: '',
   country: '',
-
-  // Driver Details
   driver_license_number: '',
   driver_license_country: '',
   driver_license_expiry: '',
-  driver_license_issue_date: '',
-  driver_age: props.bookingData.driver_age,
-
-  // Flight Details (optional)
   flight_number: '',
-  flight_arrival_time: '',
-
-  // Special Requests
   special_requests: '',
-
-  // Vehicle and rental details
-  vehicle_code: props.bookingData.vehicle_code,
-  vehicle_details: props.bookingData.vehicle_details,
-  pickup_location_code: props.bookingData.pickup_location_code,
-  dropoff_location_code: props.bookingData.dropoff_location_code,
-  pickup_date: props.bookingData.pickup_date,
-  pickup_time: props.bookingData.pickup_time,
-  return_date: props.bookingData.return_date,
-  return_time: props.bookingData.return_time,
-  selected_extras: props.bookingData.selected_extras,
-  total_amount: props.bookingData.total_amount,
-  currency: props.bookingData.currency,
-  payment_type: 'POA', // Pay on Arrival
 })
 
-// Computed properties
+// Price formatting
+const currencySymbols = ref({})
+const exchangeRates = ref(null)
+
+onMounted(async () => {
+    try {
+        const [currencyRes, ratesRes] = await Promise.all([
+            fetch('/currency.json'),
+            fetch(`${import.meta.env.VITE_EXCHANGERATE_API_BASE_URL}/v6/${import.meta.env.VITE_EXCHANGERATE_API_KEY}/latest/USD`)
+        ])
+        
+        const currencyData = await currencyRes.json()
+        currencySymbols.value = currencyData.reduce((acc, curr) => {
+            acc[curr.code] = curr.symbol
+            return acc
+        }, {})
+        
+        const ratesData = await ratesRes.json()
+        if (ratesData.result === 'success') {
+            exchangeRates.value = ratesData.conversion_rates
+        }
+    } catch (error) {
+        console.error("Error loading currency data:", error)
+    }
+})
+
+const formatPrice = (amount, fromCurrency = 'EUR') => {
+    const numericAmount = parseFloat(amount)
+    if (isNaN(numericAmount)) return '€0.00'
+    
+    if (!exchangeRates.value || !selectedCurrency.value) {
+        return `€${numericAmount.toFixed(2)}`
+    }
+    
+    const rateFrom = exchangeRates.value[fromCurrency] || 1
+    const rateTo = exchangeRates.value[selectedCurrency.value] || 1
+    const converted = (numericAmount / rateFrom) * rateTo
+    const symbol = currencySymbols.value[selectedCurrency.value] || '€'
+    
+    return `${symbol}${converted.toFixed(2)}`
+}
+
+const formatDateTime = (date, time) => {
+    if (!date) return ''
+    try {
+        const dateObj = new Date(date + 'T' + (time || '09:00'))
+        return dateObj.toLocaleDateString('en-US', {
+            weekday: 'short',
+            month: 'short',
+            day: 'numeric'
+        }) + ', ' + (time || '09:00')
+    } catch (e) {
+        return date + ' ' + time
+    }
+}
+
+// Toggle functions
+const selectProtection = (code) => {
+    selectedProtection.value = selectedProtection.value === code ? null : code
+}
+
+const toggleExtra = (code) => {
+    const index = selectedExtras.value.indexOf(code)
+    if (index === -1) {
+        selectedExtras.value.push(code)
+    } else {
+        selectedExtras.value.splice(index, 1)
+    }
+}
+
+// Navigation - 4 steps: Protection -> Extras -> Your Details -> Confirm
 const totalSteps = 4
-const vehicle = computed(() => props.bookingData.vehicle_details)
-const rentalDays = computed(() => {
-  const pickup = new Date(props.bookingData.pickup_date)
-  const returnDate = new Date(props.bookingData.return_date)
-  const diffTime = Math.abs(returnDate.getTime() - pickup.getTime())
-  return Math.ceil(diffTime / (1000 * 60 * 60 * 24))
-})
-
-const extrasTotal = computed(() => {
-  return props.bookingData.selected_extras.reduce((total, extra) => total + extra.total, 0)
-})
 
 const canProceed = computed(() => {
   switch (currentStep.value) {
-    case 1:
-      return bookingForm.first_name &&
-             bookingForm.last_name &&
-             bookingForm.email &&
-             bookingForm.phone &&
-             bookingForm.date_of_birth
-    case 2:
-      return bookingForm.driver_license_number &&
-             bookingForm.driver_license_country &&
-             bookingForm.driver_license_expiry
+    case 1: return true // Protection is optional
+    case 2: return true // Extras are optional  
     case 3:
-      return true
+      return bookingForm.first_name && bookingForm.last_name && bookingForm.email && bookingForm.phone && bookingForm.driver_license_number
     case 4:
       return agreedToTerms.value && agreedToPrivacy.value && agreedToCancellation.value
     default:
@@ -90,7 +181,6 @@ const canProceed = computed(() => {
   }
 })
 
-// Methods
 function nextStep() {
   if (canProceed.value && currentStep.value < totalSteps) {
     currentStep.value++
@@ -104,498 +194,353 @@ function previousStep() {
 }
 
 function submitBooking() {
-  if (!canProceed.value) return
+  if (!canProceed.value || isSubmitting.value) return
+  isSubmitting.value = true
 
-  bookingForm.post(route('locauto.booking.confirm'), {
+  const bookingData = {
+    ...bookingForm.data(),
+    vehicle_id: props.vehicle?.id,
+    vehicle_model: vehicleModel.value,
+    sipp_code: sippCode.value,
+    pickup_location_id: props.filters?.location_id,
+    dropoff_location_id: props.filters?.dropoff_location_id || props.filters?.location_id,
+    pickup_date: pickupDate.value,
+    pickup_time: pickupTime.value,
+    return_date: returnDate.value,
+    return_time: returnTime.value,
+    selected_protection: selectedProtection.value,
+    selected_extras: selectedExtras.value,
+    total_amount: grandTotal.value,
+    currency: currency.value,
+  }
+
+  router.post(`/${locale}/locauto-rent-booking`, bookingData, {
     onSuccess: () => {
-      // Redirect to success page handled by controller
+      isSubmitting.value = false
     },
     onError: (errors) => {
       console.error('Booking errors:', errors)
+      isSubmitting.value = false
     }
   })
 }
 
-function formatPrice(amount, currency) {
-  return new Intl.NumberFormat('en-US', {
-    style: 'currency',
-    currency: currency
-  }).format(amount)
-}
-
-function formatDateTime(date, time) {
-  return new Date(date + ' ' + time).toLocaleString()
-}
-
-function getTransmissionType(type) {
-  const types = {
-    'Automatic': 'Automatic',
-    'Manual': 'Manual'
-  }
-  return types[type] || type
-}
+const backToVehicle = computed(() => {
+    return `/${locale}/locauto-rent-car/${props.vehicle?.id}?location_id=${props.filters?.location_id}&start_date=${pickupDate.value}&start_time=${pickupTime.value}&end_date=${returnDate.value}&end_time=${returnTime.value}`
+})
 </script>
 
 <template>
-  <Head title="Complete Booking - Locauto Rent" />
+  <Head :title="`Book ${vehicleModel} - Locauto Rent`" />
 
-  <AuthenticatedLayout>
-    <div class="min-h-screen bg-gray-50 py-8">
-      <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
-        <!-- Header -->
-        <div class="mb-6">
-          <h1 class="text-3xl font-bold text-gray-900">Complete Your Booking</h1>
-          <p class="text-gray-600 mt-1">Pay on Arrival - No payment required now</p>
-        </div>
+  <AuthenticatedHeaderLayout />
 
-        <!-- Progress Bar -->
-        <div class="mb-8">
-          <div class="flex items-center">
-            <div
-              v-for="step in totalSteps"
-              :key="step"
-              class="flex items-center"
-            >
-              <div
-                :class="[
-                  'w-10 h-10 rounded-full flex items-center justify-center text-sm font-semibold',
-                  currentStep >= step ? 'bg-blue-600 text-white' : 'bg-gray-300 text-gray-600'
-                ]"
-              >
-                {{ step }}
-              </div>
-              <div
-                v-if="step < totalSteps"
-                :class="[
-                  'w-full h-1 mx-2',
-                  currentStep > step ? 'bg-blue-600' : 'bg-gray-300'
-                ]"
-              />
-            </div>
+  <!-- Hero -->
+  <section class="bg-gradient-to-r from-customPrimaryColor to-blue-700 py-6">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <!-- Rental Summary Bar -->
+      <div class="bg-white/10 backdrop-blur-sm rounded-xl p-4 flex flex-wrap items-center justify-between gap-4">
+        <div class="flex items-center gap-6 flex-wrap">
+          <div class="text-white">
+            <p class="text-xs text-blue-200">PICK-UP & RETURN</p>
+            <p class="font-semibold">{{ location?.name || 'Location' }}</p>
+            <p class="text-sm text-blue-200">{{ formatDateTime(pickupDate, pickupTime) }} - {{ formatDateTime(returnDate, returnTime) }}</p>
           </div>
-          <div class="mt-4 flex justify-between text-sm">
-            <span :class="currentStep >= 1 ? 'text-blue-600 font-semibold' : 'text-gray-500'">
-              Customer Details
-            </span>
-            <span :class="currentStep >= 2 ? 'text-blue-600 font-semibold' : 'text-gray-500'">
-              Driver License
-            </span>
-            <span :class="currentStep >= 3 ? 'text-blue-600 font-semibold' : 'text-gray-500'">
-              Review
-            </span>
-            <span :class="currentStep >= 4 ? 'text-blue-600 font-semibold' : 'text-gray-500'">
-              Confirm
-            </span>
+          <div class="text-white">
+            <p class="text-xs text-blue-200">VEHICLE</p>
+            <p class="font-semibold">{{ vehicleModel }}</p>
+            <p class="text-sm text-blue-200">{{ sippCode }} • {{ transmission }}</p>
+          </div>
+          <div v-if="selectedProtection" class="text-white">
+            <p class="text-xs text-blue-200">PROTECTION</p>
+            <p class="font-semibold">{{ (protectionPlans || []).find(p => p.code === selectedProtection)?.description || 'Basic' }}</p>
           </div>
         </div>
-
-        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          <!-- Main Content -->
-          <div class="lg:col-span-2">
-            <div class="bg-white rounded-lg shadow-lg p-6">
-              <!-- Step 1: Customer Details -->
-              <div v-if="currentStep === 1">
-                <h2 class="text-xl font-bold text-gray-900 mb-4">Customer Details</h2>
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">
-                      First Name *
-                    </label>
-                    <input
-                      v-model="bookingForm.first_name"
-                      type="text"
-                      class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                      required
-                    />
-                  </div>
-                  <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">
-                      Last Name *
-                    </label>
-                    <input
-                      v-model="bookingForm.last_name"
-                      type="text"
-                      class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                      required
-                    />
-                  </div>
-                  <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">
-                      Email Address *
-                    </label>
-                    <input
-                      v-model="bookingForm.email"
-                      type="email"
-                      class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                      required
-                    />
-                  </div>
-                  <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">
-                      Phone Number *
-                    </label>
-                    <input
-                      v-model="bookingForm.phone"
-                      type="tel"
-                      class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                      required
-                    />
-                  </div>
-                  <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">
-                      Date of Birth *
-                    </label>
-                    <input
-                      v-model="bookingForm.date_of_birth"
-                      type="date"
-                      class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                      required
-                    />
-                  </div>
-                  <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">
-                      Country *
-                    </label>
-                    <input
-                      v-model="bookingForm.country"
-                      type="text"
-                      class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                      required
-                    />
-                  </div>
-                  <div class="md:col-span-2">
-                    <label class="block text-sm font-medium text-gray-700 mb-1">
-                      Address *
-                    </label>
-                    <input
-                      v-model="bookingForm.address"
-                      type="text"
-                      class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                      required
-                    />
-                  </div>
-                  <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">
-                      City *
-                    </label>
-                    <input
-                      v-model="bookingForm.city"
-                      type="text"
-                      class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                      required
-                    />
-                  </div>
-                  <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">
-                      Postal Code *
-                    </label>
-                    <input
-                      v-model="bookingForm.postal_code"
-                      type="text"
-                      class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                      required
-                    />
-                  </div>
-                </div>
-              </div>
-
-              <!-- Step 2: Driver License -->
-              <div v-if="currentStep === 2">
-                <h2 class="text-xl font-bold text-gray-900 mb-4">Driver License Details</h2>
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">
-                      License Number *
-                    </label>
-                    <input
-                      v-model="bookingForm.driver_license_number"
-                      type="text"
-                      class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                      required
-                    />
-                  </div>
-                  <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">
-                      Issuing Country *
-                    </label>
-                    <input
-                      v-model="bookingForm.driver_license_country"
-                      type="text"
-                      class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                      required
-                    />
-                  </div>
-                  <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">
-                      Issue Date *
-                    </label>
-                    <input
-                      v-model="bookingForm.driver_license_issue_date"
-                      type="date"
-                      class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                    />
-                  </div>
-                  <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">
-                      Expiry Date *
-                    </label>
-                    <input
-                      v-model="bookingForm.driver_license_expiry"
-                      type="date"
-                      class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                      required
-                    />
-                  </div>
-                  <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">
-                      Flight Number (Optional)
-                    </label>
-                    <input
-                      v-model="bookingForm.flight_number"
-                      type="text"
-                      placeholder="e.g., AZ2020"
-                      class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                    />
-                  </div>
-                  <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">
-                      Flight Arrival Time (Optional)
-                    </label>
-                    <input
-                      v-model="bookingForm.flight_arrival_time"
-                      type="time"
-                      class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                    />
-                  </div>
-                  <div class="md:col-span-2">
-                    <label class="block text-sm font-medium text-gray-700 mb-1">
-                      Special Requests (Optional)
-                    </label>
-                    <textarea
-                      v-model="bookingForm.special_requests"
-                      rows="3"
-                      class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                      placeholder="Any special requirements or requests..."
-                    ></textarea>
-                  </div>
-                </div>
-              </div>
-
-              <!-- Step 3: Review -->
-              <div v-if="currentStep === 3">
-                <h2 class="text-xl font-bold text-gray-900 mb-4">Review Your Booking</h2>
-                <div class="space-y-6">
-                  <!-- Customer Summary -->
-                  <div>
-                    <h3 class="font-semibold text-gray-900 mb-2">Customer Details</h3>
-                    <div class="bg-gray-50 p-4 rounded-lg">
-                      <p class="text-sm"><strong>Name:</strong> {{ bookingForm.first_name }} {{ bookingForm.last_name }}</p>
-                      <p class="text-sm"><strong>Email:</strong> {{ bookingForm.email }}</p>
-                      <p class="text-sm"><strong>Phone:</strong> {{ bookingForm.phone }}</p>
-                      <p class="text-sm"><strong>Date of Birth:</strong> {{ bookingForm.date_of_birth }}</p>
-                      <p class="text-sm"><strong>Address:</strong> {{ bookingForm.address }}, {{ bookingForm.city }}, {{ bookingForm.postal_code }}, {{ bookingForm.country }}</p>
-                    </div>
-                  </div>
-
-                  <!-- Driver License Summary -->
-                  <div>
-                    <h3 class="font-semibold text-gray-900 mb-2">Driver License</h3>
-                    <div class="bg-gray-50 p-4 rounded-lg">
-                      <p class="text-sm"><strong>License Number:</strong> {{ bookingForm.driver_license_number }}</p>
-                      <p class="text-sm"><strong>Issuing Country:</strong> {{ bookingForm.driver_license_country }}</p>
-                      <p class="text-sm"><strong>Expiry Date:</strong> {{ bookingForm.driver_license_expiry }}</p>
-                    </div>
-                  </div>
-
-                  <!-- Rental Summary -->
-                  <div>
-                    <h3 class="font-semibold text-gray-900 mb-2">Rental Details</h3>
-                    <div class="bg-gray-50 p-4 rounded-lg">
-                      <p class="text-sm"><strong>Pick-up:</strong> {{ bookingData.pickup_location_code }} on {{ formatDateTime(bookingData.pickup_date, bookingData.pickup_time) }}</p>
-                      <p class="text-sm"><strong>Drop-off:</strong> {{ bookingData.dropoff_location_code }} on {{ formatDateTime(bookingData.return_date, bookingData.return_time) }}</p>
-                      <p class="text-sm"><strong>Duration:</strong> {{ rentalDays }} days</p>
-                    </div>
-                  </div>
-
-                  <!-- Vehicle Summary -->
-                  <div>
-                    <h3 class="font-semibold text-gray-900 mb-2">Vehicle</h3>
-                    <div class="bg-gray-50 p-4 rounded-lg">
-                      <p class="text-sm"><strong>Model:</strong> {{ vehicle.veh_make_model?.['@name'] || 'N/A' }}</p>
-                      <p class="text-sm"><strong>SIPP Code:</strong> {{ bookingData.vehicle_code }}</p>
-                      <p class="text-sm"><strong>Passengers:</strong> {{ vehicle.passenger_quantity || 'N/A' }}</p>
-                      <p class="text-sm"><strong>Transmission:</strong> {{ getTransmissionType(vehicle.transmission_type || 'N/A') }}</p>
-                      <p class="text-sm"><strong>Air Conditioning:</strong> {{ vehicle.air_condition_ind ? 'Yes' : 'No' }}</p>
-                    </div>
-                  </div>
-
-                  <!-- Extras Summary -->
-                  <div v-if="bookingData.selected_extras.length > 0">
-                    <h3 class="font-semibold text-gray-900 mb-2">Selected Extras</h3>
-                    <div class="bg-gray-50 p-4 rounded-lg">
-                      <div v-for="extra in bookingData.selected_extras" :key="extra.code" class="flex justify-between py-1">
-                        <span class="text-sm">{{ extra.name }} ({{ extra.quantity }} days)</span>
-                        <span class="text-sm font-medium">{{ formatPrice(extra.total, bookingData.currency) }}</span>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              <!-- Step 4: Confirm -->
-              <div v-if="currentStep === 4">
-                <h2 class="text-xl font-bold text-gray-900 mb-4">Confirm Your Booking</h2>
-
-                <div class="bg-green-50 border border-green-200 rounded-lg p-4 mb-6">
-                  <h3 class="font-semibold text-green-800 mb-2">Pay on Arrival</h3>
-                  <p class="text-sm text-green-700">
-                    No payment is required now. You will pay the total amount when you pick up the vehicle.
-                  </p>
-                </div>
-
-                <div class="space-y-4">
-                  <label class="flex items-start cursor-pointer">
-                    <input
-                      v-model="agreedToTerms"
-                      type="checkbox"
-                      class="mt-1 h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
-                    />
-                    <span class="ml-3 text-sm text-gray-700">
-                      I have read and agree to the <a href="/terms" class="text-blue-600 hover:text-blue-800">Terms and Conditions</a> and the <a href="/locauto/rent-conditions" class="text-blue-600 hover:text-blue-800">Locauto Rent Conditions</a>.
-                    </span>
-                  </label>
-
-                  <label class="flex items-start cursor-pointer">
-                    <input
-                      v-model="agreedToPrivacy"
-                      type="checkbox"
-                      class="mt-1 h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
-                    />
-                    <span class="ml-3 text-sm text-gray-700">
-                      I have read and agree to the <a href="/privacy" class="text-blue-600 hover:text-blue-800">Privacy Policy</a>.
-                    </span>
-                  </label>
-
-                  <label class="flex items-start cursor-pointer">
-                    <input
-                      v-model="agreedToCancellation"
-                      type="checkbox"
-                      class="mt-1 h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
-                    />
-                    <span class="ml-3 text-sm text-gray-700">
-                      I understand that cancellations are free up to 24 hours before pickup.
-                    </span>
-                  </label>
-                </div>
-              </div>
-
-              <!-- Navigation Buttons -->
-              <div class="mt-8 flex justify-between">
-                <button
-                  v-if="currentStep > 1"
-                  @click="previousStep"
-                  class="px-6 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50"
-                >
-                  Previous
-                </button>
-                <div v-else></div>
-
-                <button
-                  v-if="currentStep < totalSteps"
-                  @click="nextStep"
-                  :disabled="!canProceed"
-                  class="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed"
-                >
-                  Next
-                </button>
-
-                <button
-                  v-if="currentStep === totalSteps"
-                  @click="submitBooking"
-                  :disabled="!canProceed || bookingForm.processing"
-                  class="px-8 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:bg-gray-400 disabled:cursor-not-allowed font-semibold"
-                >
-                  <span v-if="bookingForm.processing">Processing...</span>
-                  <span v-else>Confirm Booking - Pay on Arrival</span>
-                </button>
-              </div>
-            </div>
-          </div>
-
-          <!-- Sidebar -->
-          <div class="lg:col-span-1">
-            <!-- Booking Summary -->
-            <div class="bg-white rounded-lg shadow-lg p-6 sticky top-6">
-              <h2 class="text-xl font-bold text-gray-900 mb-4">Booking Summary</h2>
-
-              <!-- Vehicle Info -->
-              <div class="mb-4">
-                <div class="flex items-center mb-2">
-                  <img
-                    :src="vehicle.picture_url || '/images/default-car.jpg'"
-                    :alt="vehicle.veh_make_model?.['@name'] || 'Vehicle'"
-                    class="w-20 h-20 object-cover rounded mr-3"
-                  />
-                  <div>
-                    <p class="font-semibold">{{ vehicle.veh_make_model?.['@name'] || 'N/A' }}</p>
-                    <p class="text-sm text-gray-600">{{ vehicle.sipp_code }}</p>
-                  </div>
-                </div>
-              </div>
-
-              <!-- Rental Details -->
-              <div class="border-t pt-4 mb-4">
-                <h3 class="font-semibold text-gray-900 mb-2">Rental Details</h3>
-                <div class="space-y-2 text-sm">
-                  <div class="flex justify-between">
-                    <span>Pick-up:</span>
-                    <span class="font-medium">{{ bookingData.pickup_location_code }}</span>
-                  </div>
-                  <div class="text-xs text-gray-500">{{ formatDateTime(bookingData.pickup_date, bookingData.pickup_time) }}</div>
-                  <div class="flex justify-between pt-2">
-                    <span>Drop-off:</span>
-                    <span class="font-medium">{{ bookingData.dropoff_location_code }}</span>
-                  </div>
-                  <div class="text-xs text-gray-500">{{ formatDateTime(bookingData.return_date, bookingData.return_time) }}</div>
-                  <div class="flex justify-between pt-2">
-                    <span>Duration:</span>
-                    <span class="font-medium">{{ rentalDays }} days</span>
-                  </div>
-                </div>
-              </div>
-
-              <!-- Price Breakdown -->
-              <div class="border-t pt-4">
-                <h3 class="font-semibold text-gray-900 mb-2">Price Breakdown</h3>
-                <div class="space-y-2 text-sm">
-                  <div class="flex justify-between">
-                    <span>Vehicle Rental</span>
-                    <span>{{ formatPrice(bookingData.total_amount - extrasTotal, bookingData.currency) }}</span>
-                  </div>
-                  <div v-if="extrasTotal > 0" class="flex justify-between">
-                    <span>Extras</span>
-                    <span>{{ formatPrice(extrasTotal, bookingData.currency) }}</span>
-                  </div>
-                  <div class="border-t pt-2 mt-2">
-                    <div class="flex justify-between">
-                      <span class="font-semibold">Total Amount</span>
-                      <span class="font-bold text-lg text-blue-600">
-                        {{ formatPrice(bookingData.total_amount, bookingData.currency) }}
-                      </span>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              <!-- Pay on Arrival Notice -->
-              <div class="mt-4 p-3 bg-green-50 border border-green-200 rounded-lg">
-                <p class="text-sm text-green-800 font-medium">Pay on Arrival</p>
-                <p class="text-xs text-green-700">No payment required now</p>
-              </div>
-            </div>
-          </div>
+        <div class="text-right text-white">
+          <p class="text-xs text-blue-200">TOTAL</p>
+          <p class="text-2xl font-bold">{{ formatPrice(grandTotal, currency) }}</p>
         </div>
       </div>
     </div>
-  </AuthenticatedLayout>
+  </section>
+
+  <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    <!-- Error State -->
+    <div v-if="error || !hasVehicle" class="text-center py-16">
+      <div class="bg-red-50 border border-red-200 rounded-2xl p-8 max-w-md mx-auto">
+        <p class="text-red-600 text-xl font-semibold mb-4">{{ error || 'Booking data not found' }}</p>
+        <Link :href="`/${locale}/s`" class="inline-flex items-center gap-2 bg-customPrimaryColor text-white px-6 py-3 rounded-lg hover:bg-blue-700 transition">
+          Back to Search
+        </Link>
+      </div>
+    </div>
+
+    <div v-else>
+      <!-- Progress Steps -->
+      <div class="mb-8">
+        <div class="flex items-center justify-center">
+          <div v-for="(step, index) in ['Protection', 'Extras', 'Your Details', 'Confirm']" :key="index" class="flex items-center">
+            <div
+              :class="[
+                'w-8 h-8 rounded-full flex items-center justify-center text-sm font-semibold',
+                currentStep > index + 1 ? 'bg-green-500 text-white' : 
+                currentStep === index + 1 ? 'bg-customPrimaryColor text-white' : 'bg-gray-300 text-gray-600'
+              ]"
+            >
+              <svg v-if="currentStep > index + 1" class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                <path d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"/>
+              </svg>
+              <span v-else>{{ index + 1 }}</span>
+            </div>
+            <div v-if="index < 3" :class="['w-16 md:w-24 h-1 mx-2', currentStep > index + 1 ? 'bg-green-500' : 'bg-gray-300']" />
+          </div>
+        </div>
+        <div class="mt-3 flex justify-center gap-4 md:gap-12 text-xs md:text-sm">
+          <span v-for="(step, index) in ['Protection', 'Extras', 'Your Details', 'Confirm']" :key="index"
+                :class="currentStep >= index + 1 ? 'text-customPrimaryColor font-semibold' : 'text-gray-500'">
+            {{ step }}
+          </span>
+        </div>
+      </div>
+
+      <!-- Main Content -->
+      <div class="bg-white rounded-2xl shadow-lg p-6 md:p-8">
+        
+        <!-- Step 1: Protection Plans -->
+        <div v-if="currentStep === 1">
+          <h2 class="text-xl font-bold text-gray-900 mb-2">Choose the ideal protection for your rental</h2>
+          <p class="text-gray-600 mb-6">Select a protection level that suits your needs</p>
+          
+          <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <!-- Basic Option (always available) -->
+            <div @click="selectProtection(null)"
+                 :class="[
+                   'p-5 rounded-xl border-2 cursor-pointer transition-all',
+                   !selectedProtection ? 'border-customPrimaryColor bg-blue-50' : 'border-gray-200 hover:border-blue-300'
+                 ]">
+              <div class="flex justify-between items-start mb-3">
+                <h3 class="font-bold text-gray-900">Basic</h3>
+                <div :class="['w-5 h-5 rounded-full border-2 flex items-center justify-center',
+                             !selectedProtection ? 'bg-customPrimaryColor border-customPrimaryColor' : 'border-gray-300']">
+                  <div v-if="!selectedProtection" class="w-2 h-2 bg-white rounded-full"></div>
+                </div>
+              </div>
+              <p class="text-sm text-gray-600 mb-4">Included with rental - limited liability coverage</p>
+              <ul class="text-xs text-gray-600 space-y-1 mb-4">
+                <li class="flex items-center gap-2"><span class="text-orange-500">●</span> Damages liability up to €1500</li>
+                <li class="flex items-center gap-2"><span class="text-orange-500">●</span> Theft liability up to €2000</li>
+              </ul>
+              <div class="border-t pt-3">
+                <p class="text-lg font-bold text-green-600">0 € <span class="text-sm font-normal text-gray-500">/ per day</span></p>
+              </div>
+            </div>
+
+            <!-- Protection Plans from API -->
+            <div v-for="plan in (protectionPlans || []).slice(0, 2)" :key="plan.code"
+                 @click="selectProtection(plan.code)"
+                 :class="[
+                   'p-5 rounded-xl border-2 cursor-pointer transition-all',
+                   selectedProtection === plan.code ? 'border-customPrimaryColor bg-blue-50' : 'border-gray-200 hover:border-blue-300'
+                 ]">
+              <div class="flex justify-between items-start mb-3">
+                <h3 class="font-bold text-gray-900">{{ plan.description.split('/')[0].trim() }}</h3>
+                <div :class="['w-5 h-5 rounded-full border-2 flex items-center justify-center',
+                             selectedProtection === plan.code ? 'bg-customPrimaryColor border-customPrimaryColor' : 'border-gray-300']">
+                  <div v-if="selectedProtection === plan.code" class="w-2 h-2 bg-white rounded-full"></div>
+                </div>
+              </div>
+              <p class="text-sm text-gray-600 mb-4">{{ plan.description }}</p>
+              <ul class="text-xs text-gray-600 space-y-1 mb-4">
+                <li class="flex items-center gap-2"><span class="text-green-500">✓</span> Reduced damage excess</li>
+                <li class="flex items-center gap-2"><span class="text-green-500">✓</span> Theft protection</li>
+              </ul>
+              <div class="border-t pt-3">
+                <p class="text-lg font-bold text-customPrimaryColor">{{ formatPrice(plan.amount, plan.currency) }} <span class="text-sm font-normal text-gray-500">/ rental</span></p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Step 2: Extra Options -->
+        <div v-if="currentStep === 2">
+          <h2 class="text-xl font-bold text-gray-900 mb-2">Make your rental more complete</h2>
+          <p class="text-gray-600 mb-6">Add optional extras to enhance your experience</p>
+          
+          <!-- Safety and Assistance -->
+          <div v-if="protectionPlans && protectionPlans.length > 2" class="mb-8">
+            <h3 class="font-semibold text-gray-800 mb-4">Safety and assistance</h3>
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              <div v-for="plan in (protectionPlans || []).slice(2)" :key="plan.code"
+                   @click="toggleExtra(plan.code)"
+                   :class="[
+                     'p-4 rounded-xl border-2 cursor-pointer transition-all',
+                     selectedExtras.includes(plan.code) ? 'border-green-500 bg-green-50' : 'border-gray-200 hover:border-green-300'
+                   ]">
+                <div class="flex justify-between items-start mb-2">
+                  <h4 class="font-semibold text-gray-900 text-sm">{{ plan.description.split('/')[0].trim() }}</h4>
+                  <button :class="[
+                    'px-3 py-1 text-xs font-semibold rounded',
+                    selectedExtras.includes(plan.code) ? 'bg-green-500 text-white' : 'bg-customPrimaryColor text-white'
+                  ]">
+                    {{ selectedExtras.includes(plan.code) ? 'SELECTED' : 'SELECT' }}
+                  </button>
+                </div>
+                <p class="text-xs text-gray-600 mb-2">{{ plan.description }}</p>
+                <p class="text-sm font-bold text-customPrimaryColor">{{ formatPrice(plan.amount, plan.currency) }}</p>
+              </div>
+            </div>
+          </div>
+
+          <!-- Extra Optionals -->
+          <div v-if="optionalExtras && optionalExtras.length > 0">
+            <h3 class="font-semibold text-gray-800 mb-4">Extra optionals</h3>
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              <div v-for="extra in optionalExtras" :key="extra.code"
+                   @click="toggleExtra(extra.code)"
+                   :class="[
+                     'p-4 rounded-xl border-2 cursor-pointer transition-all',
+                     selectedExtras.includes(extra.code) ? 'border-green-500 bg-green-50' : 'border-gray-200 hover:border-green-300'
+                   ]">
+                <div class="flex justify-between items-start mb-2">
+                  <h4 class="font-semibold text-gray-900 text-sm">{{ extra.description.split('/')[0].trim() }}</h4>
+                  <button :class="[
+                    'px-3 py-1 text-xs font-semibold rounded',
+                    selectedExtras.includes(extra.code) ? 'bg-green-500 text-white' : 'bg-customPrimaryColor text-white'
+                  ]">
+                    {{ selectedExtras.includes(extra.code) ? 'SELECTED' : 'SELECT' }}
+                  </button>
+                </div>
+                <p class="text-xs text-gray-600 mb-2">{{ extra.description }}</p>
+                <p class="text-sm font-bold text-customPrimaryColor">{{ formatPrice(extra.amount, extra.currency) }}</p>
+              </div>
+            </div>
+          </div>
+
+          <div v-if="(!protectionPlans || protectionPlans.length <= 2) && (!optionalExtras || optionalExtras.length === 0)" 
+               class="text-center py-8 text-gray-500">
+            <p>No additional extras available for this vehicle.</p>
+          </div>
+        </div>
+
+        <!-- Step 3: Your Details -->
+        <div v-if="currentStep === 3">
+          <h2 class="text-xl font-bold text-gray-900 mb-6">Your Details</h2>
+          
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">First Name *</label>
+              <input v-model="bookingForm.first_name" type="text" class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-customPrimaryColor focus:border-transparent" required />
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">Last Name *</label>
+              <input v-model="bookingForm.last_name" type="text" class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-customPrimaryColor focus:border-transparent" required />
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">Email *</label>
+              <input v-model="bookingForm.email" type="email" class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-customPrimaryColor focus:border-transparent" required />
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">Phone *</label>
+              <input v-model="bookingForm.phone" type="tel" class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-customPrimaryColor focus:border-transparent" required />
+            </div>
+          </div>
+
+          <h3 class="text-lg font-semibold text-gray-900 mb-4">Driver License</h3>
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">License Number *</label>
+              <input v-model="bookingForm.driver_license_number" type="text" class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-customPrimaryColor focus:border-transparent" required />
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">Issuing Country *</label>
+              <input v-model="bookingForm.driver_license_country" type="text" class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-customPrimaryColor focus:border-transparent" required />
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">Expiry Date</label>
+              <input v-model="bookingForm.driver_license_expiry" type="date" class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-customPrimaryColor focus:border-transparent" />
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">Flight Number (Optional)</label>
+              <input v-model="bookingForm.flight_number" type="text" placeholder="e.g., AZ2020" class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-customPrimaryColor focus:border-transparent" />
+            </div>
+          </div>
+
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Special Requests (Optional)</label>
+            <textarea v-model="bookingForm.special_requests" rows="3" class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-customPrimaryColor focus:border-transparent" placeholder="Any special requirements..."></textarea>
+          </div>
+        </div>
+
+        <!-- Step 4: Confirm -->
+        <div v-if="currentStep === 4">
+          <h2 class="text-xl font-bold text-gray-900 mb-6">Confirm Your Booking</h2>
+
+          <div class="bg-green-50 border border-green-200 rounded-xl p-4 mb-6">
+            <h3 class="font-semibold text-green-800 mb-2">✓ Pay on Arrival</h3>
+            <p class="text-sm text-green-700">No payment is required now. You will pay {{ formatPrice(grandTotal, currency) }} when you pick up the vehicle.</p>
+          </div>
+
+          <!-- Booking Summary -->
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+            <div class="bg-gray-50 p-4 rounded-xl">
+              <h4 class="font-semibold text-gray-900 mb-2">Customer Details</h4>
+              <p class="text-sm text-gray-600">{{ bookingForm.first_name }} {{ bookingForm.last_name }}</p>
+              <p class="text-sm text-gray-600">{{ bookingForm.email }}</p>
+              <p class="text-sm text-gray-600">{{ bookingForm.phone }}</p>
+            </div>
+            <div class="bg-gray-50 p-4 rounded-xl">
+              <h4 class="font-semibold text-gray-900 mb-2">Price Breakdown</h4>
+              <div class="text-sm space-y-1">
+                <div class="flex justify-between"><span>Vehicle</span><span>{{ formatPrice(totalAmount, currency) }}</span></div>
+                <div v-if="protectionTotal > 0" class="flex justify-between"><span>Protection</span><span>{{ formatPrice(protectionTotal, currency) }}</span></div>
+                <div v-if="extrasTotal > 0" class="flex justify-between"><span>Extras</span><span>{{ formatPrice(extrasTotal, currency) }}</span></div>
+                <div class="flex justify-between font-bold pt-2 border-t"><span>Total</span><span class="text-customPrimaryColor">{{ formatPrice(grandTotal, currency) }}</span></div>
+              </div>
+            </div>
+          </div>
+
+          <div class="space-y-4">
+            <label class="flex items-start cursor-pointer">
+              <input v-model="agreedToTerms" type="checkbox" class="mt-1 h-4 w-4 text-customPrimaryColor focus:ring-customPrimaryColor border-gray-300 rounded" />
+              <span class="ml-3 text-sm text-gray-700">I agree to the <a href="/terms" class="text-customPrimaryColor hover:underline">Terms and Conditions</a></span>
+            </label>
+            <label class="flex items-start cursor-pointer">
+              <input v-model="agreedToPrivacy" type="checkbox" class="mt-1 h-4 w-4 text-customPrimaryColor focus:ring-customPrimaryColor border-gray-300 rounded" />
+              <span class="ml-3 text-sm text-gray-700">I agree to the <a href="/privacy" class="text-customPrimaryColor hover:underline">Privacy Policy</a></span>
+            </label>
+            <label class="flex items-start cursor-pointer">
+              <input v-model="agreedToCancellation" type="checkbox" class="mt-1 h-4 w-4 text-customPrimaryColor focus:ring-customPrimaryColor border-gray-300 rounded" />
+              <span class="ml-3 text-sm text-gray-700">I understand that cancellations are free up to 24 hours before pickup</span>
+            </label>
+          </div>
+        </div>
+
+        <!-- Navigation Buttons -->
+        <div class="mt-8 flex justify-between">
+          <button v-if="currentStep > 1" @click="previousStep" class="px-6 py-3 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 font-medium">
+            Previous
+          </button>
+          <Link v-else :href="backToVehicle" class="px-6 py-3 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 font-medium">
+            Back to Vehicle
+          </Link>
+
+          <button v-if="currentStep < totalSteps" @click="nextStep"
+                  class="px-8 py-3 bg-customPrimaryColor text-white rounded-lg hover:bg-blue-700 font-semibold flex items-center gap-2">
+            Continue
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+            </svg>
+          </button>
+
+          <button v-if="currentStep === totalSteps" @click="submitBooking" :disabled="!canProceed || isSubmitting"
+                  class="px-8 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:bg-gray-400 disabled:cursor-not-allowed font-semibold">
+            <span v-if="isSubmitting">Processing...</span>
+            <span v-else>Confirm Booking - Pay on Arrival</span>
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <Footer />
 </template>

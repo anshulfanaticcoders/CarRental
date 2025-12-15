@@ -1,449 +1,671 @@
 <script setup>
-import { Head, Link, useForm } from '@inertiajs/vue3'
-import { computed, ref } from 'vue'
-import { route } from 'ziggy-js'
-import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue'
-import { usePage } from '@inertiajs/vue3'
+import { Link, usePage, Head, router } from "@inertiajs/vue3";
+import { computed, onMounted, ref, watch, nextTick, onBeforeUnmount } from "vue";
+import Footer from "@/Components/Footer.vue";
+import AuthenticatedHeaderLayout from "@/Layouts/AuthenticatedHeaderLayout.vue";
+import { ChevronRight, ImageIcon } from 'lucide-vue-next';
+import Card from "@/Components/ui/card/Card.vue";
+import CardContent from "@/Components/ui/card/CardContent.vue";
+import { Button } from "@/Components/ui/button";
+import { useCurrency } from '@/composables/useCurrency';
+import { useToast } from 'vue-toastification';
+import L from 'leaflet';
+import 'leaflet/dist/leaflet.css';
+import markerIcon2x from 'leaflet/dist/images/marker-icon-2x.png';
+import markerIcon from 'leaflet/dist/images/marker-icon.png';
+import markerShadow from 'leaflet/dist/images/marker-shadow.png';
+
+// Icons
+import carIcon from "../../assets/carIcon.svg";
+import luggageIcon from "../../assets/luggage.svg";
+import transmisionIcon from "../../assets/transmision.svg";
+import peopleIcon from "../../assets/people.svg";
+import fuelIcon from "../../assets/fuel.svg";
+import check from "../../assets/Check.svg";
+import partnersIcon from "../../assets/partners.svg";
+import pickupLocationIcon from "../../assets/pickupLocationIcon.svg";
+import returnLocationIcon from "../../assets/returnLocationIcon.svg";
+import locationPinIcon from "../../assets/locationPin.svg";
 
 const props = defineProps({
-  vehicle: Object,
-  filters: Object,
-  error: String
-})
+    vehicle: Object,
+    location: Object,
+    dropoffLocation: Object,
+    protectionPlans: Array,
+    optionalExtras: Array,
+    filters: Object,
+    error: String
+});
 
-const page = usePage()
-const baseUrl = page.props.appUrl || window.location.origin
-const locale = page.props.locale || 'en'
+const page = usePage();
+const toast = useToast();
+const locale = page.props.locale || 'en';
+const isBooking = ref(false);
+const mapContainerRef = ref(null);
+let map = ref(null);
 
-// State
-const selectedExtras = ref({})
-const loading = ref(false)
+const { selectedCurrency } = useCurrency();
 
 // Check if vehicle exists
-const hasVehicle = computed(() => props.vehicle && Object.keys(props.vehicle).length > 0)
+const hasVehicle = computed(() => props.vehicle && Object.keys(props.vehicle).length > 0);
 
 // Vehicle data computed properties (with safe access)
-const vehicleImage = computed(() => props.vehicle?.image || '/images/default-car.jpg')
-const vehicleModel = computed(() => props.vehicle?.model || 'Locauto Vehicle')
-const vehicleBrand = computed(() => props.vehicle?.brand || 'Locauto')
-const sippCode = computed(() => props.vehicle?.sipp_code || 'MDMR')
-const transmission = computed(() => props.vehicle?.transmission || 'manual')
-const fuel = computed(() => props.vehicle?.fuel || 'petrol')
-const seatingCapacity = computed(() => props.vehicle?.seating_capacity || 4)
-const doors = computed(() => props.vehicle?.doors || 4)
-const luggage = computed(() => props.vehicle?.luggage || 2)
-const totalAmount = computed(() => parseFloat(props.vehicle?.total_amount || 0))
-const currency = computed(() => props.vehicle?.currency || 'EUR')
+const vehicleImage = computed(() => props.vehicle?.image || '/images/default-car.jpg');
+const vehicleModel = computed(() => props.vehicle?.model || 'Locauto Vehicle');
+const vehicleBrand = computed(() => props.vehicle?.brand || '');
+const sippCode = computed(() => props.vehicle?.sipp_code || '');
+const transmission = computed(() => {
+    const t = (props.vehicle?.transmission || '').toLowerCase();
+    return t === 'automatic' ? 'Automatic' : 'Manual';
+});
+const fuel = computed(() => {
+    const f = (props.vehicle?.fuel || '').toLowerCase();
+    const types = { 'petrol': 'Petrol', 'diesel': 'Diesel', 'electric': 'Electric', 'hybrid': 'Hybrid' };
+    return types[f] || 'Petrol';
+});
+const seatingCapacity = computed(() => props.vehicle?.seating_capacity || null);
+const doors = computed(() => props.vehicle?.doors || null);
+const luggage = computed(() => props.vehicle?.luggage || null);
+const totalAmount = computed(() => parseFloat(props.vehicle?.total_amount || 0));
+const currency = computed(() => props.vehicle?.currency || 'EUR');
 
 // Location and date info
-const pickupLocationId = computed(() => props.vehicle?.pickup_location_id || props.filters?.location_id || '')
-const dropoffLocationId = computed(() => props.vehicle?.dropoff_location_id || props.filters?.dropoff_location_id || pickupLocationId.value)
-const pickupDate = computed(() => props.vehicle?.date_from || props.filters?.start_date || '')
-const returnDate = computed(() => props.vehicle?.date_to || props.filters?.end_date || '')
-const pickupTime = computed(() => props.vehicle?.start_time || props.filters?.start_time || '09:00')
-const returnTime = computed(() => props.vehicle?.end_time || props.filters?.end_time || '09:00')
-const driverAge = computed(() => props.vehicle?.age || props.filters?.age || 35)
-
-const sippInfo = computed(() => {
-  const sipp = sippCode.value
-  if (!sipp || sipp.length < 4) {
-    return {
-      vehicleType: '',
-      doors: '',
-      transmission: '',
-      fuelAircon: '',
-      description: ''
-    }
-  }
-  return {
-    vehicleType: sipp[0],
-    doors: sipp[1],
-    transmission: sipp[2],
-    fuelAircon: sipp[3],
-    description: decodeSIPP(sipp)
-  }
-})
-
-const extras = ref([
-  { code: '9', name: 'Additional Driver', price: 9.00, unit: 'day', maxDays: null },
-  { code: '19', name: 'GPS Navigation', price: 7.00, unit: 'day', maxDays: 18 },
-  { code: '78', name: 'Child Seat', price: 11.25, unit: 'day', maxDays: 4 },
-  { code: '136', name: "Don't Worry Cover", price: 38.00, unit: 'day', maxDays: null },
-  { code: '137', name: 'Additional Driver (Alternative)', price: 9.00, unit: 'day', maxDays: null },
-  { code: '139', name: 'Young Driver Fee', price: 15.00, unit: 'day', maxDays: null },
-])
+const pickupDate = computed(() => props.vehicle?.date_from || props.filters?.start_date || '');
+const returnDate = computed(() => props.vehicle?.date_to || props.filters?.end_date || '');
+const pickupTime = computed(() => props.vehicle?.start_time || props.filters?.start_time || '09:00');
+const returnTime = computed(() => props.vehicle?.end_time || props.filters?.end_time || '09:00');
 
 const rentalDays = computed(() => {
-  if (!pickupDate.value || !returnDate.value) return 1
-  const pickup = new Date(pickupDate.value)
-  const returnD = new Date(returnDate.value)
-  const diffTime = Math.abs(returnD.getTime() - pickup.getTime())
-  return Math.max(1, Math.ceil(diffTime / (1000 * 60 * 60 * 24)))
-})
+    if (!pickupDate.value || !returnDate.value) return 1;
+    const pickup = new Date(pickupDate.value);
+    const returnD = new Date(returnDate.value);
+    const diffTime = Math.abs(returnD.getTime() - pickup.getTime());
+    return Math.max(1, Math.ceil(diffTime / (1000 * 60 * 60 * 24)));
+});
 
-const extrasTotal = computed(() => {
-  let total = 0
-  Object.entries(selectedExtras.value).forEach(([code, selected]) => {
-    if (selected) {
-      const extra = extras.value.find(e => e.code === code)
-      if (extra) {
-        const days = extra.maxDays ? Math.min(rentalDays.value, extra.maxDays) : rentalDays.value
-        total += extra.price * days
-      }
+// SIPP code decoder for vehicle category display
+const sippInfo = computed(() => {
+    const sipp = sippCode.value;
+    if (!sipp || sipp.length < 4) return { description: '', category: '' };
+    
+    const codes1 = { 'M': 'Mini', 'E': 'Economy', 'C': 'Compact', 'I': 'Intermediate', 'S': 'Standard', 'F': 'Fullsize', 'P': 'Premium', 'L': 'Luxury', 'X': 'Special' };
+    const codes2 = { 'B': '2 doors', 'C': '2/4 doors', 'D': '4/5 doors', 'W': 'Wagon', 'V': 'Van', 'S': 'Sport', 'T': 'Convertible', 'F': 'SUV' };
+    const codes3 = { 'M': 'Manual', 'N': 'Manual', 'C': 'Automatic', 'A': 'Automatic' };
+    
+    let description = '';
+    if (sipp[0] && codes1[sipp[0]]) description += codes1[sipp[0]];
+    if (sipp[1] && codes2[sipp[1]]) description += ' • ' + codes2[sipp[1]];
+    if (sipp[2] && codes3[sipp[2]]) description += ' • ' + codes3[sipp[2]];
+    
+    return { description, category: codes1[sipp[0]] || '' };
+});
+
+const backToSearchUrl = computed(() => {
+    const searchUrl = typeof sessionStorage !== 'undefined' ? sessionStorage.getItem('searchurl') : null;
+    if (searchUrl) return searchUrl;
+    return `/${locale}/s`;
+});
+
+// Map initialization
+const initMap = () => {
+    if (!props.location || !props.location.latitude || !props.location.longitude || !mapContainerRef.value) {
+        console.warn('Map initialization skipped: Missing location data or map container not ready.');
+        return;
     }
-  })
-  return total
-})
 
-const grandTotal = computed(() => {
-  return totalAmount.value + extrasTotal.value
-})
+    if (map.value) {
+        map.value.remove();
+    }
 
-// Methods
-function decodeSIPP(sipp) {
-  const codes1 = {
-    'M': 'Mini',
-    'E': 'Economy',
-    'C': 'Compact',
-    'I': 'Intermediate',
-    'S': 'Standard',
-    'F': 'Fullsize',
-    'P': 'Premium',
-    'L': 'Luxury',
-    'X': 'Special'
-  }
+    delete L.Icon.Default.prototype._getIconUrl;
+    L.Icon.Default.mergeOptions({
+        iconRetinaUrl: markerIcon2x,
+        iconUrl: markerIcon,
+        shadowUrl: markerShadow,
+    });
 
-  const codes2 = {
-    'B': '2 doors',
-    'C': '2/4 doors',
-    'D': '4/5 doors',
-    'W': 'Wagon/Estate',
-    'V': 'Passenger Van',
-    'L': 'Limousine',
-    'S': 'Sport',
-    'T': 'Convertible',
-    'F': 'SUV',
-    'X': 'Special',
-    'J': 'Open air all terrain'
-  }
+    map.value = L.map(mapContainerRef.value, {
+        zoomControl: true,
+        maxZoom: 18,
+        minZoom: 4,
+        preferCanvas: true
+    }).setView([parseFloat(props.location.latitude), parseFloat(props.location.longitude)], 15);
 
-  const codes3 = {
-    'M': 'Manual',
-    'N': 'Manual',
-    'C': 'Automatic',
-    'A': 'Automatic',
-    'B': 'Auto-4WD'
-  }
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '© OpenStreetMap contributors',
+        maxZoom: 19
+    }).addTo(map.value);
 
-  const codes4 = {
-    'R': 'Manual stick shift',
-    'N': 'No AC',
-    'D': 'Diesel',
-    'Q': 'Diesel',
-    'H': 'Hybrid',
-    'I': 'Hybrid electric',
-    'E': 'Electric',
-    'C': 'Air conditioning',
-    'L': 'LPG/Gas',
-    'S': 'LPG/Gas',
-    'A': 'Hydrogen',
-    'B': 'Hydrogen',
-    'M': 'Multi fuel',
-    'F': 'Unleaded',
-    'V': 'Petrol',
-    'Z': 'Petrol',
-    'U': 'Ethanol',
-    'X': 'Ethanol'
-  }
+    const createColoredIcon = (color) => {
+        return L.divIcon({
+            className: 'custom-div-icon',
+            html: `
+                <div class="marker-pin" style="filter: drop-shadow(0 4px 3px rgba(0,0,0,0.2));">
+                    <svg width="40" height="40" viewBox="0 0 24 24" fill="${color}" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/>
+                    </svg>
+                </div>
+            `,
+            iconSize: [40, 40],
+            iconAnchor: [20, 40],
+            popupAnchor: [0, -40]
+        });
+    };
 
-  let description = ''
-  if (sipp[0] && codes1[sipp[0]]) description += codes1[sipp[0]] + ' - '
-  if (sipp[1] && codes2[sipp[1]]) description += codes2[sipp[1]] + ', '
-  if (sipp[2] && codes3[sipp[2]]) description += codes3[sipp[2]] + ', '
-  if (sipp[3] && codes4[sipp[3]]) description += codes4[sipp[3]]
+    const pickupIcon = createColoredIcon('#22c55e');
+    const dropoffIcon = createColoredIcon('#ef4444');
 
-  return description
-}
+    const pickupLatLng = [parseFloat(props.location.latitude), parseFloat(props.location.longitude)];
+    
+    L.marker(pickupLatLng, { icon: pickupIcon })
+        .bindPopup(`
+            <div class="text-center">
+                <p class="font-semibold">Pickup: ${props.location.name}</p>
+                <p>${props.location.address_city}</p>
+            </div>
+        `)
+        .addTo(map.value);
 
-function proceedToBooking() {
-  if (!hasVehicle.value) return
-  
-  loading.value = true
+    let bounds = L.latLngBounds([pickupLatLng]);
 
-  // Prepare selected extras
-  const selected = Object.entries(selectedExtras.value)
-    .filter(([_, isSelected]) => isSelected)
-    .map(([code, _]) => {
-      const extra = extras.value.find(e => e.code === code)
-      return {
-        code: code,
-        name: extra?.name,
-        price: extra?.price,
-        quantity: extra?.maxDays ? Math.min(rentalDays.value, extra.maxDays) : rentalDays.value,
-        total: extra?.price ? extra.price * (extra?.maxDays ? Math.min(rentalDays.value, extra.maxDays) : rentalDays.value) : 0
-      }
-    })
+    if (props.dropoffLocation && 
+        (props.location.latitude !== props.dropoffLocation.latitude || props.location.longitude !== props.dropoffLocation.longitude)) {
+        
+        const dropoffLatLng = [parseFloat(props.dropoffLocation.latitude), parseFloat(props.dropoffLocation.longitude)];
+        
+        L.marker(dropoffLatLng, { icon: dropoffIcon })
+            .bindPopup(`
+                <div class="text-center">
+                    <p class="font-semibold">Dropoff: ${props.dropoffLocation.name}</p>
+                    <p>${props.dropoffLocation.address_city}</p>
+                </div>
+            `)
+            .addTo(map.value);
+        
+        L.polyline([pickupLatLng, dropoffLatLng], {
+            color: 'black',
+            weight: 2,
+            opacity: 0.7,
+            dashArray: '5, 10'
+        }).addTo(map.value);
 
-  // Navigate to booking page with query params
-  const bookingUrl = route('locauto-rent-booking.checkout', {
-    locale: locale,
-    id: props.vehicle.id,
-    location_id: pickupLocationId.value,
-    dropoff_location_id: dropoffLocationId.value,
-    start_date: pickupDate.value,
-    start_time: pickupTime.value,
-    end_date: returnDate.value,
-    end_time: returnTime.value,
-    age: driverAge.value
-  })
+        bounds.extend(dropoffLatLng);
+        map.value.fitBounds(bounds, { padding: [50, 50] });
+    }
 
-  window.location.href = bookingUrl
-}
+    setTimeout(() => {
+        map.value.invalidateSize();
+    }, 100);
+};
 
-function formatPrice(amount, currencyCode = 'EUR') {
-  return new Intl.NumberFormat('en-US', {
-    style: 'currency',
-    currency: currencyCode
-  }).format(amount)
-}
+// Price formatting with currency conversion
+const currencySymbols = ref({});
+const exchangeRates = ref(null);
 
-function getTransmissionDisplay(type) {
-  const t = (type || '').toLowerCase()
-  return t === 'automatic' ? 'Automatic' : 'Manual'
-}
+onMounted(async () => {
+    try {
+        const [currencyRes, ratesRes] = await Promise.all([
+            fetch('/currency.json'),
+            fetch(`${import.meta.env.VITE_EXCHANGERATE_API_BASE_URL}/v6/${import.meta.env.VITE_EXCHANGERATE_API_KEY}/latest/USD`)
+        ]);
+        
+        const currencyData = await currencyRes.json();
+        currencySymbols.value = currencyData.reduce((acc, curr) => {
+            acc[curr.code] = curr.symbol;
+            return acc;
+        }, {});
+        
+        const ratesData = await ratesRes.json();
+        if (ratesData.result === 'success') {
+            exchangeRates.value = ratesData.conversion_rates;
+        }
+    } catch (error) {
+        console.error("Error loading currency data:", error);
+    }
 
-function getFuelDisplay(type) {
-  const f = (type || '').toLowerCase()
-  const types = {
-    'petrol': 'Petrol',
-    'diesel': 'Diesel',
-    'electric': 'Electric',
-    'hybrid': 'Hybrid'
-  }
-  return types[f] || 'Petrol'
-}
+    nextTick(() => {
+        initMap();
+    });
+});
 
-function formatDateTime(date, time) {
-  if (!date) return ''
-  try {
-    const dateObj = new Date(date + 'T' + (time || '09:00'))
-    return dateObj.toLocaleDateString('en-US', {
-      weekday: 'short',
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
-    })
-  } catch (e) {
-    return date + ' ' + time
-  }
-}
+watch([() => props.location, mapContainerRef], ([newLocation, newMapContainerRef]) => {
+    if (newLocation && newMapContainerRef) {
+        initMap();
+    }
+}, { immediate: true, deep: true });
+
+onBeforeUnmount(() => {
+    if (map.value) {
+        map.value.remove();
+        map.value = null;
+    }
+});
+
+const formatPrice = (amount, fromCurrency = 'EUR') => {
+    const numericAmount = parseFloat(amount);
+    if (isNaN(numericAmount)) return '€0.00';
+    
+    if (!exchangeRates.value || !selectedCurrency.value) {
+        return `€${numericAmount.toFixed(2)}`;
+    }
+    
+    const rateFrom = exchangeRates.value[fromCurrency] || 1;
+    const rateTo = exchangeRates.value[selectedCurrency.value] || 1;
+    const converted = (numericAmount / rateFrom) * rateTo;
+    const symbol = currencySymbols.value[selectedCurrency.value] || '€';
+    
+    return `${symbol}${converted.toFixed(2)}`;
+};
+
+const formatDateTime = (date, time) => {
+    if (!date) return '';
+    try {
+        const dateObj = new Date(date + 'T' + (time || '09:00'));
+        return dateObj.toLocaleDateString('en-US', {
+            weekday: 'short',
+            year: 'numeric',
+            month: 'short',
+            day: 'numeric'
+        }) + ' at ' + (time || '09:00');
+    } catch (e) {
+        return date + ' ' + time;
+    }
+};
+
+// Proceed to booking
+const proceedToBooking = () => {
+    if (!hasVehicle.value) return;
+    isBooking.value = true;
+    
+    // Check if user is authenticated
+    if (!page.props.auth?.user) {
+        sessionStorage.setItem('returnToUrl', window.location.href);
+        router.visit(`/${locale}/login`);
+        return;
+    }
+    
+    router.visit(`/${locale}/locauto-rent-booking/${props.vehicle.id}/checkout`, {
+        data: {
+            location_id: props.filters?.location_id,
+            dropoff_location_id: props.filters?.dropoff_location_id,
+            start_date: pickupDate.value,
+            start_time: pickupTime.value,
+            end_date: returnDate.value,
+            end_time: returnTime.value
+        },
+        onFinish: () => {
+            isBooking.value = false;
+        }
+    });
+};
 </script>
 
 <template>
-  <Head title="Vehicle Details - Locauto Rent" />
+    <Head>
+        <title>{{ vehicleModel }} - Locauto Rent</title>
+        <meta name="description" :content="`Rent ${vehicleModel} from Locauto - Pay on Arrival`" />
+    </Head>
 
-  <AuthenticatedLayout>
-    <div class="min-h-screen bg-gray-50 py-8">
-      <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <!-- Breadcrumb -->
-        <nav class="mb-6">
-          <ol class="flex items-center space-x-2 text-sm text-gray-600">
-            <li>
-              <Link :href="route('welcome', { locale })" class="hover:text-gray-900">Home</Link>
-            </li>
-            <li>/</li>
-            <li>
-              <Link :href="route('search', { locale })" class="hover:text-gray-900">Search</Link>
-            </li>
-            <li>/</li>
-            <li class="text-gray-900">Vehicle Details</li>
-          </ol>
-        </nav>
+    <AuthenticatedHeaderLayout />
 
+    <!-- Hero Section - Blue like GreenMotion -->
+    <section class="bg-gradient-to-r from-customPrimaryColor to-blue-700 py-16">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
+            <h1 class="text-white text-4xl md:text-5xl font-bold mb-4">{{ vehicleModel }}</h1>
+            <p class="text-blue-100 text-lg md:text-xl">Italian quality rental with Pay on Arrival</p>
+            <div class="mt-6 flex items-center justify-center gap-4 flex-wrap">
+                <div v-if="sippInfo.category" class="bg-white/20 backdrop-blur-sm rounded-full px-4 py-2 text-white">
+                    <span class="font-medium">{{ sippInfo.category }}</span>
+                </div>
+                <div class="bg-green-500/20 backdrop-blur-sm rounded-full px-4 py-2 text-white">
+                    <span class="font-medium">Pay on Arrival</span>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <!-- Error State -->
-        <div v-if="error || !hasVehicle" class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-6">
-          <p class="font-bold">Error</p>
-          <p>{{ error || 'Vehicle not found. Please go back and try again.' }}</p>
-          <Link :href="route('search', { locale })" class="mt-3 inline-block bg-red-600 text-white px-4 py-2 rounded hover:bg-red-700">
-            Back to Search
-          </Link>
+        <div v-if="error || !hasVehicle" class="text-center py-16">
+            <div class="bg-red-50 border border-red-200 rounded-2xl p-8 max-w-md mx-auto">
+                <p class="text-red-600 text-xl font-semibold mb-4">{{ error || 'Vehicle not found' }}</p>
+                <Link :href="backToSearchUrl" class="inline-flex items-center gap-2 bg-customPrimaryColor text-white px-6 py-3 rounded-lg hover:bg-blue-700 transition">
+                    Back to Search Results
+                </Link>
+            </div>
         </div>
 
-        <!-- Vehicle Content -->
-        <template v-if="hasVehicle && !error">
-          <!-- Vehicle Header -->
-          <div class="bg-white rounded-lg shadow-lg overflow-hidden mb-6">
-            <div class="md:flex">
-              <div class="md:w-1/3">
-                <img
-                  :src="vehicleImage"
-                  :alt="vehicleModel"
-                  class="w-full h-64 md:h-full object-cover"
-                />
-              </div>
-              <div class="md:w-2/3 p-6">
-                <div class="flex items-start justify-between mb-4">
-                  <div>
-                    <h1 class="text-3xl font-bold text-gray-900 mb-2">
-                      {{ vehicleModel }}
-                    </h1>
-                    <p class="text-lg text-gray-600 mb-1">
-                      {{ sippInfo.description }}
-                    </p>
-                    <p class="text-sm text-gray-500">
-                      SIPP Code: {{ sippCode }}
-                    </p>
-                  </div>
-                  <div class="text-right">
-                    <div class="text-3xl font-bold text-blue-600">
-                      {{ formatPrice(totalAmount, currency) }}
-                    </div>
-                    <div class="text-sm text-gray-500">total for {{ rentalDays }} days</div>
-                  </div>
-                </div>
+        <div v-else>
+            <!-- Breadcrumb -->
+            <nav class="flex items-center gap-2 text-sm mb-8 p-4 bg-gray-50 rounded-lg">
+                <Link :href="`/${locale}`" class="text-customPrimaryColor hover:underline font-medium">Home</Link>
+                <ChevronRight class="h-4 w-4 text-gray-400" />
+                <Link :href="backToSearchUrl" class="text-customPrimaryColor hover:underline font-medium">Vehicles</Link>
+                <ChevronRight class="h-4 w-4 text-gray-400" />
+                <span class="text-gray-600">{{ vehicleModel }}</span>
+            </nav>
 
-                <!-- Vehicle Features -->
-                <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-                  <div class="flex items-center">
-                    <svg class="w-5 h-5 text-gray-400 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
-                    </svg>
-                    <span class="text-sm">{{ seatingCapacity }} Passengers</span>
-                  </div>
-                  <div class="flex items-center">
-                    <svg class="w-5 h-5 text-gray-400 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
-                    </svg>
-                    <span class="text-sm">{{ luggage }} Bags</span>
-                  </div>
-                  <div class="flex items-center">
-                    <svg class="w-5 h-5 text-gray-400 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
-                    </svg>
-                    <span class="text-sm">{{ getTransmissionDisplay(transmission) }}</span>
-                  </div>
-                  <div class="flex items-center">
-                    <svg class="w-5 h-5 text-gray-400 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" />
-                    </svg>
-                    <span class="text-sm">{{ getFuelDisplay(fuel) }}</span>
-                  </div>
-                </div>
-
-                <!-- Pay on Arrival Badge -->
-                <div class="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded mb-4">
-                  <div class="flex items-center">
-                    <svg class="w-5 h-5 mr-2" fill="currentColor" viewBox="0 0 20 20">
-                      <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd" />
-                    </svg>
-                    <div>
-                      <p class="font-bold">Pay on Arrival</p>
-                      <p class="text-sm">No prepayment required. Pay when you pick up the vehicle.</p>
+            <!-- Vehicle Header Info -->
+            <div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4">
+                <div>
+                    <h2 class="text-3xl font-bold text-gray-900 mb-2">{{ vehicleModel }}</h2>
+                    <div class="flex items-center gap-3 flex-wrap">
+                        <span v-if="sippCode" class="inline-flex items-center px-3 py-1 bg-blue-100 text-blue-800 rounded-full text-sm font-medium">
+                            {{ sippCode }}
+                        </span>
+                        <span v-if="sippInfo.category" class="inline-flex items-center px-3 py-1 bg-green-100 text-green-800 rounded-full text-sm font-medium">
+                            {{ sippInfo.category }}
+                        </span>
                     </div>
-                  </div>
                 </div>
-
-                <!-- Rental Details -->
-                <div class="border-t pt-4">
-                  <h3 class="font-semibold text-gray-900 mb-2">Rental Details</h3>
-                  <div class="grid grid-cols-2 gap-4 text-sm">
-                    <div>
-                      <span class="text-gray-500">Pick-up:</span>
-                      <p class="font-medium">{{ pickupLocationId }}</p>
-                      <p class="text-gray-600">{{ formatDateTime(pickupDate, pickupTime) }}</p>
-                    </div>
-                    <div>
-                      <span class="text-gray-500">Drop-off:</span>
-                      <p class="font-medium">{{ dropoffLocationId }}</p>
-                      <p class="text-gray-600">{{ formatDateTime(returnDate, returnTime) }}</p>
-                    </div>
-                  </div>
-                  <div class="mt-3 text-sm">
-                    <span class="text-gray-500">Rental Duration:</span>
-                    <p class="font-medium">{{ rentalDays }} days</p>
-                  </div>
+                <div v-if="location" class="flex items-center gap-2 text-gray-600">
+                    <img :src="locationPinIcon" alt="Location" class="w-4 h-4" loading="lazy" />
+                    <span class="text-sm font-medium">{{ location.address_city }}</span>
                 </div>
-              </div>
             </div>
-          </div>
 
-          <!-- Extras Section -->
-          <div class="bg-white rounded-lg shadow-lg p-6 mb-6">
-            <h2 class="text-xl font-bold text-gray-900 mb-4">Optional Extras</h2>
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div v-for="extra in extras" :key="extra.code" class="flex items-center justify-between p-4 border rounded-lg hover:bg-gray-50">
-                <label class="flex items-center cursor-pointer flex-1">
-                  <input
-                    v-model="selectedExtras[extra.code]"
-                    type="checkbox"
-                    class="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
-                  />
-                  <div class="ml-3">
-                    <p class="font-medium text-gray-900">{{ extra.name }}</p>
-                    <p class="text-sm text-gray-500">
-                      {{ formatPrice(extra.price, 'EUR') }} / day
-                      <span v-if="extra.maxDays">(max {{ extra.maxDays }} days)</span>
-                    </p>
-                  </div>
-                </label>
-                <div class="text-right">
-                  <p class="font-medium">
-                    {{ formatPrice(
-                      extra.price * (extra.maxDays ? Math.min(rentalDays, extra.maxDays) : rentalDays),
-                      'EUR'
-                    ) }}
-                  </p>
-                  <p class="text-xs text-gray-500">total</p>
+            <!-- Main Content -->
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-12">
+                <!-- Left Column: Vehicle Details -->
+                <div class="lg:col-span-2 space-y-10">
+                    <!-- Image Section -->
+                    <div class="mb-12">
+                        <div class="relative group">
+                            <div class="rounded-2xl overflow-hidden shadow-2xl bg-gradient-to-br from-gray-100 to-gray-200">
+                                <div class="aspect-w-16 aspect-h-9 h-[400px] md:h-[500px] relative">
+                                    <img 
+                                        :src="vehicleImage" 
+                                        :alt="vehicleModel" 
+                                        class="w-full h-full object-cover" 
+                                        loading="lazy"
+                                        @error="(e) => e.target.src = '/images/default-car.jpg'"
+                                    />
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Vehicle Features -->
+                    <div class="bg-white rounded-2xl shadow-lg p-8">
+                        <h2 class="text-2xl font-bold text-gray-900 mb-6 flex items-center gap-3">
+                            <div class="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
+                                <img :src="carIcon" alt="Car" class="w-6 h-6" loading="lazy" />
+                            </div>
+                            Vehicle Specifications
+                        </h2>
+                        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                            <!-- People - only show if available -->
+                            <div v-if="seatingCapacity" class="flex items-center gap-4 p-4 bg-gray-50 rounded-xl hover:bg-gray-100 transition-colors">
+                                <div class="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center">
+                                    <img :src="peopleIcon" alt="People" class="w-6 h-6" loading="lazy" />
+                                </div>
+                                <div>
+                                    <span class="text-sm text-gray-500 font-medium">Passengers</span>
+                                    <p class="font-bold text-lg text-gray-900">{{ seatingCapacity }}</p>
+                                </div>
+                            </div>
+                            
+                            <!-- Luggage - only show if available -->
+                            <div v-if="luggage" class="flex items-center gap-4 p-4 bg-gray-50 rounded-xl hover:bg-gray-100 transition-colors">
+                                <div class="w-12 h-12 bg-purple-100 rounded-full flex items-center justify-center">
+                                    <img :src="luggageIcon" alt="Luggage" class="w-6 h-6" loading="lazy" />
+                                </div>
+                                <div>
+                                    <span class="text-sm text-gray-500 font-medium">Luggage</span>
+                                    <p class="font-bold text-lg text-gray-900">{{ luggage }} bags</p>
+                                </div>
+                            </div>
+                            
+                            <!-- Transmission - always show -->
+                            <div class="flex items-center gap-4 p-4 bg-gray-50 rounded-xl hover:bg-gray-100 transition-colors">
+                                <div class="w-12 h-12 bg-orange-100 rounded-full flex items-center justify-center">
+                                    <img :src="transmisionIcon" alt="Transmission" class="w-6 h-6" loading="lazy" />
+                                </div>
+                                <div>
+                                    <span class="text-sm text-gray-500 font-medium">Transmission</span>
+                                    <p class="font-bold text-lg text-gray-900">{{ transmission }}</p>
+                                </div>
+                            </div>
+                            
+                            <!-- Fuel - always show -->
+                            <div class="flex items-center gap-4 p-4 bg-gray-50 rounded-xl hover:bg-gray-100 transition-colors">
+                                <div class="w-12 h-12 bg-red-100 rounded-full flex items-center justify-center">
+                                    <img :src="fuelIcon" alt="Fuel" class="w-6 h-6" loading="lazy" />
+                                </div>
+                                <div>
+                                    <span class="text-sm text-gray-500 font-medium">Fuel Type</span>
+                                    <p class="font-bold text-lg text-gray-900">{{ fuel }}</p>
+                                </div>
+                            </div>
+                            
+                            <!-- Doors - only show if available -->
+                            <div v-if="doors" class="flex items-center gap-4 p-4 bg-gray-50 rounded-xl hover:bg-gray-100 transition-colors">
+                                <div class="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center">
+                                    <svg class="w-6 h-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
+                                    </svg>
+                                </div>
+                                <div>
+                                    <span class="text-sm text-gray-500 font-medium">Doors</span>
+                                    <p class="font-bold text-lg text-gray-900">{{ doors }}</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Pay on Arrival Info -->
+                    <div class="bg-gradient-to-r from-green-50 to-blue-50 rounded-2xl shadow-lg p-8 border border-green-200">
+                        <h2 class="text-2xl font-bold text-gray-900 mb-6 flex items-center gap-3">
+                            <div class="w-10 h-10 bg-green-100 rounded-full flex items-center justify-center">
+                                <img :src="check" alt="Check" class="w-6 h-6" loading="lazy" />
+                            </div>
+                            Pay on Arrival
+                        </h2>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div class="flex items-center gap-3 p-4 bg-white/50 rounded-xl">
+                                <img :src="check" alt="Check" class="w-5 h-5" loading="lazy" />
+                                <span class="text-green-800 font-medium">No upfront payment required</span>
+                            </div>
+                            <div class="flex items-center gap-3 p-4 bg-white/50 rounded-xl">
+                                <img :src="check" alt="Check" class="w-5 h-5" loading="lazy" />
+                                <span class="text-green-800 font-medium">Pay at pickup location</span>
+                            </div>
+                            <div class="flex items-center gap-3 p-4 bg-white/50 rounded-xl">
+                                <img :src="check" alt="Check" class="w-5 h-5" loading="lazy" />
+                                <span class="text-green-800 font-medium">Free cancellation</span>
+                            </div>
+                            <div class="flex items-center gap-3 p-4 bg-white/50 rounded-xl">
+                                <img :src="check" alt="Check" class="w-5 h-5" loading="lazy" />
+                                <span class="text-green-800 font-medium">Flexible booking</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Protection Plans Section -->
+                    <div v-if="protectionPlans && protectionPlans.length > 0" class="bg-white rounded-2xl shadow-lg p-8">
+                        <h2 class="text-2xl font-bold text-gray-900 mb-6 flex items-center gap-3">
+                            <div class="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
+                                <svg class="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+                                </svg>
+                            </div>
+                            Protection Plans
+                        </h2>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div v-for="plan in protectionPlans" :key="plan.code" 
+                                 class="flex items-start gap-4 p-4 bg-blue-50 rounded-xl border border-blue-200 hover:bg-blue-100 transition-colors">
+                                <img :src="check" alt="Check" class="w-5 h-5 mt-1" loading="lazy" />
+                                <div class="flex-1">
+                                    <h4 class="text-sm font-semibold text-blue-900">{{ plan.description }}</h4>
+                                    <p class="text-xs text-blue-700 font-medium mt-1">{{ formatPrice(plan.amount, plan.currency) }}/rental</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Optional Extras Section -->
+                    <div v-if="optionalExtras && optionalExtras.length > 0" class="bg-white rounded-2xl shadow-lg p-8">
+                        <h2 class="text-2xl font-bold text-gray-900 mb-6 flex items-center gap-3">
+                            <div class="w-10 h-10 bg-purple-100 rounded-full flex items-center justify-center">
+                                <svg class="w-6 h-6 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                                </svg>
+                            </div>
+                            Optional Extras
+                        </h2>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div v-for="extra in optionalExtras" :key="extra.code" 
+                                 class="flex items-start gap-4 p-4 bg-purple-50 rounded-xl border border-purple-200 hover:bg-purple-100 transition-colors">
+                                <img :src="check" alt="Check" class="w-5 h-5 mt-1" loading="lazy" />
+                                <div class="flex-1">
+                                    <h4 class="text-sm font-semibold text-purple-900">{{ extra.description }}</h4>
+                                    <p class="text-xs text-purple-700 font-medium mt-1">{{ formatPrice(extra.amount, extra.currency) }}/rental</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Location Map Section -->
+                    <div v-if="location" class="bg-white rounded-2xl shadow-lg p-8">
+                        <h2 class="text-2xl font-bold text-gray-900 mb-6 flex items-center gap-3">
+                            <div class="w-10 h-10 bg-red-100 rounded-full flex items-center justify-center">
+                                <img :src="locationPinIcon" alt="Location" class="w-6 h-6" loading="lazy" />
+                            </div>
+                            Pickup Location
+                        </h2>
+                        <div class="mb-6 p-4 bg-red-50 rounded-xl border border-red-200">
+                            <div class="flex items-start gap-3">
+                                <img :src="locationPinIcon" alt="Location" class="w-6 h-6 text-red-600 mt-1" loading="lazy" />
+                                <div>
+                                    <h5 class="font-semibold text-red-900">{{ location.name }}</h5>
+                                    <p class="text-red-800">{{ location.address_city }}, Italy</p>
+                                </div>
+                            </div>
+                        </div>
+                        <div id="map" ref="mapContainerRef" class="rounded-xl h-[350px] w-full bg-gray-100 shadow-inner">
+                            <div v-if="!map" class="w-full h-full flex items-center justify-center">
+                                <div class="text-center">
+                                    <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-customPrimaryColor mx-auto mb-4"></div>
+                                    <p class="text-gray-600">Loading interactive map...</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Provider Info -->
+                    <div class="bg-gradient-to-r from-blue-50 to-green-50 rounded-2xl shadow-lg p-8 border border-blue-200">
+                        <h2 class="text-2xl font-bold text-gray-900 mb-6 flex items-center gap-3">
+                            About Locauto Rent
+                        </h2>
+                        <div class="flex items-start gap-6">
+                            <div class="w-20 h-20 bg-gradient-to-br from-blue-500 to-green-500 rounded-2xl flex items-center justify-center shadow-lg">
+                                <span class="text-white font-bold text-2xl">LR</span>
+                            </div>
+                            <div class="flex-1">
+                                <h4 class="text-2xl font-bold text-customPrimaryColor mb-2">Locauto Rent</h4>
+                                <p class="text-gray-600 mb-4">Italian quality car rental with locations across Italy. Known for excellent service and competitive pricing.</p>
+                                <div class="flex items-center gap-4 text-sm flex-wrap">
+                                    <div class="flex items-center gap-2 bg-blue-100 px-3 py-1 rounded-full">
+                                        <div class="w-2 h-2 bg-blue-500 rounded-full"></div>
+                                        <span class="text-blue-800 font-medium">Italian Quality</span>
+                                    </div>
+                                    <div class="flex items-center gap-2 bg-green-100 px-3 py-1 rounded-full">
+                                        <div class="w-2 h-2 bg-green-500 rounded-full"></div>
+                                        <span class="text-green-800 font-medium">Trusted Partner</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
                 </div>
-              </div>
-            </div>
-          </div>
 
-          <!-- Price Summary -->
-          <div class="bg-white rounded-lg shadow-lg p-6 mb-6">
-            <h2 class="text-xl font-bold text-gray-900 mb-4">Price Summary</h2>
-            <div class="space-y-2">
-              <div class="flex justify-between text-sm">
-                <span>Vehicle Rental ({{ rentalDays }} days)</span>
-                <span>{{ formatPrice(totalAmount, currency) }}</span>
-              </div>
-              <div v-if="extrasTotal > 0" class="flex justify-between text-sm">
-                <span>Extras</span>
-                <span>{{ formatPrice(extrasTotal, 'EUR') }}</span>
-              </div>
-              <div class="border-t pt-2 mt-2">
-                <div class="flex justify-between">
-                  <span class="font-semibold text-lg">Total Amount</span>
-                  <span class="font-bold text-xl text-blue-600">
-                    {{ formatPrice(grandTotal, currency) }}
-                  </span>
+                <!-- Right Column: Booking Card -->
+                <div class="lg:col-span-1">
+                    <Card class="sticky top-4 shadow-2xl border-0 overflow-hidden">
+                        <div class="bg-gradient-to-r from-customPrimaryColor to-blue-700 p-6 text-white">
+                            <div class="flex items-center justify-between mb-4">
+                                <div class="flex-1 min-w-0">
+                                    <h3 class="text-xl font-bold truncate">{{ vehicleModel }}</h3>
+                                    <span v-if="sippCode" class="inline-block px-3 py-1 bg-white/20 backdrop-blur-sm rounded-full text-sm mt-2">{{ sippCode }}</span>
+                                </div>
+                            </div>
+                            <p class="text-blue-100 text-sm">Powered by <span class="font-semibold text-white">Locauto Rent</span></p>
+                        </div>
+                        
+                        <CardContent class="p-6">
+                            <div class="space-y-6">
+                                <!-- Vehicle Quick Info -->
+                                <div class="space-y-4">
+                                    <div class="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
+                                        <img :src="carIcon" alt="Car" class="w-5 h-5" loading="lazy" />
+                                        <span class="text-sm text-gray-700">
+                                            {{ transmission }} • {{ fuel }}
+                                            <span v-if="seatingCapacity"> • {{ seatingCapacity }} Seats</span>
+                                        </span>
+                                    </div>
+                                </div>
+
+                                <!-- Location Info -->
+                                <div class="space-y-4">
+                                    <div class="flex items-start gap-3 p-4 bg-green-50 rounded-lg border border-green-200">
+                                        <img :src="pickupLocationIcon" alt="Pickup" class="w-5 h-5 mt-1" loading="lazy" />
+                                        <div class="flex-1">
+                                            <span class="text-sm font-medium text-green-800">Pickup Location</span>
+                                            <p class="font-semibold text-green-900">{{ location?.name || filters?.location_id }}</p>
+                                            <p v-if="location?.address_city" class="text-sm text-green-700">{{ location.address_city }}</p>
+                                            <p class="text-sm text-green-600 mt-1">{{ formatDateTime(pickupDate, pickupTime) }}</p>
+                                        </div>
+                                    </div>
+                                    <div class="flex items-start gap-3 p-4 bg-blue-50 rounded-lg border border-blue-200">
+                                        <img :src="returnLocationIcon" alt="Return" class="w-5 h-5 mt-1" loading="lazy" />
+                                        <div class="flex-1">
+                                            <span class="text-sm font-medium text-blue-800">Return Location</span>
+                                            <p class="font-semibold text-blue-900">{{ dropoffLocation?.name || location?.name || filters?.location_id }}</p>
+                                            <p v-if="dropoffLocation?.address_city || location?.address_city" class="text-sm text-blue-700">{{ dropoffLocation?.address_city || location?.address_city }}</p>
+                                            <p class="text-sm text-blue-600 mt-1">{{ formatDateTime(returnDate, returnTime) }}</p>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Price Summary -->
+                                <div class="p-6 bg-gradient-to-r from-green-50 to-blue-50 rounded-xl border border-green-200">
+                                    <div class="text-center">
+                                        <p class="text-3xl font-bold text-gray-900 mb-1">{{ formatPrice(totalAmount, currency) }}</p>
+                                        <p class="text-sm text-gray-600 mb-3">Total for {{ rentalDays }} {{ rentalDays === 1 ? 'day' : 'days' }}</p>
+                                        <div class="flex items-center justify-center gap-2 text-xs text-green-700">
+                                            <div class="w-2 h-2 bg-green-500 rounded-full"></div>
+                                            <span>Pay on Arrival</span>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Book Button -->
+                                <Button 
+                                    @click="proceedToBooking" 
+                                    :disabled="isBooking" 
+                                    class="w-full bg-gradient-to-r from-customPrimaryColor to-blue-700 hover:from-customPrimaryColor/90 hover:to-blue-700/90 text-white py-4 font-semibold text-lg rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-105"
+                                >
+                                    <div class="flex items-center justify-center gap-2">
+                                        <span v-if="isBooking">Processing...</span>
+                                        <span v-else>Reserve Now - Pay on Arrival</span>
+                                        <ChevronRight v-if="!isBooking" class="w-5 h-5" />
+                                    </div>
+                                </Button>
+
+                                <!-- Security Badge -->
+                                <div class="text-center">
+                                    <div class="flex flex-col items-center justify-center gap-3 p-3 bg-gray-50 rounded-lg">
+                                        <img :src="partnersIcon" alt="Security" loading="lazy" />
+                                        <p class="text-sm text-gray-600 font-medium">Secure & Protected Booking</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </CardContent>
+                    </Card>
                 </div>
-              </div>
-              <div class="bg-green-50 border border-green-200 rounded p-3 text-sm text-green-700">
-                <p class="font-medium">Pay on Arrival</p>
-                <p>No payment required now. Pay at the rental counter.</p>
-              </div>
             </div>
-          </div>
-
-          <!-- Booking Button -->
-          <div class="text-center">
-            <button
-              @click="proceedToBooking"
-              :disabled="loading"
-              class="bg-blue-600 text-white px-8 py-3 rounded-lg font-semibold text-lg hover:bg-blue-700 transition disabled:bg-gray-400 disabled:cursor-not-allowed"
-            >
-              <span v-if="loading">Processing...</span>
-              <span v-else>Book Now - Pay on Arrival</span>
-            </button>
-            <p class="mt-3 text-sm text-gray-500">
-              No credit card required. Free cancellation up to 24 hours before pickup.
-            </p>
-          </div>
-        </template>
-      </div>
+        </div>
     </div>
-  </AuthenticatedLayout>
+
+    <Footer />
 </template>

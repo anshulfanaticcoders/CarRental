@@ -144,10 +144,52 @@ class LocautoRentController extends Controller
             $vehicle['end_time'] = $validated['end_time'];
             $vehicle['age'] = $validated['age'] ?? 35;
 
-            Log::info('Showing Locauto vehicle details', ['vehicle_id' => $id]);
+            // Look up full location details from predefined locations
+            $allLocations = $this->locautoRentService->parseLocationResponse();
+            $pickupLocation = collect($allLocations)->firstWhere('provider_location_id', $validated['location_id']);
+            $dropoffLocation = !empty($validated['dropoff_location_id'])
+                ? collect($allLocations)->firstWhere('provider_location_id', $validated['dropoff_location_id'])
+                : $pickupLocation;
+
+            // Format location objects for Vue component
+            $location = $pickupLocation ? [
+                'id' => $pickupLocation['provider_location_id'],
+                'name' => $pickupLocation['label'] ?? $pickupLocation['location'] ?? '',
+                'address_city' => $pickupLocation['city'] ?? '',
+                'latitude' => $pickupLocation['latitude'] ?? null,
+                'longitude' => $pickupLocation['longitude'] ?? null,
+            ] : null;
+
+            $dropoffLocationData = $dropoffLocation ? [
+                'id' => $dropoffLocation['provider_location_id'],
+                'name' => $dropoffLocation['label'] ?? $dropoffLocation['location'] ?? '',
+                'address_city' => $dropoffLocation['city'] ?? '',
+                'latitude' => $dropoffLocation['latitude'] ?? null,
+                'longitude' => $dropoffLocation['longitude'] ?? null,
+            ] : $location;
+
+            Log::info('Showing Locauto vehicle details', ['vehicle_id' => $id, 'location' => $location]);
+
+            // Categorize extras into protection plans and optional extras
+            $protectionCodes = ['136', '147', '145', '140', '146', '6', '43']; // Protection/insurance related
+            $optionalExtraCodes = ['19', '78', '137', '138', '54', '55', '77', '89']; // Equipment/add-ons
+
+            $allExtras = $vehicle['extras'] ?? [];
+
+            $protectionPlans = array_filter($allExtras, function ($extra) use ($protectionCodes) {
+                return in_array($extra['code'], $protectionCodes) && $extra['amount'] > 0;
+            });
+
+            $optionalExtras = array_filter($allExtras, function ($extra) use ($optionalExtraCodes) {
+                return in_array($extra['code'], $optionalExtraCodes) && $extra['amount'] > 0;
+            });
 
             return Inertia::render('LocautoRentSingle', [
                 'vehicle' => $vehicle,
+                'location' => $location,
+                'dropoffLocation' => $dropoffLocationData,
+                'protectionPlans' => array_values($protectionPlans),
+                'optionalExtras' => array_values($optionalExtras),
                 'filters' => $validated,
             ]);
 
@@ -327,11 +369,11 @@ class LocautoRentController extends Controller
     public function showBookingPage(Request $request, $locale, $id)
     {
         $validated = $request->validate([
-            'pickup_location_id' => 'required|string',
+            'location_id' => 'required|string',
             'dropoff_location_id' => 'nullable|string',
-            'date_from' => 'required|date',
+            'start_date' => 'required|date',
             'start_time' => 'required|string',
-            'date_to' => 'required|date|after:date_from',
+            'end_date' => 'required|date|after:start_date',
             'end_time' => 'required|string',
             'age' => 'nullable|integer|min:18|max:99',
             'currency' => 'nullable|string|max:3',
@@ -340,10 +382,10 @@ class LocautoRentController extends Controller
         try {
             // Get vehicle details using showVehicle method logic
             $response = $this->locautoRentService->getVehicles(
-                $validated['pickup_location_id'],
-                $validated['date_from'],
+                $validated['location_id'],
+                $validated['start_date'],
                 $validated['start_time'],
-                $validated['date_to'],
+                $validated['end_date'],
                 $validated['end_time'],
                 $validated['age'] ?? 35,
                 []
@@ -368,17 +410,49 @@ class LocautoRentController extends Controller
                 ]);
             }
 
+            // Look up full location details from predefined locations
+            $allLocations = $this->locautoRentService->parseLocationResponse();
+            $pickupLocation = collect($allLocations)->firstWhere('provider_location_id', $validated['location_id']);
+            $dropoffLocation = !empty($validated['dropoff_location_id'])
+                ? collect($allLocations)->firstWhere('provider_location_id', $validated['dropoff_location_id'])
+                : $pickupLocation;
+
+            // Format location objects for Vue component
+            $location = $pickupLocation ? [
+                'id' => $pickupLocation['provider_location_id'],
+                'name' => $pickupLocation['label'] ?? $pickupLocation['location'] ?? '',
+                'address_city' => $pickupLocation['city'] ?? '',
+                'latitude' => $pickupLocation['latitude'] ?? null,
+                'longitude' => $pickupLocation['longitude'] ?? null,
+            ] : null;
+
             // Add booking details
-            $vehicle['pickup_location_id'] = $validated['pickup_location_id'];
-            $vehicle['dropoff_location_id'] = $validated['dropoff_location_id'] ?? $validated['pickup_location_id'];
-            $vehicle['date_from'] = $validated['date_from'];
-            $vehicle['date_to'] = $validated['date_to'];
+            $vehicle['pickup_location_id'] = $validated['location_id'];
+            $vehicle['dropoff_location_id'] = $validated['dropoff_location_id'] ?? $validated['location_id'];
+            $vehicle['date_from'] = $validated['start_date'];
+            $vehicle['date_to'] = $validated['end_date'];
             $vehicle['start_time'] = $validated['start_time'];
             $vehicle['end_time'] = $validated['end_time'];
             $vehicle['age'] = $validated['age'] ?? 35;
 
+            // Categorize extras
+            $protectionCodes = ['136', '147', '145', '140', '146', '6', '43'];
+            $optionalExtraCodes = ['19', '78', '137', '138', '54', '55', '77', '89'];
+            $allExtras = $vehicle['extras'] ?? [];
+
+            $protectionPlans = array_values(array_filter($allExtras, function ($extra) use ($protectionCodes) {
+                return in_array($extra['code'], $protectionCodes) && $extra['amount'] > 0;
+            }));
+
+            $optionalExtras = array_values(array_filter($allExtras, function ($extra) use ($optionalExtraCodes) {
+                return in_array($extra['code'], $optionalExtraCodes) && $extra['amount'] > 0;
+            }));
+
             return Inertia::render('LocautoRentBooking', [
                 'vehicle' => $vehicle,
+                'location' => $location,
+                'protectionPlans' => $protectionPlans,
+                'optionalExtras' => $optionalExtras,
                 'filters' => $validated,
             ]);
 

@@ -977,7 +977,7 @@ Route::group([
 
     // Locauto Rent Booking Page
     Route::get('/locauto-rent-booking/{id}/checkout', [LocautoRentController::class, 'showBookingPage'])
-        ->where('id', '[0-9]+') // Ensure ID is numeric
+        ->where('id', '[A-Za-z0-9]+') // Allow alphanumeric SIPP codes
         ->name('locauto-rent-booking.checkout');
 
     // Locauto Rent Booking Success Page
