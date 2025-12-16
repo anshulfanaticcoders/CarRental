@@ -885,7 +885,7 @@ Route::group([
         Route::get('/adobe-booking-cancel', [AdobeBookingController::class, 'adobeBookingCancel'])->name('adobe.booking.cancel');
 
         // OK Mobility Booking Routes
-        Route::post('/ok-mobility-booking/charge', [OkMobilityBookingController::class, 'processBookingPayment'])->name('okmobility.booking.charge');
+        Route::post('/ok-mobility-booking/charge', [OkMobilityBookingController::class, 'processOkMobilityBookingPayment'])->name('okmobility.booking.charge');
         Route::get('/ok-mobility-booking-success', [OkMobilityBookingController::class, 'bookingSuccess'])->name('okmobility.booking.success');
         Route::get('/ok-mobility-booking-cancel', [OkMobilityBookingController::class, 'bookingCancel'])->name('okmobility.booking.cancel');
     });

@@ -1,6 +1,6 @@
 <script setup>
 import { Link, Head, useForm, usePage } from '@inertiajs/vue3';
-import { computed, ref, onMounted, onBeforeUnmount } from 'vue';
+import { computed, ref, onMounted, onBeforeUnmount, watch } from 'vue';
 import AuthenticatedHeaderLayout from '@/Layouts/AuthenticatedHeaderLayout.vue';
 import Footer from '@/Components/Footer.vue';
 import { Button } from '@/Components/ui/button';
@@ -14,6 +14,9 @@ import { Badge } from '@/Components/ui/badge';
 import { Alert, AlertDescription } from '@/Components/ui/alert';
 import { useCurrency } from '@/composables/useCurrency';
 import WheelsysStripeCheckout from '@/Components/WheelsysStripeCheckout.vue';
+import axios from 'axios';
+
+const paymentPercentage = ref(0.00);
 
 const props = defineProps({
     vehicle: Object,
@@ -55,6 +58,16 @@ onMounted(async () => {
         }, {});
     } catch (error) {
         console.error('Failed to load currency data:', error);
+    }
+
+    // Fetch payment percentage
+    try {
+        const response = await axios.get('/api/payment-percentage');
+        if (response.data && response.data.payment_percentage !== undefined) {
+            paymentPercentage.value = Number(response.data.payment_percentage);
+        }
+    } catch (error) {
+        console.error('Error fetching payment percentage:', error);
     }
 });
 
@@ -104,6 +117,8 @@ const form = useForm({
     selected_extras: [],
     customer_notes: '',
     affiliate_code: page.props.affiliate_data?.code || null,
+    amount_paid: 0,
+    pending_amount: 0,
 });
 
 const rentalDays = computed(() => {
@@ -122,6 +137,24 @@ const baseTotal = computed(() => (props.vehicle?.price_per_day || 0) * rentalDay
 const extrasTotal = computed(() => selectedExtras.value.reduce((total, extra) => total + (extra.rate * rentalDays.value), 0));
 const taxesTotal = computed(() => (baseTotal.value + extrasTotal.value) * 0.065);
 const grandTotal = computed(() => baseTotal.value + extrasTotal.value + taxesTotal.value);
+
+const calculateAmountPaid = computed(() => {
+    const total = grandTotal.value;
+    const effectivePercentage = paymentPercentage.value === 0 ? 100 : paymentPercentage.value;
+    return Number((total * (effectivePercentage / 100)).toFixed(2));
+});
+
+const calculatePendingAmount = computed(() => {
+    const total = grandTotal.value;
+    const effectivePercentage = paymentPercentage.value === 0 ? 100 : paymentPercentage.value;
+    return Number((total * (1 - (effectivePercentage / 100))).toFixed(2));
+});
+
+// Update form with partial payment data
+watch([calculateAmountPaid, calculatePendingAmount], () => {
+    form.amount_paid = calculateAmountPaid.value;
+    form.pending_amount = calculatePendingAmount.value;
+}, { immediate: true });
 
 const toggleExtra = (extra) => {
     const index = selectedExtras.value.findIndex(e => e.code === extra.code);
@@ -452,6 +485,16 @@ const formatDate = (dateString) => {
                             <div class="flex flex-col sm:flex-row sm:justify-between gap-2 sm:gap-0 p-4 bg-primary/5 rounded-lg">
                                 <span class="text-lg sm:text-xl font-bold text-gray-900">Total Amount</span>
                                 <span class="text-xl sm:text-2xl font-bold text-primary">{{ formatPrice(grandTotal, vehicle.currency) }}</span>
+                            </div>
+                            <div v-if="paymentPercentage > 0" class="pt-2 mt-2 border-t border-dashed">
+                                <div class="flex justify-between font-medium text-green-600">
+                                    <span>Pay {{ paymentPercentage }}% now</span>
+                                    <span>{{ formatPrice(calculateAmountPaid, vehicle.currency) }}</span>
+                                </div>
+                                <div class="flex justify-between font-medium text-primary">
+                                    <span>Rest pay on arrival</span>
+                                    <span>{{ formatPrice(calculatePendingAmount, vehicle.currency) }}</span>
+                                </div>
                             </div>
                         </CardContent>
                     </Card>

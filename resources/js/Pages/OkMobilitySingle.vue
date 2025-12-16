@@ -55,7 +55,9 @@ import { useCurrency } from '@/composables/useCurrency';
 const isBooking = ref(false);
 const currencySymbols = ref({});
 const exchangeRates = ref(null);
+const paymentPercentage = ref(0);
 const { selectedCurrency, supportedCurrencies, changeCurrency } = useCurrency();
+import axios from 'axios';
 
 const symbolToCodeMap = {
     '$': 'USD',
@@ -137,6 +139,16 @@ const convertCurrency = (price, fromCurrency) => {
 onMounted(async () => {
     fetchExchangeRates();
 
+    // Fetch payment percentage
+    try {
+        const response = await axios.get('/api/payment-percentage');
+        if (response.data && response.data.payment_percentage !== undefined) {
+            paymentPercentage.value = Number(response.data.payment_percentage);
+        }
+    } catch (error) {
+        console.error('Error fetching payment percentage:', error);
+    }
+    
     try {
         const response = await fetch('/currency.json');
         const data = await response.json();
@@ -1102,6 +1114,17 @@ onBeforeUnmount(() => {
                         </div>
 
                         <CardContent class="p-6">
+                            <div v-if="paymentPercentage > 0" class="mb-6 bg-yellow-50 border border-yellow-200 rounded-xl p-4">
+                                <div class="flex items-center gap-3">
+                                    <div class="w-10 h-10 bg-yellow-100 rounded-full flex items-center justify-center flex-shrink-0">
+                                        <img :src="offerIcon" alt="Offer" class="w-5 h-5" />
+                                    </div>
+                                    <div>
+                                        <p class="font-bold text-gray-900 text-lg">Pay <span class="text-green-600">{{ paymentPercentage }}%</span> now</p>
+                                        <p class="text-sm text-gray-600">and rest pay on arrival</p>
+                                    </div>
+                                </div>
+                            </div>
                             <div class="space-y-6">
                                 <!-- Vehicle Summary -->
                                 <div class="space-y-4">

@@ -33,6 +33,9 @@ const authUser = computed(() => page.props.auth.user);
 const currencySymbols = ref({});
 const exchangeRates = ref(null);
 const { selectedCurrency, supportedCurrencies, changeCurrency } = useCurrency();
+import axios from 'axios';
+
+const paymentPercentage = ref(0.00);
 
 const symbolToCodeMap = {
     '$': 'USD',
@@ -94,6 +97,16 @@ const proceedToBooking = () => {
 
 onMounted(async () => {
     fetchExchangeRates();
+
+    // Fetch payment percentage
+    try {
+        const response = await axios.get('/api/payment-percentage');
+        if (response.data && response.data.payment_percentage !== undefined) {
+            paymentPercentage.value = Number(response.data.payment_percentage);
+        }
+    } catch (error) {
+        console.error('Error fetching payment percentage:', error);
+    }
 
     try {
         const response = await fetch('/currency.json');
@@ -596,7 +609,8 @@ const handleMapToggle = (value) => {
                                     <p class="text-sm text-gray-600 mb-3">Daily rate • From {{ vehicle?.currency || 'USD' }}{{ formatPrice(vehicle.price_per_day, vehicle.currency).split(getCurrencySymbol(selectedCurrency.value))[1] }}</p>
                                     <div class="flex items-center justify-center gap-2 text-xs text-green-700">
                                         <div class="w-2 h-2 bg-green-500 rounded-full"></div>
-                                        <span>Great value!</span>
+                                        <span v-if="paymentPercentage > 0">Pay {{ paymentPercentage }}% now and rest pay on arrival</span>
+                                        <span v-else>Great value!</span>
                                     </div>
                                 </div>
                             </div>

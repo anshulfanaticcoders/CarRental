@@ -39,6 +39,10 @@ class GreenMotionBookingController extends Controller
 
         Stripe::setApiKey(config('stripe.secret'));
 
+        // Retrieve Payment Percentage
+        $payableSetting = \App\Models\PayableSetting::first();
+        $paymentPercentage = $payableSetting ? $payableSetting->payment_percentage : 0;
+
         $validatedData = $request->validate([
             'location_id' => 'required|string',
             'start_date' => 'required|date_format:Y-m-d',
@@ -177,20 +181,30 @@ class GreenMotionBookingController extends Controller
             ]);
             Log::info('GreenMotion booking saved to database successfully with ref: ' . $bookingReference);
 
+            Log::info('GreenMotion booking saved to database successfully with ref: ' . $bookingReference);
+
+            // Calculate Amount to Charge based on Payment Percentage
+            $amountToCharge = $validatedData['grand_total'];
+            if ($paymentPercentage > 0) {
+                $amountToCharge = ($validatedData['grand_total'] * $paymentPercentage) / 100;
+            }
+
             // Create Stripe Checkout Session
             $session = Session::create([
                 'payment_method_types' => ['card', 'bancontact', 'klarna'], // Added more payment methods
-                'line_items' => [[
-                    'price_data' => [
-                        'currency' => strtolower($validatedData['currency']),
-                        'product_data' => [
-                            'name' => 'GreenMotion Car Rental Booking',
-                            'description' => "Booking for vehicle ID {$validatedData['vehicle_id']} (Ref: {$bookingReference})",
+                'line_items' => [
+                    [
+                        'price_data' => [
+                            'currency' => strtolower($validatedData['currency']),
+                            'product_data' => [
+                                'name' => 'GreenMotion Car Rental Booking',
+                                'description' => "Booking for vehicle ID {$validatedData['vehicle_id']} (Ref: {$bookingReference}) - Pay Now (" . ($paymentPercentage > 0 ? $paymentPercentage . '%' : 'Full Amount') . ")",
+                            ],
+                            'unit_amount' => round($amountToCharge * 100), // Amount in cents, rounded to avoid float issues
                         ],
-                        'unit_amount' => $validatedData['grand_total'] * 100, // Amount in cents
-                    ],
-                    'quantity' => 1,
-                ]],
+                        'quantity' => 1,
+                    ]
+                ],
                 'mode' => 'payment',
                 'success_url' => url(app()->getLocale() . '/green-motion-booking-success?session_id={CHECKOUT_SESSION_ID}&booking_id=' . $greenMotionBooking->id),
                 'cancel_url' => route('greenmotion.booking.cancel', ['locale' => app()->getLocale(), 'booking_id' => $greenMotionBooking->id]),

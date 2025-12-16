@@ -1407,12 +1407,19 @@ const bookingData = computed(() => {
                                                 class="absolute left-0 top-[50%] w-full bg-red-600 h-[2px] -rotate-6"></span>
                                         </span>
                                     </div>
-                                    <div v-if="paymentPercentage > 0" class="flex justify-between items-center">
-                                        <span class="text-[1.15rem] max-[768px]:text-[0.875rem]">Pay {{ paymentPercentage }}% now
-                                            value</span>
-                                        <span class="text-[1.25rem] font-bold text-green-600">{{
-                                            formatPrice(calculateAmountPaid)
-                                            }}</span>
+                                    <div v-if="paymentPercentage > 0" class="flex flex-col w-full mt-2">
+                                        <div class="flex justify-between items-center mb-1">
+                                            <span class="text-[1.15rem] max-[768px]:text-[0.875rem]">Pay {{ paymentPercentage }}% now</span>
+                                            <span class="text-[1.25rem] font-bold text-green-600">{{
+                                                formatPrice(calculateAmountPaid)
+                                                }}</span>
+                                        </div>
+                                        <div class="flex justify-between items-center">
+                                            <span class="text-[1.15rem] max-[768px]:text-[0.875rem]">Rest pay on arrival</span>
+                                            <span class="text-[1.25rem] font-bold text-customPrimaryColor">{{
+                                                formatPrice(calculatePendingAmount)
+                                                }}</span>
+                                        </div>
                                     </div>
                                 </div>
                             </div>

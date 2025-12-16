@@ -45,6 +45,8 @@ const mapContainerRef = ref(null);
 let map = ref(null);
 
 const { selectedCurrency } = useCurrency();
+const paymentPercentage = ref(0.00);
+import axios from 'axios';
 
 // Check if vehicle exists
 const hasVehicle = computed(() => props.vehicle && Object.keys(props.vehicle).length > 0);
@@ -226,6 +228,16 @@ onMounted(async () => {
     nextTick(() => {
         initMap();
     });
+
+    // Fetch payment percentage
+    try {
+        const response = await axios.get('/api/payment-percentage');
+        if (response.data && response.data.payment_percentage !== undefined) {
+            paymentPercentage.value = Number(response.data.payment_percentage);
+        }
+    } catch (error) {
+        console.error('Error fetching payment percentage:', error);
+    }
 });
 
 watch([() => props.location, mapContainerRef], ([newLocation, newMapContainerRef]) => {
@@ -464,11 +476,13 @@ const proceedToBooking = () => {
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <div class="flex items-center gap-3 p-4 bg-white/50 rounded-xl">
                                 <img :src="check" alt="Check" class="w-5 h-5" loading="lazy" />
-                                <span class="text-green-800 font-medium">No upfront payment required</span>
+                                <span v-if="paymentPercentage > 0" class="text-green-800 font-medium">Pay <span class="font-bold">{{ paymentPercentage }}%</span> now</span>
+                                <span v-else class="text-green-800 font-medium">No upfront payment required</span>
                             </div>
                             <div class="flex items-center gap-3 p-4 bg-white/50 rounded-xl">
                                 <img :src="check" alt="Check" class="w-5 h-5" loading="lazy" />
-                                <span class="text-green-800 font-medium">Pay at pickup location</span>
+                                <span v-if="paymentPercentage > 0" class="text-green-800 font-medium">Rest pay on arrival</span>
+                                <span v-else class="text-green-800 font-medium">Pay at pickup location</span>
                             </div>
                             <div class="flex items-center gap-3 p-4 bg-white/50 rounded-xl">
                                 <img :src="check" alt="Check" class="w-5 h-5" loading="lazy" />
@@ -634,7 +648,8 @@ const proceedToBooking = () => {
                                         <p class="text-sm text-gray-600 mb-3">Total for {{ rentalDays }} {{ rentalDays === 1 ? 'day' : 'days' }}</p>
                                         <div class="flex items-center justify-center gap-2 text-xs text-green-700">
                                             <div class="w-2 h-2 bg-green-500 rounded-full"></div>
-                                            <span>Pay on the Spot</span>
+                                            <span v-if="paymentPercentage > 0">Pay {{ paymentPercentage }}% now</span>
+                                            <span v-else>Pay on the Spot</span>
                                         </div>
                                     </div>
                                 </div>

@@ -5,6 +5,9 @@ import AuthenticatedHeaderLayout from '@/Layouts/AuthenticatedHeaderLayout.vue'
 import Footer from '@/Components/Footer.vue'
 import { useCurrency } from '@/composables/useCurrency'
 import LocautoStripeCheckout from '@/Components/LocautoStripeCheckout.vue'
+import axios from 'axios'
+
+const paymentPercentage = ref(0.00)
 
 // Icons
 import check from "../../assets/Check.svg"
@@ -84,6 +87,18 @@ const extrasTotal = computed(() => {
 
 const grandTotal = computed(() => totalAmount.value + protectionTotal.value + extrasTotal.value)
 
+const calculateAmountPaid = computed(() => {
+    const total = grandTotal.value
+    const effectivePercentage = paymentPercentage.value === 0 ? 100 : paymentPercentage.value
+    return Number((total * (effectivePercentage / 100)).toFixed(2))
+})
+
+const calculatePendingAmount = computed(() => {
+    const total = grandTotal.value
+    const effectivePercentage = paymentPercentage.value === 0 ? 100 : paymentPercentage.value
+    return Number((total * (1 - (effectivePercentage / 100))).toFixed(2))
+})
+
 // Form
 const bookingForm = useForm({
   first_name: '',
@@ -159,6 +174,16 @@ onMounted(async () => {
         }
     } catch (error) {
         console.error("Error loading currency data:", error)
+    }
+
+    // Fetch payment percentage
+    try {
+        const response = await axios.get('/api/payment-percentage')
+        if (response.data && response.data.payment_percentage !== undefined) {
+            paymentPercentage.value = Number(response.data.payment_percentage)
+        }
+    } catch (error) {
+        console.error('Error fetching payment percentage:', error)
     }
 })
 
@@ -252,6 +277,8 @@ function submitBooking() {
     selected_protection: selectedProtection.value,
     selected_extras: selectedExtras.value,
     total_amount: grandTotal.value,
+    amount_paid: calculateAmountPaid.value,
+    pending_amount: calculatePendingAmount.value,
     currency: currency.value,
   }
 
@@ -522,7 +549,7 @@ const backToVehicle = computed(() => {
 
           <div class="bg-green-50 border border-green-200 rounded-xl p-4 mb-6">
             <h3 class="font-semibold text-green-800 mb-2">✓ Secure Online Payment</h3>
-            <p class="text-sm text-green-700">You will be redirected to a secure payment page to complete your booking of {{ formatPrice(grandTotal, currency) }}.</p>
+            <p class="text-sm text-green-700">You will be redirected to a secure payment page to complete your booking of {{ formatPrice(paymentPercentage > 0 ? calculateAmountPaid : grandTotal, currency) }}.</p>
           </div>
 
           <!-- Booking Summary -->
@@ -540,6 +567,16 @@ const backToVehicle = computed(() => {
                 <div v-if="protectionTotal > 0" class="flex justify-between"><span>Protection</span><span>{{ formatPrice(protectionTotal, currency) }}</span></div>
                 <div v-if="extrasTotal > 0" class="flex justify-between"><span>Extras</span><span>{{ formatPrice(extrasTotal, currency) }}</span></div>
                 <div class="flex justify-between font-bold pt-2 border-t"><span>Total</span><span class="text-customPrimaryColor">{{ formatPrice(grandTotal, currency) }}</span></div>
+                <div v-if="paymentPercentage > 0" class="pt-2 mt-2 border-t border-dashed">
+                    <div class="flex justify-between font-medium text-green-600">
+                        <span>Pay {{ paymentPercentage }}% now</span>
+                        <span>{{ formatPrice(calculateAmountPaid, currency) }}</span>
+                    </div>
+                    <div class="flex justify-between font-medium text-customPrimaryColor">
+                        <span>Rest pay on arrival</span>
+                        <span>{{ formatPrice(calculatePendingAmount, currency) }}</span>
+                    </div>
+                </div>
               </div>
             </div>
           </div>

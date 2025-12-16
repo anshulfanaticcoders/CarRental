@@ -34,6 +34,9 @@ const { selectedCurrency, supportedCurrencies, changeCurrency } = useCurrency();
 // Currency conversion for Adobe
 const currencySymbols = ref({});
 const exchangeRates = ref(null);
+import axios from 'axios';
+
+const paymentPercentage = ref(0.00);
 
 const symbolToCodeMap = {
     '$': 'USD',
@@ -107,6 +110,16 @@ onMounted(async () => {
         }, {});
     } catch (error) {
         console.error("Error loading currency symbols:", error);
+    }
+
+    // Fetch payment percentage
+    try {
+        const response = await axios.get('/api/payment-percentage');
+        if (response.data && response.data.payment_percentage !== undefined) {
+            paymentPercentage.value = Number(response.data.payment_percentage);
+        }
+    } catch (error) {
+        console.error('Error fetching payment percentage:', error);
     }
 });
 
@@ -233,6 +246,18 @@ const calculateTotal = computed(() => {
     }
 
     return total;
+});
+
+const calculateAmountPaid = computed(() => {
+    const total = calculateTotal.value;
+    const effectivePercentage = paymentPercentage.value === 0 ? 100 : paymentPercentage.value;
+    return Number((total * (effectivePercentage / 100)).toFixed(2));
+});
+
+const calculatePendingAmount = computed(() => {
+    const total = calculateTotal.value;
+    const effectivePercentage = paymentPercentage.value === 0 ? 100 : paymentPercentage.value;
+    return Number((total * (effectivePercentage / 100)) === total ? 0 : (total * (1 - (effectivePercentage / 100))).toFixed(2));
 });
 
 // Watch for protection/extras changes
@@ -464,7 +489,10 @@ const submitBooking = async () => {
             pickup_location_id: props.searchParams.pickup_location_id,
             dropoff_location_id: props.searchParams.dropoff_location_id,
             selected_protections: selectedProtections.value ? Object.values(selectedProtections.value).filter(p => p && p.selected) : [],
+            selected_protections: selectedProtections.value ? Object.values(selectedProtections.value).filter(p => p && p.selected) : [],
             selected_extras: selectedExtras.value ? Object.values(selectedExtras.value).filter(e => e && e.selected && e.quantity > 0) : [],
+            amount_paid: calculateAmountPaid.value,
+            pending_amount: calculatePendingAmount.value,
         };
 
         // Create booking and get Stripe checkout
@@ -653,6 +681,11 @@ const isStepComplete = (step) => {
                                             <div class="flex justify-between">
                                                 <span class="text-sm sm:text-base text-gray-600">Base Rate</span>
                                                 <span class="font-semibold text-sm sm:text-base">{{ formatPrice(vehicle.tdr || 0) }}</span>
+                                            </div>
+                                            <!-- Show partial payment breakdown if applicable -->
+                                            <div v-if="paymentPercentage > 0" class="flex justify-between text-green-600 font-medium">
+                                                <span class="text-sm sm:text-base">Pay Now ({{ paymentPercentage }}%)</span>
+                                                <span class="text-sm sm:text-base">{{ formatPrice(calculateAmountPaid) }}</span>
                                             </div>
                                             <!-- Show only selected protections from API data -->
                                             <template v-if="selectedProtections && Object.keys(selectedProtections).length > 0">

@@ -32,7 +32,9 @@ const isMobile = ref(false);
 
 const currencySymbols = ref({});
 const exchangeRates = ref(null);
+const paymentPercentage = ref(0);
 const { selectedCurrency, supportedCurrencies, changeCurrency } = useCurrency();
+import axios from 'axios';
 
 const symbolToCodeMap = {
     '$': 'USD',
@@ -93,6 +95,16 @@ const convertCurrency = (price, fromCurrency) => {
 
 onMounted(async () => {
     fetchExchangeRates();
+
+    // Fetch payment percentage
+    try {
+        const response = await axios.get('/api/payment-percentage');
+        if (response.data && response.data.payment_percentage !== undefined) {
+            paymentPercentage.value = Number(response.data.payment_percentage);
+        }
+    } catch (error) {
+        console.error('Error fetching payment percentage:', error);
+    }
 
     try {
         const response = await fetch('/currency.json');
@@ -302,6 +314,22 @@ const calculateTotals = () => {
     }));
 };
 
+const calculateAmountPaid = computed(() => {
+    const total = hasAffiliateDiscount.value ? finalTotalPrice.value : form.value.grand_total;
+    if (paymentPercentage.value > 0) {
+        return total * (paymentPercentage.value / 100);
+    }
+    return total;
+});
+
+const calculatePendingAmount = computed(() => {
+    const total = hasAffiliateDiscount.value ? finalTotalPrice.value : form.value.grand_total;
+    if (paymentPercentage.value > 0) {
+        return total - calculateAmountPaid.value;
+    }
+    return 0;
+});
+
 // Affiliate discount computed properties
 const originalTotalPrice = computed(() => {
     return form.value.grand_total;
@@ -451,8 +479,9 @@ const bookingDataForStripe = computed(() => {
         extra_charges: form.value.grand_total - form.value.vehicle_total,
         tax_amount: 0,
         discount_amount: hasAffiliateDiscount ? affiliateDiscountAmount.value : 0,
-        pending_amount: 0,
-        amount_paid: hasAffiliateDiscount ? finalTotalPrice.value : form.value.grand_total,
+        discount_amount: hasAffiliateDiscount ? affiliateDiscountAmount.value : 0,
+        pending_amount: calculatePendingAmount.value,
+        amount_paid: calculateAmountPaid.value,
         plan: null,
         plan_price: 0,
         greenmotion_booking_ref: null,
@@ -1040,9 +1069,21 @@ const bookingDataForStripe = computed(() => {
                                     </div>
 
                                     <!-- Final Total -->
-                                    <div class="flex justify-between items-center">
+                                    <div class="flex justify-between items-center mb-2">
                                         <span class="text-xl font-bold text-gray-900">Total</span>
                                         <span class="text-2xl font-bold text-primary">{{ formatPrice(hasAffiliateDiscount ? finalTotalPrice : form.grand_total, form.currency) }}</span>
+                                    </div>
+
+                                    <!-- Partial Payment Breakdown -->
+                                    <div v-if="paymentPercentage > 0" class="pt-2 border-t border-gray-100 mt-2 space-y-2">
+                                         <div class="flex justify-between items-center bg-green-50 p-2 rounded-lg">
+                                            <span class="font-medium text-green-800">Pay Now ({{ paymentPercentage }}%)</span>
+                                            <span class="font-bold text-green-800">{{ formatPrice(calculateAmountPaid, form.currency) }}</span>
+                                        </div>
+                                        <div class="flex justify-between items-center p-2">
+                                            <span class="text-gray-600">Pay on Arrival</span>
+                                            <span class="font-medium text-gray-900">{{ formatPrice(calculatePendingAmount, form.currency) }}</span>
+                                        </div>
                                     </div>
                                 </div>
 
