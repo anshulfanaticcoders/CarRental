@@ -1630,6 +1630,146 @@ watch(
         <meta name="twitter:image" :content="seoImageUrl" />
     </Head>
     <AuthenticatedHeaderLayout />
+    
+    <!-- Mobile Filters Left Sidebar (Moved to root for Z-Index) -->
+    <transition
+        enter-active-class="transition ease-out duration-300"
+        enter-from-class="opacity-0 translate-x-[-100%]"
+        enter-to-class="opacity-100 translate-x-0"
+        leave-active-class="transition ease-in duration-300"
+        leave-from-class="opacity-100 translate-x-0"
+        leave-to-class="opacity-0 translate-x-[-100%]"
+    >
+        <div v-if="showMobileFilters" class="fixed inset-0 z-[2000] flex md:hidden">
+            <!-- Backdrop -->
+            <div class="fixed inset-0 bg-black bg-opacity-50" @click="showMobileFilters = false"></div>
+            
+            <!-- Sidebar -->
+            <div class="relative w-[85%] max-w-sm bg-white h-full shadow-2xl flex flex-col z-50 transform transition-transform">
+                <div class="flex justify-between items-center p-4 border-b border-gray-100 bg-white">
+                    <div class="flex items-center gap-2">
+                        <img :src="filterIcon" alt="" class="w-5 h-5" loading="lazy" />
+                        <h2 class="text-lg font-bold text-gray-800">Filters</h2>
+                    </div>
+                    <button @click="showMobileFilters = false" class="p-2 bg-gray-50 rounded-full hover:bg-gray-100 transition-colors">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-gray-500" viewBox="0 0 20 20" fill="currentColor">
+                            <path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd" />
+                        </svg>
+                    </button>
+                </div>
+
+                <!-- Scrollable Content -->
+                <div class="flex-1 overflow-y-auto p-4 custom-scrollbar">
+
+            <form class="space-y-6 pt-2">
+                <!-- Price Range (Budget) -->
+                <div class="border-b border-gray-100 pb-4">
+                    <h4 class="font-semibold text-sm text-gray-700 mb-3 flex items-center gap-2">
+                            <img :src="priceIcon" class="w-4 h-4 opacity-70" > Budget
+                    </h4>
+                    <div class="px-1">
+                        <div class="flex justify-between text-xs text-gray-500 mb-2">
+                            <span>{{ getCurrencySymbol(selectedCurrency) }}{{ tempPriceRangeValues[0] }}</span>
+                            <span>{{ getCurrencySymbol(selectedCurrency) }}{{ tempPriceRangeValues[1] }}</span>
+                        </div>
+                        <VueSlider v-model="tempPriceRangeValues" :min="dynamicPriceRange.min" :max="dynamicPriceRange.max"
+                            :interval="1" :tooltip="'none'" :height="6" :dot-size="16"
+                            :process-style="{ backgroundColor: '#153b4f' }"
+                            :rail-style="{ backgroundColor: '#e5e7eb' }"
+                            :enable-cross="false"
+                            class="mb-3" />
+                        <div class="flex justify-end">
+                             <button @click="applyPriceRange" class="text-xs bg-customPrimaryColor text-white px-3 py-1.5 rounded hover:opacity-90 transition">Apply Price</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Passenger Seats -->
+                <div class="border-b border-gray-100 pb-4">
+                    <h4 class="font-semibold text-sm text-gray-700 mb-3 flex items-center gap-2">
+                            <img :src="seatingIcon" class="w-4 h-4 opacity-70"> Passenger Seats
+                    </h4>
+                    <div class="space-y-3">
+                        <label v-for="option in facets.seats" :key="option.value" class="flex items-center gap-3 cursor-pointer group p-1 hover:bg-gray-50 rounded-lg transition-colors">
+                            <input type="checkbox" :checked="form.seating_capacity == option.value" @change="form.seating_capacity = form.seating_capacity == option.value ? '' : option.value" 
+                                    class="w-5 h-5 rounded border-gray-300 text-customPrimaryColor focus:ring-customPrimaryColor transition cursor-pointer">
+                            <span class="text-base text-gray-600 group-hover:text-customPrimaryColor transition font-medium">{{ option.label }} <span class="text-xs text-gray-400 font-normal">({{ option.count }})</span></span>
+                        </label>
+                    </div>
+                </div>
+
+                <!-- Car Brand -->
+                <div class="border-b border-gray-100 pb-4">
+                    <h4 class="font-semibold text-sm text-gray-700 mb-3 flex items-center gap-2">
+                            <img :src="brandIcon" class="w-4 h-4 opacity-70"> Car Brand
+                    </h4>
+                    <div class="space-y-3 max-h-60 overflow-y-auto pr-1 custom-scrollbar">
+                        <label v-for="option in facets.brands" :key="option.value" class="flex items-center gap-3 cursor-pointer group p-1 hover:bg-gray-50 rounded-lg transition-colors">
+                            <input type="checkbox" :checked="form.brand === option.value" @change="form.brand = form.brand === option.value ? '' : option.value" 
+                                class="w-5 h-5 rounded border-gray-300 text-customPrimaryColor focus:ring-customPrimaryColor transition cursor-pointer">
+                            <span class="text-base text-gray-600 group-hover:text-customPrimaryColor transition font-medium">{{ option.label }} <span class="text-xs text-gray-400 font-normal">({{ option.count }})</span></span>
+                        </label>
+                    </div>
+                </div>
+
+                    <!-- Vehicle Type -->
+                <div class="border-b border-gray-100 pb-4">
+                    <h4 class="font-semibold text-sm text-gray-700 mb-3 flex items-center gap-2">
+                            <img :src="categoryIcon" class="w-4 h-4 opacity-70"> Vehicle Type
+                    </h4>
+                    <div class="space-y-3">
+                        <label v-for="option in facets.categories" :key="option.value" class="flex items-center gap-3 cursor-pointer group p-1 hover:bg-gray-50 rounded-lg transition-colors">
+                            <input type="checkbox" :checked="form.category_id === option.value" @change="form.category_id = form.category_id === option.value ? '' : option.value" 
+                                    class="w-5 h-5 rounded border-gray-300 text-customPrimaryColor focus:ring-customPrimaryColor transition cursor-pointer">
+                            <span class="text-base text-gray-600 group-hover:text-customPrimaryColor transition font-medium">{{ option.label }} <span class="text-xs text-gray-400 font-normal">({{ option.count }})</span></span>
+                        </label>
+                    </div>
+                </div>
+
+                <!-- Transmission -->
+                <div class="border-b border-gray-100 pb-4">
+                        <h4 class="font-semibold text-sm text-gray-700 mb-3 flex items-center gap-2">
+                            <img :src="transmissionIcon" class="w-4 h-4 opacity-70"> Transmission
+                    </h4>
+                    <div class="space-y-3">
+                        <label v-for="option in facets.transmissions" :key="option.value" class="flex items-center gap-3 cursor-pointer group p-1 hover:bg-gray-50 rounded-lg transition-colors">
+                            <input type="checkbox" :checked="form.transmission === option.value" @change="form.transmission = form.transmission === option.value ? '' : option.value" 
+                                    class="w-5 h-5 rounded border-gray-300 text-customPrimaryColor focus:ring-customPrimaryColor transition cursor-pointer">
+                            <span class="text-base text-gray-600 group-hover:text-customPrimaryColor transition font-medium">{{ option.label }} <span class="text-xs text-gray-400 font-normal">({{ option.count }})</span></span>
+                        </label>
+                    </div>
+                </div>
+
+                <!-- Fuel -->
+                <div class="border-b border-gray-100 pb-4">
+                        <h4 class="font-semibold text-sm text-gray-700 mb-3 flex items-center gap-2">
+                            <img :src="fuelIcon" class="w-4 h-4 opacity-70"> Fuel Type
+                    </h4>
+                    <div class="space-y-3">
+                        <label v-for="option in facets.fuels" :key="option.value" class="flex items-center gap-3 cursor-pointer group p-1 hover:bg-gray-50 rounded-lg transition-colors">
+                            <input type="checkbox" :checked="form.fuel === option.value" @change="form.fuel = form.fuel === option.value ? '' : option.value" 
+                                    class="w-5 h-5 rounded border-gray-300 text-customPrimaryColor focus:ring-customPrimaryColor transition cursor-pointer">
+                            <span class="text-base text-gray-600 group-hover:text-customPrimaryColor transition font-medium">{{ option.label }} <span class="text-xs text-gray-400 font-normal">({{ option.count }})</span></span>
+                        </label>
+                    </div>
+                </div>
+
+                <!-- Action Buttons -->
+                <div class="grid grid-cols-2 gap-3 pt-4 mt-2">
+                    <button @click="resetFilters" type="button"
+                        class="py-3 px-4 bg-gray-100 text-gray-700 rounded-lg font-medium hover:bg-gray-200 transition-all duration-300 flex items-center justify-center gap-2">
+                        Clear All
+                    </button>
+                    <button @click="showMobileFilters = false" type="button"
+                        class="py-3 px-4 bg-customPrimaryColor text-white rounded-lg font-medium hover:bg-opacity-90 transition-all duration-300 flex items-center justify-center gap-2">
+                        Done
+                    </button>
+                </div>
+            </form>
+                </div>
+            </div>
+        </div>
+    </transition>
     <div v-if="currencyLoading" class="fixed inset-0 z-[100] flex items-center justify-center bg-white bg-opacity-70">
         <img :src="moneyExchangeSymbol" alt="Loading..." class="w-16 h-16 animate-spin" />
     </div>
@@ -1646,47 +1786,20 @@ watch(
     <section>
     <div id="filter-section" class="full-w-container py-8 relative z-40">
         <!-- Mobile filter button (visible only on mobile, hidden when fixed button appears) -->
-        <div class="md:hidden mb-4 flex items-center justify-between gap-2" v-if="!showFixedMobileFilterButton">
+        <div class="md:hidden mb-4 flex items-center justify-between gap-4" v-if="!showFixedMobileFilterButton">
             <button @click="showMobileFilters = true"
-                class="flex flex-1 items-center justify-center gap-3 p-3 w-full bg-white rounded-lg shadow-md hover:shadow-lg transition-all duration-300">
+                class="flex-1 flex items-center justify-center gap-2 p-3 bg-white rounded-lg shadow-md hover:shadow-lg transition-all duration-300 text-gray-700">
                 <img :src="filterIcon" alt="Filter" class="w-5 h-5" loading="lazy" />
-                <span class="text-lg font-medium">Filter</span>
+                <span class="text-base font-semibold">Filter</span>
             </button>
-            <div class="relative flex-1">
-                <Dropdown align="right" width="max">
-                    <template #trigger>
-                        <button
-                            type="button"
-                            class="flex px-5 items-center justify-center gap-3 p-3 w-full bg-white rounded-lg shadow-md hover:shadow-lg transition-all duration-300"
-                            :disabled="currencyLoading"
-                        >
-                            <img :src="moneyExchangeSymbol" alt="Currency" class="w-5 h-5">
-                            <span class="text-lg font-medium">Currency</span>
-                        </button>
-                    </template>
-                    <template #content>
-                        <div class="max-h-64 overflow-y-auto currency-scrollbar">
-                            <div
-                                v-for="currency in supportedCurrencies"
-                                :key="currency"
-                                @click="changeCurrency(currency)"
-                                class="flex items-center min-w-max px-4 py-2 text-left text-sm leading-5 text-white hover:text-white hover:bg-gray-600 transition duration-150 ease-in-out cursor-pointer"
-                                :class="{ 'bg-white text-[#153B4F]': selectedCurrency === currency }"
-                            >
-                                {{ formatCurrencyDisplay(currency) }}
-                            </div>
-                        </div>
-                    </template>
-                </Dropdown>
-            </div>
+            
             <!-- Mobile Map Button -->
             <button @click="showMobileMapModal = true"
-                class="flex flex-1 items-center justify-center gap-3 p-3 w-full bg-customPrimaryColor text-white rounded-lg shadow-md hover:shadow-lg transition-all duration-300">
-                <!-- Map Icon (SVG) -->
+                class="flex-1 flex items-center justify-center gap-2 p-3 bg-customPrimaryColor text-white rounded-lg shadow-md hover:shadow-lg transition-all duration-300">
                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7"/>
                 </svg>
-                <span class="text-lg font-medium">Map</span>
+                <span class="text-base font-semibold">Map</span>
             </button>
         </div>
 
@@ -1695,137 +1808,7 @@ watch(
         <!-- Desktop filters moved to sidebar -->
 
         <!-- Mobile Filters Canvas/Sidebar -->
-        <div v-if="showMobileFilters" class="fixed inset-0 bg-black bg-opacity-50 z-50 md:hidden"
-            @click="showMobileFilters = false">
-            <div class="fixed inset-x-0 bottom-0 max-h-[85%] bg-white rounded-t-xl overflow-y-auto p-5 pt-0" @click.stop>
-                <div class="flex justify-between items-center mb-4 sticky z-50 top-0 bg-white pb-3 border-b border-gray-100 py-4">
-                    <div class="flex items-center gap-2">
-                        <img :src="filterIcon" alt="" class="w-5 h-5" loading="lazy" />
-                        <h2 class="text-xl font-medium">Search Options</h2>
-                    </div>
-                    <button @click="showMobileFilters = false" class="p-2 bg-gray-100 rounded-full">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                            <path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd" />
-                        </svg>
-                    </button>
-                </div>
 
-                <form class="space-y-5 filter-slot py-[1rem]">
-                    <!-- Seating Capacity Filter -->
-                    <div class="filter-item">
-                        <label class="text-sm font-medium text-gray-700 mb-1 block">Passenger Seats</label>
-                        <CustomDropdown v-model="form.seating_capacity" unique-id="seating-capacity-mobile"
-                            :options="facets.seats.map(o => ({ value: o.value, label: `${o.label} (${o.count})` }))"
-                            placeholder="Any Capacity" :left-icon="seatingIcon" :right-icon="CaretDown" />
-                    </div>
-
-                    <!-- Brand Filter -->
-                    <div class="filter-item">
-                        <label class="text-sm font-medium text-gray-700 mb-1 block">Car Brand</label>
-                        <CustomDropdown v-model="form.brand" unique-id="brand-mobile"
-                            :options="facets.brands.map(o => ({ value: o.value, label: `${o.label} (${o.count})` }))"
-                            placeholder="Any Brand" :left-icon="brandIcon" :right-icon="CaretDown" />
-                    </div>
-
-                    <!-- Category Filter -->
-                    <div class="filter-item">
-                    <label class="text-sm font-medium text-gray-700 mb-1 block">Vehicle Type</label>
-                    <CustomDropdown v-model="form.category_id" unique-id="category-mobile"
-                        :options="facets.categories.map(o => ({ value: o.value, label: `${o.label} (${o.count})` }))"
-                        placeholder="All Categories" :left-icon="categoryIcon" :right-icon="CaretDown" />
-                    </div>
-
-                    <!-- Transmission Filter -->
-                    <div class="filter-item">
-                        <label class="text-sm font-medium text-gray-700 mb-1 block">Transmission Type</label>
-                        <CustomDropdown v-model="form.transmission" unique-id="transmission-mobile"
-                            :options="facets.transmissions.map(o => ({ value: o.value, label: `${o.label} (${o.count})` }))"
-                            placeholder="Any Type" :left-icon="transmissionIcon" :right-icon="CaretDown" />
-                    </div>
-
-                    <!-- Fuel Filter -->
-                    <div class="filter-item">
-                        <label class="text-sm font-medium text-gray-700 mb-1 block">Fuel Type</label>
-                        <CustomDropdown v-model="form.fuel" unique-id="fuel-mobile"
-                            :options="facets.fuels.map(o => ({ value: o.value, label: `${o.label} (${o.count})` }))"
-                            placeholder="Any Fuel" :left-icon="fuelIcon" :right-icon="CaretDown" />
-                    </div>
-
-                    <!-- Price Range Filter -->
-                    <div class="filter-item">
-                        <label class="text-sm font-medium text-gray-700 mb-1 block">Budget</label>
-                        <div class="relative w-full">
-                        <img :src="priceIcon" alt="Price Icon"
-                            class="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 pointer-events-none text-gray-500" loading="lazy" />
-                        <button type="button" @click="showPriceSlider = !showPriceSlider"
-                            class="pl-10 pr-4 py-2 w-full text-left flex gap-4 items-center justify-between bg-white border border-gray-200 rounded-lg shadow-sm hover:border-customPrimaryColor transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-customPrimaryColor/20">
-                            <span class="text-gray-700 font-medium">
-                                {{ priceRangeValues[0] === dynamicPriceRange.min && priceRangeValues[1] === dynamicPriceRange.max ? 'Set Price Range' :
-                                    `${getCurrencySymbol(selectedCurrency)}${priceRangeValues[0]} - ${getCurrencySymbol(selectedCurrency)}${priceRangeValues[1]}` }}
-                            </span>
-                            <img :src="CaretDown" alt="Caret Down"
-                                class="w-5 h-5 text-gray-500 transition-transform duration-300 ease-in-out pointer-events-none"
-                                :class="{ 'rotate-180': showPriceSlider }" loading="lazy" />
-                        </button>
-                        <!-- Price Range Slider Dropdown -->
-                        <div v-if="showPriceSlider"
-                            class="absolute z-20 mt-2 w-full h-[12rem] bg-white shadow-xl rounded-lg p-5 border border-gray-100 animate-fade-in">
-                            <div class="mb-4">
-                                <div class="flex justify-between mb-3">
-                                    <div class="flex flex-col">
-                                        <span class="text-sm text-gray-500">Minimum</span>
-                                        <span class="text-lg font-semibold text-gray-800">
-                                            {{ getCurrencySymbol(selectedCurrency) }}{{ tempPriceRangeValues[0] }}
-                                        </span>
-                                    </div>
-                                    <div class="flex flex-col items-end">
-                                        <span class="text-sm text-gray-500">Maximum</span>
-                                        <span class="text-lg font-semibold text-gray-800">
-                                            {{ getCurrencySymbol(selectedCurrency) }}{{ tempPriceRangeValues[1] }}
-                                        </span>
-                                    </div>
-                                </div>
-                                <VueSlider v-model="tempPriceRangeValues" :min="dynamicPriceRange.min" :max="dynamicPriceRange.max"
-                                    :interval="1" :tooltip="'none'" :height="8" :dot-size="20"
-                                    :process-style="{ backgroundColor: '#153b4f', borderRadius: '4px' }"
-                                    :rail-style="{ backgroundColor: '#e5e7eb', borderRadius: '4px' }"
-                                    :dot-style="{ backgroundColor: '#ffffff', border: '2px solid #153b4f', boxShadow: '0 2px 4px rgba(0,0,0,0.1)' }"
-                                    class="mb-4" />
-                            </div>
-                            <div class="flex justify-between items-center">
-                                <button @click="resetPriceRange"
-                                    class="px-3 py-1.5 bg-gray-100 text-gray-700 rounded-md text-sm font-medium hover:bg-gray-200 transition-all duration-300">
-                                    Reset
-                                </button>
-                                <button @click="applyPriceRange"
-                                    class="px-3 py-1.5 bg-customPrimaryColor text-white rounded-md text-sm font-medium hover:bg-opacity-90 transition-all duration-300">
-                                    Apply
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-                    </div>
-
-                    <!-- Action Buttons -->
-                    <div class="grid grid-cols-2 gap-3 pt-3 mt-4 border-t border-gray-100">
-                        <button @click="resetFilters" type="button"
-                            class="py-3 px-4 bg-gray-100 text-gray-700 rounded-lg font-medium hover:bg-gray-200 transition-all duration-300 flex items-center justify-center gap-2">
-                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-                            </svg>
-                            Clear All
-                        </button>
-                        <button @click="applyFilters" type="button"
-                            class="py-3 px-4 bg-customPrimaryColor text-white rounded-lg font-medium hover:bg-opacity-90 transition-all duration-300 flex items-center justify-center gap-2">
-                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                                <path fill-rule="evenodd" d="M8 4a4 4 0 100 8 4 4 0 000-8zM2 8a6 6 0 1110.89 3.476l4.817 4.817a1 1 0 01-1.414 1.414l-4.816-4.816A6 6 0 012 8z" clip-rule="evenodd" />
-                            </svg>
-                            Search Cars
-                        </button>
-                    </div>
-                </form>
-            </div>
-        </div>
 
     </div>
 </section>

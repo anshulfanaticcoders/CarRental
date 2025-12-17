@@ -177,7 +177,7 @@ const vehicleSpecs = computed(() => {
                 <!-- Row 1: Location & Title -->
                 <div class="flex justify-between items-start">
                     <div>
-                        <h3 class="text-xl font-bold text-gray-800 leading-tight mb-1 truncate" :title="vehicle.brand + ' ' + vehicle.model">{{ vehicle.brand }} {{ vehicle.model }}</h3>
+                        <h3 class="text-xl font-bold text-gray-800 leading-tight mb-1" :title="vehicle.brand + ' ' + vehicle.model">{{ vehicle.brand }} {{ vehicle.model }}</h3>
                         <div class="flex items-center text-sm text-gray-500 gap-1">
                              <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-customPrimaryColor" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
