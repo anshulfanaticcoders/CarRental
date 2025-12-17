@@ -220,17 +220,44 @@ class WheelsysService
             'availability' => $rate['Availability'] ?? 'N/A'
         ]);
 
-        $acrissCode = $rate['Acriss'] ?? '';
+        // Robust SIPP/ACRISS Extraction
+        // Try 'Acriss', then 'GroupCode', then 'Category'
+        $candidates = [
+            $rate['Acriss'] ?? '',
+            $rate['GroupCode'] ?? '',
+            $rate['Category'] ?? '',
+            $rate['SampleModel'] ?? '' // Last resort search
+        ];
+
+        $acrissCode = '';
+        foreach ($candidates as $candidate) {
+            if (empty($candidate))
+                continue;
+            // Look for 4 uppercase letters that look like a valid SIPP/ACRISS code
+            // Pattern: Start of word, 4 uppercase letters, End of word
+            if (preg_match_all('/\b[A-Z]{4}\b/', $candidate, $matches)) {
+                foreach ($matches[0] as $match) {
+                    // Basic validation against 1st char (Category) known letters
+                    if (strpos('MNEHCDIJSRFGPULWOX', $match[0]) !== false) {
+                        $acrissCode = $match;
+                        break 2; // Found valid code
+                    }
+                }
+            }
+        }
+
         $parsedAcriss = $this->parseAcrissCode($acrissCode);
 
         return [
-            'id' => 'wheelsys_' . $rate['GroupCode'] . '_' . uniqid(),
+            'id' => 'wheelsys_' . ($rate['GroupCode'] ?? 'unknown') . '_' . uniqid(),
             'source' => 'wheelsys',
             'brand' => $brand,
             'model' => $rate['SampleModel'] ?? 'Wheelsys Vehicle',
-            'category' => $rate['Category'] ?? '',
+            'category' => !empty($parsedAcriss['category']) && $parsedAcriss['category'] !== 'Unknown' 
+                ? $parsedAcriss['category'] 
+                : ($rate['Category'] ?? ''),
             'group_code' => $rate['GroupCode'] ?? '',
-            'acriss_code' => $rate['Acriss'] ?? '',
+            'acriss_code' => $acrissCode,
             'image' => $this->getVehicleImage($rate['ImageUrl'] ?? '', $rate['Acriss'] ?? '', $rate['GroupCode'] ?? ''),
             'price_per_day' => $pricePerDay,
             'price_per_week' => $pricePerDay * 7,
@@ -263,6 +290,7 @@ class WheelsysService
             'review_count' => 0,
             'average_rating' => 0,
             'products' => [],
+            'features' => !empty($parsedAcriss['air_conditioning']) ? ['Air Conditioning'] : [],
             'extras' => $this->processOptions($rate['Options'] ?? []),
             'insurance_options' => [],
             'wheelsys_data' => $rate, // Store raw data for debugging
@@ -565,13 +593,27 @@ class WheelsysService
     {
         $code = strtoupper($code ?? '');
         $data = [
+            'category' => 'Unknown',
             'transmission' => 'manual', // Default
             'fuel' => 'petrol', // Default
             'seating_capacity' => 4, // Default
+            'air_conditioning' => false // Default
         ];
 
         if (strlen($code) < 4) {
             return $data;
+        }
+
+        // Load SIPP codes for Category mapping
+        $sippJsonPath = base_path('database/sipp_codes.json');
+        if (file_exists($sippJsonPath)) {
+            $sippCodes = json_decode(file_get_contents($sippJsonPath), true);
+            
+            // 1. Category (1st char)
+            $char1 = $code[0];
+            if (isset($sippCodes['category'][$char1])) {
+                $data['category'] = $sippCodes['category'][$char1];
+            }
         }
 
         // 3rd letter: Transmission
@@ -590,6 +632,12 @@ class WheelsysService
             $data['fuel'] = 'electric';
         }
 
+        // Check for Air Conditioning (R, D, H, E, L, A, M, V, U denote AC)
+        if (in_array($fuelChar, ['R', 'D', 'H', 'E', 'L', 'A', 'M', 'V', 'U'])) {
+            $data['air_conditioning'] = true;
+        }
+
         return $data;
     }
 }
+

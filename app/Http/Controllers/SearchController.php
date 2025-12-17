@@ -318,7 +318,7 @@ class SearchController extends Controller
             }
         }
 
-        $internalVehiclesEloquent = $internalVehiclesQuery->get();
+        $internalVehiclesEloquent = $internalVehiclesQuery->with('category')->get();
         $vehicleListSchema = SchemaBuilder::vehicleList($internalVehiclesEloquent, 'Vehicle Search Results', $validated);
         $internalVehiclesData = $internalVehiclesEloquent->map(function ($vehicle) {
             $reviews = Review::where('vehicle_id', $vehicle->id)
@@ -327,7 +327,10 @@ class SearchController extends Controller
             $vehicle->review_count = $reviews->count();
             $vehicle->average_rating = $reviews->avg('rating') ?? 0;
             $vehicle->source = 'internal';
-            return $vehicle->toArray();
+
+            $data = $vehicle->toArray();
+            $data['category'] = $vehicle->category->name ?? 'Unknown';
+            return $data;
         })->values()->all();
 
         $internalVehiclesCollection = collect($internalVehiclesData);
@@ -491,10 +494,54 @@ class SearchController extends Controller
                                     $fuelPolicy = !empty($products) ? ($products[0]['fuelpolicy'] ?? '') : '';
                                     $brandName = explode(' ', (string) $vehicle['name'])[0];
 
-                                    // Parse ACRISS code to get category
-                                    $acrissCode = (string) $vehicle->acriss;
-                                    $parsedCategory = $this->parseSippCode($acrissCode);
+                                    // Robust SIPP/ACRISS Extraction
+                                    $candidates = [
+                                        (string) ($vehicle->acriss ?? ''),
+                                        (string) ($vehicle->acriss_code ?? ''),
+                                        (string) ($vehicle->sipp_code ?? ''),
+                                        (string) ($vehicle->category ?? ''),
+                                        (string) ($vehicle->groupName ?? '')
+                                    ];
+                                    $sippCode = '';
+                                    foreach ($candidates as $candidate) {
+                                        if (empty($candidate))
+                                            continue;
+                                        if (preg_match_all('/\b[A-Z]{4}\b/', $candidate, $matches)) {
+                                            foreach ($matches[0] as $match) {
+                                                if (strpos('MNEHCDIJSRFGPULWOX', $match[0]) !== false) {
+                                                    $sippCode = $match;
+                                                    break 2;
+                                                }
+                                            }
+                                        }
+                                    }
+
+                                    $parsedCategory = [];
+                                    if (!empty($sippCode)) {
+                                        $parsedCategory = $this->parseSippCode($sippCode);
+                                    }
+
                                     $categoryName = $parsedCategory['category'] ?? 'Unknown';
+
+                                    // Build Features Array
+                                    $features = [];
+                                    $hasAC = false;
+
+                                    // Check explicit AC attribute or SIPP
+                                    $acVal = (string) ($vehicle->airConditioning ?? $vehicle->air_conditioning ?? $vehicle->airco ?? '');
+                                    $acValLower = strtolower($acVal);
+
+                                    if ($acValLower === 'true' || $acValLower === 'yes' || $acVal === '1' || !empty($parsedCategory['air_conditioning'])) {
+                                        $features[] = 'Air Conditioning';
+                                        $hasAC = true;
+                                    }
+
+                                    if (isset($vehicle->bluetooth) && strtolower((string) $vehicle->bluetooth) === 'true') {
+                                        $features[] = 'Bluetooth';
+                                    }
+                                    if (isset($vehicle->gps) && strtolower((string) $vehicle->gps) === 'true') {
+                                        $features[] = 'GPS';
+                                    }
 
                                     $providerVehicles->push((object) [
                                         'id' => $providerToFetch . '_' . (string) $vehicle['id'],
@@ -515,10 +562,18 @@ class SearchController extends Controller
                                         'longitude' => (float) $locationLng,
                                         'full_vehicle_address' => $currentProviderLocationName,
                                         'provider_pickup_id' => $currentProviderLocationId,
+                                        'features' => $features,
+                                        'airConditioning' => $hasAC,
+                                        'sipp_code' => $sippCode,
                                         'benefits' => (object) [
                                             'minimum_driver_age' => $minDriverAge,
                                             'fuel_policy' => $fuelPolicy,
                                         ],
+                                        // Map luggage fields for dynamic display
+                                        // Use object syntax -> for child elements, matching GreenMotionController logic
+                                        'luggageSmall' => (string) $vehicle->luggageSmall,
+                                        'luggageMed' => (string) $vehicle->luggageMed,
+                                        'luggageLarge' => (string) $vehicle->luggageLarge,
                                         // review_count and average_rating omitted - not provided by API
                                         'products' => $products,
                                         'options' => [],
@@ -587,12 +642,18 @@ class SearchController extends Controller
                                 $endDate = \Carbon\Carbon::parse($adobeSearchParams['enddate']);
                                 $rentalDays = $startDate->diffInDays($endDate) ?: 1; // Ensure details at least 1 day divisor
 
+                                // Parse SIPP code for Adobe (stored in 'category')
+                                $sippCode = $vehicle['category'] ?? '';
+                                $parsedSipp = $this->parseSippCode($sippCode);
+
                                 $processedVehicle = [
                                     'id' => 'adobe_' . $currentProviderLocationId . '_' . ($vehicle['category'] ?? 'unknown'),
                                     'source' => 'adobe',
                                     'brand' => $this->extractBrandFromModel($vehicle['model'] ?? ''),
                                     'model' => $vehicle['model'] ?? 'Adobe Vehicle',
-                                    'category' => isset($vehicle['type']) ? ucwords(strtolower($vehicle['type'])) : ($vehicle['category'] ?? ''),
+                                    'category' => !empty($parsedSipp['category']) && $parsedSipp['category'] !== 'Unknown'
+                                        ? $parsedSipp['category']
+                                        : (isset($vehicle['type']) ? ucwords(strtolower($vehicle['type'])) : ($vehicle['category'] ?? '')),
                                     'image' => $this->getAdobeVehicleImage($vehicle['photo'] ?? ''),
                                     'price_per_day' => (float) (($vehicle['tdr'] ?? 0) / $rentalDays), // Derive daily rate from Total Daily Rate (total price)
                                     'price_per_week' => (float) (($vehicle['tdr'] ?? 0) / $rentalDays * 7),
@@ -636,6 +697,17 @@ class SearchController extends Controller
                                     'doors' => isset($vehicle['doors']) ? (int) $vehicle['doors'] : null,
                                     'manual' => (bool) ($vehicle['manual'] ?? false),
                                     'traction' => $vehicle['traction'] ?? '',
+                                    'features' => (function () use ($vehicle) {
+                                        $f = [];
+                                        $cat = $vehicle['category'] ?? '';
+                                        if (strlen($cat) === 4) {
+                                            $parsed = $this->parseSippCode($cat);
+                                            if (!empty($parsed['air_conditioning'])) {
+                                                $f[] = 'Air Conditioning';
+                                            }
+                                        }
+                                        return $f;
+                                    })(),
                                 ];
 
                                 $processedVehicles[] = (object) $processedVehicle;
@@ -742,9 +814,16 @@ class SearchController extends Controller
                                         }
                                     }
 
+                                    // Build features array
+                                    $features = [];
+                                    if (!empty($parsedSipp['air_conditioning'])) {
+                                        $features[] = 'Air Conditioning';
+                                    }
+
                                     $okMobilityVehicles->push((object) [
                                         'id' => 'okmobility_' . $groupId . '_' . md5($token),
                                         'source' => 'okmobility',
+                                        // ... existing fields ...
                                         'brand' => $vehicleName, // Use the full Group_Name as provided by API
                                         'model' => $vehicleName, // Same as brand since OK Mobility provides full descriptive name
                                         'sipp_code' => $sippCode,
@@ -758,6 +837,7 @@ class SearchController extends Controller
                                         'seating_capacity' => $parsedSipp['seating_capacity'] ?? 4, // Use parsed seating or default
                                         'category' => $parsedSipp['category'] ?? 'Unknown', // Use parsed SIPP category
                                         'mileage' => $mileage,
+                                        'features' => $features, // Add features here
                                         'latitude' => (float) $locationLat,
                                         'longitude' => (float) $locationLng,
                                         'full_vehicle_address' => $currentProviderLocationName,
@@ -960,8 +1040,16 @@ class SearchController extends Controller
                                     $transmission = strtolower($transmission ?? 'manual');
                                     $fuel = strtolower($fuel ?? 'petrol');
 
+                                    // Build features array
+                                    $features = [];
+                                    if (!empty($parsedSipp['air_conditioning'])) {
+                                        $features[] = 'Air Conditioning';
+                                    }
+
+                                    $assignedCategory = $parsedSipp['category'] ?? ($vehicle['category'] ?? 'Unknown');
+
                                     $providerVehicles->push((object) [
-                                        'id' => $vehicle['id'], // Use SIPP code directly as stable ID
+                                        'id' => 'locauto_' . $vehicle['id'], // Prefix to ensure uniqueness and stability
                                         'source' => 'locauto_rent',
                                         'brand' => $brandName,
                                         'model' => $vehicle['model'] ?? 'Locauto Vehicle',
@@ -972,9 +1060,10 @@ class SearchController extends Controller
                                         'currency' => $vehicle['currency'] ?? 'EUR',
                                         'transmission' => $transmission,
                                         'fuel' => $fuel,
-                                        'category' => $parsedSipp['category'] ?? ($vehicle['category'] ?? 'Unknown'), // Use SIPP or fallback
+                                        'category' => $assignedCategory, // Use the verified category
                                         'seating_capacity' => isset($vehicle['seating_capacity']) ? (int) $vehicle['seating_capacity'] : null,
                                         'mileage' => $vehicle['mileage'] ?? null, // Only show if provided by API
+                                        'features' => $features, // Add mapped features
                                         'latitude' => (float) $locationLat,
                                         'longitude' => (float) $locationLng,
                                         'full_vehicle_address' => $currentProviderLocationName,
@@ -983,7 +1072,10 @@ class SearchController extends Controller
                                         'benefits' => (object) [
                                             'minimum_driver_age' => (int) ($validated['age'] ?? 21),
                                             'pay_on_arrival' => true,
+                                            'luggage' => $vehicle['luggage'] ?? 0, // Add logic to pass luggage data
                                         ],
+                                        // Map luggage directly for the card
+                                        'luggage' => $vehicle['luggage'] ?? 0,
                                         // review_count and average_rating omitted - not provided by API
                                         'products' => [
                                             [
@@ -1460,7 +1552,7 @@ class SearchController extends Controller
         });
 
         $greenMotionVehicles = collect();
-        if ((isset($validated['source']) && $validated['source'] === 'greenmotion') || empty($validated['source'])) {
+        if ((isset($validated['source']) && in_array($validated['source'], ['greenmotion', 'usave'])) || empty($validated['source'])) {
             if (!empty($validated['date_from']) && !empty($validated['date_to'])) {
                 $gmLocationId = $validated['greenmotion_location_id'] ?? null;
                 $gmLocationLat = null;
@@ -1471,7 +1563,7 @@ class SearchController extends Controller
                     $searchParam = $validated['where'] ?? ($validated['latitude'] . ',' . $validated['longitude']);
                     $unifiedLocations = $this->locationSearchService->searchLocations($searchParam);
                     $matchedGmLocation = collect($unifiedLocations)->first(function ($loc) {
-                        return $loc['source'] === 'greenmotion' && !empty($loc['greenmotion_location_id']);
+                        return in_array($loc['source'], ['greenmotion', 'usave']) && !empty($loc['greenmotion_location_id']);
                     });
                     if ($matchedGmLocation) {
                         $gmLocationId = $matchedGmLocation['greenmotion_location_id'];
@@ -1548,9 +1640,83 @@ class SearchController extends Controller
                                     }
 
                                     $brandName = explode(' ', (string) $vehicle['name'])[0];
+
+                                    // DEBUG: Dump MG3 data
+                                    if (strpos((string) $vehicle['name'], 'MG3') !== false) {
+                                        ob_start();
+                                        print_r($vehicle);
+                                        $dump = ob_get_clean();
+                                        file_put_contents('/tmp/gm_mg3_debug.txt', $dump . "\nSIPP Candidates: " . print_r([
+                                            (string) ($vehicle->acriss_code ?? ''),
+                                            (string) ($vehicle->sipp_code ?? ''),
+                                            (string) ($vehicle->category ?? ''),
+                                            (string) ($vehicle->groupName ?? '')
+                                        ], true), FILE_APPEND);
+                                    }
+
+                                    // ACRISS/SIPP Code Extraction
+                                    // ACRISS codes (SIPP) are 4-letter codes. We check standard fields and search text fields.
+                                    $candidates = [
+                                        (string) ($vehicle->acriss ?? ''), // Added $vehicle->acriss
+                                        (string) ($vehicle->acriss_code ?? ''),
+                                        (string) ($vehicle->sipp_code ?? ''),
+                                        (string) ($vehicle->category ?? ''), // GM often puts it here
+                                        (string) ($vehicle->group ?? ''),
+                                        (string) ($vehicle->groupName ?? ''),
+                                        (string) ($vehicle->name ?? '')
+                                    ];
+
+                                    $sippCode = '';
+                                    $parsedSipp = []; // Initialize parsedSipp
+                                    foreach ($candidates as $candidate) {
+                                        if (empty($candidate))
+                                            continue;
+                                        // Look for 4 uppercase letters that look like a valid SIPP/ACRISS code
+                                        // Pattern: Start of word, 4 uppercase letters, End of word
+                                        if (preg_match_all('/\b[A-Z]{4}\b/', $candidate, $matches)) {
+                                            foreach ($matches[0] as $match) {
+                                                // Basic validation against 1st char (Category) known letters
+                                                // M=Mini, N=Mini Elite, E=Economy, H=Economy Elite, C=Compact, etc.
+                                                // Valid 1st chars: M,N,E,H,C,D,I,J,S,R,F,G,P,U,L,W,O,X
+                                                if (strpos('MNEHCDIJSRFGPULWOX', $match[0]) !== false) {
+                                                    $sippCode = $match;
+                                                    break 2; // Found a valid-looking code, stop searching
+                                                }
+                                            }
+                                        }
+                                    }
+
+                                    if (!empty($sippCode)) {
+                                        $parsedSipp = $this->parseSippCode($sippCode);
+                                    }
+
+                                    // Build features array
+                                    $features = [];
+                                    $hasAC = false;
+
+                                    // Check explicit AC attribute or SIPP
+                                    // Broader check for AC property (explicit)
+                                    $acVal = (string) ($vehicle->airConditioning ?? $vehicle->air_conditioning ?? $vehicle->airco ?? '');
+                                    $acValLower = strtolower($acVal);
+
+                                    // SIPP Logic
+                                    if (!empty($parsedSipp['air_conditioning'])) {
+                                        $features[] = 'Air Conditioning';
+                                        $hasAC = true;
+                                    }
+
+                                    // Check Bluetooth (explicit or attributes)
+                                    if (isset($vehicle->bluetooth) && strtolower((string) $vehicle->bluetooth) === 'true') {
+                                        $features[] = 'Bluetooth';
+                                    }
+                                    // Check GPS
+                                    if (isset($vehicle->gps) && strtolower((string) $vehicle->gps) === 'true') {
+                                        $features[] = 'GPS';
+                                    }
+
                                     $greenMotionVehicles->push((object) [
                                         'id' => 'gm_' . (string) $vehicle['id'],
-                                        'source' => 'greenmotion',
+                                        'source' => $validated['source'] === 'usave' ? 'usave' : 'greenmotion',
                                         'brand' => $brandName,
                                         'model' => (string) $vehicle['name'],
                                         'image' => urldecode((string) $vehicle['image']),
@@ -1562,6 +1728,9 @@ class SearchController extends Controller
                                         'fuel' => (string) $vehicle->fuel,
                                         'seating_capacity' => (int) $vehicle->adults + (int) $vehicle->children,
                                         'mileage' => (string) $vehicle->mpg,
+                                        'features' => $features,
+                                        'airConditioning' => $hasAC, // Explicit boolean for frontend
+                                        'sipp_code' => $sippCode,
                                         'latitude' => (float) $gmLocationLat,
                                         'longitude' => (float) $gmLocationLng,
                                         'full_vehicle_address' => $gmLocationAddress,
@@ -1727,58 +1896,65 @@ class SearchController extends Controller
             'transmission' => 'manual', // Default
             'fuel' => 'petrol', // Default
             'seating_capacity' => 4, // Default
-            'category' => 'Unknown'
+            'category' => 'Unknown',
+            'air_conditioning' => false,
+            'sipp_description' => ''
         ];
 
         if (strlen($sipp) < 4) {
             return $data;
         }
 
-        // 1st letter: Category
-        // M=Mini, N=Mini, E=Economy, H=Economy, C=Compact, I=Intermediate, S=Standard, F=Fullsize, P=Premium, L=Luxury, X=Special
-        $categoryChar = $sipp[0];
-        $categories = [
-            'M' => 'Mini',
-            'N' => 'Mini', // Reverted to standard SIPP/ACRISS default or 'Mini'
-            'E' => 'Economy',
-            'H' => 'Economy',
-            'C' => 'Compact',
-            'I' => 'Intermediate',
-            'S' => 'Standard',
-            'F' => 'Fullsize',
-            'P' => 'Premium',
-            'L' => 'Luxury',
-            'X' => 'Special',
-            'J' => 'SUV',
-            // Proprietary/Group Mappings - Keeping these generic keys if they don't conflict, or remove if user wants full reset.
-            // User specifically mentioned companies have their own SIPP.
-            // Safe to revert to cleaner state.
-            'A' => 'Mini', // Keeping generic Group A
-            'B' => 'Economy', // Keeping generic Group B
-            'D' => 'Intermediate', // Keeping generic Group D
-            'G' => 'Fullsize', // Keeping generic Group G
-            'K' => 'Van', // Keeping generic Group K
-        ];
-        if (isset($categories[$categoryChar])) {
-            $data['category'] = $categories[$categoryChar];
+        // Load SIPP codes from JSON
+        $sippJsonPath = base_path('database/sipp_codes.json');
+        if (!file_exists($sippJsonPath)) {
+            Log::error("SIPP codes JSON not found at: {$sippJsonPath}");
+            // Fallback (minimal)
+            return $data;
         }
 
-        // 3rd letter: Transmission
-        // M=Manual, N=Manual, C=Manual, A=Automatic, B=Automatic, D=Automatic
-        $transmissionChar = $sipp[2];
-        if (in_array($transmissionChar, ['A', 'B', 'D'])) {
-            $data['transmission'] = 'automatic';
+        $sippCodes = json_decode(file_get_contents($sippJsonPath), true);
+
+        // 1. Category (1st char)
+        $char1 = $sipp[0];
+        if (isset($sippCodes['category'][$char1])) {
+            $data['category'] = $sippCodes['category'][$char1];
         }
 
-        // 4th letter: Fuel/AC
-        // R=Petrol+AC, N=Petrol, D=Diesel+AC, Q=Diesel, H=Hybrid, I=Hybrid, E=Electric, C=Electric, L=LPG, S=LPG, M=Multi fuel, F=Multi fuel, V=Petrol+AC
-        $fuelChar = $sipp[3];
-        if (in_array($fuelChar, ['D', 'Q'])) {
-            $data['fuel'] = 'diesel';
-        } elseif (in_array($fuelChar, ['H', 'I'])) {
-            $data['fuel'] = 'hybrid';
-        } elseif (in_array($fuelChar, ['E', 'C'])) {
-            $data['fuel'] = 'electric';
+        // 2. Type (2nd char) - Doors inference
+        $char2 = $sipp[1];
+        if (isset($sippCodes['type'][$char2])) {
+            $typeDesc = $sippCodes['type'][$char2];
+            // Infer doors if reasonable
+            if (strpos($typeDesc, '2-3 Door') !== false || strpos($typeDesc, '2 Door') !== false) {
+                $data['doors'] = 2;
+            } elseif (strpos($typeDesc, '4-5 Door') !== false || strpos($typeDesc, '4 Door') !== false) {
+                $data['doors'] = 4;
+            } elseif (strpos($typeDesc, 'Van') !== false) {
+                $data['doors'] = 4; // Assumption
+            }
+            // Keep full description for internal use if needed
+            $data['type_description'] = $typeDesc;
+        }
+
+        // 3. Transmission (3rd char)
+        $char3 = $sipp[2];
+        if (isset($sippCodes['transmission'][$char3])) {
+            $transDesc = $sippCodes['transmission'][$char3];
+            if (stripos($transDesc, 'Automatic') !== false) {
+                $data['transmission'] = 'automatic';
+            } else {
+                $data['transmission'] = 'manual';
+            }
+            $data['transmission_description'] = $transDesc;
+        }
+
+        // 4. Fuel & AC (4th char)
+        $char4 = $sipp[3];
+        if (isset($sippCodes['fuel_ac'][$char4])) {
+            $fuelAC = $sippCodes['fuel_ac'][$char4];
+            $data['fuel'] = strtolower($fuelAC['fuel']);
+            $data['air_conditioning'] = $fuelAC['ac'];
         }
 
         return $data;

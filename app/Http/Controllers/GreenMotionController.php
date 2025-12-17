@@ -324,9 +324,11 @@ class GreenMotionController extends Controller
     public function getGreenMotionVehicles(Request $request)
     {
         $locationId = $request->input('location_id', 61627);
-        $startDate = $request->input('start_date', '2032-01-06');
+        $startDateInput = $request->input('start_date', '2032-01-06');
+        $startDate = date('Y-m-d', strtotime($startDateInput));
         $startTime = $request->input('start_time', '09:00');
-        $endDate = $request->input('end_date', '2032-01-08');
+        $endDateInput = $request->input('end_date', '2032-01-08');
+        $endDate = date('Y-m-d', strtotime($endDateInput));
         $endTime = $request->input('end_time', '09:00');
         $age = $request->input('age', 35);
         $rentalCode = $request->input('rentalCode', null);
@@ -385,9 +387,11 @@ class GreenMotionController extends Controller
     public function showGreenMotionCars(Request $request)
     {
         $locationId = $request->input('location_id', 61627);
-        $startDate = $request->input('start_date', '2032-01-06');
+        $startDateInput = $request->input('start_date', '2032-01-06');
+        $startDate = date('Y-m-d', strtotime($startDateInput));
         $startTime = $request->input('start_time', '09:00');
-        $endDate = $request->input('end_date', '2032-01-08');
+        $endDateInput = $request->input('end_date', '2032-01-08');
+        $endDate = date('Y-m-d', strtotime($endDateInput));
         $endTime = $request->input('end_time', '09:00');
         $age = $request->input('age', 35);
         $rentalCode = $request->input('rentalCode', null);
@@ -472,9 +476,11 @@ class GreenMotionController extends Controller
             ]);
         }
         $locationId = $request->input('location_id', 61627);
-        $startDate = $request->input('start_date');
+        $startDateInput = $request->input('start_date');
+        $startDate = $startDateInput ? date('Y-m-d', strtotime($startDateInput)) : null;
         $startTime = $request->input('start_time', '09:00');
-        $endDate = $request->input('end_date');
+        $endDateInput = $request->input('end_date');
+        $endDate = $endDateInput ? date('Y-m-d', strtotime($endDateInput)) : null;
         $endTime = $request->input('end_time', '09:00');
 
         // Validate required parameters
@@ -622,9 +628,11 @@ class GreenMotionController extends Controller
             ]);
         }
         $locationId = $request->input('location_id', 61627);
-        $startDate = $request->input('start_date', '2032-01-06');
+        $startDateInput = $request->input('start_date', '2032-01-06');
+        $startDate = date('Y-m-d', strtotime($startDateInput));
         $startTime = $request->input('start_time', '09:00');
-        $endDate = $request->input('end_date', '2032-01-08');
+        $endDateInput = $request->input('end_date', '2032-01-08');
+        $endDate = date('Y-m-d', strtotime($endDateInput));
         $endTime = $request->input('end_time', '09:00');
         $age = $request->input('age', 35);
         $rentalCode = $request->input('rentalCode', null);

@@ -1,0 +1,128 @@
+{
+    "category": {
+        "M": "Mini",
+        "N": "Mini Elite",
+        "E": "Economy",
+        "H": "Economy Elite",
+        "C": "Compact",
+        "D": "Compact Elite",
+        "I": "Intermediate",
+        "J": "Intermediate Elite",
+        "S": "Standard",
+        "R": "Standard Elite",
+        "F": "Fullsize",
+        "G": "Fullsize Elite",
+        "P": "Premium",
+        "U": "Premium Elite",
+        "L": "Luxury",
+        "W": "Luxury Elite",
+        "O": "Oversize",
+        "X": "Special"
+    },
+    "type": {
+        "B": "2-3 Door",
+        "C": "2/4 Door",
+        "D": "4-5 Door",
+        "W": "Wagon/Estate",
+        "V": "Passenger Van",
+        "L": "Limousine",
+        "S": "Sport",
+        "T": "Convertible",
+        "F": "SUV",
+        "J": "Open Air All Terrain",
+        "X": "Special",
+        "P": "Pickup Regular Cab",
+        "Q": "Pickup Extended Cab",
+        "Z": "Special Offer Car",
+        "E": "Coupe",
+        "M": "Monospace",
+        "R": "Recreational Vehicle",
+        "H": "Motor Home",
+        "Y": "2 Wheel Vehicle",
+        "N": "Roadster",
+        "G": "Crossover",
+        "K": "Commercial Van/Truck"
+    },
+    "transmission": {
+        "M": "Manual",
+        "N": "Manual 4WD",
+        "C": "Manual AWD",
+        "A": "Automatic",
+        "B": "Automatic 4WD",
+        "D": "Automatic AWD"
+    },
+    "fuel_ac": {
+        "R": {
+            "fuel": "Petrol",
+            "ac": true
+        },
+        "N": {
+            "fuel": "Petrol",
+            "ac": false
+        },
+        "D": {
+            "fuel": "Diesel",
+            "ac": true
+        },
+        "Q": {
+            "fuel": "Diesel",
+            "ac": false
+        },
+        "H": {
+            "fuel": "Hybrid",
+            "ac": true
+        },
+        "I": {
+            "fuel": "Hybrid",
+            "ac": false
+        },
+        "E": {
+            "fuel": "Electric",
+            "ac": true
+        },
+        "C": {
+            "fuel": "Electric",
+            "ac": false
+        },
+        "L": {
+            "fuel": "LPG",
+            "ac": true
+        },
+        "S": {
+            "fuel": "LPG",
+            "ac": false
+        },
+        "A": {
+            "fuel": "Hydrogen",
+            "ac": true
+        },
+        "B": {
+            "fuel": "Hydrogen",
+            "ac": false
+        },
+        "M": {
+            "fuel": "Multi Fuel",
+            "ac": true
+        },
+        "F": {
+            "fuel": "Multi Fuel",
+            "ac": false
+        },
+        "V": {
+            "fuel": "Petrol",
+            "ac": true
+        },
+        "Z": {
+            "fuel": "Petrol",
+            "ac": false
+        },
+        "U": {
+            "fuel": "Ethanol",
+            "ac": true
+        },
+        "X": {
+            "fuel": "Ethanol",
+            "ac": false
+        }
+    }
+}

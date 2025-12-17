@@ -97,7 +97,7 @@ class AdobeCarController extends Controller
                     ];
 
                     // Filter out null values
-                    $searchParams = array_filter($searchParams, function($value) {
+                    $searchParams = array_filter($searchParams, function ($value) {
                         return $value !== null && $value !== '';
                     });
 

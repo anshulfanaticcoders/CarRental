@@ -24,6 +24,7 @@ import brandIcon from "../../assets/SedanCarIcon.svg";
 import colorIcon from "../../assets/color-palette.svg";
 import filterIcon from "../../assets/filterIcon.svg";
 import SearchBar from "@/Components/SearchBar.vue";
+import CarListingCard from "@/Components/CarListingCard.vue"; // Import CarListingCard
 import { Label } from "@/Components/ui/label";
 import { Switch } from "@/Components/ui/switch";
 import CaretDown from "../../assets/CaretDown.svg";
@@ -364,16 +365,30 @@ const submitFilters = debounce(() => {
 }, 300);
 
 watch(
-    () => form.data(),
+    () => {
+        const data = form.data();
+        // Exclude client-side filters from triggering server search
+        const { 
+            brand, 
+            category_id, 
+            transmission, 
+            fuel, 
+            seating_capacity, 
+            price_range, 
+            color,
+            ...serverParams 
+        } = data;
+        return serverParams;
+    },
     () => {
         submitFilters();
     },
     { deep: true }
 );
 let map = null;
-let mobileMap = null;
+// mobileMap removed
 let markers = [];
-let mobileMarkers = [];
+// mobileMarkers removed
 
 const allVehiclesForMap = computed(() => {
     const internal = props.vehicles.data || [];
@@ -443,20 +458,263 @@ const dynamicPriceRange = computed(() => {
     };
 });
 
-// Client-side filtered vehicles based on price range
-const priceFilteredVehicles = computed(() => {
-    if (!form.price_range || form.price_range === `${dynamicPriceRange.value.min}-${dynamicPriceRange.value.max}`) {
-        // No filter applied, return all
-        return allVehiclesForMap.value;
+// Normalization Helper
+const getVehicleCategory = (vehicle) => {
+    // 1. Try SIPP code char 0
+    let sipp = vehicle.sipp || vehicle.sipp_code;
+    if (sipp && sipp.length === 4) {
+        const char = sipp.charAt(0).toUpperCase();
+        const map = {
+            'M': 'Mini', 'N': 'Mini',
+            'E': 'Economy', 'H': 'Economy',
+            'C': 'Compact', 'D': 'Compact',
+            'I': 'Intermediate',
+            'S': 'Standard',
+            'F': 'Fullsize',
+            'P': 'Premium',
+            'L': 'Luxury', 'X': 'Special',
+            'J': 'SUV', 'G': 'SUV', 'R': 'SUV', 'K': 'Van', 'V': 'Van'
+        };
+        if (map[char]) return map[char];
     }
-    
-    const [minPrice, maxPrice] = form.price_range.split('-').map(Number);
-    
-    return allVehiclesForMap.value.filter(vehicle => {
-        const convertedPrice = getVehiclePriceConverted(vehicle);
-        if (convertedPrice === null) return true; // Include vehicles with unknown prices
-        return convertedPrice >= minPrice && convertedPrice <= maxPrice;
+
+    // 2. Try mapped categories from internal ID or name
+    // internal vehicles use 'category_id' usually
+    const catId = vehicle.vehicle_category_id || vehicle.category_id;
+    if (catId && props.categories) {
+        const cat = props.categories.find(c => c.id === catId);
+        if (cat) return cat.name; 
+    }
+
+    // 3. Try string matching on name/description/category field
+    const name = (vehicle.category || vehicle.group || vehicle.vehicle_name || '').toLowerCase();
+    if (name.includes('suv') || name.includes('4x4') || name.includes('jeep')) return 'SUV';
+    if (name.includes('van') || name.includes('minivan')) return 'Van';
+    if (name.includes('luxury') || name.includes('prem')) return 'Luxury';
+    if (name.includes('estate') || name.includes('wagon')) return 'Estate';
+    if (name.includes('convertible') || name.includes('cabrio')) return 'Convertible';
+    if (name.includes('mini')) return 'Mini';
+    if (name.includes('eco')) return 'Economy';
+    if (name.includes('compact')) return 'Compact';
+    if (name.includes('stand')) return 'Standard';
+    if (name.includes('inter')) return 'Intermediate';
+    if (name.includes('full')) return 'Fullsize';
+
+    return 'Other'; // Fallback
+};
+
+// Main Client-Side Filtering
+const clientFilteredVehicles = computed(() => {
+    let result = allVehiclesForMap.value;
+
+    // 1. Price Filter (Reused logic)
+    if (form.price_range && form.price_range !== `${dynamicPriceRange.value.min}-${dynamicPriceRange.value.max}`) {
+        const [minPrice, maxPrice] = form.price_range.split('-').map(Number);
+        result = result.filter(vehicle => {
+            const convertedPrice = getVehiclePriceConverted(vehicle);
+            if (convertedPrice === null) return true;
+            return convertedPrice >= minPrice && convertedPrice <= maxPrice;
+        });
+    }
+
+    // 2. Brand Filter
+    if (form.brand) {
+        const selectedBrand = form.brand.toLowerCase();
+        result = result.filter(v => {
+            const b = (v.brand || v.make || v.vehicle_name || '').toLowerCase();
+            return b === selectedBrand || b.includes(selectedBrand);
+        });
+    }
+
+    // 3. Category Filter
+    if (form.category_id) {
+        // If categories are normalized names, form.category_id might be a name string now?
+        // Wait, props.categories are objects {id, name}. The form uses IDs for internal?
+        // For client-side unify, we should probably toggle by Name if we normalize everything.
+        // User wants "SUV", "Luxury".
+        // Let's assume form.category_id handles the label (Name) if we switch input values.
+        // Or if it's ID, we need to map back.
+        // Simplify: Let's assume the new Checklist input will pass the 'Name' as value if we update the template.
+        // Checking current template: :value="category.id", label="category.name".
+        // User said "show categories like suv, luxury...".
+        // I should normalize the internal categories list too to these standard names.
+        // For now, let's filter by matching normalized category to selected 'Name'.
+        // I will update the template to pass Name.
+        const selectedCat = isNaN(form.category_id) ? form.category_id : props.categories.find(c => c.id == form.category_id)?.name;
+        if (selectedCat) {
+             result = result.filter(v => getVehicleCategory(v) === selectedCat);
+        }
+    }
+
+    // 4. Seats Filter
+    if (form.seating_capacity) {
+        const seats = parseInt(form.seating_capacity);
+        result = result.filter(v => {
+            const s = parseInt(v.seating_capacity || v.passenger_capacity || v.passengers || v.adults || v.seat_number || v.seats || 0);
+            return s >= seats; // Logic: "4 seats" filter means 4 or 4+? User usually wants explicit count or min.
+            // "5 seats" usually means strict 5 or 5+. Let's do exact if standard dropdown, or >=.
+            // Given "4, 5, 7" options, exact match is often better for "Passenger Capacity" unless it's "4+ ".
+            // Let's use exact match for now as per usual Facet logic, or maybe >=.
+            // Actually, for "5 seats", a 7 seater is acceptable? Usually yes.
+            // But let's stick to equality for facets count accuracy if options are discrete numbers.
+            return s == seats;
+        });
+    }
+
+    // 5. Transmission
+    if (form.transmission) {
+        const trans = form.transmission.toLowerCase();
+        result = result.filter(v => {
+            // SIPP char 2: M=Manual, A=Auto, N=Manual, B=Auto, C=Manual, D=Auto
+            let vTrans = (v.transmission || v.transmission_type || '').toLowerCase();
+            const sipp = v.sipp || v.sipp_code;
+            if (sipp && sipp.length === 4) {
+                const char = sipp.charAt(2).toUpperCase();
+                if (['M','N','C'].includes(char)) vTrans = 'manual';
+                if (['A','B','D'].includes(char)) vTrans = 'automatic';
+            }
+            return vTrans.includes(trans);
+        });
+    }
+
+    // 6. Fuel
+    if (form.fuel) {
+         const fuel = form.fuel.toLowerCase();
+         result = result.filter(v => {
+             // SIPP char 3
+             let vFuel = (v.fuel || v.fuel_type || '').toLowerCase();
+             const sipp = v.sipp || v.sipp_code;
+            if (sipp && sipp.length === 4) {
+                 const char = sipp.charAt(3).toUpperCase();
+                 // N=Unspecified(Gas?), R=Yes(AC)+Gas?
+                 // Standard SIPP: D=Diesel, Q=Diesel, H=Hybrid, I=Hybrid, E=Electric, C=Electric, L=LPG, S=LPG, Z=LPG, M=Multi, F=Multi, V=Petrol, N=Petrol...
+                 if (['D','Q'].includes(char)) vFuel = 'diesel';
+                 else if (['H','I'].includes(char)) vFuel = 'hybrid';
+                 else if (['E','C'].includes(char)) vFuel = 'electric';
+                 else vFuel = 'petrol'; // Default assumptions
+             }
+             return vFuel.includes(fuel);
+         });
+    }
+
+    return result;
+});
+
+// Dynamic Facets
+const facets = computed(() => {
+    const all = allVehiclesForMap.value;
+    // We need counts based on "current filters EXCEPT self" -> Multi-select facet logic.
+    // But our UI is single-select for now (radio/toggle).
+    // If single select:
+    // Available options are those present in the filtered set?
+    // Reference: "I don't want to filter fake... only need to show filter values according to availability".
+    // If I select "SUV", the "SUV" count is N. "Economy" count should be visible (M) to allow switching?
+    // YES. Standard ecommerce: Facets show counts based on current filters excluding the facet's own filter.
+    // OR simpler: Counts of global set available matching other active filters.
+
+    // Helper to count
+    const countBy = (collection, keyFn) => {
+        const counts = {};
+        collection.forEach(item => {
+            const key = keyFn(item);
+            if (key) counts[key] = (counts[key] || 0) + 1;
+        });
+        return counts;
+    };
+
+    // For simplicty and robust "switching", we often compute counts against the set filtered by everything ELSE.
+    // 1. Brands
+    // Filter by everything except Brand
+    const brandBase = clientFilteredVehicles.value.length > 0 ? clientFilteredVehicles.value : all; // Logic flaw: if Brand is filtered to Toyota, clientFilteredVehicles only has Toyota.
+    // Correct approach:
+    // Base for Brand = Set filtered by (Price AND Category AND Seats AND Trans AND Fuel).
+    // Base for Category = Set filtered by (Price AND Brand AND Seats ...).
+
+    const filterExcluding = (excludeField) => {
+        return all.filter(v => {
+             // Check Price
+             if (form.price_range && form.price_range !== `${dynamicPriceRange.value.min}-${dynamicPriceRange.value.max}`) {
+                const [min, max] = form.price_range.split('-').map(Number);
+                const p = getVehiclePriceConverted(v);
+                if (p !== null && (p < min || p > max)) return false;
+             }
+             // Check Brand
+             if (excludeField !== 'brand' && form.brand) {
+                 const b = (v.brand || v.make || v.vehicle_name || '').toLowerCase();
+                 if (b !== form.brand.toLowerCase() && !b.includes(form.brand.toLowerCase())) return false;
+             }
+             // Check Category
+             if (excludeField !== 'category' && form.category_id) {
+                 const selectedCat = isNaN(form.category_id) ? form.category_id : props.categories.find(c => c.id == form.category_id)?.name;
+                 if (getVehicleCategory(v) !== selectedCat) return false;
+             }
+             // Check Seats
+             if (excludeField !== 'seats' && form.seating_capacity) {
+                 const s = parseInt(v.seating_capacity || v.passenger_capacity || v.passengers || v.adults || v.seat_number || v.seats || 0);
+                 if (s != parseInt(form.seating_capacity)) return false;
+             }
+             // Check Trans
+             if (excludeField !== 'transmission' && form.transmission) {
+                  let vTrans = (v.transmission || v.transmission_type || '').toLowerCase();
+                   const sipp = v.sipp || v.sipp_code;
+                    if (sipp && sipp.length === 4) {
+                        const char = sipp.charAt(2).toUpperCase();
+                        if (['M','N','C'].includes(char)) vTrans = 'manual';
+                        if (['A','B','D'].includes(char)) vTrans = 'automatic';
+                    }
+                  if (!vTrans.includes(form.transmission.toLowerCase())) return false;
+             }
+             // Check Fuel
+             if (excludeField !== 'fuel' && form.fuel) {
+                 let vFuel = (v.fuel || v.fuel_type || '').toLowerCase();
+                 // ... normalize fuel same as above ...
+                  const sipp = v.sipp || v.sipp_code;
+                    if (sipp && sipp.length === 4) {
+                         const char = sipp.charAt(3).toUpperCase();
+                         if (['D','Q'].includes(char)) vFuel = 'diesel';
+                         else if (['H','I'].includes(char)) vFuel = 'hybrid';
+                         else if (['E','C'].includes(char)) vFuel = 'electric';
+                         else vFuel = 'petrol';
+                     }
+                 if (!vFuel.includes(form.fuel.toLowerCase())) return false;
+             }
+             return true;
+        });
+    };
+
+    const brandCounts = countBy(filterExcluding('brand'), v => (v.brand || v.make || v.vehicle_name || 'Other').trim());
+    const categoryCounts = countBy(filterExcluding('category'), v => getVehicleCategory(v));
+    const transmissionCounts = countBy(filterExcluding('transmission'), v => {
+        let vTrans = (v.transmission || v.transmission_type || 'Manual').toLowerCase();
+        const sipp = v.sipp || v.sipp_code;
+        if (sipp && sipp.length === 4) {
+            const char = sipp.charAt(2).toUpperCase();
+            if (['M','N','C'].includes(char)) vTrans = 'manual';
+            if (['A','B','D'].includes(char)) vTrans = 'automatic';
+        }
+        return vTrans.charAt(0).toUpperCase() + vTrans.slice(1);
     });
+    const fuelCounts = countBy(filterExcluding('fuel'), v => {
+         let vFuel = (v.fuel || v.fuel_type || 'Petrol').toLowerCase();
+         const sipp = v.sipp || v.sipp_code;
+        if (sipp && sipp.length === 4) {
+             const char = sipp.charAt(3).toUpperCase();
+             if (['D','Q'].includes(char)) vFuel = 'diesel';
+             else if (['H','I'].includes(char)) vFuel = 'hybrid';
+             else if (['E','C'].includes(char)) vFuel = 'electric';
+             else vFuel = 'petrol';
+         }
+         return vFuel.charAt(0).toUpperCase() + vFuel.slice(1);
+    });
+    const seatCounts = countBy(filterExcluding('seats'), v => parseInt(v.seating_capacity || v.passenger_capacity || v.passengers || v.adults || v.seat_number || v.seats || 0));
+
+    return {
+        brands: Object.entries(brandCounts).map(([k, v]) => ({ label: k, value: k, count: v })).sort((a,b) => b.count - a.count),
+        categories: Object.entries(categoryCounts).map(([k, v]) => ({ label: k, value: k, count: v })).sort((a,b) => b.count - a.count),
+        transmissions: Object.entries(transmissionCounts).map(([k, v]) => ({ label: k, value: k.toLowerCase(), count: v })),
+        fuels: Object.entries(fuelCounts).map(([k, v]) => ({ label: k, value: k.toLowerCase(), count: v })),
+        seats: Object.entries(seatCounts).map(([k, v]) => ({ label: `${k} Seats`, value: k, count: v })).sort((a,b) => parseInt(a.value) - parseInt(b.value))
+    };
 });
 
 
@@ -541,81 +799,7 @@ const initMap = () => {
     }, 200);
 };
 
-const initMobileMap = () => {
-    const getValidVehicleCoords = () => {
-        if (!allVehiclesForMap.value || allVehiclesForMap.value.length === 0) return [];
-        return allVehiclesForMap.value
-            .map(vehicle =>
-                (isValidCoordinate(vehicle.latitude) && isValidCoordinate(vehicle.longitude))
-                ? [parseFloat(vehicle.latitude), parseFloat(vehicle.longitude)]
-                : null
-            )
-            .filter(coord => coord !== null);
-    };
 
-    let vehicleCoords = getValidVehicleCoords();
-
-    if (mobileMap) {
-        mobileMap.remove();
-        mobileMap = null;
-    }
-
-    mobileMap = L.map("mobile-map", {
-        zoomControl: true,
-        maxZoom: 18,
-        minZoom: 3,
-        zoomSnap: 0.25,
-        markerZoomAnimation: false,
-        preferCanvas: true,
-    });
-
-    if (vehicleCoords.length === 0) {
-        console.warn("No vehicles with valid coordinates to initialize mobile map view. Setting default view.");
-        mobileMap.setView([20, 0], 2);
-    } else {
-        const bounds = L.latLngBounds(vehicleCoords);
-        if (bounds.isValid()) {
-             if (vehicleCoords.length === 1) {
-                mobileMap.setView(bounds.getCenter(), 13);
-            } else {
-                mobileMap.fitBounds(bounds, { padding: [50, 50] });
-            }
-        } else {
-            mobileMap.setView([20,0],2);
-        }
-    }
-
-    L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
-        attribution: "© OpenStreetMap contributors",
-    }).addTo(mobileMap);
-
-    mobileMap.createPane("markers");
-    mobileMap.getPane("markers").style.zIndex = 1000;
-
-    addMobileMarkers();
-
-    setTimeout(() => {
-        if (mobileMap) {
-            mobileMap.invalidateSize();
-            if (allVehiclesForMap.value && allVehiclesForMap.value.length > 0) {
-                const currentCoords = getValidVehicleCoords();
-                if (currentCoords.length > 0) {
-                    const currentBounds = L.latLngBounds(currentCoords);
-                    if (currentBounds.isValid()) {
-                        if (currentCoords.length === 1) {
-                           if(mobileMap.getZoom() < 10) mobileMap.setView(currentBounds.getCenter(), 13);
-                           else mobileMap.panTo(currentBounds.getCenter());
-                        } else {
-                           mobileMap.fitBounds(currentBounds, { padding: [50, 50] });
-                        }
-                    }
-                } else if (!mobileMap.getCenter() || (mobileMap.getCenter().lat === 20 && mobileMap.getCenter().lng === 0 && mobileMap.getZoom() === 2) ) {
-                    mobileMap.setView([20,0],2);
-                }
-            }
-        }
-    }, 200);
-};
 
 const createCustomIcon = (vehicle, isHighlighted = false) => {
     let currencySymbol = '$';
@@ -888,109 +1072,7 @@ const addMarkers = () => {
     }
 };
 
-const addMobileMarkers = () => {
-    mobileMarkers.forEach((marker) => marker.remove());
-    mobileMarkers = [];
 
-    if (!allVehiclesForMap.value || allVehiclesForMap.value.length === 0) {
-        return;
-    }
-
-    const coordData = new Map();
-
-    allVehiclesForMap.value.forEach((vehicle) => {
-        if (!isValidCoordinate(vehicle.latitude) || !isValidCoordinate(vehicle.longitude)) {
-            console.warn(`Skipping vehicle ID ${vehicle.id} with invalid coordinates: Lat=${vehicle.latitude}, Lng=${vehicle.longitude}`);
-            return;
-        }
-
-        const lat = parseFloat(vehicle.latitude);
-        const lng = parseFloat(vehicle.longitude);
-        const coordKey = `${lat.toFixed(5)}_${lng.toFixed(5)}`;
-
-        if (!coordData.has(coordKey)) {
-            coordData.set(coordKey, { count: 0, originalLat: lat, originalLng: lng });
-        }
-        const dataAtCoord = coordData.get(coordKey);
-        dataAtCoord.count += 1;
-
-        let displayLat = lat;
-        let displayLng = lng;
-        const occurrence = dataAtCoord.count;
-
-        if (occurrence > 1) {
-            const K_MAX_MARKERS_PER_RING = 8;
-            const ringNum = Math.floor((occurrence - 2) / K_MAX_MARKERS_PER_RING);
-            const indexInRing = (occurrence - 2) % K_MAX_MARKERS_PER_RING;
-
-            const angle = indexInRing * (2 * Math.PI / K_MAX_MARKERS_PER_RING);
-            const baseEffectiveRadius = 0.00030;
-            const effectiveRadius = baseEffectiveRadius * (1 + ringNum * 0.65);
-
-            displayLat = lat + effectiveRadius * Math.sin(angle);
-            displayLng = lng + effectiveRadius * Math.cos(angle);
-        }
-
-        const primaryImage = (vehicle.source === 'greenmotion' || vehicle.source === 'wheelsys' || vehicle.source === 'adobe' || vehicle.source === 'locauto_rent') ? vehicle.image : (vehicle.images?.find((image) => image.image_type === 'primary')?.image_url || '/default-image.png');
-        const detailRoute = vehicle.source !== 'internal'
-            ? route(getProviderRoute(vehicle), { locale: page.props.locale, id: vehicle.id, provider: vehicle.source, location_id: vehicle.provider_pickup_id, start_date: form.date_from, end_date: form.date_to, start_time: form.start_time, end_time: form.end_time, dropoff_location_id: form.dropoff_location_id, rentalCode: form.rentalCode })
-            : route('vehicle.show', { locale: page.props.locale, id: vehicle.id, package: form.package_type, pickup_date: form.date_from, return_date: form.date_to });
-
-        let popupPrice = "N/A";
-        let popupCurrencySymbol = getCurrencySymbol(selectedCurrency.value);
-
-        if (vehicle.source === 'wheelsys' && vehicle.price_per_day) {
-            const originalCurrency = vehicle.currency || 'USD';
-            const convertedPrice = convertCurrency(vehicle.price_per_day, originalCurrency);
-            popupCurrencySymbol = getCurrencySymbol(selectedCurrency.value);
-            popupPrice = `${popupCurrencySymbol}${convertedPrice.toFixed(2)} total`; // Display price per day (actually total)
-        } else if (vehicle.source === 'adobe' && vehicle.tdr) {
-            const convertedPrice = convertCurrency(vehicle.tdr, 'USD');
-            popupCurrencySymbol = getCurrencySymbol(selectedCurrency.value);
-            popupPrice = `${popupCurrencySymbol}${convertedPrice.toFixed(2)} total`; // Display total price
-        } else if (vehicle.source !== 'internal' && vehicle.products && vehicle.products[0]?.total && vehicle.products[0].total > 0) {
-            // For GreenMotion/USave, show total rental price
-            const currencyCode = vehicle.products[0]?.currency || 'USD';
-            const totalProviderPrice = parseFloat(vehicle.products[0]?.total || 0);
-            const convertedPrice = convertCurrency(totalProviderPrice, currencyCode);
-            popupCurrencySymbol = getCurrencySymbol(selectedCurrency.value);
-            popupPrice = `${popupCurrencySymbol}${convertedPrice.toFixed(2)} total`;
-        } else if (vehicle.source === 'internal' && vehicle.price_per_day && vehicle.price_per_day > 0) {
-            const originalCurrency = vehicle.vendor_profile?.currency || 'USD';
-            const convertedPrice = convertCurrency(vehicle.price_per_day, originalCurrency);
-            popupCurrencySymbol = getCurrencySymbol(selectedCurrency.value);
-            popupPrice = `${popupCurrencySymbol}${convertedPrice.toFixed(2)}`;
-        }
-
-        const marker = L.marker([displayLat, displayLng], {
-            icon: createCustomIcon(vehicle),
-            pane: "markers",
-        }).bindPopup(createPopupContent(vehicle, primaryImage, popupPrice, detailRoute));
-
-        mobileMap.addLayer(marker);
-        mobileMarkers.push(marker);
-    });
-
-    const validCoords = allVehiclesForMap.value
-        .filter(v => isValidCoordinate(v.latitude) && isValidCoordinate(v.longitude))
-        .map(v => [parseFloat(v.latitude), parseFloat(v.longitude)]);
-
-    if (validCoords.length > 0) {
-        const allVehicleBounds = L.latLngBounds(validCoords);
-        if (allVehicleBounds.isValid()) {
-            if (validCoords.length === 1) {
-                mobileMap.setView(allVehicleBounds.getCenter(), 13);
-            } else {
-                mobileMap.fitBounds(allVehicleBounds, { padding: [50, 50] });
-            }
-        }
-    } else {
-        if (mobileMap && (!mobileMap.getCenter() || (mobileMap.getCenter().lat === 20 && mobileMap.getCenter().lng === 0 && mobileMap.getZoom() === 2))) {
-             mobileMap.setView([20,0],2);
-        }
-        console.warn("No vehicles with valid coordinates to fit mobile map bounds after adding markers.");
-    }
-};
 
 
 watch(
@@ -999,11 +1081,6 @@ watch(
         if (map) {
             if (JSON.stringify(newVehicles) !== JSON.stringify(oldVehicles)) {
                  addMarkers();
-            }
-        }
-        if (mobileMap) {
-            if (JSON.stringify(newVehicles) !== JSON.stringify(oldVehicles)) {
-                 addMobileMarkers();
             }
         }
     },
@@ -1016,11 +1093,6 @@ watch(
         if (map) {
             if (JSON.stringify(newVehicles) !== JSON.stringify(oldVehicles)) {
                  addMarkers();
-            }
-        }
-        if (mobileMap) {
-            if (JSON.stringify(newVehicles) !== JSON.stringify(oldVehicles)) {
-                 addMobileMarkers();
             }
         }
     },
@@ -1039,9 +1111,6 @@ watch(
 watch(selectedCurrency, () => {
     if (map) {
         addMarkers();
-    }
-    if (mobileMap) {
-        addMobileMarkers();
     }
 });
 
@@ -1074,50 +1143,27 @@ const unhighlightVehicleOnMap = (vehicle) => {
 };
 
 
-const showMap = ref(true);
-const showMobileMapModal = ref(false);
+const showMap = ref(false);
+// showMobileMapModal is removed
 
-// Watch for mobile map modal
-watch(showMobileMapModal, (newValue) => {
+// Watch for Map Modal visibility
+watch(showMap, (newValue) => {
     if (newValue) {
-        // Initialize mobile map when modal opens
+        // Initialize map when modal opens
         setTimeout(() => {
-            initMobileMap();
+            initMap();
         }, 100);
     } else {
-        // Clean up mobile map when modal closes
-        if (mobileMap) {
-            mobileMap.remove();
-            mobileMap = null;
-            mobileMarkers = [];
+        // Clean up map when modal closes
+        if (map) {
+            map.remove();
+            map = null;
+            markers = [];
         }
     }
 });
 
-const handleMapToggle = (value) => {
-    showMap.value = value;
-    if (value && map) {
-        setTimeout(() => {
-            map.invalidateSize();
-            const validCoords = allVehiclesForMap.value
-                .filter(v => isValidCoordinate(v.latitude) && isValidCoordinate(v.longitude))
-                .map(v => [parseFloat(v.latitude), parseFloat(v.longitude)]);
-
-            if (validCoords.length > 0) {
-                const currentBounds = L.latLngBounds(validCoords);
-                if (currentBounds.isValid()) {
-                    if (validCoords.length === 1) {
-                        map.setView(currentBounds.getCenter(), 13);
-                    } else {
-                        map.fitBounds(currentBounds, { padding: [50, 50] });
-                    }
-                }
-            } else if(map && (!map.getCenter() || (map.getCenter().lat === 20 && map.getCenter().lng === 0 && map.getZoom() === 2))){
-                 map.setView([20,0],2);
-            }
-        }, 100);
-    }
-};
+// handleMapToggle removed
 
 import { useToast } from "vue-toastification";
 import { Inertia } from "@inertiajs/inertia";
@@ -1644,134 +1690,9 @@ watch(
             </button>
         </div>
 
-        <!-- Desktop filter header (hidden on mobile) -->
-        <div class="hidden md:flex items-center justify-between gap-3 mb-6">
-            <div class="flex items-center gap-3">
-                <img :src="filterIcon" alt="" class="w-6 h-6" loading="lazy" />
-                <span class="text-xl font-semibold">Customize Your Search</span>
-            </div>
-            <button @click="resetFilters"
-                class="px-5 py-2 bg-customPrimaryColor text-white rounded-lg hover:bg-opacity-90 transition flex items-center gap-2">
-                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-                </svg>
-                Clear All Filters
-            </button>
-        </div>
 
-        <!-- Desktop filters (hidden on mobile) -->
-        <form class="hidden md:block">
-            <div class="flex gap-5 flex-wrap filter-slot items-center">
-                <!-- Seating Capacity Filter -->
-                <div class="relative w-48 filter-group">
-                    <div class="text-xs font-medium text-gray-500 mb-1 ml-1">Passenger Seats</div>
-                    <CustomDropdown v-model="form.seating_capacity" unique-id="seating-capacity"
-                        :options="$page.props.seatingCapacities.map(capacity => ({ value: capacity, label: capacity + ' Seats' }))"
-                        placeholder="Any Capacity" :left-icon="seatingIcon" :right-icon="CaretDown"
-                        class="hover:border-customPrimaryColor transition-all duration-300" />
-                </div>
 
-                <!-- Brand Filter -->
-                <div class="relative w-48 filter-group">
-                    <div class="text-xs font-medium text-gray-500 mb-1 ml-1">Car Brand</div>
-                    <CustomDropdown v-model="form.brand" unique-id="brand"
-                        :options="$page.props.brands.map(brand => ({ value: brand, label: brand }))"
-                        placeholder="Any Brand" :left-icon="brandIcon" :right-icon="CaretDown"
-                        class="hover:border-customPrimaryColor transition-all duration-300" />
-                </div>
-
-                <!-- Category Filter -->
-                <div class="relative w-48 filter-group">
-                    <div class="text-xs font-medium text-gray-500 mb-1 ml-1">Vehicle Type</div>
-                <CustomDropdown v-model="form.category_id" unique-id="category"
-                        :options="$page.props.categories.map(category => ({ value: category.id, label: category.name }))"
-                        placeholder="All Categories" :left-icon="categoryIcon" :right-icon="CaretDown" />
-                    </div>
-
-                <!-- Transmission Filter -->
-                <div class="relative w-48 filter-group">
-                    <div class="text-xs font-medium text-gray-500 mb-1 ml-1">Transmission Type</div>
-                    <CustomDropdown v-model="form.transmission" unique-id="transmission"
-                        :options="$page.props.transmissions.map(transmission => ({ value: transmission, label: transmission.charAt(0).toUpperCase() + transmission.slice(1) }))"
-                        placeholder="Any Type" :left-icon="transmissionIcon" :right-icon="CaretDown"
-                        class="hover:border-customPrimaryColor transition-all duration-300" />
-                </div>
-
-                <!-- Fuel Filter -->
-                <div class="relative w-48 filter-group">
-                    <div class="text-xs font-medium text-gray-500 mb-1 ml-1">Fuel Type</div>
-                    <CustomDropdown v-model="form.fuel" unique-id="fuel"
-                        :options="$page.props.fuels.map(fuel => ({ value: fuel, label: fuel.charAt(0).toUpperCase() + fuel.slice(1) }))"
-                        placeholder="Any Fuel" :left-icon="fuelIcon" :right-icon="CaretDown"
-                        class="hover:border-customPrimaryColor transition-all duration-300" />
-                </div>
-
-                <!-- Price Range Filter -->
-                <div class="relative  filter-group">
-                    <div class="text-xs font-medium text-gray-500 mb-1 ml-1">Budget</div>
-                    <div class="relative w-full">
-                        <img :src="priceIcon" alt="Price Icon"
-                            class="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 pointer-events-none text-gray-500" loading="lazy" />
-                        <button type="button" @click="showPriceSlider = !showPriceSlider"
-                            class="pl-10 pr-4 py-2 w-full text-left flex gap-4 items-center justify-between bg-white border border-gray-200 rounded-lg shadow-sm hover:border-customPrimaryColor transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-customPrimaryColor/20">
-                            <span class="text-gray-700 font-medium">
-                                {{ priceRangeValues[0] === dynamicPriceRange.min && priceRangeValues[1] === dynamicPriceRange.max ? 'Set Price Range' :
-                                    `${getCurrencySymbol(selectedCurrency)}${priceRangeValues[0]} - ${getCurrencySymbol(selectedCurrency)}${priceRangeValues[1]}` }}
-                            </span>
-                            <img :src="CaretDown" alt="Caret Down"
-                                class="w-5 h-5 text-gray-500 transition-transform duration-300 ease-in-out pointer-events-none"
-                                :class="{ 'rotate-180': showPriceSlider }" loading="lazy" />
-                        </button>
-                        <!-- Price Range Slider Dropdown -->
-                        <div v-if="showPriceSlider"
-                            class="absolute z-20 mt-2 w-[20rem] h-[12rem] bg-white shadow-xl rounded-lg p-5 border border-gray-100 animate-fade-in">
-                            <div class="mb-4">
-                                <div class="flex justify-between mb-3">
-                                    <div class="flex flex-col">
-                                        <span class="text-sm text-gray-500">Minimum</span>
-                                        <span class="text-lg font-semibold text-gray-800">
-                                            {{ getCurrencySymbol(selectedCurrency) }}{{ tempPriceRangeValues[0] }}
-                                        </span>
-                                    </div>
-                                    <div class="flex flex-col items-end">
-                                        <span class="text-sm text-gray-500">Maximum</span>
-                                        <span class="text-lg font-semibold text-gray-800">
-                                            {{ getCurrencySymbol(selectedCurrency) }}{{ tempPriceRangeValues[1] }}
-                                        </span>
-                                    </div>
-                                </div>
-                                <VueSlider v-model="tempPriceRangeValues" :min="dynamicPriceRange.min" :max="dynamicPriceRange.max"
-                                    :interval="1" :tooltip="'none'" :height="8" :dot-size="20"
-                                    :process-style="{ backgroundColor: '#153b4f', borderRadius: '4px' }"
-                                    :rail-style="{ backgroundColor: '#e5e7eb', borderRadius: '4px' }"
-                                    :dot-style="{ backgroundColor: '#ffffff', border: '2px solid #153b4f', boxShadow: '0 2px 4px rgba(0,0,0,0.1)' }"
-                                    class="mb-4" />
-                            </div>
-                            <div class="flex justify-between items-center">
-                                <button @click="resetPriceRange"
-                                    class="px-3 py-1.5 bg-gray-100 text-gray-700 rounded-md text-sm font-medium hover:bg-gray-200 transition-all duration-300">
-                                    Reset
-                                </button>
-                                <button @click="applyPriceRange"
-                                    class="px-3 py-1.5 bg-customPrimaryColor text-white rounded-md text-sm font-medium hover:bg-opacity-90 transition-all duration-300">
-                                    Apply
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Color Filter -->
-                <div class="relative w-48 filter-group">
-                    <div class="text-xs font-medium text-gray-500 mb-1 ml-1">Car Color</div>
-                    <CustomDropdown v-model="form.color" unique-id="color"
-                        :options="$page.props.colors.map(color => ({ value: color, label: color }))"
-                        placeholder="Any Color" :left-icon="colorIcon" :right-icon="CaretDown"
-                        class="hover:border-customPrimaryColor transition-all duration-300" />
-                </div>
-                
-            </div>
-        </form>
+        <!-- Desktop filters moved to sidebar -->
 
         <!-- Mobile Filters Canvas/Sidebar -->
         <div v-if="showMobileFilters" class="fixed inset-0 bg-black bg-opacity-50 z-50 md:hidden"
@@ -1794,7 +1715,7 @@ watch(
                     <div class="filter-item">
                         <label class="text-sm font-medium text-gray-700 mb-1 block">Passenger Seats</label>
                         <CustomDropdown v-model="form.seating_capacity" unique-id="seating-capacity-mobile"
-                            :options="$page.props.seatingCapacities.map(capacity => ({ value: capacity, label: capacity + ' Seats' }))"
+                            :options="facets.seats.map(o => ({ value: o.value, label: `${o.label} (${o.count})` }))"
                             placeholder="Any Capacity" :left-icon="seatingIcon" :right-icon="CaretDown" />
                     </div>
 
@@ -1802,7 +1723,7 @@ watch(
                     <div class="filter-item">
                         <label class="text-sm font-medium text-gray-700 mb-1 block">Car Brand</label>
                         <CustomDropdown v-model="form.brand" unique-id="brand-mobile"
-                            :options="$page.props.brands.map(brand => ({ value: brand, label: brand }))"
+                            :options="facets.brands.map(o => ({ value: o.value, label: `${o.label} (${o.count})` }))"
                             placeholder="Any Brand" :left-icon="brandIcon" :right-icon="CaretDown" />
                     </div>
 
@@ -1810,7 +1731,7 @@ watch(
                     <div class="filter-item">
                     <label class="text-sm font-medium text-gray-700 mb-1 block">Vehicle Type</label>
                     <CustomDropdown v-model="form.category_id" unique-id="category-mobile"
-                        :options="$page.props.categories.map(category => ({ value: category.id, label: category.name }))"
+                        :options="facets.categories.map(o => ({ value: o.value, label: `${o.label} (${o.count})` }))"
                         placeholder="All Categories" :left-icon="categoryIcon" :right-icon="CaretDown" />
                     </div>
 
@@ -1818,7 +1739,7 @@ watch(
                     <div class="filter-item">
                         <label class="text-sm font-medium text-gray-700 mb-1 block">Transmission Type</label>
                         <CustomDropdown v-model="form.transmission" unique-id="transmission-mobile"
-                            :options="$page.props.transmissions.map(transmission => ({ value: transmission, label: transmission.charAt(0).toUpperCase() + transmission.slice(1) }))"
+                            :options="facets.transmissions.map(o => ({ value: o.value, label: `${o.label} (${o.count})` }))"
                             placeholder="Any Type" :left-icon="transmissionIcon" :right-icon="CaretDown" />
                     </div>
 
@@ -1826,7 +1747,7 @@ watch(
                     <div class="filter-item">
                         <label class="text-sm font-medium text-gray-700 mb-1 block">Fuel Type</label>
                         <CustomDropdown v-model="form.fuel" unique-id="fuel-mobile"
-                            :options="$page.props.fuels.map(fuel => ({ value: fuel, label: fuel.charAt(0).toUpperCase() + fuel.slice(1) }))"
+                            :options="facets.fuels.map(o => ({ value: o.value, label: `${o.label} (${o.count})` }))"
                             placeholder="Any Fuel" :left-icon="fuelIcon" :right-icon="CaretDown" />
                     </div>
 
@@ -1885,14 +1806,6 @@ watch(
                     </div>
                     </div>
 
-                    <!-- Color Filter -->
-                    <div class="filter-item">
-                        <label class="text-sm font-medium text-gray-700 mb-1 block">Car Color</label>
-                        <CustomDropdown v-model="form.color" unique-id="color-mobile"
-                            :options="$page.props.colors.map(color => ({ value: color, label: color }))"
-                            placeholder="Any Color" :left-icon="colorIcon" :right-icon="CaretDown" />
-                    </div>
-
                     <!-- Action Buttons -->
                     <div class="grid grid-cols-2 gap-3 pt-3 mt-4 border-t border-gray-100">
                         <button @click="resetFilters" type="button"
@@ -1917,442 +1830,242 @@ watch(
     </div>
 </section>
 
-    <div class="full-w-container flex justify-end max-[768px]:hidden">
-        <div class="flex items-center space-x-2 mb-[2rem]">
-            <Label for="mapToggle" class="text-customPrimaryColor">Map</Label>
-            <Switch id="mapToggle" :checked="showMap" @update:checked="handleMapToggle" />
-        </div>
-    </div>
+
 
     <div class="full-w-container mx-auto mb-[4rem]">
-        <div class="flex gap-[2.5rem] max-[768px]:flex-col">
-            <!-- Filter button for desktop (appears on scroll) -->
-            <button v-if="showFilterButton" @click="scrollToFilter"
-                class="fixed left-0 top-[1.5rem] transform -translate-y-1/2 z-40 p-3  text-white rounded-r-lg shadow-lg opacity-50 hover:opacity-100 transition-opacity duration-300 hidden md:flex items-center gap-2"
-                style="background: linear-gradient(90deg, #FC466B 0%, #3F5EFB 100%);">
-                <img :src="filterIcon" alt="Filter" class="w-6 h-6 brightness-[20]" loading="lazy" />
-                <span class="font-medium">Filter</span>
-            </button>
+        <div class="grid grid-cols-12 gap-6">
+            
+            <!-- Left Sidebar (Sticky Filters) -->
+            <aside class="hidden md:block col-span-3 h-fit sticky top-24 z-30">
+                <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-5 overflow-y-auto max-h-[85vh] custom-scrollbar">
+                    <div class="flex items-center justify-between mb-4 border-b pb-2">
+                        <h3 class="font-bold text-lg text-gray-800">Filters</h3>
+                        <button @click="resetFilters" class="text-xs text-customPrimaryColor font-medium hover:underline">Reset All</button>
+                    </div>
 
-            <!-- Fixed Mobile Filter Button (appears on scroll) -->
-            <button v-if="showFixedMobileFilterButton && !showMobileFilters" @click="showMobileFilters = true"
-                class="fixed bottom-4 left-1/2 transform -translate-x-1/2 z-50 p-3 px-6 text-white rounded-full shadow-lg flex items-center gap-3 md:hidden"
-                style="background: linear-gradient(90deg, #FC466B 0%, #3F5EFB 100%);">
-                <img :src="filterIcon" alt="Filter" class="w-5 h-5 brightness-[20]" loading="lazy" />
-                <span class="font-medium">Filters</span>
-            </button>
+                    <!-- Price Range -->
+                    <div class="mb-6">
+                        <h4 class="font-semibold text-sm text-gray-700 mb-3 flex items-center gap-2">
+                            <img :src="priceIcon" class="w-4 h-4 opacity-70" > Budget
+                        </h4>
+                        <div class="px-2">
+                            <div class="flex justify-between text-xs text-gray-500 mb-2">
+                                <span>{{ getCurrencySymbol(selectedCurrency) }}{{ tempPriceRangeValues[0] }}</span>
+                                <span>{{ getCurrencySymbol(selectedCurrency) }}{{ tempPriceRangeValues[1] }}</span>
+                            </div>
+                            <!-- Using v-model on temp and @drag-end for apply to avoid excessive re-fetches or use a separate Apply button if strictly needed, 
+                                 but user wants immediate feedback usually. Given current logic uses 'applyPriceRange', 
+                                 I'll add a small 'Apply' button or rely on change event if Slider supports it. 
+                                 The previous code had an Apply button. I'll keep it simple: Slider + Apply text/button 
+                            -->
+                            <VueSlider v-model="tempPriceRangeValues" :min="dynamicPriceRange.min" :max="dynamicPriceRange.max"
+                                :interval="1" :tooltip="'none'" :height="6" :dot-size="16"
+                                :process-style="{ backgroundColor: '#153b4f' }"
+                                :rail-style="{ backgroundColor: '#e5e7eb' }"
+                                :enable-cross="false"
+                                class="mb-2" />
+                            <div class="flex justify-end">
+                                <button @click="applyPriceRange" class="text-xs bg-customPrimaryColor text-white px-3 py-1 rounded hover:opacity-90 transition">Apply Price</button>
+                            </div>
+                        </div>
+                    </div>
 
-            <!-- Left Column - Vehicle List -->
-            <div class="w-full">
-                <div :class="[
-                    'grid gap-5',
-                    showMap ? 'w-full grid-cols-2' : 'w-full grid-cols-4',
-                ]" class="max-[768px]:grid-cols-1">
-                    <div v-if="!allVehiclesForMap || allVehiclesForMap.length === 0"
-                        class="text-center text-gray-500 col-span-2 flex flex-col justify-center items-center gap-4">
-                        <img :src=noVehicleIcon alt="" class="w-[25rem] max-[768px]:w-full" loading="lazy">
-                        <p class="text-lg font-medium text-customPrimaryColor">No vehicles available at the moment</p>
-                        <span>Search for another location</span>
-                        <strong>Or</strong>
-                        <span>Try to reduce the number of search filters.</span>
+                    <!-- Filter Group Component (Inline for simplicity or create reusable if needed, sticking to inline loops for stability) -->
+                    
+                    <!-- Passenger Seats -->
+                    <div class="mb-5 border-b border-gray-50 pb-4">
+                        <h4 class="font-semibold text-sm text-gray-700 mb-2 flex items-center gap-2">
+                             <img :src="seatingIcon" class="w-4 h-4 opacity-70"> Passenger Seats
+                        </h4>
+                        <div class="space-y-2">
+                            <label v-for="option in facets.seats" :key="option.value" class="flex items-center gap-3 cursor-pointer group">
+                                <input type="checkbox" :checked="form.seating_capacity == option.value" @change="form.seating_capacity = form.seating_capacity == option.value ? '' : option.value" 
+                                       class="w-4 h-4 rounded border-gray-300 text-customPrimaryColor focus:ring-customPrimaryColor transition">
+                                <span class="text-sm text-gray-600 group-hover:text-customPrimaryColor transition">{{ option.label }} <span class="text-xs text-gray-400">({{ option.count }})</span></span>
+                            </label>
+                        </div>
+                    </div>
+
+                    <!-- Car Brand -->
+                    <div class="mb-5 border-b border-gray-50 pb-4">
+                        <h4 class="font-semibold text-sm text-gray-700 mb-2 flex items-center gap-2">
+                             <img :src="brandIcon" class="w-4 h-4 opacity-70"> Car Brand
+                        </h4>
+                        <div class="space-y-2 max-h-40 overflow-y-auto pr-1 custom-scrollbar">
+                            <label v-for="option in facets.brands" :key="option.value" class="flex items-center gap-3 cursor-pointer group">
+                                <input type="checkbox" :checked="form.brand === option.value" @change="form.brand = form.brand === option.value ? '' : option.value" 
+                                    class="w-4 h-4 rounded border-gray-300 text-customPrimaryColor focus:ring-customPrimaryColor transition">
+                                <span class="text-sm text-gray-600 group-hover:text-customPrimaryColor transition">{{ option.label }} <span class="text-xs text-gray-400">({{ option.count }})</span></span>
+                            </label>
+                        </div>
+                    </div>
+
+                     <!-- Vehicle Type (Categories) -->
+                    <div class="mb-5 border-b border-gray-50 pb-4">
+                        <h4 class="font-semibold text-sm text-gray-700 mb-2 flex items-center gap-2">
+                             <img :src="categoryIcon" class="w-4 h-4 opacity-70"> Vehicle Type
+                        </h4>
+                        <div class="space-y-2">
+                            <label v-for="option in facets.categories" :key="option.value" class="flex items-center gap-3 cursor-pointer group">
+                                <!-- Note: form.category_id was typically an ID. With generic facets, option.value is likely the Name if we normalized. 
+                                     If form binds to ID, we need to map back.
+                                     Simplification for Client Filter: Bind to label/name if filtering by name. 
+                                     However, the server reload logic uses ID. 
+                                     We are disabling server filtered reload for these. So usage of Name is fine for local.
+                                     BUT, checking implementation plan: 'Disable Server Reload'.
+                                     So I will bind form.category_id to the Name string OR find the ID. 
+                                     Let's simplisticly bind to string name for client filter. 
+                                     Or safer: If facet value is name, bind to name. form.category_id might need to change to form.category or stay as 'id' but hold string. 
+                                     If it holds string, existing server logic might break if we reload page.
+                                     For now, let's treat form.category_id as holding the Name for the purpose of this client filter, 
+                                     as I am rewriting logic to be client-side. -->
+                                <input type="checkbox" :checked="form.category_id === option.value" @change="form.category_id = form.category_id === option.value ? '' : option.value" 
+                                       class="w-4 h-4 rounded border-gray-300 text-customPrimaryColor focus:ring-customPrimaryColor transition">
+                                <span class="text-sm text-gray-600 group-hover:text-customPrimaryColor transition">{{ option.label }} <span class="text-xs text-gray-400">({{ option.count }})</span></span>
+                            </label>
+                        </div>
+                    </div>
+
+                    <!-- Transmission -->
+                    <div class="mb-5 border-b border-gray-50 pb-4">
+                         <h4 class="font-semibold text-sm text-gray-700 mb-2 flex items-center gap-2">
+                             <img :src="transmissionIcon" class="w-4 h-4 opacity-70"> Transmission
+                        </h4>
+                        <div class="space-y-2">
+                            <label v-for="option in facets.transmissions" :key="option.value" class="flex items-center gap-3 cursor-pointer group">
+                                <input type="checkbox" :checked="form.transmission === option.value" @change="form.transmission = form.transmission === option.value ? '' : option.value" 
+                                       class="w-4 h-4 rounded border-gray-300 text-customPrimaryColor focus:ring-customPrimaryColor transition">
+                                <span class="text-sm text-gray-600 group-hover:text-customPrimaryColor transition">{{ option.label }} <span class="text-xs text-gray-400">({{ option.count }})</span></span>
+                            </label>
+                        </div>
+                    </div>
+
+                    <!-- Fuel -->
+                    <div class="mb-5 border-b border-gray-50 pb-4">
+                         <h4 class="font-semibold text-sm text-gray-700 mb-2 flex items-center gap-2">
+                             <img :src="fuelIcon" class="w-4 h-4 opacity-70"> Fuel Type
+                        </h4>
+                        <div class="space-y-2">
+                            <label v-for="option in facets.fuels" :key="option.value" class="flex items-center gap-3 cursor-pointer group">
+                                <input type="checkbox" :checked="form.fuel === option.value" @change="form.fuel = form.fuel === option.value ? '' : option.value" 
+                                       class="w-4 h-4 rounded border-gray-300 text-customPrimaryColor focus:ring-customPrimaryColor transition">
+                                <span class="text-sm text-gray-600 group-hover:text-customPrimaryColor transition">{{ option.label }} <span class="text-xs text-gray-400">({{ option.count }})</span></span>
+                            </label>
+                        </div>
+                    </div>
+
+
+
+                </div>
+            </aside>
+
+            <!-- Main Content - Vehicle List -->
+            <div class="col-span-12 md:col-span-9 w-full">
+                <!-- Map and Sort Controls -->
+                <div class="flex justify-between items-center mb-4 bg-white p-3 rounded-xl border border-gray-100 shadow-sm">
+                    <h2 class="text-lg font-semibold text-gray-800 px-2">
+                        Available Vehicles
+                        <span class="text-sm font-normal text-gray-500 ml-2">({{ vehicles?.total || 0 }} found)</span>
+                    </h2>
+                    
+                    <button @click="showMap = true" class="flex items-center gap-2 px-4 py-2 bg-white border border-gray-200 text-gray-700 rounded-lg hover:bg-gray-50 hover:border-customPrimaryColor transition-all shadow-sm">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-customPrimaryColor" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" />
+                        </svg>
+                        <span>View Map</span>
+                    </button>
+                </div>
+
+                <div class="grid gap-5 grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 max-[768px]:grid-cols-1">
+                    <!-- Loading State or No Vehicles -->
+                    <div v-if="!clientFilteredVehicles || clientFilteredVehicles.length === 0"
+                        class="text-center text-gray-500 col-span-full flex flex-col justify-center items-center gap-4 py-10 bg-white rounded-xl border border-gray-100 border-dashed">
+                        <img :src=noVehicleIcon alt="" class="w-[15rem] opacity-80" loading="lazy">
+                        <p class="text-lg font-medium text-customPrimaryColor">No vehicles found</p>
+                        <span class="text-sm">Try adjusting your filters or search criteria.</span>
                         <button @click="resetFilters"
-                            class="mt-4 px-6 py-2 bg-customPrimaryColor text-white rounded-lg hover:bg-opacity-90 transition">
+                            class="mt-2 px-6 py-2 bg-customPrimaryColor text-white rounded-lg hover:bg-opacity-90 transition shadow-sm">
                             Reset All Filters
                         </button>
                     </div>
-                    <div v-for="vehicle in allVehiclesForMap" :key="vehicle.id"
-                        class="rounded-[12px] border-[1px] border-[#E7E7E7] relative overflow-hidden vehicle-card fade-up-hidden"
-                        :data-vehicle-id="vehicle.id"
-                        @mouseenter="highlightVehicleOnMap(vehicle)"
-                        @mouseleave="unhighlightVehicleOnMap(vehicle)">
-                        <div class="flex justify-end mb-3 absolute right-3 topseas-3">
-                            <div class="column flex justify-end">
-                                <button v-if="(!$page.props.auth?.user || isCustomer) && vehicle.source === 'internal'" @click.stop="toggleFavourite(vehicle)"
-                                    class="heart-icon bg-white rounded-[99px] p-2" :class="{
-                                        'filled-heart':
-                                            favoriteStatus[vehicle.id],
-                                        'pop-animation': popEffect[vehicle.id], // Apply animation class dynamically
-                                    }">
-                                    <img :src="favoriteStatus[vehicle.id]
-                                        ? FilledHeart
-                                        : Heart
-                                        " alt="Favorite" class="w-[1.5rem] transition-colors duration-300" loading="lazy" />
-                                </button>
-                            </div>
-                        </div>
-                        <a
-                            @click="saveSearchUrl"
-                            :href="vehicle.source !== 'internal' ? route(getProviderRoute(vehicle), { locale: page.props.locale, id: vehicle.id, provider: vehicle.source, location_id: vehicle.provider_pickup_id, start_date: form.date_from, end_date: form.date_to, start_time: form.start_time, end_time: form.end_time, dropoff_location_id: form.dropoff_location_id, rentalCode: form.rentalCode }) : route('vehicle.show', { locale: page.props.locale, id: vehicle.id, package: form.package_type, pickup_date: form.date_from, return_date: form.date_to })">
-                            <div class="column flex flex-col gap-5 items-start">
-                                <img :src="getImageSource(vehicle)"
-                                    @error="handleImageError"
-                                    @load="handleImageLoad"
-                                    :data-image-url="getImageSource(vehicle)"
-                                    alt="Vehicle Image"
-                                    class="w-full h-[250px] object-cover rounded-tl-lg rounded-tr-lg max-[768px]:h-[200px]" loading="lazy" />
-                                <span
-                                    class="bg-[#f5f5f5] ml-[1rem] inline-block px-8 py-2 text-center rounded-[40px] max-[768px]:text-[0.95rem]">
-                                    <template v-if="vehicle.source === 'okmobility'">
-                                        {{ vehicle.sipp_code || 'N/A' }}
-                                    </template>
-                                    <template v-else-if="vehicle.source === 'wheelsys'">
-                                        {{ vehicle.acriss_code || vehicle.group_code || 'N/A' }}
-                                    </template>
-                                    <template v-else-if="vehicle.source === 'adobe'">
-                                        {{ vehicle.category || 'N/A' }}
-                                    </template>
-                                    <template v-else>
-                                        {{ vehicle.model }}
-                                    </template>
-                                </span>
-                            </div>
-
-                            <div class="column p-[1rem]">
-                                <h5 class="font-medium text-[1.5rem] text-customPrimaryColor max-[768px]:text-[1.2rem]">
-                                    {{ vehicle.brand }}
-                                </h5>
-
-                                <!-- Add Reviews Here -->
-                                <div class="reviews mt-[1rem] flex gap-2 items-center" v-if="vehicle.source === 'internal'">
-                                    <div class="flex items-center gap-1">
-                                        <img v-for="n in 5" :key="n" :src="getStarIcon(
-                                            vehicle.review_count > 0
-                                                ? vehicle.average_rating
-                                                : 0,
-                                            n
-                                        )
-                                            " :alt="getStarAltText(
-                                                vehicle.review_count > 0
-                                                    ? vehicle.average_rating
-                                                    : 0,
-                                                n
-                                            )
-                                                " class="w-[16px] h-[16px]" loading="lazy" />
+                    
+                    <div class="col-span-full grid gap-5 grid-cols-1 lg:grid-cols-1 xl:grid-cols-1"> 
+                       <CarListingCard 
+                            v-for="vehicle in clientFilteredVehicles" 
+                            :key="vehicle.id" 
+                            :vehicle="vehicle"
+                            :form="form"
+                            :favorite-status="favoriteStatus[vehicle.id]"
+                            :pop-effect="popEffect[vehicle.id]"
+                            @toggle-favourite="toggleFavourite"
+                            @save-search-url="saveSearchUrl"
+                            @mouseenter="highlightVehicleOnMap(vehicle)"
+                            @mouseleave="unhighlightVehicleOnMap(vehicle)"
+                            class="vehicle-card fade-up-hidden"
+                        >
+                            <template #price>
+                                <!-- Price Slot Logic copied from inline to preserve reactivity -->
+                                <div v-if="form.package_type === 'day' || form.package_type === 'week' || form.package_type === 'month'">
+                                    <div v-if="vehicle.source !== 'internal'">
+                                        <div v-if="vehicle.source === 'wheelsys' && vehicle.price_per_day && vehicle.price_per_day > 0">
+                                            <span class="text-customPrimaryColor text-xl font-bold">
+                                                {{ getCurrencySymbol(selectedCurrency) }}{{ convertCurrency(vehicle.price_per_day, vehicle.currency || 'USD').toFixed(2) }}
+                                            </span>
+                                        </div>
+                                        <div v-else-if="vehicle.products && vehicle.products[0]?.total && vehicle.products[0].total > 0">
+                                            <span class="text-customPrimaryColor text-xl font-bold">
+                                                {{ getCurrencySymbol(selectedCurrency) }}{{ convertCurrency(parseFloat(vehicle.products[0].total), vehicle.products[0].currency).toFixed(2) }}
+                                            </span>
+                                        </div>
+                                        <div v-else>
+                                            <span class="text-sm text-gray-500">N/A</span>
+                                        </div>
                                     </div>
-                                    <span class="text-[1rem]" v-if="vehicle.review_count > 0">
-                                        {{
-                                            vehicle.average_rating.toFixed(1)
-                                        }}
-                                        ({{ vehicle.review_count }})
-                                    </span>
-                                    <span class="text-[1rem] text-gray-500" v-else>No reviews</span>
-                                </div>
-
-                                <!-- Show OK Mobility specific info -->
-                                <div class="mt-[1rem] text-sm text-gray-600" v-if="vehicle.source === 'okmobility'">
-                                    <div v-if="vehicle.station">
-                                        <strong>Station:</strong> {{ vehicle.station }}
-                                    </div>
-                                    <div v-if="vehicle.week_day_open && vehicle.week_day_close">
-                                        <strong>Hours:</strong> {{ vehicle.week_day_open }} - {{ vehicle.week_day_close }}
-                                    </div>
-                                    <div v-if="vehicle.extras_required && vehicle.extras_required.length > 0">
-                                        <strong>Required Extras:</strong> {{ vehicle.extras_required.join(', ') }}
-                                    </div>
-                                </div>
-
-                                <!-- Show Wheelsys specific info -->
-                                <div class="mt-[1rem] text-sm text-gray-600" v-if="vehicle.source === 'wheelsys'">
-                                    <div v-if="vehicle.bags || vehicle.suitcases">
-                                        <strong>Luggage:</strong> {{ vehicle.bags || 0 }} bags, {{ vehicle.suitcases || 0 }} suitcases
-                                    </div>
-                                </div>
-
-    
-                                 <div>
-                                    <span class="italic font-medium">{{vehicle.full_vehicle_address}}</span>
-                                 </div>
-
-                                <div class="car_short_info mt-[1rem] flex gap-3">
-                                    <img :src="carIcon" alt="" loading="lazy" />
-                                    <div class="features">
-                                        <span class="capitalize text-[1.15rem] max-[768px]:text-[1rem]">
-                                            <template v-if="vehicle.source === 'okmobility'">
-                                                SIPP: {{ vehicle.sipp_code || 'N/A' }}
-                                            </template>
-                                            <template v-else-if="vehicle.source === 'wheelsys'">
-                                                {{ vehicle.transmission }} .
-                                                {{ vehicle.fuel }} .
-                                                {{ vehicle.seating_capacity }} Seats .
-                                                {{ vehicle.doors }} Doors
-                                            </template>
-                                            <template v-else-if="vehicle.source === 'adobe'">
-                                                <span v-if="vehicle.manual !== undefined">{{ vehicle.manual ? 'Manual' : 'Automatic' }}</span>
-                                                <span v-if="vehicle.passengers && vehicle.passengers > 0"><template v-if="vehicle.manual !== undefined"> . </template>{{ vehicle.passengers }} Seats</span>
-                                                <span v-if="vehicle.doors && vehicle.doors > 0"><template v-if="(vehicle.manual !== undefined) || (vehicle.passengers && vehicle.passengers > 0)"> . </template>{{ vehicle.doors }} Doors</span>
-                                                <span v-if="vehicle.traction && vehicle.traction.trim()"><template v-if="(vehicle.manual !== undefined) || (vehicle.passengers && vehicle.passengers > 0) || (vehicle.doors && vehicle.doors > 0)"> . </template>{{ vehicle.traction }}</span>
-                                            </template>
-                                            <template v-else>
-                                                <span v-if="vehicle.transmission">{{ vehicle.transmission }}</span>
-                                                <span v-if="vehicle.fuel"><template v-if="vehicle.transmission"> . </template>{{ vehicle.fuel }}</span>
-                                                <span v-if="vehicle.seating_capacity"><template v-if="vehicle.transmission || vehicle.fuel"> . </template>{{ vehicle.seating_capacity }} Seats</span>
-                                                <span v-if="!vehicle.transmission && !vehicle.fuel && !vehicle.seating_capacity">Vehicle specs not available</span>
-                                            </template>
+                                    <div v-else-if="vehicle[priceField] && vehicle[priceField] > 0">
+                                        <span class="text-customPrimaryColor text-xl font-bold">
+                                            {{ getCurrencySymbol(selectedCurrency) }}{{ convertCurrency(vehicle[priceField], vehicle.vendor_profile?.currency).toFixed(2) }}
                                         </span>
                                     </div>
-                                </div>
-                                <div class="extra_details flex gap-5 mt-[1rem] items-center">
-                                    <div class="col flex gap-3" v-if="vehicle.source !== 'okmobility' && vehicle.source !== 'wheelsys' && vehicle.source !== 'adobe' && vehicle.mileage">
-                                        <img :src="mileageIcon" alt="" loading="lazy" /><span
-                                            class="text-[1.15rem] max-[768px]:text-[0.95rem]">
-                                            {{ vehicle.source === 'greenmotion' ? vehicle.mileage + ' MPG' : vehicle.mileage + ' km/L' }}</span>
+                                    <div v-else>
+                                        <span class="text-sm text-gray-500">N/A</span>
                                     </div>
-                                    <!-- OK Mobility mileage - only show if actually provided -->
-                                    <div class="col flex gap-3" v-else-if="vehicle.source === 'okmobility' && vehicle.mileage && vehicle.mileage !== 'Unlimited'">
-                                        <img :src="mileageIcon" alt="" loading="lazy" /><span
-                                            class="text-[1.15rem] max-[768px]:text-[0.95rem]">
-                                            {{ vehicle.mileage }}</span>
-                                    </div>
-                                    <!-- Wheelsys mileage - only show if actually provided -->
-                                    <div class="col flex gap-3" v-else-if="vehicle.source === 'wheelsys' && vehicle.mileage">
-                                        <img :src="mileageIcon" alt="" loading="lazy" /><span
-                                            class="text-[1.15rem] max-[768px]:text-[0.95rem]">
-                                            {{ vehicle.mileage }}</span>
-                                    </div>
-                                    <!-- Adobe mileage - removed as API doesn't provide this -->
-                                    <!-- <div class="col flex gap-3" v-if="vehicle.distance_in_km !== undefined">
-                                        <img :src="walkIcon" alt="" /><span
-                                            class="text-[1.15rem] max-[768px]:text-[0.95rem]">
-                                            {{ vehicle.distance_in_km.toFixed(1) }}km away</span>
-                                    </div> -->
                                 </div>
-
-
-                                <div class="benefits mt-[2rem] grid grid-cols-2 gap-3">
-                                    <!-- Free Cancellation based on the selected package type -->
-                                    <span v-if="
-                                        vehicle.source !== 'wheelsys' &&
-                                        vehicle.benefits &&
-                                        vehicle.benefits.cancellation_available_per_day
-                                    " class="flex gap-3 items-center text-[12px]">
-                                        <img :src="check" alt="" loading="lazy" />Free
-                                        Cancellation ({{
-                                            vehicle.benefits
-                                                .cancellation_available_per_day_date
-                                        }}
-                                        days)
-                                    </span>
-                                    <span v-else-if="
-                                        vehicle.benefits &&
-                                        vehicle.benefits.cancellation_available_per_week
-                                    " class="flex gap-3 items-center text-[12px]">
-                                        <img :src="check" alt="" loading="lazy" />Free
-                                        Cancellation ({{
-                                            vehicle.benefits
-                                                .cancellation_available_per_week_date
-                                        }}
-                                        days)
-                                    </span>
-                                    <span v-else-if="
-                                        vehicle.benefits &&
-                                        vehicle.benefits.cancellation_available_per_month
-                                    " class="flex gap-3 items-center text-[12px]">
-                                        <img :src="check" alt="" loading="lazy" />Free
-                                        Cancellation ({{
-                                            vehicle.benefits
-                                                .cancellation_available_per_month_date
-                                        }}
-                                        days)
-                                    </span>
-                                    <span v-else-if="vehicle.source === 'greenmotion' && vehicle.benefits?.cancellation_available_per_day" class="flex gap-3 items-center text-[12px]">
-                                        <img :src="check" alt="" loading="lazy" />Free Cancellation
-                                    </span>
-
-                                    <!-- Mileage information based on the selected package type -->
-                                    <span v-if="
-                                        vehicle.source !== 'okmobility' &&
-                                        vehicle.source !== 'wheelsys' &&
-                                        vehicle.source !== 'adobe' &&
-                                        vehicle.source !== 'locauto_rent' &&
-                                        vehicle.benefits &&
-                                        vehicle.benefits.limited_km_per_day === false
-                                    " class="flex gap-3 items-center text-[12px]">
-                                        <img :src="check" alt="" loading="lazy" />Unlimited
-                                        mileage
-                                    </span>
-                                    <span v-else-if="
-                                        vehicle.source !== 'okmobility' &&
-                                        vehicle.benefits &&
-                                        vehicle.benefits.limited_km_per_day
-                                    " class="flex gap-3 items-center text-[12px]">
-                                        <img :src="check" alt="" loading="lazy" />Limited to
-                                        {{
-                                            vehicle.benefits
-                                                .limited_km_per_day_range
-                                        }}
-                                        km/day
-                                    </span>
-                                    <!-- OK Mobility mileage info - only show if limited -->
-                                    <span v-else-if="vehicle.source === 'okmobility' && vehicle.benefits?.limited_km_per_day === true" class="flex gap-3 items-center text-[12px]">
-                                        <img :src="check" alt="" loading="lazy" />Limited mileage
-                                    </span>
-
-
-                                    <!-- Additional cost per km if applicable -->
-                                    <span v-if="
-                                        vehicle.source !== 'okmobility' &&
-                                        vehicle.benefits &&
-                                        vehicle.benefits.price_per_km_per_day
-                                    " class="flex gap-3 items-center text-[12px]">
-                                        <img :src="check" alt="" loading="lazy" />{{
-                                            vehicle.benefits
-                                                .price_per_km_per_day
-                                        }}/km extra above limit
-                                    </span>
-                                    <span v-else-if="
-                                        vehicle.source !== 'okmobility' &&
-                                        vehicle.benefits &&
-                                        vehicle.benefits.price_per_km_per_week
-                                    " class="flex gap-3 items-center text-[12px]">
-                                        <img :src="check" alt="" loading="lazy" />{{
-                                            vehicle.benefits
-                                                .price_per_km_per_week
-                                        }}/km extra above limit
-                                    </span>
-                                    <span v-else-if="
-                                        vehicle.source !== 'okmobility' &&
-                                        vehicle.benefits &&
-                                        vehicle.benefits.price_per_km_per_month
-                                    " class="flex gap-3 items-center text-[12px]">
-                                        <img :src="check" alt="" loading="lazy" />{{
-                                            vehicle.benefits
-                                                .price_per_km_per_month
-                                        }}/km extra above limit
-                                    </span>
-
-                                    <!-- Minimum driver age if applicable -->
-                                    <span v-if="
-                                        vehicle.benefits &&
-                                        vehicle.benefits.minimum_driver_age
-                                    " class="flex gap-3 items-center text-[12px]">
-                                        <img :src="check" alt="" loading="lazy" />Min age:
-                                        {{
-                                            vehicle.benefits.minimum_driver_age
-                                        }}
-                                        years
-                                    </span>
-                                    <span v-else-if="vehicle.source === 'greenmotion' && vehicle.benefits?.minimum_driver_age" class="flex gap-3 items-center text-[12px]">
-                                        <img :src="check" alt="" loading="lazy" />Min age: {{ vehicle.benefits.minimum_driver_age }} years
-                                    </span>
-                                    <span v-else-if="vehicle.source === 'greenmotion' && vehicle.benefits?.fuel_policy" class="flex gap-3 items-center text-[12px]">
-                                        <img :src="check" alt="" loading="lazy" />Fuel Policy: {{ vehicle.benefits.fuel_policy }}
-                                    </span>
-                                                <span v-else-if="vehicle.source === 'wheelsys' && vehicle.benefits?.included_km" class="flex gap-3 items-center text-[12px]">
-                                        <img :src="check" alt="" loading="lazy" />{{ vehicle.benefits.included_km }} km included
-                                    </span>
-                                    <span v-if="vehicle.source === 'wheelsys' && vehicle.benefits?.cancellation_available_per_day" class="flex gap-3 items-center text-[12px]">
-                                        <img :src="check" alt="" loading="lazy" />Free Cancellation
-                                    </span>
-                                    <span v-else-if="vehicle.source === 'wheelsys' && vehicle.benefits?.fuel_policy" class="flex gap-3 items-center text-[12px]">
-                                        <img :src="check" alt="" loading="lazy" />Fuel Policy: {{ vehicle.benefits.fuel_policy }}
-                                    </span>
-                                    <span v-else-if="vehicle.source === 'wheelsys' && vehicle.benefits?.minimum_driver_age" class="flex gap-3 items-center text-[12px]">
-                                        <img :src="check" alt="" loading="lazy" />Min age: {{ vehicle.benefits.minimum_driver_age }} years
-                                    </span>
-                                            <span v-if="vehicle.source === 'adobe'" class="flex gap-3 items-center text-[12px]">
-                                        <img :src="check" alt="" loading="lazy" />Liability Protection included
-                                    </span>
-                                    <span v-if="vehicle.source === 'adobe'" class="flex gap-3 items-center text-[12px]">
-                                        <img :src="check" alt="" loading="lazy" />24/7 Roadside Assistance
-                                    </span>
-                                    
-                                    <span v-if="vehicle.source === 'locauto_rent'" class="flex gap-3 items-center text-[12px]">
-                                        <img :src="check" alt="" loading="lazy" />No Credit Card Fees
-                                    </span>
-                                    <span v-if="vehicle.source === 'locauto_rent'" class="flex gap-3 items-center text-[12px]">
-                                        <img :src="check" alt="" loading="lazy" />Free Cancellation
-                                    </span>
-                                    <span v-if="vehicle.source === 'locauto_rent' && vehicle.benefits?.minimum_driver_age" class="flex gap-3 items-center text-[12px]">
-                                        <img :src="check" alt="" loading="lazy" />Min age: {{ vehicle.benefits.minimum_driver_age }} years
-                                    </span>
-                                </div>
-
-                                <div class="mt-[2rem] flex justify-between items-center">
-                                    <!-- Conditional Price Display Block -->
-                                    <div>
-                                        <!-- If a specific package_type filter is active (day, week, or month) -->
-                                        <div v-if="form.package_type === 'day' || form.package_type === 'week' || form.package_type === 'month'">
-                                            <div v-if="vehicle.source !== 'internal'">
-                                                <div v-if="vehicle.source === 'wheelsys' && vehicle.price_per_day && vehicle.price_per_day > 0">
-                                                    <span class="text-customPrimaryColor text-[1.875rem] font-medium max-[768px]:text-[1.3rem] max-[768px]:font-bold">
-                                                        {{ getCurrencySymbol(selectedCurrency) }}{{ convertCurrency(vehicle.price_per_day, vehicle.currency || 'USD').toFixed(2) }}
-                                                    </span>
-                                                    <span class="text-sm text-gray-600">per rental</span>
-                                                </div>
-                                                <div v-else-if="vehicle.products && vehicle.products[0]?.total && vehicle.products[0].total > 0">
-                                                    <span class="text-customPrimaryColor text-[1.875rem] font-medium max-[768px]:text-[1.3rem] max-[768px]:font-bold">
-                                                        {{ getCurrencySymbol(selectedCurrency) }}{{ convertCurrency(parseFloat(vehicle.products[0].total), vehicle.products[0].currency).toFixed(2) }}
-                                                    </span>
-                                                    <span class="text-sm text-gray-600">total for {{ numberOfRentalDays }} {{ numberOfRentalDays === 1 ? 'day' : 'days' }}</span>
-                                                </div>
-                                                <div v-else>
-                                                    <span class="text-sm text-gray-500">Price not available</span>
-                                                </div>
-                                            </div>
-                                            <div v-else-if="vehicle[priceField] && vehicle[priceField] > 0">
-                                                <span class="text-customPrimaryColor text-[1.875rem] font-medium max-[768px]:text-[1.3rem] max-[768px]:font-bold">
-                                                    {{ getCurrencySymbol(selectedCurrency) }}{{ convertCurrency(vehicle[priceField], vehicle.vendor_profile?.currency).toFixed(2) }}
-                                                </span>
-                                                <span>/{{ priceUnit }}</span>
-                                            </div>
-                                            <div v-else>
-                                                <span class="text-sm text-gray-500">Price not available for {{ priceUnit }}</span>
-                                            </div>
+                                <div v-else>
+                                    <template v-if="vehicle.source !== 'internal'">
+                                        <div v-if="vehicle.source === 'wheelsys' && vehicle.price_per_day && vehicle.price_per_day > 0">
+                                            <span class="text-customPrimaryColor text-xl font-bold">
+                                                {{ getCurrencySymbol(selectedCurrency) }}{{ convertCurrency(vehicle.price_per_day, vehicle.currency || 'USD').toFixed(2) }}
+                                            </span>
                                         </div>
-                                        <!-- Else (no package_type filter is active, form.package_type is '') -->
-                                        <div v-else class="flex flex-col">
-                                            <template v-if="vehicle.source !== 'internal'">
-                                                <div v-if="vehicle.source === 'wheelsys' && vehicle.price_per_day && vehicle.price_per_day > 0" class="flex items-baseline">
-                                                    <span class="text-customPrimaryColor text-lg font-semibold">
-                                                        {{ getCurrencySymbol(selectedCurrency) }}{{ convertCurrency(vehicle.price_per_day, vehicle.currency || 'USD').toFixed(2) }}
-                                                    </span>
-                                                    <span class="text-xs text-gray-600 ml-1">total for {{ numberOfRentalDays }} {{ numberOfRentalDays === 1 ? 'day' : 'days' }}</span>
-                                                </div>
-                                                <div v-else-if="vehicle.source === 'adobe' && vehicle.tdr && vehicle.tdr > 0" class="flex items-baseline">
-                                                    <span class="text-customPrimaryColor text-lg font-semibold">
-                                                        {{ getCurrencySymbol(selectedCurrency) }}{{ convertCurrency(vehicle.tdr, 'USD').toFixed(2) }}
-                                                    </span>
-                                                    <span class="text-xs text-gray-600 ml-1">total for {{ numberOfRentalDays }} {{ numberOfRentalDays === 1 ? 'day' : 'days' }}</span>
-                                                </div>
-                                                <div v-else-if="vehicle.products && vehicle.products[0]?.total && vehicle.products[0].total > 0" class="flex items-baseline flex-wrap">
-                                                    <span class="text-customPrimaryColor text-lg font-semibold">
-                                                        {{ getCurrencySymbol(selectedCurrency) }}{{ convertCurrency(parseFloat(vehicle.products[0].total), vehicle.products[0].currency).toFixed(2) }}
-                                                    </span>
-                                                    <span class="text-xs text-gray-600 ml-1">total for {{ numberOfRentalDays }} {{ numberOfRentalDays === 1 ? 'day' : 'days' }}</span>
-                                                </div>
-                                                <div v-else class="mt-1">
-                                                    <span class="text-sm text-gray-500">Price not available</span>
-                                                </div>
-                                            </template>
-                                            <template v-else>
-                                                <div v-if="vehicle.price_per_day && vehicle.price_per_day > 0" class="flex items-baseline">
-                                                    <span class="text-customPrimaryColor text-lg font-semibold">
-                                                        {{ getCurrencySymbol(selectedCurrency) }}{{ convertCurrency(vehicle.price_per_day, vehicle.vendor_profile?.currency).toFixed(2) }}
-                                                    </span>
-                                                    <span class="text-xs text-gray-600 ml-1">/day</span>
-                                                </div>
-                                                <div v-if="vehicle.price_per_week && vehicle.price_per_week > 0" class="flex items-baseline mt-1">
-                                                    <span class="text-customPrimaryColor text-lg font-semibold">
-                                                        {{ getCurrencySymbol(selectedCurrency) }}{{ convertCurrency(vehicle.price_per_week, vehicle.vendor_profile?.currency).toFixed(2) }}
-                                                    </span>
-                                                    <span class="text-xs text-gray-600 ml-1">/week</span>
-                                                </div>
-                                                <div v-if="vehicle.price_per_month && vehicle.price_per_month > 0" class="flex items-baseline mt-1">
-                                                    <span class="text-customPrimaryColor text-lg font-semibold">
-                                                        {{ getCurrencySymbol(selectedCurrency) }}{{ convertCurrency(vehicle.price_per_month, vehicle.vendor_profile?.currency).toFixed(2) }}
-                                                    </span>
-                                                    <span class="text-xs text-gray-600 ml-1">/month</span>
-                                                </div>
-                                                <div v-if="!(vehicle.price_per_day && vehicle.price_per_day > 0) && !(vehicle.price_per_week && vehicle.price_per_week > 0) && !(vehicle.price_per_month && vehicle.price_per_month > 0)" class="mt-1">
-                                                    <span class="text-sm text-gray-500">Price not available</span>
-                                                </div>
-                                            </template>
+                                        <div v-else-if="vehicle.source === 'locauto_rent' && vehicle.price_per_day && vehicle.price_per_day > 0">
+                                              <span class="text-customPrimaryColor text-xl font-bold">
+                                                {{ getCurrencySymbol(selectedCurrency) }}{{ convertCurrency(vehicle.price_per_day, vehicle.currency || 'USD').toFixed(2) }}
+                                            </span>
                                         </div>
-                                    </div>
-                                    <img :src="goIcon" alt="Go" class="max-[768px]:w-[35px]" loading="lazy" />
+                                        <div v-else-if="vehicle.source === 'adobe' && vehicle.tdr && vehicle.tdr > 0">
+                                            <span class="text-customPrimaryColor text-xl font-bold">
+                                                {{ getCurrencySymbol(selectedCurrency) }}{{ convertCurrency(vehicle.tdr, 'USD').toFixed(2) }}
+                                            </span>
+                                        </div>
+                                        <div v-else-if="vehicle.products && vehicle.products[0]?.total && vehicle.products[0].total > 0">
+                                            <span class="text-customPrimaryColor text-xl font-bold">
+                                                {{ getCurrencySymbol(selectedCurrency) }}{{ convertCurrency(parseFloat(vehicle.products[0].total), vehicle.products[0].currency).toFixed(2) }}
+                                            </span>
+                                        </div>
+                                        <div v-else>
+                                            <span class="text-sm text-gray-500">N/A</span>
+                                        </div>
+                                    </template>
+                                    <template v-else>
+                                        <div v-if="vehicle.price_per_day">
+                                            <span class="text-customPrimaryColor text-xl font-bold">
+                                                {{ getCurrencySymbol(selectedCurrency) }}{{ convertCurrency(vehicle.price_per_day, vehicle.vendor_profile?.currency).toFixed(2) }}
+                                            </span>
+                                        </div>
+                                    </template>
                                 </div>
-                            </div>
-                        </a>
+                            </template>
+                        </CarListingCard>
                     </div>
                 </div>
                 <!-- Pagination -->
@@ -2360,24 +2073,19 @@ watch(
                     <div v-html="pagination_links"></div>
                 </div>
             </div>
-            <!-- Right Column - Map -->
-            <div class="w-full sticky top-0 h-[100vh] max-[768px]:hidden mr-[-2.1%]" v-show="showMap">
-                <div class="bg-white h-full">
-                    <div id="map" class="h-full rounded-lg"></div>
-                </div>
-            </div>
+            
         </div>
     </div>
 
-    <!-- Mobile Map Modal -->
-    <div v-if="showMobileMapModal" class="fixed inset-0 z-[9999] md:hidden">
+    <!-- Map Modal (Global) -->
+    <div v-if="showMap" class="fixed inset-0 z-[9999]">
         <!-- Full-screen overlay with map -->
         <div class="relative w-full h-full bg-white">
             <!-- Close Button Header -->
             <div class="absolute top-0 left-0 right-0 z-[10000] bg-white shadow-md">
                 <div class="flex items-center justify-between p-4">
                     <h2 class="text-xl font-semibold text-customPrimaryColor">Vehicle Map</h2>
-                    <button @click="showMobileMapModal = false"
+                    <button @click="showMap = false"
                         class="p-2 rounded-full bg-gray-100 hover:bg-gray-200 transition-colors duration-200">
                         <svg class="w-6 h-6 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
@@ -2388,7 +2096,8 @@ watch(
 
             <!-- Map Container -->
             <div class="w-full h-full pt-16">
-                <div id="mobile-map" class="w-full h-full"></div>
+                 <!-- Using 'map' ID to reuse existing desktop initMap logic -->
+                <div id="map" class="w-full h-full"></div>
             </div>
         </div>
     </div>
@@ -2443,21 +2152,12 @@ watch(
     z-index: 400;
 }
 
-.leaflet-marker-icon {
-    /* Removed transform: translate3d(0, 0, 1000px); as it interferes with Leaflet's positioning */
-}
-
 .leaflet-popup {
     z-index: 1001 !important;
 }
 
-/* Hardware acceleration - Removed explicit transforms as they might interfere with Leaflet's positioning */
-.leaflet-marker-icon,
-.leaflet-marker-shadow,
-.leaflet-popup {
-    /* will-change: transform; */
-    /* transform: translate3d(0, 0, 0); */
-}
+
+
 
 /* Additional styles to ensure markers are always visible */
 .leaflet-container {
@@ -2479,6 +2179,8 @@ watch(
 
 .filter-slot>div>select {
     -webkit-appearance: none;
+    -moz-appearance: none;
+    appearance: none;
 }
 
 /* Rotate caret when select is focused */
