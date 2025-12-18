@@ -27,8 +27,14 @@ class SearchController extends Controller
     protected $wheelsysService;
     protected $locautoRentService;
 
-    public function __construct(GreenMotionService $greenMotionService, OkMobilityService $okMobilityService, LocationSearchService $locationSearchService, AdobeCarService $adobeCarService, WheelsysService $wheelsysService, LocautoRentService $locautoRentService)
-    {
+    public function __construct(
+        GreenMotionService $greenMotionService,
+        OkMobilityService $okMobilityService,
+        LocationSearchService $locationSearchService,
+        AdobeCarService $adobeCarService,
+        WheelsysService $wheelsysService,
+        LocautoRentService $locautoRentService
+    ) {
         $this->greenMotionService = $greenMotionService;
         $this->okMobilityService = $okMobilityService;
         $this->locationSearchService = $locationSearchService;
@@ -768,13 +774,14 @@ class SearchController extends Controller
 
                             if ($xmlObject !== false) {
                                 Log::info('OK Mobility XML parsed successfully');
-                                // Register the correct namespace for OK Mobility
-                                $xmlObject->registerXPathNamespace('ns', 'http://tempuri.org/');
+                                // Register namespaces
+                                $xmlObject->registerXPathNamespace('soap', 'http://schemas.xmlsoap.org/soap/envelope/');
+                                $xmlObject->registerXPathNamespace('get', 'http://www.OKGroup.es/RentaCarWebService/getWSDL');
 
-                                // Try both possible XPath patterns
+                                // Try different XPath patterns to find vehicles robustly
                                 $vehicles = $xmlObject->xpath('//get:getMultiplePrice') ?:
-                                    $xmlObject->xpath('//getMultiplePricesResult/getMultiplePrice') ?:
-                                    $xmlObject->xpath('//ns:getMultiplePrice');
+                                    $xmlObject->xpath('//getMultiplePrice') ?:
+                                    $xmlObject->xpath('//getMultiplePricesResult/getMultiplePrice');
 
                                 Log::info('OK Mobility vehicles found in XML: ' . count($vehicles));
 
@@ -803,7 +810,7 @@ class SearchController extends Controller
 
                                     // Parse SIPP code for vehicle details
                                     $sippCode = $vehicleData['SIPP'] ?? null;
-                                    $parsedSipp = $this->parseSippCode($sippCode);
+                                    $parsedSipp = $this->parseSippCode($sippCode, 'okmobility');
 
                                     // Extract extras if available
                                     $extras = [];
@@ -820,12 +827,19 @@ class SearchController extends Controller
                                         $features[] = 'Air Conditioning';
                                     }
 
+                                    // Extract brand and model with SIPP fallback
+                                    $brandName = 'OK Mobility';
+                                    $vehicleModel = $groupFullName;
+
+                                    if ($vehicleModel === $sippCode || empty($vehicleModel)) {
+                                        $vehicleModel = $parsedSipp['dynamic_name'] ?? $groupFullName;
+                                    }
+
                                     $okMobilityVehicles->push((object) [
                                         'id' => 'okmobility_' . $groupId . '_' . md5($token),
                                         'source' => 'okmobility',
-                                        // ... existing fields ...
-                                        'brand' => $vehicleName, // Use the full Group_Name as provided by API
-                                        'model' => $vehicleName, // Same as brand since OK Mobility provides full descriptive name
+                                        'brand' => $brandName,
+                                        'model' => $vehicleModel,
                                         'sipp_code' => $sippCode,
                                         'image' => !empty($vehicleData['imageURL']) ? $vehicleData['imageURL'] : $this->getOkMobilityImageUrl($groupId),
                                         'price_per_day' => $pricePerDay,
@@ -835,6 +849,7 @@ class SearchController extends Controller
                                         'transmission' => $parsedSipp['transmission'],
                                         'fuel' => $parsedSipp['fuel'],
                                         'seating_capacity' => $parsedSipp['seating_capacity'] ?? 4, // Use parsed seating or default
+                                        'doors' => $parsedSipp['doors'] ?? 4, // Use parsed doors
                                         'category' => $parsedSipp['category'] ?? 'Unknown', // Use parsed SIPP category
                                         'mileage' => $mileage,
                                         'features' => $features, // Add features here
@@ -1213,7 +1228,9 @@ class SearchController extends Controller
             ->unique()
             ->filter()
             ->map(function ($cat) {
-                return ['id' => $cat, 'name' => ucfirst($cat)];
+                // Defensive check: ensure $cat is a string before calling ucfirst
+                $catStr = is_string($cat) ? $cat : (is_array($cat) ? ($cat['name'] ?? 'Unknown') : (string) $cat);
+                return ['id' => $cat, 'name' => ucfirst($catStr)];
             })
             ->values()
             ->all();
@@ -1251,574 +1268,6 @@ class SearchController extends Controller
         ]);
     }
 
-    public function searchByCategory(Request $request, $locale, $slug = null)
-    {
-        $validated = $request->validate([
-            'seating_capacity' => 'nullable|integer',
-            'brand' => 'nullable|string',
-            'transmission' => 'nullable|string|in:automatic,manual',
-            'fuel' => 'nullable|string|in:petrol,diesel,electric',
-            'price_range' => 'nullable|string',
-            'color' => 'nullable|string',
-            'mileage' => 'nullable|string',
-            'date_from' => 'nullable|date',
-            'date_to' => 'nullable|date|after:date_from',
-            'start_time' => 'nullable|string',
-            'end_time' => 'nullable|string',
-            'age' => 'nullable|integer',
-            'rentalCode' => 'nullable|string',
-            'currency' => 'nullable|string|max:3',
-            'userid' => 'nullable|string',
-            'username' => 'nullable|string',
-            'language' => 'nullable|string',
-            'full_credit' => 'nullable|string',
-            'promocode' => 'nullable|string',
-            'dropoff_location_id' => 'nullable|string',
-            'dropoff_where' => 'nullable|string',
-            'where' => 'nullable|string',
-            'location' => 'nullable|string',
-            'city' => 'nullable|string',
-            'state' => 'nullable|string',
-            'country' => 'nullable|string',
-            'latitude' => 'nullable|numeric',
-            'longitude' => 'nullable|numeric',
-            'radius' => 'nullable|numeric',
-            'package_type' => 'nullable|string|in:day,week,month',
-            'matched_field' => 'nullable|string|in:location,city,state,country',
-            'source' => 'nullable|string|in:internal,greenmotion', // New: Source of the location
-            'greenmotion_location_id' => 'nullable|string', // New: GreenMotion specific location ID
-        ]);
-
-        $validated['category_slug'] = $slug;
-
-        $internalVehiclesQuery = Vehicle::query();
-
-        if ($slug) {
-            $category = VehicleCategory::where('slug', $slug)->first();
-            if ($category) {
-                $internalVehiclesQuery->where('category_id', $category->id);
-            } else {
-                $internalVehiclesQuery->whereRaw('1 = 0');
-            }
-        }
-
-        $internalVehiclesQuery->whereIn('status', ['available', 'rented'])
-            ->with('images', 'bookings', 'vendorProfile', 'benefits');
-
-        if (!empty($validated['date_from']) && !empty($validated['date_to'])) {
-            $internalVehiclesQuery->whereDoesntHave('bookings', function ($q) use ($validated) {
-                $q->where(function ($query) use ($validated) {
-                    $query->whereBetween('bookings.pickup_date', [$validated['date_from'], $validated['date_to']])
-                        ->orWhereBetween('bookings.return_date', [$validated['date_from'], $validated['date_to']])
-                        ->orWhere(function ($q) use ($validated) {
-                            $q->where('bookings.pickup_date', '<=', $validated['date_from'])
-                                ->where('bookings.return_date', '>=', $validated['date_to']);
-                        });
-                });
-            });
-
-            $internalVehiclesQuery->whereDoesntHave('blockings', function ($q) use ($validated) {
-                $q->where(function ($query) use ($validated) {
-                    $query->whereBetween('blocking_start_date', [$validated['date_from'], $validated['date_to']])
-                        ->orWhereBetween('blocking_end_date', [$validated['date_from'], $validated['date_to']])
-                        ->orWhere(function ($q) use ($validated) {
-                            $q->where('blocking_start_date', '<=', $validated['date_from'])
-                                ->where('blocking_end_date', '>=', $validated['date_to']);
-                        });
-                });
-            });
-        }
-
-        if (!empty($validated['source'])) {
-            if ($validated['source'] === 'internal') {
-                if (!empty($validated['matched_field'])) {
-                    $fieldToQuery = null;
-                    $valueToQuery = null;
-
-                    switch ($validated['matched_field']) {
-                        case 'location':
-                            if (!empty($validated['location'])) {
-                                $fieldToQuery = 'location';
-                                $valueToQuery = $validated['location'];
-                            }
-                            break;
-                        case 'city':
-                            if (!empty($validated['city'])) {
-                                $fieldToQuery = 'city';
-                                $valueToQuery = $validated['city'];
-                            }
-                            break;
-                        case 'state':
-                            if (!empty($validated['state'])) {
-                                $fieldToQuery = 'state';
-                                $valueToQuery = $validated['state'];
-                            }
-                            break;
-                        case 'country':
-                            if (!empty($validated['country'])) {
-                                $fieldToQuery = 'country';
-                                $valueToQuery = $validated['country'];
-                            }
-                            break;
-                    }
-                    if ($fieldToQuery && $valueToQuery) {
-                        $internalVehiclesQuery->where($fieldToQuery, $valueToQuery);
-                    }
-                } elseif (!empty($validated['latitude']) && !empty($validated['longitude']) && !empty($validated['radius'])) {
-                    $lat = $validated['latitude'];
-                    $lon = $validated['longitude'];
-                    $radiusInKm = $validated['radius'] / 1000;
-
-                    $internalVehiclesQuery->selectRaw('*, ( 6371 * acos(
-                        cos(radians(?)) * cos(radians(latitude)) *
-                        cos(radians(longitude) - radians(?)) +
-                        sin(radians(?)) * sin(radians(latitude))
-                    ) ) AS distance_in_km', [
-                        $lat,
-                        $lon,
-                        $lat
-                    ])
-                        ->havingRaw('distance_in_km <= ?', [$radiusInKm])
-                        ->orderBy('distance_in_km');
-                } elseif (!empty($validated['where'])) {
-                    $searchTerm = $validated['where'];
-                    $internalVehiclesQuery->where(function ($q) use ($searchTerm) {
-                        $q->where('location', 'LIKE', "%{$searchTerm}%")
-                            ->orWhere('city', 'LIKE', "%{$searchTerm}%")
-                            ->orWhere('state', 'LIKE', "%{$searchTerm}%")
-                            ->orWhere('country', 'LIKE', "%{$searchTerm}%");
-                    });
-                }
-            } elseif ($validated['source'] === 'greenmotion') {
-                $internalVehiclesQuery->whereRaw('1 = 0');
-            }
-        } else {
-            if (!empty($validated['matched_field'])) {
-                $fieldToQuery = null;
-                $valueToQuery = null;
-
-                switch ($validated['matched_field']) {
-                    case 'location':
-                        if (!empty($validated['location'])) {
-                            $fieldToQuery = 'location';
-                            $valueToQuery = $validated['location'];
-                        }
-                        break;
-                    case 'city':
-                        if (!empty($validated['city'])) {
-                            $fieldToQuery = 'city';
-                            $valueToQuery = $validated['city'];
-                        }
-                        break;
-                    case 'state':
-                        if (!empty($validated['state'])) {
-                            $fieldToQuery = 'state';
-                            $valueToQuery = $validated['state'];
-                        }
-                        break;
-                    case 'country':
-                        if (!empty($validated['country'])) {
-                            $fieldToQuery = 'country';
-                            $valueToQuery = $validated['country'];
-                        }
-                        break;
-                }
-                if ($fieldToQuery && $valueToQuery) {
-                    $internalVehiclesQuery->where($fieldToQuery, $valueToQuery);
-                }
-            } elseif (!empty($validated['latitude']) && !empty($validated['longitude']) && !empty($validated['radius'])) {
-                $lat = $validated['latitude'];
-                $lon = $validated['longitude'];
-                $radiusInKm = $validated['radius'] / 1000;
-
-                $internalVehiclesQuery->selectRaw('*, ( 6371 * acos(
-                    cos(radians(?)) * cos(radians(latitude)) *
-                    cos(radians(longitude) - radians(?)) +
-                    sin(radians(?)) * sin(radians(latitude))
-                ) ) AS distance_in_km', [
-                    $lat,
-                    $lon,
-                    $lat
-                ])
-                    ->havingRaw('distance_in_km <= ?', [$radiusInKm])
-                    ->orderBy('distance_in_km');
-            } elseif (!empty($validated['where'])) {
-                $searchTerm = $validated['where'];
-                $internalVehiclesQuery->where(function ($q) use ($searchTerm) {
-                    $q->where('location', 'LIKE', "%{$searchTerm}%")
-                        ->orWhere('city', 'LIKE', "%{$searchTerm}%")
-                        ->orWhere('state', 'LIKE', "%{$searchTerm}%")
-                        ->orWhere('country', 'LIKE', "%{$searchTerm}%");
-                });
-            }
-        }
-
-        $queryForOptionsCategory = clone $internalVehiclesQuery;
-        $potentialVehiclesForOptionsCategory = $queryForOptionsCategory->get();
-
-        $brands = $potentialVehiclesForOptionsCategory->pluck('brand')->unique()->filter()->values()->all();
-        $colors = $potentialVehiclesForOptionsCategory->pluck('color')->unique()->filter()->values()->all();
-        $seatingCapacities = $potentialVehiclesForOptionsCategory->pluck('seating_capacity')->unique()->filter()->values()->all();
-        $transmissions = $potentialVehiclesForOptionsCategory->pluck('transmission')->unique()->filter()->values()->all();
-        $fuels = $potentialVehiclesForOptionsCategory->pluck('fuel')->unique()->filter()->values()->all();
-        $mileages = $potentialVehiclesForOptionsCategory->pluck('mileage')->unique()->filter()->map(function ($mileage) {
-            if ($mileage >= 0 && $mileage <= 25)
-                return '0-25';
-            if ($mileage > 25 && $mileage <= 50)
-                return '25-50';
-            if ($mileage > 50 && $mileage <= 75)
-                return '50-75';
-            if ($mileage > 75 && $mileage <= 100)
-                return '75-100';
-            if ($mileage > 100 && $mileage <= 120)
-                return '100-120';
-            return null;
-        })->filter()->unique()->values()->all();
-        $categoriesFromOptions = [];
-        $categoryIds = $potentialVehiclesForOptionsCategory->pluck('category_id')->unique()->filter();
-        if ($categoryIds->isNotEmpty()) {
-            $categoriesFromOptions = VehicleCategory::whereIn('id', $categoryIds)->select('id', 'name')->get()->toArray();
-        }
-
-        $allCategoriesForPage = VehicleCategory::select('id', 'name', 'slug')->get()->toArray();
-
-
-        if (!empty($validated['seating_capacity'])) {
-            $internalVehiclesQuery->where('seating_capacity', $validated['seating_capacity']);
-        }
-        if (!empty($validated['brand'])) {
-            $internalVehiclesQuery->where('brand', $validated['brand']);
-        }
-        if (!empty($validated['transmission'])) {
-            $internalVehiclesQuery->where('transmission', $validated['transmission']);
-        }
-        if (!empty($validated['fuel'])) {
-            $internalVehiclesQuery->where('fuel', $validated['fuel']);
-        }
-        if (!empty($validated['category_id'])) {
-            // If filter is numeric, use vehicle_category_id/category_id
-            // If filter is string, internal vehicles might not match unless we search by category name?
-            // For internal, we usually use ID.
-            if (is_numeric($validated['category_id'])) {
-                $internalVehiclesQuery->where('vehicle_category_id', $validated['category_id']);
-            } else {
-                // Try to find category ID by name if a string is passed (unlikely for internal logic but good callback)
-                // Or just fail for internal if string is used (assuming user selected a provider category like "Mini")
-                // Let's assume mismatch -> no internal results
-                $internalVehiclesQuery->where('id', -1); // Force empty
-            }
-        }
-        if (!empty($validated['price_range'])) {
-            $range = explode('-', $validated['price_range']);
-            $internalVehiclesQuery->whereBetween('price_per_day', [(int) $range[0], (int) $range[1]]);
-        }
-        if (!empty($validated['color'])) {
-            $internalVehiclesQuery->where('color', $validated['color']);
-        }
-        if (!empty($validated['mileage'])) {
-            $range = explode('-', $validated['mileage']);
-            $internalVehiclesQuery->whereBetween('mileage', [(int) $range[0], (int) $range[1]]);
-        }
-
-        if (!empty($validated['package_type'])) {
-            switch ($validated['package_type']) {
-                case 'week':
-                    $internalVehiclesQuery->whereNotNull('price_per_week')->orderBy('price_per_week');
-                    break;
-                case 'month':
-                    $internalVehiclesQuery->whereNotNull('price_per_month')->orderBy('price_per_month');
-                    break;
-                default:
-                    $internalVehiclesQuery->whereNotNull('price_per_day')->orderBy('price_per_day');
-                    break;
-            }
-        }
-
-        $internalVehiclesEloquent = $internalVehiclesQuery->get();
-        $vehicleListSchema = SchemaBuilder::vehicleList($internalVehiclesEloquent, 'Vehicle Search Results', $validated);
-        $internalVehiclesData = $internalVehiclesEloquent->map(function ($vehicle) {
-            $reviews = Review::where('vehicle_id', $vehicle->id)
-                ->where('status', 'approved')
-                ->get();
-            $vehicle->review_count = $reviews->count();
-            $vehicle->average_rating = $reviews->avg('rating') ?? 0;
-
-            if (isset($vehicle->distance_in_km)) {
-                $vehicle->distance_in_km = intval($vehicle->distance_in_km);
-            }
-            $vehicle->source = 'internal';
-
-            return (object) $vehicle->toArray();
-        });
-
-        $greenMotionVehicles = collect();
-        if ((isset($validated['source']) && in_array($validated['source'], ['greenmotion', 'usave'])) || empty($validated['source'])) {
-            if (!empty($validated['date_from']) && !empty($validated['date_to'])) {
-                $gmLocationId = $validated['greenmotion_location_id'] ?? null;
-                $gmLocationLat = null;
-                $gmLocationLng = null;
-                $gmLocationAddress = null;
-
-                if (!$gmLocationId && (!empty($validated['where']) || (!empty($validated['latitude']) && !empty($validated['longitude'])))) {
-                    $searchParam = $validated['where'] ?? ($validated['latitude'] . ',' . $validated['longitude']);
-                    $unifiedLocations = $this->locationSearchService->searchLocations($searchParam);
-                    $matchedGmLocation = collect($unifiedLocations)->first(function ($loc) {
-                        return in_array($loc['source'], ['greenmotion', 'usave']) && !empty($loc['greenmotion_location_id']);
-                    });
-                    if ($matchedGmLocation) {
-                        $gmLocationId = $matchedGmLocation['greenmotion_location_id'];
-                        $gmLocationLat = $matchedGmLocation['latitude'];
-                        $gmLocationLng = $matchedGmLocation['longitude'];
-                        $gmLocationAddress = $matchedGmLocation['label'] . ', ' . $matchedGmLocation['below_label'];
-                    }
-                } elseif ($gmLocationId) {
-                    $allUnifiedLocations = $this->locationSearchService->getAllLocations();
-                    $specificGmLocation = collect($allUnifiedLocations)->firstWhere('greenmotion_location_id', $gmLocationId);
-                    if ($specificGmLocation) {
-                        $gmLocationLat = $specificGmLocation['latitude'];
-                        $gmLocationLng = $specificGmLocation['longitude'];
-                        $gmLocationAddress = $specificGmLocation['label'] . ', ' . $specificGmLocation['below_label'];
-                    }
-                }
-
-                if ($gmLocationId && $gmLocationLat !== null && $gmLocationLng !== null) {
-                    try {
-                        $gmOptions = [
-                            'language' => $validated['language'] ?? app()->getLocale(),
-                            'rentalCode' => $validated['rentalCode'] ?? '1',
-                            'currency' => $validated['currency'] ?? null,
-                            'fuel' => $validated['fuel'] ?? null,
-                            'userid' => $validated['userid'] ?? null,
-                            'username' => $validated['username'] ?? null,
-                            'full_credit' => $validated['full_credit'] ?? null,
-                            'promocode' => $validated['promocode'] ?? null,
-                            'dropoff_location_id' => $validated['dropoff_location_id'] ?? null,
-                        ];
-
-                        $gmResponse = $this->greenMotionService->getVehicles(
-                            $gmLocationId,
-                            $validated['date_from'],
-                            $validated['start_time'] ?? '09:00',
-                            $validated['date_to'],
-                            $validated['end_time'] ?? '09:00',
-                            $validated['age'] ?? 35,
-                            array_filter($gmOptions)
-                        );
-
-                        if ($gmResponse) {
-                            libxml_use_internal_errors(true);
-                            $xmlObject = simplexml_load_string($gmResponse);
-                            if ($xmlObject !== false && isset($xmlObject->response->vehicles->vehicle)) {
-                                foreach ($xmlObject->response->vehicles->vehicle as $vehicle) {
-                                    $products = [];
-                                    if (isset($vehicle->product)) {
-                                        foreach ($vehicle->product as $product) {
-                                            $products[] = [
-                                                'type' => (string) $product['type'],
-                                                'total' => (string) $product->total,
-                                                'currency' => (string) $product->total['currency'],
-                                                'deposit' => (string) $product->deposit,
-                                                'excess' => (string) $product->excess,
-                                                'fuelpolicy' => (string) $product->fuelpolicy,
-                                                'mileage' => (string) $product->mileage,
-                                                'costperextradistance' => (string) $product->costperextradistance,
-                                                'minage' => (string) $product->minage,
-                                                'excludedextras' => (string) $product->excludedextras,
-                                                'fasttrack' => (string) $product->fasttrack,
-                                                'oneway' => (string) $product->oneway,
-                                                'oneway_fee' => (string) $product->oneway_fee,
-                                                'cancellation_rules' => json_decode(json_encode($product->CancellationRules), true),
-                                            ];
-                                        }
-                                    }
-
-                                    $minDriverAge = 0;
-                                    $fuelPolicy = '';
-                                    if (!empty($products)) {
-                                        $minDriverAge = (int) ($products[0]['minage'] ?? 0);
-                                        $fuelPolicy = $products[0]['fuelpolicy'] ?? '';
-                                    }
-
-                                    $brandName = explode(' ', (string) $vehicle['name'])[0];
-
-                                    // DEBUG: Dump MG3 data
-                                    if (strpos((string) $vehicle['name'], 'MG3') !== false) {
-                                        ob_start();
-                                        print_r($vehicle);
-                                        $dump = ob_get_clean();
-                                        file_put_contents('/tmp/gm_mg3_debug.txt', $dump . "\nSIPP Candidates: " . print_r([
-                                            (string) ($vehicle->acriss_code ?? ''),
-                                            (string) ($vehicle->sipp_code ?? ''),
-                                            (string) ($vehicle->category ?? ''),
-                                            (string) ($vehicle->groupName ?? '')
-                                        ], true), FILE_APPEND);
-                                    }
-
-                                    // ACRISS/SIPP Code Extraction
-                                    // ACRISS codes (SIPP) are 4-letter codes. We check standard fields and search text fields.
-                                    $candidates = [
-                                        (string) ($vehicle->acriss ?? ''), // Added $vehicle->acriss
-                                        (string) ($vehicle->acriss_code ?? ''),
-                                        (string) ($vehicle->sipp_code ?? ''),
-                                        (string) ($vehicle->category ?? ''), // GM often puts it here
-                                        (string) ($vehicle->group ?? ''),
-                                        (string) ($vehicle->groupName ?? ''),
-                                        (string) ($vehicle->name ?? '')
-                                    ];
-
-                                    $sippCode = '';
-                                    $parsedSipp = []; // Initialize parsedSipp
-                                    foreach ($candidates as $candidate) {
-                                        if (empty($candidate))
-                                            continue;
-                                        // Look for 4 uppercase letters that look like a valid SIPP/ACRISS code
-                                        // Pattern: Start of word, 4 uppercase letters, End of word
-                                        if (preg_match_all('/\b[A-Z]{4}\b/', $candidate, $matches)) {
-                                            foreach ($matches[0] as $match) {
-                                                // Basic validation against 1st char (Category) known letters
-                                                // M=Mini, N=Mini Elite, E=Economy, H=Economy Elite, C=Compact, etc.
-                                                // Valid 1st chars: M,N,E,H,C,D,I,J,S,R,F,G,P,U,L,W,O,X
-                                                if (strpos('MNEHCDIJSRFGPULWOX', $match[0]) !== false) {
-                                                    $sippCode = $match;
-                                                    break 2; // Found a valid-looking code, stop searching
-                                                }
-                                            }
-                                        }
-                                    }
-
-                                    if (!empty($sippCode)) {
-                                        $parsedSipp = $this->parseSippCode($sippCode);
-                                    }
-
-                                    // Build features array
-                                    $features = [];
-                                    $hasAC = false;
-
-                                    // Check explicit AC attribute or SIPP
-                                    // Broader check for AC property (explicit)
-                                    $acVal = (string) ($vehicle->airConditioning ?? $vehicle->air_conditioning ?? $vehicle->airco ?? '');
-                                    $acValLower = strtolower($acVal);
-
-                                    // SIPP Logic
-                                    if (!empty($parsedSipp['air_conditioning'])) {
-                                        $features[] = 'Air Conditioning';
-                                        $hasAC = true;
-                                    }
-
-                                    // Check Bluetooth (explicit or attributes)
-                                    if (isset($vehicle->bluetooth) && strtolower((string) $vehicle->bluetooth) === 'true') {
-                                        $features[] = 'Bluetooth';
-                                    }
-                                    // Check GPS
-                                    if (isset($vehicle->gps) && strtolower((string) $vehicle->gps) === 'true') {
-                                        $features[] = 'GPS';
-                                    }
-
-                                    $greenMotionVehicles->push((object) [
-                                        'id' => 'gm_' . (string) $vehicle['id'],
-                                        'source' => $validated['source'] === 'usave' ? 'usave' : 'greenmotion',
-                                        'brand' => $brandName,
-                                        'model' => (string) $vehicle['name'],
-                                        'image' => urldecode((string) $vehicle['image']),
-                                        'price_per_day' => (isset($vehicle->total) && is_numeric((string) $vehicle->total)) ? (float) (string) $vehicle->total : 0.0,
-                                        'price_per_week' => null,
-                                        'price_per_month' => null,
-                                        'currency' => (isset($vehicle->total['currency']) && !empty((string) $vehicle->total['currency'])) ? (string) $vehicle->total['currency'] : 'EUR',
-                                        'transmission' => (string) $vehicle->transmission,
-                                        'fuel' => (string) $vehicle->fuel,
-                                        'seating_capacity' => (int) $vehicle->adults + (int) $vehicle->children,
-                                        'mileage' => (string) $vehicle->mpg,
-                                        'features' => $features,
-                                        'airConditioning' => $hasAC, // Explicit boolean for frontend
-                                        'sipp_code' => $sippCode,
-                                        'latitude' => (float) $gmLocationLat,
-                                        'longitude' => (float) $gmLocationLng,
-                                        'full_vehicle_address' => $gmLocationAddress,
-                                        'greenmotion_location_id' => $gmLocationId,
-                                        'benefits' => (object) [
-                                            'minimum_driver_age' => $minDriverAge,
-                                            'fuel_policy' => $fuelPolicy,
-                                        ],
-                                        // review_count and average_rating omitted
-                                        'products' => $products,
-                                        'options' => [],
-                                        'insurance_options' => [],
-                                    ]);
-                                }
-                            } else {
-                                Log::warning('GreenMotion API response for vehicles was empty or malformed for location ID: ' . $gmLocationId);
-                            }
-                        }
-                    } catch (\Exception $e) {
-                        Log::error('Error fetching GreenMotion vehicles: ' . $e->getMessage());
-                    }
-                }
-            }
-        }
-
-        $filteredGreenMotionVehicles = $greenMotionVehicles->filter(function ($vehicle) use ($validated) {
-            if (!empty($validated['seating_capacity']) && $vehicle->seating_capacity != $validated['seating_capacity'])
-                return false;
-            if (!empty($validated['brand']) && strcasecmp($vehicle->brand, $validated['brand']) != 0)
-                return false;
-            if (!empty($validated['transmission']) && strcasecmp($vehicle->transmission, $validated['transmission']) != 0)
-                return false;
-            if (!empty($validated['fuel']) && strcasecmp($vehicle->fuel, $validated['fuel']) != 0)
-                return false;
-            if (!empty($validated['price_range'])) {
-                $range = explode('-', $validated['price_range']);
-                if ($vehicle->price_per_day < (int) $range[0] || $vehicle->price_per_day > (int) $range[1])
-                    return false;
-            }
-            if (!empty($validated['mileage'])) {
-                $range = explode('-', $validated['mileage']);
-                $mileageValue = (int) $vehicle->mileage;
-                if ($mileageValue < (int) $range[0] || $mileageValue > (int) $range[1])
-                    return false;
-            }
-            return true;
-        });
-
-        $combinedVehicles = $internalVehiclesData->merge($filteredGreenMotionVehicles);
-        $perPage = 10;
-        $currentPage = \Illuminate\Pagination\LengthAwarePaginator::resolveCurrentPage();
-        $currentItems = $combinedVehicles->slice(($currentPage - 1) * $perPage, $perPage)->values();
-        $vehicles = new \Illuminate\Pagination\LengthAwarePaginator(
-            $currentItems,
-            $combinedVehicles->count(),
-            $perPage,
-            $currentPage,
-            ['path' => $request->url(), 'query' => $request->query()]
-        );
-
-        $gmBrands = $greenMotionVehicles->pluck('brand')->unique()->filter()->values()->all();
-        $gmSeatingCapacities = $greenMotionVehicles->pluck('seating_capacity')->unique()->filter()->values()->all();
-        $gmTransmissions = $greenMotionVehicles->pluck('transmission')->unique()->filter()->values()->all();
-        $gmFuels = $greenMotionVehicles->pluck('fuel')->unique()->filter()->values()->all();
-
-        $combinedBrands = collect($brands)->merge($gmBrands)->map(fn($val) => trim($val))->unique(fn($val) => strtolower($val))->sort()->values()->all();
-        $combinedSeatingCapacities = collect($seatingCapacities)->merge($gmSeatingCapacities)->unique()->sort()->values()->all();
-        $combinedTransmissions = collect($transmissions)->merge($gmTransmissions)->map(fn($val) => trim($val))->unique(fn($val) => strtolower($val))->sort()->values()->all();
-        $combinedFuels = collect($fuels)->merge($gmFuels)->map(fn($val) => trim($val))->unique(fn($val) => strtolower($val))->sort()->values()->all();
-
-        $seoMeta = \App\Models\SeoMeta::with('translations')->where('url_slug', '/s')->first();
-
-        return Inertia::render('SearchResults', [
-            'vehicles' => $vehicles,
-            'filters' => $validated,
-            'pagination_links' => $vehicles->links()->toHtml(),
-            'brands' => $combinedBrands,
-            'colors' => $colors,
-            'seatingCapacities' => $combinedSeatingCapacities,
-            'transmissions' => $combinedTransmissions,
-            'fuels' => $combinedFuels,
-            'mileages' => $mileages,
-            'categories' => $categoriesFromOptions,
-            'schema' => $vehicleListSchema,
-            'seoMeta' => $seoMeta,
-            'locale' => \Illuminate\Support\Facades\App::getLocale(),
-        ]);
-    }
 
     public function searchUnifiedLocations(Request $request)
     {
@@ -1886,30 +1335,30 @@ class SearchController extends Controller
 
         return $photo;
     }
+
     /**
      * Parse SIPP/ACRISS code to get vehicle details
      */
-    private function parseSippCode($sipp)
+    private function parseSippCode($sipp, $provider = null)
     {
         $sipp = strtoupper($sipp ?? '');
         $data = [
-            'transmission' => 'manual', // Default
-            'fuel' => 'petrol', // Default
-            'seating_capacity' => 4, // Default
+            'transmission' => 'manual',
+            'fuel' => 'petrol',
+            'seating_capacity' => 5,
+            'doors' => 4,
             'category' => 'Unknown',
             'air_conditioning' => false,
-            'sipp_description' => ''
+            'dynamic_name' => 'Vehicle'
         ];
 
         if (strlen($sipp) < 4) {
             return $data;
         }
 
-        // Load SIPP codes from JSON
         $sippJsonPath = base_path('database/sipp_codes.json');
         if (!file_exists($sippJsonPath)) {
             Log::error("SIPP codes JSON not found at: {$sippJsonPath}");
-            // Fallback (minimal)
             return $data;
         }
 
@@ -1918,44 +1367,146 @@ class SearchController extends Controller
         // 1. Category (1st char)
         $char1 = $sipp[0];
         if (isset($sippCodes['category'][$char1])) {
-            $data['category'] = $sippCodes['category'][$char1];
+            $catData = $sippCodes['category'][$char1];
+            $data['category'] = is_array($catData) ? ($catData['name'] ?? 'Unknown') : $catData;
+
+            // Default seat counts based on ACRISS category
+            $standardSeats = [
+                'M' => 4,
+                'N' => 4, // Mini
+                'E' => 5,
+                'H' => 5, // Economy
+                'C' => 5,
+                'D' => 5, // Compact
+                'I' => 5,
+                'J' => 5, // Intermediate
+                'S' => 5,
+                'R' => 5, // Standard
+                'F' => 5,
+                'G' => 5, // Fullsize
+                'P' => 5,
+                'U' => 5, // Premium
+                'L' => 5,
+                'W' => 5, // Luxury
+            ];
+            $data['seating_capacity'] = is_array($catData) ? ($catData['seats'] ?? 5) : ($standardSeats[$char1] ?? 5);
         }
 
-        // 2. Type (2nd char) - Doors inference
+        // 2. Type (2nd char)
         $char2 = $sipp[1];
         if (isset($sippCodes['type'][$char2])) {
-            $typeDesc = $sippCodes['type'][$char2];
-            // Infer doors if reasonable
-            if (strpos($typeDesc, '2-3 Door') !== false || strpos($typeDesc, '2 Door') !== false) {
-                $data['doors'] = 2;
-            } elseif (strpos($typeDesc, '4-5 Door') !== false || strpos($typeDesc, '4 Door') !== false) {
-                $data['doors'] = 4;
-            } elseif (strpos($typeDesc, 'Van') !== false) {
-                $data['doors'] = 4; // Assumption
+            $typeData = $sippCodes['type'][$char2];
+            $data['type_name'] = is_array($typeData) ? ($typeData['name'] ?? 'Vehicle') : $typeData;
+
+            // Default door counts based on ACRISS type
+            $standardDoors = [
+                'T' => 2, // Convertible
+                'E' => 2, // Coupe
+                'S' => 2, // Sport
+                'M' => 5, // Monospace
+                'V' => 5, // Passenger Van
+                'F' => 5, // SUV
+                'G' => 5, // Crossover
+                'W' => 5, // Wagon/Estate
+                'K' => 2, // Commercial Van/Truck
+            ];
+            $data['doors'] = is_array($typeData) ? ($typeData['doors'] ?? 4) : ($standardDoors[$char2] ?? 4);
+
+            // Map doors from numeric string if it's there (e.g. "2-3 Door" -> 3)
+            if (!is_array($typeData) && is_string($typeData)) {
+                if (preg_match('/(\d+)-(\d+)/', $typeData, $matches)) {
+                    $data['doors'] = (int) $matches[2]; // Use upper bound
+                } elseif (preg_match('/(\d+)/', $typeData, $matches)) {
+                    $data['doors'] = (int) $matches[1];
+                }
             }
-            // Keep full description for internal use if needed
-            $data['type_description'] = $typeDesc;
+        }
+
+        // 2b. Special Seating Overrides (Standard ACRISS Van Pseudo-codes & others)
+        $prefix = substr($sipp, 0, 2);
+        $vanSeatingMap = [
+            'IV' => 6,
+            'JV' => 6, // 6 Seats
+            'SV' => 7,
+            'RV' => 7,
+            'FV' => 7,
+            'GV' => 7, // 7 Seats
+            'PV' => 8,
+            'UV' => 8, // 8 Seats
+            'LV' => 9,
+            'WV' => 9,
+            'XV' => 9,
+            'OV' => 9, // 9 Seats +
+        ];
+
+        if (isset($sippCodes['van_seating'][$prefix])) {
+            $data['seating_capacity'] = $sippCodes['van_seating'][$prefix];
+        } elseif (isset($vanSeatingMap[$prefix])) {
+            $data['seating_capacity'] = $vanSeatingMap[$prefix];
         }
 
         // 3. Transmission (3rd char)
         $char3 = $sipp[2];
         if (isset($sippCodes['transmission'][$char3])) {
-            $transDesc = $sippCodes['transmission'][$char3];
-            if (stripos($transDesc, 'Automatic') !== false) {
-                $data['transmission'] = 'automatic';
-            } else {
-                $data['transmission'] = 'manual';
-            }
+            $transDesc = is_array($sippCodes['transmission'][$char3]) ? ($sippCodes['transmission'][$char3]['name'] ?? '') : $sippCodes['transmission'][$char3];
+            $data['transmission'] = str_contains(strtolower($transDesc), 'automatic') ? 'automatic' : 'manual';
             $data['transmission_description'] = $transDesc;
         }
 
         // 4. Fuel & AC (4th char)
         $char4 = $sipp[3];
-        if (isset($sippCodes['fuel_ac'][$char4])) {
+
+        // Provider-specific overrides
+        if ($provider === 'okmobility') {
+            if ($char4 === 'S') {
+                $data['fuel'] = 'petrol';
+                $data['air_conditioning'] = false;
+            }
+
+            // Seating Overrides for OkMobility
+            if ($prefix === 'VM' || $prefix === 'SM' || $prefix === 'FM') {
+                // User confirmed "some have 5 seats and it says 7", so we default all these Monospaces to 5.
+                $data['seating_capacity'] = 5;
+            }
+
+            // Handle case where T is used as category (Convertible)
+            if ($char1 === 'T') {
+                $data['category'] = 'Convertible';
+                // Specific for TSMS (Fiat 500 Cabrio) - OkMobility says 4 seats / 3 doors
+                if ($sipp === 'TSMS') {
+                    $data['seating_capacity'] = 4;
+                    $data['doors'] = 3;
+                } else {
+                    $data['seating_capacity'] = 2;
+                    $data['doors'] = 2;
+                }
+            }
+
+            // Door Overrides for OkMobility (if not already handled by TSMS)
+            if ($char1 !== 'T') {
+                if ($char2 === 'S') {
+                    // MSMS (Mini Sport) -> 3 doors, others (like SSAS Standard Sport) -> 4 doors
+                    // User confirmed: count only side doors. SSAS (SUV/Sport) -> 4.
+                    $data['doors'] = ($char1 === 'M' || $char1 === 'N') ? 3 : 4;
+                } elseif (in_array($char2, ['M', 'V', 'F', 'G', 'W', 'D'])) {
+                    // Monospace, Van, SUV, Crossover, Wagon, 4-5 Door types -> 4 doors (side doors)
+                    $data['doors'] = 4;
+                }
+            }
+        } else if (isset($sippCodes['fuel_ac'][$char4])) {
             $fuelAC = $sippCodes['fuel_ac'][$char4];
-            $data['fuel'] = strtolower($fuelAC['fuel']);
-            $data['air_conditioning'] = $fuelAC['ac'];
+            $data['fuel'] = strtolower($fuelAC['fuel'] ?? '');
+            $data['air_conditioning'] = $fuelAC['ac'] ?? false;
         }
+
+        // Generate a dynamic name like "Mini 2-3 Door"
+        $nameParts = [];
+        if (isset($data['category']) && $data['category'] !== 'Unknown')
+            $nameParts[] = $data['category'];
+        if (isset($data['type_name']))
+            $nameParts[] = $data['type_name'];
+
+        $data['dynamic_name'] = !empty($nameParts) ? implode(' ', $nameParts) : 'Standard Vehicle';
 
         return $data;
     }

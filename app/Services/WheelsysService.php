@@ -253,8 +253,8 @@ class WheelsysService
             'source' => 'wheelsys',
             'brand' => $brand,
             'model' => $rate['SampleModel'] ?? 'Wheelsys Vehicle',
-            'category' => !empty($parsedAcriss['category']) && $parsedAcriss['category'] !== 'Unknown' 
-                ? $parsedAcriss['category'] 
+            'category' => !empty($parsedAcriss['category']) && $parsedAcriss['category'] !== 'Unknown'
+                ? $parsedAcriss['category']
                 : ($rate['Category'] ?? ''),
             'group_code' => $rate['GroupCode'] ?? '',
             'acriss_code' => $acrissCode,
@@ -608,11 +608,12 @@ class WheelsysService
         $sippJsonPath = base_path('database/sipp_codes.json');
         if (file_exists($sippJsonPath)) {
             $sippCodes = json_decode(file_get_contents($sippJsonPath), true);
-            
+
             // 1. Category (1st char)
             $char1 = $code[0];
             if (isset($sippCodes['category'][$char1])) {
-                $data['category'] = $sippCodes['category'][$char1];
+                $catData = $sippCodes['category'][$char1];
+                $data['category'] = $catData['name'] ?? 'Unknown';
             }
         }
 

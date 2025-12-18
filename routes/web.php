@@ -334,10 +334,6 @@ Route::group([
     Route::get('/sitemap_fr_vehicles.xml', [App\Http\Controllers\SiteMapController::class, 'vehiclesFr']);
     Route::get('/sitemap_nl_vehicles.xml', [App\Http\Controllers\SiteMapController::class, 'vehiclesNl']);
 
-    // Sitemap Routes for Vehicle Categories
-    Route::get('/sitemap_en_categories.xml', [App\Http\Controllers\SiteMapController::class, 'categoriesEn']);
-    Route::get('/sitemap_fr_categories.xml', [App\Http\Controllers\SiteMapController::class, 'categoriesFr']);
-    Route::get('/sitemap_nl_categories.xml', [App\Http\Controllers\SiteMapController::class, 'categoriesNl']);
 
     // Sitemap Routes for Popular Places
     Route::get('/sitemap_en_places.xml', [App\Http\Controllers\SiteMapController::class, 'placesEn']);
@@ -392,7 +388,6 @@ Route::group([
     Route::post('/vehicles', [VehicleController::class, 'store'])->name('vehicles.store');
     Route::get('/s', [SearchController::class, 'search'])->name('search');
     Route::post('/store-search', [SearchController::class, 'storeSearchData'])->name('search.store');
-    Route::get('/search/category/{category_slug?}', [SearchController::class, 'searchByCategory'])->name('search.category');
     Route::get('/api/geocoding/autocomplete', [GeocodingController::class, 'autocomplete']);
     Route::get('/api/geocoding/reverse', [GeocodingController::class, 'reverse']);
     // Route::get('/blog', [BlogController::class, 'showBlogPage'])->name('blog');

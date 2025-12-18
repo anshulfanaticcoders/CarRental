@@ -387,11 +387,6 @@ Allow: /en/register
 Allow: /en/blog
 Allow: /fr/blog
 Allow: /nl/blog
-Allow: /en/search/category/luxury-cars
-Allow: /en/search/category/suv-cars
-Allow: /en/search/category/sports-car
-Allow: /en/search/category/vans
-Allow: /en/search/category/mobilehomes
 Allow: /en/contact-us
 Allow: /fr/contactez-nous
 Allow: /nl/neem-contact-met-ons-op

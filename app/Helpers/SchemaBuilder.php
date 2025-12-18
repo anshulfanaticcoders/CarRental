@@ -61,7 +61,7 @@ class SchemaBuilder
         if (!empty($blog->content)) {
             $schema['articleBody'] = strip_tags($blog->content); // Plain text version of the content
         }
-        
+
         // You can add more properties like keywords, wordCount, etc.
         // 'keywords' => $blog->tags->pluck('name')->implode(', '), // If you have tags
 
@@ -96,7 +96,7 @@ class SchemaBuilder
             ],
             'reviewRating' => [
                 '@type' => 'Rating',
-                'ratingValue' => (string)$testimonial->ratings, // Ensure it's a string or number
+                'ratingValue' => (string) $testimonial->ratings, // Ensure it's a string or number
                 'bestRating' => '5', // Assuming 5 is the highest rating
                 'worstRating' => '1', // Assuming 1 is the lowest rating
             ],
@@ -119,7 +119,7 @@ class SchemaBuilder
                 'caption' => $testimonial->name . ' - Avatar',
             ];
         }
-        
+
         // If the testimonial has a specific date it was given
         if ($testimonial->created_at) {
             $schema['datePublished'] = $testimonial->created_at->toIso8601String();
@@ -203,7 +203,7 @@ class SchemaBuilder
     //         // 'description' => 'A list of the latest blog posts.',
     //     ];
     // }
-public static function blogList(\Illuminate\Database\Eloquent\Collection $blogs, string $pageTitle = 'Blog Posts', ?string $country = null): array
+    public static function blogList(\Illuminate\Database\Eloquent\Collection $blogs, string $pageTitle = 'Blog Posts', ?string $country = null): array
     {
         $locale = app()->getLocale();
         $items = [];
@@ -292,7 +292,7 @@ public static function blogList(\Illuminate\Database\Eloquent\Collection $blogs,
             } elseif (isset($vehicle->price_per_day)) { // Fallback to daily if specific package price not found
                 $price = $vehicle->price_per_day;
             }
-            
+
             // If vehicle is not available based on booking dates, mark as OutOfStock
             // This logic might need to be more sophisticated based on actual availability checks
             if (isset($filters['date_from']) && isset($filters['date_to'])) {
@@ -320,12 +320,12 @@ public static function blogList(\Illuminate\Database\Eloquent\Collection $blogs,
                 $item['offers'] = [
                     '@type' => 'Offer',
                     'priceCurrency' => $currency,
-                    'price' => (string)round($price, 2),
+                    'price' => (string) round($price, 2),
                     'availability' => $availability,
                     'url' => route('vehicle.show', ['locale' => app()->getLocale(), 'id' => $vehicle->id]), // Link to the product page
                 ];
             }
-            
+
             // Add aggregateRating if available
             if (isset($vehicle->average_rating) && isset($vehicle->review_count) && $vehicle->review_count > 0) {
                 $item['aggregateRating'] = [
@@ -446,7 +446,7 @@ public static function blogList(\Illuminate\Database\Eloquent\Collection $blogs,
             $offers[] = [
                 '@type' => 'Offer',
                 'name' => 'Daily Rental',
-                'price' => (string)round($vehicle->price_per_day, 2),
+                'price' => (string) round($vehicle->price_per_day, 2),
                 'priceCurrency' => $currency,
                 'availability' => 'https://schema.org/InStock', // Assuming available if listed
                 'url' => route('vehicle.show', ['locale' => app()->getLocale(), 'id' => $vehicle->id]),
@@ -456,7 +456,7 @@ public static function blogList(\Illuminate\Database\Eloquent\Collection $blogs,
             $offers[] = [
                 '@type' => 'Offer',
                 'name' => 'Weekly Rental',
-                'price' => (string)round($vehicle->price_per_week, 2),
+                'price' => (string) round($vehicle->price_per_week, 2),
                 'priceCurrency' => $currency,
                 'availability' => 'https://schema.org/InStock',
                 'url' => route('vehicle.show', ['locale' => app()->getLocale(), 'id' => $vehicle->id]),
@@ -466,16 +466,16 @@ public static function blogList(\Illuminate\Database\Eloquent\Collection $blogs,
             $offers[] = [
                 '@type' => 'Offer',
                 'name' => 'Monthly Rental',
-                'price' => (string)round($vehicle->price_per_month, 2),
+                'price' => (string) round($vehicle->price_per_month, 2),
                 'priceCurrency' => $currency,
                 'availability' => 'https://schema.org/InStock',
                 'url' => route('vehicle.show', ['locale' => app()->getLocale(), 'id' => $vehicle->id]),
             ];
         }
-        
+
         $description = "Rent the " . $vehicle->brand . " " . $vehicle->model . ". Features: " .
-                         $vehicle->seating_capacity . " seats, " . $vehicle->transmission . " transmission, " .
-                         $vehicle->fuel . " fuel type. Located at " . $vehicle->full_vehicle_address . ".";
+            $vehicle->seating_capacity . " seats, " . $vehicle->transmission . " transmission, " .
+            $vehicle->fuel . " fuel type. Located at " . $vehicle->full_vehicle_address . ".";
         if ($vehicle->description) { // If a more detailed description exists
             $description = $vehicle->description;
         }
@@ -494,13 +494,13 @@ public static function blogList(\Illuminate\Database\Eloquent\Collection $blogs,
                 'name' => $vehicle->brand ?? 'Unknown Brand',
             ],
             'model' => $vehicle->model ?? 'Unknown Model',
-            'vehicleSeatingCapacity' => (string)$vehicle->seating_capacity,
+            'vehicleSeatingCapacity' => (string) $vehicle->seating_capacity,
             'fuelType' => $vehicle->fuel,
             'vehicleTransmission' => $vehicle->transmission,
             'color' => $vehicle->color,
             'mileageFromOdometer' => [ // If mileage is total mileage
                 '@type' => 'QuantitativeValue',
-                'value' => (float)$vehicle->mileage, // Assuming this is total mileage
+                'value' => (float) $vehicle->mileage, // Assuming this is total mileage
                 'unitCode' => 'KMT' // KMT for kilometer
             ],
             // 'vehicleEngine' => [
@@ -524,7 +524,7 @@ public static function blogList(\Illuminate\Database\Eloquent\Collection $blogs,
                 // 'telephone' => $vehicle->vendorProfile->phone_number ?? null,
             ] : null,
         ];
-        
+
         // Remove null values to keep schema clean
         return array_filter($schema, fn($value) => !is_null($value));
     }
@@ -549,7 +549,7 @@ public static function blogList(\Illuminate\Database\Eloquent\Collection $blogs,
                     'description' => $category->description ?? 'A category of vehicles available for rent.',
                     // Generate a URL to the search page for this category
                     // Ensure you have a route like 'search.category' that accepts a category slug or ID
-                    'url' => LaravelRoute::has('search.category') ? route('search.category', ['locale' => app()->getLocale(), 'category_id' => $category->id]) : url('/' . app()->getLocale() . '/search?category=' . $category->slug),
+                    'url' => route('search', ['locale' => app()->getLocale(), 'category_id' => $category->id]),
                 ],
             ];
             if (!empty($category->image)) {

@@ -113,9 +113,9 @@ class SiteMapController extends Controller
         // Get blogs for this specific country
         $blogs = Blog::with('translations')
             ->where('is_published', true)
-            ->where(function($query) use ($country) {
+            ->where(function ($query) use ($country) {
                 $query->whereJsonContains('countries', $country)
-                      ->orWhereNull('countries');
+                    ->orWhereNull('countries');
             })
             ->latest()
             ->get();
@@ -251,52 +251,6 @@ class SiteMapController extends Controller
         ]);
     }
 
-    public function categoriesEn()
-    {
-        return $this->generateCategorySitemap('en');
-    }
-
-    public function categoriesFr()
-    {
-        return $this->generateCategorySitemap('fr');
-    }
-
-    public function categoriesNl()
-    {
-        return $this->generateCategorySitemap('nl');
-    }
-
-    protected function generateCategorySitemap(string $locale)
-    {
-        App::setLocale($locale);
-
-        // Fetch all active vehicle categories
-        $categories = VehicleCategory::where('status', true)->get(); // Assuming 'status' field indicates active
-
-        $content = '<?xml version="1.0" encoding="UTF-8"?>';
-        $content .= '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">';
-
-        foreach ($categories as $category) {
-            // Assuming category has a 'slug' field for URL generation
-            // If not, you might need to generate one or use ID.
-            // Based on VehicleController::searchByCategory, it uses category_slug.
-            $url = url("/{$locale}/search/category/{$category->slug}");
-            $lastMod = $category->updated_at->toAtomString();
-
-            $content .= '<url>';
-            $content .= '<loc>' . htmlspecialchars($url) . '</loc>';
-            $content .= '<lastmod>' . $lastMod . '</lastmod>';
-            $content .= '<changefreq>weekly</changefreq>';
-            $content .= '<priority>0.7</priority>';
-            $content .= '</url>';
-        }
-
-        $content .= '</urlset>';
-
-        return Response::make($content, 200, [
-            'Content-Type' => 'application/xml'
-        ]);
-    }
 
     public function placesEn()
     {

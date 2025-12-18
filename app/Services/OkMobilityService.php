@@ -10,19 +10,67 @@ class OkMobilityService
     private $baseUrl;
     private $customerCode;
     private $companyCode;
-    private $cacheFile;
-    private $cacheTime = 3600; // 1 hour cache
 
     public function __construct()
     {
-        $this->baseUrl = config('services.okmobility.url', 'https://ws01.okrentacar.es:60060');
+        $this->baseUrl = rtrim(config('services.okmobility.url', 'https://ws01.okrentacar.es:60060'), '/');
         $this->customerCode = config('services.okmobility.customer_code', '60168');
-        $this->companyCode = config('services.okmobility.company_code');
-        $this->cacheFile = storage_path('app/cache/okmobility_cache.json');
+        $this->companyCode = config('services.okmobility.company_code', '9937');
 
         if (empty($this->baseUrl) || empty($this->customerCode)) {
-            throw new \Exception("Credentials or URL for OK Mobility are not configured correctly.");
+            Log::error("OK Mobility: Credentials or URL not configured correctly.");
         }
+    }
+
+    /**
+     * Common method to send SOAP requests to OK Mobility.
+     */
+    private function sendRequest($endpoint, $action, $xmlBody)
+    {
+        $path = str_starts_with($endpoint, '/') ? $endpoint : '/' . $endpoint;
+
+        // Try the configured URL first, then fallback to port 30060 if it's different
+        $urls = [$this->baseUrl . $path];
+
+        if (strpos($this->baseUrl, ':60060') !== false) {
+            $urls[] = str_replace(':60060', ':30060', $this->baseUrl) . $path;
+        } elseif (strpos($this->baseUrl, ':30060') !== false) {
+            $urls[] = str_replace(':30060', ':60060', $this->baseUrl) . $path;
+        }
+
+        foreach ($urls as $url) {
+            try {
+                Log::info("OK Mobility Request TO $url [Action: $action]");
+
+                $response = Http::withHeaders([
+                    'Content-Type' => 'text/xml; charset=utf-8',
+                    'SOAPAction' => $action,
+                    'Accept-Encoding' => 'gzip',
+                ])
+                    ->withOptions([
+                        'verify' => false,
+                        'curl' => [
+                            CURLOPT_ENCODING => '', // Enable all encodings (gzip, deflate)
+                            CURLOPT_TIMEOUT => 60,
+                            CURLOPT_CONNECTTIMEOUT => 15,
+                        ]
+                    ])
+                    ->send('POST', $url, [
+                        'body' => $xmlBody
+                    ]);
+
+                if ($response->successful()) {
+                    return $response->body();
+                }
+
+                Log::warning("OK Mobility attempt failed for $url: " . $response->status());
+            } catch (\Exception $e) {
+                Log::warning("OK Mobility exception for $url: " . $e->getMessage());
+            }
+        }
+
+        Log::error("OK Mobility: All attempts failed for endpoint $endpoint");
+        return null;
     }
 
     /**
@@ -34,25 +82,14 @@ class OkMobilityService
         $pickupDateTime = "{$pickupDate} {$pickupTime}";
         $dropoffDateTime = "{$dropoffDate} {$dropoffTime}";
 
-        // Create cache key
-        $cacheKey = "vehicles_{$pickupStationId}_{$dropoffStationId}_{$pickupDateTime}_{$dropoffDateTime}";
-
-        // Check cache first
-        $cachedData = $this->getCachedData($cacheKey);
-        if ($cachedData) {
-            Log::info('OK Mobility: Using cached data for ' . $cacheKey);
-            return $cachedData;
-        }
-
         $xmlRequest = '<?xml version="1.0" encoding="utf-8"?>
 <soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/" xmlns:get="http://www.OKGroup.es/RentaCarWebService/getWSDL">
    <soapenv:Header/>
    <soapenv:Body>
       <get:getMultiplePricesRequest>
          <objRequest>
-            <companyCode>' . $this->companyCode . '</companyCode>
             <customerCode>' . $this->customerCode . '</customerCode>
-            <onlyDynamicRate>false</onlyDynamicRate>
+            <companyCode>' . $this->companyCode . '</companyCode>
             <PickUpDate>' . $pickupDateTime . '</PickUpDate>
             <PickUpStation>' . $pickupStationId . '</PickUpStation>
             <DropOffDate>' . $dropoffDateTime . '</DropOffDate>
@@ -62,36 +99,12 @@ class OkMobilityService
             $xmlRequest .= '<groupID>' . $groupId . '</groupID>';
         }
 
-        $xmlRequest .= '</objRequest>
+        $xmlRequest .= '         </objRequest>
       </get:getMultiplePricesRequest>
    </soapenv:Body>
 </soapenv:Envelope>';
 
-        try {
-            Log::info('OK Mobility API Request (getMultiplePrices): ' . $xmlRequest);
-
-            $response = Http::withHeaders([
-                'Content-Type' => 'text/xml; charset=utf-8',
-                'SOAPAction' => 'http://www.OKGroup.es/RentaCarWebService/getWSDL/getMultiplePrices',
-            ])
-                ->send('POST', $this->baseUrl . '/okrentacar', [
-                    'body' => $xmlRequest
-                ]);
-
-            $response->throw();
-            Log::info('OK Mobility API Response (getMultiplePrices): ' . $response->body());
-
-            // Cache the response
-            $this->setCachedData($cacheKey, $response->body());
-
-            return $response->body();
-        } catch (\Exception $e) {
-            Log::error('OK Mobility API Error (getMultiplePrices): ' . $e->getMessage());
-            if (isset($response)) {
-                Log::error('OK Mobility API Error Response (getMultiplePrices): ' . $response->body());
-            }
-            return null;
-        }
+        return $this->sendRequest('getMultiplePrices', 'getMultiplePrices', $xmlRequest);
     }
 
     /**
@@ -101,73 +114,50 @@ class OkMobilityService
     public function makeReservation($reservationData)
     {
         $xmlRequest = '<?xml version="1.0" encoding="utf-8"?>
-            <soap12:Envelope xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:soap12="http://www.w3.org/2003/05/soap-envelope">
-                <soap12:Body>
-                    <createReservation xmlns="http://tempuri.org/">
-                        <Value>
-                            <companyCode>' . $this->companyCode . '</companyCode>
-                            <customerCode>' . $this->customerCode . '</customerCode>
-                            <messageType>N</messageType>
-                            <groupCode>' . $reservationData['group_code'] . '</groupCode>
-                            <token>' . $reservationData['token'] . '</token>
-                            <PickUp>
-                                <Date>' . $reservationData['pickup_date'] . ' ' . $reservationData['pickup_time'] . '</Date>
-                                <rentalStation>' . $reservationData['pickup_station_id'] . '</rentalStation>
-                            </PickUp>
-                            <DropOff>
-                                <Date>' . $reservationData['dropoff_date'] . ' ' . $reservationData['dropoff_time'] . '</Date>
-                                <rentalStation>' . $reservationData['dropoff_station_id'] . '</rentalStation>
-                            </DropOff>
-                            <Driver>
-                                <Name>' . htmlspecialchars($reservationData['driver_name']) . '</Name>
-                                <Surname>' . htmlspecialchars($reservationData['driver_surname'] ?? '') . '</Surname>
-                                <EMail>' . htmlspecialchars($reservationData['driver_email']) . '</EMail>
-                                <Phone>' . htmlspecialchars($reservationData['driver_phone']) . '</Phone>
-                                <Address>' . htmlspecialchars($reservationData['driver_address'] ?? '') . '</Address>
-                                <City>' . htmlspecialchars($reservationData['driver_city'] ?? '') . '</City>
-                                <PostalCode>' . htmlspecialchars($reservationData['driver_postal_code'] ?? '') . '</PostalCode>
-                                <Country>' . htmlspecialchars($reservationData['driver_country'] ?? '') . '</Country>
-                                <DriverAge>' . ($reservationData['driver_age'] ?? 25) . '</DriverAge>
-                                <IDNumber>' . htmlspecialchars($reservationData['driver_license_number'] ?? '') . '</IDNumber>
-                            </Driver>';
+<soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/" xmlns:get="http://www.OKGroup.es/RentaCarWebService/getWSDL">
+   <soapenv:Header/>
+   <soapenv:Body>
+      <get:createReservationRequest>
+         <objRequest>
+            <customerCode>' . $this->customerCode . '</customerCode>
+            <companyCode>' . $this->companyCode . '</companyCode>
+            <MessageType>N</MessageType>
+            <token>' . $reservationData['token'] . '</token>
+            <groupCode>' . ($reservationData['group_code'] ?? $reservationData['sipp_code'] ?? '') . '</groupCode>
+            <PickUp>
+                <Date>' . $reservationData['pickup_date'] . ' ' . $reservationData['pickup_time'] . '</Date>
+                <rentalStation>' . $reservationData['pickup_station_id'] . '</rentalStation>
+            </PickUp>
+            <DropOff>
+                <Date>' . $reservationData['dropoff_date'] . ' ' . $reservationData['dropoff_time'] . '</Date>
+                <rentalStation>' . $reservationData['dropoff_station_id'] . '</rentalStation>
+            </DropOff>
+            <Driver>
+                <Name>' . htmlspecialchars($reservationData['driver_name']) . '</Name>
+                <EMail>' . htmlspecialchars($reservationData['driver_email']) . '</EMail>
+                <Phone>' . htmlspecialchars($reservationData['driver_phone']) . '</Phone>
+                <Address>' . htmlspecialchars($reservationData['driver_address'] ?? '') . '</Address>
+                <City>' . htmlspecialchars($reservationData['driver_city'] ?? '') . '</City>
+                <Postal_code>' . htmlspecialchars($reservationData['driver_postal_code'] ?? '') . '</Postal_code>
+                <Country>' . htmlspecialchars($reservationData['driver_country'] ?? '') . '</Country>
+                <Date_of_Birth>' . ($reservationData['driver_dob'] ?? '') . '</Date_of_Birth>
+            </Driver>';
 
-        // Add optional extras if provided
+        // Extras
         if (isset($reservationData['extras']) && !empty($reservationData['extras'])) {
-            $xmlRequest .= '<Extras>';
+            $extrasString = '';
             foreach ($reservationData['extras'] as $extra) {
-                $xmlRequest .= '<Extra><ExtraID>' . $extra['id'] . '</ExtraID><Units>' . ($extra['quantity'] ?? 1) . '</Units></Extra>';
+                $extrasString .= ($extrasString ? ',' : '') . $extra['id'];
             }
-            $xmlRequest .= '</Extras>';
+            $xmlRequest .= '<Extras>' . $extrasString . '</Extras>';
         }
 
-        $xmlRequest .= '<Remarks>' . htmlspecialchars($reservationData['remarks'] ?? '') . '</Remarks>
-                        </Value>
-                    </createReservation>
-                </soap12:Body>
-            </soap12:Envelope>';
+        $xmlRequest .= '         </objRequest>
+      </get:createReservationRequest>
+   </soapenv:Body>
+</soapenv:Envelope>';
 
-        try {
-            Log::info('OK Mobility API Request (createReservation): ' . $xmlRequest);
-
-            $response = Http::withHeaders([
-                'Content-Type' => 'application/soap+xml; charset=utf-8',
-                'SOAPAction' => 'http://tempuri.org/createReservation',
-            ])
-                ->send('POST', $this->baseUrl . '/createReservation', [
-                    'body' => $xmlRequest
-                ]);
-
-            $response->throw();
-            Log::info('OK Mobility API Response (createReservation): ' . $response->body());
-
-            return $response->body();
-        } catch (\Exception $e) {
-            Log::error('OK Mobility API Error (createReservation): ' . $e->getMessage());
-            if (isset($response)) {
-                Log::error('OK Mobility API Error Response (createReservation): ' . $response->body());
-            }
-            return null;
-        }
+        return $this->sendRequest('createReservation', 'createReservationOperation', $xmlRequest);
     }
 
     /**
@@ -175,13 +165,6 @@ class OkMobilityService
      */
     public function getStations()
     {
-        // Check cache first
-        $cachedData = $this->getCachedData('stations');
-        if ($cachedData) {
-            Log::info('OK Mobility: Using cached stations data');
-            return $cachedData;
-        }
-
         $xmlRequest = '<?xml version="1.0" encoding="utf-8"?>
 <soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/" xmlns:get="http://www.OKGroup.es/RentaCarWebService/getWSDL">
    <soapenv:Header/>
@@ -195,88 +178,26 @@ class OkMobilityService
    </soapenv:Body>
 </soapenv:Envelope>';
 
-        try {
-            Log::info('OK Mobility API Request (getStations): ' . $xmlRequest);
-
-            $response = Http::withHeaders([
-                'Content-Type' => 'text/xml; charset=utf-8',
-                'SOAPAction' => 'http://www.OKGroup.es/RentaCarWebService/getWSDL/getStations',
-            ])
-                ->send('POST', $this->baseUrl . '/okrentacar', [
-                    'body' => $xmlRequest
-                ]);
-
-            $response->throw();
-            Log::info('OK Mobility API Response (getStations): ' . $response->body());
-
-            // Cache the response for longer time (stations don't change often)
-            $this->setCachedData('stations', $response->body(), 86400); // 24 hours cache
-
-            return $response->body();
-        } catch (\Exception $e) {
-            Log::error('OK Mobility API Error (getStations): ' . $e->getMessage());
-            if (isset($response)) {
-                Log::error('OK Mobility API Error Response (getStations): ' . $response->body());
-            }
-            return null;
-        }
+        return $this->sendRequest('getStations', 'getStationsOperation', $xmlRequest);
     }
 
     /**
-     * Cache management methods
+     * Fetches all available countries.
      */
-    private function getCachedData($key)
+    public function getCountries()
     {
-        if (!file_exists($this->cacheFile)) {
-            return null;
-        }
+        $xmlRequest = '<?xml version="1.0" encoding="utf-8"?>
+<soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/" xmlns:get="http://www.OKGroup.es/RentaCarWebService/getWSDL">
+   <soapenv:Header/>
+   <soapenv:Body>
+      <get:getCountriesRequest>
+         <objRequest>
+            <customerCode>' . $this->customerCode . '</customerCode>
+         </objRequest>
+      </get:getCountriesRequest>
+   </soapenv:Body>
+</soapenv:Envelope>';
 
-        $cache = json_decode(file_get_contents($this->cacheFile), true);
-        if (!$cache || !isset($cache[$key])) {
-            return null;
-        }
-
-        $item = $cache[$key];
-        if (time() > $item['expires']) {
-            unset($cache[$key]);
-            file_put_contents($this->cacheFile, json_encode($cache));
-            return null;
-        }
-
-        return $item['data'];
-    }
-
-    private function setCachedData($key, $data, $customCacheTime = null)
-    {
-        $cacheTime = $customCacheTime ?? $this->cacheTime;
-        $cache = [];
-
-        if (file_exists($this->cacheFile)) {
-            $cache = json_decode(file_get_contents($this->cacheFile), true) ?: [];
-        }
-
-        $cache[$key] = [
-            'data' => $data,
-            'expires' => time() + $cacheTime
-        ];
-
-        // Ensure cache directory exists
-        $cacheDir = dirname($this->cacheFile);
-        if (!is_dir($cacheDir)) {
-            mkdir($cacheDir, 0755, true);
-        }
-
-        file_put_contents($this->cacheFile, json_encode($cache));
-    }
-
-    /**
-     * Clear cache
-     */
-    public function clearCache()
-    {
-        if (file_exists($this->cacheFile)) {
-            unlink($this->cacheFile);
-        }
-        Log::info('OK Mobility cache cleared');
+        return $this->sendRequest('getCountries', 'getCountriesOperation', $xmlRequest);
     }
 }
