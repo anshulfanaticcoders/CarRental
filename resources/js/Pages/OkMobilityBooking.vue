@@ -514,7 +514,7 @@ const bookingDataForStripe = computed(() => {
                 </div>
                 <h3 class="text-xl font-semibold text-red-900 mb-2">Booking Error</h3>
                 <p class="text-red-700 mb-6">{{ error }}</p>
-                <Link :href="route('ok-mobility-cars', { locale: locale, ...filters })" 
+                <Link :href="route('search', { locale: locale, ...filters })" 
                       class="inline-flex items-center px-6 py-3 bg-red-600 text-white font-medium rounded-lg hover:bg-red-700 transition-colors">
                     <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"/>

@@ -368,15 +368,15 @@ class OkMobilityBookingController extends Controller
                     $currencyService = new CurrencyConversionService();
 
                     // Convert booking amount
-                    $bookingConversion = $currencyService->convert($bookingAmount, $bookingCurrency, $businessCurrency);
+                    $bookingConversion = $currencyService->convert((float) $bookingAmount, $bookingCurrency, $businessCurrency);
                     $convertedBookingAmount = $bookingConversion['success'] ? $bookingConversion['converted_amount'] : $bookingAmount;
 
                     // Convert commission amount
-                    $commissionConversion = $currencyService->convert($commissionAmount, $bookingCurrency, $businessCurrency);
+                    $commissionConversion = $currencyService->convert((float) $commissionAmount, $bookingCurrency, $businessCurrency);
                     $convertedCommissionAmount = $commissionConversion['success'] ? $commissionConversion['converted_amount'] : $commissionAmount;
 
                     // Convert discount amount
-                    $discountConversion = $currencyService->convert($discountAmount, $bookingCurrency, $businessCurrency);
+                    $discountConversion = $currencyService->convert((float) $discountAmount, $bookingCurrency, $businessCurrency);
                     $convertedDiscountAmount = $discountConversion['success'] ? $discountConversion['converted_amount'] : $discountAmount;
 
                     // Update amounts for commission record

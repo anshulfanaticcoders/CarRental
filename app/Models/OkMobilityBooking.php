@@ -63,7 +63,7 @@ class OkMobilityBooking extends Model
      */
     public function getPickupDatetimeAttribute()
     {
-        return $this->start_date->format('Y-m-d') . ' ' . $this->start_time;
+        return $this->start_date ? $this->start_date->format('Y-m-d') . ' ' . $this->start_time : '';
     }
 
     /**
@@ -71,7 +71,7 @@ class OkMobilityBooking extends Model
      */
     public function getDropoffDatetimeAttribute()
     {
-        return $this->end_date->format('Y-m-d') . ' ' . $this->end_time;
+        return $this->end_date ? $this->end_date->format('Y-m-d') . ' ' . $this->end_time : '';
     }
 
     /**
@@ -79,7 +79,7 @@ class OkMobilityBooking extends Model
      */
     public function getDurationDaysAttribute()
     {
-        return $this->start_date->diffInDays($this->end_date);
+        return ($this->start_date && $this->end_date) ? $this->start_date->diffInDays($this->end_date) : 0;
     }
 
     /**
@@ -87,7 +87,7 @@ class OkMobilityBooking extends Model
      */
     public function getCustomerNameAttribute()
     {
-        return $this->customer_details['first_name'] . ' ' . $this->customer_details['last_name'] ?? '';
+        return ($this->customer_details['firstname'] ?? '') . ' ' . ($this->customer_details['surname'] ?? '');
     }
 
     /**

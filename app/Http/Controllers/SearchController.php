@@ -777,11 +777,23 @@ class SearchController extends Controller
                                 // Register namespaces
                                 $xmlObject->registerXPathNamespace('soap', 'http://schemas.xmlsoap.org/soap/envelope/');
                                 $xmlObject->registerXPathNamespace('get', 'http://www.OKGroup.es/RentaCarWebService/getWSDL');
+                                $xmlObject->registerXPathNamespace('ns', 'http://tempuri.org/');
+
+                                // Check for error codes in the response
+                                $errorCode = (string) ($xmlObject->xpath('//errorCode')[0] ?? $xmlObject->xpath('//get:errorCode')[0] ?? null);
+                                if ($errorCode && $errorCode !== 'SUCCESS') {
+                                    Log::warning("OK Mobility API returned error for location ID {$currentProviderLocationId}: {$errorCode}");
+                                }
 
                                 // Try different XPath patterns to find vehicles robustly
                                 $vehicles = $xmlObject->xpath('//get:getMultiplePrice') ?:
                                     $xmlObject->xpath('//getMultiplePrice') ?:
+                                    $xmlObject->xpath('//ns:getMultiplePrice') ?:
                                     $xmlObject->xpath('//getMultiplePricesResult/getMultiplePrice');
+
+                                if (empty($vehicles) && (!$errorCode || $errorCode === 'SUCCESS')) {
+                                    Log::info("OK Mobility: No vehicles found in XML for location ID {$currentProviderLocationId}, but no error code was present.");
+                                }
 
                                 Log::info('OK Mobility vehicles found in XML: ' . count($vehicles));
 

@@ -24,15 +24,23 @@ class OkMobilityController extends Controller
         $vehicles = [];
 
         // Try different namespace patterns
-        $vehicleNodes = null;
-        $xpathResult = $xmlObject->xpath('//getMultiplePrice');
-        if ($xpathResult !== null && !empty($xpathResult)) {
-            $vehicleNodes = $xpathResult;
-        } else {
-            // Try with namespace
-            $xmlObject->registerXPathNamespace('ns', 'http://tempuri.org/');
-            $xmlObject->registerXPathNamespace('get', 'http://www.OKGroup.es/RentaCarWebService/getWSDL');
-            $vehicleNodes = $xmlObject->xpath('//ns:getMultiplePrice') ?: $xmlObject->xpath('//get:getMultiplePrice');
+        $xmlObject->registerXPathNamespace('soap', 'http://schemas.xmlsoap.org/soap/envelope/');
+        $xmlObject->registerXPathNamespace('get', 'http://www.OKGroup.es/RentaCarWebService/getWSDL');
+        $xmlObject->registerXPathNamespace('ns', 'http://tempuri.org/');
+
+        // Check for error codes in the response
+        $errorCode = (string) ($xmlObject->xpath('//errorCode')[0] ?? $xmlObject->xpath('//get:errorCode')[0] ?? null);
+        if ($errorCode && $errorCode !== 'SUCCESS') {
+            Log::warning("OK Mobility API returned error in parseVehicles: {$errorCode}");
+        }
+
+        $vehicleNodes = $xmlObject->xpath('//get:getMultiplePrice') ?:
+            $xmlObject->xpath('//ns:getMultiplePrice') ?:
+            $xmlObject->xpath('//getMultiplePrice') ?:
+            $xmlObject->xpath('//getMultiplePricesResult/getMultiplePrice');
+
+        if (empty($vehicleNodes) && (!$errorCode || $errorCode === 'SUCCESS')) {
+            Log::info("OK Mobility: No vehicles found in XML in parseVehicles, but no error code was present.");
         }
 
         if ($vehicleNodes) {
@@ -92,17 +100,17 @@ class OkMobilityController extends Controller
                     'mileage' => $mileagePolicy,
                     'fuel_policy' => 'Full-to-Full', // Default for OK Mobility
                     'min_age' => 21, // Default minimum age
-                    'price_per_day' => float($vehicleData['dayValue'] ?? 0),
+                    'price_per_day' => (float) ($vehicleData['dayValue'] ?? 0),
                     'price_per_week' => null, // Calculate later if needed
                     'price_per_month' => null, // Calculate later if needed
                     'currency' => $currency,
                     'token' => $vehicleData['token'] ?? '',
                     'group_id' => $vehicleData['GroupID'] ?? '',
                     'sipp' => $vehicleData['SIPP'] ?? '',
-                    'preview_value' => float($previewValue),
-                    'value_without_tax' => float($valueWithoutTax),
+                    'preview_value' => (float) $previewValue,
+                    'value_without_tax' => (float) $valueWithoutTax,
                     'tax_rate' => intval($taxRate),
-                    'tax_value' => float($previewValue) - float($valueWithoutTax),
+                    'tax_value' => (float) $previewValue - (float) $valueWithoutTax,
                     'extras' => $extras,
                     'extras_included' => $vehicleData['extrasIncluded'] ?? '',
                     'extras_required' => $vehicleData['extrasRequired'] ?? '',
@@ -118,61 +126,34 @@ class OkMobilityController extends Controller
         return $vehicles;
     }
 
-    public function showOkMobilityCars(Request $request, $locale)
-    {
-        try {
-            $validated = $request->validate([
-                'where' => 'required|string',
-                'latitude' => 'nullable|numeric',
-                'longitude' => 'nullable|numeric',
-                'date_from' => 'required|date',
-                'start_time' => 'required|date_format:H:i',
-                'date_to' => 'required|date|after:date_from',
-                'end_time' => 'required|date_format:H:i',
-                'age' => 'required|integer|min:21',
-                'provider_pickup_id' => 'required|string',
-                'currency' => 'nullable|string|max:3',
-            ]);
-
-            $vehicles = $this->getOkMobilityVehicles($validated);
-
-            return Inertia::render('OkMobilityCars', [
-                'vehicles' => $vehicles,
-                'search_data' => $validated,
-                'locale' => $locale,
-            ]);
-
-        } catch (\Exception $e) {
-            Log::error('OK Mobility Cars Error: ' . $e->getMessage(), [
-                'request_data' => $request->all(),
-                'trace' => $e->getTraceAsString()
-            ]);
-
-            return redirect()->back()->with('error', 'Unable to fetch OK Mobility vehicles. Please try again.');
-        }
-    }
-
     public function showOkMobilityCar(Request $request, $locale, $id)
     {
         try {
             $validated = $request->validate([
-                'where' => 'required|string',
+                'where' => 'nullable|string',
                 'latitude' => 'nullable|numeric',
                 'longitude' => 'nullable|numeric',
-                'date_from' => 'required|date',
+                'start_date' => 'required|date',
                 'start_time' => 'required|date_format:H:i',
-                'date_to' => 'required|date|after:date_from',
+                'end_date' => 'required|date|after:start_date',
                 'end_time' => 'required|date_format:H:i',
-                'age' => 'required|integer|min:21',
-                'provider_pickup_id' => 'required|string',
+                'age' => 'nullable|integer|min:21',
+                'location_id' => 'required|string',
                 'currency' => 'nullable|string|max:3',
             ]);
+
+            // Map parameters for consistency with getOkMobilityVehicles
+            $validated['where'] = $validated['where'] ?? 'Unknown';
+            $validated['age'] = $validated['age'] ?? 35;
+            $validated['provider_pickup_id'] = $validated['location_id'];
+            $validated['date_from'] = $validated['start_date'];
+            $validated['date_to'] = $validated['end_date'];
 
             $vehicles = $this->getOkMobilityVehicles($validated);
             $vehicle = collect($vehicles)->firstWhere('id', $id);
 
             if (!$vehicle) {
-                return redirect()->route('okmobility.cars', [$locale])->with('error', 'Vehicle not found.');
+                return redirect()->route('search', [$locale])->with('error', 'Vehicle not found.');
             }
 
             // Check availability
@@ -192,7 +173,7 @@ class OkMobilityController extends Controller
                 'trace' => $e->getTraceAsString()
             ]);
 
-            return redirect()->route('okmobility.cars', [$locale])->with('error', 'Unable to fetch vehicle details. Please try again.');
+            return redirect()->route('search', [$locale])->with('error', 'Unable to fetch vehicle details. Please try again.');
         }
     }
 
@@ -200,23 +181,30 @@ class OkMobilityController extends Controller
     {
         try {
             $validated = $request->validate([
-                'where' => 'required|string',
+                'where' => 'nullable|string',
                 'latitude' => 'nullable|numeric',
                 'longitude' => 'nullable|numeric',
-                'date_from' => 'required|date',
+                'start_date' => 'required|date',
                 'start_time' => 'required|date_format:H:i',
-                'date_to' => 'required|date|after:date_from',
+                'end_date' => 'required|date|after:start_date',
                 'end_time' => 'required|date_format:H:i',
-                'age' => 'required|integer|min:21',
-                'provider_pickup_id' => 'required|string',
+                'age' => 'nullable|integer|min:21',
+                'location_id' => 'required|string',
                 'currency' => 'nullable|string|max:3',
             ]);
+
+            // Map parameters for consistency
+            $validated['where'] = $validated['where'] ?? 'Unknown';
+            $validated['age'] = $validated['age'] ?? 35;
+            $validated['provider_pickup_id'] = $validated['location_id'];
+            $validated['date_from'] = $validated['start_date'];
+            $validated['date_to'] = $validated['end_date'];
 
             $vehicles = $this->getOkMobilityVehicles($validated);
             $vehicle = collect($vehicles)->firstWhere('id', $id);
 
             if (!$vehicle) {
-                return redirect()->route('okmobility.cars', [$locale])->with('error', 'Vehicle not found.');
+                return redirect()->route('search', [$locale])->with('error', 'Vehicle not found.');
             }
 
             return Inertia::render('OkMobilityBooking', [
@@ -232,7 +220,7 @@ class OkMobilityController extends Controller
                 'trace' => $e->getTraceAsString()
             ]);
 
-            return redirect()->route('okmobility.cars', [$locale])->with('error', 'Unable to load booking page. Please try again.');
+            return redirect()->route('search', [$locale])->with('error', 'Unable to load booking page. Please try again.');
         }
     }
 
@@ -240,22 +228,22 @@ class OkMobilityController extends Controller
     {
         try {
             $validated = $request->validate([
-                'provider_pickup_id' => 'required|string',
-                'date_from' => 'required|date',
+                'location_id' => 'required|string',
+                'start_date' => 'required|date',
                 'start_time' => 'required|date_format:H:i',
-                'date_to' => 'required|date|after:date_from',
+                'end_date' => 'required|date|after:start_date',
                 'end_time' => 'required|date_format:H:i',
-                'age' => 'required|integer|min:21',
+                'age' => 'nullable|integer|min:21',
                 'token' => 'required|string',
                 'group_id' => 'required|string',
             ]);
 
             $response = $this->okMobilityService->getVehicles(
-                $validated['provider_pickup_id'],
-                $validated['provider_pickup_id'], // OK Mobility is one-way only
-                $validated['date_from'],
+                $validated['location_id'],
+                $validated['location_id'], // OK Mobility is one-way only
+                $validated['start_date'],
                 $validated['start_time'],
-                $validated['date_to'],
+                $validated['end_date'],
                 $validated['end_time'],
                 [],
                 $validated['group_id']

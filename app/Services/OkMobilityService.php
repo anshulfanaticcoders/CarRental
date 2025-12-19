@@ -47,12 +47,13 @@ class OkMobilityService
                     'SOAPAction' => $action,
                     'Accept-Encoding' => 'gzip',
                 ])
+                    ->timeout(60)
+                    ->connectTimeout(15)
+                    ->retry(3, 200) // Retry 3 times with 200ms delay
                     ->withOptions([
                         'verify' => false,
                         'curl' => [
                             CURLOPT_ENCODING => '', // Enable all encodings (gzip, deflate)
-                            CURLOPT_TIMEOUT => 60,
-                            CURLOPT_CONNECTTIMEOUT => 15,
                         ]
                     ])
                     ->send('POST', $url, [
@@ -63,9 +64,9 @@ class OkMobilityService
                     return $response->body();
                 }
 
-                Log::warning("OK Mobility attempt failed for $url: " . $response->status());
+                Log::warning("OK Mobility attempt failed for $url: " . $response->status() . " - " . $response->reason());
             } catch (\Exception $e) {
-                Log::warning("OK Mobility exception for $url: " . $e->getMessage());
+                Log::warning("OK Mobility exception for $url: " . $e->getMessage() . " (Type: " . get_class($e) . ")");
             }
         }
 

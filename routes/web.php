@@ -861,6 +861,7 @@ Route::group([
         Route::get('/profile/bookings/completed', [BookingController::class, 'getCompletedBookings'])->name('profile.bookings.completed');
         Route::get('/profile/bookings/green-motion', [GreenMotionBookingController::class, 'getCustomerGreenMotionBookings'])->name('profile.bookings.green-motion');
         Route::get('/profile/bookings/adobe', [AdobeBookingController::class, 'getCustomerAdobeBookings'])->name('profile.bookings.adobe');
+        Route::get('/profile/bookings/ok-mobility', [OkMobilityBookingController::class, 'getCustomerOkMobilityBookings'])->name('profile.bookings.ok-mobility');
 
         // Favourite vehicles
         Route::post('/vehicles/{vehicle}/favourite', [FavoriteController::class, 'favourite'])->name('vehicles.favourite');
@@ -934,7 +935,6 @@ Route::group([
     Route::get('/green-motion-cars', [GreenMotionController::class, 'showGreenMotionCars'])->name('green-motion-cars');
 
     // OK Mobility Cars Page
-    Route::get('/ok-mobility-cars', [OkMobilityController::class, 'showOkMobilityCars'])->name('ok-mobility-cars');
 
     // GreenMotion Booking Page
     Route::get('/green-motion-booking/{id}/checkout', [GreenMotionController::class, 'showGreenMotionBookingPage'])
