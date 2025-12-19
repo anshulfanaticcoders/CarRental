@@ -33,8 +33,10 @@ const page = usePage();
 // Calculate Number of Rental Days
 const numberOfRentalDays = computed(() => {
     if (props.form.date_from && props.form.date_to) {
-        const start = new Date(props.form.date_from);
-        const end = new Date(props.form.date_to);
+        const startStr = `${props.form.date_from} ${props.form.start_time || '09:00'}`;
+        const endStr = `${props.form.date_to} ${props.form.end_time || '09:00'}`;
+        const start = new Date(startStr);
+        const end = new Date(endStr);
         const diffTime = Math.abs(end - start);
         const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
         return diffDays > 0 ? diffDays : 1;
@@ -255,11 +257,10 @@ const vehicleSpecs = computed(() => {
 
             <!-- Row 4: Price & Action -->
             <div class="flex justify-between items-end mt-4 pt-2">
-                 <!-- Price -->
+                <!-- Price -->
                 <div class="flex flex-col">
-                    <span class="text-xs text-gray-500">Total Price</span>
-                     <!-- We need to slot this or use a prop function because conversion depends on parent state. 
-                          For now, I will use a SLOT for the price to allow parent to control formatting/currency. -->
+                    <slot name="dailyPrice"></slot>
+                    <span class="text-xs text-gray-500 mt-1">Total price for {{ numberOfRentalDays }} day(s)</span>
                     <slot name="price"></slot>
                 </div>
                 

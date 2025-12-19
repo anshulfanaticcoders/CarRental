@@ -83,6 +83,12 @@ class SearchController extends Controller
             'unified_location_id' => 'nullable|integer', // Unified location ID for multi-provider search
         ]);
 
+        // Calculate rental duration in days for price-per-day normalization
+        $dtStart = \Carbon\Carbon::parse(($validated['date_from'] ?? now()->addDays(1)->format('Y-m-d')) . ' ' . ($validated['start_time'] ?? '09:00'));
+        $dtEnd = \Carbon\Carbon::parse(($validated['date_to'] ?? now()->addDays(2)->format('Y-m-d')) . ' ' . ($validated['end_time'] ?? '09:00'));
+        $rentalDays = max(1, (int) ceil($dtStart->diffInMinutes($dtEnd) / 1440));
+        Log::info("Global rental duration: {$rentalDays} days.");
+
         $internalVehiclesQuery = Vehicle::query()->whereIn('status', ['available', 'rented'])
             ->with('images', 'bookings', 'vendorProfile', 'benefits');
 
@@ -326,7 +332,7 @@ class SearchController extends Controller
 
         $internalVehiclesEloquent = $internalVehiclesQuery->with('category')->get();
         $vehicleListSchema = SchemaBuilder::vehicleList($internalVehiclesEloquent, 'Vehicle Search Results', $validated);
-        $internalVehiclesData = $internalVehiclesEloquent->map(function ($vehicle) {
+        $internalVehiclesData = $internalVehiclesEloquent->map(function ($vehicle) use ($rentalDays) {
             $reviews = Review::where('vehicle_id', $vehicle->id)
                 ->where('status', 'approved')
                 ->get();
@@ -336,6 +342,9 @@ class SearchController extends Controller
 
             $data = $vehicle->toArray();
             $data['category'] = $vehicle->category->name ?? 'Unknown';
+            // Normalize pricing and currency for internal vehicles
+            $data['currency'] = $vehicle->vendorProfile->currency ?? 'USD';
+            $data['total_price'] = (float) ($vehicle->price_per_day * $rentalDays);
             return $data;
         })->values()->all();
 
@@ -549,17 +558,29 @@ class SearchController extends Controller
                                         $features[] = 'GPS';
                                     }
 
-                                    $providerVehicles->push((object) [
+                                    $totalPrice = 0.0;
+                                    $currency = 'EUR';
+
+                                    if (isset($vehicle->total) && is_numeric((string) $vehicle->total)) {
+                                        $totalPrice = (float) (string) $vehicle->total;
+                                        $currency = trim((string) ($vehicle->total['currency'] ?? 'EUR'));
+                                    } elseif (isset($vehicle->product[0]->total) && is_numeric((string) $vehicle->product[0]->total)) {
+                                        $totalPrice = (float) (string) $vehicle->product[0]->total;
+                                        $currency = trim((string) ($vehicle->product[0]->total['currency'] ?? 'EUR'));
+                                    }
+
+                                    $providerVehicles->push([
                                         'id' => $providerToFetch . '_' . (string) $vehicle['id'],
                                         'source' => $providerToFetch,
                                         'brand' => $brandName,
-                                        'model' => (string) $vehicle['name'],
-                                        'category' => $categoryName, // Add category for filtering
+                                        'model' => str_ireplace($brandName . ' ', '', (string) $vehicle['name']),
+                                        'category' => $categoryName,
                                         'image' => urldecode((string) $vehicle['image']),
-                                        'price_per_day' => (isset($vehicle->total) && is_numeric((string) $vehicle->total)) ? (float) (string) $vehicle->total : 0.0,
+                                        'total_price' => $totalPrice,
+                                        'price_per_day' => (float) ($totalPrice / $rentalDays),
                                         'price_per_week' => null,
                                         'price_per_month' => null,
-                                        'currency' => (isset($vehicle->total['currency']) && !empty((string) $vehicle->total['currency'])) ? (string) $vehicle->total['currency'] : 'EUR',
+                                        'currency' => $currency,
                                         'transmission' => (string) $vehicle->transmission,
                                         'fuel' => (string) $vehicle->fuel,
                                         'seating_capacity' => (int) $vehicle->adults + (int) $vehicle->children,
@@ -571,16 +592,13 @@ class SearchController extends Controller
                                         'features' => $features,
                                         'airConditioning' => $hasAC,
                                         'sipp_code' => $sippCode,
-                                        'benefits' => (object) [
+                                        'benefits' => [
                                             'minimum_driver_age' => $minDriverAge,
                                             'fuel_policy' => $fuelPolicy,
                                         ],
-                                        // Map luggage fields for dynamic display
-                                        // Use object syntax -> for child elements, matching GreenMotionController logic
                                         'luggageSmall' => (string) $vehicle->luggageSmall,
                                         'luggageMed' => (string) $vehicle->luggageMed,
                                         'luggageLarge' => (string) $vehicle->luggageLarge,
-                                        // review_count and average_rating omitted - not provided by API
                                         'products' => $products,
                                         'options' => [],
                                         'insurance_options' => [],
@@ -661,7 +679,8 @@ class SearchController extends Controller
                                         ? $parsedSipp['category']
                                         : (isset($vehicle['type']) ? ucwords(strtolower($vehicle['type'])) : ($vehicle['category'] ?? '')),
                                     'image' => $this->getAdobeVehicleImage($vehicle['photo'] ?? ''),
-                                    'price_per_day' => (float) (($vehicle['tdr'] ?? 0) / $rentalDays), // Derive daily rate from Total Daily Rate (total price)
+                                    'price_per_day' => (float) (($vehicle['tdr'] ?? 0) / $rentalDays),
+                                    'total_price' => (float) ($vehicle['tdr'] ?? 0),
                                     'price_per_week' => (float) (($vehicle['tdr'] ?? 0) / $rentalDays * 7),
                                     'price_per_month' => (float) (($vehicle['tdr'] ?? 0) / $rentalDays * 30),
 
@@ -716,7 +735,7 @@ class SearchController extends Controller
                                     })(),
                                 ];
 
-                                $processedVehicles[] = (object) $processedVehicle;
+                                $processedVehicles[] = $processedVehicle;
 
                                 // Collect protections and extras for caching
                                 $allProtections = array_merge($allProtections, $vehicleDetails['protections'] ?? []);
@@ -808,11 +827,9 @@ class SearchController extends Controller
                                     $vehicleName = $groupFullName;
                                     $token = $vehicleData['token'] ?? 'unknown';
 
-                                    // Calculate price per day using OK Mobility's dayValue field
-                                    $pricePerDay = 0;
-                                    if (isset($vehicleData['dayValue']) && is_numeric($vehicleData['dayValue'])) {
-                                        $pricePerDay = (float) $vehicleData['dayValue'];
-                                    }
+                                    // Calculate price per day and total price
+                                    $totalPrice = (float) ($vehicleData['previewValue'] ?? 0);
+                                    $pricePerDay = (float) ($totalPrice / $rentalDays);
 
                                     // Extract mileage information
                                     $mileage = 'Unknown';
@@ -847,7 +864,7 @@ class SearchController extends Controller
                                         $vehicleModel = $parsedSipp['dynamic_name'] ?? $groupFullName;
                                     }
 
-                                    $okMobilityVehicles->push((object) [
+                                    $okMobilityVehicles->push([
                                         'id' => 'okmobility_' . $groupId . '_' . md5($token),
                                         'source' => 'okmobility',
                                         'brand' => $brandName,
@@ -855,6 +872,7 @@ class SearchController extends Controller
                                         'sipp_code' => $sippCode,
                                         'image' => !empty($vehicleData['imageURL']) ? $vehicleData['imageURL'] : $this->getOkMobilityImageUrl($groupId),
                                         'price_per_day' => $pricePerDay,
+                                        'total_price' => $totalPrice,
                                         'price_per_week' => $pricePerDay * 7, // Calculate weekly price
                                         'price_per_month' => $pricePerDay * 30, // Calculate monthly price
                                         'currency' => 'EUR', // OK Mobility uses EUR
@@ -874,7 +892,7 @@ class SearchController extends Controller
                                         'week_day_close' => $vehicleData['weekDayClose'] ?? null,
                                         'preview_value' => isset($vehicleData['previewValue']) && is_numeric($vehicleData['previewValue']) ? (float) $vehicleData['previewValue'] : null,
                                         'total_day_value_with_tax' => isset($vehicleData['totalDayValueWithTax']) && is_numeric($vehicleData['totalDayValueWithTax']) ? (float) $vehicleData['totalDayValueWithTax'] : null,
-                                        'benefits' => (object) [
+                                        'benefits' => [
                                             // Only include mileage info - OK Mobility doesn't provide cancellation, min age, or fuel policy in getMultiplePrices
                                             'limited_km_per_day' => $vehicleData['kmsIncluded'] !== 'true',
                                         ],
@@ -960,7 +978,9 @@ class SearchController extends Controller
                                 );
 
                                 if ($standardVehicle) {
-                                    $providerVehicles->push((object) $standardVehicle);
+                                    $standardVehicle['total_price'] = $standardVehicle['price_per_day']; // Service sets price_per_day to TotalRate
+                                    $standardVehicle['price_per_day'] = (float) ($standardVehicle['total_price'] / $rentalDays);
+                                    $providerVehicles->push($standardVehicle);
                                 }
                             }
 
@@ -1055,7 +1075,7 @@ class SearchController extends Controller
                                     }
 
                                     // Convert total amount to per day if needed
-                                    $pricePerDay = $vehicle['total_amount'] ?? 0;
+                                    $totalPrice = $vehicle['total_amount'] ?? 0;
 
                                     // Parse SIPP if available to fill holes
                                     $sippCode = $vehicle['sipp_code'] ?? '';
@@ -1081,7 +1101,8 @@ class SearchController extends Controller
                                         'brand' => $brandName,
                                         'model' => $vehicle['model'] ?? 'Locauto Vehicle',
                                         'image' => $vehicle['image'] ?? '/images/default-car.jpg',
-                                        'price_per_day' => (float) $pricePerDay,
+                                        'price_per_day' => (float) ($totalPrice / $rentalDays),
+                                        'total_price' => (float) $totalPrice,
                                         'price_per_week' => null,
                                         'price_per_month' => null,
                                         'currency' => $vehicle['currency'] ?? 'EUR',
@@ -1096,7 +1117,7 @@ class SearchController extends Controller
                                         'full_vehicle_address' => $currentProviderLocationName,
                                         'provider_pickup_id' => $currentProviderLocationId,
                                         'sipp_code' => $sippCode,
-                                        'benefits' => (object) [
+                                        'benefits' => [
                                             'minimum_driver_age' => (int) ($validated['age'] ?? 21),
                                             'pay_on_arrival' => true,
                                             'luggage' => $vehicle['luggage'] ?? 0, // Add logic to pass luggage data

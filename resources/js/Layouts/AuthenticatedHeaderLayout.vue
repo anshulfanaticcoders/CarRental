@@ -375,7 +375,7 @@ watch(() => url.value, () => {
 </script>
 
 <template>
-  <header class="border-b border-gray-200 shadow-sm bg-white" ref="navRef">
+  <header class="border-b border-gray-200 shadow-sm bg-white relative z-[99999]" ref="navRef">
     <div class="full-w-container mx-auto">
       <div class="flex justify-between items-center h-16 md:h-20">
         <!-- Logo Section -->
@@ -477,7 +477,7 @@ watch(() => url.value, () => {
                     <img :src="bellIcon" alt="Notifications" class="w-6 h-6 ml-[3px]">
                     <span v-if="unreadCount > 0" class="absolute w-[18px] h-[18px] border-2 border-white top-0 right-0 inline-flex items-center justify-center px-2 py-1 text-xs font-bold leading-none text-red-100 bg-red-600 rounded-full">{{ unreadCount }}</span>
                 </button>
-                <div ref="notificationDropdownRef" v-if="showingNotificationDropdown" class="absolute right-0 mt-2 w-80 bg-white rounded-md shadow-lg z-20 top-[3rem]">
+                <div ref="notificationDropdownRef" v-if="showingNotificationDropdown" class="absolute right-0 mt-2 w-80 bg-white rounded-md shadow-lg z-[99999] top-[3rem]">
                     <div class="p-4 border-b flex justify-between items-center">
                         <h3 class="text-lg font-medium">Notifications</h3>
                     </div>
@@ -876,7 +876,7 @@ watch(() => url.value, () => {
 
 /* Ensure header stays on top */
 header {
-  z-index: 50;
+  z-index: 99999;
 }
 
 /* Responsive adjustments */

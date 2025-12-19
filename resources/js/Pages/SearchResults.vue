@@ -1986,66 +1986,20 @@ watch(
                             @mouseleave="unhighlightVehicleOnMap(vehicle)"
                             class="vehicle-card fade-up-hidden"
                         >
-                            <template #price>
-                                <!-- Price Slot Logic copied from inline to preserve reactivity -->
-                                <div v-if="form.package_type === 'day' || form.package_type === 'week' || form.package_type === 'month'">
-                                    <div v-if="vehicle.source !== 'internal'">
-                                        <div v-if="vehicle.source === 'wheelsys' && vehicle.price_per_day && vehicle.price_per_day > 0">
-                                            <span class="text-customPrimaryColor text-xl font-bold">
-                                                {{ getCurrencySymbol(selectedCurrency) }}{{ convertCurrency(vehicle.price_per_day, vehicle.currency || 'USD').toFixed(2) }}
-                                            </span>
-                                        </div>
-                                        <div v-else-if="vehicle.products && vehicle.products[0]?.total && vehicle.products[0].total > 0">
-                                            <span class="text-customPrimaryColor text-xl font-bold">
-                                                {{ getCurrencySymbol(selectedCurrency) }}{{ convertCurrency(parseFloat(vehicle.products[0].total), vehicle.products[0].currency).toFixed(2) }}
-                                            </span>
-                                        </div>
-                                        <div v-else>
-                                            <span class="text-sm text-gray-500">N/A</span>
-                                        </div>
-                                    </div>
-                                    <div v-else-if="vehicle[priceField] && vehicle[priceField] > 0">
-                                        <span class="text-customPrimaryColor text-xl font-bold">
-                                            {{ getCurrencySymbol(selectedCurrency) }}{{ convertCurrency(vehicle[priceField], vehicle.vendor_profile?.currency).toFixed(2) }}
-                                        </span>
-                                    </div>
-                                    <div v-else>
-                                        <span class="text-sm text-gray-500">N/A</span>
-                                    </div>
+                            <template #dailyPrice>
+                                <div class="flex items-baseline gap-1">
+                                    <span class="text-customPrimaryColor text-2xl font-bold">
+                                        {{ getCurrencySymbol(selectedCurrency) }}{{ convertCurrency(vehicle.price_per_day, vehicle.currency).toFixed(2) }}
+                                    </span>
+                                    <span class="text-xs text-gray-500">/day</span>
                                 </div>
-                                <div v-else>
-                                    <template v-if="vehicle.source !== 'internal'">
-                                        <div v-if="vehicle.source === 'wheelsys' && vehicle.price_per_day && vehicle.price_per_day > 0">
-                                            <span class="text-customPrimaryColor text-xl font-bold">
-                                                {{ getCurrencySymbol(selectedCurrency) }}{{ convertCurrency(vehicle.price_per_day, vehicle.currency || 'USD').toFixed(2) }}
-                                            </span>
-                                        </div>
-                                        <div v-else-if="vehicle.source === 'locauto_rent' && vehicle.price_per_day && vehicle.price_per_day > 0">
-                                              <span class="text-customPrimaryColor text-xl font-bold">
-                                                {{ getCurrencySymbol(selectedCurrency) }}{{ convertCurrency(vehicle.price_per_day, vehicle.currency || 'USD').toFixed(2) }}
-                                            </span>
-                                        </div>
-                                        <div v-else-if="vehicle.source === 'adobe' && vehicle.tdr && vehicle.tdr > 0">
-                                            <span class="text-customPrimaryColor text-xl font-bold">
-                                                {{ getCurrencySymbol(selectedCurrency) }}{{ convertCurrency(vehicle.tdr, 'USD').toFixed(2) }}
-                                            </span>
-                                        </div>
-                                        <div v-else-if="vehicle.products && vehicle.products[0]?.total && vehicle.products[0].total > 0">
-                                            <span class="text-customPrimaryColor text-xl font-bold">
-                                                {{ getCurrencySymbol(selectedCurrency) }}{{ convertCurrency(parseFloat(vehicle.products[0].total), vehicle.products[0].currency).toFixed(2) }}
-                                            </span>
-                                        </div>
-                                        <div v-else>
-                                            <span class="text-sm text-gray-500">N/A</span>
-                                        </div>
-                                    </template>
-                                    <template v-else>
-                                        <div v-if="vehicle.price_per_day">
-                                            <span class="text-customPrimaryColor text-xl font-bold">
-                                                {{ getCurrencySymbol(selectedCurrency) }}{{ convertCurrency(vehicle.price_per_day, vehicle.vendor_profile?.currency).toFixed(2) }}
-                                            </span>
-                                        </div>
-                                    </template>
+                            </template>
+
+                            <template #price>
+                                <div class="flex items-center gap-2">
+                                    <span class="text-gray-900 font-semibold">
+                                        {{ getCurrencySymbol(selectedCurrency) }}{{ convertCurrency(vehicle.total_price || vehicle.price_per_day, vehicle.currency).toFixed(2) }}
+                                    </span>
                                 </div>
                             </template>
                         </CarListingCard>
