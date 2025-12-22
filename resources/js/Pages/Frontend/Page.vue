@@ -81,19 +81,19 @@ const seoImageUrl = computed(() => {
 });
 </script>
 <style scoped>
-.prose ::v-deep h4 {
+.prose :deep(h4) {
     font-size: 1.5rem !important;
     font-weight: bold !important;
 }
-.prose ::v-deep h5 {
+.prose :deep(h5) {
     font-weight: bold !important;
 }
 
 @media screen and (max-width:768px) {
-    .prose ::v-deep p{
+    .prose :deep(p) {
         font-size: 0.875rem;
     } 
-    .prose ::v-deep h4 {
+    .prose :deep(h4) {
     font-size: 1.25rem !important;
 }
 }

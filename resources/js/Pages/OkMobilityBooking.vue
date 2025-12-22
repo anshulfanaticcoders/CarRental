@@ -4,7 +4,7 @@ import { computed, onMounted, ref, watch, nextTick, onBeforeUnmount } from "vue"
 import AuthenticatedHeaderLayout from "@/Layouts/AuthenticatedHeaderLayout.vue";
 import Footer from "@/Components/Footer.vue";
 import { useToast } from 'vue-toastification';
-import OkMobilityStripeCheckout from "@/components/OkMobilityStripeCheckout.vue";
+import OkMobilityStripeCheckout from "@/Components/OkMobilityStripeCheckout.vue";
 import { useCurrency } from '@/composables/useCurrency';
 import axios from 'axios';
 
