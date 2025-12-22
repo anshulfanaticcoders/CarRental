@@ -260,8 +260,6 @@ const vehicleSpecs = computed(() => {
                 <!-- Price -->
                 <div class="flex flex-col">
                     <slot name="dailyPrice"></slot>
-                    <span class="text-xs text-gray-500 mt-1">Total price for {{ numberOfRentalDays }} day(s)</span>
-                    <slot name="price"></slot>
                 </div>
                 
                 <!-- View Deal Button -->

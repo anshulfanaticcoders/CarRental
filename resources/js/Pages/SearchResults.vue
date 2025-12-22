@@ -1786,20 +1786,11 @@ watch(
     <section>
     <div id="filter-section" class="full-w-container py-8 relative z-40">
         <!-- Mobile filter button (visible only on mobile, hidden when fixed button appears) -->
-        <div class="md:hidden mb-4 flex items-center justify-between gap-4" v-if="!showFixedMobileFilterButton">
+        <div class="md:hidden mb-4 flex items-center justify-center gap-4" v-if="!showFixedMobileFilterButton">
             <button @click="showMobileFilters = true"
                 class="flex-1 flex items-center justify-center gap-2 p-3 bg-white rounded-lg shadow-md hover:shadow-lg transition-all duration-300 text-gray-700">
                 <img :src="filterIcon" alt="Filter" class="w-5 h-5" loading="lazy" />
                 <span class="text-base font-semibold">Filter</span>
-            </button>
-            
-            <!-- Mobile Map Button -->
-            <button @click="showMobileMapModal = true"
-                class="flex-1 flex items-center justify-center gap-2 p-3 bg-customPrimaryColor text-white rounded-lg shadow-md hover:shadow-lg transition-all duration-300">
-                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7"/>
-                </svg>
-                <span class="text-base font-semibold">Map</span>
             </button>
         </div>
 
@@ -1945,18 +1936,20 @@ watch(
             <!-- Main Content - Vehicle List -->
             <div class="col-span-12 md:col-span-9 w-full">
                 <!-- Map and Sort Controls -->
-                <div class="flex justify-between items-center mb-4 bg-white p-3 rounded-xl border border-gray-100 shadow-sm">
-                    <h2 class="text-lg font-semibold text-gray-800 px-2">
-                        Available Vehicles
-                        <span class="text-sm font-normal text-gray-500 ml-2">({{ vehicles?.total || 0 }} found)</span>
-                    </h2>
-                    
-                    <button @click="showMap = true" class="flex items-center gap-2 px-4 py-2 bg-white border border-gray-200 text-gray-700 rounded-lg hover:bg-gray-50 hover:border-customPrimaryColor transition-all shadow-sm">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-customPrimaryColor" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" />
-                        </svg>
-                        <span>View Map</span>
-                    </button>
+                <div class="mb-4 bg-white p-3 rounded-xl border border-gray-100 shadow-sm">
+                    <div class="flex flex-col md:flex-row md:justify-between md:items-center gap-3">
+                        <h2 class="text-lg font-semibold text-gray-800 px-2">
+                            Available Vehicles
+                            <span class="text-sm font-normal text-gray-500 ml-2">({{ vehicles?.total || 0 }} found)</span>
+                        </h2>
+
+                        <button @click="showMap = true" class="flex items-center justify-center gap-2 px-4 py-2 bg-white border border-gray-200 text-gray-700 rounded-lg hover:bg-gray-50 hover:border-customPrimaryColor transition-all shadow-sm">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-customPrimaryColor" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" />
+                            </svg>
+                            <span>View Map</span>
+                        </button>
+                    </div>
                 </div>
 
                 <div class="grid gap-5 grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 max-[768px]:grid-cols-1">
@@ -1995,14 +1988,7 @@ watch(
                                 </div>
                             </template>
 
-                            <template #price>
-                                <div class="flex items-center gap-2">
-                                    <span class="text-gray-900 font-semibold">
-                                        {{ getCurrencySymbol(selectedCurrency) }}{{ convertCurrency(vehicle.total_price || vehicle.price_per_day, vehicle.currency).toFixed(2) }}
-                                    </span>
-                                </div>
-                            </template>
-                        </CarListingCard>
+                           </CarListingCard>
                     </div>
                 </div>
                 <!-- Pagination -->

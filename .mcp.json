@@ -34,6 +34,18 @@
       "type": "stdio",
       "command": "uvx",
       "args": ["consult7", "openrouter", "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"]
-    }
+    },
+     "exa": {
+      "type": "http",
+      "url": "https://mcp.exa.ai/mcp",
+      "headers": {}
+    },
+    "Ref": {
+  "command": "npx",
+  "args": ["ref-tools-mcp@latest"],
+  "env": {
+    "REF_API_KEY": "ref-e073988e7c23f9a980d0"
+  }
+}
   }
 }

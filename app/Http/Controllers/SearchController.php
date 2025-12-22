@@ -1287,7 +1287,7 @@ class SearchController extends Controller
             'vehicles' => $vehicles,
             'okMobilityVehicles' => $okMobilityVehiclesPaginated,
             'filters' => $validated,
-            'pagination_links' => $vehicles->links()->toHtml(),
+            'pagination_links' => $vehicles->links('pagination::tailwind')->toHtml(),
             'brands' => $combinedBrands,
             'colors' => $colors,
             'seatingCapacities' => $combinedSeatingCapacities,
