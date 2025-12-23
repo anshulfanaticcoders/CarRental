@@ -27,6 +27,7 @@ class UpdateUnifiedLocationsCommand extends Command
     protected $adobeCarService;
     protected $locautoRentService;
     protected $wheelsysService;
+    protected $renteonService;
 
     public function __construct(
         \App\Services\GreenMotionService $greenMotionService,
@@ -35,7 +36,8 @@ class UpdateUnifiedLocationsCommand extends Command
         \App\Services\LocationMatchingService $locationMatchingService,
         \App\Services\AdobeCarService $adobeCarService,
         \App\Services\LocautoRentService $locautoRentService,
-        \App\Services\WheelsysService $wheelsysService
+        \App\Services\WheelsysService $wheelsysService,
+        \App\Services\RenteonService $renteonService
     ) {
         parent::__construct();
         $this->greenMotionService = $greenMotionService;
@@ -45,6 +47,7 @@ class UpdateUnifiedLocationsCommand extends Command
         $this->adobeCarService = $adobeCarService;
         $this->locautoRentService = $locautoRentService;
         $this->wheelsysService = $wheelsysService;
+        $this->renteonService = $renteonService;
     }
 
     /**
@@ -75,7 +78,10 @@ class UpdateUnifiedLocationsCommand extends Command
         $wheelsysLocations = $this->fetchWheelsysLocations();
         $this->info('Fetched ' . count($wheelsysLocations) . ' Wheelsys locations.');
 
-        $unifiedLocations = $this->mergeAndNormalizeLocations($internalLocations, $greenMotionLocations, $usaveLocations, $okMobilityLocations, $adobeLocations, $locautoLocations, $wheelsysLocations);
+        $renteonLocations = $this->fetchRenteonLocations();
+        $this->info('Fetched ' . count($renteonLocations) . ' Renteon locations.');
+
+        $unifiedLocations = $this->mergeAndNormalizeLocations($internalLocations, $greenMotionLocations, $usaveLocations, $okMobilityLocations, $adobeLocations, $locautoLocations, $wheelsysLocations, $renteonLocations);
         $this->info('Merged into ' . count($unifiedLocations) . ' unique unified locations.');
 
         $this->saveUnifiedLocations(array_values($unifiedLocations));
@@ -513,5 +519,83 @@ class UpdateUnifiedLocationsCommand extends Command
             $this->error('Error fetching Wheelsys locations: ' . $e->getMessage());
             return [];
         }
+    }
+
+    private function fetchRenteonLocations(): array
+    {
+        $this->info('Fetching Renteon locations...');
+        try {
+            $locations = $this->renteonService->getLocations();
+
+            if (empty($locations)) {
+                $this->error('Failed to retrieve locations from Renteon API or empty response.');
+                \Illuminate\Support\Facades\Log::warning('Renteon API returned empty response.');
+                return [];
+            }
+
+            $formattedLocations = [];
+            foreach ($locations as $location) {
+                // Safety checks for required fields
+                if (empty($location['Code']) || empty($location['Name'])) {
+                    continue;
+                }
+
+                // Only include locations that are for pickup/dropoff
+                if ($location['Category'] !== 'PickupDropoff' && $location['Category'] !== 'City') {
+                    continue;
+                }
+
+                $formattedLocations[] = [
+                    'id' => 'renteon_' . $location['Code'],
+                    'label' => $location['Name'],
+                    'below_label' => $location['Path'],
+                    'location' => $location['Name'],
+                    'city' => $this->extractCityFromPath($location['Path']),
+                    'state' => null, // Not provided in Renteon response
+                    'country' => $this->getCountryName($location['CountryCode']),
+                    'latitude' => 0, // Not provided in Renteon response
+                    'longitude' => 0, // Not provided in Renteon response
+                    'source' => 'renteon',
+                    'matched_field' => 'location',
+                    'provider_location_id' => $location['Code'],
+                ];
+            }
+
+            $this->info('Processed ' . count($formattedLocations) . ' Renteon locations (filtered from ' . count($locations) . ' total)');
+            return $formattedLocations;
+
+        } catch (\Exception $e) {
+            $this->error('Error fetching Renteon locations: ' . $e->getMessage());
+            \Illuminate\Support\Facades\Log::error('Renteon location fetch error: ' . $e->getMessage(), ['exception' => $e]);
+            return [];
+        }
+    }
+
+    private function extractCityFromPath($path): ?string
+    {
+        if (empty($path)) {
+            return null;
+        }
+
+        // Extract city from path like "Abu Dhabi > Abu Dhabi airport"
+        $parts = explode('>', $path);
+        return trim($parts[0] ?? '');
+    }
+
+    private function getCountryName($countryCode): ?string
+    {
+        $countries = [
+            'AE' => 'United Arab Emirates',
+            'US' => 'United States',
+            'GB' => 'United Kingdom',
+            'ES' => 'Spain',
+            'IT' => 'Italy',
+            'FR' => 'France',
+            'DE' => 'Germany',
+            'GR' => 'Greece',
+            // Add more as needed
+        ];
+
+        return $countries[$countryCode] ?? $countryCode;
     }
 }

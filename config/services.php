@@ -64,6 +64,13 @@ return [
         'timeout' => env('LOCAUTO_RENT_TIMEOUT', 30),
     ],
 
+    'renteon' => [
+        'username' => env('RENTEON_USERNAME'),
+        'password' => env('RENTEON_PASSWORD'),
+        'base_url' => env('RENTEON_BASE_URL'),
+        'provider_code' => env('RENTEON_PROVIDER_CODE', 'demo'),
+    ],
+
     'esim_access' => [
         'api_key' => env('ESIM_ACCESS_API_KEY'),
         'base_url' => env('ESIM_ACCESS_API_URL'),
