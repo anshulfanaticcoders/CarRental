@@ -16,6 +16,7 @@ use App\Services\LocationSearchService; // Import LocationSearchService
 use App\Services\AdobeCarService; // Import AdobeCarService
 use App\Services\WheelsysService; // Import WheelsysService
 use App\Services\LocautoRentService; // Import LocautoRentService
+use App\Services\RenteonService; // Import RenteonService
 use Illuminate\Support\Facades\Log; // Import Log facade
 
 class SearchController extends Controller
@@ -26,6 +27,7 @@ class SearchController extends Controller
     protected $adobeCarService;
     protected $wheelsysService;
     protected $locautoRentService;
+    protected $renteonService;
 
     public function __construct(
         GreenMotionService $greenMotionService,
@@ -33,7 +35,8 @@ class SearchController extends Controller
         LocationSearchService $locationSearchService,
         AdobeCarService $adobeCarService,
         WheelsysService $wheelsysService,
-        LocautoRentService $locautoRentService
+        LocautoRentService $locautoRentService,
+        RenteonService $renteonService
     ) {
         $this->greenMotionService = $greenMotionService;
         $this->okMobilityService = $okMobilityService;
@@ -41,6 +44,7 @@ class SearchController extends Controller
         $this->adobeCarService = $adobeCarService;
         $this->wheelsysService = $wheelsysService;
         $this->locautoRentService = $locautoRentService;
+        $this->renteonService = $renteonService;
     }
 
     public function search(Request $request)
@@ -1150,6 +1154,46 @@ class SearchController extends Controller
                         ]);
                     }
                 } // Close LocautoRent elseif
+                elseif ($providerToFetch === 'renteon') {
+                    try {
+                        Log::info('Attempting to fetch Renteon vehicles for location ID: ' . $currentProviderLocationId);
+                        Log::info('Search params: ', [
+                            'pickup_id' => $currentProviderLocationId,
+                            'date_from' => $validated['date_from'],
+                            'start_time' => $validated['start_time'] ?? '09:00',
+                            'date_to' => $validated['date_to'],
+                            'end_time' => $validated['end_time'] ?? '09:00'
+                        ]);
+
+                        $renteonVehicles = $this->renteonService->getTransformedVehicles(
+                            $currentProviderLocationId,
+                            $validated['dropoff_location_id'] ?? $currentProviderLocationId,
+                            $validated['date_from'],
+                            $validated['start_time'] ?? '09:00',
+                            $validated['date_to'],
+                            $validated['end_time'] ?? '09:00',
+                            [], // Additional options
+                            $locationLat,
+                            $locationLng,
+                            $currentProviderLocationName,
+                            $rentalDays
+                        );
+
+                        Log::info('Renteon vehicles processed: ' . count($renteonVehicles));
+
+                        foreach ($renteonVehicles as $renteonVehicle) {
+                            $providerVehicles->push((object) $renteonVehicle);
+                        }
+
+                        Log::info('Renteon vehicles added to collection: ' . count($renteonVehicles));
+
+                    } catch (\Exception $e) {
+                        Log::error("Error fetching Renteon vehicles: " . $e->getMessage(), [
+                            'provider_location_id' => $currentProviderLocationId,
+                            'trace' => $e->getTraceAsString()
+                        ]);
+                    }
+                } // Close Renteon elseif
             } // Close foreach $allProviderEntries
         }
 
@@ -1283,9 +1327,22 @@ class SearchController extends Controller
             ['path' => $request->url(), 'query' => $request->query()]
         );
 
+        // Create paginated Renteon vehicles for the frontend
+        $renteonVehiclesCollection = $providerVehicles->filter(function ($vehicle) {
+            return ($vehicle->source ?? '') === 'renteon';
+        });
+        $renteonVehiclesPaginated = new \Illuminate\Pagination\LengthAwarePaginator(
+            $renteonVehiclesCollection->values(),
+            $renteonVehiclesCollection->count(),
+            $perPage,
+            $currentPage,
+            ['path' => $request->url(), 'query' => $request->query()]
+        );
+
         return Inertia::render('SearchResults', [
             'vehicles' => $vehicles,
             'okMobilityVehicles' => $okMobilityVehiclesPaginated,
+            'renteonVehicles' => $renteonVehiclesPaginated,
             'filters' => $validated,
             'pagination_links' => $vehicles->links('pagination::tailwind')->toHtml(),
             'brands' => $combinedBrands,

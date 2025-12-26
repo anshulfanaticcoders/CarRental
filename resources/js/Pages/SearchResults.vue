@@ -196,6 +196,7 @@ const props = defineProps({
     locale: String, // Added locale prop
     greenMotionVehicles: Object, // New: GreenMotion vehicles data
     okMobilityVehicles: Object, // New: OK Mobility vehicles data
+    renteonVehicles: Object, // New: Renteon vehicles data
 });
 
 // Initialize map immediately for fast loading, then update when currency data loads
@@ -393,19 +394,21 @@ let markers = [];
 const allVehiclesForMap = computed(() => {
     const internal = props.vehicles.data || [];
     const greenMotion = props.greenMotionVehicles?.data || [];
+    const okMobility = props.okMobilityVehicles?.data || [];
+    const renteon = props.renteonVehicles?.data || [];
     // Provider vehicles (including Adobe, Wheelsys, etc.) are already included in the main vehicles collection
-    const providerVehicles = internal.filter(v => v.source !== 'internal');
+    const providerVehicles = internal.filter(v => v.source !== 'internal' && v.source !== 'renteon');
     const internalOnly = internal.filter(v => v.source === 'internal');
-    return [...internalOnly, ...greenMotion, ...providerVehicles];
+    return [...internalOnly, ...greenMotion, ...okMobility, ...renteon, ...providerVehicles];
 });
 
 // Helper to get vehicle price in selected currency
 const getVehiclePriceConverted = (vehicle) => {
     if (!vehicle) return null;
-    
+
     let originalPrice = null;
     let originalCurrency = 'USD';
-    
+
     // Determine price and currency based on source
     if (vehicle.source === 'adobe' && vehicle.tdr) {
         // For Adobe, use tdr / rental days (or use price_per_day if already calculated)
@@ -421,14 +424,18 @@ const getVehiclePriceConverted = (vehicle) => {
     } else if (vehicle.source === 'okmobility') {
         originalPrice = vehicle.price_per_day;
         originalCurrency = 'EUR';
+    } else if (vehicle.source === 'renteon') {
+        // For Renteon, use price_per_day or calculate from products
+        originalPrice = vehicle.price_per_day || parseFloat(vehicle.products?.[0]?.total || 0);
+        originalCurrency = vehicle.currency || vehicle.products?.[0]?.currency || 'EUR';
     } else {
         // Internal vehicles
         originalPrice = vehicle.price_per_day;
         originalCurrency = vehicle.currency || 'USD';
     }
-    
+
     if (originalPrice === null || isNaN(parseFloat(originalPrice))) return null;
-    
+
     return convertCurrency(parseFloat(originalPrice), originalCurrency);
 };
 
@@ -1401,6 +1408,9 @@ const getProviderRoute = (vehicle) => {
     }
     if (vehicle.source === 'locauto_rent') {
         return 'locauto-rent-car.show';
+    }
+    if (vehicle.source === 'renteon') {
+        return 'renteon-car.show';
     }
     // Add other providers here as needed
     // if (vehicle.source === 'usave') {

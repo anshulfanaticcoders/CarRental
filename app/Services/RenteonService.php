@@ -92,24 +92,67 @@ class RenteonService
     }
 
     /**
-     * Search for available vehicles
-     * This will need to be implemented based on the actual vehicle search endpoint
+     * Search for available vehicles from Renteon API
+     * Note: Vehicle search endpoint not yet available in Renteon API
+     * This method is prepared for when the endpoint becomes available
      */
-    public function getVehicles($pickupCode, $dropoffCode, $startDate, $endDate, $options = [])
+    public function getVehicles($pickupCode, $dropoffCode, $startDate, $startTime, $endDate, $endTime, $options = [])
     {
-        // This is a placeholder - we'll need to check the actual vehicle search endpoint
-        // from the Swagger documentation to implement this correctly
-
         $params = array_merge([
             'pickup_location_code' => $pickupCode,
-            'dropoff_location_code' => $dropoffCode,
+            'dropoff_location_code' => $dropoffCode ?? $pickupCode,
             'start_date' => $startDate,
+            'start_time' => $startTime,
             'end_date' => $endDate,
+            'end_time' => $endTime,
             'provider_code' => $this->providerCode,
         ], $options);
 
-        // Placeholder endpoint - need to verify actual endpoint from Swagger
-        return $this->makeRequest('GET', 'api/vehicles/search', $params);
+        // TODO: Update with actual endpoint when Renteon provides vehicle search API
+        // For now, return null to indicate no vehicles available
+        // The endpoint structure should be something like:
+        // return $this->makeRequest('GET', 'api/vehicles/search', $params);
+
+        Log::info('Renteon vehicle search called (endpoint not yet available)', [
+            'pickup_code' => $pickupCode,
+            'dropoff_code' => $dropoffCode,
+            'start_date' => $startDate,
+            'end_date' => $endDate,
+        ]);
+
+        return null;
+    }
+
+    /**
+     * Get vehicle categories (SIPP codes) from Renteon
+     */
+    public function getCarCategories()
+    {
+        return $this->makeRequest('GET', 'api/setup/carCategories');
+    }
+
+    /**
+     * Get services/equipment available from Renteon
+     */
+    public function getServices()
+    {
+        return $this->makeRequest('GET', 'api/setup/services');
+    }
+
+    /**
+     * Get provider information
+     */
+    public function getProviders()
+    {
+        return $this->makeRequest('GET', 'api/setup/providers');
+    }
+
+    /**
+     * Get provider details by code
+     */
+    public function getProviderDetails($providerCode)
+    {
+        return $this->makeRequest('GET', 'api/setup/provider/' . $providerCode);
     }
 
     /**
@@ -168,9 +211,9 @@ class RenteonService
     /**
      * Get available vehicles from Renteon and transform to unified format
      */
-    public function getTransformedVehicles($pickupCode, $dropoffCode, $startDate, $endDate, $startTime = '09:00', $endTime = '09:00', $options = [])
+    public function getTransformedVehicles($pickupCode, $dropoffCode, $startDate, $startTime, $endDate, $endTime, $options = [], $locationLat = null, $locationLng = null, $locationName = null, $rentalDays = 1)
     {
-        $vehicles = $this->getVehicles($pickupCode, $dropoffCode, $startDate, $endDate, $options);
+        $vehicles = $this->getVehicles($pickupCode, $dropoffCode, $startDate, $startTime, $endDate, $endTime, $options);
 
         if (!$vehicles) {
             return [];
@@ -179,7 +222,7 @@ class RenteonService
         // Transform each vehicle to unified format
         $transformedVehicles = [];
         foreach ($vehicles as $vehicle) {
-            $transformedVehicles[] = $this->transformVehicle($vehicle);
+            $transformedVehicles[] = $this->transformVehicle($vehicle, $pickupCode, $locationLat, $locationLng, $locationName, $rentalDays);
         }
 
         return $transformedVehicles;
@@ -189,25 +232,113 @@ class RenteonService
      * Transform vehicle data to unified format
      * This will need to be implemented based on actual vehicle data structure
      */
-    private function transformVehicle($vehicle)
+    private function transformVehicle($vehicle, $pickupCode, $locationLat = null, $locationLng = null, $locationName = null, $rentalDays = 1)
     {
+        // Parse SIPP code if available to extract vehicle details
+        $sippCode = $vehicle['sipp_code'] ?? $vehicle['acriss_code'] ?? null;
+        $parsedSipp = $this->parseSippCode($sippCode);
+
+        $brand = $vehicle['make'] ?? 'Renteon';
+        $model = $vehicle['model'] ?? 'Renteon Vehicle';
+        $category = $parsedSipp['category'] ?? ($vehicle['category'] ?? 'Unknown');
+
         return [
-            'id' => $vehicle['id'] ?? null,
+            'id' => 'renteon_' . ($vehicle['id'] ?? md5($pickupCode . '_' . ($sippCode ?? 'unknown'))),
             'source' => 'renteon',
-            'brand' => $vehicle['make'] ?? 'Unknown',
-            'model' => $vehicle['model'] ?? 'Unknown',
-            'category' => $vehicle['category'] ?? 'Unknown',
-            'seating_capacity' => $vehicle['seats'] ?? 4,
-            'doors' => $vehicle['doors'] ?? 4,
-            'transmission' => $vehicle['transmission'] ?? 'Manual',
-            'fuel' => $vehicle['fuel_type'] ?? 'Petrol',
-            'price_per_day' => $vehicle['daily_rate'] ?? 0,
+            'brand' => $brand,
+            'model' => $model,
+            'category' => $category,
+            'sipp_code' => $sippCode,
+            'image' => $vehicle['image_url'] ?? $vehicle['image'] ?? '/images/dummyCarImaage.png',
+            'price_per_day' => (float) ($vehicle['daily_rate'] ?? 0),
+            'total_price' => (float) (($vehicle['daily_rate'] ?? 0) * $rentalDays),
+            'price_per_week' => (float) (($vehicle['daily_rate'] ?? 0) * 7),
+            'price_per_month' => (float) (($vehicle['daily_rate'] ?? 0) * 30),
             'currency' => $vehicle['currency'] ?? 'EUR',
-            'image' => $vehicle['image_url'] ?? '/images/dummyCarImaage.png',
-            'provider_pickup_id' => $vehicle['pickup_location_code'] ?? null,
+            'transmission' => $parsedSipp['transmission'] ?? ($vehicle['transmission'] ?? 'Manual'),
+            'fuel' => $parsedSipp['fuel'] ?? ($vehicle['fuel_type'] ?? 'Petrol'),
+            'seating_capacity' => (int) ($parsedSipp['seating_capacity'] ?? $vehicle['seats'] ?? 4),
+            'doors' => (int) ($parsedSipp['doors'] ?? $vehicle['doors'] ?? 4),
+            'mileage' => $vehicle['mileage'] ?? 'Unlimited',
+            'latitude' => (float) ($locationLat ?? 0),
+            'longitude' => (float) ($locationLng ?? 0),
+            'full_vehicle_address' => $locationName ?? 'Renteon Location',
+            'provider_pickup_id' => $pickupCode,
             'features' => $vehicle['features'] ?? [],
-            'mileage' => $vehicle['mileage'] ?? 'Limited',
+            'airConditioning' => $parsedSipp['air_conditioning'] ?? false,
+            'benefits' => [
+                'minimum_driver_age' => (int) ($vehicle['min_driver_age'] ?? 21),
+                'fuel_policy' => $vehicle['fuel_policy'] ?? 'Full to Full',
+            ],
+            'products' => [
+                [
+                    'type' => 'BAS',
+                    'total' => (string) (($vehicle['daily_rate'] ?? 0) * $rentalDays),
+                    'currency' => $vehicle['currency'] ?? 'EUR',
+                ]
+            ],
+            'options' => [],
+            'insurance_options' => [],
         ];
+    }
+
+    /**
+     * Parse SIPP/ACRISS code to extract vehicle details
+     */
+    private function parseSippCode($sipp)
+    {
+        $sipp = strtoupper($sipp ?? '');
+        $data = [
+            'transmission' => 'manual',
+            'fuel' => 'petrol',
+            'seating_capacity' => 5,
+            'doors' => 4,
+            'category' => 'Unknown',
+            'air_conditioning' => false,
+        ];
+
+        if (strlen($sipp) < 4) {
+            return $data;
+        }
+
+        // 1. Category (1st char)
+        $categoryMap = [
+            'M' => 'Mini', 'N' => 'Mini',
+            'E' => 'Economy', 'H' => 'Economy',
+            'C' => 'Compact', 'D' => 'Compact',
+            'I' => 'Intermediate',
+            'S' => 'Standard',
+            'F' => 'Fullsize',
+            'P' => 'Premium', 'L' => 'Luxury',
+            'J' => 'SUV', 'G' => 'SUV', 'R' => 'SUV',
+            'K' => 'Van', 'V' => 'Van',
+        ];
+
+        if (isset($categoryMap[$sipp[0]])) {
+            $data['category'] = $categoryMap[$sipp[0]];
+        }
+
+        // 2. Transmission (3rd char)
+        if (isset($sipp[2])) {
+            $data['transmission'] = in_array($sipp[2], ['A', 'B', 'D']) ? 'automatic' : 'manual';
+        }
+
+        // 3. Fuel & AC (4th char)
+        if (isset($sipp[3])) {
+            $fuelMap = [
+                'D' => 'diesel', 'Q' => 'diesel',
+                'H' => 'hybrid', 'I' => 'hybrid',
+                'E' => 'electric', 'C' => 'electric',
+                'L' => 'lpg', 'S' => 'hybrid',
+            ];
+            if (isset($fuelMap[$sipp[3]])) {
+                $data['fuel'] = $fuelMap[$sipp[3]];
+            }
+            // R indicates AC
+            $data['air_conditioning'] = ($sipp[3] === 'R');
+        }
+
+        return $data;
     }
 
     /**

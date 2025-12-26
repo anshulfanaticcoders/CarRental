@@ -78,6 +78,7 @@ use App\Http\Controllers\OkMobilityController; // Import the OkMobilityControlle
 use App\Http\Controllers\AdobeCarController; // Import the AdobeCarController
 use App\Http\Controllers\AdobeBookingController; // Import the AdobeBookingController
 use App\Http\Controllers\LocautoRentController; // Import the LocautoRentController
+use App\Http\Controllers\RenteonCarController; // Import the RenteonCarController
 use App\Http\Controllers\AdminProfileController; // Import the AdminProfileController
 use App\Http\Controllers\Affiliate\AffiliateBusinessController; // Import the AffiliateBusinessController
 use App\Http\Controllers\Admin\AffiliateBusinessModelController; // Import the AffiliateBusinessModelController
@@ -951,6 +952,10 @@ Route::group([
     // Adobe Car Single Car Page
     Route::get('/adobe-car/{id}', [AdobeCarController::class, 'show'])
         ->name('adobe-car.show');
+
+    // Renteon Single Car Page
+    Route::get('/renteon-car/{id}', [RenteonCarController::class, 'show'])
+        ->name('renteon-car.show');
 
     // OK Mobility Single Car Page
     Route::get('/ok-mobility-car/{id}', [OkMobilityController::class, 'showOkMobilityCar'])
