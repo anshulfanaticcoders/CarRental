@@ -1132,7 +1132,7 @@ class SearchController extends Controller
                                         'products' => [
                                             [
                                                 'type' => 'POA',
-                                                'total' => (string) $pricePerDay,
+                                                'total' => (string) ($totalPrice / $rentalDays),
                                                 'currency' => $vehicle['currency'] ?? 'EUR',
                                                 'deposit' => (string) ($vehicle['deposit_amount'] ?? 0),
                                                 'payment_type' => 'POA',

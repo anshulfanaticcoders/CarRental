@@ -125,7 +125,9 @@ class LocautoRentController extends Controller
             $allVehicles = $this->locautoRentService->parseVehicleResponse($response);
 
             // Find the specific vehicle by ID (SIPP code)
-            $vehicle = collect($allVehicles)->firstWhere('id', $id);
+            // The ID from the URL might have a 'locauto_' prefix from SearchController, strip it
+            $searchId = str_starts_with($id, 'locauto_') ? substr($id, 8) : $id;
+            $vehicle = collect($allVehicles)->firstWhere('id', $searchId);
 
             if (!$vehicle) {
                 Log::warning('Vehicle not found: ' . $id, ['available_ids' => collect($allVehicles)->pluck('id')->toArray()]);

@@ -1016,6 +1016,34 @@ class GreenMotionController extends Controller
             ]);
         }
 
+        // Handle LocautoRent - return all Locauto locations (they support one-way rentals)
+        if ($provider === 'locauto_rent') {
+            $locautoService = app(\App\Services\LocautoRentService::class);
+            $locautoLocations = $locautoService->parseLocationResponse();
+            return response()->json([
+                'locations' => $locautoLocations,
+                'message' => 'LocautoRent locations - select your preferred dropoff location'
+            ]);
+        }
+
+        // Handle Renteon - return all Renteon locations
+        if ($provider === 'renteon') {
+            try {
+                $renteonService = app(\App\Services\RenteonService::class);
+                $renteonLocations = $renteonService->parseLocationResponse();
+                return response()->json([
+                    'locations' => $renteonLocations,
+                    'message' => 'Renteon locations - select your preferred dropoff location'
+                ]);
+            } catch (\Exception $e) {
+                Log::error('Error fetching Renteon locations: ' . $e->getMessage());
+                return response()->json([
+                    'locations' => [],
+                    'message' => 'Could not fetch Renteon locations'
+                ], 500);
+            }
+        }
+
         try {
             $this->greenMotionService->setProvider($provider);
         } catch (\Exception $e) {

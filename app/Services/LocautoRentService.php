@@ -229,15 +229,48 @@ class LocautoRentService
 
       $vehicles = [];
 
-      // Register the OTA namespace which is used for the response body content
+      // Register namespaces for XPath
       $xmlObject->registerXPathNamespace('soap', 'http://schemas.xmlsoap.org/soap/envelope/');
       $xmlObject->registerXPathNamespace('ota', 'http://www.opentravel.org/OTA/2003/05');
+      $xmlObject->registerXPathNamespace('locauto', 'https://nextrent.locautorent.com');
 
-      // The response is: soap:Envelope > soap:Body > OTA_VehAvailRateRSResponse > OTA_VehAvailRateRSResult > VehAvailRSCore > VehVendorAvails > VehVendorAvail > VehAvails > VehAvail > VehAvailCore > Vehicle
-      // VehAvail elements are in the OTA namespace
+      // Try multiple XPath approaches to find vehicles
       $vehAvails = $xmlObject->xpath('//ota:VehAvail');
 
-      Log::info('LocautoRent: Found ' . count($vehAvails) . ' VehAvail elements');
+      // If standard OTA namespace doesn't work, try wildcard namespace
+      if ($vehAvails === false || empty($vehAvails)) {
+        $vehAvails = $xmlObject->xpath('//VehAvail');
+      }
+
+      // If still not found, try accessing the structure directly
+      if ($vehAvails === false || empty($vehAvails)) {
+        Log::warning('LocautoRent: XPath not working, trying direct access');
+        // Try to navigate the structure directly
+        $body = $xmlObject->xpath('//soap:Body');
+        if (!empty($body)) {
+          $bodyElement = $body[0];
+          // Access children directly
+          $responseElement = $bodyElement->children('https://nextrent.locautorent.com')->OTA_VehAvailRateRSResponse;
+          if ($responseElement) {
+            $resultElement = $responseElement->children('http://www.opentravel.org/OTA/2003/05')->OTA_VehAvailRateRSResult;
+            if ($resultElement) {
+              $coreElement = $resultElement->VehAvailRSCore;
+              if ($coreElement) {
+                $vendorAvails = $coreElement->VehVendorAvails;
+                if ($vendorAvails) {
+                  $vehAvails = $vendorAvails->VehVendorAvail->VehAvails->VehAvail;
+                  if ($vehAvails) {
+                    // Convert SimpleXMLElement to array if it's a single element
+                    $vehAvails = iterator_to_array($vehAvails);
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+
+      Log::info('LocautoRent: Found ' . (is_countable($vehAvails) ? count($vehAvails) : 0) . ' VehAvail elements');
 
       if (!empty($vehAvails)) {
         foreach ($vehAvails as $vehAvail) {

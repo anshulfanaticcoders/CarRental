@@ -194,7 +194,6 @@ const props = defineProps({
     schema: Object, // Add schema prop
     seoMeta: Object, // Added seoMeta prop
     locale: String, // Added locale prop
-    greenMotionVehicles: Object, // New: GreenMotion vehicles data
     okMobilityVehicles: Object, // New: OK Mobility vehicles data
     renteonVehicles: Object, // New: Renteon vehicles data
 });
@@ -393,13 +392,12 @@ let markers = [];
 
 const allVehiclesForMap = computed(() => {
     const internal = props.vehicles.data || [];
-    const greenMotion = props.greenMotionVehicles?.data || [];
     const okMobility = props.okMobilityVehicles?.data || [];
     const renteon = props.renteonVehicles?.data || [];
-    // Provider vehicles (including Adobe, Wheelsys, etc.) are already included in the main vehicles collection
+    // Provider vehicles (including Adobe, Wheelsys, GreenMotion, LocautoRent, etc.) are already included in the main vehicles collection
     const providerVehicles = internal.filter(v => v.source !== 'internal' && v.source !== 'renteon');
     const internalOnly = internal.filter(v => v.source === 'internal');
-    return [...internalOnly, ...greenMotion, ...okMobility, ...renteon, ...providerVehicles];
+    return [...internalOnly, ...okMobility, ...renteon, ...providerVehicles];
 });
 
 // Helper to get vehicle price in selected currency
