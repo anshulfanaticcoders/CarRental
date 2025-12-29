@@ -2009,7 +2009,7 @@ watch(
     </div>
 
     <!-- Map Modal (Global) -->
-    <div v-if="showMap" class="fixed inset-0 z-[9999]">
+    <div v-if="showMap" class="fixed inset-0 z-[100000]">
         <!-- Full-screen overlay with map -->
         <div class="relative w-full h-full bg-white">
             <!-- Close Button Header -->

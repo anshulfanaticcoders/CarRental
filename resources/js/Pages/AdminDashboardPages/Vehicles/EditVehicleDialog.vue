@@ -61,9 +61,6 @@
             
             <!-- Add other editable fields here as needed -->
             <DialogFooter class="col-span-2 flex justify-end gap-2 mt-4">
-                <Button type="button" variant="destructive" @click="confirmDelete">
-                    Delete Vehicle
-                </Button>
                 <Button type="button" variant="outline" @click="$emit('close')">
                     Cancel
                 </Button>
@@ -144,20 +141,5 @@ const submitForm = () => {
             console.error('Error updating vehicle:', errors);
         }
     });
-};
-
-const confirmDelete = () => {
-    if (confirm('Are you sure you want to delete this vehicle? This action cannot be undone.')) {
-        form.delete(route('admin.vehicles.destroy', { vehicle: vehicleData.value.id }), {
-            preserveScroll: true,
-            onSuccess: () => {
-                emit('close'); // Close the dialog on success
-                // Optionally, show a success message or trigger a refresh
-            },
-            onError: (errors) => {
-                console.error('Error deleting vehicle:', errors);
-            }
-        });
-    }
 };
 </script>

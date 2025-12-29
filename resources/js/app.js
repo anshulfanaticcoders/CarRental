@@ -38,5 +38,6 @@ createInertiaApp({
     },
     progress: {
         color: '#ea3c3c',
+        zIndex: 100000, // Higher than header's 99999
     },
 });

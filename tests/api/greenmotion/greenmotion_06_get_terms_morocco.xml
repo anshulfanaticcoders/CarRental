@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<gm_webservice>
+  <header>
+    <request type="" />
+  </header>
+  <response type="n/a">
+    <errors>
+      <message>Server Method Not Found</message>
+      <error_code>0003</error_code>
+      <suggestion>Check your XML Request</suggestion></errors>
+   </response>
+   </gm_webservice>

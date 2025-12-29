@@ -29,49 +29,56 @@ class GreenMotionController extends Controller
                 if (isset($vehicle->product)) {
                     foreach ($vehicle->product as $product) {
                         $productType = (string) $product['type'];
+
+                        // Extract API fields for semi-dynamic benefits
+                        $excess = (string) $product->excess;
+                        $deposit = (string) $product->deposit;
+                        $fuelpolicy = (string) $product->fuelpolicy;
+                        $costperextradistance = (string) $product->costperextradistance;
+                        $debitcard = isset($product->debitcard) ? (string) $product->debitcard : '';
+
+                        // Semi-dynamic benefits: derive from API data where possible
                         $benefits = [];
 
+                        // Dynamic: From API response
+                        if ($excess === '0' || $excess === '0.00') {
+                            $benefits['Glass and tyres covered'] = true;
+                        } else {
+                            $benefits['Excess liability'] = true;
+                        }
+
+                        if (!empty($debitcard) && $debitcard === 'Y') {
+                            $benefits['Debit Card Accepted'] = true;
+                        }
+
+                        if ($fuelpolicy === 'FF') {
+                            $benefits['Free Fuel'] = true;
+                            $benefits['Fuel policy Full to Full'] = true;
+                        } elseif ($fuelpolicy === 'SL') {
+                            $benefits['Fuel policy Like for Like'] = true;
+                        }
+
+                        if ($costperextradistance === '0' || $costperextradistance === '0.00') {
+                            $benefits['Unlimited mileage'] = true;
+                        } else {
+                            $benefits['100 free miles per rental'] = true;
+                        }
+
+                        // Static: Type-specific (only what's not in API)
                         switch ($productType) {
                             case 'BAS':
-                                $benefits = [
-                                    'Excess liability' => true,
-                                    'Security deposit' => true,
-                                    'Fuel policy Like for Like' => true,
-                                    '100 free miles per rental' => true,
-                                    'Non refundable' => false,
-                                    'Non amendable' => false,
-                                ];
+                                $benefits['Non refundable'] = true;
+                                $benefits['Non amendable'] = true;
                                 break;
                             case 'PLU':
-                                $benefits = [
-                                    'Excess liability' => true,
-                                    'Security deposit' => true,
-                                    'Fuel policy Like for Like' => true,
-                                    '100 free miles per rental' => true,
-                                    'Cancellation in line with T&Cs' => true,
-                                ];
-                                break;
                             case 'PRE':
-                                $benefits = [
-                                    'Excess liability' => true,
-                                    'Security deposit' => true,
-                                    'Fuel policy Like for Like' => true,
-                                    'Unlimited mileage' => true,
-                                    'Cancellation in line with T&Cs' => true,
-                                ];
-                                break;
                             case 'PMP':
-                                $benefits = [
-                                    'Excess liability $0' => true,
-                                    'Security deposit' => true,
-                                    'Fuel policy Like for Like' => true,
-                                    'Unlimited mileage' => true,
-                                    'Cancellation in line with T&Cs' => true,
-                                    'Glass and tyres covered' => true,
-                                    'Debit Card Accepted for Deposits' => true,
-                                    'Two free extras on collection' => true,
-                                ];
+                                $benefits['Cancellation in line with T&Cs'] = true;
                                 break;
+                        }
+
+                        if ($productType === 'PMP') {
+                            $benefits['Two free extras on collection'] = true;
                         }
 
                         $products[] = [
@@ -79,17 +86,18 @@ class GreenMotionController extends Controller
                             'benefits' => $benefits,
                             'total' => (string) $product->total,
                             'currency' => (string) $product->total['currency'],
-                            'deposit' => (string) $product->deposit,
-                            'excess' => (string) $product->excess,
-                            'fuelpolicy' => (string) $product->fuelpolicy,
+                            'deposit' => $deposit,
+                            'excess' => $excess,
+                            'fuelpolicy' => $fuelpolicy,
                             'mileage' => (string) $product->mileage,
-                            'costperextradistance' => (string) $product->costperextradistance,
+                            'costperextradistance' => $costperextradistance,
                             'minage' => (string) $product->minage,
                             'excludedextras' => (string) $product->excludedextras,
                             'fasttrack' => (string) $product->fasttrack,
                             'oneway' => (string) $product->oneway,
                             'oneway_fee' => (string) $product->oneway_fee,
                             'cancellation_rules' => json_decode(json_encode($product->CancellationRules), true),
+                            'debitcard' => $debitcard, // Add debitcard field
                             // Removed quoteid from here as it's at the response level
                         ];
                     }

@@ -158,9 +158,9 @@
                                 </TableCell>
                                 <TableCell class="whitespace-nowrap px-4 py-3">
                                     <!-- Vehicle Image -->
-                                    <div v-if="vehicle.images && vehicle.images.length > 0" class="relative group cursor-pointer" @click="openImageModal(vehicle.images[0].image_path)">
+                                    <div v-if="vehicle.images && vehicle.images.length > 0" class="relative group cursor-pointer" @click="openImageModal(vehicle.images[0].image_url)">
                                         <img
-                                            :src="vehicle.images[0].image_path"
+                                            :src="vehicle.images[0].image_url"
                                             :alt="`${vehicle.brand} ${vehicle.model}`"
                                             class="w-20 h-16 object-cover rounded-lg border border-gray-200 hover:border-blue-400 transition-all pointer-events-none"
                                         />
@@ -419,7 +419,7 @@ const openDeleteDialog = (id) => {
 };
 
 const confirmDelete = () => {
-    router.delete(route('admin.vehicles.destroy', { vehicle: deleteUserId.value }), {
+    router.delete(route('admin.vehicles.destroy', { vendor_vehicle: deleteUserId.value }), {
         onSuccess: () => {
             console.log('Vehicle deleted successfully');
             isDeleteDialogOpen.value = false;

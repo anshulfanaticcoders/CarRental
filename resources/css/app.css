@@ -270,3 +270,12 @@ input[type='time'] {
         margin-inline: auto;
     }
 }
+
+/* Override nprogress z-index to appear above header (header has z-index: 99999) */
+#nprogress .bar {
+    z-index: 100000 !important;
+}
+
+#nprogress .spinner {
+    z-index: 100000 !important;
+}
