@@ -1,11 +1,6 @@
 <template>
     <AdminDashboardLayout>
         <div class="container mx-auto p-6 space-y-6">
-            <!-- Flash Message -->
-            <div v-if="$page.props.flash.success" class="rounded-lg border border-green-200 bg-green-50 p-4 text-green-800">
-                {{ $page.props.flash.success }}
-            </div>
-
             <!-- Header -->
             <div class="flex items-center justify-between">
                 <h1 class="text-3xl font-bold tracking-tight">Vehicles Management</h1>
@@ -267,6 +262,7 @@
 <script setup>
 import { ref, watch } from "vue";
 import { router, Link } from "@inertiajs/vue3";
+import { toast } from "vue-sonner";
 import Table from "@/Components/ui/table/Table.vue";
 import TableHeader from "@/Components/ui/table/TableHeader.vue";
 import TableRow from "@/Components/ui/table/TableRow.vue";
@@ -315,7 +311,6 @@ const props = defineProps({
     users: Object,
     statusCounts: Object,
     filters: Object,
-    flash: Object,
 });
 
 // Format date
@@ -382,22 +377,6 @@ watch(statusFilter, (newValue) => {
     filterByStatus();
 });
 
-const clearFlash = () => {
-    setTimeout(() => {
-        router.visit(window.location.pathname, {
-            preserveState: true,
-            preserveScroll: true,
-            replace: true,
-            data: { flash: null }
-        });
-    }, 3000); // Clear after 3 seconds
-};
-
-// Call clearFlash when flash message exists
-if (props.flash?.success) {
-    clearFlash();
-}
-
 const openViewDialog = (user) => {
     viewForm.value = { ...user };
     isViewDialogOpen.value = true;
@@ -421,11 +400,11 @@ const openDeleteDialog = (id) => {
 const confirmDelete = () => {
     router.delete(route('admin.vehicles.destroy', { vendor_vehicle: deleteUserId.value }), {
         onSuccess: () => {
-            console.log('Vehicle deleted successfully');
+            toast.success('Vehicle deleted successfully');
             isDeleteDialogOpen.value = false;
         },
         onError: (errors) => {
-            console.error(errors);
+            toast.error('Failed to delete vehicle');
         }
     });
 };

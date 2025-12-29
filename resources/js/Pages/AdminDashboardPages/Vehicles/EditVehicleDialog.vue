@@ -75,6 +75,7 @@
 <script setup>
 import { ref, watch } from 'vue';
 import { useForm } from '@inertiajs/vue3';
+import { toast } from 'vue-sonner';
 import Input from '@/Components/ui/input/Input.vue';
 import Button from '@/Components/ui/button/Button.vue';
 import {
@@ -128,17 +129,17 @@ watch(() => props.vehicle, (newVehicle) => {
 
 const submitForm = () => {
     if (!vehicleData.value || !vehicleData.value.id) {
-        console.error('Vehicle data or ID is missing.');
+        toast.error('Vehicle data or ID is missing.');
         return;
     }
     form.put(route('admin.vehicles.update', { vendor_vehicle: vehicleData.value.id }), {
         preserveScroll: true,
         onSuccess: () => {
+            toast.success('Vehicle updated successfully');
             emit('close'); // Close the dialog on success
-            // Optionally, show a success message or trigger a refresh
         },
         onError: (errors) => {
-            console.error('Error updating vehicle:', errors);
+            toast.error('Failed to update vehicle');
         }
     });
 };

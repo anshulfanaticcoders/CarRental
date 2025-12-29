@@ -5,6 +5,7 @@ import { computed, ref, onMounted, onUnmounted } from 'vue';
 import axios from 'axios';
 import { ChevronsUpDown } from 'lucide-vue-next';
 import bellIcon from '../../assets/belliconwhite.svg';
+import { Toaster } from '@/Components/ui/sonner';
 
 // State for admin profile
 const showDropdown = ref(false);
@@ -324,6 +325,9 @@ onUnmounted(() => {
       <!-- Content -->
     </div>
   </main>
+
+  <!-- Sonner Toaster -->
+  <Toaster class="pointer-events-auto" />
 </template>
 
 <style scoped>
