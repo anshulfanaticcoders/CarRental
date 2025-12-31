@@ -65,6 +65,8 @@
                             <TableHead>Name</TableHead>
                             <TableHead>Description</TableHead>
                             <TableHead>Status</TableHead>
+                            <TableHead>Created At</TableHead>
+                            <TableHead>Updated At</TableHead>
                             <TableHead class="text-right">Actions</TableHead>
                         </TableRow>
                     </TableHeader>
@@ -99,6 +101,8 @@
                                     </Badge>
                                 </div>
                             </TableCell>
+                            <TableCell class="text-sm">{{ formatDate(user.created_at) }}</TableCell>
+                            <TableCell class="text-sm">{{ formatDate(user.updated_at) }}</TableCell>
                             <TableCell class="text-right">
                                 <div class="flex justify-end gap-2">
                                     <Button size="sm" variant="outline" @click="openViewDialog(user)">
@@ -166,6 +170,7 @@
 <script setup>
 import { ref, computed } from "vue";
 import { router } from "@inertiajs/vue3";
+import { toast } from "vue-sonner";
 import Table from "@/Components/ui/table/Table.vue";
 import TableHeader from "@/Components/ui/table/TableHeader.vue";
 import TableRow from "@/Components/ui/table/TableRow.vue";
@@ -266,12 +271,13 @@ const confirmBulkDelete = () => {
     router.delete('/vehicles-categories/bulk-delete', {
         data: { ids: selectedCategories.value },
         onSuccess: () => {
+            toast.success(`${selectedCategories.value.length} categor${selectedCategories.value.length > 1 ? 'ies' : 'y'} deleted successfully`);
             selectedCategories.value = [];
             isBulkDeleteDialogOpen.value = false;
             isBulkDeleting.value = false;
         },
         onError: (errors) => {
-            console.error('Bulk delete error:', errors);
+            toast.error('Failed to delete categories');
             isBulkDeleteDialogOpen.value = false;
             isBulkDeleting.value = false;
         }
@@ -286,11 +292,12 @@ const bulkToggleStatus = () => {
         status: newStatus
     }, {
         onSuccess: () => {
+            toast.success(`${selectedCategories.value.length} categor${selectedCategories.value.length > 1 ? 'ies' : 'y'} ${newStatus ? 'activated' : 'deactivated'} successfully`);
             selectedCategories.value = [];
             isBulkUpdating.value = false;
         },
         onError: (errors) => {
-            console.error('Bulk status update error:', errors);
+            toast.error('Failed to update category statuses');
             isBulkUpdating.value = false;
         }
     });
@@ -303,10 +310,11 @@ const toggleCategoryStatus = (categoryId, newStatus) => {
     }, {
         preserveState: true,
         onSuccess: () => {
+            toast.success(`Category ${newStatus ? 'activated' : 'deactivated'} successfully`);
             loadingStatusToggles.value.delete(categoryId);
         },
         onError: (errors) => {
-            console.error('Status update error:', errors);
+            toast.error('Failed to update category status');
             loadingStatusToggles.value.delete(categoryId);
         }
     });
@@ -339,12 +347,12 @@ const confirmDelete = () => {
     isDeleting.value = true;
     router.delete(`/vehicles-categories/${deleteUserId.value}`, {
         onSuccess: () => {
-            console.log('Category deleted successfully');
+            toast.success('Category deleted successfully');
             isDeleteDialogOpen.value = false;
             isDeleting.value = false;
         },
         onError: (errors) => {
-            console.error(errors);
+            toast.error('Failed to delete category');
             isDeleting.value = false;
         }
     });
@@ -352,6 +360,12 @@ const confirmDelete = () => {
 
 const handlePageChange = (page) => {
     router.get(`/vehicles-categories?page=${page}`);
+};
+
+const formatDate = (dateStr) => {
+    if (!dateStr) return 'N/A';
+    const date = new Date(dateStr);
+    return `${String(date.getDate()).padStart(2, '0')}/${String(date.getMonth() + 1).padStart(2, '0')}/${date.getFullYear()}`;
 };
 
 </script>

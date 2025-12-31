@@ -60,8 +60,7 @@ import SelectTrigger from "@/Components/ui/select/SelectTrigger.vue";
 import Select from "@/Components/ui/select/Select.vue";
 import SelectValue from "@/Components/ui/select/SelectValue.vue";
 import Button from "@/Components/ui/button/Button.vue";
-import { useToast } from 'vue-toastification';
-const toast = useToast();
+import { toast } from "vue-sonner";
 const props = defineProps({
     user: Object,
 });
@@ -84,29 +83,24 @@ const updateUser = () => {
     };
     router.put(`/vendors/${editForm.value.id}`, payload, {
         onSuccess: () => {
-            emit('close');
-            toast.success('Vendor status updated successfully!', {
-                position: 'top-right',
-                timeout: 3000,
-                closeOnClick: true,
-                pauseOnHover: true,
-                draggable: true,
-            });
+            // Show appropriate toast based on vendor status
+            if (editForm.value.status === 'approved') {
+                toast.success('Vendor approved successfully');
+            } else if (editForm.value.status === 'rejected') {
+                toast.error('Vendor rejected');
+            } else if (editForm.value.status === 'pending') {
+                toast.info('Vendor marked as pending');
+            }
         },
         onError: (errors) => {
             // Show error notification if validation fails
             const errorMessage = Object.values(errors)[0] || 'An error occurred while updating the vendor';
-            toast.error(errorMessage, {
-                position: 'top-right',
-                timeout: 3000,
-                closeOnClick: true,
-                pauseOnHover: true,
-                draggable: true,
-            });
+            toast.error(errorMessage);
         },
         onFinish: () => {
             // Reset loading state regardless of success or error
             isSubmitting.value = false;
+            emit('close');
         },
     });
 };

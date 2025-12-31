@@ -20,7 +20,6 @@ class UserDocument extends Model
 
     protected $casts = [
         'verified_at' => 'datetime',
-        'expires_at' => 'date',
     ];
 
     // Ensure document number is always uppercase

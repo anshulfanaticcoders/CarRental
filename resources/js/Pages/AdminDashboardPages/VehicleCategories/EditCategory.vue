@@ -130,9 +130,7 @@ import Input from "@/Components/ui/input/Input.vue";
 import Button from "@/Components/ui/button/Button.vue";
 import { Switch } from "@/Components/ui/switch";
 import Badge from "@/Components/ui/badge/Badge.vue";
-import { useToast } from 'vue-toastification';
-
-const toast = useToast();
+import { toast } from "vue-sonner";
 const emit = defineEmits(['close']);
 
 const props = defineProps({
@@ -156,9 +154,9 @@ const isDragging = ref(false);
 const imagePreview = ref(null);
 const selectedFileName = ref('');
 
-// Watch name to auto-generate slug when empty
+// Watch name to auto-generate slug
 watch(() => editForm.value.name, (newName) => {
-    if (newName && !editForm.value.slug) {
+    if (newName) {
         editForm.value.slug = newName.toLowerCase()
             .replace(/[^a-z0-9]+/g, '-')
             .replace(/(^-|-$)/g, '');
@@ -271,19 +269,14 @@ const updateUser = () => {
     router.post(`/vehicles-categories/${editForm.value.id}`, formData, {
         forceFormData: true,
         onSuccess: () => {
-            isSubmitting.value = false;
-            emit('close');
-            toast.success('Vehicle Category updated successfully!', {
-                position: 'top-right',
-                timeout: 3000,
-                closeOnClick: true,
-                pauseOnHover: true,
-                draggable: true,
-            });
+            toast.success('Vehicle Category updated successfully');
         },
         onError: (errors) => {
-            isSubmitting.value = false;
             toast.error('Failed to update category. Please try again.');
+        },
+        onFinish: () => {
+            isSubmitting.value = false;
+            emit('close');
         },
     });
 };

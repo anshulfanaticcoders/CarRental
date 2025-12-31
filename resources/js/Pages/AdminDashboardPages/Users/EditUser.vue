@@ -156,8 +156,7 @@ import SelectTrigger from "@/Components/ui/select/SelectTrigger.vue";
 import Select from "@/Components/ui/select/Select.vue";
 import SelectValue from "@/Components/ui/select/SelectValue.vue";
 import Button from "@/Components/ui/button/Button.vue";
-import { useToast } from 'vue-toastification';
-const toast = useToast();
+import { toast } from "vue-sonner";
 
 const props = defineProps({
     user: Object,
@@ -259,29 +258,26 @@ const updateUser = () => {
 
     router.put(`/users/${editForm.value.id}`, formData, {
         onSuccess: () => {
-            emit('close');
-            toast.success('User updated successfully!', {
-                position: 'top-right',
-                timeout: 3000,
-                closeOnClick: true,
-                pauseOnHover: true,
-                draggable: true,
-            });
+            // Show appropriate toast based on user status
+            if (editForm.value.status === 'active') {
+                toast.success('User updated and activated successfully');
+            } else if (editForm.value.status === 'inactive') {
+                toast.warning('User updated and marked as inactive');
+            } else if (editForm.value.status === 'suspended') {
+                toast.error('User updated and suspended');
+            } else {
+                toast.success('User updated successfully');
+            }
         },
         onError: (errors) => {
             // Show error notification if validation fails
             const errorMessage = Object.values(errors)[0] || 'An error occurred while updating the user';
-            toast.error(errorMessage, {
-                position: 'top-right',
-                timeout: 3000,
-                closeOnClick: true,
-                pauseOnHover: true,
-                draggable: true,
-            });
+            toast.error(errorMessage);
         },
         onFinish: () => {
             // Reset loading state regardless of success or error
             isSubmitting.value = false;
+            emit('close');
         },
     });
 };

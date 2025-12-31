@@ -286,7 +286,7 @@ const vehicleSpecs = computed(() => {
         </div>
 
         <!-- 2. Center: Details Section -->
-        <div :class="['w-full flex flex-col justify-between p-5', isGreenMotionOrUSave ? 'md:w-[45%]' : 'md:w-[65%]']">
+        <div :class="['w-full flex flex-col justify-between p-5', isGreenMotionOrUSave ? 'md:w-[45%]' : 'md:w-[75%]']">
             <div class="flex flex-col gap-2">
                 <!-- Row 1: Location & Title -->
                 <div class="flex justify-between items-start">
@@ -395,48 +395,101 @@ const vehicleSpecs = computed(() => {
         </div>
 
         <!-- 3. Right: Plan Selection Panel (GM/USave only) -->
-        <div v-if="isGreenMotionOrUSave && sortedProducts.length > 0" class="hidden md:flex md:w-[20%] flex-col border-l border-gray-100 p-4 bg-gray-50/50">
-            <!-- Basic Package (default selected) -->
+        <div v-if="isGreenMotionOrUSave && sortedProducts.length > 0" class="hidden md:flex md:w-[25%] flex-col border-l border-gray-100 p-4 bg-gray-50/50 gap-3">
+            <!-- Basic Package Card -->
             <div
                 @click="selectPackage('BAS')"
-                class="package-option flex items-center gap-2 p-2 rounded-lg cursor-pointer transition-all mb-2"
-                :class="selectedPackage === 'BAS' ? 'bg-blue-50 border border-blue-200' : 'hover:bg-gray-100'"
+                class="sidebar-package-card bg-white border rounded-lg cursor-pointer transition-all p-3 relative"
+                :class="selectedPackage === 'BAS' ? 'border-blue-500 bg-blue-50' : 'border-gray-200 hover:border-blue-300'"
             >
-                <div class="radio-button">
-                    <span v-if="selectedPackage === 'BAS'" class="text-blue-600 text-lg">●</span>
-                    <span v-else class="text-gray-400 text-lg">○</span>
+                <!-- Package Header -->
+                <div class="flex justify-between items-start mb-2">
+                    <div>
+                        <span class="text-sm font-bold text-gray-800 block">Basic</span>
+                        <span class="text-xs text-gray-500">BAS</span>
+                    </div>
+                    <div v-if="selectedPackage === 'BAS'" class="bg-blue-500 text-white rounded-full w-5 h-5 flex items-center justify-center flex-shrink-0">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7" />
+                        </svg>
+                    </div>
                 </div>
-                <div class="package-info flex-1">
-                    <span class="name text-xs font-semibold text-gray-700 block">Basic</span>
-                    <span class="price text-sm font-bold text-customPrimaryColor">
+
+                <!-- Price -->
+                <div class="mb-2 pb-2 border-b border-gray-100">
+                    <p class="text-base font-bold text-customPrimaryColor leading-tight">
                         {{ sortedProducts.find(p => p.type === 'BAS')?.currency || '€' }}{{ (parseFloat(sortedProducts.find(p => p.type === 'BAS')?.total || 0) / numberOfRentalDays).toFixed(2) }}
-                    </span>
+                        <span class="text-xs font-normal text-gray-500">/day</span>
+                    </p>
+                    <p class="text-xs text-gray-500">
+                        Total: {{ sortedProducts.find(p => p.type === 'BAS')?.currency || '€' }}{{ parseFloat(sortedProducts.find(p => p.type === 'BAS')?.total || 0).toFixed(2) }}
+                    </p>
                 </div>
+
+                <!-- Key Benefits -->
+                <ul class="space-y-1">
+                    <li v-for="benefit in getBenefits(sortedProducts.find(p => p.type === 'BAS')).slice(0, 2)" :key="benefit" class="text-xs flex items-start gap-1.5">
+                        <img :src="check" class="w-3 h-3 mt-0.5 flex-shrink-0" alt="✓" />
+                        <span class="text-gray-600 line-clamp-1">{{ benefit }}</span>
+                    </li>
+                    <li v-if="sortedProducts.find(p => p.type === 'BAS')?.deposit" class="text-xs flex items-start gap-1.5">
+                        <span class="text-gray-500 text-[10px]">Deposit: {{ sortedProducts.find(p => p.type === 'BAS')?.currency || '€' }}{{ parseFloat(sortedProducts.find(p => p.type === 'BAS')?.deposit || 0).toFixed(0) }}</span>
+                    </li>
+                </ul>
             </div>
 
-            <!-- Premium Plus Package -->
+            <!-- Premium Plus Package Card -->
             <div
                 @click="selectPackage('PMP')"
-                class="package-option flex items-center gap-2 p-2 rounded-lg cursor-pointer transition-all mb-3"
-                :class="selectedPackage === 'PMP' ? 'bg-blue-50 border border-blue-200' : 'hover:bg-gray-100'"
+                class="sidebar-package-card bg-white border rounded-lg cursor-pointer transition-all p-3 relative border-l-4"
+                :class="[
+                    selectedPackage === 'PMP' ? 'border-blue-500 bg-blue-50 border-l-green-500' : 'border-gray-200 hover:border-blue-300 border-l-green-500'
+                ]"
             >
-                <div class="radio-button">
-                    <span v-if="selectedPackage === 'PMP'" class="text-blue-600 text-lg">●</span>
-                    <span v-else class="text-gray-400 text-lg">○</span>
+                <!-- Package Header -->
+                <div class="flex justify-between items-start mb-2">
+                    <div>
+                        <span class="text-sm font-bold text-gray-800 block">Premium Plus</span>
+                        <span class="text-xs text-gray-500">PMP</span>
+                    </div>
+                    <div v-if="selectedPackage === 'PMP'" class="bg-blue-500 text-white rounded-full w-5 h-5 flex items-center justify-center flex-shrink-0">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7" />
+                        </svg>
+                    </div>
                 </div>
-                <div class="package-info flex-1">
-                    <span class="name text-xs font-semibold text-gray-700 block">Premium Plus</span>
-                    <span class="price text-sm font-bold text-customPrimaryColor">
+
+                <!-- Price -->
+                <div class="mb-2 pb-2 border-b border-gray-100">
+                    <p class="text-base font-bold text-customPrimaryColor leading-tight">
                         {{ sortedProducts.find(p => p.type === 'PMP')?.currency || '€' }}{{ premiumPlusDailyPrice }}
-                    </span>
+                        <span class="text-xs font-normal text-gray-500">/day</span>
+                    </p>
+                    <p class="text-xs text-gray-500">
+                        Total: {{ sortedProducts.find(p => p.type === 'PMP')?.currency || '€' }}{{ parseFloat(sortedProducts.find(p => p.type === 'PMP')?.total || 0).toFixed(2) }}
+                    </p>
                 </div>
+
+                <!-- Key Benefits -->
+                <ul class="space-y-1">
+                    <li v-for="benefit in getBenefits(sortedProducts.find(p => p.type === 'PMP')).slice(0, 2)" :key="benefit" class="text-xs flex items-start gap-1.5">
+                        <img :src="check" class="w-3 h-3 mt-0.5 flex-shrink-0" alt="✓" />
+                        <span class="text-gray-600 line-clamp-1">{{ benefit }}</span>
+                    </li>
+                    <li v-if="sortedProducts.find(p => p.type === 'PMP')?.deposit" class="text-xs flex items-start gap-1.5">
+                        <span class="text-gray-500 text-[10px]">Deposit: {{ sortedProducts.find(p => p.type === 'PMP')?.currency || '€' }}{{ parseFloat(sortedProducts.find(p => p.type === 'PMP')?.deposit || 0).toFixed(0) }}</span>
+                    </li>
+                </ul>
             </div>
 
             <!-- View more plans button -->
             <button
                 @click="showAllPlans = true"
-                class="view-more-btn text-xs text-blue-600 underline hover:text-blue-800 transition-colors self-start"
+                class="text-xs text-blue-600 font-medium hover:text-blue-800 transition-colors self-start flex items-center gap-1"
             >
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+                </svg>
                 View more plans
             </button>
         </div>
@@ -534,14 +587,20 @@ const vehicleSpecs = computed(() => {
 </template>
 
 <style scoped>
-.package-option {
+/* Sidebar Package Cards */
+.sidebar-package-card {
     user-select: none;
 }
 
-.view-more-btn {
-    background: none;
-    border: none;
-    cursor: pointer;
+.sidebar-package-card:hover {
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.line-clamp-1 {
+    display: -webkit-box;
+    -webkit-line-clamp: 1;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
 }
 
 /* Modal overlay */

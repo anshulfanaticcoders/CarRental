@@ -23,7 +23,13 @@
                 <Input v-model="editForm.price" required />
             </div>
             <DialogFooter>
-                <Button type="submit">Update Addon</Button>
+                <Button type="submit" :disabled="isSubmitting">
+                    <span v-if="isSubmitting" class="flex items-center gap-2">
+                        <div class="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                        Updating...
+                    </span>
+                    <span v-else>Update Addon</span>
+                </Button>
             </DialogFooter>
         </form>
     </DialogContent>
@@ -36,14 +42,14 @@ import { DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/Compon
 import Input from "@/Components/ui/input/Input.vue";
 import InputLabel from "@/Components/InputLabel.vue";
 import Button from "@/Components/ui/button/Button.vue";
-import { useToast } from 'vue-toastification';
-const toast = useToast();
+import { toast } from "vue-sonner";
 const props = defineProps({
     user: Object,
 });
 
-const emit = defineEmits(['close']); // Define the 'close' event
+const emit = defineEmits(['close']);
 const editForm = ref({ ...props.user });
+const isSubmitting = ref(false);
 
 // Watch for changes in props.user (if the user data is updated dynamically)
 watch(() => props.user, (newUser) => {
@@ -51,16 +57,17 @@ watch(() => props.user, (newUser) => {
 }, { immediate: true });
 
 const updateUser = () => {
+    isSubmitting.value = true;
     router.put(`/booking-addons/${editForm.value.id}`, editForm.value, {
         onSuccess: () => {
+            toast.success('Vehicle addon updated successfully');
+        },
+        onError: (errors) => {
+            toast.error('Failed to update addon. Please try again.');
+        },
+        onFinish: () => {
+            isSubmitting.value = false;
             emit('close');
-            toast.success('Vehicle addon updated successfully!', {
-                position: 'top-right',
-                timeout: 3000,
-                closeOnClick: true,
-                pauseOnHover: true,
-                draggable: true,
-            });
         },
     });
 };

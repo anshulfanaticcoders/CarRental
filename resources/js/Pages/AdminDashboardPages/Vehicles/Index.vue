@@ -251,7 +251,13 @@
                     </AlertDialogHeader>
                     <AlertDialogFooter>
                         <AlertDialogCancel @click="isDeleteDialogOpen = false">Cancel</AlertDialogCancel>
-                        <AlertDialogAction @click="confirmDelete">Delete</AlertDialogAction>
+                        <AlertDialogAction @click="confirmDelete" :disabled="isDeleting">
+                            <span v-if="isDeleting" class="flex items-center gap-2">
+                                <div class="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                                Deleting...
+                            </span>
+                            <span v-else>Delete</span>
+                        </AlertDialogAction>
                     </AlertDialogFooter>
                 </AlertDialogContent>
             </AlertDialog>
@@ -328,6 +334,7 @@ const isViewDialogOpen = ref(false);
 const isEditVehicleDialogOpen = ref(false);
 const isImageModalOpen = ref(false);
 const isDeleteDialogOpen = ref(false);
+const isDeleting = ref(false);
 const selectedImage = ref('');
 const viewForm = ref({});
 const editVehicleForm = ref({});
@@ -398,13 +405,16 @@ const openDeleteDialog = (id) => {
 };
 
 const confirmDelete = () => {
+    isDeleting.value = true;
     router.delete(route('admin.vehicles.destroy', { vendor_vehicle: deleteUserId.value }), {
         onSuccess: () => {
             toast.success('Vehicle deleted successfully');
             isDeleteDialogOpen.value = false;
+            isDeleting.value = false;
         },
         onError: (errors) => {
             toast.error('Failed to delete vehicle');
+            isDeleting.value = false;
         }
     });
 };

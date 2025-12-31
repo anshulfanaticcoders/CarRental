@@ -1,11 +1,6 @@
 <template>
     <AdminDashboardLayout>
         <div class="container mx-auto p-6 space-y-6">
-            <!-- Flash Message -->
-            <div v-if="$page.props.flash.success" class="rounded-lg border border-green-200 bg-green-50 p-4 text-green-800">
-                {{ $page.props.flash.success }}
-            </div>
-
             <!-- Header -->
             <div class="flex items-center justify-between">
                 <h1 class="text-3xl font-bold tracking-tight">Users Management</h1>
@@ -139,7 +134,13 @@
                     </AlertDialogHeader>
                     <AlertDialogFooter>
                         <AlertDialogCancel @click="isDeleteDialogOpen = false">Cancel</AlertDialogCancel>
-                        <AlertDialogAction @click="confirmDelete">Delete</AlertDialogAction>
+                        <AlertDialogAction @click="confirmDelete" :disabled="isDeleting">
+                            <span v-if="isDeleting" class="flex items-center gap-2">
+                                <div class="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                                Deleting...
+                            </span>
+                            <span v-else>Delete</span>
+                        </AlertDialogAction>
                     </AlertDialogFooter>
                 </AlertDialogContent>
             </AlertDialog>
@@ -246,6 +247,7 @@
 <script setup>
 import { ref, computed, watch } from "vue";
 import { router } from "@inertiajs/vue3";
+import { toast } from "vue-sonner";
 import Table from "@/Components/ui/table/Table.vue";
 import TableHeader from "@/Components/ui/table/TableHeader.vue";
 import TableRow from "@/Components/ui/table/TableRow.vue";
@@ -296,7 +298,6 @@ const props = defineProps({
     users: Object,
     statusCounts: Object,
     filters: Object,
-    flash: Object,
 });
 const search = ref(props.filters.search || ''); // Initialize search with the filter value
 const statusFilter = ref(props.filters?.status || 'all'); // Initialize status filter
@@ -304,6 +305,7 @@ const isCreateDialogOpen = ref(false);
 const isEditDialogOpen = ref(false);
 const isViewDialogOpen = ref(false);
 const isDeleteDialogOpen = ref(false);
+const isDeleting = ref(false);
 const editForm = ref({});
 const viewForm = ref({});
 const deleteUserId = ref(null);
@@ -366,8 +368,17 @@ const openDeleteDialog = (id) => {
 };
 
 const confirmDelete = () => {
-    router.delete(`/users/${deleteUserId.value}`).then(() => {
-        isDeleteDialogOpen.value = false;
+    isDeleting.value = true;
+    router.delete(`/users/${deleteUserId.value}`, {
+        onSuccess: () => {
+            toast.success('User deleted successfully');
+            isDeleteDialogOpen.value = false;
+            isDeleting.value = false;
+        },
+        onError: (errors) => {
+            toast.error('Failed to delete user');
+            isDeleting.value = false;
+        }
     });
 };
 
@@ -406,24 +417,6 @@ const formatDate = (dateStr) => {
     const date = new Date(dateStr);
     return `${String(date.getDate()).padStart(2, '0')}/${String(date.getMonth() + 1).padStart(2, '0')}/${date.getFullYear()}`;
 };
-
-
-
-const clearFlash = () => {
-    setTimeout(() => {
-        router.visit(window.location.pathname, {
-            preserveState: true,
-            preserveScroll: true,
-            replace: true,
-            data: { flash: null }
-        });
-    }, 3000); // Clear after 3 seconds
-};
-
-// Call clearFlash when flash message exists
-if (props.flash?.success) {
-    clearFlash();
-}
 
 // Watch for search query changes
 watch(search, (newValue) => {

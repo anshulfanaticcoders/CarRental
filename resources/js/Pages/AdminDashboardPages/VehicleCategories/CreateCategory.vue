@@ -105,9 +105,7 @@ import { router } from "@inertiajs/vue3";
 import { DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/Components/ui/dialog";
 import Input from "@/Components/ui/input/Input.vue";
 import Button from "@/Components/ui/button/Button.vue";
-import { useToast } from 'vue-toastification';
-
-const toast = useToast();
+import { toast } from "vue-sonner";
 const emit = defineEmits(['close']);
 
 // Reactive state
@@ -126,7 +124,7 @@ const selectedFileName = ref('');
 
 // Watch name to auto-generate slug
 watch(() => form.value.name, (newName) => {
-    if (newName && !form.value.slug) {
+    if (newName) {
         form.value.slug = newName.toLowerCase()
             .replace(/[^a-z0-9]+/g, '-')
             .replace(/(^-|-$)/g, '');
@@ -212,6 +210,7 @@ const submitForm = () => {
 
     router.post("/vehicles-categories", formData, {
         onSuccess: () => {
+            toast.success('Vehicle Category created successfully');
             // Reset form
             form.value = {
                 name: '',
@@ -222,19 +221,13 @@ const submitForm = () => {
             };
             imagePreview.value = null;
             selectedFileName.value = '';
-            isSubmitting.value = false;
-            emit('close');
-            toast.success('Vehicle Category created successfully!', {
-                position: 'top-right',
-                timeout: 3000,
-                closeOnClick: true,
-                pauseOnHover: true,
-                draggable: true,
-            });
         },
         onError: (errors) => {
-            isSubmitting.value = false;
             toast.error('Failed to create category. Please try again.');
+        },
+        onFinish: () => {
+            isSubmitting.value = false;
+            emit('close');
         },
     });
 };

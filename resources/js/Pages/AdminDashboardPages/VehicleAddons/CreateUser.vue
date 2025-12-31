@@ -29,7 +29,13 @@
                 </div>
             </div>
             <DialogFooter>
-                <Button type="submit">Create Addon</Button>
+                <Button type="submit" :disabled="isSubmitting">
+                    <span v-if="isSubmitting" class="flex items-center gap-2">
+                        <div class="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                        Creating...
+                    </span>
+                    <span v-else>Create Addon</span>
+                </Button>
             </DialogFooter>
         </form>
     </DialogContent>
@@ -42,8 +48,7 @@ import { DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/Compon
 import Input from "@/Components/ui/input/Input.vue";
 import InputLabel from "@/Components/InputLabel.vue";
 import Button from "@/Components/ui/button/Button.vue";
-import { useToast } from 'vue-toastification';
-const toast = useToast();
+import { toast } from "vue-sonner";
 
 const form = ref({
     extra_type: '',
@@ -52,13 +57,19 @@ const form = ref({
     quantity: null,
     price: null
 });
-const emit = defineEmits(['close']); // Define the 'close' event
+const emit = defineEmits(['close']);
+const isSubmitting = ref(false);
+
 const handleFileUpload = (event) => {
     form.value.image = event.target.files[0];
 };
+
 const submitForm = () => {
+    isSubmitting.value = true;
     router.post("/booking-addons", form.value, {
         onSuccess: () => {
+            toast.success('Vehicle addon added successfully');
+            emit('close'); // Close immediately on success
             form.value = {
                 extra_type: '',
                 extra_name: '',
@@ -66,14 +77,13 @@ const submitForm = () => {
                 quantity: null,
                 price: null
             };
-            emit('close');
-            toast.success('Vehicle addon added successfully!', {
-                position: 'top-right',
-                timeout: 3000,
-                closeOnClick: true,
-                pauseOnHover: true,
-                draggable: true,
-            });
+        },
+        onError: (errors) => {
+            toast.error('Failed to create addon. Please try again.');
+            isSubmitting.value = false;
+        },
+        onFinish: () => {
+            isSubmitting.value = false;
         },
     });
 };

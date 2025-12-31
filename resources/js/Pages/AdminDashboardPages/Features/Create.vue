@@ -3,19 +3,8 @@ import { Head, Link, useForm, usePage } from '@inertiajs/vue3';
 import AdminDashboardLayout from '@/Layouts/AdminDashboardLayout.vue';
 import { defineProps, ref } from 'vue';
 import MediaLibraryModal from '@/Components/MediaLibraryModal.vue';
-import {
-    AlertDialog,
-    AlertDialogAction,
-    AlertDialogCancel,
-    AlertDialogContent,
-    AlertDialogDescription,
-    AlertDialogHeader,
-    AlertDialogTitle,
-    AlertDialogTrigger,
-} from '@/Components/ui/alert-dialog';
-import { Button } from '@/Components/ui/button';
-import { Toaster } from '@/Components/ui/toast';
-import loaderVariant from '../../../../assets/loader-variant.svg';
+import Button from "@/Components/ui/button/Button.vue";
+import { toast } from "vue-sonner";
 
 const props = defineProps({
   category: Object,
@@ -43,10 +32,12 @@ const handleMediaSelected = (url) => {
 
 const submit = () => {
   form.post(route('admin.features.store'), {
-    preserveScroll: true,
     onSuccess: () => {
-      form.reset();
+      toast.success('Feature added successfully');
     },
+    onError: () => {
+      toast.error('Failed to add feature');
+    }
   });
 };
 </script>
@@ -214,7 +205,6 @@ const submit = () => {
     </div>
 
     <MediaLibraryModal :show="showMediaModal" @close="showMediaModal = false" @media-selected="handleMediaSelected" />
-    <Toaster />
   </AdminDashboardLayout>
 </template>
 

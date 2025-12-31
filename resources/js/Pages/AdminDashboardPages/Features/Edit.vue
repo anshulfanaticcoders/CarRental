@@ -3,19 +3,8 @@ import { Head, Link, useForm, usePage } from '@inertiajs/vue3';
 import AdminDashboardLayout from '@/Layouts/AdminDashboardLayout.vue';
 import { defineProps, ref } from 'vue';
 import MediaLibraryModal from '@/Components/MediaLibraryModal.vue';
-import {
-    AlertDialog,
-    AlertDialogAction,
-    AlertDialogCancel,
-    AlertDialogContent,
-    AlertDialogDescription,
-    AlertDialogHeader,
-    AlertDialogTitle,
-    AlertDialogTrigger,
-} from '@/Components/ui/alert-dialog';
-import { Button } from '@/Components/ui/button';
-import { Toaster } from '@/Components/ui/toast';
-import loaderVariant from '../../../../assets/loader-variant.svg';
+import Button from "@/Components/ui/button/Button.vue";
+import { toast } from "vue-sonner";
 
 const props = defineProps({
   feature: Object,
@@ -43,10 +32,12 @@ const handleMediaSelected = (url) => {
 
 const submit = () => {
   form.post(route('admin.features.update', props.feature.id), {
-    preserveScroll: true,
     onSuccess: () => {
-      // Flash message will be shown from Index page upon redirect
+      toast.success('Feature updated successfully');
     },
+    onError: () => {
+      toast.error('Failed to update feature');
+    }
   });
 };
 </script>
@@ -212,7 +203,6 @@ const submit = () => {
     </div>
 
     <MediaLibraryModal :show="showMediaModal" @close="showMediaModal = false" @media-selected="handleMediaSelected" />
-    <Toaster />
   </AdminDashboardLayout>
 </template>
 

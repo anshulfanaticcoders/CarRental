@@ -1,11 +1,6 @@
 <template>
     <AdminDashboardLayout>
         <div class="container mx-auto p-6 space-y-6">
-            <!-- Flash Message -->
-            <div v-if="$page.props.flash.success" class="rounded-lg border border-green-200 bg-green-50 p-4 text-green-800">
-                {{ $page.props.flash.success }}
-            </div>
-
             <!-- Header -->
             <div class="flex items-center justify-between">
                 <h1 class="text-3xl font-bold tracking-tight">Vendors Management</h1>
@@ -145,7 +140,13 @@
                     </AlertDialogHeader>
                     <AlertDialogFooter>
                         <AlertDialogCancel @click="isDeleteDialogOpen = false">Cancel</AlertDialogCancel>
-                        <AlertDialogAction @click="confirmDelete">Delete</AlertDialogAction>
+                        <AlertDialogAction @click="confirmDelete" :disabled="isDeleting">
+                            <span v-if="isDeleting" class="flex items-center gap-2">
+                                <div class="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                                Deleting...
+                            </span>
+                            <span v-else>Delete</span>
+                        </AlertDialogAction>
                     </AlertDialogFooter>
                 </AlertDialogContent>
             </AlertDialog>
@@ -257,6 +258,7 @@
 <script setup>
 import { ref, computed, watch } from "vue";
 import { router } from "@inertiajs/vue3";
+import { toast } from "vue-sonner";
 import Table from "@/Components/ui/table/Table.vue";
 import TableHeader from "@/Components/ui/table/TableHeader.vue";
 import TableRow from "@/Components/ui/table/TableRow.vue";
@@ -305,7 +307,6 @@ const props = defineProps({
     users: Object,
     statusCounts: Object,
     filters: Object,
-    flash: Object,
 });
 
 const search = ref(props.filters.search || ''); // Initialize search with the filter value
@@ -314,6 +315,7 @@ const isEditDialogOpen = ref(false);
 const isViewDialogOpen = ref(false);
 const isImageModalOpen = ref(false)
 const isDeleteDialogOpen = ref(false)
+const isDeleting = ref(false)
 const selectedImage = ref('')
 const editForm = ref({});
 const viewForm = ref({});
@@ -363,22 +365,6 @@ watch(statusFilter, (newValue) => {
     filterByStatus();
 });
 
-const clearFlash = () => {
-    setTimeout(() => {
-        router.visit(window.location.pathname, {
-            preserveState: true,
-            preserveScroll: true,
-            replace: true,
-            data: { flash: null }
-        });
-    }, 3000); // Clear after 3 seconds
-};
-
-// Call clearFlash when flash message exists
-if (props.flash?.success) {
-    clearFlash();
-}
-
 const openEditDialog = (user) => {
     editForm.value = { ...user };
     isEditDialogOpen.value = true;
@@ -400,8 +386,17 @@ const openDeleteDialog = (id) => {
 };
 
 const confirmDelete = () => {
-    router.delete(`/vendors/${deleteUserId.value}`).then(() => {
-        isDeleteDialogOpen.value = false;
+    isDeleting.value = true;
+    router.delete(`/vendors/${deleteUserId.value}`, {
+        onSuccess: () => {
+            toast.success('Vendor deleted successfully');
+            isDeleteDialogOpen.value = false;
+            isDeleting.value = false;
+        },
+        onError: (errors) => {
+            toast.error('Failed to delete vendor');
+            isDeleting.value = false;
+        }
     });
 };
 
