@@ -463,7 +463,7 @@ class SearchController extends Controller
                         $gmOptions = [
                             'language' => $validated['language'] ?? app()->getLocale(),
                             'rentalCode' => $validated['rentalCode'] ?? '1',
-                            'currency' => $validated['currency'] ?? null,
+                            // 'currency' => $validated['currency'] ?? null,
                             'fuel' => $validated['fuel'] ?? null,
                             'userid' => $validated['userid'] ?? null,
                             'username' => $validated['username'] ?? null,

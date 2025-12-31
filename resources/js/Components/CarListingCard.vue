@@ -28,6 +28,38 @@ const emit = defineEmits(['toggleFavourite', 'saveSearchUrl']);
 const { selectedCurrency } = useCurrency();
 const page = usePage();
 
+// Currency symbol mapping
+const currencySymbols = {
+    'USD': '$',
+    'EUR': '€',
+    'GBP': '£',
+    'JPY': '¥',
+    'AUD': 'A$',
+    'CAD': 'C$',
+    'CHF': 'Fr',
+    'CNH': '¥',
+    'HKD': 'HK$',
+    'SGD': 'S$',
+    'SEK': 'kr',
+    'KRW': '₩',
+    'NOK': 'kr',
+    'NZD': 'NZ$',
+    'INR': '₹',
+    'MXN': '$',
+    'BRL': 'R$',
+    'ZAR': 'R',
+    'AED': 'د.إ',
+    'MAD': 'د.م.',
+    'TRY': '₺',
+    'ALL': 'L', // Albanian Lek
+};
+
+// Helper to get currency symbol from code
+const getCurrencySymbol = (currencyCode) => {
+    if (!currencyCode) return '$';
+    return currencySymbols[currencyCode.toUpperCase()] || currencyCode;
+};
+
 // State for GreenMotion/USave plan selection
 const selectedPackage = ref('BAS'); // Default to Basic
 const showAllPlans = ref(false);
@@ -134,7 +166,7 @@ const getBenefits = (product) => {
 
 // Format price with currency
 const formatPrice = (price, currency) => {
-    return `${currency || '€'}${parseFloat(price).toFixed(2)}`;
+    return `${getCurrencySymbol(currency)}${parseFloat(price).toFixed(2)}`;
 };
 
 // Select a package
@@ -286,7 +318,7 @@ const vehicleSpecs = computed(() => {
         </div>
 
         <!-- 2. Center: Details Section -->
-        <div :class="['w-full flex flex-col justify-between p-5', isGreenMotionOrUSave ? 'md:w-[45%]' : 'md:w-[75%]']">
+        <div :class="['w-full flex flex-col justify-between p-5', isGreenMotionOrUSave ? 'md:w-[65%]' : 'md:w-[75%]']">
             <div class="flex flex-col gap-2">
                 <!-- Row 1: Location & Title -->
                 <div class="flex justify-between items-start">
@@ -366,16 +398,113 @@ const vehicleSpecs = computed(() => {
                 </div>
             </div>
 
+            <!-- GreenMotion/USave Plans (New Layout) -->
+            <div v-if="isGreenMotionOrUSave && sortedProducts.length > 0" class="flex flex-col md:flex-row gap-4 mt-4 w-full">
+                <!-- Basic Package Card -->
+                <div
+                    @click="selectPackage('BAS')"
+                    class="flex-1 bg-white border rounded-lg cursor-pointer transition-all p-3 relative"
+                    :class="selectedPackage === 'BAS' ? 'border-blue-500 bg-blue-50' : 'border-gray-200 hover:border-blue-300'"
+                >
+                    <!-- Package Header -->
+                    <div class="flex justify-between items-start mb-2">
+                        <div>
+                            <span class="text-sm font-bold text-gray-800 block">Basic</span>
+                            <span class="text-xs text-gray-500">BAS</span>
+                        </div>
+                        <div v-if="selectedPackage === 'BAS'" class="bg-blue-500 text-white rounded-full w-5 h-5 flex items-center justify-center flex-shrink-0">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7" />
+                            </svg>
+                        </div>
+                    </div>
+
+                    <!-- Price -->
+                    <div class="mb-2 pb-2 border-b border-gray-100">
+                        <p class="text-base font-bold text-customPrimaryColor leading-tight">
+                            {{ getCurrencySymbol(sortedProducts.find(p => p.type === 'BAS')?.currency) }}{{ (parseFloat(sortedProducts.find(p => p.type === 'BAS')?.total || 0) / numberOfRentalDays).toFixed(2) }}
+                            <span class="text-xs font-normal text-gray-500">/day</span>
+                        </p>
+                        <p class="text-xs text-gray-500">
+                            Total: {{ getCurrencySymbol(sortedProducts.find(p => p.type === 'BAS')?.currency) }}{{ parseFloat(sortedProducts.find(p => p.type === 'BAS')?.total || 0).toFixed(2) }}
+                        </p>
+                    </div>
+
+                    <!-- Key Benefits -->
+                    <ul class="space-y-1">
+                        <li v-for="benefit in getBenefits(sortedProducts.find(p => p.type === 'BAS'))" :key="benefit" class="text-xs flex items-start gap-1.5">
+                            <img :src="check" class="w-3 h-3 mt-0.5 flex-shrink-0" alt="✓" />
+                            <span class="text-gray-600 line-clamp-1">{{ benefit }}</span>
+                        </li>
+                        <li v-if="sortedProducts.find(p => p.type === 'BAS')?.deposit" class="text-xs flex items-start gap-1.5">
+                            <span class="text-gray-500 text-[10px]">Deposit: {{ getCurrencySymbol(sortedProducts.find(p => p.type === 'BAS')?.currency) }}{{ parseFloat(sortedProducts.find(p => p.type === 'BAS')?.deposit || 0).toFixed(0) }}</span>
+                        </li>
+                    </ul>
+                </div>
+
+                <!-- Premium Plus Package Card -->
+                <div
+                    @click="selectPackage('PMP')"
+                    class="flex-1 bg-white border rounded-lg cursor-pointer transition-all p-3 relative border-l-4"
+                    :class="[
+                        selectedPackage === 'PMP' ? 'border-blue-500 bg-blue-50 border-l-green-500' : 'border-gray-200 hover:border-blue-300 border-l-green-500'
+                    ]"
+                >
+                    <!-- Package Header -->
+                    <div class="flex justify-between items-start mb-2">
+                        <div>
+                            <span class="text-sm font-bold text-gray-800 block">Premium Plus</span>
+                            <span class="text-xs text-gray-500">PMP</span>
+                        </div>
+                        <div v-if="selectedPackage === 'PMP'" class="bg-blue-500 text-white rounded-full w-5 h-5 flex items-center justify-center flex-shrink-0">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7" />
+                            </svg>
+                        </div>
+                    </div>
+
+                    <!-- Price -->
+                    <div class="mb-2 pb-2 border-b border-gray-100">
+                        <p class="text-base font-bold text-customPrimaryColor leading-tight">
+                            {{ getCurrencySymbol(sortedProducts.find(p => p.type === 'PMP')?.currency) }}{{ premiumPlusDailyPrice }}
+                            <span class="text-xs font-normal text-gray-500">/day</span>
+                        </p>
+                        <p class="text-xs text-gray-500">
+                            Total: {{ getCurrencySymbol(sortedProducts.find(p => p.type === 'PMP')?.currency) }}{{ parseFloat(sortedProducts.find(p => p.type === 'PMP')?.total || 0).toFixed(2) }}
+                        </p>
+                    </div>
+
+                    <!-- Key Benefits -->
+                    <ul class="space-y-1">
+                        <li v-for="benefit in getBenefits(sortedProducts.find(p => p.type === 'PMP'))" :key="benefit" class="text-xs flex items-start gap-1.5">
+                            <img :src="check" class="w-3 h-3 mt-0.5 flex-shrink-0" alt="✓" />
+                            <span class="text-gray-600 line-clamp-1">{{ benefit }}</span>
+                        </li>
+                        <li v-if="sortedProducts.find(p => p.type === 'PMP')?.deposit" class="text-xs flex items-start gap-1.5">
+                            <span class="text-gray-500 text-[10px]">Deposit: {{ getCurrencySymbol(sortedProducts.find(p => p.type === 'PMP')?.currency) }}{{ parseFloat(sortedProducts.find(p => p.type === 'PMP')?.deposit || 0).toFixed(0) }}</span>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+
+            <!-- View more plans button -->
+            <div v-if="isGreenMotionOrUSave && sortedProducts.length > 0" class="mt-2 text-right">
+                <button
+                    @click="showAllPlans = true"
+                    class="text-xs text-blue-600 font-medium hover:text-blue-800 transition-colors inline-flex items-center gap-1"
+                >
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+                    </svg>
+                    View more plans
+                </button>
+            </div>
+
             <!-- Row 4: Price & Action -->
             <div class="flex justify-between items-end mt-4 pt-2">
                 <!-- Price -->
                 <div class="flex flex-col">
-                    <!-- For GM/USave, price is handled in the plan panel on the right -->
-                    <!-- For other providers, use the slot -->
                     <slot v-if="!isGreenMotionOrUSave" name="dailyPrice"></slot>
-                    <div v-else class="text-sm text-gray-500">
-                        from <span class="text-lg font-bold text-customPrimaryColor">{{ sortedProducts[0]?.currency || '€' }}{{ dailyPrice }}</span>/day
-                    </div>
                 </div>
 
                 <!-- View Deal Button -->
@@ -394,105 +523,7 @@ const vehicleSpecs = computed(() => {
             </div>
         </div>
 
-        <!-- 3. Right: Plan Selection Panel (GM/USave only) -->
-        <div v-if="isGreenMotionOrUSave && sortedProducts.length > 0" class="hidden md:flex md:w-[25%] flex-col border-l border-gray-100 p-4 bg-gray-50/50 gap-3">
-            <!-- Basic Package Card -->
-            <div
-                @click="selectPackage('BAS')"
-                class="sidebar-package-card bg-white border rounded-lg cursor-pointer transition-all p-3 relative"
-                :class="selectedPackage === 'BAS' ? 'border-blue-500 bg-blue-50' : 'border-gray-200 hover:border-blue-300'"
-            >
-                <!-- Package Header -->
-                <div class="flex justify-between items-start mb-2">
-                    <div>
-                        <span class="text-sm font-bold text-gray-800 block">Basic</span>
-                        <span class="text-xs text-gray-500">BAS</span>
-                    </div>
-                    <div v-if="selectedPackage === 'BAS'" class="bg-blue-500 text-white rounded-full w-5 h-5 flex items-center justify-center flex-shrink-0">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7" />
-                        </svg>
-                    </div>
-                </div>
 
-                <!-- Price -->
-                <div class="mb-2 pb-2 border-b border-gray-100">
-                    <p class="text-base font-bold text-customPrimaryColor leading-tight">
-                        {{ sortedProducts.find(p => p.type === 'BAS')?.currency || '€' }}{{ (parseFloat(sortedProducts.find(p => p.type === 'BAS')?.total || 0) / numberOfRentalDays).toFixed(2) }}
-                        <span class="text-xs font-normal text-gray-500">/day</span>
-                    </p>
-                    <p class="text-xs text-gray-500">
-                        Total: {{ sortedProducts.find(p => p.type === 'BAS')?.currency || '€' }}{{ parseFloat(sortedProducts.find(p => p.type === 'BAS')?.total || 0).toFixed(2) }}
-                    </p>
-                </div>
-
-                <!-- Key Benefits -->
-                <ul class="space-y-1">
-                    <li v-for="benefit in getBenefits(sortedProducts.find(p => p.type === 'BAS')).slice(0, 2)" :key="benefit" class="text-xs flex items-start gap-1.5">
-                        <img :src="check" class="w-3 h-3 mt-0.5 flex-shrink-0" alt="✓" />
-                        <span class="text-gray-600 line-clamp-1">{{ benefit }}</span>
-                    </li>
-                    <li v-if="sortedProducts.find(p => p.type === 'BAS')?.deposit" class="text-xs flex items-start gap-1.5">
-                        <span class="text-gray-500 text-[10px]">Deposit: {{ sortedProducts.find(p => p.type === 'BAS')?.currency || '€' }}{{ parseFloat(sortedProducts.find(p => p.type === 'BAS')?.deposit || 0).toFixed(0) }}</span>
-                    </li>
-                </ul>
-            </div>
-
-            <!-- Premium Plus Package Card -->
-            <div
-                @click="selectPackage('PMP')"
-                class="sidebar-package-card bg-white border rounded-lg cursor-pointer transition-all p-3 relative border-l-4"
-                :class="[
-                    selectedPackage === 'PMP' ? 'border-blue-500 bg-blue-50 border-l-green-500' : 'border-gray-200 hover:border-blue-300 border-l-green-500'
-                ]"
-            >
-                <!-- Package Header -->
-                <div class="flex justify-between items-start mb-2">
-                    <div>
-                        <span class="text-sm font-bold text-gray-800 block">Premium Plus</span>
-                        <span class="text-xs text-gray-500">PMP</span>
-                    </div>
-                    <div v-if="selectedPackage === 'PMP'" class="bg-blue-500 text-white rounded-full w-5 h-5 flex items-center justify-center flex-shrink-0">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7" />
-                        </svg>
-                    </div>
-                </div>
-
-                <!-- Price -->
-                <div class="mb-2 pb-2 border-b border-gray-100">
-                    <p class="text-base font-bold text-customPrimaryColor leading-tight">
-                        {{ sortedProducts.find(p => p.type === 'PMP')?.currency || '€' }}{{ premiumPlusDailyPrice }}
-                        <span class="text-xs font-normal text-gray-500">/day</span>
-                    </p>
-                    <p class="text-xs text-gray-500">
-                        Total: {{ sortedProducts.find(p => p.type === 'PMP')?.currency || '€' }}{{ parseFloat(sortedProducts.find(p => p.type === 'PMP')?.total || 0).toFixed(2) }}
-                    </p>
-                </div>
-
-                <!-- Key Benefits -->
-                <ul class="space-y-1">
-                    <li v-for="benefit in getBenefits(sortedProducts.find(p => p.type === 'PMP')).slice(0, 2)" :key="benefit" class="text-xs flex items-start gap-1.5">
-                        <img :src="check" class="w-3 h-3 mt-0.5 flex-shrink-0" alt="✓" />
-                        <span class="text-gray-600 line-clamp-1">{{ benefit }}</span>
-                    </li>
-                    <li v-if="sortedProducts.find(p => p.type === 'PMP')?.deposit" class="text-xs flex items-start gap-1.5">
-                        <span class="text-gray-500 text-[10px]">Deposit: {{ sortedProducts.find(p => p.type === 'PMP')?.currency || '€' }}{{ parseFloat(sortedProducts.find(p => p.type === 'PMP')?.deposit || 0).toFixed(0) }}</span>
-                    </li>
-                </ul>
-            </div>
-
-            <!-- View more plans button -->
-            <button
-                @click="showAllPlans = true"
-                class="text-xs text-blue-600 font-medium hover:text-blue-800 transition-colors self-start flex items-center gap-1"
-            >
-                <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
-                </svg>
-                View more plans
-            </button>
-        </div>
 
         <!-- Mobile: Show simple plan selector below details -->
         <div v-if="isGreenMotionOrUSave && sortedProducts.length > 0" class="md:hidden px-5 pb-4 bg-gray-50">
@@ -501,7 +532,7 @@ const vehicleSpecs = computed(() => {
                 class="w-full p-2 rounded-lg border border-gray-200 text-sm"
             >
                 <option v-for="product in sortedProducts" :key="product.type" :value="product.type">
-                    {{ getPackageName(product.type) }} - {{ product.currency }}{{ (parseFloat(product.total) / numberOfRentalDays).toFixed(2) }}/day
+                    {{ getPackageName(product.type) }} - {{ getCurrencySymbol(product.currency) }}{{ (parseFloat(product.total) / numberOfRentalDays).toFixed(2) }}/day
                 </option>
             </select>
         </div>
@@ -549,11 +580,11 @@ const vehicleSpecs = computed(() => {
                         <!-- Price -->
                         <div class="mb-3 pb-3 border-b border-gray-200">
                             <p class="text-2xl font-bold text-customPrimaryColor">
-                                {{ product.currency }}{{ (parseFloat(product.total) / numberOfRentalDays).toFixed(2) }}
+                                {{ getCurrencySymbol(product.currency) }}{{ (parseFloat(product.total) / numberOfRentalDays).toFixed(2) }}
                                 <span class="text-sm font-normal text-gray-500">/day</span>
                             </p>
                             <p class="text-xs text-gray-500">
-                                Total: {{ product.currency }}{{ parseFloat(product.total).toFixed(2) }} ({{ numberOfRentalDays }} days)
+                                Total: {{ getCurrencySymbol(product.currency) }}{{ parseFloat(product.total).toFixed(2) }} ({{ numberOfRentalDays }} days)
                             </p>
                         </div>
 
@@ -565,7 +596,7 @@ const vehicleSpecs = computed(() => {
                             </li>
                             <li v-if="product.deposit" class="text-xs flex items-start gap-2">
                                 <img :src="check" class="w-3 h-3 mt-0.5 flex-shrink-0" alt="✓" />
-                                <span>Deposit: {{ product.currency }}{{ parseFloat(product.deposit).toFixed(2) }}</span>
+                                <span>Deposit: {{ getCurrencySymbol(product.currency) }}{{ parseFloat(product.deposit).toFixed(2) }}</span>
                             </li>
                         </ul>
 
