@@ -324,6 +324,7 @@ class GreenMotionController extends Controller
                 'out_of_hours_charge' => (string) $loc->out_of_hours_charge,
                 'charge_both_ways' => (string) $loc->charge_both_ways,
                 'extra' => (string) $loc->extra,
+                'collection_details' => (string) $loc->collectiondetails,
             ];
         }
         return null;

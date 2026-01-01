@@ -1,6 +1,7 @@
 <script setup>
 import { Link, useForm, usePage, router, Head } from "@inertiajs/vue3";
 import { computed, onMounted, onUnmounted, provide, ref, watch } from "vue";
+import axios from 'axios';
 import SchemaInjector from '@/Components/SchemaInjector.vue'; // Import SchemaInjector
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
@@ -25,6 +26,7 @@ import colorIcon from "../../assets/color-palette.svg";
 import filterIcon from "../../assets/filterIcon.svg";
 import SearchBar from "@/Components/SearchBar.vue";
 import CarListingCard from "@/Components/CarListingCard.vue"; // Import CarListingCard
+import BookingExtrasStep from "@/Components/BookingExtrasStep.vue"; // Import BookingExtrasStep
 import { Label } from "@/Components/ui/label";
 import { Switch } from "@/Components/ui/switch";
 import CaretDown from "../../assets/CaretDown.svg";
@@ -196,10 +198,75 @@ const props = defineProps({
     locale: String, // Added locale prop
     okMobilityVehicles: Object, // New: OK Mobility vehicles data
     renteonVehicles: Object, // New: Renteon vehicles data
+    optionalExtras: Array, // GreenMotion optional extras
+    locationName: String, // Location Name
 });
 
+// SPA Booking State
+const bookingStep = ref('results'); // 'results' | 'extras' | 'checkout'
+const selectedVehicle = ref(null);
+const selectedPackage = ref(null);
+
+const selectedBookingExtras = ref({});
+const locationInstructions = ref(null);
+const paymentPercentage = ref(0);
+
+const fetchLocationDetails = async (locationId) => {
+    if (!locationId) return;
+    try {
+        const response = await axios.get(route('green-motion-locations'), {
+            params: { location_id: locationId }
+        });
+        if (response.data && response.data.collection_details) {
+            locationInstructions.value = response.data.collection_details;
+        } else {
+             locationInstructions.value = null;
+        }
+    } catch (error) {
+        console.error("Error fetching location details:", error);
+        locationInstructions.value = null;
+    }
+};
+
+
+const handlePackageSelection = (event) => {
+    // Event contains { vehicle, package }
+    console.log('Package Selected:', event);
+    selectedVehicle.value = event.vehicle;
+    selectedPackage.value = event.package;
+    bookingStep.value = 'extras';
+
+    // Fetch location details if GreenMotion
+    if (event.vehicle.source === 'greenmotion' || event.vehicle.source === 'usave') {
+        const locId = event.vehicle.location_id; 
+        console.log('Fetching details for Location ID:', locId);
+        if (locId) {
+             fetchLocationDetails(locId);
+        } else {
+             console.warn('No location_id found in vehicle data', event.vehicle);
+             locationInstructions.value = null;
+        }
+    } else {
+        locationInstructions.value = null;
+    }
+
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+};
+
+const handleBackToResults = () => {
+    bookingStep.value = 'results';
+    selectedVehicle.value = null;
+    selectedPackage.value = null;
+};
+
+const handleProceedToCheckout = (data) => {
+    console.log('Proceed to Checkout:', data);
+    // TODO: Implement checkout step
+    // For now logs data
+};
+
 // Initialize map immediately for fast loading, then update when currency data loads
-onMounted(() => {
+onMounted(async () => {
     // Initialize map immediately with default currency
     setTimeout(() => {
         initMap();
@@ -207,6 +274,16 @@ onMounted(() => {
 
     // Load currency data in background and update map when ready
     loadCurrencyData();
+
+    // Fetch payment percentage for booking summary
+    try {
+        const response = await axios.get('/api/payment-percentage');
+        if (response.data && response.data.payment_percentage !== undefined) {
+            paymentPercentage.value = parseFloat(response.data.payment_percentage);
+        }
+    } catch (error) {
+        console.error('Error fetching payment percentage:', error);
+    }
 });
 
 const loadCurrencyData = async () => {
@@ -240,16 +317,7 @@ const getCurrencySymbol = (code) => {
     return currencySymbols[code] || '$'; // Use fetched symbol or default to '$'
 };
 
-const numberOfRentalDays = computed(() => {
-    if (form.date_from && form.date_to) {
-        const start = new Date(form.date_from);
-        const end = new Date(form.date_to);
-        const diffTime = Math.abs(end - start);
-        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-        return diffDays > 0 ? diffDays : 1; // Ensure at least 1 day for calculation
-    }
-    return 1; // Default to 1 day if dates are not set
-});
+
 
 const debounce = (fn, delay) => {
     let timeoutId;
@@ -338,6 +406,15 @@ const form = useForm({
     promocode: usePage().props.filters?.promocode || null,
     dropoff_location_id: usePage().props.filters?.dropoff_location_id || null,
     dropoff_where: usePage().props.filters?.dropoff_where || "",
+});
+
+const numberOfRentalDays = computed(() => {
+    if (!form.date_from || !form.date_to) return 1;
+    const start = new Date(`${form.date_from}T${form.start_time || '00:00'}`);
+    const end = new Date(`${form.date_to}T${form.end_time || '00:00'}`);
+    const diffTime = Math.abs(end - start);
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    return diffDays || 1;
 });
 
 
@@ -1648,7 +1725,7 @@ watch(
         leave-from-class="opacity-100 translate-x-0"
         leave-to-class="opacity-0 translate-x-[-100%]"
     >
-        <div v-if="showMobileFilters" class="fixed inset-0 z-[2000] flex md:hidden">
+        <div v-if="showMobileFilters && bookingStep === 'results'" class="fixed inset-0 z-[2000] flex md:hidden">
             <!-- Backdrop -->
             <div class="fixed inset-0 bg-black bg-opacity-50" @click="showMobileFilters = false"></div>
             
@@ -1815,7 +1892,7 @@ watch(
 
 
     <div class="full-w-container mx-auto mb-[4rem]">
-        <div class="grid grid-cols-12 gap-6">
+        <div v-if="bookingStep === 'results'" class="grid grid-cols-12 gap-6">
             
             <!-- Left Sidebar (Sticky Filters) -->
             <aside class="hidden md:block col-span-3 h-fit sticky top-24 z-30">
@@ -1985,6 +2062,7 @@ watch(
                             @save-search-url="saveSearchUrl"
                             @mouseenter="highlightVehicleOnMap(vehicle)"
                             @mouseleave="unhighlightVehicleOnMap(vehicle)"
+                            @select-package="handlePackageSelection"
                             class="vehicle-card fade-up-hidden"
                         >
                             <template #dailyPrice>
@@ -2006,6 +2084,26 @@ watch(
             </div>
             
         </div>
+
+        <BookingExtrasStep
+            v-else-if="bookingStep === 'extras' && selectedVehicle"
+            :vehicle="selectedVehicle"
+            :initial-package="selectedPackage"
+            :optional-extras="optionalExtras"
+            :currency-symbol="getCurrencySymbol(selectedVehicle.currency || 'EUR')"
+            :location-name="locationName"
+            :pickup-location="form.where"
+            :dropoff-location="form.dropoff_where || form.where"
+            :pickup-date="form.date_from"
+            :pickup-time="form.start_time"
+            :dropoff-date="form.date_to"
+            :dropoff-time="form.end_time"
+            :number-of-days="numberOfRentalDays"
+            :location-instructions="locationInstructions"
+            :payment-percentage="paymentPercentage"
+            @back="handleBackToResults"
+            @proceed-to-checkout="handleProceedToCheckout"
+        />
     </div>
 
     <!-- Map Modal (Global) -->

@@ -451,6 +451,8 @@ class SearchController extends Controller
 
             Log::info('Provider entries to fetch: ' . count($allProviderEntries));
 
+            $searchOptionalExtras = []; // Initialize logic for extras
+
             foreach ($allProviderEntries as $providerEntry) {
                 // Get the provider name, location ID and original name for this entry
                 $providerToFetch = $providerEntry['provider'];
@@ -485,6 +487,16 @@ class SearchController extends Controller
                         if ($gmResponse) {
                             libxml_use_internal_errors(true);
                             $xmlObject = simplexml_load_string($gmResponse);
+
+                            // Parse Extras
+                            if ($xmlObject !== false) {
+                                $extractedExtras = $this->parseOptionalExtras($xmlObject);
+                                // Merge or set (avoiding duplicates if multiple locations - though unlikely for single search)
+                                foreach ($extractedExtras as $ex) {
+                                    $searchOptionalExtras[$ex['id']] = $ex;
+                                }
+                            }
+
                             if ($xmlObject !== false && isset($xmlObject->response->vehicles->vehicle)) {
                                 foreach ($xmlObject->response->vehicles->vehicle as $vehicle) {
                                     $products = [];
@@ -575,6 +587,7 @@ class SearchController extends Controller
 
                                     $providerVehicles->push([
                                         'id' => $providerToFetch . '_' . (string) $vehicle['id'],
+                                        'location_id' => $currentProviderLocationId, // Added location ID
                                         'source' => $providerToFetch,
                                         'brand' => $brandName,
                                         'model' => str_ireplace($brandName . ' ', '', (string) $vehicle['name']),
@@ -589,6 +602,7 @@ class SearchController extends Controller
                                         'fuel' => (string) $vehicle->fuel,
                                         'seating_capacity' => (int) $vehicle->adults + (int) $vehicle->children,
                                         'mileage' => (string) $vehicle->mpg,
+                                        'co2' => (string) $vehicle->co2,
                                         'latitude' => (float) $locationLat,
                                         'longitude' => (float) $locationLng,
                                         'full_vehicle_address' => $currentProviderLocationName,
@@ -1355,6 +1369,8 @@ class SearchController extends Controller
             'schema' => $vehicleListSchema,
             'seoMeta' => $seoMeta,
             'locale' => \Illuminate\Support\Facades\App::getLocale(),
+            'optionalExtras' => array_values($searchOptionalExtras ?? []), // Pass extras
+            'locationName' => $validated['location_name'] ?? 'Selected Location', // Pass location name
         ]);
     }
 
@@ -1599,5 +1615,32 @@ class SearchController extends Controller
         $data['dynamic_name'] = !empty($nameParts) ? implode(' ', $nameParts) : 'Standard Vehicle';
 
         return $data;
+    }
+
+    private function parseOptionalExtras($xmlObject)
+    {
+        $optionalExtras = [];
+        if (isset($xmlObject->response->optionalextras->extra)) {
+            foreach ($xmlObject->response->optionalextras->extra as $extra) {
+                // Determine price (Total for booking)
+                $price = (float) (string) $extra->Total_for_this_booking;
+                $currency = (string) $extra->Total_for_this_booking['currency'];
+
+                // If options logic needed later, add handling here. For now simpler structure.
+
+                $optionalExtras[] = [
+                    'id' => (string) $extra->optionID,
+                    'name' => (string) $extra->Name,
+                    'description' => (string) $extra->Description,
+                    'price' => $price,
+                    'currency' => $currency,
+                    'code' => (string) $extra->code,
+                    'daily_rate' => (float) (string) $extra->Daily_rate,
+                    'category' => (string) $extra->Category,
+                    'img' => (string) $extra->Image ?? null,
+                ];
+            }
+        }
+        return $optionalExtras;
     }
 }
