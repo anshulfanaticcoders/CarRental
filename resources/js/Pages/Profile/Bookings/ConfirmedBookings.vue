@@ -117,7 +117,7 @@
                 </div>
             <div class="flex gap-4 max-[768px]:flex-col items-center justify-between">
             <div class="flex gap-5">
-              <Link :href="`/${usePage().props.locale}/booking-success?payment_intent=${booking.payments[0]?.transaction_id}`" class="underline">{{ _t('customerbooking', 'view_booking_details_link') }}</Link>
+              <Link :href="route('booking.show', { locale: usePage().props.locale, id: booking.id })" class="underline">{{ _t('customerbooking', 'view_booking_details_link') }}</Link>
             <button
                 v-if="isCancellationAllowed(booking)"
                 @click="openCancellationModal(booking)"

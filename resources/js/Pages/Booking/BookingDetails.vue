@@ -1,6 +1,5 @@
 <script setup>
-import { ref, onMounted, nextTick } from "vue";
-import axios from "axios";
+import { ref, onMounted, nextTick, defineProps } from "vue";
 import { Link, usePage } from "@inertiajs/vue3";
 import AuthenticatedHeaderLayout from "@/Layouts/AuthenticatedHeaderLayout.vue";
 import L from 'leaflet';
@@ -9,19 +8,25 @@ import infoIcon from "../../../assets/WarningCircle.svg";
 import MapPin from "../../../assets/MapPin.svg";
 import Footer from "@/Components/Footer.vue";
 
-// State management
-const booking = ref(null);
-const payment = ref(null);
-const vehicle = ref(null);
-const error = ref(null);
-const map = ref(null);
-const plan = ref(null);
-const vendorProfile = ref(null);
+const props = defineProps({
+  booking: Object,
+  vehicle: Object,
+  payment: Object,
+  vendorProfile: Object,
+  plan: Object
+});
 
 // Map initialization function
+const map = ref(null);
+
 const initMap = () => {
-  if (!vehicle.value?.latitude || !vehicle.value?.longitude) {
-    console.warn('No vehicle location coordinates available');
+  if (!props.vehicle?.latitude || !props.vehicle?.longitude) {
+    // Hide map container or just return if no coordinates
+    const mapContainer = document.getElementById('booking-map');
+    if (mapContainer) {
+        mapContainer.style.display = 'none';
+        // Remove label as well if possible, but for now just hiding map is enough
+    }
     return;
   }
 
@@ -35,7 +40,7 @@ const initMap = () => {
     zoomControl: true,
     maxZoom: 18,
     minZoom: 4,
-  }).setView([vehicle.value.latitude, vehicle.value.longitude], 15);
+  }).setView([props.vehicle.latitude, props.vehicle.longitude], 15);
 
   // Add tile layer
   L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
@@ -56,13 +61,13 @@ const initMap = () => {
   });
 
   // Add vehicle location marker
-  L.marker([vehicle.value.latitude, vehicle.value.longitude], {
+  L.marker([props.vehicle.latitude, props.vehicle.longitude], {
     icon: customIcon
   })
     .bindPopup(`
       <div class="text-center">
         <p class="font-semibold">Vehicle Location</p>
-        <p>${vehicle.value.full_vehicle_address || 'No location name available'}</p>
+        <p>${props.vehicle.full_vehicle_address || 'No location name available'}</p>
       </div>
     `)
     .addTo(map.value);
@@ -73,47 +78,15 @@ const initMap = () => {
   }, 100);
 };
 
-// Fetch booking details
-onMounted(async () => {
-  // Clear session storage as soon as component is mounted
-  if (window.sessionStorage) {
-    window.sessionStorage.clear();
-    console.log('Session storage cleared on mount');
-  }
-
-  // Get query parameters from the URL
-  const paymentIntentId = usePage().props.payment_intent;
-  const sessionId = usePage().props.session_id;
-  
-  // Use either payment_intent or session_id
-  const queryParam = paymentIntentId 
-    ? `payment_intent=${paymentIntentId}` 
-    : sessionId 
-      ? `session_id=${sessionId}` 
-      : null;
-
-  if (queryParam) {
-    try {
-      const response = await axios.get(`/api/booking-success/details?${queryParam}`);
-
-      booking.value = response.data.booking;
-      payment.value = response.data.payment;
-      vehicle.value = response.data.vehicle;
-      plan.value = response.data.plan;
-      vendorProfile.value = response.data.vendorProfile;
-
-      // Initialize map after data is loaded
-      nextTick(() => {
-        initMap();
-      });
-    } catch (err) {
-      error.value = "There was an error fetching the booking details. Please try again later.";
-      console.error("Error fetching booking details:", err);
+// Initialize map on mount if vehicle exists
+onMounted(() => {
+    if (props.vehicle) {
+        nextTick(() => {
+            initMap();
+        });
     }
-  } else {
-    error.value = "Payment identification is missing from the URL.";
-  }
 });
+
 
 // Get currency symbol
 const getCurrencySymbol = (currency) => {
@@ -182,10 +155,10 @@ const formatDate = (dateStr) => {
         </div>
 
         <!-- Error Display -->
-        <div v-if="error" class="mb-8 p-4 bg-red-100 border border-red-400 rounded-lg">
+        <!-- <div v-if="error" class="mb-8 p-4 bg-red-100 border border-red-400 rounded-lg">
           <h2 class="text-red-700 font-semibold mb-2">Error</h2>
           <p class="text-red-600">{{ error }}</p>
-        </div>
+        </div> -->
 
         <!-- Booking Details -->
         <div v-if="booking" class="bg-white rounded-lg shadow-sm p-6 mb-8 max-[768px]:p-0">
@@ -209,8 +182,10 @@ const formatDate = (dateStr) => {
             </div>
           </div>
 
-          <span class="text-[1.5rem] font-medium">Pickup Location</span>
-          <div id="booking-map" class="h-64 w-full rounded-lg mt-4 border"></div>
+          <div v-if="vehicle && vehicle.latitude && vehicle.longitude">
+            <span class="text-[1.5rem] font-medium">Pickup Location</span>
+            <div id="booking-map" class="h-64 w-full rounded-lg mt-4 border"></div>
+          </div>
 
           <!-- Booking Reference and Extras -->
           <div class="border-t pt-6">

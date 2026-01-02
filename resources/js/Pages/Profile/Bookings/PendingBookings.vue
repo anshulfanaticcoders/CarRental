@@ -99,7 +99,7 @@
                   <div class="text-gray-600 text-sm mt-1">{{ _t('customerbooking', 'total_amount_text') }}: {{ getCurrencySymbol(booking.booking_currency) }}{{ formatNumber(booking.total_amount) }}</div>
                 </div>
                 <div class="flex items-center justify-between max-[768px]:grid max-[768px]:grid-cols-2 max-[768px]:gap-3">
-                  <Link :href="`/${usePage().props.locale}/booking-success?payment_intent=${booking.payments[0]?.transaction_id}`" class="underline">{{ _t('customerbooking', 'view_booking_details_link') }}</Link>
+                  <Link :href="route('booking.show', { locale: usePage().props.locale, id: booking.id })" class="underline">{{ _t('customerbooking', 'view_booking_details_link') }}</Link>
                   <button
                     v-if="booking.payment_status === 'pending'"
                     @click="retryPayment(booking.id)"

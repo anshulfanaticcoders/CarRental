@@ -471,6 +471,9 @@ Route::group([
         return Inertia::render('Booking/Cancel');
     })->name('booking.cancel');
 
+    // Booking Details Route (Authenticated/Authorized)
+    Route::get('/booking/{id}', [BookingController::class, 'show'])->name('booking.show');
+
 
     // Public QR Code Tracking Routes (with locale prefix)
     Route::get('/affiliate/track/{trackingData}', [AffiliateQrCodeController::class, 'track'])->name('affiliate.qr.track');
