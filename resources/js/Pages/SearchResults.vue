@@ -27,6 +27,7 @@ import filterIcon from "../../assets/filterIcon.svg";
 import SearchBar from "@/Components/SearchBar.vue";
 import CarListingCard from "@/Components/CarListingCard.vue"; // Import CarListingCard
 import BookingExtrasStep from "@/Components/BookingExtrasStep.vue"; // Import BookingExtrasStep
+import BookingCheckoutStep from '@/Components/BookingCheckoutStep.vue'; // Import BookingExtrasStep
 import { Label } from "@/Components/ui/label";
 import { Switch } from "@/Components/ui/switch";
 import CaretDown from "../../assets/CaretDown.svg";
@@ -259,10 +260,13 @@ const handleBackToResults = () => {
     selectedPackage.value = null;
 };
 
+const selectedCheckoutData = ref(null);
+
 const handleProceedToCheckout = (data) => {
-    console.log('Proceed to Checkout:', data);
-    // TODO: Implement checkout step
-    // For now logs data
+    // console.log('Proceed to Checkout:', data);
+    selectedCheckoutData.value = data;
+    bookingStep.value = 'checkout';
+    window.scrollTo({ top: 0, behavior: 'smooth' });
 };
 
 // Initialize map immediately for fast loading, then update when currency data loads
@@ -2103,6 +2107,26 @@ watch(
             :payment-percentage="paymentPercentage"
             @back="handleBackToResults"
             @proceed-to-checkout="handleProceedToCheckout"
+        />
+
+        <BookingCheckoutStep
+            v-else-if="bookingStep === 'checkout' && selectedCheckoutData"
+            :vehicle="selectedVehicle"
+            :package="selectedCheckoutData.package"
+            :extras="selectedCheckoutData.extras"
+            :detailed-extras="selectedCheckoutData.detailedExtras"
+            :optional-extras="optionalExtras"
+            :totals="selectedCheckoutData.totals"
+            :currency-symbol="getCurrencySymbol(selectedVehicle.currency || 'EUR')"
+            :pickup-location="form.where"
+            :dropoff-location="form.dropoff_where || form.where"
+            :pickup-date="form.date_from"
+            :pickup-time="form.start_time"
+            :dropoff-date="form.date_to"
+            :dropoff-time="form.end_time"
+            :number-of-days="numberOfRentalDays"
+            :payment-percentage="paymentPercentage"
+            @back="bookingStep = 'extras'"
         />
     </div>
 

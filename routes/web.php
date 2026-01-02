@@ -144,7 +144,10 @@ Route::middleware(['auth', 'role:admin'])->group(function () {
     Route::get('/customer-bookings/confirmed', [BookingDashboardController::class, 'confirmed'])->name('customer-bookings.confirmed');
     Route::get('/customer-bookings/completed', [BookingDashboardController::class, 'completed'])->name('customer-bookings.completed');
     Route::get('/customer-bookings/cancelled', [BookingDashboardController::class, 'cancelled'])->name('customer-bookings.cancelled');
-    Route::resource('booking-addons', VehicleAddonsController::class)->middleware(['auth']);
+
+
+
+    Route::resource('booking-addons', VehicleAddonsController::class);
     Route::resource('popular-places', PopularPlacesController::class)->except(['show']);
     Route::resource('admin/plans', PlansController::class);
     Route::resource('blogs', BlogController::class)->names('admin.blogs');
@@ -460,6 +463,13 @@ Route::group([
     Route::get('/api/footer-places', [PopularPlacesController::class, 'getFooterPlaces']);
     Route::get('/api/footer-categories', [VehicleCategoriesController::class, 'getFooterCategories']);
     Route::get('/api/vehicles/search-locations', [VehicleController::class, 'searchLocations']);
+
+    // Booking Flow Routes (Public)
+    Route::get('/booking/success', [\App\Http\Controllers\StripeCheckoutController::class, 'success'])->name('booking.success');
+
+    Route::get('/booking/cancel', function () {
+        return Inertia::render('Booking/Cancel');
+    })->name('booking.cancel');
 
 
     // Public QR Code Tracking Routes (with locale prefix)
@@ -849,12 +859,7 @@ Route::group([
         Route::post('/booking', [BookingController::class, 'store'])->name('booking.store');
         Route::get('/customer/bookings', [BookingController::class, 'getCustomerBookingData'])->name('customer.bookings');
 
-        Route::get('/booking-success', function () {
-            return Inertia::render('Booking/BookingDetails', [
-                'payment_intent' => request('payment_intent'),
-                'session_id' => request('session_id')
-            ]);
-        })->name('booking-success');
+
 
         // Booking confirmation routes
         Route::get('/profile/bookings/pending', [BookingController::class, 'getPendingBookings'])->name('profile.bookings.pending');

@@ -554,7 +554,16 @@ const isKeyBenefit = (text) => {
                 <!-- Action Buttons -->
                 <div class="space-y-3">
                     <button
-                        @click="$emit('proceed-to-checkout', { package: currentPackage, extras: selectedExtras })"
+                        @click="$emit('proceed-to-checkout', { 
+                            package: currentPackage, 
+                            extras: selectedExtras,
+                            detailedExtras: getSelectedExtrasDetails,
+                            totals: {
+                                grandTotal,
+                                payableAmount,
+                                pendingAmount
+                            }
+                        })"
                         class="w-full bg-customPrimaryColor text-white py-3 rounded-lg font-bold hover:bg-opacity-90 transition-all shadow-md"
                     >
                         Proceed to Booking

@@ -114,3 +114,6 @@ Route::get('/unified-locations', [App\Http\Controllers\SearchController::class, 
 Route::get('/advertisement', [\App\Http\Controllers\AdvertisementController::class, 'index']);
 Route::get('/footer-contact-info', [ContactUsPageController::class, 'getContactInfo']);
 
+// Stripe Checkout Routes
+Route::post('/stripe/checkout', [\App\Http\Controllers\StripeCheckoutController::class, 'createSession'])->name('api.stripe.checkout');
+Route::post('/stripe/webhook', [\App\Http\Controllers\StripeWebhookController::class, 'handle'])->name('api.stripe.webhook');

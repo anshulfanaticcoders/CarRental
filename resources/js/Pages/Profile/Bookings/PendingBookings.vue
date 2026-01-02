@@ -19,33 +19,57 @@
         <div v-else class="flex flex-col gap-10">
           <div v-for="booking in bookings.data" :key="booking.id"
             class="bg-white shadow-md rounded-lg p-6 gap-10 flex justify-between max-[768px]:flex-col">
-            <Link :href="route('vehicle.show', { locale: usePage().props.locale, id: booking.vehicle.id })" class="w-[30%] max-[768px]:w-full">
-              <div class="">
-                <img v-if="booking.vehicle?.images" :src="`${booking.vehicle.images.find(
-                  (image) => image.image_type === 'primary'
-                )?.image_url}`" alt="Primary Vehicle Image"
-                  class="w-full h-[250px] object-cover rounded-md" />
+            <!-- Vehicle Image Section -->
+          <component 
+            :is="booking.vehicle ? 'Link' : 'div'" 
+            :href="booking.vehicle ? route('vehicle.show', { locale: usePage().props.locale, id: booking.vehicle.id }) : null" 
+            class="w-[30%] max-[768px]:w-full"
+          >
+            <div class=""> 
+              <!-- Internal Vehicle Image -->
+              <img v-if="booking.vehicle?.images?.length"
+                :src="`${booking.vehicle.images.find(image => image.image_type === 'primary')?.image_url || booking.vehicle.images[0]?.image_url}`"
+                alt="Primary Vehicle Image" class="w-full h-[250px] object-cover rounded-md" 
+              />
+              <!-- External/Fallback Vehicle Image -->
+              <img v-else-if="booking.vehicle_image"
+                :src="booking.vehicle_image" 
+                alt="Vehicle Image"
+                class="w-full h-[250px] object-contain bg-gray-50 rounded-md p-4" 
+              />
+              <!-- Placeholder -->
+              <img v-else
+                src="/path/to/placeholder-image.jpg" alt="Placeholder Image"
+                class="w-full h-[250px] object-cover rounded-md" 
+              />
+            </div>
+          </component>
+
+          <!-- Vehicle Details Section -->
+          <div class="w-[67%] flex flex-col gap-5 max-[768px]:w-full">
+            <div class="flex justify-between items-center max-[768px]:flex-wrap">
+              <div class="flex justify-between items-center gap-10 max-[768px]:gap-5">
+                <span class="text-[2rem] font-medium text-customPrimaryColor max-[768px]:text-[1.2rem]">
+                    {{ booking.vehicle?.brand || booking.vehicle_name || 'Vehicle' }}
+                </span> 
+                <span v-if="booking.vehicle?.category"
+                  class="bg-customLightPrimaryColor p-3 rounded-[99px] text-[1rem] max-[768px]:text-[0.5rem]">
+                  {{ booking.vehicle.category.name }}
+                </span>
+                <span v-else-if="booking.provider_source" class="bg-gray-100 p-3 rounded-[99px] text-[1rem] capitalize">
+                    {{ booking.provider_source }}
+                </span>
               </div>
-            </Link>
-            <div class="w-[67%] flex flex-col gap-5 max-[768px]:w-full">
-              <div class="flex justify-between items-center max-[768px]:flex-wrap max-[768px]:gap-4">
-                <div class="flex justify-between items-center gap-10 max-[768px]:gap-5"><span
-                    class="text-[2rem] font-medium text-customPrimaryColor max-[768px]:text-[1.2rem]">{{ booking.vehicle.brand
-                    }}</span> <span class="bg-customLightPrimaryColor p-3 rounded-[99px] text-[1rem] max-[768px]:text-[0.5rem]">{{
-                      booking.vehicle?.category.name
-                    }}</span>
-                    </div>
-                <span class="bg-[#906F001A] text-[#906F00] px-[1.5rem] py-[0.75rem] rounded-[99px] max-[768px]:text-[0.75rem]">{{ _t('customerbooking', 'booking_under_progress_status') }}</span>
-              </div>
-  
-              <div class="flex items-end gap-2 max-[768px]:text-[0.875rem]">
-                <img :src="carIcon" alt="">
-                <span class="capitalize text-customLightGrayColor">{{ booking.vehicle.transmission }}
-                  .</span>
-                <span class="capitalize text-customLightGrayColor">{{ booking.vehicle.fuel }} .</span>
-                <span class="capitalize text-customLightGrayColor">{{ booking.vehicle.seating_capacity }}
-                  {{ _t('customerbooking', 'seats_suffix') }}</span>
-              </div>
+              <span class="bg-[#0099001A] text-[#009900] px-[1.5rem] py-[0.75rem] rounded-[99px] max-[768px]:text-[0.75rem]">{{ _t('customerbooking', 'booking_status_pending') }}</span>
+            </div>
+
+            <!-- Specs -->
+            <div v-if="booking.vehicle" class="flex items-end gap-2 max-[768px]:text-[0.875rem]">
+              <img :src="carIcon" alt="Car Icon"> 
+              <span class="capitalize text-customLightGrayColor">{{ booking.vehicle.transmission }} .</span>
+              <span class="capitalize text-customLightGrayColor">{{ booking.vehicle.fuel }} .</span>
+              <span class="capitalize text-customLightGrayColor">{{ booking.vehicle.seating_capacity }} {{ _t('customerbooking', 'seats_suffix') }}</span>
+            </div>
   
               <div class="flex justify-between w-[70%] max-[768px]:w-full max-[768px]:flex-col max-[768px]:gap-5">
                 <div class="col">

@@ -1,51 +1,62 @@
-<template>
-  <div class="flex flex-col items-center justify-center min-h-screen bg-gray-100">
-    <div class="bg-white p-8 rounded-lg shadow-md text-center max-w-md">
-      <h1 class="text-2xl font-bold text-red-600 mb-4">Payment Issue</h1>
-
-      <!-- Show error message if available -->
-      <div v-if="error" class="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg">
-        <p class="text-red-700 text-sm">{{ error }}</p>
-      </div>
-
-      <!-- Show different messages based on whether we have a booking -->
-      <div v-if="bookingId">
-        <p class="text-gray-700 mb-6">Your payment was cancelled or failed. Booking #{{ bookingId }} may be in pending status.</p>
-      </div>
-      <div v-else>
-        <p class="text-gray-700 mb-6">The payment process was interrupted or cancelled. No booking was created.</p>
-      </div>
-
-      <div class="flex gap-4 items-center justify-center">
-        <Link :href="route('home', { locale: $page.props.locale })" class="bg-gray-500 text-white font-bold py-2 px-4 rounded hover:bg-gray-600">
-          Back to Home
-        </Link>
-
-        <Link v-if="bookingId" :href="route('profile.bookings.pending', { locale: $page.props.locale })" class="bg-customPrimaryColor text-white font-bold py-2 px-4 rounded hover:bg-customPrimaryColor-hover">
-          View Bookings
-        </Link>
-        <Link v-else :href="route('vehicles.index', { locale: $page.props.locale })" class="bg-customPrimaryColor text-white font-bold py-2 px-4 rounded hover:bg-customPrimaryColor-hover">
-          Browse Vehicles
-        </Link>
-      </div>
-    </div>
-  </div>
-</template>
-
 <script setup>
-import { defineProps } from 'vue';
-import { loadStripe } from '@stripe/stripe-js';
-import axios from 'axios';
-import { Link } from '@inertiajs/vue3';
+import { Head, Link } from '@inertiajs/vue3';
+import AuthenticatedHeaderLayout from '@/Layouts/AuthenticatedHeaderLayout.vue';
+import Footer from '@/Components/Footer.vue';
+import { XCircle } from 'lucide-vue-next';
 
-const props = defineProps({
-  bookingId: {
-    type: Number,
-    default: null,
-  },
-  error: {
-    type: String,
-    default: null,
-  },
+defineProps({
+    message: {
+        type: String,
+        default: 'Your payment was cancelled. You can try again anytime.'
+    }
 });
 </script>
+
+<template>
+    <Head title="Payment Cancelled" />
+    <AuthenticatedHeaderLayout />
+
+    <div class="min-h-screen bg-gray-50 py-16">
+        <div class="max-w-2xl mx-auto px-4">
+            <div class="bg-white rounded-2xl shadow-lg p-8 text-center">
+                <!-- Cancel Icon -->
+                <div class="w-20 h-20 bg-amber-100 rounded-full flex items-center justify-center mx-auto mb-6">
+                    <XCircle class="w-12 h-12 text-amber-600" />
+                </div>
+
+                <!-- Cancel Message -->
+                <h1 class="text-3xl font-bold text-gray-800 mb-2">Payment Cancelled</h1>
+                <p class="text-gray-600 mb-6">
+                    {{ message }}
+                </p>
+
+                <!-- Info Box -->
+                <div class="bg-amber-50 border border-amber-200 rounded-lg p-4 mb-6 text-left">
+                    <h3 class="font-semibold text-amber-800 mb-2">What happened?</h3>
+                    <p class="text-sm text-amber-700">
+                        Your payment session was cancelled or expired. No charges have been made to your card.
+                        You can return to the search results and try booking again.
+                    </p>
+                </div>
+
+                <!-- Actions -->
+                <div class="space-y-3">
+                    <Link 
+                        href="/"
+                        class="block w-full bg-customPrimaryColor text-white py-3 rounded-lg font-bold hover:bg-opacity-90 transition-all"
+                    >
+                        Back to Home
+                    </Link>
+                    <button 
+                        @click="$router.go(-1)"
+                        class="block w-full bg-white border border-gray-300 text-gray-700 py-3 rounded-lg font-medium hover:bg-gray-50 transition-all"
+                    >
+                        Go Back
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <Footer />
+</template>

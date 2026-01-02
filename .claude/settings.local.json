@@ -20,7 +20,8 @@
       "mcp__serena__initial_instructions",
       "Bash(npm run dev:*)",
       "mcp__sequential-thinking__process_thought",
-      "Skill(superpowers:systematic-debugging)"
+      "Skill(superpowers:systematic-debugging)",
+      "Skill(frontend-design:frontend-design)"
     ]
   },
   "enableAllProjectMcpServers": true,

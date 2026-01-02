@@ -15,6 +15,11 @@ class Booking extends Model
         'booking_number',
         'customer_id',
         'vehicle_id',
+        'provider_source',
+        'provider_vehicle_id',
+        'provider_booking_ref',
+        'vehicle_name',
+        'vehicle_image',
         'pickup_date',
         'return_date',
         'pickup_location',
@@ -38,6 +43,8 @@ class Booking extends Model
         'booking_reference',
         'cancellation_reason',
         'notes',
+        'stripe_session_id',
+        'stripe_payment_intent_id',
     ];
 
     protected $casts = [
@@ -97,11 +104,11 @@ class Booking extends Model
     }
 
     public function review()
-{
-    return $this->hasOne(Review::class, 'booking_id');
-}
+    {
+        return $this->hasOne(Review::class, 'booking_id');
+    }
 
- public function vehicleBenefit(): HasOne
+    public function vehicleBenefit(): HasOne
     {
         return $this->hasOne(VehicleBenefit::class);
     }

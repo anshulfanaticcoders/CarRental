@@ -1212,19 +1212,22 @@ class SearchController extends Controller
         }
 
         $filteredProviderVehicles = $providerVehicles->filter(function ($vehicle) use ($validated) {
-            if (!empty($validated['seating_capacity']) && $vehicle->seating_capacity != $validated['seating_capacity'])
+            // Convert to array if it's an object (for consistency)
+            $v = is_array($vehicle) ? $vehicle : (array) $vehicle;
+
+            if (!empty($validated['seating_capacity']) && ($v['seating_capacity'] ?? null) != $validated['seating_capacity'])
                 return false;
-            if (!empty($validated['brand']) && strcasecmp($vehicle->brand, $validated['brand']) != 0)
+            if (!empty($validated['brand']) && strcasecmp($v['brand'] ?? '', $validated['brand']) != 0)
                 return false;
-            if (!empty($validated['transmission']) && strcasecmp($vehicle->transmission, $validated['transmission']) != 0)
+            if (!empty($validated['transmission']) && strcasecmp($v['transmission'] ?? '', $validated['transmission']) != 0)
                 return false;
-            if (!empty($validated['fuel']) && strcasecmp($vehicle->fuel, $validated['fuel']) != 0)
+            if (!empty($validated['fuel']) && strcasecmp($v['fuel'] ?? '', $validated['fuel']) != 0)
                 return false;
             if (!empty($validated['category_id'])) {
                 if (is_numeric($validated['category_id'])) {
                     return false; // Metric ID usually implies internal category
                 } else {
-                    if (strcasecmp($vehicle->category ?? '', $validated['category_id']) != 0) {
+                    if (strcasecmp($v['category'] ?? '', $validated['category_id']) != 0) {
                         return false;
                     }
                 }
@@ -1232,15 +1235,15 @@ class SearchController extends Controller
             // Note: price_range filtering removed from backend - handled on frontend with currency conversion
             // if (!empty($validated['price_range'])) {
             //     $range = explode('-', $validated['price_range']);
-            //     $price = (float) $vehicle->price_per_day;
+            //     $price = (float) $v['price_per_day'];
             //     if ($price < (float) $range[0] || $price > (float) $range[1])
             //         return false;
             // }
             if (!empty($validated['mileage'])) {
-                if ($vehicle->mileage === null || $vehicle->mileage === 'Unknown')
+                if (($v['mileage'] ?? null) === null || ($v['mileage'] ?? '') === 'Unknown')
                     return true;
                 $range = explode('-', $validated['mileage']);
-                $mileageValue = (int) $vehicle->mileage;
+                $mileageValue = (int) ($v['mileage'] ?? 0);
                 if ($mileageValue < (int) $range[0] || $mileageValue > (int) $range[1])
                     return false;
             }
