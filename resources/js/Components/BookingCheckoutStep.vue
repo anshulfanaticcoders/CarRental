@@ -6,6 +6,8 @@ import { usePage } from '@inertiajs/vue3';
 const props = defineProps({
     vehicle: Object,
     package: String,
+    protectionCode: String,
+    protectionAmount: Number,
     extras: Object, // { extraId: qty }
     detailedExtras: Array, // Full extra objects with price/free status
     optionalExtras: Array, // Full extra objects
@@ -30,6 +32,7 @@ const form = ref({
     name: user.name || '',
     email: user.email || '',
     phone: user.phone || '',
+    driver_age: '',
 });
 
 const errors = ref({});
@@ -56,13 +59,27 @@ const validate = () => {
         isValid = false;
     }
 
+    if (!form.value.driver_age) {
+        errors.value.driver_age = 'Driver Age is required';
+        isValid = false;
+    } else if (parseInt(form.value.driver_age) < 18) {
+        errors.value.driver_age = 'Driver must be at least 18 years old';
+        isValid = false;
+    }
+
     return isValid;
 };
+
+const isLocautoRent = computed(() => {
+    return props.vehicle?.source === 'locauto_rent';
+});
 
 const bookingData = computed(() => {
     return {
         vehicle: props.vehicle,
         package: props.package,
+        protection_code: props.protectionCode,
+        protection_amount: props.protectionAmount || 0,
         extras: props.extras,
         detailed_extras: props.detailedExtras,
         customer: form.value,
@@ -127,8 +144,22 @@ const formatPrice = (val) => {
                             class="w-full rounded-lg border-gray-300 focus:border-customPrimaryColor focus:ring-customPrimaryColor"
                             :class="{'border-red-500': errors.phone}"
                             placeholder="+1 234 567 8900"
-                        />
+                        />  
                         <p v-if="errors.phone" class="text-red-500 text-xs mt-1">{{ errors.phone }}</p>
+                    </div>
+
+                    <!-- Driver Age -->
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Driver Age</label>
+                        <input 
+                            v-model="form.driver_age"
+                            type="number" 
+                            class="w-full rounded-lg border-gray-300 focus:border-customPrimaryColor focus:ring-customPrimaryColor"
+                            :class="{'border-red-500': errors.driver_age}"
+                            placeholder="30"
+                            min="18"
+                        />
+                        <p v-if="errors.driver_age" class="text-red-500 text-xs mt-1">{{ errors.driver_age }}</p>
                     </div>
                 </div>
             </div>
@@ -194,17 +225,17 @@ const formatPrice = (val) => {
 
                 <!-- Stripe Button -->
                 <div class="mt-6">
-                     <div v-if="form.name && form.email && form.phone"> <!-- basic check for reactivity -->
+                     <div v-if="form.name && form.email && form.phone && form.driver_age"> <!-- basic check for reactivity -->
                          <StripeCheckoutButton 
                             v-if="!Object.keys(errors).length"
                             :booking-data="bookingData"
                             :label="`Pay ${formatPrice(totals.payableAmount)}`"
                         />
-                         <button v-else @click="validate()" class="w-full bg-gray-300 text-gray-500 py-4 rounded-xl font-bold cursor-not-allowed">
+                         <button v-else @click="validate()" class="w-full bg-gray-300 text-gray-500 py-4 rounded-xl font-bold">
                             Fix Errors to Pay
                         </button>
                     </div>
-                    <button v-else class="w-full bg-gray-300 text-gray-500 py-4 rounded-xl font-bold cursor-not-allowed">
+                    <button v-else @click="validate()" class="w-full bg-gray-300 text-gray-500 py-4 rounded-xl font-bold">
                         Enter Details to Pay
                     </button>
                 </div>

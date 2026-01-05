@@ -1,5 +1,5 @@
 <script setup>
-import { ref, computed } from "vue";
+import { ref, computed, watch } from "vue";
 import check from "../../assets/Check.svg";
 // Additional Icons
 import carIcon from "../../assets/carIcon.svg";
@@ -26,6 +26,7 @@ import {
 const props = defineProps({
     vehicle: Object,
     initialPackage: String,
+    initialProtectionCode: String, // For LocautoRent: selected protection code from car card
     optionalExtras: {
         type: Array,
         default: () => []
@@ -59,7 +60,64 @@ const selectedExtras = ref({});
 const selectedExtrasOrder = ref([]); // Track selection order for "First 2 Free" logic
 const showDetailsModal = ref(false);
 
+// Watch for changes to initialPackage prop
+watch(() => props.initialPackage, (newPackage) => {
+    currentPackage.value = newPackage || 'BAS';
+});
+
 const packageOrder = ['BAS', 'PLU', 'PRE', 'PMP'];
+
+// Check if vehicle is LocautoRent
+const isLocautoRent = computed(() => {
+    return props.vehicle?.source === 'locauto_rent';
+});
+
+// Get LocautoRent protection plans from extras (all 7 plans)
+const locautoProtectionPlans = computed(() => {
+    if (!isLocautoRent.value) return [];
+    const protectionCodes = ['136', '147', '145', '140', '146', '6', '43'];
+    const extras = props.vehicle?.extras || [];
+    return extras.filter(extra =>
+        protectionCodes.includes(extra.code) && extra.amount > 0
+    );
+});
+
+// Selected LocautoRent protection plan (null = Basic)
+// Initialize from prop if passed from car card
+const selectedLocautoProtection = ref(props.initialProtectionCode || null);
+
+// Watch for changes to initialProtectionCode prop
+watch(() => props.initialProtectionCode, (newCode) => {
+    selectedLocautoProtection.value = newCode || null;
+});
+
+// LocautoRent: Smart Cover plan (code 147)
+const locautoSmartCoverPlan = computed(() => {
+    return locautoProtectionPlans.value.find(p => p.code === '147') || null;
+});
+
+// LocautoRent: Don't Worry plan (code 136)
+const locautoDontWorryPlan = computed(() => {
+    return locautoProtectionPlans.value.find(p => p.code === '136') || null;
+});
+
+// LocautoRent: Optional extras (non-protection extras like GPS, child seat, etc.)
+const locautoOptionalExtras = computed(() => {
+    if (!isLocautoRent.value) return [];
+    const protectionCodes = ['136', '147', '145', '140', '146', '6', '43'];
+    const extras = props.vehicle?.extras || [];
+    return extras.filter(extra =>
+        !protectionCodes.includes(extra.code)
+    ).map((extra, index) => ({
+        id: `locauto_extra_${extra.code}`,
+        code: extra.code,
+        name: extra.description,
+        description: extra.description,
+        price: parseFloat(extra.amount) * props.numberOfDays,
+        daily_rate: parseFloat(extra.amount),
+        amount: extra.amount
+    }));
+});
 
 const availablePackages = computed(() => {
     if (!props.vehicle || !props.vehicle.products) return [];
@@ -146,7 +204,11 @@ const isExtraFree = (extraId) => {
 const extrasTotal = computed(() => {
     let total = 0;
     for (const [id, qty] of Object.entries(selectedExtras.value)) {
-        const extra = props.optionalExtras.find(e => e.id === id);
+        // Find extra from the correct source (LocautoRent uses locautoOptionalExtras, others use props.optionalExtras)
+        const extra = isLocautoRent.value
+            ? locautoOptionalExtras.value.find(e => e.id === id)
+            : props.optionalExtras.find(e => e.id === id);
+
         if (extra) {
             if (isExtraFree(id)) {
                 continue; // It's free
@@ -161,6 +223,15 @@ const extrasTotal = computed(() => {
 });
 
 const grandTotal = computed(() => {
+    if (isLocautoRent.value) {
+        // For LocautoRent: base price + selected protection + extras
+        const basePrice = parseFloat(props.vehicle?.total_price || 0);
+        const protectionAmount = selectedLocautoProtection.value
+            ? parseFloat(locautoProtectionPlans.value.find(p => p.code === selectedLocautoProtection.value)?.amount || 0) * props.numberOfDays
+            : 0;
+        return (basePrice + protectionAmount + extrasTotal.value).toFixed(2);
+    }
+    // For GreenMotion/USave
     const pkgPrice = parseFloat(currentProduct.value?.total || 0);
     return (pkgPrice + extrasTotal.value).toFixed(2);
 });
@@ -182,12 +253,16 @@ const selectPackage = (pkgType) => {
 const getSelectedExtrasDetails = computed(() => {
     const details = [];
     for (const [id, qty] of Object.entries(selectedExtras.value)) {
-        const extra = props.optionalExtras.find(e => e.id === id);
+        // Find extra from the correct source (LocautoRent uses locautoOptionalExtras, others use props.optionalExtras)
+        const extra = isLocautoRent.value
+            ? locautoOptionalExtras.value.find(e => e.id === id)
+            : props.optionalExtras.find(e => e.id === id);
+
         if (extra) {
             const isFree = isExtraFree(id);
             const dailyRate = extra.daily_rate !== undefined ? parseFloat(extra.daily_rate) : (parseFloat(extra.price) / props.numberOfDays);
             const total = isFree ? 0 : (dailyRate * props.numberOfDays * qty);
-            
+
             details.push({
                 id: extra.id, // Good for key
                 name: extra.name,
@@ -254,10 +329,20 @@ const vehicleSpecs = computed(() => {
 const isKeyBenefit = (text) => {
     if (!text) return false;
     const lower = text.toLowerCase();
-    return lower.includes('excess') || 
-           lower.includes('deposit') || 
-           lower.includes('free') || 
+    return lower.includes('excess') ||
+           lower.includes('deposit') ||
+           lower.includes('free') ||
            lower.includes('unlimited');
+};
+
+// Get short protection name for LocautoRent (extract English name from "English / Italian" format)
+const getShortProtectionName = (description) => {
+    if (!description) return '';
+    // LocautoRent descriptions are like "Don't Worry" or "Roadside Plus / Assistenza Stradale"
+    if (description.includes('/')) {
+        return description.split('/')[0].trim();
+    }
+    return description;
 };
 </script>
 
@@ -278,9 +363,11 @@ const isKeyBenefit = (text) => {
 
             <!-- 1. Package Upgrade Section -->
             <section>
-                <h3 class="text-xl font-bold text-gray-800 mb-4">Choose Your Package</h3>
+                <!-- GreenMotion/USave: Package Selection -->
+                <template v-if="!isLocautoRent">
+                    <h3 class="text-xl font-bold text-gray-800 mb-4">Choose Your Package</h3>
 
-                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                     <div
                         v-for="pkg in availablePackages"
                         :key="pkg.type"
@@ -329,14 +416,103 @@ const isKeyBenefit = (text) => {
                         </ul>
                     </div>
                 </div>
+                </template>
+            </section>
+
+            <!-- LocautoRent: Protection Plans Section -->
+            <section v-if="isLocautoRent && locautoProtectionPlans.length > 0">
+                <h3 class="text-xl font-bold text-gray-800 mb-4">Choose Your Protection Plan</h3>
+
+                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                    <!-- Basic Plan -->
+                    <div
+                        @click="selectedLocautoProtection = null"
+                        class="border rounded-lg p-3 cursor-pointer transition-all flex flex-col relative bg-white hover:shadow-lg"
+                        :class="!selectedLocautoProtection ? 'border-blue-500 bg-blue-50 ring-1 ring-blue-500' : 'border-gray-200 hover:border-blue-300'"
+                    >
+                        <!-- Header -->
+                        <div class="flex justify-between items-start mb-2">
+                            <div>
+                                <span class="text-sm font-bold text-gray-800 block">Basic</span>
+                                <span class="text-xs text-gray-500">Standard</span>
+                            </div>
+                            <div v-if="!selectedLocautoProtection" class="bg-blue-500 text-white rounded-full w-5 h-5 flex items-center justify-center flex-shrink-0">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7" />
+                                </svg>
+                            </div>
+                        </div>
+
+                        <!-- Price -->
+                        <div class="mb-2 pb-2 border-b border-gray-100/50">
+                            <div class="text-xl font-bold text-customPrimaryColor leading-tight">
+                                {{ formatPrice(0) }}
+                                <span class="text-xs font-normal text-gray-500">/day</span>
+                            </div>
+                            <div class="text-sm font-semibold text-gray-500 mt-2 pt-2 border-t border-gray-100 flex justify-between items-center">
+                                <span>Total:</span>
+                                <span class="text-gray-900 text-base font-bold">{{ formatPrice(0) }}</span>
+                            </div>
+                        </div>
+
+                        <!-- Description -->
+                        <ul class="space-y-2 mt-2 flex-1">
+                            <li class="flex items-start gap-2.5 text-sm">
+                                <img :src="check" class="w-4 h-4 mt-0.5 flex-shrink-0 opacity-70" alt="✓" />
+                                <span class="leading-tight text-gray-600 font-medium">Standard protection included</span>
+                            </li>
+                        </ul>
+                    </div>
+
+                    <div
+                        v-for="protection in locautoProtectionPlans"
+                        :key="protection.code"
+                        @click="selectedLocautoProtection = protection.code"
+                        class="border rounded-lg p-3 cursor-pointer transition-all flex flex-col relative bg-white hover:shadow-lg"
+                        :class="selectedLocautoProtection === protection.code ? 'border-blue-500 bg-blue-50 ring-1 ring-blue-500' : 'border-gray-200 hover:border-blue-300'"
+                    >
+                        <!-- Header -->
+                        <div class="flex justify-between items-start mb-2">
+                            <div>
+                                <span class="text-sm font-bold text-gray-800 block">{{ getShortProtectionName(protection.description) }}</span>
+                                <span class="text-xs text-gray-500">Protection</span>
+                            </div>
+                            <div v-if="selectedLocautoProtection === protection.code" class="bg-blue-500 text-white rounded-full w-5 h-5 flex items-center justify-center flex-shrink-0">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7" />
+                                </svg>
+                            </div>
+                        </div>
+
+                        <!-- Price -->
+                        <div class="mb-2 pb-2 border-b border-gray-100/50">
+                            <div class="text-xl font-bold text-customPrimaryColor leading-tight">
+                                {{ formatPrice(protection.amount) }}
+                                <span class="text-xs font-normal text-gray-500">/day</span>
+                            </div>
+                            <div class="text-sm font-semibold text-gray-500 mt-2 pt-2 border-t border-gray-100 flex justify-between items-center">
+                                <span>Total:</span>
+                                <span class="text-gray-900 text-base font-bold">{{ formatPrice(protection.amount * numberOfDays) }}</span>
+                            </div>
+                        </div>
+
+                        <!-- Description -->
+                        <ul class="space-y-2 mt-2 flex-1">
+                            <li class="flex items-start gap-2.5 text-sm">
+                                <img :src="check" class="w-4 h-4 mt-0.5 flex-shrink-0 opacity-70" alt="✓" />
+                                <span class="leading-tight text-gray-600 font-medium">{{ protection.description }}</span>
+                            </li>
+                        </ul>
+                    </div>
+                </div>
             </section>
 
             <!-- 2. Extras Section -->
-            <section v-if="optionalExtras && optionalExtras.length > 0">
+            <section v-if="(optionalExtras && optionalExtras.length > 0) || (isLocautoRent && locautoOptionalExtras.length > 0)">
                 <h3 class="text-xl font-bold text-gray-800 mb-4">Optional Extras</h3>
                 <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                     <div
-                        v-for="extra in optionalExtras"
+                        v-for="extra in isLocautoRent ? locautoOptionalExtras : optionalExtras"
                         :key="extra.id"
                         class="border rounded-lg p-4 flex flex-col justify-between h-full bg-white transition-all shadow-sm hover:shadow-md"
                         :class="{'border-blue-500 ring-1 ring-blue-500 bg-blue-50': selectedExtras[extra.id]}"
@@ -554,8 +730,12 @@ const isKeyBenefit = (text) => {
                 <!-- Action Buttons -->
                 <div class="space-y-3">
                     <button
-                        @click="$emit('proceed-to-checkout', { 
-                            package: currentPackage, 
+                        @click="$emit('proceed-to-checkout', {
+                            package: isLocautoRent ? (selectedLocautoProtection ? 'POA' : 'BAS') : currentPackage,
+                            protection_code: isLocautoRent ? selectedLocautoProtection : null,
+                            protection_amount: isLocautoRent && selectedLocautoProtection
+                                ? locautoProtectionPlans.find(p => p.code === selectedLocautoProtection)?.amount || 0
+                                : 0,
                             extras: selectedExtras,
                             detailedExtras: getSelectedExtrasDetails,
                             totals: {

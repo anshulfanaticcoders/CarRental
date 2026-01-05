@@ -207,6 +207,7 @@ const props = defineProps({
 const bookingStep = ref('results'); // 'results' | 'extras' | 'checkout'
 const selectedVehicle = ref(null);
 const selectedPackage = ref(null);
+const selectedProtectionCode = ref(null);
 
 const selectedBookingExtras = ref({});
 const locationInstructions = ref(null);
@@ -231,10 +232,11 @@ const fetchLocationDetails = async (locationId) => {
 
 
 const handlePackageSelection = (event) => {
-    // Event contains { vehicle, package }
+    // Event contains { vehicle, package, protection_code }
     console.log('Package Selected:', event);
     selectedVehicle.value = event.vehicle;
     selectedPackage.value = event.package;
+    selectedProtectionCode.value = event.protection_code || null;
     bookingStep.value = 'extras';
 
     // Fetch location details if GreenMotion
@@ -258,6 +260,7 @@ const handleBackToResults = () => {
     bookingStep.value = 'results';
     selectedVehicle.value = null;
     selectedPackage.value = null;
+    selectedProtectionCode.value = null;
 };
 
 const selectedCheckoutData = ref(null);
@@ -2093,6 +2096,7 @@ watch(
             v-else-if="bookingStep === 'extras' && selectedVehicle"
             :vehicle="selectedVehicle"
             :initial-package="selectedPackage"
+            :initial-protection-code="selectedProtectionCode"
             :optional-extras="optionalExtras"
             :currency-symbol="getCurrencySymbol(selectedVehicle.currency || 'EUR')"
             :location-name="locationName"
@@ -2110,22 +2114,24 @@ watch(
         />
 
         <BookingCheckoutStep
-            v-else-if="bookingStep === 'checkout' && selectedCheckoutData"
+            v-else-if="bookingStep === 'checkout' && selectedVehicle"
             :vehicle="selectedVehicle"
             :package="selectedCheckoutData.package"
+            :protection-code="selectedCheckoutData.protection_code"
+            :protection-amount="selectedCheckoutData.protection_amount"
             :extras="selectedCheckoutData.extras"
             :detailed-extras="selectedCheckoutData.detailedExtras"
             :optional-extras="optionalExtras"
-            :totals="selectedCheckoutData.totals"
-            :currency-symbol="getCurrencySymbol(selectedVehicle.currency || 'EUR')"
-            :pickup-location="form.where"
-            :dropoff-location="form.dropoff_where || form.where"
             :pickup-date="form.date_from"
             :pickup-time="form.start_time"
             :dropoff-date="form.date_to"
             :dropoff-time="form.end_time"
+            :pickup-location="form.where"
+            :dropoff-location="form.dropoff_where || form.where"
             :number-of-days="numberOfRentalDays"
+            :currency-symbol="getCurrencySymbol(selectedVehicle.currency || 'EUR')"
             :payment-percentage="paymentPercentage"
+            :totals="selectedCheckoutData.totals"
             @back="bookingStep = 'extras'"
         />
     </div>

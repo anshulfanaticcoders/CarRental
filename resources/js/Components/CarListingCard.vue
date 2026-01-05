@@ -96,6 +96,34 @@ const isGreenMotionOrUSave = computed(() => {
     return props.vehicle.source === 'greenmotion' || props.vehicle.source === 'usave';
 });
 
+// Check if vehicle is LocautoRent
+const isLocautoRent = computed(() => {
+    return props.vehicle.source === 'locauto_rent';
+});
+
+// Get LocautoRent protection plans from extras (all 7 plans)
+const locautoProtectionPlans = computed(() => {
+    if (!isLocautoRent.value) return [];
+    const protectionCodes = ['136', '147', '145', '140', '146', '6', '43'];
+    const extras = props.vehicle.extras || [];
+    return extras.filter(extra =>
+        protectionCodes.includes(extra.code) && extra.amount > 0
+    );
+});
+
+// LocautoRent: Smart Cover plan (code 147)
+const locautoSmartCoverPlan = computed(() => {
+    return locautoProtectionPlans.value.find(p => p.code === '147') || null;
+});
+
+// LocautoRent: Don't Worry plan (code 136)
+const locautoDontWorryPlan = computed(() => {
+    return locautoProtectionPlans.value.find(p => p.code === '136') || null;
+});
+
+// Selected LocautoRent protection plan (null = Basic)
+const selectedLocautoProtection = ref(null);
+
 // Get sorted products (BAS, PLU, PRE, PMP order)
 const sortedProducts = computed(() => {
     if (!isGreenMotionOrUSave.value) return [];
@@ -129,6 +157,16 @@ const getPackageName = (type) => {
         PMP: 'Premium Plus'
     };
     return names[type] || type;
+};
+
+// Get short protection name for LocautoRent (extract English name from "English / Italian" format)
+const getShortProtectionName = (description) => {
+    if (!description) return '';
+    // LocautoRent descriptions are like "Don't Worry" or "Roadside Plus / Assistenza Stradale"
+    if (description.includes('/')) {
+        return description.split('/')[0].trim();
+    }
+    return description;
 };
 
 // Get benefits for a product (semi-dynamic approach)
@@ -187,6 +225,18 @@ const selectPackage = (type) => {
     emit('select-package', { vehicle: props.vehicle, package: type });
 };
 
+// Select LocautoRent protection plan (null = Basic, no extra protection)
+const selectLocautoProtection = (protection) => {
+    selectedLocautoProtection.value = protection;
+    showAllPlans.value = false;
+    emit('select-package', {
+        vehicle: props.vehicle,
+        package: protection ? 'POA' : 'BAS',
+        protection_code: protection?.code || null,
+        protection_amount: protection?.amount || 0
+    });
+};
+
 // Close modal
 const closeModal = () => {
     showAllPlans.value = false;
@@ -242,6 +292,11 @@ const getRouteParams = (vehicle) => {
     // Add selected package for GM/USave
     if (isGreenMotionOrUSave.value) {
         baseParams.package = selectedPackage.value;
+    }
+
+    // Add selected protection for LocautoRent
+    if (isLocautoRent.value && selectedLocautoProtection.value) {
+        baseParams.protection_code = selectedLocautoProtection.value.code;
     }
 
     return baseParams;
@@ -521,15 +576,112 @@ const vehicleSpecs = computed(() => {
                 </button>
             </div>
 
+            <!-- LocautoRent Protection Plans -->
+            <div v-if="isLocautoRent" class="flex flex-col md:flex-row gap-3 mt-4 w-full">
+                <!-- Basic Plan (Base price only, no extra protection) -->
+                <div
+                    @click="selectLocautoProtection(null)"
+                    class="flex-1 bg-white border rounded-lg cursor-pointer transition-all p-3 relative"
+                    :class="!selectedLocautoProtection ? 'border-blue-500 bg-blue-50' : 'border-gray-200 hover:border-blue-300'"
+                >
+                    <div class="flex justify-between items-start mb-2">
+                        <div>
+                            <span class="text-base font-bold text-gray-800 block">Basic</span>
+                            <span class="text-xs text-gray-500">Base rental only</span>
+                        </div>
+                        <div v-if="!selectedLocautoProtection" class="bg-blue-500 text-white rounded-full w-5 h-5 flex items-center justify-center flex-shrink-0">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7" />
+                            </svg>
+                        </div>
+                    </div>
+
+                    <!-- Price -->
+                    <div class="mb-2 pb-2 border-b border-gray-100">
+                        <p class="text-xl font-bold text-customPrimaryColor leading-tight">
+                            {{ getCurrencySymbol(vehicle.currency) }}{{ parseFloat(vehicle.price_per_day).toFixed(2) }}
+                            <span class="text-xs font-normal text-gray-500">/day</span>
+                        </p>
+                        <div class="text-sm font-semibold text-gray-500 mt-2 pt-2 border-t border-gray-100 flex justify-between items-center">
+                            <span>Total:</span>
+                            <span class="text-gray-900 text-base font-bold">{{ getCurrencySymbol(vehicle.currency) }}{{ parseFloat(vehicle.total_price).toFixed(2) }}</span>
+                        </div>
+                    </div>
+
+                    <!-- Protection Info -->
+                    <ul class="space-y-1">
+                        <li class="text-sm flex items-start gap-1.5">
+                            <img :src="check" class="w-3 h-3 mt-0.5 flex-shrink-0" alt="✓" />
+                            <span class="text-gray-600">Standard protection included</span>
+                        </li>
+                    </ul>
+                </div>
+
+                <!-- Don't Worry Plan (if available) - Highlighted -->
+                <div
+                    v-if="locautoDontWorryPlan"
+                    @click="selectLocautoProtection(locautoDontWorryPlan)"
+                    class="flex-1 bg-white border rounded-lg cursor-pointer transition-all p-3 relative border-l-4"
+                    :class="[
+                        selectedLocautoProtection?.code === locautoDontWorryPlan.code ? 'border-blue-500 bg-blue-50 border-l-green-500' : 'border-gray-200 hover:border-blue-300 border-l-green-500'
+                    ]"
+                >
+                    <div class="flex justify-between items-start mb-2">
+                        <div>
+                            <span class="text-base font-bold text-gray-800 block">Don't Worry</span>
+                            <span class="text-xs text-gray-500">Best coverage</span>
+                        </div>
+                        <div v-if="selectedLocautoProtection?.code === locautoDontWorryPlan.code" class="bg-blue-500 text-white rounded-full w-5 h-5 flex items-center justify-center flex-shrink-0">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7" />
+                            </svg>
+                        </div>
+                    </div>
+
+                    <!-- Price -->
+                    <div class="mb-2 pb-2 border-b border-gray-100">
+                        <p class="text-xl font-bold text-customPrimaryColor leading-tight">
+                            {{ getCurrencySymbol(vehicle.currency) }}{{ (parseFloat(vehicle.price_per_day) + parseFloat(locautoDontWorryPlan.amount)).toFixed(2) }}
+                            <span class="text-xs font-normal text-gray-500">/day</span>
+                        </p>
+                        <div class="text-sm font-semibold text-gray-500 mt-2 pt-2 border-t border-gray-100 flex justify-between items-center">
+                            <span>Total:</span>
+                            <span class="text-gray-900 text-base font-bold">{{ getCurrencySymbol(vehicle.currency) }}{{ (parseFloat(vehicle.total_price) + (parseFloat(locautoDontWorryPlan.amount) * numberOfRentalDays)).toFixed(2) }}</span>
+                        </div>
+                    </div>
+
+                    <!-- Protection Info -->
+                    <ul class="space-y-1">
+                        <li class="text-sm flex items-start gap-1.5">
+                            <img :src="check" class="w-3 h-3 mt-0.5 flex-shrink-0" alt="✓" />
+                            <span class="text-gray-600">{{ getShortProtectionName(locautoDontWorryPlan.description) }}</span>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+
+            <!-- View more plans button for LocautoRent -->
+            <div v-if="isLocautoRent && locautoProtectionPlans.length > 0" class="mt-2 text-right">
+                <button
+                    @click="showAllPlans = true"
+                    class="text-xs text-blue-600 font-medium hover:text-blue-800 transition-colors inline-flex items-center gap-1"
+                >
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+                    </svg>
+                    View more plans
+                </button>
+            </div>
+
             <!-- Row 4: Price & Action -->
             <div class="flex justify-between items-end mt-4 pt-2">
                 <!-- Price -->
                 <div class="flex flex-col">
-                    <slot v-if="!isGreenMotionOrUSave" name="dailyPrice"></slot>
+                    <slot v-if="!isGreenMotionOrUSave && !isLocautoRent" name="dailyPrice"></slot>
                 </div>
 
                 <!-- View Deal Button -->
-                <!-- View Deal Button -->
+                <!-- GreenMotion/USave -->
                  <button
                     v-if="isGreenMotionOrUSave"
                     @click="selectPackage(selectedPackage)"
@@ -540,6 +692,18 @@ const vehicleSpecs = computed(() => {
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3" />
                     </svg>
                 </button>
+                <!-- LocautoRent -->
+                <button
+                    v-else-if="isLocautoRent"
+                    @click="selectLocautoProtection(selectedLocautoProtection)"
+                    class="bg-customPrimaryColor text-white px-6 py-2 rounded-lg font-semibold hover:bg-opacity-90 transition-all shadow-md flex items-center gap-2"
+                >
+                    View Deal
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3" />
+                    </svg>
+                </button>
+                <!-- Other providers -->
                  <Link
                     v-else
                     :href="vehicle.source !== 'internal'
@@ -592,59 +756,157 @@ const vehicleSpecs = computed(() => {
 
                 <!-- Plans Grid -->
                 <div class="plans-grid">
-                    <div
-                        v-for="product in sortedProducts"
-                        :key="product.type"
-                        class="plan-card p-4 border rounded-lg cursor-pointer transition-all hover:shadow-lg"
-                        :class="selectedPackage === product.type ? 'border-blue-500 bg-blue-50' : 'border-gray-200 hover:border-blue-300'"
-                        @click="selectPackage(product.type)"
-                    >
-                        <!-- Package Header -->
-                        <div class="flex justify-between items-start mb-3">
-                            <div>
-                                <h3 class="text-xl font-bold text-gray-800">{{ getPackageName(product.type) }}</h3>
-                                <p class="text-sm text-gray-500">{{ product.type }}</p>
-                            </div>
-                            <div v-if="selectedPackage === product.type" class="bg-blue-500 text-white rounded-full w-6 h-6 flex items-center justify-center">
-                                ✓
-                            </div>
-                        </div>
-
-                        <!-- Price -->
-                        <div class="mb-3 pb-3 border-b border-gray-200">
-                            <p class="text-2xl font-bold text-customPrimaryColor">
-                                {{ getCurrencySymbol(product.currency) }}{{ (parseFloat(product.total) / numberOfRentalDays).toFixed(2) }}
-                                <span class="text-sm font-normal text-gray-500">/day</span>
-                            </p>
-                            <div class="text-sm font-semibold text-gray-500 mt-2 pt-2 border-t border-gray-100 flex justify-between items-center">
-                                <span>Total ({{ numberOfRentalDays }} days):</span>
-                                <span class="text-gray-900 text-base font-bold">{{ getCurrencySymbol(product.currency) }}{{ parseFloat(product.total).toFixed(2) }}</span>
-                            </div>
-                        </div>
-
-                        <!-- Benefits -->
-                        <ul class="space-y-1.5">
-                            <li v-for="benefit in getBenefits(product)" :key="benefit" class="text-sm flex items-start gap-2">
-                                <img :src="check" class="w-4 h-4 mt-0.5 flex-shrink-0 opacity-70" alt="✓" />
-                                <span :class="isKeyBenefit(benefit) ? 'font-bold text-gray-900' : 'text-gray-600'">{{ benefit }}</span>
-                            </li>
-                            <li v-if="product.deposit" class="text-sm flex items-start gap-2">
-                                <img :src="check" class="w-4 h-4 mt-0.5 flex-shrink-0 opacity-70" alt="✓" />
-                                <span :class="isKeyBenefit('Deposit') ? 'font-bold text-gray-900' : 'text-gray-600'">Deposit: {{ getCurrencySymbol(product.currency) }}{{ parseFloat(product.deposit).toFixed(2) }}</span>
-                            </li>
-                        </ul>
-
-                        <!-- Select Button -->
-                        <button
-                            @click.stop="selectPackage(product.type)"
-                            class="mt-4 w-full py-2 rounded-lg font-semibold transition-all"
-                            :class="selectedPackage === product.type
-                                ? 'bg-blue-500 text-white cursor-default'
-                                : 'bg-gray-100 text-gray-700 hover:bg-blue-500 hover:text-white'"
+                    <!-- GreenMotion/USave Plans -->
+                    <template v-if="isGreenMotionOrUSave">
+                        <div
+                            v-for="product in sortedProducts"
+                            :key="product.type"
+                            class="plan-card p-4 border rounded-lg cursor-pointer transition-all hover:shadow-lg"
+                            :class="selectedPackage === product.type ? 'border-blue-500 bg-blue-50' : 'border-gray-200 hover:border-blue-300'"
+                            @click="selectPackage(product.type)"
                         >
-                            {{ selectedPackage === product.type ? 'Selected' : 'Select' }}
-                        </button>
-                    </div>
+                            <!-- Package Header -->
+                            <div class="flex justify-between items-start mb-3">
+                                <div>
+                                    <h3 class="text-xl font-bold text-gray-800">{{ getPackageName(product.type) }}</h3>
+                                    <p class="text-sm text-gray-500">{{ product.type }}</p>
+                                </div>
+                                <div v-if="selectedPackage === product.type" class="bg-blue-500 text-white rounded-full w-6 h-6 flex items-center justify-center">
+                                    ✓
+                                </div>
+                            </div>
+
+                            <!-- Price -->
+                            <div class="mb-3 pb-3 border-b border-gray-200">
+                                <p class="text-2xl font-bold text-customPrimaryColor">
+                                    {{ getCurrencySymbol(product.currency) }}{{ (parseFloat(product.total) / numberOfRentalDays).toFixed(2) }}
+                                    <span class="text-sm font-normal text-gray-500">/day</span>
+                                </p>
+                                <div class="text-sm font-semibold text-gray-500 mt-2 pt-2 border-t border-gray-100 flex justify-between items-center">
+                                    <span>Total ({{ numberOfRentalDays }} days):</span>
+                                    <span class="text-gray-900 text-base font-bold">{{ getCurrencySymbol(product.currency) }}{{ parseFloat(product.total).toFixed(2) }}</span>
+                                </div>
+                            </div>
+
+                            <!-- Benefits -->
+                            <ul class="space-y-1.5">
+                                <li v-for="benefit in getBenefits(product)" :key="benefit" class="text-sm flex items-start gap-2">
+                                    <img :src="check" class="w-4 h-4 mt-0.5 flex-shrink-0 opacity-70" alt="✓" />
+                                    <span :class="isKeyBenefit(benefit) ? 'font-bold text-gray-900' : 'text-gray-600'">{{ benefit }}</span>
+                                </li>
+                                <li v-if="product.deposit" class="text-sm flex items-start gap-2">
+                                    <img :src="check" class="w-4 h-4 mt-0.5 flex-shrink-0 opacity-70" alt="✓" />
+                                    <span :class="isKeyBenefit('Deposit') ? 'font-bold text-gray-900' : 'text-gray-600'">Deposit: {{ getCurrencySymbol(product.currency) }}{{ parseFloat(product.deposit).toFixed(2) }}</span>
+                                </li>
+                            </ul>
+
+                            <!-- Select Button -->
+                            <button
+                                @click.stop="selectPackage(product.type)"
+                                class="mt-4 w-full py-2 rounded-lg font-semibold transition-all"
+                                :class="selectedPackage === product.type
+                                    ? 'bg-blue-500 text-white cursor-default'
+                                    : 'bg-gray-100 text-gray-700 hover:bg-blue-500 hover:text-white'"
+                            >
+                                {{ selectedPackage === product.type ? 'Selected' : 'Select' }}
+                            </button>
+                        </div>
+                    </template>
+
+                    <!-- LocautoRent Protection Plans -->
+                    <template v-else-if="isLocautoRent">
+                        <!-- Basic Plan -->
+                        <div
+                            class="plan-card p-4 border rounded-lg cursor-pointer transition-all hover:shadow-lg"
+                            :class="!selectedLocautoProtection ? 'border-blue-500 bg-blue-50' : 'border-gray-200 hover:border-blue-300'"
+                            @click="selectLocautoProtection(null)"
+                        >
+                            <div class="flex justify-between items-start mb-3">
+                                <div>
+                                    <h3 class="text-xl font-bold text-gray-800">Basic</h3>
+                                    <p class="text-sm text-gray-500">Standard Protection</p>
+                                </div>
+                                <div v-if="!selectedLocautoProtection" class="bg-blue-500 text-white rounded-full w-6 h-6 flex items-center justify-center">
+                                    ✓
+                                </div>
+                            </div>
+
+                            <div class="mb-3 pb-3 border-b border-gray-200">
+                                <p class="text-2xl font-bold text-customPrimaryColor">
+                                    {{ getCurrencySymbol(vehicle.currency) }}{{ parseFloat(vehicle.price_per_day).toFixed(2) }}
+                                    <span class="text-sm font-normal text-gray-500">/day</span>
+                                </p>
+                                <div class="text-sm font-semibold text-gray-500 mt-2 pt-2 border-t border-gray-100 flex justify-between items-center">
+                                    <span>Total ({{ numberOfRentalDays }} days):</span>
+                                    <span class="text-gray-900 text-base font-bold">{{ getCurrencySymbol(vehicle.currency) }}{{ parseFloat(vehicle.total_price).toFixed(2) }}</span>
+                                </div>
+                            </div>
+
+                            <ul class="space-y-1.5">
+                                <li class="text-sm flex items-start gap-2">
+                                    <img :src="check" class="w-4 h-4 mt-0.5 flex-shrink-0 opacity-70" alt="✓" />
+                                    <span class="text-gray-600">Standard protection included</span>
+                                </li>
+                            </ul>
+
+                            <button
+                                @click.stop="selectLocautoProtection(null)"
+                                class="mt-4 w-full py-2 rounded-lg font-semibold transition-all"
+                                :class="!selectedLocautoProtection
+                                    ? 'bg-blue-500 text-white cursor-default'
+                                    : 'bg-gray-100 text-gray-700 hover:bg-blue-500 hover:text-white'"
+                            >
+                                {{ !selectedLocautoProtection ? 'Selected' : 'Select' }}
+                            </button>
+                        </div>
+
+                        <!-- Protection Plans -->
+                        <div
+                            v-for="protection in locautoProtectionPlans"
+                            :key="protection.code"
+                            class="plan-card p-4 border rounded-lg cursor-pointer transition-all hover:shadow-lg"
+                            :class="selectedLocautoProtection?.code === protection.code ? 'border-blue-500 bg-blue-50' : 'border-gray-200 hover:border-blue-300'"
+                            @click="selectLocautoProtection(protection)"
+                        >
+                            <div class="flex justify-between items-start mb-3">
+                                <div>
+                                    <h3 class="text-xl font-bold text-gray-800">{{ getShortProtectionName(protection.description) }}</h3>
+                                    <p class="text-sm text-gray-500">Code: {{ protection.code }}</p>
+                                </div>
+                                <div v-if="selectedLocautoProtection?.code === protection.code" class="bg-blue-500 text-white rounded-full w-6 h-6 flex items-center justify-center">
+                                    ✓
+                                </div>
+                            </div>
+
+                            <div class="mb-3 pb-3 border-b border-gray-200">
+                                <p class="text-2xl font-bold text-customPrimaryColor">
+                                    {{ getCurrencySymbol(vehicle.currency) }}{{ (parseFloat(vehicle.price_per_day) + parseFloat(protection.amount)).toFixed(2) }}
+                                    <span class="text-sm font-normal text-gray-500">/day</span>
+                                </p>
+                                <div class="text-sm font-semibold text-gray-500 mt-2 pt-2 border-t border-gray-100 flex justify-between items-center">
+                                    <span>Total ({{ numberOfRentalDays }} days):</span>
+                                    <span class="text-gray-900 text-base font-bold">{{ getCurrencySymbol(vehicle.currency) }}{{ (parseFloat(vehicle.total_price) + (parseFloat(protection.amount) * numberOfRentalDays)).toFixed(2) }}</span>
+                                </div>
+                            </div>
+
+                            <ul class="space-y-1.5">
+                                <li class="text-sm flex items-start gap-2">
+                                    <img :src="check" class="w-4 h-4 mt-0.5 flex-shrink-0 opacity-70" alt="✓" />
+                                    <span class="text-gray-600">{{ protection.description }}</span>
+                                </li>
+                            </ul>
+
+                            <button
+                                @click.stop="selectLocautoProtection(protection)"
+                                class="mt-4 w-full py-2 rounded-lg font-semibold transition-all"
+                                :class="selectedLocautoProtection?.code === protection.code
+                                    ? 'bg-blue-500 text-white cursor-default'
+                                    : 'bg-gray-100 text-gray-700 hover:bg-blue-500 hover:text-white'"
+                            >
+                                {{ selectedLocautoProtection?.code === protection.code ? 'Selected' : 'Select' }}
+                            </button>
+                        </div>
+                    </template>
                 </div>
             </div>
         </div>

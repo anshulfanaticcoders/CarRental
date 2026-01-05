@@ -39,7 +39,9 @@ class StripeCheckoutController extends Controller
                 'total_amount' => 'required|numeric',
                 'currency' => 'required|string',
                 'number_of_days' => 'required|integer|min:1',
-                'detailed_extras' => 'nullable|array', // New field
+                'detailed_extras' => 'nullable|array',
+                'protection_code' => 'nullable|string',
+                'protection_amount' => 'nullable|numeric',
             ]);
 
             // Get payment percentage from settings
@@ -88,7 +90,12 @@ class StripeCheckoutController extends Controller
                 'customer_name' => $validated['customer']['name'] ?? '',
                 'customer_email' => $validated['customer']['email'] ?? '',
                 'customer_phone' => $validated['customer']['phone'] ?? '',
-                'customer_phone' => $validated['customer']['phone'] ?? '',
+                'customer_driver_age' => $validated['customer']['driver_age'] ?? '',
+                'protection_code' => $validated['protection_code'] ?? '',
+                'protection_amount' => $validated['protection_amount'] ?? 0,
+                'sipp_code' => $validated['vehicle']['sipp_code'] ?? '',
+                'pickup_location_code' => $validated['vehicle']['provider_pickup_id'] ?? '', // For Locauto, this holds the XML location code
+                'return_location_code' => $validated['vehicle']['provider_return_id'] ?? $validated['vehicle']['provider_pickup_id'] ?? '',
                 'extras' => json_encode($validated['extras'] ?? []),
                 'extras_data' => json_encode($validated['detailed_extras'] ?? []), // Encode detailed extras
             ];

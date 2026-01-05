@@ -121,6 +121,11 @@ class StripeBookingService
             DB::commit();
             Log::info('StripeBookingService: Transaction committed successfully', ['booking_id' => $booking->id]);
 
+            // Phase 2: Trigger Locauto Reservation if applicable
+            if ($booking->provider_source === 'locauto_rent') {
+                $this->triggerLocautoReservation($booking, $metadata);
+            }
+
             return $booking;
 
         } catch (\Exception $e) {
@@ -150,5 +155,94 @@ class StripeBookingService
             'email' => $email ?? 'guest_' . time() . '@temp.com',
             'phone' => $metadata->customer_phone ?? null,
         ]);
+    }
+
+    /**
+     * Trigger reservation on Locauto API
+     */
+    protected function triggerLocautoReservation($booking, $metadata)
+    {
+        Log::info('Locauto: Triggering reservation for booking', ['booking_id' => $booking->id]);
+
+        try {
+            $locautoService = app(\App\Services\LocautoRentService::class);
+
+            // Split name into first and last
+            $nameParts = explode(' ', $metadata->customer_name ?? 'Guest User', 2);
+            $firstName = $nameParts[0];
+            $lastName = $nameParts[1] ?? 'Guest';
+
+            // Prepare extras (including protection plan)
+            $extras = [];
+
+            // Add protection code if present
+            if (!empty($metadata->protection_code)) {
+                $extras[] = [
+                    'code' => $metadata->protection_code,
+                    'quantity' => 1
+                ];
+            }
+
+            // Add other extras
+            $rawExtras = json_decode($metadata->extras ?? '[]', true);
+            foreach ($rawExtras as $code => $qty) {
+                if ($qty > 0) {
+                    $extras[] = [
+                        'code' => $code,
+                        'quantity' => $qty
+                    ];
+                }
+            }
+
+            $reservationData = [
+                'pickup_date' => $metadata->pickup_date,
+                'pickup_time' => $metadata->pickup_time,
+                'return_date' => $metadata->dropoff_date,
+                'return_time' => $metadata->dropoff_time,
+                'pickup_location_code' => $metadata->pickup_location_code,
+                'return_location_code' => $metadata->return_location_code ?? $metadata->pickup_location_code,
+                'first_name' => $firstName,
+                'last_name' => $lastName,
+                'sipp_code' => $metadata->sipp_code,
+                'extras' => $extras,
+                'driver_age' => $metadata->customer_driver_age ?? 35,
+            ];
+
+            Log::info('Locauto: Sending reservation request', ['data' => $reservationData]);
+            $xmlResponse = $locautoService->makeReservation($reservationData);
+
+            if ($xmlResponse) {
+                // Parse confirmation number from XML
+                // Response has <VehResRSCore><Reservation><UniqueID ID="CONF123456"/></Reservation></VehResRSCore>
+                if (preg_match('/UniqueID ID="([^"]+)"/', $xmlResponse, $matches)) {
+                    $confirmationNumber = $matches[1];
+                    Log::info('Locauto: Reservation successful', ['conf' => $confirmationNumber]);
+
+                    $booking->update([
+                        'provider_booking_ref' => $confirmationNumber,
+                        'notes' => ($booking->notes ? $booking->notes . "\n" : "") . "Locauto Conf: " . $confirmationNumber
+                    ]);
+                } else {
+                    Log::error('Locauto: Conf number not found in response', ['response' => $xmlResponse]);
+                    $booking->update([
+                        'notes' => ($booking->notes ? $booking->notes . "\n" : "") . "Locauto Reservation failed: Confirmation number missing in response."
+                    ]);
+                }
+            } else {
+                Log::error('Locauto: Empty response from API');
+                $booking->update([
+                    'notes' => ($booking->notes ? $booking->notes . "\n" : "") . "Locauto Reservation failed: No response from API."
+                ]);
+            }
+
+        } catch (\Exception $e) {
+            Log::error('Locauto: Exception during reservation trigger', [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+            $booking->update([
+                'notes' => ($booking->notes ? $booking->notes . "\n" : "") . "Locauto Reservation Error: " . $e->getMessage()
+            ]);
+        }
     }
 }

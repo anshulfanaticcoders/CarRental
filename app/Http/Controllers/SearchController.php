@@ -1113,6 +1113,9 @@ class SearchController extends Controller
 
                                     $assignedCategory = $parsedSipp['category'] ?? ($vehicle['category'] ?? 'Unknown');
 
+                                    // Get extras from LocautoRent response (protection plans + optional extras)
+                                    $allExtras = $vehicle['extras'] ?? [];
+
                                     $providerVehicles->push((object) [
                                         'id' => 'locauto_' . $vehicle['id'], // Prefix to ensure uniqueness and stability
                                         'source' => 'locauto_rent',
@@ -1142,6 +1145,8 @@ class SearchController extends Controller
                                         ],
                                         // Map luggage directly for the card
                                         'luggage' => $vehicle['luggage'] ?? 0,
+                                        // Pass all extras for LocautoRent (protection plans + optional extras)
+                                        'extras' => $allExtras,
                                         // review_count and average_rating omitted - not provided by API
                                         'products' => [
                                             [
