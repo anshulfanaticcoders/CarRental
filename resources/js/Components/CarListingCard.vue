@@ -11,10 +11,8 @@ import transmissionIcon from "../../assets/transmittionIcon.svg";
 import seatingIcon from "../../assets/travellerIcon.svg";
 import doorIcon from "../../assets/door.svg";
 import check from "../../assets/Check.svg";
-import Heart from "../../assets/Heart.svg";
-import FilledHeart from "../../assets/FilledHeart.svg";
 import acIcon from "../../assets/ac.svg";
-import { Leaf } from "lucide-vue-next";
+import { Leaf, Heart } from "lucide-vue-next";
 
 // Helper for highlighting benefits
 const isKeyBenefit = (text) => {
@@ -32,6 +30,10 @@ const props = defineProps({
     form: Object, // Needed for date/time/location params in links
     favoriteStatus: Boolean,
     popEffect: Boolean,
+    viewMode: {
+        type: String,
+        default: 'grid'
+    }
 });
 
 const emit = defineEmits(['toggleFavourite', 'saveSearchUrl']);
@@ -341,417 +343,216 @@ const vehicleSpecs = computed(() => {
 
 </script>
 
-
-
 <template>
-    <div
-        class="vehicle-card flex flex-col md:flex-row bg-white rounded-[20px] shadow-sm border border-gray-100 overflow-hidden hover:shadow-md transition-all duration-300 transform hover:-translate-y-1 mb-6"
-        :data-vehicle-id="vehicle.id"
-    >
-        <!-- 1. Left: Image Section -->
-        <div class="w-full md:w-[35%] relative">
-             <Link
+    <div class="car-card group vehicle-card" :class="[viewMode === 'list' ? 'list-view' : '']" :data-vehicle-id="vehicle.id">
+        <!-- Image Section -->
+        <div class="car-image">
+            <Link
                 :href="vehicle.source !== 'internal'
                     ? route(getProviderRoute(vehicle), getRouteParams(vehicle))
                     : route('vehicle.show', { locale: page.props.locale, id: vehicle.id, package: form.package_type, pickup_date: form.date_from, return_date: form.date_to })"
                 class="block h-full"
                 @click="$emit('saveSearchUrl')"
             >
-                <!-- Image Container -->
-                <div class="relative w-full h-[200px] md:h-full">
-                    <img
-                        :src="getImageSource(vehicle)"
-                        @error="handleImageError"
-                        :data-image-url="getImageSource(vehicle)"
-                        alt="Vehicle Image"
-                        class="w-full h-full object-cover object-center"
-                        loading="lazy"
-                    />
-
-                    <!-- Category/SIPP Badge -->
-                    <div class="absolute top-3 left-3 bg-white/90 backdrop-blur-sm px-3 py-1 rounded-full text-xs font-semibold text-customPrimaryColor shadow-sm z-10">
-                        {{ vehicle.category || vehicleSpecs.acriss || vehicle.model }}
-                    </div>
-                </div>
-
-                <!-- Favorite Button -->
-                <button
-                    v-if="(!$page.props.auth?.user || page.props.auth?.user?.role === 'customer') && vehicle.source === 'internal'"
-                    @click.stop="$emit('toggleFavourite', vehicle)"
-                    class="absolute top-3 right-3 bg-white p-2 rounded-full shadow-md transition-transform active:scale-95"
-                    :class="{ 'text-red-500': favoriteStatus }"
-                >
-                    <img :src="favoriteStatus ? FilledHeart : Heart" alt="Favorite" class="w-5 h-5" />
-                </button>
+                <img 
+                    :src="getImageSource(vehicle)" 
+                    :alt="`${vehicle.brand} ${vehicle.model}`"
+                    @error="handleImageError"
+                    loading="lazy"
+                />
             </Link>
+            
+            <div class="car-badges">
+                <span v-if="vehicle.category" class="car-badge category">
+                    {{ vehicle.category }}
+                </span>
+                <span v-if="vehicle.special_offer || isKeyBenefit(vehicle.special_offer)" class="car-badge deal">
+                    {{ vehicle.special_offer || 'Best Deal' }}
+                </span>
+            </div>
+
+            <button 
+                class="car-favorite"
+                :class="{ 'is-active': favoriteStatus }"
+                @click.prevent="$emit('toggleFavourite', vehicle)"
+                :aria-label="favoriteStatus ? 'Remove from favorites' : 'Add to favorites'"
+                v-if="vehicle.source === 'internal'"
+            >
+                <Heart 
+                    class="w-5 h-5 transition-all duration-300" 
+                    :class="{ 'fill-red-500 stroke-red-500 scale-110': favoriteStatus }"
+                />
+            </button>
         </div>
 
-        <!-- 2. Center: Details Section -->
-        <div :class="['w-full flex flex-col justify-between p-5', isGreenMotionOrUSave ? 'md:w-[65%]' : 'md:w-[75%]']">
-            <div class="flex flex-col gap-2">
-                <!-- Row 1: Location & Title -->
+        <!-- Content Section -->
+        <div class="car-content">
+            <!-- Header -->
+            <div class="car-header">
                 <div class="flex justify-between items-start">
                     <div>
-                        <h3 class="text-xl font-bold text-gray-800 leading-tight mb-1" :title="vehicle.brand + ' ' + vehicle.model">{{ vehicle.brand }} {{ vehicle.model }}</h3>
-                        <div class="flex items-center text-sm text-gray-500 gap-1">
-                             <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-customPrimaryColor" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
-                            </svg>
-                            <span class="truncate max-w-[200px]">{{ vehicle.full_vehicle_address || vehicle.pickup_location_name || 'Location Available' }}</span>
-                        </div>
+                        <h3 class="car-name">{{ vehicle.brand }} {{ vehicle.model }}</h3>
+                        <p class="car-class">{{ vehicleSpecs.acriss || vehicle.sipp_code_one_letter || 'Car' }}</p>
                     </div>
-                     <!-- Rating (Internal Only) -->
-                    <div v-if="vehicle.source === 'internal' && vehicle.review_count > 0" class="flex items-center bg-yellow-50 px-2 py-1 rounded-lg">
-                        <span class="text-yellow-500 font-bold text-sm mr-1">★</span>
-                        <span class="text-xs font-semibold text-gray-700">{{ vehicle.average_rating.toFixed(1) }}</span>
-                        <span class="text-xs text-gray-400 ml-1">({{ vehicle.review_count }})</span>
-                    </div>
-                </div>
-
-                <!-- Row 2: Vehicle Details (Icons) -->
-                <div class="flex flex-wrap gap-4 mt-3 pb-3 border-b border-gray-100">
-                    <!-- Luggage (Dynamic) -->
-                    <div v-if="vehicleSpecs.bagDisplay" class="flex items-center gap-1.5" title="Luggage Capacity">
-                        <svg class="w-4 h-4 opacity-70 text-gray-700" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
-                        </svg>
-                        <span class="text-sm font-medium text-gray-700 whitespace-nowrap">{{ vehicleSpecs.bagDisplay }}</span>
-                    </div>
-
-                    <!-- Passengers -->
-                    <div class="flex items-center gap-1.5" title="Passengers">
-                        <img :src="seatingIcon" class="w-4 h-4 opacity-70" alt="Seats" />
-                         <span class="text-sm font-medium text-gray-700">{{ vehicleSpecs.passengers || 4 }}</span>
-                    </div>
-                    <!-- Transmission -->
-                    <div class="flex items-center gap-1.5" title="Transmission">
-                         <img :src="transmissionIcon" class="w-4 h-4 opacity-70" alt="Transmission" />
-                         <span class="text-sm font-medium text-gray-700 capitalize">{{ vehicleSpecs.transmission || 'Auto' }}</span>
-                    </div>
-                     <!-- Fuel -->
-                    <div class="flex items-center gap-1.5" title="Fuel Type">
-                        <img :src="fuelIcon" class="w-4 h-4 opacity-70" alt="Fuel" />
-                        <span class="text-sm font-medium text-gray-700 capitalize">{{ vehicleSpecs.fuel || 'Petrol' }}</span>
-                    </div>
-                     <!-- Doors -->
-                     <div v-if="vehicleSpecs.doors" class="flex items-center gap-1.5" title="Doors">
-                         <img :src="doorIcon" class="w-4 h-4 opacity-70" alt="Doors" />
-                         <span class="text-sm font-medium text-gray-700">{{ vehicleSpecs.doors }} Door</span>
-                    </div>
-                     <!-- Bags -->
-                     <div v-if="vehicleSpecs.bagLarge || vehicleSpecs.bagSmall" class="flex items-center gap-1.5" title="Luggage">
-                         <span class="text-sm font-medium text-gray-700 flex items-center gap-1">
-                            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 opacity-70" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" /></svg>
-                            {{ (parseInt(vehicleSpecs.bagLarge) || 0) + (parseInt(vehicleSpecs.bagSmall) || 0) }}
-                         </span>
-                    </div>
-                </div>
-
-                <!-- Row 3: Specs / Features -->
-                <div class="flex flex-wrap gap-2 mt-1">
-                    <span v-if="vehicleSpecs.airConditioning" class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-50 text-blue-700 gap-1">
-                        <img :src="acIcon" class="w-3 h-3" alt="AC" />
-                        AC
-                    </span>
-
-                    <span v-if="vehicleSpecs.co2" class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-green-50 text-green-700 gap-1">
-                        <component :is="Leaf" class="w-3 h-3" />
-                        {{ vehicleSpecs.co2 }} g/km
-                    </span>
-                    <span v-if="vehicle.features && vehicle.features.includes('Bluetooth')" class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-gray-100 text-gray-600">
-                        Bluetooth
-                    </span>
-                     <!-- Free Cancellation Tag -->
-                    <span v-if="vehicle.benefits?.cancellation_available_per_day || vehicle.source === 'wheelsys'" class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-green-50 text-green-700">
-                        Free Cancellation
-                    </span>
-                     <span v-if="vehicle.mileage === 'Unlimited' || vehicle.benefits?.limited_km_per_day === false" class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-purple-50 text-purple-700">
-                        Unlimited Mileage
-                    </span>
                 </div>
             </div>
 
-            <!-- GreenMotion/USave Plans (New Layout) -->
-            <div v-if="isGreenMotionOrUSave && sortedProducts.length > 0" class="flex flex-col md:flex-row gap-4 mt-4 w-full">
-                <!-- Basic Package Card -->
-                <div
-                    @click="selectPackage('BAS')"
-                    class="flex-1 bg-white border rounded-lg cursor-pointer transition-all p-3 relative"
-                    :class="selectedPackage === 'BAS' ? 'border-blue-500 bg-blue-50' : 'border-gray-200 hover:border-blue-300'"
-                >
-                    <!-- Package Header -->
-                    <div class="flex justify-between items-start mb-2">
-                        <div>
-                            <span class="text-lg font-bold text-gray-800 block">Basic</span>
-                            <span class="text-xs text-gray-500">BAS</span>
-                        </div>
-                        <div v-if="selectedPackage === 'BAS'" class="bg-blue-500 text-white rounded-full w-5 h-5 flex items-center justify-center flex-shrink-0">
-                            <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7" />
-                            </svg>
-                        </div>
-                    </div>
-
-                    <!-- Price -->
-                    <div class="mb-2 pb-2 border-b border-gray-100">
-                        <p class="text-xl font-bold text-customPrimaryColor leading-tight">
-                            {{ getCurrencySymbol(sortedProducts.find(p => p.type === 'BAS')?.currency) }}{{ (parseFloat(sortedProducts.find(p => p.type === 'BAS')?.total || 0) / numberOfRentalDays).toFixed(2) }}
-                            <span class="text-xs font-normal text-gray-500">/day</span>
-                        </p>
-                        <div class="text-sm font-semibold text-gray-500 mt-2 pt-2 border-t border-gray-100 flex justify-between items-center">
-                            <span>Total:</span>
-                            <span class="text-gray-900 text-base font-bold">{{ getCurrencySymbol(sortedProducts.find(p => p.type === 'BAS')?.currency) }}{{ parseFloat(sortedProducts.find(p => p.type === 'BAS')?.total || 0).toFixed(2) }}</span>
-                        </div>
-                    </div>
-
-                    <!-- Key Benefits -->
-                    <ul class="space-y-1">
-                        <li v-for="benefit in getBenefits(sortedProducts.find(p => p.type === 'BAS'))" :key="benefit" class="text-sm flex items-start gap-1.5">
-                            <img :src="check" class="w-3 h-3 mt-0.5 flex-shrink-0" alt="✓" />
-                            <span :class="isKeyBenefit(benefit) ? 'font-bold text-gray-900' : 'text-gray-600 line-clamp-1'">{{ benefit }}</span>
-                        </li>
-                        <li v-if="sortedProducts.find(p => p.type === 'BAS')?.deposit" class="text-sm flex items-start gap-1.5">
-                             <span :class="isKeyBenefit('Deposit') ? 'font-bold text-gray-900' : 'text-gray-600 text-xs'">Deposit: {{ getCurrencySymbol(sortedProducts.find(p => p.type === 'BAS')?.currency) }}{{ parseFloat(sortedProducts.find(p => p.type === 'BAS')?.deposit || 0).toFixed(0) }}</span>
-                        </li>
-                    </ul>
+            <!-- Specs -->
+            <div class="car-specs">
+                <!-- Transmission -->
+                <div class="spec-tag">
+                    <img :src="transmissionIcon" class="w-3.5 h-3.5 opacity-60" alt="" />
+                    <span>{{ vehicleSpecs.transmission || 'Auto' }}</span>
+                </div>
+                
+                <!-- Seats (Passengers) -->
+                <div class="spec-tag" v-if="vehicleSpecs.passengers">
+                   <img :src="seatingIcon" class="w-3.5 h-3.5 opacity-60" alt="" />
+                    <span>{{ vehicleSpecs.passengers }} Seats</span>
                 </div>
 
-                <!-- Premium Plus Package Card -->
-                <div
-                    @click="selectPackage('PMP')"
-                    class="flex-1 bg-white border rounded-lg cursor-pointer transition-all p-3 relative border-l-4"
-                    :class="[
-                        selectedPackage === 'PMP' ? 'border-blue-500 bg-blue-50 border-l-green-500' : 'border-gray-200 hover:border-blue-300 border-l-green-500'
-                    ]"
-                >
-                    <!-- Package Header -->
-                    <div class="flex justify-between items-start mb-2">
-                        <div>
-                            <span class="text-lg font-bold text-gray-800 block">Premium Plus</span>
-                            <span class="text-xs text-gray-500">PMP</span>
-                        </div>
-                        <div v-if="selectedPackage === 'PMP'" class="bg-blue-500 text-white rounded-full w-5 h-5 flex items-center justify-center flex-shrink-0">
-                            <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7" />
-                            </svg>
-                        </div>
-                    </div>
+                <!-- Doors -->
+                 <div class="spec-tag" v-if="vehicleSpecs.doors">
+                    <img :src="doorIcon" class="w-3.5 h-3.5 opacity-60" alt="" />
+                    <span>{{ vehicleSpecs.doors }} Doors</span>
+                </div>
+                
+                 <!-- Luggage (Added back) -->
+                <div class="spec-tag" v-if="vehicleSpecs.bagDisplay">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="w-3.5 h-3.5 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
+                    </svg>
+                    <span>{{ vehicleSpecs.bagDisplay }}</span>
+                </div>
 
-                    <!-- Price -->
-                    <div class="mb-2 pb-2 border-b border-gray-100">
-                        <p class="text-xl font-bold text-customPrimaryColor leading-tight">
-                            {{ getCurrencySymbol(sortedProducts.find(p => p.type === 'PMP')?.currency) }}{{ premiumPlusDailyPrice }}
-                            <span class="text-xs font-normal text-gray-500">/day</span>
-                        </p>
-                        <div class="text-sm font-semibold text-gray-500 mt-2 pt-2 border-t border-gray-100 flex justify-between items-center">
-                            <span>Total:</span>
-                            <span class="text-gray-900 text-base font-bold">{{ getCurrencySymbol(sortedProducts.find(p => p.type === 'PMP')?.currency) }}{{ parseFloat(sortedProducts.find(p => p.type === 'PMP')?.total || 0).toFixed(2) }}</span>
-                        </div>
-                    </div>
-
-                    <!-- Key Benefits -->
-                    <ul class="space-y-1">
-                        <li v-for="benefit in getBenefits(sortedProducts.find(p => p.type === 'PMP'))" :key="benefit" class="text-sm flex items-start gap-1.5">
-                            <img :src="check" class="w-3 h-3 mt-0.5 flex-shrink-0" alt="✓" />
-                            <span :class="isKeyBenefit(benefit) ? 'font-bold text-gray-900' : 'text-gray-600 line-clamp-1'">{{ benefit }}</span>
-                        </li>
-                        <li v-if="sortedProducts.find(p => p.type === 'PMP')?.deposit" class="text-sm flex items-start gap-1.5">
-                            <span :class="isKeyBenefit('Deposit') ? 'font-bold text-gray-900' : 'text-gray-600 text-xs'">Deposit: {{ getCurrencySymbol(sortedProducts.find(p => p.type === 'PMP')?.currency) }}{{ parseFloat(sortedProducts.find(p => p.type === 'PMP')?.deposit || 0).toFixed(0) }}</span>
-                        </li>
-                    </ul>
+                <!-- A/C -->
+                <div class="spec-tag" v-if="vehicleSpecs.airConditioning">
+                     <img :src="acIcon" class="w-3.5 h-3.5 opacity-60" alt="" />
+                    <span>A/C</span>
                 </div>
             </div>
 
-            <!-- View more plans button -->
-            <div v-if="isGreenMotionOrUSave && sortedProducts.length > 0" class="mt-2 text-right">
+            <!-- Features -->
+            <div class="car-features">
+                 <!-- CO2 -->
+                <span v-if="vehicleSpecs.co2" class="feature-tag info">
+                    <component :is="Leaf" class="w-3 h-3" />
+                    {{ vehicleSpecs.co2 }} g/km
+                </span>
+
+                 <!-- Free Cancellation -->
+                <span v-if="vehicle.benefits?.cancellation_available_per_day || vehicle.source === 'wheelsys'" class="feature-tag included">
+                    <img :src="check" class="w-3 h-3 text-green-600" alt="" />
+                    Free Cancellation
+                </span>
+
+                 <!-- Unlimited Mileage -->
+                <span v-if="vehicle.mileage === 'Unlimited' || vehicle.benefits?.limited_km_per_day === false" class="feature-tag included">
+                    <img :src="check" class="w-3 h-3 text-green-600" alt="" />
+                    Unlimited km
+                </span>
+                
+                <!-- Fuel Policy -->
+                 <span v-if="vehicle.fuel_policy" class="feature-tag info">
+                    {{ vehicle.fuel_policy }}
+                </span>
+            </div>
+
+            <!-- GreenMotion/USave/Locauto View Plans Actions -->
+             <div v-if="(isGreenMotionOrUSave && sortedProducts.length > 0) || (isLocautoRent && locautoProtectionPlans.length > 0)" class="mb-4">
                 <button
                     @click="showAllPlans = true"
-                    class="text-xs text-blue-600 font-medium hover:text-blue-800 transition-colors inline-flex items-center gap-1"
+                    class="w-full text-center text-xs font-semibold py-2.5 border border-dashed border-primary-200 bg-primary-50 text-primary-700 rounded-lg hover:bg-primary-100 hover:border-primary-300 transition-all flex items-center justify-center gap-2"
                 >
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
-                    </svg>
-                    View more plans
+                    <span>View Protection Plans</span>
+                    <svg xmlns="http://www.w3.org/2000/svg" class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" /></svg>
                 </button>
             </div>
 
-            <!-- LocautoRent Protection Plans -->
-            <div v-if="isLocautoRent" class="flex flex-col md:flex-row gap-3 mt-4 w-full">
-                <!-- Basic Plan (Base price only, no extra protection) -->
-                <div
-                    @click="selectLocautoProtection(null)"
-                    class="flex-1 bg-white border rounded-lg cursor-pointer transition-all p-3 relative"
-                    :class="!selectedLocautoProtection ? 'border-blue-500 bg-blue-50' : 'border-gray-200 hover:border-blue-300'"
-                >
-                    <div class="flex justify-between items-start mb-2">
-                        <div>
-                            <span class="text-base font-bold text-gray-800 block">Basic</span>
-                            <span class="text-xs text-gray-500">Base rental only</span>
-                        </div>
-                        <div v-if="!selectedLocautoProtection" class="bg-blue-500 text-white rounded-full w-5 h-5 flex items-center justify-center flex-shrink-0">
-                            <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7" />
-                            </svg>
-                        </div>
-                    </div>
+            <!-- Footer -->
+            <div class="car-footer">
+                <div class="car-pricing">
+                     <div class="car-total">
+                        <!-- GreenMotion/USave Price -->
+                        <template v-if="isGreenMotionOrUSave">
+                            <span class="car-price">
+                                {{ getCurrencySymbol(sortedProducts.find(p => p.type === selectedPackage.value)?.currency) }}{{ dailyPrice }}
+                            </span>
+                        </template>
 
-                    <!-- Price -->
-                    <div class="mb-2 pb-2 border-b border-gray-100">
-                        <p class="text-xl font-bold text-customPrimaryColor leading-tight">
-                            {{ getCurrencySymbol(vehicle.currency) }}{{ parseFloat(vehicle.price_per_day).toFixed(2) }}
-                            <span class="text-xs font-normal text-gray-500">/day</span>
-                        </p>
-                        <div class="text-sm font-semibold text-gray-500 mt-2 pt-2 border-t border-gray-100 flex justify-between items-center">
-                            <span>Total:</span>
-                            <span class="text-gray-900 text-base font-bold">{{ getCurrencySymbol(vehicle.currency) }}{{ parseFloat(vehicle.total_price).toFixed(2) }}</span>
-                        </div>
-                    </div>
+                        <!-- Locauto Price -->
+                        <template v-else-if="isLocautoRent">
+                            <span class="car-price">
+                                {{ getCurrencySymbol(vehicle.currency) }}{{ selectedLocautoProtection ? (parseFloat(vehicle.price_per_day) + parseFloat(selectedLocautoProtection.amount)).toFixed(2) : parseFloat(vehicle.price_per_day).toFixed(2) }}
+                            </span>
+                        </template>
 
-                    <!-- Protection Info -->
-                    <ul class="space-y-1">
-                        <li class="text-sm flex items-start gap-1.5">
-                            <img :src="check" class="w-3 h-3 mt-0.5 flex-shrink-0" alt="✓" />
-                            <span class="text-gray-600">Standard protection included</span>
-                        </li>
-                    </ul>
+                        <!-- Standard Price (Slot) -->
+                        <template v-else>
+                            <span class="car-price">
+                                <slot name="dailyPrice"></slot>
+                            </span>
+                        </template>
+                    </div>
+                     <span class="car-currency">per day</span>
                 </div>
 
-                <!-- Don't Worry Plan (if available) - Highlighted -->
-                <div
-                    v-if="locautoDontWorryPlan"
-                    @click="selectLocautoProtection(locautoDontWorryPlan)"
-                    class="flex-1 bg-white border rounded-lg cursor-pointer transition-all p-3 relative border-l-4"
-                    :class="[
-                        selectedLocautoProtection?.code === locautoDontWorryPlan.code ? 'border-blue-500 bg-blue-50 border-l-green-500' : 'border-gray-200 hover:border-blue-300 border-l-green-500'
-                    ]"
-                >
-                    <div class="flex justify-between items-start mb-2">
-                        <div>
-                            <span class="text-base font-bold text-gray-800 block">Don't Worry</span>
-                            <span class="text-xs text-gray-500">Best coverage</span>
-                        </div>
-                        <div v-if="selectedLocautoProtection?.code === locautoDontWorryPlan.code" class="bg-blue-500 text-white rounded-full w-5 h-5 flex items-center justify-center flex-shrink-0">
-                            <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7" />
-                            </svg>
-                        </div>
-                    </div>
-
-                    <!-- Price -->
-                    <div class="mb-2 pb-2 border-b border-gray-100">
-                        <p class="text-xl font-bold text-customPrimaryColor leading-tight">
-                            {{ getCurrencySymbol(vehicle.currency) }}{{ (parseFloat(vehicle.price_per_day) + parseFloat(locautoDontWorryPlan.amount)).toFixed(2) }}
-                            <span class="text-xs font-normal text-gray-500">/day</span>
-                        </p>
-                        <div class="text-sm font-semibold text-gray-500 mt-2 pt-2 border-t border-gray-100 flex justify-between items-center">
-                            <span>Total:</span>
-                            <span class="text-gray-900 text-base font-bold">{{ getCurrencySymbol(vehicle.currency) }}{{ (parseFloat(vehicle.total_price) + (parseFloat(locautoDontWorryPlan.amount) * numberOfRentalDays)).toFixed(2) }}</span>
-                        </div>
-                    </div>
-
-                    <!-- Protection Info -->
-                    <ul class="space-y-1">
-                        <li class="text-sm flex items-start gap-1.5">
-                            <img :src="check" class="w-3 h-3 mt-0.5 flex-shrink-0" alt="✓" />
-                            <span class="text-gray-600">{{ getShortProtectionName(locautoDontWorryPlan.description) }}</span>
-                        </li>
-                    </ul>
-                </div>
-            </div>
-
-            <!-- View more plans button for LocautoRent -->
-            <div v-if="isLocautoRent && locautoProtectionPlans.length > 0" class="mt-2 text-right">
-                <button
-                    @click="showAllPlans = true"
-                    class="text-xs text-blue-600 font-medium hover:text-blue-800 transition-colors inline-flex items-center gap-1"
-                >
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
-                    </svg>
-                    View more plans
-                </button>
-            </div>
-
-            <!-- Row 4: Price & Action -->
-            <div class="flex justify-between items-end mt-4 pt-2">
-                <!-- Price -->
-                <div class="flex flex-col">
-                    <slot v-if="!isGreenMotionOrUSave && !isLocautoRent" name="dailyPrice"></slot>
-                </div>
-
-                <!-- View Deal Button -->
-                <!-- GreenMotion/USave -->
+                <!-- Book Buttons -->
+                <!-- GreenMotion -->
                  <button
                     v-if="isGreenMotionOrUSave"
                     @click="selectPackage(selectedPackage)"
-                    class="bg-customPrimaryColor text-white px-6 py-2 rounded-lg font-semibold hover:bg-opacity-90 transition-all shadow-md flex items-center gap-2"
+                    class="header-btn primary"
                 >
-                    View Deal
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    Book Deal
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3" />
                     </svg>
                 </button>
-                <!-- LocautoRent -->
+
+                 <!-- Locauto -->
                 <button
                     v-else-if="isLocautoRent"
                     @click="selectLocautoProtection(selectedLocautoProtection)"
-                    class="bg-customPrimaryColor text-white px-6 py-2 rounded-lg font-semibold hover:bg-opacity-90 transition-all shadow-md flex items-center gap-2"
+                    class="header-btn primary"
                 >
-                    View Deal
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    Book Deal
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3" />
                     </svg>
                 </button>
-                <!-- Other providers -->
-                 <Link
+
+                 <!-- Standard Link -->
+                <Link
                     v-else
                     :href="vehicle.source !== 'internal'
                         ? route(getProviderRoute(vehicle), getRouteParams(vehicle))
                         : route('vehicle.show', { locale: page.props.locale, id: vehicle.id, package: form.package_type, pickup_date: form.date_from, return_date: form.date_to })"
-                    class="bg-customPrimaryColor text-white px-6 py-2 rounded-lg font-semibold hover:bg-opacity-90 transition-all shadow-md flex items-center gap-2"
+                    class="header-btn primary"
                     @click="$emit('saveSearchUrl')"
                 >
-                    View Deal
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    Book Deal
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3" />
                     </svg>
                 </Link>
             </div>
-        </div>
-
-
-
-        <!-- Mobile: Show simple plan selector below details -->
-        <div v-if="isGreenMotionOrUSave && sortedProducts.length > 0" class="md:hidden px-5 pb-4 bg-gray-50">
-            <select
-                v-model="selectedPackage"
-                class="w-full p-2 rounded-lg border border-gray-200 text-sm"
-            >
-                <option v-for="product in sortedProducts" :key="product.type" :value="product.type">
-                    {{ getPackageName(product.type) }} - {{ getCurrencySymbol(product.currency) }}{{ (parseFloat(product.total) / numberOfRentalDays).toFixed(2) }}/day
-                </option>
-            </select>
         </div>
     </div>
 
     <!-- Modal: All 4 Plans -->
     <Teleport to="body">
         <div v-if="showAllPlans" class="plans-modal" @click.self="closeModal">
-            <div class="plans-modal-content">
-                <!-- Close button -->
+             <div class="plans-modal-content">
                 <button
                     @click="closeModal"
-                    class="modal-close-btn hover:text-gray-900 transition-colors"
+                    class="modal-close-btn"
                     aria-label="Close modal"
-                >
-                    ✕
-                </button>
+                >✕</button>
 
-                <!-- Header -->
-                <div class="mb-4">
-                    <h2 class="text-2xl font-bold text-gray-800">Select Your Package</h2>
-                    <p class="text-sm text-gray-500">Choose the best option for your rental</p>
+                <div class="mb-6">
+                    <h2 class="text-2xl font-bold text-gray-900 font-['Outfit']">Select Your Protection Package</h2>
+                    <p class="text-gray-500 mt-1">Choose the best coverage option for your trip</p>
                 </div>
 
                 <!-- Plans Grid -->
@@ -761,151 +562,79 @@ const vehicleSpecs = computed(() => {
                         <div
                             v-for="product in sortedProducts"
                             :key="product.type"
-                            class="plan-card p-4 border rounded-lg cursor-pointer transition-all hover:shadow-lg"
-                            :class="selectedPackage === product.type ? 'border-blue-500 bg-blue-50' : 'border-gray-200 hover:border-blue-300'"
+                            class="plan-card"
+                            :class="{ 'selected': selectedPackage === product.type }"
                             @click="selectPackage(product.type)"
                         >
-                            <!-- Package Header -->
-                            <div class="flex justify-between items-start mb-3">
+                            <div class="plan-header">
                                 <div>
-                                    <h3 class="text-xl font-bold text-gray-800">{{ getPackageName(product.type) }}</h3>
-                                    <p class="text-sm text-gray-500">{{ product.type }}</p>
+                                    <h3 class="plan-name">{{ getPackageName(product.type) }}</h3>
+                                    <p class="plan-type">{{ product.type }}</p>
                                 </div>
-                                <div v-if="selectedPackage === product.type" class="bg-blue-500 text-white rounded-full w-6 h-6 flex items-center justify-center">
-                                    ✓
+                                <div class="plan-check" v-if="selectedPackage === product.type">
+                                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-4 h-4 text-white"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg>
                                 </div>
                             </div>
-
-                            <!-- Price -->
-                            <div class="mb-3 pb-3 border-b border-gray-200">
-                                <p class="text-2xl font-bold text-customPrimaryColor">
+                            
+                            <div class="plan-price-box">
+                                <div class="plan-daily-price">
                                     {{ getCurrencySymbol(product.currency) }}{{ (parseFloat(product.total) / numberOfRentalDays).toFixed(2) }}
-                                    <span class="text-sm font-normal text-gray-500">/day</span>
-                                </p>
-                                <div class="text-sm font-semibold text-gray-500 mt-2 pt-2 border-t border-gray-100 flex justify-between items-center">
-                                    <span>Total ({{ numberOfRentalDays }} days):</span>
-                                    <span class="text-gray-900 text-base font-bold">{{ getCurrencySymbol(product.currency) }}{{ parseFloat(product.total).toFixed(2) }}</span>
+                                    <span>/day</span>
+                                </div>
+                                <div class="plan-total-price">
+                                    Total: {{ getCurrencySymbol(product.currency) }}{{ parseFloat(product.total).toFixed(2) }}
                                 </div>
                             </div>
 
-                            <!-- Benefits -->
-                            <ul class="space-y-1.5">
-                                <li v-for="benefit in getBenefits(product)" :key="benefit" class="text-sm flex items-start gap-2">
-                                    <img :src="check" class="w-4 h-4 mt-0.5 flex-shrink-0 opacity-70" alt="✓" />
-                                    <span :class="isKeyBenefit(benefit) ? 'font-bold text-gray-900' : 'text-gray-600'">{{ benefit }}</span>
+                             <ul class="plan-features">
+                                <li v-for="benefit in getBenefits(product)" :key="benefit">
+                                    <img :src="check" class="w-4 h-4 opacity-100" />
+                                    <span :class="{'font-semibold text-gray-900': isKeyBenefit(benefit)}">{{ benefit }}</span>
                                 </li>
-                                <li v-if="product.deposit" class="text-sm flex items-start gap-2">
-                                    <img :src="check" class="w-4 h-4 mt-0.5 flex-shrink-0 opacity-70" alt="✓" />
-                                    <span :class="isKeyBenefit('Deposit') ? 'font-bold text-gray-900' : 'text-gray-600'">Deposit: {{ getCurrencySymbol(product.currency) }}{{ parseFloat(product.deposit).toFixed(2) }}</span>
+                                <li v-if="product.deposit">
+                                    <img :src="check" class="w-4 h-4 opacity-100" />
+                                    <span :class="{'font-semibold text-gray-900': isKeyBenefit('Deposit')}">Deposit: {{ getCurrencySymbol(product.currency) }}{{ parseFloat(product.deposit).toFixed(2) }}</span>
                                 </li>
                             </ul>
 
-                            <!-- Select Button -->
-                            <button
-                                @click.stop="selectPackage(product.type)"
-                                class="mt-4 w-full py-2 rounded-lg font-semibold transition-all"
-                                :class="selectedPackage === product.type
-                                    ? 'bg-blue-500 text-white cursor-default'
-                                    : 'bg-gray-100 text-gray-700 hover:bg-blue-500 hover:text-white'"
-                            >
-                                {{ selectedPackage === product.type ? 'Selected' : 'Select' }}
+                             <button class="plan-select-btn">
+                                {{ selectedPackage === product.type ? 'Selected' : 'Select Package' }}
                             </button>
                         </div>
                     </template>
 
-                    <!-- LocautoRent Protection Plans -->
+                     <!-- LocautoRent Protection Plans -->
                     <template v-else-if="isLocautoRent">
-                        <!-- Basic Plan -->
-                        <div
-                            class="plan-card p-4 border rounded-lg cursor-pointer transition-all hover:shadow-lg"
-                            :class="!selectedLocautoProtection ? 'border-blue-500 bg-blue-50' : 'border-gray-200 hover:border-blue-300'"
-                            @click="selectLocautoProtection(null)"
-                        >
-                            <div class="flex justify-between items-start mb-3">
-                                <div>
-                                    <h3 class="text-xl font-bold text-gray-800">Basic</h3>
-                                    <p class="text-sm text-gray-500">Standard Protection</p>
-                                </div>
-                                <div v-if="!selectedLocautoProtection" class="bg-blue-500 text-white rounded-full w-6 h-6 flex items-center justify-center">
-                                    ✓
-                                </div>
-                            </div>
-
-                            <div class="mb-3 pb-3 border-b border-gray-200">
-                                <p class="text-2xl font-bold text-customPrimaryColor">
-                                    {{ getCurrencySymbol(vehicle.currency) }}{{ parseFloat(vehicle.price_per_day).toFixed(2) }}
-                                    <span class="text-sm font-normal text-gray-500">/day</span>
-                                </p>
-                                <div class="text-sm font-semibold text-gray-500 mt-2 pt-2 border-t border-gray-100 flex justify-between items-center">
-                                    <span>Total ({{ numberOfRentalDays }} days):</span>
-                                    <span class="text-gray-900 text-base font-bold">{{ getCurrencySymbol(vehicle.currency) }}{{ parseFloat(vehicle.total_price).toFixed(2) }}</span>
-                                </div>
-                            </div>
-
-                            <ul class="space-y-1.5">
-                                <li class="text-sm flex items-start gap-2">
-                                    <img :src="check" class="w-4 h-4 mt-0.5 flex-shrink-0 opacity-70" alt="✓" />
-                                    <span class="text-gray-600">Standard protection included</span>
-                                </li>
-                            </ul>
-
-                            <button
-                                @click.stop="selectLocautoProtection(null)"
-                                class="mt-4 w-full py-2 rounded-lg font-semibold transition-all"
-                                :class="!selectedLocautoProtection
-                                    ? 'bg-blue-500 text-white cursor-default'
-                                    : 'bg-gray-100 text-gray-700 hover:bg-blue-500 hover:text-white'"
-                            >
-                                {{ !selectedLocautoProtection ? 'Selected' : 'Select' }}
-                            </button>
-                        </div>
-
-                        <!-- Protection Plans -->
-                        <div
-                            v-for="protection in locautoProtectionPlans"
-                            :key="protection.code"
-                            class="plan-card p-4 border rounded-lg cursor-pointer transition-all hover:shadow-lg"
-                            :class="selectedLocautoProtection?.code === protection.code ? 'border-blue-500 bg-blue-50' : 'border-gray-200 hover:border-blue-300'"
-                            @click="selectLocautoProtection(protection)"
-                        >
-                            <div class="flex justify-between items-start mb-3">
-                                <div>
-                                    <h3 class="text-xl font-bold text-gray-800">{{ getShortProtectionName(protection.description) }}</h3>
-                                    <p class="text-sm text-gray-500">Code: {{ protection.code }}</p>
-                                </div>
-                                <div v-if="selectedLocautoProtection?.code === protection.code" class="bg-blue-500 text-white rounded-full w-6 h-6 flex items-center justify-center">
-                                    ✓
-                                </div>
-                            </div>
-
-                            <div class="mb-3 pb-3 border-b border-gray-200">
-                                <p class="text-2xl font-bold text-customPrimaryColor">
-                                    {{ getCurrencySymbol(vehicle.currency) }}{{ (parseFloat(vehicle.price_per_day) + parseFloat(protection.amount)).toFixed(2) }}
-                                    <span class="text-sm font-normal text-gray-500">/day</span>
-                                </p>
-                                <div class="text-sm font-semibold text-gray-500 mt-2 pt-2 border-t border-gray-100 flex justify-between items-center">
-                                    <span>Total ({{ numberOfRentalDays }} days):</span>
-                                    <span class="text-gray-900 text-base font-bold">{{ getCurrencySymbol(vehicle.currency) }}{{ (parseFloat(vehicle.total_price) + (parseFloat(protection.amount) * numberOfRentalDays)).toFixed(2) }}</span>
-                                </div>
-                            </div>
-
-                            <ul class="space-y-1.5">
-                                <li class="text-sm flex items-start gap-2">
-                                    <img :src="check" class="w-4 h-4 mt-0.5 flex-shrink-0 opacity-70" alt="✓" />
-                                    <span class="text-gray-600">{{ protection.description }}</span>
-                                </li>
-                            </ul>
-
-                            <button
-                                @click.stop="selectLocautoProtection(protection)"
-                                class="mt-4 w-full py-2 rounded-lg font-semibold transition-all"
-                                :class="selectedLocautoProtection?.code === protection.code
-                                    ? 'bg-blue-500 text-white cursor-default'
-                                    : 'bg-gray-100 text-gray-700 hover:bg-blue-500 hover:text-white'"
-                            >
-                                {{ selectedLocautoProtection?.code === protection.code ? 'Selected' : 'Select' }}
-                            </button>
-                        </div>
+                         <!-- Basic Plan item -->
+                         <div class="plan-card" :class="{ 'selected': !selectedLocautoProtection }" @click="selectLocautoProtection(null)">
+                             <div class="plan-header">
+                                <div><h3 class="plan-name">Basic Coverage</h3><p class="plan-type">Standard</p></div>
+                                <div class="plan-check" v-if="!selectedLocautoProtection"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-4 h-4 text-white"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg></div>
+                             </div>
+                             <div class="plan-price-box">
+                                 <div class="plan-daily-price">{{ getCurrencySymbol(vehicle.currency) }}{{ parseFloat(vehicle.price_per_day).toFixed(2) }} <span>/day</span></div>
+                                 <div class="plan-total-price">Total: {{ getCurrencySymbol(vehicle.currency) }}{{ parseFloat(vehicle.total_price).toFixed(2) }}</div>
+                             </div>
+                             <ul class="plan-features">
+                                <li><img :src="check" class="w-4 h-4"/> <span>Standard protection included</span></li>
+                             </ul>
+                             <button class="plan-select-btn">{{ !selectedLocautoProtection ? 'Selected' : 'Select Package' }}</button>
+                         </div>
+                         <!-- Other items -->
+                         <div v-for="protection in locautoProtectionPlans" :key="protection.code" class="plan-card" :class="{ 'selected': selectedLocautoProtection?.code === protection.code }" @click="selectLocautoProtection(protection)">
+                             <div class="plan-header">
+                                <div><h3 class="plan-name">{{ getShortProtectionName(protection.description) }}</h3><p class="plan-type">{{ protection.code }}</p></div>
+                                <div class="plan-check" v-if="selectedLocautoProtection?.code === protection.code"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-4 h-4 text-white"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg></div>
+                             </div>
+                             <div class="plan-price-box">
+                                 <div class="plan-daily-price">{{ getCurrencySymbol(vehicle.currency) }}{{ (parseFloat(vehicle.price_per_day) + parseFloat(protection.amount)).toFixed(2) }} <span>/day</span></div>
+                                 <div class="plan-total-price">Total: {{ getCurrencySymbol(vehicle.currency) }}{{ (parseFloat(vehicle.total_price) + (parseFloat(protection.amount) * numberOfRentalDays)).toFixed(2) }}</div>
+                             </div>
+                             <ul class="plan-features">
+                                <li><img :src="check" class="w-4 h-4"/> <span>{{ protection.description }}</span></li>
+                             </ul>
+                             <button class="plan-select-btn">{{ selectedLocautoProtection?.code === protection.code ? 'Selected' : 'Select Package' }}</button>
+                         </div>
                     </template>
                 </div>
             </div>
@@ -914,101 +643,400 @@ const vehicleSpecs = computed(() => {
 </template>
 
 <style scoped>
-/* Sidebar Package Cards */
-.sidebar-package-card {
-    user-select: none;
+/* ============================================
+   VROOEM DESIGN SYSTEM - Car Cards
+   ============================================ */
+
+.car-card {
+  background: var(--white);
+  border-radius: var(--radius-xl);
+  overflow: hidden;
+  box-shadow: var(--shadow-sm);
+  transition: all var(--duration-base) var(--ease-out);
+  border: 1px solid var(--gray-100);
+  display: flex;
+  flex-direction: column;
 }
 
-.sidebar-package-card:hover {
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+.car-card.list-view {
+  flex-direction: row;
 }
 
-.line-clamp-1 {
-    display: -webkit-box;
-    -webkit-line-clamp: 1;
-    -webkit-box-orient: vertical;
-    overflow: hidden;
+@media (max-width: 640px) {
+  .car-card.list-view {
+    flex-direction: column;
+  }
 }
 
-/* Modal overlay */
+.car-card:hover {
+  box-shadow: var(--shadow-lg);
+  transform: translateY(-4px);
+  border-color: var(--primary-100);
+}
+
+/* Card Image */
+.car-image {
+  position: relative;
+  height: 180px;
+  background: linear-gradient(135deg, var(--gray-100) 0%, var(--gray-50) 100%);
+  overflow: hidden;
+  flex-shrink: 0;
+}
+
+.car-card.list-view .car-image {
+  width: 300px;
+  height: auto;
+  min-height: 200px;
+}
+
+@media (max-width: 640px) {
+  .car-card.list-view .car-image {
+    width: 100%;
+    height: 180px;
+  }
+}
+
+.car-image img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: transform var(--duration-base) var(--ease-out);
+}
+
+.car-card:hover .car-image img {
+  transform: scale(1.05);
+}
+
+.car-badges {
+  position: absolute;
+  top: var(--space-3);
+  left: var(--space-3);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  z-index: 2;
+}
+
+.car-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  padding: 4px 10px;
+  border-radius: var(--radius-full);
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+}
+
+.car-badge.category {
+  background: rgba(255, 255, 255, 0.95);
+  color: var(--primary-700);
+  box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+  backdrop-filter: blur(4px);
+}
+
+.car-badge.deal {
+  background: var(--success-500);
+  color: var(--white);
+  box-shadow: 0 2px 4px rgba(22, 163, 74, 0.2);
+}
+
+.car-favorite {
+  position: absolute;
+  top: var(--space-3);
+  right: var(--space-3);
+  width: 36px;
+  height: 36px;
+  background: rgba(255, 255, 255, 0.95);
+  border: none;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+  color: var(--gray-400);
+  transition: all var(--duration-fast) var(--ease-out);
+  z-index: 2;
+  backdrop-filter: blur(4px);
+}
+
+.car-favorite:hover {
+  color: #ef4444;
+  transform: scale(1.1);
+  background: #fff;
+  box-shadow: 0 6px 16px rgba(239, 68, 68, 0.15);
+}
+
+.car-favorite.is-active {
+  color: #ef4444;
+  background: #fff;
+}
+
+/* Card Content */
+.car-content {
+  padding: var(--space-5);
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+.car-header {
+  margin-bottom: var(--space-4);
+}
+
+.car-name {
+  font-family: 'Outfit', sans-serif;
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--gray-900);
+  margin-bottom: 2px;
+  line-height: 1.3;
+}
+
+.car-class {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--gray-500);
+  text-transform: capitalize;
+}
+
+/* Specs */
+.car-specs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: var(--space-4);
+  padding-bottom: var(--space-4);
+  border-bottom: 1px solid var(--gray-100);
+}
+
+.spec-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 10px;
+  background: var(--gray-50);
+  border: 1px solid var(--gray-100);
+  border-radius: 8px;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--gray-700);
+}
+
+/* Features */
+.car-features {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: auto; /* Push footer down */
+  padding-bottom: var(--space-5);
+}
+
+.feature-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 8px;
+  font-size: 11px;
+  font-weight: 600;
+  border-radius: 6px;
+}
+
+.feature-tag.included {
+  background: #f0fdf4;
+  color: #16a34a;
+}
+
+.feature-tag.info {
+  background: #f0f9ff;
+  color: #0284c7;
+}
+
+/* Card Footer */
+.car-footer {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  margin-top: var(--space-2);
+  padding-top: var(--space-4);
+  border-top: 1px solid var(--gray-100);
+}
+
+.car-pricing {
+  display: flex;
+  flex-direction: column;
+}
+
+.car-total {
+  display: flex;
+  align-items: baseline;
+  gap: 2px;
+}
+
+.car-price {
+  font-family: 'Outfit', sans-serif;
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--gray-900);
+  letter-spacing: -0.02em;
+}
+
+.car-currency {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--gray-500);
+}
+
+.header-btn.primary {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 18px;
+  background: var(--primary-800);
+  color: white;
+  border-radius: 10px;
+  font-size: 14px;
+  font-weight: 600;
+  transition: all 0.2s;
+}
+
+.header-btn.primary:hover {
+  background: var(--primary-900);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(21, 59, 79, 0.2);
+}
+
+.header-btn.primary svg {
+  width: 16px;
+  height: 16px;
+}
+
+/* Modal Styling from Vrooem */
 .plans-modal {
-    position: fixed;
-    inset: 0;
-    background: rgba(0, 0, 0, 0.5);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    z-index: 9999;
-    animation: fadeIn 0.2s ease-out;
-}
-
-@keyframes fadeIn {
-    from {
-        opacity: 0;
-    }
-    to {
-        opacity: 1;
-    }
+  position: fixed;
+  inset: 0;
+  z-index: 3000;
+  background: rgba(15, 23, 42, 0.6);
+  backdrop-filter: blur(4px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
 }
 
 .plans-modal-content {
-    position: relative;
-    background: white;
-    padding: 2rem;
-    border-radius: 1rem;
-    max-width: 800px;
-    width: 90%;
-    max-height: 80vh;
-    overflow-y: auto;
-    animation: slideUp 0.3s ease-out;
+  background: white;
+  width: 100%;
+  max-width: 900px;
+  max-height: 90vh;
+  border-radius: 20px;
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+  padding: 2rem;
+  overflow-y: auto;
+  position: relative;
 }
 
-@keyframes slideUp {
-    from {
-        transform: translateY(20px);
-        opacity: 0;
-    }
-    to {
-        transform: translateY(0);
-        opacity: 1;
-    }
+.modal-close-btn {
+  position: absolute;
+  top: 1.5rem;
+  right: 1.5rem;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: #f1f5f9;
+  color: #64748b;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s;
+}
+
+.modal-close-btn:hover {
+  background: #e2e8f0;
+  color: #0f172a;
 }
 
 .plans-grid {
     display: grid;
-    grid-template-columns: repeat(2, 1fr);
-    gap: 1rem;
-}
-
-@media (max-width: 640px) {
-    .plans-grid {
-        grid-template-columns: 1fr;
-    }
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 1.5rem;
 }
 
 .plan-card {
-    transition: all 0.2s ease;
+    border: 2px solid #e2e8f0;
+    border-radius: 16px;
+    padding: 1.5rem;
+    cursor: pointer;
+    transition: all 0.2s;
+    background: white;
 }
 
-.modal-close-btn {
-    position: absolute;
-    top: 1rem;
-    right: 1rem;
-    background: none;
-    border: none;
-    font-size: 1.5rem;
-    cursor: pointer;
-    color: #6b7280;
-    width: 2rem;
-    height: 2rem;
+.plan-card:hover {
+    border-color: var(--primary-300);
+    box-shadow: 0 10px 30px rgba(0,0,0,0.05);
+}
+
+.plan-card.selected {
+    border-color: var(--primary-600);
+    background: #f0f9ff;
+    box-shadow: 0 0 0 2px rgba(21, 59, 79, 0.1);
+}
+
+.plan-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: start;
+    margin-bottom: 1rem;
+}
+
+.plan-name { font-weight: 700; color: var(--gray-900); font-size: 1.125rem; }
+.plan-type { font-size: 0.875rem; color: var(--gray-500); }
+
+.plan-check {
+    width: 24px;
+    height: 24px;
+    background: var(--primary-600);
+    border-radius: 50%;
     display: flex;
     align-items: center;
     justify-content: center;
-    border-radius: 50%;
+}
+
+.plan-price-box {
+    padding-bottom: 1rem;
+    border-bottom: 1px solid #e2e8f0;
+    margin-bottom: 1rem;
+}
+
+.plan-daily-price { font-weight: 700; font-size: 1.5rem; color: var(--primary-700); }
+.plan-daily-price span { font-size: 0.875rem; font-weight: 500; color: var(--gray-500); }
+.plan-total-price { font-size: 0.875rem; font-weight: 600; color: var(--gray-700); margin-top: 0.25rem; }
+
+.plan-features { list-style: none; padding: 0; margin: 0 0 1.5rem 0; space-y: 0.5rem; }
+.plan-features li { display: flex; align-items: start; gap: 0.75rem; font-size: 0.875rem; color: var(--gray-600); margin-bottom: 0.5rem; }
+
+.plan-select-btn {
+    width: 100%;
+    padding: 0.75rem;
+    border-radius: 10px;
+    font-weight: 600;
+    font-size: 0.875rem;
     transition: all 0.2s;
 }
 
-.modal-close-btn:hover {
-    background: #f3f4f6;
+.plan-card.selected .plan-select-btn {
+    background: var(--primary-600);
+    color: white;
 }
+
+.plan-card:not(.selected) .plan-select-btn {
+    background: #f1f5f9;
+    color: var(--gray-700);
+}
+.plan-card:not(.selected) .plan-select-btn:hover {
+    background: #e2e8f0;
+}
+
 </style>

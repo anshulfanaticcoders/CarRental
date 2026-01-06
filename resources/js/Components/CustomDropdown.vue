@@ -3,7 +3,10 @@ import { ref, computed, onMounted, inject } from 'vue';
 
 const props = defineProps({
   modelValue: [String, Number],
-  options: Array,
+  options: {
+    type: Array,
+    default: () => []
+  },
   placeholder: String,
   leftIcon: String,
   rightIcon: String,
@@ -16,6 +19,7 @@ const activeDropdown = inject('activeDropdown');
 const setActiveDropdown = inject('setActiveDropdown');
 
 const selectedLabel = computed(() => {
+  if (!props.options) return props.placeholder;
   const selectedOption = props.options.find((option) => option.value === props.modelValue);
   return selectedOption ? selectedOption.label : props.placeholder;
 });

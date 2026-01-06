@@ -309,9 +309,7 @@ const loadCurrencyData = async () => {
         if (map) {
             addMarkers();
         }
-        if (mobileMap) {
-            addMobileMarkers();
-        }
+
     } catch (error) {
         console.error("Error loading currency symbols:", error);
     }
@@ -593,8 +591,51 @@ const getVehicleCategory = (vehicle) => {
 };
 
 // Main Client-Side Filtering
+const sortBy = ref('recommended');
+const viewMode = ref('grid'); // 'grid' or 'list'
+const showSortDropdown = ref(false);
+const sortDropdownRef = ref(null);
+
+const selectSort = (value) => {
+    sortBy.value = value;
+    showSortDropdown.value = false;
+};
+
+// Pagination / Load More
+const displayLimit = ref(12);
+const loadMore = () => {
+    displayLimit.value += 12;
+};
+
+const paginatedVehicles = computed(() => {
+    return clientFilteredVehicles.value.slice(0, displayLimit.value);
+});
+
+// Reset pagination when filters change
+watch([form, sortBy], () => {
+    displayLimit.value = 12;
+}, { deep: true });
+
+
+// Close sort dropdown when clicking outside
+const handleSortDropdownClickOutside = (event) => {
+    if (sortDropdownRef.value && !sortDropdownRef.value.contains(event.target)) {
+        showSortDropdown.value = false;
+    }
+};
+
+// Add click listener on mount
+watch(showSortDropdown, (isOpen) => {
+    if (isOpen) {
+        document.addEventListener('click', handleSortDropdownClickOutside);
+    } else {
+        document.removeEventListener('click', handleSortDropdownClickOutside);
+    }
+});
+
 const clientFilteredVehicles = computed(() => {
-    let result = allVehiclesForMap.value;
+    // Avoid in-place mutation by creating a shallow copy
+    let result = [...allVehiclesForMap.value];
 
     // 1. Price Filter (Reused logic)
     if (form.price_range && form.price_range !== `${dynamicPriceRange.value.min}-${dynamicPriceRange.value.max}`) {
@@ -675,15 +716,33 @@ const clientFilteredVehicles = computed(() => {
              const sipp = v.sipp || v.sipp_code;
             if (sipp && sipp.length === 4) {
                  const char = sipp.charAt(3).toUpperCase();
-                 // N=Unspecified(Gas?), R=Yes(AC)+Gas?
-                 // Standard SIPP: D=Diesel, Q=Diesel, H=Hybrid, I=Hybrid, E=Electric, C=Electric, L=LPG, S=LPG, Z=LPG, M=Multi, F=Multi, V=Petrol, N=Petrol...
                  if (['D','Q'].includes(char)) vFuel = 'diesel';
                  else if (['H','I'].includes(char)) vFuel = 'hybrid';
                  else if (['E','C'].includes(char)) vFuel = 'electric';
-                 else vFuel = 'petrol'; // Default assumptions
+                 else vFuel = 'petrol';
              }
              return vFuel.includes(fuel);
          });
+    }
+
+    // 7. Sort (Only if not 'recommended' to maintain default order)
+    if (sortBy.value !== 'recommended') {
+        result.sort((a, b) => {
+            const priceA = getVehiclePriceConverted(a);
+            const priceB = getVehiclePriceConverted(b);
+            
+            // Handle nulls (missing prices) - push to end of list
+            if (priceA === null && priceB === null) return 0;
+            if (priceA === null) return 1;
+            if (priceB === null) return -1;
+
+            if (sortBy.value === 'price_asc') {
+                return priceA - priceB;
+            } else if (sortBy.value === 'price_desc') {
+                return priceB - priceA;
+            }
+            return 0;
+        });
     }
 
     return result;
@@ -1445,9 +1504,33 @@ const handleSearchUpdate = (params) => {
 };
 
 const showMobileFilters = ref(false);
+
+// Filter accordion state
+const expandedFilters = ref({
+    price: true,
+    category: true,
+    transmission: true,
+    fuel: true,
+    seats: true
+});
+
+const toggleFilterSection = (section) => {
+    expandedFilters.value[section] = !expandedFilters.value[section];
+};
 const applyFilters = () => {
     showMobileFilters.value = false;
 };
+
+const activeFiltersCount = computed(() => {
+    let count = 0;
+    if (form.price_range) count++;
+    if (form.seating_capacity) count++;
+    if (form.brand) count++;
+    if (form.transmission) count++;
+    if (form.fuel) count++;
+    if (form.category_id) count++;
+    return count;
+});
 
 const getStarIcon = (rating, starNumber) => {
     const fullStars = Math.floor(rating);
@@ -1724,376 +1807,254 @@ watch(
     <AuthenticatedHeaderLayout />
     
     <!-- Mobile Filters Left Sidebar (Moved to root for Z-Index) -->
-    <transition
-        enter-active-class="transition ease-out duration-300"
-        enter-from-class="opacity-0 translate-x-[-100%]"
-        enter-to-class="opacity-100 translate-x-0"
-        leave-active-class="transition ease-in duration-300"
-        leave-from-class="opacity-100 translate-x-0"
-        leave-to-class="opacity-0 translate-x-[-100%]"
-    >
-        <div v-if="showMobileFilters && bookingStep === 'results'" class="fixed inset-0 z-[2000] flex md:hidden">
-            <!-- Backdrop -->
-            <div class="fixed inset-0 bg-black bg-opacity-50" @click="showMobileFilters = false"></div>
+
+    <div v-if="currencyLoading" class="fixed inset-0 z-[100] flex items-center justify-center bg-white bg-opacity-70">
+        <img :src="moneyExchangeSymbol" alt="Loading..." class="w-16 h-16 animate-spin" />
+    </div>
+    <SchemaInjector v-if="schema" :schema="schema" />
+    <!-- Search Header -->
+    <section class="search-header">
+        <div class="search-header-inner">
+            <div class="search-header-top">
+                <div class="search-location">
+                    <div class="search-location-icon">
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/></svg>
+                    </div>
+                    <div class="search-location-text">
+                        <h1>Car Rental in {{ form.where || 'Selected Location' }}</h1>
+                        <p>{{ form.country || 'Morocco' }} • {{ vehicles?.total || clientFilteredVehicles?.length || 0 }} cars available</p>
+                    </div>
+                </div>
+                <div class="search-dates-badge">
+                    <div class="date-item">
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="4" rx="2" ry="2"/><line x1="16" x2="16" y1="2" y2="6"/><line x1="8" x2="8" y1="2" y2="6"/><line x1="3" x2="21" y1="10" y2="10"/></svg>
+                        <span>{{ formatDate(form.date_from) }}</span>
+                    </div>
+                    <div class="date-separator"></div>
+                    <div class="date-item">
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="4" rx="2" ry="2"/><line x1="16" x2="16" y1="2" y2="6"/><line x1="8" x2="8" y1="2" y2="6"/><line x1="3" x2="21" y1="10" y2="10"/></svg>
+                        <span>{{ formatDate(form.date_to) }}</span>
+                    </div>
+                    <span class="days-badge">{{ numberOfRentalDays }} days</span>
+                </div>
+            </div>
             
-            <!-- Sidebar -->
-            <div class="relative w-[85%] max-w-sm bg-white h-full shadow-2xl flex flex-col z-50 transform transition-transform">
-                <div class="flex justify-between items-center p-4 border-b border-gray-100 bg-white">
-                    <div class="flex items-center gap-2">
-                        <img :src="filterIcon" alt="" class="w-5 h-5" loading="lazy" />
-                        <h2 class="text-lg font-bold text-gray-800">Filters</h2>
-                    </div>
-                    <button @click="showMobileFilters = false" class="p-2 bg-gray-50 rounded-full hover:bg-gray-100 transition-colors">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-gray-500" viewBox="0 0 20 20" fill="currentColor">
-                            <path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd" />
-                        </svg>
-                    </button>
+            <div class="search-form-card">
+                <SearchBar class="searchbar-in-header"
+                    :prefill="searchQuery"
+                    :simple="true"
+                    @update-search-params="handleSearchUpdate" />
+                <SchemaInjector v-if="$page.props.organizationSchema" :schema="$page.props.organizationSchema" />
+            </div>
+        </div>
+    </section>
+
+
+
+
+
+    <!-- Main Content -->
+    <div class="main-container" :style="bookingStep !== 'results' ? 'display: block; max-width: 1440px; margin: 0 auto; padding: 2rem;' : ''">
+        <!-- Filters Sidebar -->
+        <aside class="filters-sidebar hidden lg:flex" v-if="bookingStep === 'results'">
+            <div class="filters-header">
+                <span class="filters-title">FILTERS</span>
+                <button class="filters-reset" @click="resetFilters">Reset All</button>
+            </div>
+
+            <!-- Price Range -->
+            <div class="filter-card">
+                <div class="filter-section-header" @click="toggleFilterSection('price')">
+                    <span class="filter-section-title">Price Per Day</span>
+                    <svg :class="{'rotate-180': !expandedFilters.price}" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-4 h-4 text-gray-400 transition-transform duration-200"><path d="m6 9 6 6 6-6"/></svg>
                 </div>
-
-                <!-- Scrollable Content -->
-                <div class="flex-1 overflow-y-auto p-4 custom-scrollbar">
-
-            <form class="space-y-6 pt-2">
-                <!-- Price Range (Budget) -->
-                <div class="border-b border-gray-100 pb-4">
-                    <h4 class="font-semibold text-sm text-gray-700 mb-3 flex items-center gap-2">
-                            <img :src="priceIcon" class="w-4 h-4 opacity-70" > Budget
-                    </h4>
-                    <div class="px-1">
-                        <div class="flex justify-between text-xs text-gray-500 mb-2">
-                            <span>{{ getCurrencySymbol(selectedCurrency) }}{{ tempPriceRangeValues[0] }}</span>
-                            <span>{{ getCurrencySymbol(selectedCurrency) }}{{ tempPriceRangeValues[1] }}</span>
-                        </div>
-                        <VueSlider v-model="tempPriceRangeValues" :min="dynamicPriceRange.min" :max="dynamicPriceRange.max"
-                            :interval="1" :tooltip="'none'" :height="6" :dot-size="16"
-                            :process-style="{ backgroundColor: '#153b4f' }"
-                            :rail-style="{ backgroundColor: '#e5e7eb' }"
-                            :enable-cross="false"
-                            class="mb-3" />
-                        <div class="flex justify-end">
-                             <button @click="applyPriceRange" class="text-xs bg-customPrimaryColor text-white px-3 py-1.5 rounded hover:opacity-90 transition">Apply Price</button>
-                        </div>
+                <div v-show="expandedFilters.price" class="px-2 pb-2">
+                    <div class="mb-4">
+                        <span class="text-sm font-medium text-gray-900">
+                            {{ getCurrencySymbol(selectedCurrency) }}{{ tempPriceRangeValues[0] }} - {{ getCurrencySymbol(selectedCurrency) }}{{ tempPriceRangeValues[1] }}
+                        </span>
                     </div>
+                     <VueSlider
+                        v-model="tempPriceRangeValues"
+                        :min="dynamicPriceRange.min"
+                        :max="dynamicPriceRange.max"
+                        :enable-cross="false"
+                        :lazy="true"
+                        @change="applyPriceRange"
+                        :tooltip="'none'"
+                        :process-style="{ backgroundColor: '#245f7d' }"
+                        :bg-style="{ backgroundColor: '#e2e8f0' }"
+                    ></VueSlider>
                 </div>
+            </div>
 
-                <!-- Passenger Seats -->
-                <div class="border-b border-gray-100 pb-4">
-                    <h4 class="font-semibold text-sm text-gray-700 mb-3 flex items-center gap-2">
-                            <img :src="seatingIcon" class="w-4 h-4 opacity-70"> Passenger Seats
-                    </h4>
-                    <div class="space-y-3">
-                        <label v-for="option in facets.seats" :key="option.value" class="flex items-center gap-3 cursor-pointer group p-1 hover:bg-gray-50 rounded-lg transition-colors">
-                            <input type="checkbox" :checked="form.seating_capacity == option.value" @change="form.seating_capacity = form.seating_capacity == option.value ? '' : option.value" 
-                                    class="w-5 h-5 rounded border-gray-300 text-customPrimaryColor focus:ring-customPrimaryColor transition cursor-pointer">
-                            <span class="text-base text-gray-600 group-hover:text-customPrimaryColor transition font-medium">{{ option.label }} <span class="text-xs text-gray-400 font-normal">({{ option.count }})</span></span>
-                        </label>
+            <!-- Specific Checkbox Filters -->
+            <div class="filter-card">
+                <!-- Vehicle Type -->
+                <div class="filter-section">
+                    <div class="filter-section-header" @click="toggleFilterSection('category')">
+                        <span class="filter-section-title">Vehicle Type</span>
+                        <svg :class="{'rotate-180': !expandedFilters.category}" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-4 h-4 text-gray-400 transition-transform duration-200"><path d="m6 9 6 6 6-6"/></svg>
                     </div>
-                </div>
-
-                <!-- Car Brand -->
-                <div class="border-b border-gray-100 pb-4">
-                    <h4 class="font-semibold text-sm text-gray-700 mb-3 flex items-center gap-2">
-                            <img :src="brandIcon" class="w-4 h-4 opacity-70"> Car Brand
-                    </h4>
-                    <div class="space-y-3 max-h-60 overflow-y-auto pr-1 custom-scrollbar">
-                        <label v-for="option in facets.brands" :key="option.value" class="flex items-center gap-3 cursor-pointer group p-1 hover:bg-gray-50 rounded-lg transition-colors">
-                            <input type="checkbox" :checked="form.brand === option.value" @change="form.brand = form.brand === option.value ? '' : option.value" 
-                                class="w-5 h-5 rounded border-gray-300 text-customPrimaryColor focus:ring-customPrimaryColor transition cursor-pointer">
-                            <span class="text-base text-gray-600 group-hover:text-customPrimaryColor transition font-medium">{{ option.label }} <span class="text-xs text-gray-400 font-normal">({{ option.count }})</span></span>
-                        </label>
-                    </div>
-                </div>
-
-                    <!-- Vehicle Type -->
-                <div class="border-b border-gray-100 pb-4">
-                    <h4 class="font-semibold text-sm text-gray-700 mb-3 flex items-center gap-2">
-                            <img :src="categoryIcon" class="w-4 h-4 opacity-70"> Vehicle Type
-                    </h4>
-                    <div class="space-y-3">
-                        <label v-for="option in facets.categories" :key="option.value" class="flex items-center gap-3 cursor-pointer group p-1 hover:bg-gray-50 rounded-lg transition-colors">
-                            <input type="checkbox" :checked="form.category_id === option.value" @change="form.category_id = form.category_id === option.value ? '' : option.value" 
-                                    class="w-5 h-5 rounded border-gray-300 text-customPrimaryColor focus:ring-customPrimaryColor transition cursor-pointer">
-                            <span class="text-base text-gray-600 group-hover:text-customPrimaryColor transition font-medium">{{ option.label }} <span class="text-xs text-gray-400 font-normal">({{ option.count }})</span></span>
+                    <div class="filter-options" v-show="expandedFilters.category">
+                        <label class="filter-checkbox" v-for="cat in facets.categories" :key="cat.value">
+                            <input type="checkbox" :value="cat.value" :checked="form.category_id === cat.value" @change="form.category_id = form.category_id === cat.value ? '' : cat.value">
+                            <div class="checkbox-visual">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-check"><path d="M20 6 9 17l-5-5"/></svg>
+                            </div>
+                            <span class="checkbox-label">{{ cat.label }}</span>
+                            <span class="checkbox-count">{{ cat.count }}</span>
                         </label>
                     </div>
                 </div>
 
                 <!-- Transmission -->
-                <div class="border-b border-gray-100 pb-4">
-                        <h4 class="font-semibold text-sm text-gray-700 mb-3 flex items-center gap-2">
-                            <img :src="transmissionIcon" class="w-4 h-4 opacity-70"> Transmission
-                    </h4>
-                    <div class="space-y-3">
-                        <label v-for="option in facets.transmissions" :key="option.value" class="flex items-center gap-3 cursor-pointer group p-1 hover:bg-gray-50 rounded-lg transition-colors">
-                            <input type="checkbox" :checked="form.transmission === option.value" @change="form.transmission = form.transmission === option.value ? '' : option.value" 
-                                    class="w-5 h-5 rounded border-gray-300 text-customPrimaryColor focus:ring-customPrimaryColor transition cursor-pointer">
-                            <span class="text-base text-gray-600 group-hover:text-customPrimaryColor transition font-medium">{{ option.label }} <span class="text-xs text-gray-400 font-normal">({{ option.count }})</span></span>
+                <div class="filter-section">
+                    <div class="filter-section-header" @click="toggleFilterSection('transmission')">
+                        <span class="filter-section-title">Transmission</span>
+                        <svg :class="{'rotate-180': !expandedFilters.transmission}" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-4 h-4 text-gray-400 transition-transform duration-200"><path d="m6 9 6 6 6-6"/></svg>
+                    </div>
+                    <div class="filter-options" v-show="expandedFilters.transmission">
+                        <label class="filter-checkbox" v-for="item in facets.transmissions" :key="item.value">
+                            <input type="checkbox" :value="item.value" :checked="form.transmission === item.value" @change="form.transmission = form.transmission === item.value ? '' : item.value">
+                            <div class="checkbox-visual">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-check"><path d="M20 6 9 17l-5-5"/></svg>
+                            </div>
+                            <span class="checkbox-label capitalize">{{ item.label }}</span>
+                            <span class="checkbox-count">{{ item.count }}</span>
                         </label>
                     </div>
                 </div>
 
-                <!-- Fuel -->
-                <div class="border-b border-gray-100 pb-4">
-                        <h4 class="font-semibold text-sm text-gray-700 mb-3 flex items-center gap-2">
-                            <img :src="fuelIcon" class="w-4 h-4 opacity-70"> Fuel Type
-                    </h4>
-                    <div class="space-y-3">
-                        <label v-for="option in facets.fuels" :key="option.value" class="flex items-center gap-3 cursor-pointer group p-1 hover:bg-gray-50 rounded-lg transition-colors">
-                            <input type="checkbox" :checked="form.fuel === option.value" @change="form.fuel = form.fuel === option.value ? '' : option.value" 
-                                    class="w-5 h-5 rounded border-gray-300 text-customPrimaryColor focus:ring-customPrimaryColor transition cursor-pointer">
-                            <span class="text-base text-gray-600 group-hover:text-customPrimaryColor transition font-medium">{{ option.label }} <span class="text-xs text-gray-400 font-normal">({{ option.count }})</span></span>
+                <!-- Fuel Type -->
+                <div class="filter-section">
+                    <div class="filter-section-header" @click="toggleFilterSection('fuel')">
+                        <span class="filter-section-title">Fuel Type</span>
+                        <svg :class="{'rotate-180': !expandedFilters.fuel}" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-4 h-4 text-gray-400 transition-transform duration-200"><path d="m6 9 6 6 6-6"/></svg>
+                    </div>
+                    <div class="filter-options" v-show="expandedFilters.fuel">
+                        <label class="filter-checkbox" v-for="item in facets.fuels" :key="item.value">
+                            <input type="checkbox" :value="item.value" :checked="form.fuel === item.value" @change="form.fuel = form.fuel === item.value ? '' : item.value">
+                            <div class="checkbox-visual">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-check"><path d="M20 6 9 17l-5-5"/></svg>
+                            </div>
+                            <span class="checkbox-label capitalize">{{ item.label }}</span>
+                            <span class="checkbox-count">{{ item.count }}</span>
                         </label>
                     </div>
                 </div>
 
-                <!-- Action Buttons -->
-                <div class="grid grid-cols-2 gap-3 pt-4 mt-2">
-                    <button @click="resetFilters" type="button"
-                        class="py-3 px-4 bg-gray-100 text-gray-700 rounded-lg font-medium hover:bg-gray-200 transition-all duration-300 flex items-center justify-center gap-2">
-                        Clear All
-                    </button>
-                    <button @click="showMobileFilters = false" type="button"
-                        class="py-3 px-4 bg-customPrimaryColor text-white rounded-lg font-medium hover:bg-opacity-90 transition-all duration-300 flex items-center justify-center gap-2">
-                        Done
-                    </button>
-                </div>
-            </form>
+                 <!-- Seats -->
+                 <div class="filter-section">
+                    <div class="filter-section-header" @click="toggleFilterSection('seats')">
+                        <span class="filter-section-title">Capacity</span>
+                        <svg :class="{'rotate-180': !expandedFilters.seats}" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-4 h-4 text-gray-400 transition-transform duration-200"><path d="m6 9 6 6 6-6"/></svg>
+                    </div>
+                    <div class="filter-options" v-show="expandedFilters.seats">
+                        <label class="filter-checkbox" v-for="item in facets.seats" :key="item.value">
+                            <input type="checkbox" :value="item.value" :checked="form.seating_capacity == item.value" @change="form.seating_capacity = form.seating_capacity == item.value ? '' : item.value">
+                            <div class="checkbox-visual">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-check"><path d="M20 6 9 17l-5-5"/></svg>
+                            </div>
+                            <span class="checkbox-label">{{ item.label }}</span>
+                            <span class="checkbox-count">{{ item.count }}</span>
+                        </label>
+                    </div>
                 </div>
             </div>
-        </div>
-    </transition>
-    <div v-if="currencyLoading" class="fixed inset-0 z-[100] flex items-center justify-center bg-white bg-opacity-70">
-        <img :src="moneyExchangeSymbol" alt="Loading..." class="w-16 h-16 animate-spin" />
-    </div>
-    <SchemaInjector v-if="schema" :schema="schema" />
-    <section class="bg-customPrimaryColor py-customVerticalSpacing relative z-50">
-        <div class="">
-            <SearchBar class="border-[2px] rounded-[20px] border-white mt-0 mb-0 max-[768px]:border-none"
-                :prefill="searchQuery"
-                @update-search-params="handleSearchUpdate" />
-                <SchemaInjector v-if="$page.props.organizationSchema" :schema="$page.props.organizationSchema" />
-        </div>
-    </section>
+        </aside>
 
-    <section>
-    <div id="filter-section" class="full-w-container py-8 relative z-40">
-        <!-- Mobile filter button (visible only on mobile, hidden when fixed button appears) -->
-        <div class="md:hidden mb-4 flex items-center justify-center gap-4" v-if="!showFixedMobileFilterButton">
-            <button @click="showMobileFilters = true"
-                class="flex-1 flex items-center justify-center gap-2 p-3 bg-white rounded-lg shadow-md hover:shadow-lg transition-all duration-300 text-gray-700">
-                <img :src="filterIcon" alt="Filter" class="w-5 h-5" loading="lazy" />
-                <span class="text-base font-semibold">Filter</span>
-            </button>
-        </div>
-
-
-
-        <!-- Desktop filters moved to sidebar -->
-
-        <!-- Mobile Filters Canvas/Sidebar -->
-
-
-    </div>
-</section>
-
-
-
-    <div class="full-w-container mx-auto mb-[4rem]">
-        <div v-if="bookingStep === 'results'" class="grid grid-cols-12 gap-6">
-            
-            <!-- Left Sidebar (Sticky Filters) -->
-            <aside class="hidden md:block col-span-3 h-fit sticky top-24 z-30">
-                <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-5 overflow-y-auto max-h-[85vh] custom-scrollbar">
-                    <div class="flex items-center justify-between mb-4 border-b pb-2">
-                        <h3 class="font-bold text-lg text-gray-800">Filters</h3>
-                        <button @click="resetFilters" class="text-xs text-customPrimaryColor font-medium hover:underline">Reset All</button>
-                    </div>
-
-                    <!-- Price Range -->
-                    <div class="mb-6">
-                        <h4 class="font-semibold text-sm text-gray-700 mb-3 flex items-center gap-2">
-                            <img :src="priceIcon" class="w-4 h-4 opacity-70" > Budget
-                        </h4>
-                        <div class="px-2">
-                            <div class="flex justify-between text-xs text-gray-500 mb-2">
-                                <span>{{ getCurrencySymbol(selectedCurrency) }}{{ tempPriceRangeValues[0] }}</span>
-                                <span>{{ getCurrencySymbol(selectedCurrency) }}{{ tempPriceRangeValues[1] }}</span>
-                            </div>
-                            <!-- Using v-model on temp and @drag-end for apply to avoid excessive re-fetches or use a separate Apply button if strictly needed, 
-                                 but user wants immediate feedback usually. Given current logic uses 'applyPriceRange', 
-                                 I'll add a small 'Apply' button or rely on change event if Slider supports it. 
-                                 The previous code had an Apply button. I'll keep it simple: Slider + Apply text/button 
-                            -->
-                            <VueSlider v-model="tempPriceRangeValues" :min="dynamicPriceRange.min" :max="dynamicPriceRange.max"
-                                :interval="1" :tooltip="'none'" :height="6" :dot-size="16"
-                                :process-style="{ backgroundColor: '#153b4f' }"
-                                :rail-style="{ backgroundColor: '#e5e7eb' }"
-                                :enable-cross="false"
-                                class="mb-2" />
-                            <div class="flex justify-end">
-                                <button @click="applyPriceRange" class="text-xs bg-customPrimaryColor text-white px-3 py-1 rounded hover:opacity-90 transition">Apply Price</button>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Filter Group Component (Inline for simplicity or create reusable if needed, sticking to inline loops for stability) -->
-                    
-                    <!-- Passenger Seats -->
-                    <div class="mb-5 border-b border-gray-50 pb-4">
-                        <h4 class="font-semibold text-sm text-gray-700 mb-2 flex items-center gap-2">
-                             <img :src="seatingIcon" class="w-4 h-4 opacity-70"> Passenger Seats
-                        </h4>
-                        <div class="space-y-2">
-                            <label v-for="option in facets.seats" :key="option.value" class="flex items-center gap-3 cursor-pointer group">
-                                <input type="checkbox" :checked="form.seating_capacity == option.value" @change="form.seating_capacity = form.seating_capacity == option.value ? '' : option.value" 
-                                       class="w-4 h-4 rounded border-gray-300 text-customPrimaryColor focus:ring-customPrimaryColor transition">
-                                <span class="text-sm text-gray-600 group-hover:text-customPrimaryColor transition">{{ option.label }} <span class="text-xs text-gray-400">({{ option.count }})</span></span>
-                            </label>
-                        </div>
-                    </div>
-
-                    <!-- Car Brand -->
-                    <div class="mb-5 border-b border-gray-50 pb-4">
-                        <h4 class="font-semibold text-sm text-gray-700 mb-2 flex items-center gap-2">
-                             <img :src="brandIcon" class="w-4 h-4 opacity-70"> Car Brand
-                        </h4>
-                        <div class="space-y-2 max-h-40 overflow-y-auto pr-1 custom-scrollbar">
-                            <label v-for="option in facets.brands" :key="option.value" class="flex items-center gap-3 cursor-pointer group">
-                                <input type="checkbox" :checked="form.brand === option.value" @change="form.brand = form.brand === option.value ? '' : option.value" 
-                                    class="w-4 h-4 rounded border-gray-300 text-customPrimaryColor focus:ring-customPrimaryColor transition">
-                                <span class="text-sm text-gray-600 group-hover:text-customPrimaryColor transition">{{ option.label }} <span class="text-xs text-gray-400">({{ option.count }})</span></span>
-                            </label>
-                        </div>
-                    </div>
-
-                     <!-- Vehicle Type (Categories) -->
-                    <div class="mb-5 border-b border-gray-50 pb-4">
-                        <h4 class="font-semibold text-sm text-gray-700 mb-2 flex items-center gap-2">
-                             <img :src="categoryIcon" class="w-4 h-4 opacity-70"> Vehicle Type
-                        </h4>
-                        <div class="space-y-2">
-                            <label v-for="option in facets.categories" :key="option.value" class="flex items-center gap-3 cursor-pointer group">
-                                <!-- Note: form.category_id was typically an ID. With generic facets, option.value is likely the Name if we normalized. 
-                                     If form binds to ID, we need to map back.
-                                     Simplification for Client Filter: Bind to label/name if filtering by name. 
-                                     However, the server reload logic uses ID. 
-                                     We are disabling server filtered reload for these. So usage of Name is fine for local.
-                                     BUT, checking implementation plan: 'Disable Server Reload'.
-                                     So I will bind form.category_id to the Name string OR find the ID. 
-                                     Let's simplisticly bind to string name for client filter. 
-                                     Or safer: If facet value is name, bind to name. form.category_id might need to change to form.category or stay as 'id' but hold string. 
-                                     If it holds string, existing server logic might break if we reload page.
-                                     For now, let's treat form.category_id as holding the Name for the purpose of this client filter, 
-                                     as I am rewriting logic to be client-side. -->
-                                <input type="checkbox" :checked="form.category_id === option.value" @change="form.category_id = form.category_id === option.value ? '' : option.value" 
-                                       class="w-4 h-4 rounded border-gray-300 text-customPrimaryColor focus:ring-customPrimaryColor transition">
-                                <span class="text-sm text-gray-600 group-hover:text-customPrimaryColor transition">{{ option.label }} <span class="text-xs text-gray-400">({{ option.count }})</span></span>
-                            </label>
-                        </div>
-                    </div>
-
-                    <!-- Transmission -->
-                    <div class="mb-5 border-b border-gray-50 pb-4">
-                         <h4 class="font-semibold text-sm text-gray-700 mb-2 flex items-center gap-2">
-                             <img :src="transmissionIcon" class="w-4 h-4 opacity-70"> Transmission
-                        </h4>
-                        <div class="space-y-2">
-                            <label v-for="option in facets.transmissions" :key="option.value" class="flex items-center gap-3 cursor-pointer group">
-                                <input type="checkbox" :checked="form.transmission === option.value" @change="form.transmission = form.transmission === option.value ? '' : option.value" 
-                                       class="w-4 h-4 rounded border-gray-300 text-customPrimaryColor focus:ring-customPrimaryColor transition">
-                                <span class="text-sm text-gray-600 group-hover:text-customPrimaryColor transition">{{ option.label }} <span class="text-xs text-gray-400">({{ option.count }})</span></span>
-                            </label>
-                        </div>
-                    </div>
-
-                    <!-- Fuel -->
-                    <div class="mb-5 border-b border-gray-50 pb-4">
-                         <h4 class="font-semibold text-sm text-gray-700 mb-2 flex items-center gap-2">
-                             <img :src="fuelIcon" class="w-4 h-4 opacity-70"> Fuel Type
-                        </h4>
-                        <div class="space-y-2">
-                            <label v-for="option in facets.fuels" :key="option.value" class="flex items-center gap-3 cursor-pointer group">
-                                <input type="checkbox" :checked="form.fuel === option.value" @change="form.fuel = form.fuel === option.value ? '' : option.value" 
-                                       class="w-4 h-4 rounded border-gray-300 text-customPrimaryColor focus:ring-customPrimaryColor transition">
-                                <span class="text-sm text-gray-600 group-hover:text-customPrimaryColor transition">{{ option.label }} <span class="text-xs text-gray-400">({{ option.count }})</span></span>
-                            </label>
-                        </div>
-                    </div>
-
-
-
+        <!-- Results Section -->
+        <section v-if="bookingStep === 'results'" class="results-section w-full">
+            <!-- Results Header -->
+            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
+                <div class="results-info">
+                    <h2 class="results-count"><span>{{ clientFilteredVehicles?.length }}</span> cars available</h2>
+                    <p class="results-subtitle">Prices include taxes and fees</p>
                 </div>
-            </aside>
-
-            <!-- Main Content - Vehicle List -->
-            <div class="col-span-12 md:col-span-9 w-full">
-                <!-- Map and Sort Controls -->
-                <div class="mb-4 bg-white p-3 rounded-xl border border-gray-100 shadow-sm">
-                    <div class="flex flex-col md:flex-row md:justify-between md:items-center gap-3">
-                        <h2 class="text-lg font-semibold text-gray-800 px-2">
-                            Available Vehicles
-                            <span class="text-sm font-normal text-gray-500 ml-2">({{ vehicles?.total || 0 }} found)</span>
-                        </h2>
-
-                        <button @click="showMap = true" class="flex items-center justify-center gap-2 px-4 py-2 bg-white border border-gray-200 text-gray-700 rounded-lg hover:bg-gray-50 hover:border-customPrimaryColor transition-all shadow-sm">
-                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-customPrimaryColor" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" />
-                            </svg>
-                            <span>View Map</span>
+                
+                <!-- Controls -->
+                <div class="results-controls">
+                     <!-- Sort Dropdown -->
+                     <div class="sort-dropdown-wrapper" ref="sortDropdownRef">
+                        <button class="sort-dropdown" @click="showSortDropdown = !showSortDropdown">
+                            <span>Sort: {{ sortBy === 'recommended' ? 'Recommended' : (sortBy === 'price_asc' ? 'Price: Low to High' : 'Price: High to Low') }}</span>
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg>
                         </button>
-                    </div>
-                </div>
-
-                <div class="grid gap-5 grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 max-[768px]:grid-cols-1">
-                    <!-- Loading State or No Vehicles -->
-                    <div v-if="!clientFilteredVehicles || clientFilteredVehicles.length === 0"
-                        class="text-center text-gray-500 col-span-full flex flex-col justify-center items-center gap-4 py-10 bg-white rounded-xl border border-gray-100 border-dashed">
-                        <img :src=noVehicleIcon alt="" class="w-[15rem] opacity-80" loading="lazy">
-                        <p class="text-lg font-medium text-customPrimaryColor">No vehicles found</p>
-                        <span class="text-sm">Try adjusting your filters or search criteria.</span>
-                        <button @click="resetFilters"
-                            class="mt-2 px-6 py-2 bg-customPrimaryColor text-white rounded-lg hover:bg-opacity-90 transition shadow-sm">
-                            Reset All Filters
+                        <div v-if="showSortDropdown" class="sort-dropdown-menu">
+                            <button @click="selectSort('recommended')" :class="{'active': sortBy === 'recommended'}">Recommended</button>
+                            <button @click="selectSort('price_asc')" :class="{'active': sortBy === 'price_asc'}">Price: Low to High</button>
+                            <button @click="selectSort('price_desc')" :class="{'active': sortBy === 'price_desc'}">Price: High to Low</button>
+                        </div>
+                     </div>
+                     
+                     <!-- View Toggle -->
+                     <div class="view-toggle">
+                        <button @click="viewMode = 'grid'" :class="{'active': viewMode === 'grid'}" title="Grid View">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
                         </button>
-                    </div>
-                    
-                    <div class="col-span-full grid gap-5 grid-cols-1 lg:grid-cols-1 xl:grid-cols-1"> 
-                       <CarListingCard 
-                            v-for="vehicle in clientFilteredVehicles" 
-                            :key="vehicle.id" 
-                            :vehicle="vehicle"
-                            :form="form"
-                            :favorite-status="favoriteStatus[vehicle.id]"
-                            :pop-effect="popEffect[vehicle.id]"
-                            @toggle-favourite="toggleFavourite"
-                            @save-search-url="saveSearchUrl"
-                            @mouseenter="highlightVehicleOnMap(vehicle)"
-                            @mouseleave="unhighlightVehicleOnMap(vehicle)"
-                            @select-package="handlePackageSelection"
-                            class="vehicle-card fade-up-hidden"
-                        >
-                            <template #dailyPrice>
-                                <div class="flex items-baseline gap-1">
-                                    <span class="text-customPrimaryColor text-2xl font-bold">
-                                        {{ getCurrencySymbol(selectedCurrency) }}{{ convertCurrency(vehicle.price_per_day, vehicle.currency).toFixed(2) }}
-                                    </span>
-                                    <span class="text-xs text-gray-500">/day</span>
-                                </div>
-                            </template>
-
-                           </CarListingCard>
-                    </div>
-                </div>
-                <!-- Pagination -->
-                <div class="mt-4 pagination">
-                    <div v-html="pagination_links"></div>
+                        <button @click="viewMode = 'list'" :class="{'active': viewMode === 'list'}" title="List View">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
+                        </button>
+                     </div>
                 </div>
             </div>
-            
-        </div>
 
+            <!-- Cars Grid -->
+            <div v-if="clientFilteredVehicles && clientFilteredVehicles.length > 0" 
+                 class="car-listings"
+                 :class="[viewMode === 'list' ? 'list-view' : 'grid-view']">
+                <CarListingCard
+                    v-for="vehicle in paginatedVehicles"
+                    :key="vehicle.id"
+                    :vehicle="vehicle"
+                    :form="form"
+                    :view-mode="viewMode"
+                    :favoriteStatus="favoriteStatus[vehicle.id] || false"
+                    :popEffect="popEffect[vehicle.id] || false"
+                    @toggleFavourite="toggleFavourite"
+                    @saveSearchUrl="saveSearchUrl"
+                    @select-package="handlePackageSelection"
+                >
+                     <template #dailyPrice>
+                        <div class="flex items-baseline gap-1">
+                            <span class="text-customPrimaryColor text-2xl font-bold font-['Outfit']">
+                                {{ getCurrencySymbol(selectedCurrency) }}{{ convertCurrency(vehicle.price_per_day, vehicle.currency).toFixed(2) }}
+                            </span>
+                            <span class="text-xs text-gray-500">/day</span>
+                        </div>
+                    </template>
+                </CarListingCard>
+            </div>
+            
+            <!-- No Results State -->
+            <div v-else class="text-center py-12 bg-white rounded-xl shadow-sm border border-gray-100 mt-6 col-span-full">
+                 <div class="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="w-8 h-8 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                    </svg>
+                 </div>
+                 <h3 class="text-lg font-bold text-gray-900 mb-2">No vehicles found</h3>
+                 <p class="text-gray-500 mb-6">Try adjusting your filters.</p>
+                 <button @click="resetFilters" class="px-6 py-2.5 bg-[#153b4f] text-white rounded-lg font-medium hover:bg-[#0f2936] transition-colors">
+                    Reset Filters
+                 </button>
+            </div>
+            
+            <!-- Load More Button -->
+            <div v-if="displayLimit < clientFilteredVehicles.length" class="mt-10 flex justify-center pb-12">
+                <button @click="loadMore" class="load-more-btn group">
+                    <span>Load More Results</span>
+                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="transition-transform group-hover:translate-y-0.5"><path d="m6 9 6 6 6-6"/></svg>
+                </button>
+            </div>
+
+        </section>
+
+        <!-- Booking Steps -->
         <BookingExtrasStep
             v-else-if="bookingStep === 'extras' && selectedVehicle"
+            class="w-full"
             :vehicle="selectedVehicle"
             :initial-package="selectedPackage"
             :initial-protection-code="selectedProtectionCode"
@@ -2115,6 +2076,7 @@ watch(
 
         <BookingCheckoutStep
             v-else-if="bookingStep === 'checkout' && selectedVehicle"
+            class="w-full"
             :vehicle="selectedVehicle"
             :package="selectedCheckoutData.package"
             :protection-code="selectedCheckoutData.protection_code"
@@ -2166,6 +2128,7 @@ watch(
 
 <style>
 @import "leaflet/dist/leaflet.css";
+@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700&family=DM+Sans:wght@400;500;600&display=swap');
 
 .marker-pin {
     width: 80px; /* Fixed width to match iconSize */
@@ -2261,6 +2224,53 @@ select:focus+.caret-rotate {
     }
 }
 
+/* SearchBar in Header Styles */
+.searchbar-in-header :deep(.full-w-container) {
+    padding-bottom: 0 !important;
+}
+
+.searchbar-in-header :deep(.search_bar) {
+    background: transparent !important;
+    border: none !important;
+    border-radius: 0 !important;
+    padding: 0 !important;
+}
+
+/* Hide the left header column completely */
+.searchbar-in-header :deep(.search_bar > .flex > .column:first-child) {
+    display: none !important;
+}
+
+/* Make the form column span full width */
+.searchbar-in-header :deep(.search_bar > .flex > .column:last-child) {
+    width: 100% !important;
+    padding: 0 !important;
+    border-radius: 0 !important;
+}
+
+/* Reset the form styling */
+.searchbar-in-header :deep(.search_bar form) {
+    background: transparent !important;
+    box-shadow: none !important;
+    border-radius: 0 !important;
+    padding: 0 !important;
+    display: grid;
+    grid-template-columns: repeat(12, 1fr);
+    gap: 1rem;
+    align-items: end;
+}
+
+/* Reset input styling */
+.searchbar-in-header :deep(.search_bar form input),
+.searchbar-in-header :deep(.search_bar form select) {
+    background: white !important;
+}
+
+/* Hide labels in header mode */
+.searchbar-in-header :deep(label) {
+    display: none;
+}
+
 .pop-animation {
     animation: pop 0.3s ease-in-out;
 }
@@ -2324,4 +2334,537 @@ select:focus+.caret-rotate {
     transform: translateY(0);
     transition: opacity 0.6s ease-out, transform 0.6s ease-out;
 }
+
+/* ============================================
+   VROOEM DESIGN SYSTEM - Component Styles
+============================================ */
+/* Fonts */
+/* Fonts */
+
+body {
+    font-family: 'DM Sans', sans-serif;
+    background: var(--gray-50);
+}
+
+h1, h2, h3, h4, h5, h6 {
+    font-family: 'Outfit', sans-serif;
+}
+
+/* Search Header */
+.search-header {
+  background: linear-gradient(135deg, var(--primary-900) 0%, var(--primary-800) 50%, var(--primary-700) 100%);
+  padding: var(--space-6) var(--space-6) var(--space-8);
+  position: relative;
+  z-index: 30;
+}
+
+.search-header::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: 
+    radial-gradient(ellipse 80% 60% at 20% 100%, rgba(6, 182, 212, 0.15) 0%, transparent 50%),
+    radial-gradient(ellipse 60% 40% at 80% 20%, rgba(255, 255, 255, 0.05) 0%, transparent 40%);
+  pointer-events: none;
+}
+
+.search-header::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background-image: url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='0.02'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
+  pointer-events: none;
+}
+
+.search-header-inner {
+  max-width: 1440px;
+  margin: 0 auto;
+  position: relative;
+  z-index: 1;
+}
+
+.search-header-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: var(--space-5);
+}
+
+.search-location {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.search-location-icon {
+  width: 44px;
+  height: 44px;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: var(--radius-md);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--accent-400);
+}
+
+.search-location-icon svg {
+  width: 24px;
+  height: 24px;
+}
+
+.search-location-text h1 {
+  font-size: 22px;
+  color: var(--white);
+  margin-bottom: 2px;
+  line-height: 1.25;
+}
+
+.search-location-text p {
+  font-size: 14px;
+  color: rgba(255, 255, 255, 0.6);
+}
+
+.search-dates-badge {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  padding: var(--space-3) var(--space-5);
+  background: rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(10px);
+  border-radius: var(--radius-full);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.date-item {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  color: var(--white);
+  font-size: 14px;
+}
+
+.date-item svg {
+  width: 18px;
+  height: 18px;
+  opacity: 0.7;
+}
+
+.date-separator {
+  width: 1px;
+  height: 24px;
+  background: rgba(255, 255, 255, 0.2);
+}
+
+.days-badge {
+  background: var(--accent-500);
+  color: var(--white);
+  padding: var(--space-1) var(--space-3);
+  border-radius: var(--radius-full);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.search-form-card {
+  background: transparent;
+  border-radius: var(--radius-xl);
+  padding: var(--space-4);
+  box-shadow: none;
+}
+
+/* Main Container Grid */
+.main-container {
+  max-width: 1440px;
+  margin: 0 auto;
+  padding: var(--space-6);
+  display: grid;
+  grid-template-columns: 280px 1fr;
+  gap: var(--space-6);
+  align-items: start;
+}
+
+/* Filters Sidebar */
+.filters-sidebar {
+  position: sticky;
+  top: 90px;
+  height: fit-content;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.filters-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.filters-title {
+  font-size: 13px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--gray-500);
+}
+
+.filters-reset {
+  background: none;
+  border: none;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--primary-600);
+  cursor: pointer;
+  font-family: inherit;
+  transition: color var(--duration-fast);
+}
+
+.filters-reset:hover {
+  color: var(--primary-800);
+}
+
+.filter-card {
+  background: var(--white);
+  border-radius: var(--radius-lg);
+  padding: 14px;
+  box-shadow: var(--shadow-sm);
+}
+
+.filter-section {
+  padding: 8px 0;
+}
+
+.filter-section:first-child {
+  padding-top: 0;
+}
+
+.filter-section:not(:last-child) {
+  border-bottom: 1px solid var(--gray-100);
+}
+
+.filter-section:last-child {
+  padding-bottom: 0;
+}
+
+.filter-section-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  cursor: pointer;
+  margin-bottom: 8px;
+}
+
+.filter-section-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--gray-800);
+}
+
+.filter-section-header svg {
+  width: 16px;
+  height: 16px;
+  color: var(--gray-400);
+  transition: transform var(--duration-fast);
+}
+
+.filter-options {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.filter-checkbox {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-2) 0;
+  cursor: pointer;
+  transition: opacity var(--duration-fast);
+}
+
+.filter-checkbox:hover {
+  opacity: 0.8;
+}
+
+.filter-checkbox input {
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.checkbox-visual {
+  width: 20px;
+  height: 20px;
+  background: var(--gray-100);
+  border: 1.5px solid var(--gray-300);
+  border-radius: var(--radius-sm);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all var(--duration-fast);
+  flex-shrink: 0;
+}
+
+.filter-checkbox input:checked + .checkbox-visual {
+  background: var(--primary-800);
+  border-color: var(--primary-800);
+}
+
+.checkbox-visual svg {
+  width: 12px;
+  height: 12px;
+  color: var(--white);
+  opacity: 0;
+  transform: scale(0.5);
+  transition: all var(--duration-fast);
+}
+
+.filter-checkbox input:checked + .checkbox-visual svg {
+  opacity: 1;
+  transform: scale(1);
+}
+
+.checkbox-label {
+  flex: 1;
+  font-size: 14px;
+  color: var(--gray-700);
+}
+
+.checkbox-count {
+  font-size: 12px;
+  color: var(--gray-400);
+  background: var(--gray-100);
+  padding: 2px 8px;
+  border-radius: var(--radius-full);
+}
+
+/* Results Header */
+.results-info {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.results-count {
+  font-family: 'Outfit', sans-serif;
+  font-size: 20px;
+  font-weight: 600;
+  color: var(--gray-900);
+  margin-top: 0;
+  line-height: 1.2; /* Override huge global line-height */
+}
+
+.results-count span {
+  color: var(--primary-600);
+}
+
+.results-subtitle {
+  font-size: 14px;
+  color: var(--gray-500);
+}
+
+.results-controls {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.sort-dropdown {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-3) var(--space-4);
+  background: var(--white);
+  border: 1px solid var(--gray-200);
+  border-radius: var(--radius-md);
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--gray-700);
+  cursor: pointer;
+  font-family: inherit;
+  transition: all var(--duration-fast);
+}
+
+.sort-dropdown:hover {
+  border-color: var(--gray-300);
+  background: var(--gray-50);
+}
+
+.sort-dropdown svg {
+  width: 16px;
+  height: 16px;
+  color: var(--gray-400);
+}
+
+.sort-dropdown-wrapper {
+  position: relative;
+}
+
+.sort-dropdown-menu {
+  position: absolute;
+  top: 100%;
+  right: 0;
+  margin-top: var(--space-2);
+  min-width: 180px;
+  background: var(--white);
+  border: 1px solid var(--gray-200);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-lg);
+  z-index: 50;
+  overflow: hidden;
+}
+
+.sort-dropdown-menu button {
+  display: block;
+  width: 100%;
+  padding: var(--space-3) var(--space-4);
+  text-align: left;
+  font-size: 14px;
+  color: var(--gray-700);
+  background: none;
+  border: none;
+  cursor: pointer;
+  transition: background var(--duration-fast);
+}
+
+.sort-dropdown-menu button:hover {
+  background: var(--gray-50);
+}
+
+.sort-dropdown-menu button.active {
+  background: var(--gray-100);
+  font-weight: 600;
+}
+
+.view-toggle {
+  display: flex;
+  border: 1px solid var(--gray-200);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+}
+
+.view-toggle button {
+  padding: var(--space-2) var(--space-3);
+  background: var(--white);
+  border: none;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all var(--duration-fast);
+  color: var(--gray-400);
+}
+
+.view-toggle button:first-child {
+  border-right: 1px solid var(--gray-200);
+}
+
+.view-toggle button:hover {
+  background: var(--gray-50);
+  color: var(--gray-600);
+}
+
+.view-toggle button.active {
+  background: var(--primary-800);
+  color: var(--white);
+}
+
+.view-toggle button svg {
+  width: 18px;
+  height: 18px;
+}
+
+/* Z-Index Fixes */
+.search-header {
+  position: relative;
+  z-index: 30;
+}
+
+.search-form-card {
+  position: relative;
+  z-index: 40;
+}
+
+.results-controls {
+  position: relative;
+  z-index: 20;
+}
+
+/* Car Listings Layout */
+.car-listings {
+  gap: var(--space-6);
+}
+
+.car-listings.grid-view {
+  display: grid;
+  grid-template-columns: repeat(1, 1fr);
+}
+
+@media (min-width: 768px) {
+  .car-listings.grid-view {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (min-width: 1280px) {
+  .car-listings.grid-view {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+.car-listings.list-view {
+  display: flex;
+  flex-direction: column;
+}
+
+/* Mobile Responsive Adjustments */
+@media (max-width: 1024px) {
+  .search-header-top {
+    flex-wrap: wrap;
+    gap: var(--space-3);
+  }
+}
+
+@media (max-width: 600px) {
+  .search-header {
+    padding: var(--space-4);
+  }
+  
+  .search-header-top {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: var(--space-4);
+  }
+  
+  .search-dates-badge {
+    width: 100%;
+    justify-content: center;
+  }
+}
+
+.load-more-btn {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-3) var(--space-8);
+  background: var(--white);
+  border: 1px solid var(--gray-200);
+  border-radius: var(--radius-full);
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--primary-800);
+  cursor: pointer;
+  box-shadow: var(--shadow-sm);
+  transition: all var(--duration-base);
+}
+
+.load-more-btn:hover {
+  background: var(--gray-50);
+  border-color: var(--primary-400);
+  box-shadow: var(--shadow-md);
+  color: var(--primary-600);
+}
+
+.load-more-btn:active {
+  transform: scale(0.98);
+}
+
 </style>

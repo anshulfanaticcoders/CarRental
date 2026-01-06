@@ -1293,7 +1293,7 @@ class SearchController extends Controller
         });
 
         $combinedVehicles = $internalVehiclesCollection->merge($filteredProviderVehicles)->merge($filteredOkMobilityVehicles);
-        $perPage = 10;
+        $perPage = 500;
         $currentPage = \Illuminate\Pagination\LengthAwarePaginator::resolveCurrentPage();
         $currentItems = $combinedVehicles->slice(($currentPage - 1) * $perPage, $perPage)->values();
         $vehicles = new \Illuminate\Pagination\LengthAwarePaginator(

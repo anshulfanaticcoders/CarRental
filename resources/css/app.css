@@ -3,7 +3,82 @@
 @tailwind utilities;
 
 @layer base {
-    :root {
+  :root {
+    /* Vrooem Design System */
+    /* Primary Brand Color & Gradient Scale */
+        --primary-950: #0a1d28;
+        --primary-900: #0f2936;
+        --primary-800: #153b4f;
+        --primary-700: #1c4d66;
+        --primary-600: #245f7d;
+        --primary-500: #2d7294;
+        --primary-400: #4a8fb1;
+        --primary-300: #7ab3cc;
+        --primary-200: #b0d4e6;
+        --primary-100: #dceef6;
+        --primary-50: #f0f8fc;
+      
+        /* Accent - Teal/Cyan */
+        --accent-600: #0891b2;
+        --accent-500: #06b6d4;
+        --accent-400: #22d3ee;
+        --accent-100: #cffafe;
+      
+        /* Success */
+        --success-600: #059669;
+        --success-500: #10b981;
+        --success-100: #d1fae5;
+      
+        /* Warning */
+        --warning-600: #d97706;
+        --warning-100: #fef3c7;
+      
+        /* Neutrals */
+        --white: #ffffff;
+        --gray-50: #f8fafc;
+        --gray-100: #f1f5f9;
+        --gray-200: #e2e8f0;
+        --gray-300: #cbd5e1;
+        --gray-400: #94a3b8;
+        --gray-500: #64748b;
+        --gray-600: #475569;
+        --gray-700: #334155;
+        --gray-800: #1e293b;
+        --gray-900: #0f172a;
+      
+        /* Spacing */
+        --space-1: 4px;
+        --space-2: 8px;
+        --space-3: 12px;
+        --space-4: 16px;
+        --space-5: 20px;
+        --space-6: 24px;
+        --space-8: 32px;
+        --space-10: 40px;
+        --space-12: 48px;
+        --space-16: 64px;
+      
+        /* Radius */
+        --radius-sm: 6px;
+        --radius-md: 10px;
+        --radius-lg: 14px;
+        --radius-xl: 20px;
+        --radius-2xl: 28px;
+        --radius-full: 9999px;
+      
+        /* Shadows */
+        --shadow-xs: 0 1px 2px rgba(21, 59, 79, 0.04);
+        --shadow-sm: 0 2px 4px rgba(21, 59, 79, 0.06), 0 1px 2px rgba(21, 59, 79, 0.04);
+        --shadow-md: 0 4px 12px rgba(21, 59, 79, 0.08), 0 2px 4px rgba(21, 59, 79, 0.04);
+        --shadow-lg: 0 12px 32px rgba(21, 59, 79, 0.12), 0 4px 8px rgba(21, 59, 79, 0.06);
+        --shadow-xl: 0 24px 48px rgba(21, 59, 79, 0.16);
+      
+        /* Transitions */
+        --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+        --duration-fast: 150ms;
+        --duration-base: 250ms;
+
+        /* Existing variables */
         --background: 0 0% 100%;
         --foreground: 222.2 84% 4.9%;
 
@@ -208,6 +283,7 @@ input[type="checkbox"] {
 
 input[type='date'],
 input[type='time'] {
+    appearance: none;
     -webkit-appearance: none;
     -webkit-min-logical-width: calc(100% - 16px);
 }

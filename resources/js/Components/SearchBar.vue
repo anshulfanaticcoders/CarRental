@@ -3,11 +3,15 @@
     <div class="search_bar rounded-[20px] max-[768px]:border-[1px]">
       <div class="flex relative max-[768px]:flex-col max-[768px]:items-center">
         <div
+          v-if="!simple"
           class="column w-[20%] max-[768px]:w-[100%] max-[768px]:p-[1.5rem] bg-customPrimaryColor text-customPrimaryColor-foreground p-[2rem] rounded-tl-[20px] rounded-bl-[20px] max-[768px]:rounded-tr-[16px] max-[768px]:rounded-tl-[16px] max-[768px]:rounded-bl-[0] max-[768px]:border-[1px]">
           <span class="text-[1.75rem] font-medium max-[768px]:text-[1.5rem]">{{ _t('homepage', 'search_bar_header') }}</span>
         </div>
         <form @submit.prevent="submit"
-          class="column w-[80%] max-[768px]:w-[100%] px-[2rem] py-[1.5rem] rounded-tr-[16px] rounded-br-[16px] bg-white grid grid-cols-12 gap-6 items-center max-[768px]:flex max-[768px]:flex-col max-[768px]:gap-6 max-[768px]:rounded-tr-[0] max-[768px]:rounded-bl-[16px] max-[768px]:px-[1.5rem] shadow-sm">
+          class="column px-[2rem] py-[1.5rem] bg-white grid grid-cols-12 gap-6 items-center max-[768px]:flex max-[768px]:flex-col max-[768px]:gap-6 max-[768px]:px-[1.5rem] shadow-sm"
+          :class="[
+            simple ? 'w-full rounded-[20px]' : 'w-[80%] rounded-tr-[16px] rounded-br-[16px] max-[768px]:w-[100%] max-[768px]:rounded-tr-[0] max-[768px]:rounded-bl-[16px]'
+          ]">
           
           <!-- Locations Section -->
           <div class="col-span-6 flex gap-4 relative" :class="{'flex-col': !isProviderLocation, 'flex-row': isProviderLocation}">
@@ -336,6 +340,10 @@ const form = ref({
 
 const props = defineProps({
   prefill: Object,
+  simple: {
+    type: Boolean,
+    default: false
+  }
 });
 
 const dateRange = ref(null);
@@ -905,7 +913,7 @@ const ErrorDialog = {
 
 .search_bar {
   position: relative;
-  z-index: 0; /* Create stacking context */
+  z-index: 100; /* Elevate above main content so dropdowns appear on top */
   box-shadow: 5px 5px 10px rgba(0, 0, 0, 0.2);
   /* Ensure border radius is consistent for the pseudo element */
   border-radius: 20px; 
