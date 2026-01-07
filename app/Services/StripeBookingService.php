@@ -121,9 +121,11 @@ class StripeBookingService
             DB::commit();
             Log::info('StripeBookingService: Transaction committed successfully', ['booking_id' => $booking->id]);
 
-            // Phase 2: Trigger Locauto Reservation if applicable
+            // Phase 2: Trigger Provider Reservations
             if ($booking->provider_source === 'locauto_rent') {
                 $this->triggerLocautoReservation($booking, $metadata);
+            } elseif ($booking->provider_source === 'greenmotion' || $booking->provider_source === 'usave') {
+                $this->triggerGreenMotionReservation($booking, $metadata);
             }
 
             return $booking;
@@ -187,8 +189,9 @@ class StripeBookingService
             $rawExtras = json_decode($metadata->extras ?? '[]', true);
             foreach ($rawExtras as $code => $qty) {
                 if ($qty > 0) {
+                    $realCode = str_replace('locauto_extra_', '', $code);
                     $extras[] = [
-                        'code' => $code,
+                        'code' => $realCode,
                         'quantity' => $qty
                     ];
                 }
@@ -206,28 +209,61 @@ class StripeBookingService
                 'sipp_code' => $metadata->sipp_code,
                 'extras' => $extras,
                 'driver_age' => $metadata->customer_driver_age ?? 35,
+                'email' => $metadata->customer_email ?? '',
+                'phone' => $metadata->customer_phone ?? '',
             ];
 
             Log::info('Locauto: Sending reservation request', ['data' => $reservationData]);
             $xmlResponse = $locautoService->makeReservation($reservationData);
 
             if ($xmlResponse) {
-                // Parse confirmation number from XML
-                // Response has <VehResRSCore><Reservation><UniqueID ID="CONF123456"/></Reservation></VehResRSCore>
-                if (preg_match('/UniqueID ID="([^"]+)"/', $xmlResponse, $matches)) {
-                    $confirmationNumber = $matches[1];
-                    Log::info('Locauto: Reservation successful', ['conf' => $confirmationNumber]);
+                libxml_use_internal_errors(true);
+                $xmlObject = simplexml_load_string($xmlResponse);
 
-                    $booking->update([
-                        'provider_booking_ref' => $confirmationNumber,
-                        'notes' => ($booking->notes ? $booking->notes . "\n" : "") . "Locauto Conf: " . $confirmationNumber
-                    ]);
+                if ($xmlObject !== false) {
+                    $xmlObject->registerXPathNamespace('soap', 'http://schemas.xmlsoap.org/soap/envelope/');
+                    $xmlObject->registerXPathNamespace('ota', 'http://www.opentravel.org/OTA/2003/05');
+                    $xmlObject->registerXPathNamespace('locauto', 'https://nextrent.locautorent.com');
+
+                    // Standard OTA Success check
+                    $success = $xmlObject->xpath('//ota:Success');
+                    $uniqueId = $xmlObject->xpath('//ota:UniqueID');
+                    
+                    $confirmationNumber = null;
+                    if (!empty($uniqueId)) {
+                        $confirmationNumber = (string) $uniqueId[0]['ID'];
+                    }
+
+                    if ($confirmationNumber) {
+                        Log::info('Locauto: Reservation successful', ['conf' => $confirmationNumber]);
+
+                        $booking->update([
+                            'provider_booking_ref' => $confirmationNumber,
+                            'notes' => ($booking->notes ? $booking->notes . "\n" : "") . "Locauto Conf: " . $confirmationNumber
+                        ]);
+                    } else {
+                        // Extract error
+                        $errors = $xmlObject->xpath('//ota:Error');
+                        $errorMessage = 'Confirmation number missing in response.';
+                        if (!empty($errors)) {
+                            $errorMessage = (string) $errors[0];
+                            if (empty($errorMessage)) {
+                                $errorMessage = (string) $errors[0]['ShortText'];
+                            }
+                        }
+                        
+                        Log::error('Locauto: Reservation failed', ['error' => $errorMessage, 'response' => $xmlResponse]);
+                        $booking->update([
+                            'notes' => ($booking->notes ? $booking->notes . "\n" : "") . "Locauto Reservation failed: " . $errorMessage
+                        ]);
+                    }
                 } else {
-                    Log::error('Locauto: Conf number not found in response', ['response' => $xmlResponse]);
+                    Log::error('Locauto: Failed to parse XML response', ['response' => $xmlResponse]);
                     $booking->update([
-                        'notes' => ($booking->notes ? $booking->notes . "\n" : "") . "Locauto Reservation failed: Confirmation number missing in response."
+                        'notes' => ($booking->notes ? $booking->notes . "\n" : "") . "Locauto Reservation failed: Invalid XML response."
                     ]);
                 }
+                libxml_clear_errors();
             } else {
                 Log::error('Locauto: Empty response from API');
                 $booking->update([
@@ -242,6 +278,117 @@ class StripeBookingService
             ]);
             $booking->update([
                 'notes' => ($booking->notes ? $booking->notes . "\n" : "") . "Locauto Reservation Error: " . $e->getMessage()
+            ]);
+        }
+    }
+
+    /**
+     * Trigger reservation on GreenMotion API
+     */
+    protected function triggerGreenMotionReservation($booking, $metadata)
+    {
+        Log::info('GreenMotion: Triggering reservation for booking', [
+            'booking_id' => $booking->id,
+            'metadata' => (array) $metadata
+        ]);
+
+        try {
+            $greenMotionService = app(\App\Services\GreenMotionService::class);
+            $greenMotionService->setProvider($booking->provider_source); // greenmotion or usave
+
+            // Split name into first and last
+            $nameParts = explode(' ', $metadata->customer_name ?? 'Guest User', 2);
+            $firstName = $nameParts[0];
+            $lastName = $nameParts[1] ?? 'Guest';
+
+            $customerDetails = [
+                'firstname' => $firstName,
+                'surname' => $lastName,
+                'phone' => $metadata->customer_phone,
+                'email' => $metadata->customer_email,
+                'flight_number' => $metadata->flight_number ?? '',
+            ];
+
+            // Parse detailed extras if available
+            $extras = [];
+            $rawExtras = json_decode($metadata->extras_data ?? '[]', true);
+            foreach ($rawExtras as $ex) {
+                if (($ex['qty'] ?? 0) > 0) {
+                    $extras[] = [
+                        'id' => $ex['id'] ?? $ex['optionID'],
+                        'option_qty' => $ex['qty'],
+                        'option_total' => $ex['total'],
+                        'pre_pay' => $ex['pre_pay'] ?? 'No'
+                    ];
+                }
+            }
+
+            // Get Vehicle ID - strip provider prefix if present
+            $vehicleId = $metadata->vehicle_id;
+            if (strpos($vehicleId, $booking->provider_source . '_') === 0) {
+                $vehicleId = substr($vehicleId, strlen($booking->provider_source . '_'));
+            }
+
+            $xmlResponse = $greenMotionService->makeReservation(
+                $metadata->pickup_location_code,
+                $metadata->pickup_date,
+                $metadata->pickup_time,
+                $metadata->dropoff_date,
+                $metadata->dropoff_time,
+                $metadata->customer_driver_age ?? 35,
+                $customerDetails,
+                $vehicleId,
+                $metadata->vehicle_total ?? $metadata->total_amount, // vehicleTotal
+                $metadata->currency,
+                $metadata->total_amount, // grandTotal
+                $booking->stripe_session_id,
+                $metadata->quoteid,
+                $extras,
+                $metadata->dropoff_location_code ?? $metadata->pickup_location_code,
+                'POA', // Payment type
+                $metadata->package ?? $metadata->rental_code ?? '1' // rentalCode (Product Type)
+            );
+
+            if ($xmlResponse) {
+                libxml_use_internal_errors(true);
+                $xmlObject = simplexml_load_string($xmlResponse);
+                $confirmationNumber = (string) ($xmlObject->response->booking_ref ?? $xmlObject->response->bookingReference ?? '');
+
+                if ($xmlObject !== false && !empty($confirmationNumber)) {
+                    Log::info('GreenMotion: Reservation successful', ['conf' => $confirmationNumber]);
+
+                    $booking->update([
+                        'provider_booking_ref' => $confirmationNumber,
+                        'notes' => ($booking->notes ? $booking->notes . "\n" : "") . "GreenMotion Conf: " . $confirmationNumber
+                    ]);
+                } else {
+                    $errorMessage = 'Confirmation number missing in response.';
+                    if ($xmlObject !== false && isset($xmlObject->response->errors->message)) {
+                        $errorMessage = (string) $xmlObject->response->errors->message;
+                    } elseif ($xmlObject !== false && isset($xmlObject->response->errors->error->message)) {
+                        $errorMessage = (string) $xmlObject->response->errors->error->message;
+                    }
+                    
+                    Log::error('GreenMotion: Reservation failed', ['error' => $errorMessage, 'response' => $xmlResponse]);
+                    $booking->update([
+                        'notes' => ($booking->notes ? $booking->notes . "\n" : "") . "GreenMotion Reservation failed: " . $errorMessage
+                    ]);
+                }
+                libxml_clear_errors();
+            } else {
+                Log::error('GreenMotion: Empty response from API');
+                $booking->update([
+                    'notes' => ($booking->notes ? $booking->notes . "\n" : "") . "GreenMotion Reservation failed: No response from API."
+                ]);
+            }
+
+        } catch (\Exception $e) {
+            Log::error('GreenMotion: Exception during reservation trigger', [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+            $booking->update([
+                'notes' => ($booking->notes ? $booking->notes . "\n" : "") . "GreenMotion Reservation Error: " . $e->getMessage()
             ]);
         }
     }

@@ -1,0 +1,124 @@
+{
+    "items": [
+        {
+            "code": "PLI",
+            "quantity": 0,
+            "total": 213.57,
+            "order": 2,
+            "type": "Proteccion",
+            "included": false,
+            "description": "Mandatory insurance with limited coverage. Covers third party property damage with US$1130 deductible (excess). It also covers injury and death of third parties up to USD 100,000 with no deductible.",
+            "information": "",
+            "name": "Liability Protection",
+            "required": true
+        },
+        {
+            "code": "LDW",
+            "quantity": 0,
+            "total": 122.04,
+            "order": 3,
+            "type": "Proteccion",
+            "included": false,
+            "description": "Releases the financial responsibility for damages to the rental car caused by a traffic accident, collision, rollover, and total or partial theft. With a deductible (excess) of US$1,130.( Does not cover vandalism, towing costs or assistance. For more information click <a class=\\\"RowStyle\\\" href=\\\"https:\/\/visabenefitslac.axa-assistance.us\/\\\" target=\\\"_blank\\\">here<\/a>.",
+            "information": "",
+            "name": "Car Protection",
+            "required": false
+        },
+        {
+            "code": "SPP",
+            "quantity": 0,
+            "total": 183.06,
+            "order": 4,
+            "type": "Proteccion",
+            "included": false,
+            "description": "Releases the financial responsibility of the payment of deductible (excess) for damages to third parties (US$1,130) and car protection (US$1,130). Extends the coverage limit up to US$2,000,000 per event. Covers damages caused by vandalism, windows, tires and covers the cost of roadside assistance (24\/7) as well as towing.",
+            "information": "",
+            "name": "Extended Protection",
+            "required": false
+        },
+        {
+            "code": "BOO",
+            "quantity": 0,
+            "total": 10.17,
+            "order": 5,
+            "type": "Adicionales",
+            "included": false,
+            "description": "The Traffic Law of Costa Rica mandates the use of a booster seat to transport children under 12 years old. Prior reservation is requiered.",
+            "information": "",
+            "name": "Booster Seat",
+            "required": false
+        },
+        {
+            "code": "BSS",
+            "quantity": 0,
+            "total": 30.51,
+            "order": 6,
+            "type": "Adicionales",
+            "included": false,
+            "description": "Baby Seat",
+            "information": "",
+            "name": "Baby Seat",
+            "required": false
+        },
+        {
+            "code": "GPS",
+            "quantity": 0,
+            "total": 91.53,
+            "order": 7,
+            "type": "Adicionales",
+            "included": false,
+            "description": "GPS",
+            "information": "",
+            "name": "GPS",
+            "required": false
+        },
+        {
+            "code": "WIF",
+            "quantity": 0,
+            "total": 101.7,
+            "order": 8,
+            "type": "Adicionales",
+            "included": false,
+            "description": "WiFi Router",
+            "information": "",
+            "name": "WiFi",
+            "required": false
+        },
+        {
+            "code": "RAK",
+            "quantity": 0,
+            "total": 0,
+            "order": 9,
+            "type": "Adicionales",
+            "included": false,
+            "description": "Roof racks",
+            "information": "",
+            "name": "Racks",
+            "required": false
+        },
+        {
+            "code": "HIE",
+            "quantity": 0,
+            "total": 0,
+            "order": 10,
+            "type": "Adicionales",
+            "included": false,
+            "description": "Free service. Subject to availability. Refresh and hydrate yourself by taking your drinks to your destination in one of our coolers, which you can request free of charge with the rental of your vehicle. Requires prior reservation, which must be confirmed by our reservations department.\r\n* Subject to availability and type of vehicle. Please consult.",
+            "information": "",
+            "name": "Cooler",
+            "required": false
+        },
+        {
+            "code": "CAD",
+            "quantity": 0,
+            "total": 40.68,
+            "order": 11,
+            "type": "Adicionales",
+            "included": false,
+            "description": "",
+            "information": "",
+            "name": "",
+            "required": false
+        }
+    ]
+}

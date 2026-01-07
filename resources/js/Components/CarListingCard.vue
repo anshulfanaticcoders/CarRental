@@ -1,5 +1,5 @@
 <script setup>
-import { computed, ref } from 'vue';
+import { computed, ref, onMounted, onUnmounted } from 'vue';
 import { Link, usePage } from '@inertiajs/vue3';
 import { useCurrency } from '@/composables/useCurrency';
 
@@ -340,17 +340,108 @@ const vehicleSpecs = computed(() => {
         airConditioning: v.airConditioning === 'true' || v.airConditioning === true || (v.features && v.features.includes('Air Conditioning')),
     };
 });
+// --- Image Slider Logic (Internal Vehicles Only) ---
+const currentImageIndex = ref(0);
+const isHovered = ref(false);
+let sliderInterval = null;
+
+const allImages = computed(() => {
+    if (props.vehicle.source !== 'internal') return [];
+    
+    const primary = props.vehicle.images?.find(img => img.image_type === 'primary');
+    const gallery = props.vehicle.images?.filter(img => img.image_type === 'gallery') || [];
+    
+    const images = [];
+    if (primary) images.push(primary.image_url);
+    gallery.forEach(img => images.push(img.image_url));
+    
+    return images.length > 0 ? images : ['/default-image.png'];
+});
+
+const nextImage = () => {
+    if (allImages.value.length <= 1) return;
+    currentImageIndex.value = (currentImageIndex.value + 1) % allImages.value.length;
+};
+
+const prevImage = () => {
+    if (allImages.value.length <= 1) return;
+    currentImageIndex.value = (currentImageIndex.value - 1 + allImages.value.length) % allImages.value.length;
+};
+
+const goToImage = (index) => {
+    currentImageIndex.value = index;
+};
+
+const startSlider = () => {
+    if (allImages.value.length <= 1) return;
+    if (sliderInterval) return; // Already running
+    sliderInterval = setInterval(nextImage, 3000); // 3 seconds per slide
+};
+
+const stopSlider = () => {
+    if (sliderInterval) {
+        clearInterval(sliderInterval);
+        sliderInterval = null;
+    }
+};
+
+onMounted(() => {
+    startSlider();
+});
+
+onUnmounted(() => {
+    stopSlider();
+});
 
 </script>
 
 <template>
     <div class="car-card group vehicle-card" :class="[viewMode === 'list' ? 'list-view' : '']" :data-vehicle-id="vehicle.id">
         <!-- Image Section -->
-        <div class="car-image">
-            <Link
-                :href="vehicle.source !== 'internal'
-                    ? route(getProviderRoute(vehicle), getRouteParams(vehicle))
-                    : route('vehicle.show', { locale: page.props.locale, id: vehicle.id, package: form.package_type, pickup_date: form.date_from, return_date: form.date_to })"
+        <div class="car-image" @mouseenter="isHovered = true" @mouseleave="isHovered = false">
+            <template v-if="vehicle.source === 'internal' && allImages.length > 0">
+                <div class="slider-container h-full">
+                    <Link
+                        :href="route('vehicle.show', { locale: page.props.locale, id: vehicle.id, package: form.package_type, pickup_date: form.date_from, return_date: form.date_to })"
+                        class="block h-full relative"
+                        @click="$emit('saveSearchUrl')"
+                    >
+                        <div v-for="(img, index) in allImages" :key="index" 
+                             class="absolute inset-0 transition-opacity duration-700 ease-in-out"
+                             :class="currentImageIndex === index ? 'opacity-100' : 'opacity-0 pointer-events-none'">
+                            <img 
+                                :src="img" 
+                                :alt="`${vehicle.brand} ${vehicle.model} - Image ${index + 1}`"
+                                @error="handleImageError"
+                                class="w-full h-full object-cover"
+                                loading="lazy"
+                            />
+                        </div>
+                    </Link>
+
+                    <!-- Slider Controls (Visible on Hover) -->
+                    <div class="slider-controls" v-if="allImages.length > 1">
+                        <button @click.prevent.stop="prevImage" class="slider-arrow prev" aria-label="Previous image">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg>
+                        </button>
+                        <button @click.prevent.stop="nextImage" class="slider-arrow next" aria-label="Next image">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"/></svg>
+                        </button>
+                    </div>
+
+                    <!-- Pagination Dots -->
+                    <div class="slider-dots" v-if="allImages.length > 1">
+                        <button v-for="(_, index) in allImages" :key="index"
+                                @click.prevent.stop="goToImage(index)"
+                                class="slider-dot"
+                                :class="{ 'active': currentImageIndex === index }"
+                                :aria-label="`Go to image ${index + 1}`">
+                        </button>
+                    </div>
+                </div>
+            </template>
+            <Link v-else
+                :href="route(getProviderRoute(vehicle), getRouteParams(vehicle))"
                 class="block h-full"
                 @click="$emit('saveSearchUrl')"
             >
@@ -772,6 +863,88 @@ const vehicleSpecs = computed(() => {
 .car-favorite.is-active {
   color: #ef4444;
   background: #fff;
+}
+
+/* Slider Styles */
+.slider-container {
+  position: relative;
+  width: 100%;
+  height: 100%;
+}
+
+.slider-controls {
+  position: absolute;
+  top: 50%;
+  left: 0;
+  right: 0;
+  transform: translateY(-50%);
+  display: flex;
+  justify-content: space-between;
+  padding: 0 var(--space-2);
+  opacity: 0;
+  transition: opacity var(--duration-base);
+  pointer-events: none;
+  z-index: 5;
+}
+
+.car-image:hover .slider-controls {
+  opacity: 1;
+}
+
+.slider-arrow {
+  width: 32px;
+  height: 32px;
+  background: rgba(255, 255, 255, 0.9);
+  border: none;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  box-shadow: 0 4px 10px rgba(0,0,0,0.15);
+  color: var(--primary-700);
+  transition: all var(--duration-fast);
+  pointer-events: auto;
+}
+
+.slider-arrow:hover {
+  background: var(--white);
+  color: var(--primary-500);
+  transform: scale(1.1);
+}
+
+.slider-arrow:active {
+  transform: scale(0.95);
+}
+
+.slider-dots {
+  position: absolute;
+  bottom: var(--space-3);
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  gap: 6px;
+  z-index: 5;
+  padding: 4px 8px;
+  background: rgba(0, 0, 0, 0.3);
+  border-radius: var(--radius-full);
+  backdrop-filter: blur(4px);
+}
+
+.slider-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.5);
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  transition: all var(--duration-base);
+}
+
+.slider-dot.active {
+  background: var(--white);
+  width: 14px;
 }
 
 /* Card Content */

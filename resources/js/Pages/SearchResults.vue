@@ -2094,6 +2094,7 @@ watch(
             :currency-symbol="getCurrencySymbol(selectedVehicle.currency || 'EUR')"
             :payment-percentage="paymentPercentage"
             :totals="selectedCheckoutData.totals"
+            :vehicle-total="selectedCheckoutData.vehicle_total"
             @back="bookingStep = 'extras'"
         />
     </div>

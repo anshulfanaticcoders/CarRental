@@ -20,7 +20,8 @@ const props = defineProps({
     numberOfDays: Number,
     currencySymbol: String,
     paymentPercentage: Number,
-    totals: Object // { grandTotal, payableAmount, pendingAmount }
+    totals: Object, // { grandTotal, payableAmount, pendingAmount }
+    vehicleTotal: [String, Number]
 });
 
 const emit = defineEmits(['back']);
@@ -33,6 +34,13 @@ const form = ref({
     email: user.email || '',
     phone: user.phone || '',
     driver_age: '',
+    address: user.address || '',
+    city: user.city || '',
+    postal_code: user.postal_code || '',
+    country: user.country || '',
+    flight_number: '',
+    preferred_day: '',
+    notes: '',
 });
 
 const errors = ref({});
@@ -45,7 +53,7 @@ const validate = () => {
         errors.value.name = 'Full Name is required';
         isValid = false;
     }
-    
+
     if (!form.value.email.trim()) {
         errors.value.email = 'Email is required';
         isValid = false;
@@ -91,7 +99,10 @@ const bookingData = computed(() => {
         dropoff_location: props.dropoffLocation,
         number_of_days: props.numberOfDays,
         total_amount: props.totals.grandTotal,
-        currency: props.vehicle.currency || 'EUR'
+        currency: props.vehicle.currency || 'EUR',
+        quoteid: props.vehicle.quoteid || null,
+        rentalCode: props.vehicle.rentalCode || null,
+        vehicle_total: props.vehicleTotal || 0
     };
 });
 
@@ -102,148 +113,261 @@ const formatPrice = (val) => {
 </script>
 
 <template>
-    <div class="flex flex-col md:flex-row gap-6 p-4">
-        <!-- Left Column: Customer Details -->
-        <div class="flex-1 space-y-6">
-            <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-                <h3 class="text-xl font-bold text-gray-800 mb-6">Driver Details</h3>
-                
-                <div class="space-y-4">
-                    <!-- Name -->
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-1">Full Name</label>
-                        <input 
-                            v-model="form.name"
-                            type="text" 
-                            class="w-full rounded-lg border-gray-300 focus:border-customPrimaryColor focus:ring-customPrimaryColor"
-                            :class="{'border-red-500 rounded-lg': errors.name}"
-                            placeholder="John Doe"
-                        />
-                        <p v-if="errors.name" class="text-red-500 text-xs mt-1">{{ errors.name }}</p>
-                    </div>
+    <div class="font-['Outfit',sans-serif]">
+        <div class="flex flex-col lg:flex-row gap-6">
+            <!-- Left Column: Form Fields -->
+            <div class="flex-1">
+                <div class="bg-white rounded-2xl shadow-lg border border-gray-100 p-6 mb-6">
+                    <h3 class="text-2xl font-bold text-gray-900 mb-6">Driver Information</h3>
 
-                    <!-- Email -->
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-1">Email Address</label>
-                        <input 
-                            v-model="form.email"
-                            type="email" 
-                            class="w-full rounded-lg border-gray-300 focus:border-customPrimaryColor focus:ring-customPrimaryColor"
-                            :class="{'border-red-500': errors.email}"
-                            placeholder="john@example.com"
-                        />
-                        <p v-if="errors.email" class="text-red-500 text-xs mt-1">{{ errors.email }}</p>
-                    </div>
+                    <!-- 2-Column Form Layout -->
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <!-- Full Name -->
+                        <div class="md:col-span-2">
+                            <label class="block text-sm font-semibold text-gray-700 mb-1">Full Name *</label>
+                            <input
+                                v-model="form.name"
+                                type="text"
+                                class="w-full rounded-xl border-2 px-4 py-2.5 focus:outline-none focus:border-[#1e3a5f] transition-colors"
+                                :class="{'border-red-500 bg-red-50': errors.name, 'border-gray-200': !errors.name}"
+                                placeholder="John Doe"
+                            />
+                            <p v-if="errors.name" class="text-red-500 text-xs mt-1">{{ errors.name }}</p>
+                        </div>
 
-                    <!-- Phone -->
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-1">Phone Number</label>
-                        <input 
-                            v-model="form.phone"
-                            type="tel" 
-                            class="w-full rounded-lg border-gray-300 focus:border-customPrimaryColor focus:ring-customPrimaryColor"
-                            :class="{'border-red-500': errors.phone}"
-                            placeholder="+1 234 567 8900"
-                        />  
-                        <p v-if="errors.phone" class="text-red-500 text-xs mt-1">{{ errors.phone }}</p>
-                    </div>
+                        <!-- Email -->
+                        <div class="md:col-span-2">
+                            <label class="block text-sm font-semibold text-gray-700 mb-1">Email Address *</label>
+                            <input
+                                v-model="form.email"
+                                type="email"
+                                class="w-full rounded-xl border-2 px-4 py-2.5 focus:outline-none focus:border-[#1e3a5f] transition-colors"
+                                :class="{'border-red-500 bg-red-50': errors.email, 'border-gray-200': !errors.email}"
+                                placeholder="john@example.com"
+                            />
+                            <p v-if="errors.email" class="text-red-500 text-xs mt-1">{{ errors.email }}</p>
+                        </div>
 
-                    <!-- Driver Age -->
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-1">Driver Age</label>
-                        <input 
-                            v-model="form.driver_age"
-                            type="number" 
-                            class="w-full rounded-lg border-gray-300 focus:border-customPrimaryColor focus:ring-customPrimaryColor"
-                            :class="{'border-red-500': errors.driver_age}"
-                            placeholder="30"
-                            min="18"
-                        />
-                        <p v-if="errors.driver_age" class="text-red-500 text-xs mt-1">{{ errors.driver_age }}</p>
+                        <!-- Phone -->
+                        <div>
+                            <label class="block text-sm font-semibold text-gray-700 mb-1">Phone Number *</label>
+                            <input
+                                v-model="form.phone"
+                                type="tel"
+                                class="w-full rounded-xl border-2 px-4 py-2.5 focus:outline-none focus:border-[#1e3a5f] transition-colors"
+                                :class="{'border-red-500 bg-red-50': errors.phone, 'border-gray-200': !errors.phone}"
+                                placeholder="+34 612 345 678"
+                            />
+                            <p v-if="errors.phone" class="text-red-500 text-xs mt-1">{{ errors.phone }}</p>
+                        </div>
+
+                        <!-- Driver Age -->
+                        <div>
+                            <label class="block text-sm font-semibold text-gray-700 mb-1">Driver Age *</label>
+                            <input
+                                v-model="form.driver_age"
+                                type="number"
+                                min="18"
+                                max="99"
+                                class="w-full rounded-xl border-2 px-4 py-2.5 focus:outline-none focus:border-[#1e3a5f] transition-colors"
+                                :class="{'border-red-500 bg-red-50': errors.driver_age, 'border-gray-200': !errors.driver_age}"
+                                placeholder="30"
+                            />
+                            <p v-if="errors.driver_age" class="text-red-500 text-xs mt-1">{{ errors.driver_age }}</p>
+                        </div>
+
+                        <!-- Address -->
+                        <div class="md:col-span-2">
+                            <label class="block text-sm font-semibold text-gray-700 mb-1">Address</label>
+                            <input
+                                v-model="form.address"
+                                type="text"
+                                class="w-full rounded-xl border-2 border-gray-200 px-4 py-2.5 focus:outline-none focus:border-[#1e3a5f] transition-colors"
+                                placeholder="Street Address"
+                            />
+                        </div>
+
+                        <!-- City -->
+                        <div>
+                            <label class="block text-sm font-semibold text-gray-700 mb-1">City</label>
+                            <input
+                                v-model="form.city"
+                                type="text"
+                                class="w-full rounded-xl border-2 border-gray-200 px-4 py-2.5 focus:outline-none focus:border-[#1e3a5f] transition-colors"
+                                placeholder="Madrid"
+                            />
+                        </div>
+
+                        <!-- Postal Code -->
+                        <div>
+                            <label class="block text-sm font-semibold text-gray-700 mb-1">Postal Code</label>
+                            <input
+                                v-model="form.postal_code"
+                                type="text"
+                                class="w-full rounded-xl border-2 border-gray-200 px-4 py-2.5 focus:outline-none focus:border-[#1e3a5f] transition-colors"
+                                placeholder="28001"
+                            />
+                        </div>
+
+                        <!-- Country -->
+                        <div class="md:col-span-2">
+                            <label class="block text-sm font-semibold text-gray-700 mb-1">Country</label>
+                            <input
+                                v-model="form.country"
+                                type="text"
+                                class="w-full rounded-xl border-2 border-gray-200 px-4 py-2.5 focus:outline-none focus:border-[#1e3a5f] transition-colors"
+                                placeholder="Spain"
+                            />
+                        </div>
+
+                        <!-- Flight Number -->
+                        <div>
+                            <label class="block text-sm font-semibold text-gray-700 mb-1">Flight Number</label>
+                            <input
+                                v-model="form.flight_number"
+                                type="text"
+                                class="w-full rounded-xl border-2 border-gray-200 px-4 py-2.5 focus:outline-none focus:border-[#1e3a5f] transition-colors"
+                                placeholder="FR1234"
+                            />
+                            <p class="text-xs text-gray-400 mt-1">For airport pickup</p>
+                        </div>
+
+                        <!-- Preferred Day -->
+                        <div>
+                            <label class="block text-sm font-semibold text-gray-700 mb-1">Preferred Contact Day</label>
+                            <select
+                                v-model="form.preferred_day"
+                                class="w-full rounded-xl border-2 border-gray-200 px-4 py-2.5 focus:outline-none focus:border-[#1e3a5f] transition-colors bg-white"
+                            >
+                                <option value="">Select day</option>
+                                <option value="Monday">Monday</option>
+                                <option value="Tuesday">Tuesday</option>
+                                <option value="Wednesday">Wednesday</option>
+                                <option value="Thursday">Thursday</option>
+                                <option value="Friday">Friday</option>
+                                <option value="Saturday">Saturday</option>
+                                <option value="Sunday">Sunday</option>
+                            </select>
+                        </div>
+
+                        <!-- Notes -->
+                        <div class="md:col-span-2">
+                            <label class="block text-sm font-semibold text-gray-700 mb-1">Special Requests / Notes</label>
+                            <textarea
+                                v-model="form.notes"
+                                rows="3"
+                                class="w-full rounded-xl border-2 border-gray-200 px-4 py-2.5 focus:outline-none focus:border-[#1e3a5f] transition-colors resize-none"
+                                placeholder="Any special requests or additional information..."
+                            ></textarea>
+                        </div>
                     </div>
                 </div>
+
+                <!-- Back Button -->
+                <button
+                    @click="$emit('back')"
+                    class="w-full px-6 py-3 bg-white border-2 border-gray-200 text-gray-700 rounded-xl font-semibold hover:bg-gray-50 hover:border-gray-300 transition-all"
+                >
+                    ← Back to Extras
+                </button>
             </div>
 
-            <!-- Payment Summary (Mobile only) -->
-            <div class="md:hidden bg-white rounded-lg shadow-sm border border-gray-200 p-4">
-                <div class="flex justify-between items-center mb-4">
-                    <span class="font-bold text-gray-800">Pay Now</span>
-                    <span class="text-xl font-bold text-green-700">{{ formatPrice(totals.payableAmount) }}</span>
-                </div>
-                 <!-- Stripe Button (Mobile) -->
-                <div v-if="validate()">
-                     <StripeCheckoutButton 
-                        :booking-data="bookingData"
-                        :label="`Pay ${formatPrice(totals.payableAmount)}`"
-                    />
-                </div>
-                <div v-else class="text-center text-sm text-gray-500">
-                    Please fill driver details to proceed
-                </div>
-            </div>
+            <!-- Right Column: Summary -->
+            <div class="lg:w-96">
+                <div class="bg-white rounded-2xl shadow-xl border border-gray-100 p-6 sticky top-6">
+                    <h3 class="text-xl font-bold text-gray-900 mb-4 pb-3 border-b-2">Booking Summary</h3>
 
-             <button
-                @click="$emit('back')"
-                class="w-full md:w-auto px-6 py-2 bg-white border border-gray-300 text-gray-700 rounded-lg font-medium hover:bg-gray-50 transition-all"
-            >
-                Back to Extras
-            </button>
-        </div>
-
-        <!-- Right Column: Summary -->
-        <div class="md:w-1/3 space-y-6">
-            <div class="bg-white rounded-xl shadow-lg border border-gray-100 p-6 sticky top-4">
-                <h3 class="text-lg font-bold text-gray-800 mb-4 pb-2 border-b">Booking Summary</h3>
-
-                <!-- Vehicle -->
-                <div class="flex items-start gap-4 mb-4">
-                    <img :src="vehicle.image" alt="Car" class="w-20 h-14 object-cover rounded bg-gray-50" />
-                    <div>
-                        <div class="font-bold text-gray-800">{{ vehicle.brand }} {{ vehicle.model }}</div>
-                        <div class="text-sm text-gray-500">{{ package }} Package</div>
-                        <div class="text-xs text-gray-400 mt-1">{{ numberOfDays }} days</div>
-                    </div>
-                </div>
-
-                <!-- Financials -->
-                <div class="space-y-3 pt-4 border-t border-gray-100">
-                    <div class="flex justify-between text-base">
-                        <span class="text-gray-600">Total Amount</span>
-                        <span class="font-bold text-gray-800">{{ formatPrice(totals.grandTotal) }}</span>
-                    </div>
-                    
-                    <div class="bg-green-50 p-3 rounded-lg flex justify-between items-center">
-                        <span class="text-sm font-semibold text-green-800">Pay Now</span>
-                        <span class="text-lg font-bold text-green-700">{{ formatPrice(totals.payableAmount) }}</span>
+                    <!-- Vehicle -->
+                    <div class="flex items-start gap-4 mb-5 pb-4 border-b border-gray-100">
+                        <img :src="vehicle.image" alt="Car" class="w-24 h-16 object-cover rounded-xl bg-gray-50 shadow-sm" />
+                        <div class="flex-1">
+                            <div class="font-bold text-gray-900">{{ vehicle.brand }} {{ vehicle.model }}</div>
+                            <div class="text-sm text-gray-500 mt-0.5">{{ package }} Package</div>
+                            <div class="text-xs text-gray-400 mt-1">{{ numberOfDays }} days rental</div>
+                        </div>
                     </div>
 
-                    <div class="flex justify-between text-sm text-gray-500 px-1">
-                        <span>Pay on Arrival</span>
-                        <span class="font-medium">{{ formatPrice(totals.pendingAmount) }}</span>
+                    <!-- Dates -->
+                    <div class="space-y-3 mb-5 pb-4 border-b border-gray-100">
+                        <div class="flex items-start gap-3">
+                            <div class="w-8 h-8 rounded-full bg-emerald-100 flex items-center justify-center flex-shrink-0 mt-0.5">
+                                <svg class="w-4 h-4 text-emerald-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+                                </svg>
+                            </div>
+                            <div>
+                                <div class="text-xs font-semibold text-emerald-700 uppercase">Pickup</div>
+                                <div class="text-sm font-medium text-gray-900">{{ pickupDate }} at {{ pickupTime }}</div>
+                                <div class="text-xs text-gray-500">{{ pickupLocation }}</div>
+                            </div>
+                        </div>
+                        <div class="flex items-start gap-3">
+                            <div class="w-8 h-8 rounded-full bg-rose-100 flex items-center justify-center flex-shrink-0 mt-0.5">
+                                <svg class="w-4 h-4 text-rose-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 8l4 4m0 0l-4 4m4-4H3" />
+                                </svg>
+                            </div>
+                            <div>
+                                <div class="text-xs font-semibold text-rose-700 uppercase">Dropoff</div>
+                                <div class="text-sm font-medium text-gray-900">{{ dropoffDate }} at {{ dropoffTime }}</div>
+                                <div class="text-xs text-gray-500">{{ dropoffLocation }}</div>
+                            </div>
+                        </div>
                     </div>
-                </div>
 
-                <!-- Stripe Button -->
-                <div class="mt-6">
-                     <div v-if="form.name && form.email && form.phone && form.driver_age"> <!-- basic check for reactivity -->
-                         <StripeCheckoutButton 
-                            v-if="!Object.keys(errors).length"
-                            :booking-data="bookingData"
-                            :label="`Pay ${formatPrice(totals.payableAmount)}`"
-                        />
-                         <button v-else @click="validate()" class="w-full bg-gray-300 text-gray-500 py-4 rounded-xl font-bold">
-                            Fix Errors to Pay
+                    <!-- Financials -->
+                    <div class="space-y-3 mb-5">
+                        <div class="flex justify-between text-base">
+                            <span class="text-gray-600 font-medium">Total Amount</span>
+                            <span class="font-bold text-gray-900">{{ formatPrice(totals.grandTotal) }}</span>
+                        </div>
+
+                        <div class="bg-gradient-to-r from-emerald-50 to-teal-50 p-4 rounded-xl">
+                            <div class="flex justify-between items-center">
+                                <div>
+                                    <div class="text-sm font-semibold text-emerald-800">Pay Now</div>
+                                    <div class="text-xs text-emerald-600">{{ paymentPercentage }}% deposit</div>
+                                </div>
+                                <span class="text-2xl font-bold text-emerald-700">{{ formatPrice(totals.payableAmount) }}</span>
+                            </div>
+                        </div>
+
+                        <div class="flex justify-between text-sm text-gray-500 px-1">
+                            <span>Pay on Arrival</span>
+                            <span class="font-semibold text-gray-700">{{ formatPrice(totals.pendingAmount) }}</span>
+                        </div>
+                    </div>
+
+                    <!-- Stripe Button -->
+                    <div class="space-y-3">
+                        <div v-if="form.name && form.email && form.phone && form.driver_age">
+                            <StripeCheckoutButton
+                                v-if="!Object.keys(errors).length"
+                                :booking-data="bookingData"
+                                :label="`Pay ${formatPrice(totals.payableAmount)}`"
+                            />
+                            <button
+                                v-else
+                                @click="validate()"
+                                class="w-full bg-gray-200 text-gray-500 py-4 rounded-xl font-bold cursor-pointer"
+                            >
+                                Please Fix Errors
+                            </button>
+                        </div>
+                        <button
+                            v-else
+                            @click="validate()"
+                            class="w-full bg-gray-200 text-gray-500 py-4 rounded-xl font-bold cursor-pointer"
+                        >
+                            Complete All Fields
                         </button>
+
+                        <p class="text-xs text-center text-gray-400 leading-relaxed">
+                            By proceeding, you agree to our Terms & Conditions and Privacy Policy.
+                            Secure payment powered by Stripe.
+                        </p>
                     </div>
-                    <button v-else @click="validate()" class="w-full bg-gray-300 text-gray-500 py-4 rounded-xl font-bold">
-                        Enter Details to Pay
-                    </button>
                 </div>
-                
-                <p class="text-xs text-center text-gray-400 mt-4 leading-relaxed">
-                    By clicking "Pay", you agree to our Terms & Conditions and Privacy Policy.
-                    You will be redirected to Stripe to complete your secure payment.
-                </p>
             </div>
         </div>
     </div>

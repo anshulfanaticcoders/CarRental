@@ -42,6 +42,9 @@ class StripeCheckoutController extends Controller
                 'detailed_extras' => 'nullable|array',
                 'protection_code' => 'nullable|string',
                 'protection_amount' => 'nullable|numeric',
+                'quoteid' => 'nullable|string',
+                'rentalCode' => 'nullable|string',
+                'vehicle_total' => 'nullable|numeric',
             ]);
 
             // Get payment percentage from settings
@@ -98,6 +101,9 @@ class StripeCheckoutController extends Controller
                 'return_location_code' => $validated['vehicle']['provider_return_id'] ?? $validated['vehicle']['provider_pickup_id'] ?? '',
                 'extras' => json_encode($validated['extras'] ?? []),
                 'extras_data' => json_encode($validated['detailed_extras'] ?? []), // Encode detailed extras
+                'quoteid' => !empty($validated['quoteid']) ? $validated['quoteid'] : ($validated['vehicle']['quoteid'] ?? ''),
+                'rental_code' => !empty($validated['rentalCode']) ? $validated['rentalCode'] : ($validated['vehicle']['rentalCode'] ?? ''),
+                'vehicle_total' => $validated['vehicle_total'] ?? $validated['total_amount'],
             ];
 
             // Create Stripe Checkout Session
