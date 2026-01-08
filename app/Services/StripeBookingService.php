@@ -84,7 +84,7 @@ class StripeBookingService
             // Create payment record
             BookingPayment::create([
                 'booking_id' => $booking->id,
-                'payment_method' => 'stripe',
+                'payment_method' => $metadata->payment_method ?? 'stripe',
                 'transaction_id' => $session->payment_intent,
                 'amount' => (float) ($metadata->payable_amount ?? 0),
                 'payment_status' => 'succeeded',

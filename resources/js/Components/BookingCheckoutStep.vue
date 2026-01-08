@@ -43,6 +43,26 @@ const form = ref({
     notes: '',
 });
 
+const selectedPaymentMethod = ref('card');
+
+const availablePaymentMethods = computed(() => {
+    const currency = (props.vehicle.currency || 'EUR').toUpperCase();
+    const methods = [
+        { id: 'card', name: 'Credit / Debit Card', icon: '💳', logos: ['visa', 'mastercard', 'amex', 'applepay', 'googlepay'] }
+    ];
+
+    if (currency === 'EUR') {
+        methods.push({ id: 'bancontact', name: 'Bancontact', icon: '🇧🇪', logos: ['bancontact'] });
+    }
+
+    const klarnaCurrencies = ['EUR', 'USD', 'GBP', 'DKK', 'NOK', 'SEK', 'CHF'];
+    if (klarnaCurrencies.includes(currency)) {
+        methods.push({ id: 'klarna', name: 'Klarna', icon: '🎯', logos: ['klarna'] });
+    }
+
+    return methods;
+});
+
 const errors = ref({});
 
 const validate = () => {
@@ -120,7 +140,8 @@ const bookingData = computed(() => {
         currency: props.vehicle.currency || 'EUR',
         quoteid: props.vehicle.quoteid || null,
         rentalCode: props.vehicle.rentalCode || null,
-        vehicle_total: props.vehicleTotal || 0
+        vehicle_total: props.vehicleTotal || 0,
+        payment_method: selectedPaymentMethod.value
     };
 });
 
@@ -248,6 +269,65 @@ const formatPrice = (val) => {
                     </div>
                 </div>
 
+                <!-- Payment Method Selection -->
+                <div class="bg-white rounded-2xl shadow-lg border border-gray-100 p-6 mb-6">
+                    <h3 class="text-2xl font-bold text-gray-900 mb-6 flex items-center gap-2">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-[#1e3a5f]" fill="none"
+                            viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
+                        </svg>
+                        Select Payment Method
+                    </h3>
+
+                    <div class="space-y-4">
+                        <div v-for="method in availablePaymentMethods" :key="method.id"
+                            @click="selectedPaymentMethod = method.id"
+                            class="relative flex items-center p-4 border-2 rounded-xl cursor-pointer transition-all hover:bg-gray-50 bg-white"
+                            :class="selectedPaymentMethod === method.id ? 'border-[#1e3a5f] bg-blue-50/30' : 'border-gray-100'">
+
+                            <div class="flex-1 flex items-center gap-4">
+                                <div
+                                    class="w-10 h-10 rounded-full flex items-center justify-center text-xl bg-gray-100 shadow-sm">
+                                    {{ method.icon }}
+                                </div>
+                                <div>
+                                    <div class="font-bold text-gray-900">{{ method.name }}</div>
+                                    <div class="flex gap-2 mt-1 opacity-70">
+                                        <!-- Simple indicators for logos -->
+                                        <div v-if="method.id === 'card'" class="flex gap-1.5">
+                                            <div class="h-4 w-6 bg-blue-800 rounded-sm"></div>
+                                            <div class="h-4 w-6 bg-red-600 rounded-sm"></div>
+                                            <div class="h-4 w-6 bg-blue-400 rounded-sm"></div>
+                                            <div class="h-4 w-6 bg-black rounded-sm"></div>
+                                        </div>
+                                        <div v-if="method.id === 'bancontact'"
+                                            class="h-4 w-10 bg-yellow-400 rounded-sm"></div>
+                                        <div v-if="method.id === 'klarna'" class="h-4 w-10 bg-pink-400 rounded-sm">
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="flex items-center">
+                                <div class="w-6 h-6 rounded-full border-2 flex items-center justify-center transition-colors shadow-inner"
+                                    :class="selectedPaymentMethod === method.id ? 'bg-[#1e3a5f] border-[#1e3a5f]' : 'bg-white border-gray-200'">
+                                    <svg v-if="selectedPaymentMethod === method.id" class="w-4 h-4 text-white"
+                                        fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                            d="M5 13l4 4L19 7" />
+                                    </svg>
+                                </div>
+                            </div>
+
+                            <!-- Selection Highlight Ripple-like effect -->
+                            <div v-if="selectedPaymentMethod === method.id"
+                                class="absolute inset-0 border-4 border-[#1e3a5f]/10 rounded-xl pointer-events-none">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
                 <!-- Back Button -->
                 <button @click="$emit('back')"
                     class="w-full px-6 py-3 bg-white border-2 border-gray-200 text-gray-700 rounded-xl font-semibold hover:bg-gray-50 hover:border-gray-300 transition-all">
@@ -321,7 +401,7 @@ const formatPrice = (val) => {
                                     <div class="text-xs text-emerald-600">{{ paymentPercentage }}% deposit</div>
                                 </div>
                                 <span class="text-2xl font-bold text-emerald-700">{{ formatPrice(totals.payableAmount)
-                                    }}</span>
+                                }}</span>
                             </div>
                         </div>
 

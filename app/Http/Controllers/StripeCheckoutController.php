@@ -46,6 +46,7 @@ class StripeCheckoutController extends Controller
                 'quoteid' => 'nullable|string',
                 'rentalCode' => 'nullable|string',
                 'vehicle_total' => 'nullable|numeric',
+                'payment_method' => 'nullable|string',
             ]);
 
             // Get payment percentage from settings
@@ -143,6 +144,7 @@ class StripeCheckoutController extends Controller
                 'quoteid' => !empty($validated['quoteid']) ? $validated['quoteid'] : ($validated['vehicle']['quoteid'] ?? ''),
                 'rental_code' => !empty($validated['rentalCode']) ? $validated['rentalCode'] : ($validated['vehicle']['rentalCode'] ?? ''),
                 'vehicle_total' => $validated['vehicle_total'] ?? $validated['total_amount'],
+                'payment_method' => $validated['payment_method'] ?? 'card',
             ];
 
 
@@ -153,8 +155,32 @@ class StripeCheckoutController extends Controller
                 $currentLocale = 'en';
             }
 
+            // Determine supported payment method types based on currency
+            $availableMethods = ['card'];
+            
+            // Bancontact only supports EUR
+            if (strtoupper($currency) === 'EUR') {
+                $availableMethods[] = 'bancontact';
+            }
+            
+            // Klarna supports multiple currencies
+            $klarnaCurrencies = ['EUR', 'USD', 'GBP', 'DKK', 'NOK', 'SEK', 'CHF'];
+            if (in_array(strtoupper($currency), $klarnaCurrencies)) {
+                $availableMethods[] = 'klarna';
+            }
+
+            // Respect the selected payment method if it's available for the current currency
+            // To avoid redundancy on the Stripe page, we only send the selected method.
+            $requestedMethod = $validated['payment_method'] ?? 'card';
+            if (in_array($requestedMethod, $availableMethods)) {
+                $paymentMethodTypes = [$requestedMethod];
+            } else {
+                // Fallback to all available if the requested one is invalid for the currency
+                $paymentMethodTypes = $availableMethods;
+            }
+
             $session = StripeSession::create([
-                'payment_method_types' => ['card'],
+                'payment_method_types' => $paymentMethodTypes,
                 'line_items' => $lineItems,
                 'mode' => 'payment',
                 // Use route() to generate the correct URL with locale, but we need to append the session_id placeholder manually
