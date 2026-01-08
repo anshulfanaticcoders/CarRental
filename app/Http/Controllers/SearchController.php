@@ -94,7 +94,7 @@ class SearchController extends Controller
         Log::info("Global rental duration: {$rentalDays} days.");
 
         $internalVehiclesQuery = Vehicle::query()->whereIn('status', ['available', 'rented'])
-            ->with('images', 'bookings', 'vendorProfile', 'benefits');
+            ->with(['images', 'bookings', 'vendorProfile', 'benefits', 'vendorPlans', 'addons']);
 
         // Apply date filters to internal vehicles
         if (!empty($validated['date_from']) && !empty($validated['date_to'])) {
@@ -347,7 +347,18 @@ class SearchController extends Controller
             $data = $vehicle->toArray();
             $data['category'] = $vehicle->category->name ?? 'Unknown';
             // Normalize pricing and currency for internal vehicles
-            $data['currency'] = $vehicle->vendorProfile->currency ?? 'USD';
+            $rawCurrency = $vehicle->vendorProfile->currency ?? 'USD';
+            $currencyMap = [
+                '€' => 'EUR',
+                '€' => 'EUR', // Handling potential different encodings if necessary
+                '$' => 'USD',
+                '₹' => 'INR',
+                '₽' => 'RUB',
+                'A$' => 'AUD',
+                '£' => 'GBP',
+            ];
+            $data['currency'] = $currencyMap[$rawCurrency] ?? $rawCurrency;
+            
             $data['total_price'] = (float) ($vehicle->price_per_day * $rentalDays);
             return $data;
         })->values()->all();

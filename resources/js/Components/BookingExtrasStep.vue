@@ -33,6 +33,25 @@ const isLocautoRent = computed(() => {
     return props.vehicle?.source === 'locauto_rent';
 });
 
+// Check if vehicle is Internal
+const isInternal = computed(() => {
+    return props.vehicle?.source === 'internal';
+});
+
+// Get vehicle image (handles internal vehicles which use images array)
+const vehicleImage = computed(() => {
+    // Internal vehicles: find primary image from images array
+    if (isInternal.value && props.vehicle?.images) {
+        const primaryImg = props.vehicle.images.find(img => img.image_type === 'primary');
+        if (primaryImg) return primaryImg.image_url;
+        // Fallback to first gallery image
+        const galleryImg = props.vehicle.images.find(img => img.image_type === 'gallery');
+        if (galleryImg) return galleryImg.image_url;
+    }
+    // Other providers: use direct image property
+    return props.vehicle?.image || props.vehicle?.largeImage || null;
+});
+
 const props = defineProps({
     vehicle: Object,
     initialPackage: String,
@@ -216,6 +235,63 @@ const adobeOptionalExtras = computed(() => {
     return options;
 });
 
+// Internal Vehicle Data
+const internalPackages = computed(() => {
+    if (!isInternal.value) return [];
+
+    const packages = [];
+    // Laravel returns relationship as camelCase 'vendorPlans' not 'vendor_plans'
+    const vendorPlans = props.vehicle?.vendorPlans || props.vehicle?.vendor_plans || [];
+
+    // Always add Basic package (base price_per_day)
+    packages.push({
+        type: 'BAS',
+        name: 'Basic Rental',
+        subtitle: 'Standard Package',
+        pricePerDay: parseFloat(props.vehicle?.price_per_day) || 0,
+        total: (parseFloat(props.vehicle?.price_per_day) || 0) * props.numberOfDays,
+        deposit: parseFloat(props.vehicle?.security_deposit) || 0,
+        benefits: ['Base rental rate', 'Standard coverage'],
+        isBestValue: vendorPlans.length === 0,
+        isAddOn: false
+    });
+
+    // Add vendor plans if any exist
+    vendorPlans.forEach((plan, index) => {
+        const features = plan.features ? (typeof plan.features === 'string' ? JSON.parse(plan.features) : plan.features) : [];
+        packages.push({
+            type: plan.plan_type || `PLAN_${index}`,
+            name: plan.plan_type || 'Custom Plan',
+            subtitle: plan.plan_description || 'Vendor Package',
+            pricePerDay: parseFloat(plan.price) || 0,
+            total: (parseFloat(plan.price) || 0) * props.numberOfDays,
+            deposit: parseFloat(props.vehicle?.security_deposit) || 0,
+            benefits: features.length > 0 ? features : ['Custom vendor package'],
+            isBestValue: index === 0,
+            isAddOn: false,
+            vendorPlanId: plan.id
+        });
+    });
+
+    return packages;
+});
+
+const internalOptionalExtras = computed(() => {
+    if (!isInternal.value) return [];
+
+    const addons = props.vehicle?.addons || [];
+    return addons.map(addon => ({
+        id: `internal_addon_${addon.id}`,
+        code: addon.addon_id?.toString() || addon.id?.toString(),
+        name: addon.extra_name || 'Extra',
+        description: addon.description || addon.extra_name || 'Optional Add-on',
+        price: parseFloat(addon.price) * props.numberOfDays || 0,
+        daily_rate: parseFloat(addon.price) || 0,
+        amount: addon.price,
+        maxQuantity: addon.quantity || 1
+    }));
+});
+
 // LocautoRent: Optional extras (non-protection extras like GPS, child seat, etc.)
 const locautoOptionalExtras = computed(() => {
     if (!isLocautoRent.value) return [];
@@ -237,6 +313,9 @@ const locautoOptionalExtras = computed(() => {
 const availablePackages = computed(() => {
     if (isAdobeCars.value) {
         return adobePackages.value;
+    }
+    if (isInternal.value) {
+        return internalPackages.value;
     }
     if (!props.vehicle || !props.vehicle.products) return [];
     return packageOrder
@@ -335,6 +414,8 @@ const extrasTotal = computed(() => {
             extra = locautoOptionalExtras.value.find(e => e.id === id);
         } else if (isAdobeCars.value) {
             extra = adobeOptionalExtras.value.find(e => e.id === id);
+        } else if (isInternal.value) {
+            extra = internalOptionalExtras.value.find(e => e.id === id);
         } else {
             extra = props.optionalExtras.find(e => e.id === id);
         }
@@ -412,6 +493,8 @@ const getSelectedExtrasDetails = computed(() => {
             extra = locautoOptionalExtras.value.find(e => e.id === id);
         } else if (isAdobeCars.value) {
             extra = adobeOptionalExtras.value.find(e => e.id === id);
+        } else if (isInternal.value) {
+            extra = internalOptionalExtras.value.find(e => e.id === id);
         } else {
             extra = props.optionalExtras.find(e => e.id === id);
         }
@@ -753,7 +836,7 @@ const getIconColorClass = (name) => {
 
             <!-- 2. Extras Section -->
             <section
-                v-if="(optionalExtras && optionalExtras.length > 0) || (isLocautoRent && locautoOptionalExtras.length > 0) || (isAdobeCars && adobeOptionalExtras.length > 0)">
+                v-if="(optionalExtras && optionalExtras.length > 0) || (isLocautoRent && locautoOptionalExtras.length > 0) || (isAdobeCars && adobeOptionalExtras.length > 0) || (isInternal && internalOptionalExtras.length > 0)">
                 <div class="mb-6">
                     <h2 class="font-display text-3xl font-bold text-gray-900 mb-2">Optional Extras</h2>
                     <p class="text-gray-600">Enhance your journey with these add-ons</p>
@@ -761,7 +844,7 @@ const getIconColorClass = (name) => {
 
                 <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                     <template
-                        v-for="extra in (isLocautoRent ? locautoOptionalExtras : (isAdobeCars ? adobeOptionalExtras : optionalExtras))"
+                        v-for="extra in (isLocautoRent ? locautoOptionalExtras : (isAdobeCars ? adobeOptionalExtras : (isInternal ? internalOptionalExtras : optionalExtras)))"
                         :key="extra.id">
                         <div v-if="!extra.isHidden" @click="toggleExtra(extra)"
                             class="extra-card bg-white rounded-2xl p-4 border-2 cursor-pointer transition-all"
@@ -820,8 +903,7 @@ const getIconColorClass = (name) => {
                     <div class="flex items-start gap-4">
                         <div
                             class="w-28 h-20 bg-gradient-to-br from-gray-50 to-gray-100 rounded-xl overflow-hidden flex-shrink-0">
-                            <img v-if="vehicle.image" :src="vehicle.image" alt="Car"
-                                class="w-full h-full object-cover" />
+                            <img v-if="vehicleImage" :src="vehicleImage" alt="Car" class="w-full h-full object-cover" />
                             <svg v-else class="w-full h-full p-3 text-gray-400" viewBox="0 0 24 24" fill="currentColor">
                                 <path
                                     d="M18.92 6.01C18.72 5.42 18.16 5 17.5 5h-11c-.66 0-1.21.42-1.42 1.01L3 12v8c0 .55.45 1 1 1h1c.55 0 1-.45 1-1v-1h12v1c0 .55.45 1 1 1h1c.55 0 1-.45 1-1v-8l-2.08-5.99zM6.5 16c-.83 0-1.5-.67-1.5-1.5S5.67 13 6.5 13s1.5.67 1.5 1.5S7.33 16 6.5 16zm11 0c-.83 0-1.5-.67-1.5-1.5s.67-1.5 1.5-1.5 1.5.67 1.5 1.5-.67 1.5-1.5 1.5zM5 11l1.5-4.5h11L19 11H5z" />

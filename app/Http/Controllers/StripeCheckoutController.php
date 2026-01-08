@@ -56,15 +56,50 @@ class StripeCheckoutController extends Controller
             $payableAmount = round($validated['total_amount'] * ($paymentPercentage / 100), 2);
             $pendingAmount = round($validated['total_amount'] - $payableAmount, 2);
 
+            // Get vehicle image (handle internal vehicles with images array)
+            $vehicleImage = null;
+            if ($validated['vehicle']['source'] === 'internal' && !empty($validated['vehicle']['images'])) {
+                // Find primary image from images array
+                foreach ($validated['vehicle']['images'] as $img) {
+                    if (isset($img['image_type']) && $img['image_type'] === 'primary') {
+                        $vehicleImage = $img['image_url'] ?? null;
+                        break;
+                    }
+                }
+                // Fallback to first gallery image
+                if (!$vehicleImage) {
+                    foreach ($validated['vehicle']['images'] as $img) {
+                        if (isset($img['image_type']) && $img['image_type'] === 'gallery') {
+                            $vehicleImage = $img['image_url'] ?? null;
+                            break;
+                        }
+                    }
+                }
+            } else {
+                $vehicleImage = $validated['vehicle']['image'] ?? null;
+            }
+
+            // Normalize currency (symbols to ISO codes)
+            $currency = $validated['currency'] ?? 'EUR';
+            $currencyMap = [
+                '€' => 'EUR',
+                '$' => 'USD',
+                '₹' => 'INR',
+                '₽' => 'RUB',
+                'A$' => 'AUD',
+                '£' => 'GBP',
+            ];
+            $currency = $currencyMap[$currency] ?? $currency;
+
             // Build line items for Stripe
             $lineItems = [
                 [
                     'price_data' => [
-                        'currency' => strtolower($validated['currency']),
+                        'currency' => strtolower($currency),
                         'product_data' => [
                             'name' => $validated['vehicle']['brand'] . ' ' . $validated['vehicle']['model'],
                             'description' => $validated['package'] . ' Package - ' . $validated['number_of_days'] . ' day(s)',
-                            'images' => $validated['vehicle']['image'] ? [$validated['vehicle']['image']] : [],
+                            'images' => $vehicleImage ? [$vehicleImage] : [],
                         ],
                         'unit_amount' => (int) ($payableAmount * 100), // Stripe uses cents
                     ],
@@ -78,7 +113,7 @@ class StripeCheckoutController extends Controller
                 'vehicle_source' => $validated['vehicle']['source'] ?? 'greenmotion',
                 'vehicle_brand' => $validated['vehicle']['brand'] ?? '',
                 'vehicle_model' => $validated['vehicle']['model'] ?? '',
-                'vehicle_image' => $validated['vehicle']['image'] ?? '',
+                'vehicle_image' => $vehicleImage ?? '',
                 'vehicle_category' => $validated['vehicle']['category'] ?? $validated['vehicle']['vehicle_category'] ?? '',
                 'vehicle_class' => $validated['vehicle']['class'] ?? '',
                 'adobe_category' => $validated['vehicle']['adobe_category'] ?? '', // Adobe single-letter category code

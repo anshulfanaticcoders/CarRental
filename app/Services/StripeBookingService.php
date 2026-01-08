@@ -44,10 +44,16 @@ class StripeBookingService
             Log::info('StripeBookingService: Customer processed', ['customer_id' => $customer->id]);
 
             // Create booking
+            // For internal vehicles, set vehicle_id to actual vehicle ID
+            $vehicleId = null;
+            if (($metadata->vehicle_source ?? '') === 'internal' && !empty($metadata->vehicle_id)) {
+                $vehicleId = (int) $metadata->vehicle_id;
+            }
+
             $booking = Booking::create([
                 'booking_number' => Booking::generateBookingNumber(),
                 'customer_id' => $customer->id,
-                'vehicle_id' => null, // External vehicle
+                'vehicle_id' => $vehicleId, // Set for internal, null for external
                 'provider_source' => $metadata->vehicle_source ?? 'greenmotion',
                 'provider_vehicle_id' => $metadata->vehicle_id ?? null,
                 'vehicle_name' => ($metadata->vehicle_brand ?? '') . ' ' . ($metadata->vehicle_model ?? ''),
@@ -137,6 +143,14 @@ class StripeBookingService
                 $this->triggerGreenMotionReservation($booking, $metadata);
             } elseif ($booking->provider_source === 'adobe') {
                 $this->triggerAdobeReservation($booking, $metadata);
+            } elseif ($booking->provider_source === 'internal') {
+                // Internal vehicles don't require external API reservation
+                Log::info('StripeBookingService: Internal vehicle booking confirmed', [
+                    'booking_id' => $booking->id,
+                    'vehicle_id' => $booking->vehicle_id,
+                    'plan' => $booking->plan,
+                    'total_amount' => $booking->total_amount,
+                ]);
             }
 
             return $booking;

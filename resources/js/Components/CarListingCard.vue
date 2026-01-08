@@ -46,7 +46,7 @@ const props = defineProps({
     }
 });
 
-const emit = defineEmits(['toggleFavourite', 'saveSearchUrl']);
+const emit = defineEmits(['toggleFavourite', 'saveSearchUrl', 'select-package']);
 
 const { selectedCurrency } = useCurrency();
 const page = usePage();
@@ -358,6 +358,19 @@ const selectAdobeProtection = (protection) => {
 // Close modal
 const closeModal = () => {
     showAllPlans.value = false;
+};
+
+// Select Internal Vehicle Package (emits for inline BookingExtrasStep)
+const selectInternalPackage = () => {
+    emit('select-package', {
+        vehicle: props.vehicle,
+        package: 'BAS', // Internal vehicles default to Basic package
+        protection_code: null,
+        protection_amount: 0,
+        // Pass vendorPlans and addons for BookingExtrasStep to use
+        vendorPlans: props.vehicle.vendor_plans || [],
+        addons: props.vehicle.addons || []
+    });
 };
 
 // Image Handling
@@ -741,11 +754,18 @@ onUnmounted(() => {
                     </svg>
                 </button>
 
-                <!-- Standard Link -->
-                <Link v-else
-                    :href="vehicle.source !== 'internal'
-                        ? route(getProviderRoute(vehicle), getRouteParams(vehicle))
-                        : route('vehicle.show', { locale: page.props.locale, id: vehicle.id, package: form.package_type, pickup_date: form.date_from, return_date: form.date_to })"
+                <!-- Internal Vehicle: Emit select-package for inline BookingExtrasStep -->
+                <button v-else-if="vehicle.source === 'internal'" @click="selectInternalPackage"
+                    class="header-btn primary">
+                    Book Deal
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M14 5l7 7m0 0l-7 7m7-7H3" />
+                    </svg>
+                </button>
+
+                <!-- Standard Link for other external providers -->
+                <Link v-else :href="route(getProviderRoute(vehicle), getRouteParams(vehicle))"
                     class="header-btn primary" @click="$emit('saveSearchUrl')">
                     Book Deal
                     <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
