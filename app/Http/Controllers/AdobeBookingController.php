@@ -2,7 +2,9 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\AdobeBooking;
+use App\Models\Booking;
+use App\Models\Customer;
+use App\Models\User;
 use App\Services\AdobeCarService;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
@@ -10,8 +12,8 @@ use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 use Stripe\Stripe;
 use Stripe\Checkout\Session;
-use App\Models\User;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 
 class AdobeBookingController extends Controller
 {
@@ -242,62 +244,204 @@ class AdobeBookingController extends Controller
                 'promocode' => 'nullable|string|max:100',
             ]);
 
-            // Create the Adobe booking record
-            $booking = AdobeBooking::create([
-                'vehicle_category' => $validatedData['vehicle_category'],
-                'vehicle_model' => $validatedData['vehicle_model'],
-                'pickup_location_id' => $validatedData['pickup_location_id'],
-                'dropoff_location_id' => $validatedData['dropoff_location_id'],
-                'start_date' => $validatedData['date_from'],
-                'start_time' => $validatedData['time_from'],
-                'end_date' => $validatedData['date_to'],
-                'end_time' => $validatedData['time_to'],
-                'customer_details' => [
-                    'name' => $validatedData['customer']['name'],
+            // 1. Get or create Customer
+            $customer = Customer::where('email', $validatedData['customer']['email'])->first();
+            if (!$customer) {
+                $customer = Customer::create([
+                    'user_id' => Auth::id(),
+                    'first_name' => $validatedData['customer']['name'],
                     'last_name' => $validatedData['customer']['last_name'],
                     'email' => $validatedData['customer']['email'],
                     'phone' => $validatedData['customer']['phone'],
-                    'country' => $validatedData['customer']['country'],
-                ],
-                'tdr_total' => $validatedData['tdr_total'],
-                'pli_total' => $validatedData['pli_total'],
-                'ldw_total' => $validatedData['ldw_total'] ?? 0,
-                'spp_total' => $validatedData['spp_total'] ?? 0,
-                'dro_total' => $validatedData['dro_total'] ?? 0,
-                'base_rate' => $validatedData['base_rate'],
-                'vehicle_total' => $validatedData['vehicle_total'],
-                'grand_total' => $validatedData['grand_total'],
-                'currency' => $validatedData['currency'],
-                'selected_protections' => $validatedData['selected_protections'] ?? [],
-                'selected_extras' => $validatedData['selected_extras'] ?? [],
-                'booking_status' => 'pending',
-                'payment_status' => 'pending',
-                'payment_type' => 'PREPAID',
-                'customer_comment' => $validatedData['customer_comment'],
-                'reference' => $validatedData['reference'],
-                'flight_number' => $validatedData['flight_number'],
-                'language' => $validatedData['language'] ?? 'en',
-                'user_id' => Auth::id(),
+                    'driver_age' => 25, // Default or extract if available
+                ]);
+            }
+
+            // 2. Construct comment for Adobe including extras/protections
+            $commentParts = [];
+            if (!empty($validatedData['customer_comment'])) {
+                $commentParts[] = "Customer Notes: " . $validatedData['customer_comment'];
+            }
+            
+            $adobeComment = implode(" | ", $commentParts);
+            if (strlen($adobeComment) > 1000) {
+                $adobeComment = substr($adobeComment, 0, 997) . "...";
+            }
+
+            // 3. Fetch protections and extras for the booking items array (MANDATORY)
+            $pickupOffice = $validatedData['pickup_location_id'];
+            $returnOffice = $validatedData['dropoff_location_id'] ?? $pickupOffice;
+            $startDate = $validatedData['pickup_datetime'];
+            $endDate = $validatedData['dropoff_datetime'];
+            $category = $validatedData['vehicle_category'];
+
+            $categoryItems = $this->adobeCarService->getProtectionsAndExtras(
+                $pickupOffice,
+                $category,
+                ['startdate' => $startDate, 'enddate' => $endDate]
+            );
+
+            // Build items array from API response, marking user-selected ones
+            $bookingItems = [];
+            $allItems = array_merge($categoryItems['protections'] ?? [], $categoryItems['extras'] ?? []);
+
+            $selectedProtectionCodes = array_map(fn($p) => $p['code'] ?? '', $validatedData['selected_protections'] ?? []);
+            $selectedExtrasByCode = [];
+            foreach ($validatedData['selected_extras'] ?? [] as $extra) {
+                $code = $extra['code'] ?? '';
+                if ($code) {
+                    $selectedExtrasByCode[$code] = $extra['quantity'] ?? 1;
+                }
+            }
+
+            // IMPORTANT: Only send items that should be INCLUDED (minimal items approach)
+            // Adobe ignores items with included=false
+            foreach ($allItems as $item) {
+                $code = $item['code'] ?? '';
+                $isRequired = $item['required'] ?? false;
+                $isProtection = ($item['type'] ?? '') === 'Proteccion';
+                $isExtra = ($item['type'] ?? '') === 'Adicionales';
+
+                // Determine if this item should be included
+                $shouldInclude = false;
+                $quantity = 0;
+                
+                if ($isRequired) {
+                    $shouldInclude = true;
+                    $quantity = 1;
+                } elseif ($isProtection && in_array($code, $selectedProtectionCodes)) {
+                    $shouldInclude = true;
+                    $quantity = 1;
+                } elseif ($isExtra && isset($selectedExtrasByCode[$code])) {
+                    $shouldInclude = true;
+                    $quantity = $selectedExtrasByCode[$code];
+                }
+
+                // Only add items that should be included
+                if ($shouldInclude) {
+                    $bookingItems[] = [
+                        'code' => $code,
+                        'quantity' => $quantity,
+                        'total' => $item['total'] ?? 0,
+                        'order' => $item['order'] ?? 0,
+                        'type' => $item['type'] ?? '',
+                        'included' => true, // MUST be true for Adobe to charge it
+                        'description' => $item['description'] ?? '',
+                        'information' => $item['information'] ?? '',
+                        'name' => $item['name'] ?? '',
+                        'required' => $isRequired
+                    ];
+                }
+            }
+
+            Log::info('Adobe: Built items array (minimal)', [
+                'items_count' => count($bookingItems),
+                'items' => array_map(fn($i) => $i['code'] . ':qty=' . $i['quantity'], $bookingItems)
             ]);
 
-            Log::info('Adobe booking created successfully', ['booking_id' => $booking->id]);
 
-            // Create Stripe checkout session
+            // 4. Create Adobe Reservation via API with CORRECT Swagger schema field names
+            $adobeParams = [
+                'bookingNumber' => 0,
+                'category' => $category,
+                'startdate' => $startDate, // lowercase!
+                'pickupoffice' => $pickupOffice, // lowercase!
+                'enddate' => $endDate, // lowercase!
+                'returnoffice' => $returnOffice, // lowercase!
+                'customerCode' => $this->adobeCarService->getCustomerCode(),
+                'name' => $validatedData['customer']['name'],
+                'lastName' => $validatedData['customer']['last_name'],
+                'fullName' => $validatedData['customer']['name'] . ' ' . $validatedData['customer']['last_name'],
+                'email' => $validatedData['customer']['email'] ?? '',
+                'phone' => $validatedData['customer']['phone'] ?? '',
+                'country' => $validatedData['customer']['country'] ?? 'CR',
+                'language' => 'en',
+                'flightNumber' => $validatedData['flight_number'] ?? '',
+                'customerComment' => $adobeComment,
+                'items' => $bookingItems // MANDATORY items array
+            ];
+
+            Log::info('Creating actual Adobe reservation', ['params' => $adobeParams]);
+            $adobeApiResult = $this->adobeCarService->createBooking($adobeParams);
+
+
+            if (!$adobeApiResult || !isset($adobeApiResult['result']) || !$adobeApiResult['result']) {
+                Log::error('Adobe API Reservation failed', ['result' => $adobeApiResult]);
+                return response()->json([
+                    'success' => false,
+                    'error' => 'Vehicle could not be reserved with Adobe: ' . ($adobeApiResult['error'] ?? 'Unknown error')
+                ], 400);
+            }
+
+            $adobeBookingNumber = $adobeApiResult['data']['bookingNumber'] ?? null;
+            Log::info('Adobe reservation created successfully', ['bookingNumber' => $adobeBookingNumber]);
+
+            // 3.5 Attempt to get vehicle image from cache for the unified record
+            $vehicleImage = null;
+            try {
+                $cachedData = $this->adobeCarService->getCachedVehicleData($validatedData['pickup_location_id'], 120);
+                if ($cachedData && !empty($cachedData['vehicles'])) {
+                    $selected = collect($cachedData['vehicles'])->firstWhere('category', $validatedData['vehicle_category']);
+                    if ($selected && isset($selected['photo'])) {
+                        $vehicleImage = $this->getAdobeVehicleImage($selected['photo']);
+                    }
+                }
+            } catch (\Exception $e) {
+                Log::warning('Failed to fetch vehicle image from cache for Adobe booking record', ['error' => $e->getMessage()]);
+            }
+
+            if (!$vehicleImage) {
+                // Fallback to a generic image based on category if photo not found
+                $vehicleImage = $this->getAdobeVehicleImage($validatedData['vehicle_category']);
+            }
+
+            // 4. Create the unified Booking record
+            $booking = Booking::create([
+                'booking_number' => Booking::generateBookingNumber(),
+                'customer_id' => $customer->id,
+                'provider_source' => 'adobe',
+                'provider_vehicle_id' => $validatedData['vehicle_category'],
+                'provider_booking_ref' => $adobeBookingNumber,
+                'vehicle_name' => $validatedData['vehicle_model'],
+                'vehicle_image' => $vehicleImage,
+                'pickup_date' => $validatedData['date_from'],
+                'return_date' => $validatedData['date_to'],
+                'pickup_time' => $validatedData['time_from'],
+                'return_time' => $validatedData['time_to'],
+                'pickup_location' => $validatedData['pickup_location_id'],
+                'return_location' => $validatedData['dropoff_location_id'] ?? $validatedData['pickup_location_id'],
+                'total_days' => 1, // Will be calculated by frontend or we can calculate here. 
+                                  // For now using 1 as placeholder if missing, but grand_total is correct.
+                'base_price' => $validatedData['base_rate'],
+                'extra_charges' => $validatedData['grand_total'] - $validatedData['base_rate'],
+                'tax_amount' => 0,
+                'total_amount' => $validatedData['grand_total'],
+                'amount_paid' => $validatedData['grand_total'],
+                'pending_amount' => 0,
+                'booking_currency' => strtoupper($validatedData['currency']),
+                'payment_status' => 'pending',
+                'booking_status' => 'pending',
+                'notes' => $adobeComment,
+            ]);
+
+            Log::info('Unified booking record created for Adobe', ['booking_id' => $booking->id]);
+
+            // 5. Create Stripe checkout session
             Stripe::setApiKey(config('stripe.secret'));
 
             $session = Session::create([
-                'customer_email' => $booking->customer_details['email'] ?? null,
+                'customer_email' => $customer->email,
                 'payment_method_types' => ['card'],
                 'line_items' => [
                     [
                         'price_data' => [
-                            'currency' => strtolower($booking->currency),
+                            'currency' => strtolower($booking->booking_currency),
                             'product_data' => [
-                                'name' => $booking->vehicle_model,
-                                'description' => "Adobe Car Rental - {$booking->vehicle_category}",
-                                'images' => [$this->getAdobeVehicleImage($selectedVehicle['photo'] ?? '')],
+                                'name' => $booking->vehicle_name,
+                                'description' => "Adobe Car Rental - {$booking->provider_vehicle_id}",
+                                'images' => [$booking->vehicle_image],
                             ],
-                            'unit_amount' => (int)($booking->grand_total * 100), // Convert to cents
+                            'unit_amount' => (int)($booking->total_amount * 100), // Convert to cents
                         ],
                         'quantity' => 1,
                     ],
@@ -313,7 +457,7 @@ class AdobeBookingController extends Controller
             ]);
 
             // Update booking with Stripe session ID
-            $booking->stripe_checkout_session_id = $session->id;
+            $booking->stripe_session_id = $session->id;
             $booking->save();
 
             Log::info('Adobe Stripe checkout session created', [
@@ -364,7 +508,7 @@ class AdobeBookingController extends Controller
             }
 
             // Find the booking
-            $booking = AdobeBooking::where('stripe_checkout_session_id', $sessionId)->first();
+            $booking = Booking::where('stripe_session_id', $sessionId)->first();
 
             if (!$booking) {
                 return redirect()->route('search')
@@ -374,9 +518,9 @@ class AdobeBookingController extends Controller
             if ($session->payment_status === 'paid') {
                 // Update booking status
                 $booking->payment_status = 'paid';
-                $booking->payment_completed_at = now();
+                //$booking->payment_completed_at = now(); // Booking model doesn't have this but we can use updated_at or add if needed
                 $booking->booking_status = 'confirmed';
-                $booking->payment_handler_ref = $session->payment_intent;
+                $booking->stripe_payment_intent_id = $session->payment_intent;
                 $booking->save();
 
                 Log::info('Adobe booking payment completed successfully', [
@@ -384,10 +528,26 @@ class AdobeBookingController extends Controller
                     'session_id' => $sessionId
                 ]);
 
-                return Inertia::render('BookingSuccess', [
+                // Prepare data for the success view
+                $vehicleData = [
+                    'brand' => $this->extractBrandFromModel($booking->vehicle_name),
+                    'model' => $booking->vehicle_name,
+                    'image' => $booking->vehicle_image,
+                ];
+
+                $paymentData = [
+                    'amount' => $booking->total_amount,
+                    'currency' => $booking->booking_currency,
+                    'status' => 'paid',
+                ];
+
+                return Inertia::render('Booking/Success', [
                     'booking' => $booking,
+                    'vehicle' => $vehicleData,
+                    'payment' => $paymentData,
                     'provider' => 'Adobe Car Rental',
                     'message' => 'Your Adobe car rental has been confirmed successfully!',
+                    'locale' => $request->get('locale', app()->getLocale()),
                 ]);
             } else {
                 return redirect()->route('search')
@@ -415,12 +575,12 @@ class AdobeBookingController extends Controller
 
             if ($sessionId) {
                 // Find and update the booking
-                $booking = AdobeBooking::where('stripe_checkout_session_id', $sessionId)->first();
+                $booking = Booking::where('stripe_session_id', $sessionId)->first();
 
                 if ($booking) {
                     $booking->payment_status = 'failed';
                     $booking->booking_status = 'cancelled';
-                    $booking->cancelled_at = now();
+                    //$booking->cancelled_at = now(); // Not in unified model
                     $booking->save();
 
                     Log::info('Adobe booking cancelled', [
@@ -456,7 +616,14 @@ class AdobeBookingController extends Controller
                 return response()->json(['error' => 'Unauthorized'], 401);
             }
 
-            $bookings = AdobeBooking::where('user_id', $user->id)
+            // Find customer link
+            $customer = Customer::where('user_id', $user->id)->first();
+            if (!$customer) {
+                return response()->json(['success' => true, 'bookings' => []]);
+            }
+
+            $bookings = Booking::where('customer_id', $customer->id)
+                ->where('provider_source', 'adobe')
                 ->orderBy('created_at', 'desc')
                 ->get();
 

@@ -10,12 +10,22 @@ class AdobeCarService
     protected $baseUrl;
     protected $username;
     protected $password;
+    protected $customerCode;
 
     public function __construct()
     {
         $this->baseUrl = env('ADOBE_URL', 'https://adobecar.cr:42800');
         $this->username = env('ADOBE_USERNAME', 'Z11338');
         $this->password = env('ADOBE_PASSWORD', '11338');
+        $this->customerCode = $this->username; // Using username as customer code
+    }
+
+    /**
+     * Get the customer code for Adobe
+     */
+    public function getCustomerCode(): string
+    {
+        return $this->customerCode;
     }
 
     /**
@@ -136,7 +146,7 @@ class AdobeCarService
     }
 
     /**
-     * Creates a mock booking to get detailed vehicle information including protections and extras.
+     * Creates a mock booking or real booking to get detailed vehicle information or finalize reservation.
      *
      * @param array $params Booking parameters
      * @return array Detailed booking information or empty array on failure.
@@ -170,6 +180,38 @@ class AdobeCarService
     }
 
     /**
+     * Creates a real booking in the Adobe system.
+     *
+     * @param array $params Booking parameters (pickupOffice, returnOffice, pickupDate, returnDate, category, customerCode, customerName, flightNumber, comment)
+     * @return array API response indicating success or failure
+     */
+    public function createBooking(array $params): array
+    {
+        $token = $this->getAccessToken();
+
+        if (!$token) {
+            return ['result' => false, 'error' => 'Authentication failed'];
+        }
+
+        $response = Http::withToken($token)->post(rtrim($this->baseUrl, '/') . '/Booking', $params);
+
+        if ($response->successful()) {
+            return $response->json();
+        }
+
+        logger()->error('Failed to create Adobe booking.', [
+            'status' => $response->status(),
+            'body' => $response->body(),
+            'params' => $params
+        ]);
+
+        return [
+            'result' => false,
+            'error' => 'Adobe API Error: ' . ($response->json('error') ?? $response->reason())
+        ];
+    }
+
+    /**
      * Retrieves booking details which include protections and extras information.
      *
      * @param string $bookingNumber The booking number to retrieve details for
@@ -185,7 +227,7 @@ class AdobeCarService
 
         $response = Http::withToken($token)->get(rtrim($this->baseUrl, '/') . '/Booking', [
             'bookingNumber' => $bookingNumber,
-            'customerCode' => 'Z11338' // Valid Adobe customer code for details lookup
+            'customerCode' => $this->customerCode
         ]);
 
         if ($response->successful()) {
@@ -231,7 +273,7 @@ class AdobeCarService
             'category' => $category,
             'startDate' => $dates['startDate'] ?? $dates['startdate'] ?? '',
             'endDate' => $dates['endDate'] ?? $dates['enddate'] ?? '',
-            'customerCode' => 'Z11338', // Valid Adobe customer code
+            'customerCode' => $this->customerCode,
             'idioma' => 'en' // Required language field
         ];
 

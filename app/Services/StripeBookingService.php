@@ -6,11 +6,19 @@ use App\Models\Booking;
 use App\Models\BookingPayment;
 use App\Models\BookingExtra;
 use App\Models\Customer;
+use App\Services\AdobeCarService;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\DB;
 
 class StripeBookingService
 {
+    protected $adobeCarService;
+
+    public function __construct(AdobeCarService $adobeCarService)
+    {
+        $this->adobeCarService = $adobeCarService;
+    }
+
     /**
      * Create a booking from a Stripe Checkout Session
      */
@@ -62,6 +70,7 @@ class StripeBookingService
                 'booking_status' => 'confirmed',
                 'stripe_session_id' => $session->id,
                 'stripe_payment_intent_id' => $session->payment_intent,
+                'provider_booking_ref' => $metadata->provider_booking_ref ?? null,
             ]);
 
             Log::info('StripeBookingService: Booking record created', ['booking_id' => $booking->id]);
@@ -126,6 +135,8 @@ class StripeBookingService
                 $this->triggerLocautoReservation($booking, $metadata);
             } elseif ($booking->provider_source === 'greenmotion' || $booking->provider_source === 'usave') {
                 $this->triggerGreenMotionReservation($booking, $metadata);
+            } elseif ($booking->provider_source === 'adobe') {
+                $this->triggerAdobeReservation($booking, $metadata);
             }
 
             return $booking;
@@ -389,6 +400,209 @@ class StripeBookingService
             ]);
             $booking->update([
                 'notes' => ($booking->notes ? $booking->notes . "\n" : "") . "GreenMotion Reservation Error: " . $e->getMessage()
+            ]);
+        }
+    }
+
+    /**
+     * Trigger reservation on Adobe API
+     * 
+     * IMPORTANT: Adobe API requires:
+     * 1. Lowercase field names: startdate, enddate, pickupoffice, returnoffice
+     * 2. The `items` array MUST be populated with protections/extras from GetCategoryWithFare
+     * 3. Separate name fields: name, lastName, fullName
+     */
+    protected function triggerAdobeReservation($booking, $metadata)
+    {
+        Log::info('Adobe: Triggering reservation for booking', ['booking_id' => $booking->id]);
+
+        try {
+            $pickupOffice = $metadata->pickup_location_code ?? '';
+            $returnOffice = $metadata->return_location_code ?? $pickupOffice;
+            $startDate = $metadata->pickup_date . ' ' . $metadata->pickup_time;
+            $endDate = ($metadata->dropoff_date ?? $metadata->return_date ?? '') . ' ' . ($metadata->dropoff_time ?? $metadata->return_time ?? '');
+            
+            // IMPORTANT: Use adobe_category (single-letter code like 'e', 'n') NOT vehicle_category (descriptive like 'Sedan')
+            $category = $metadata->adobe_category ?? '';
+            if (empty($category)) {
+                // Fallback: try to extract from vehicle_id (format: adobe_OCO_e)
+                $vehicleId = $metadata->vehicle_id ?? '';
+                if (strpos($vehicleId, 'adobe_') === 0) {
+                    $parts = explode('_', $vehicleId);
+                    $category = $parts[2] ?? '';
+                }
+            }
+            if (empty($category)) {
+                $category = $metadata->sipp_code ?? $metadata->vehicle_category ?? '';
+            }
+            
+            Log::info('Adobe: Using category for booking', ['category' => $category, 'vehicle_id' => $metadata->vehicle_id ?? '']);
+
+
+            // Fetch protections and extras from Adobe API - THIS IS MANDATORY
+            $categoryItems = $this->adobeCarService->getProtectionsAndExtras(
+                $pickupOffice,
+                $category,
+                ['startdate' => $startDate, 'enddate' => $endDate]
+            );
+
+            // Build the items array for booking payload
+            $bookingItems = [];
+            $allItems = array_merge($categoryItems['protections'] ?? [], $categoryItems['extras'] ?? []);
+            
+            // Check for user-selected protections from metadata
+            $selectedProtectionCodes = [];
+            if (!empty($metadata->protection_code)) {
+                $protectionCode = $metadata->protection_code;
+                // Strip adobe_protection_ prefix if present
+                if (strpos($protectionCode, 'adobe_protection_') === 0) {
+                    $protectionCode = substr($protectionCode, strlen('adobe_protection_'));
+                }
+                // Handle comma-separated codes
+                $codes = explode(',', $protectionCode);
+                foreach ($codes as $code) {
+                    $code = trim($code);
+                    if ($code) {
+                        $selectedProtectionCodes[] = $code;
+                    }
+                }
+            }
+            
+            Log::info('Adobe: Selected protection codes', ['codes' => $selectedProtectionCodes]);
+            
+            // Parse extras from both 'extras' and 'extras_data' fields
+            $extrasData = json_decode($metadata->extras_data ?? '[]', true);
+            $extrasSimple = json_decode($metadata->extras ?? '[]', true);
+            
+            // Merge both sources
+            if (!empty($extrasSimple) && is_array($extrasSimple)) {
+                $extrasData = array_merge($extrasData ?? [], $extrasSimple);
+            }
+            
+            $selectedExtraCodes = [];
+            if (!empty($extrasData) && is_array($extrasData)) {
+                foreach ($extrasData as $extra) {
+                    // Handle various key formats from frontend
+                    $code = $extra['id'] ?? $extra['Code'] ?? $extra['code'] ?? $extra['extraCode'] ?? '';
+                    // Strip adobe_ prefix if present
+                    if (strpos($code, 'adobe_extra_') === 0) {
+                        $code = substr($code, strlen('adobe_extra_'));
+                    }
+                    if ($code) {
+                        $selectedExtraCodes[$code] = $extra['qty'] ?? $extra['Quantity'] ?? $extra['quantity'] ?? 1;
+                    }
+                }
+            }
+            
+            Log::info('Adobe: Extracted extras from metadata', [
+                'protection_codes' => $selectedProtectionCodes,
+                'extra_codes' => $selectedExtraCodes,
+                'raw_extras_data' => $metadata->extras_data ?? 'null',
+                'raw_extras' => $metadata->extras ?? 'null'
+            ]);
+
+
+            // IMPORTANT: Only send items that should be INCLUDED in the booking
+            // Adobe ignores quantity for items - only counts items where included=true
+            foreach ($allItems as $item) {
+                $code = $item['code'] ?? '';
+                $isRequired = $item['required'] ?? false;
+                $isProtection = ($item['type'] ?? '') === 'Proteccion';
+                $isExtra = ($item['type'] ?? '') === 'Adicionales';
+
+                // Determine if this item should be included
+                $shouldInclude = false;
+                $quantity = 0;
+                
+                if ($isRequired) {
+                    $shouldInclude = true;
+                    $quantity = 1;
+                } elseif ($isProtection && in_array($code, $selectedProtectionCodes)) {
+                    $shouldInclude = true;
+                    $quantity = 1;
+                } elseif ($isExtra && isset($selectedExtraCodes[$code])) {
+                    $shouldInclude = true;
+                    $quantity = $selectedExtraCodes[$code];
+                }
+
+                // Only add items that should be included (minimal items approach)
+                if ($shouldInclude) {
+                    $bookingItems[] = [
+                        'code' => $code,
+                        'quantity' => $quantity,
+                        'total' => $item['total'] ?? 0,
+                        'order' => $item['order'] ?? 0,
+                        'type' => $item['type'] ?? '',
+                        'included' => true, // MUST be true for Adobe to charge it
+                        'description' => $item['description'] ?? '',
+                        'information' => $item['information'] ?? '',
+                        'name' => $item['name'] ?? '',
+                        'required' => $isRequired
+                    ];
+                }
+            }
+            
+            Log::info('Adobe: Built items array for booking (minimal)', [
+                'items_count' => count($bookingItems),
+                'items' => array_map(fn($i) => $i['code'] . ':qty=' . $i['quantity'], $bookingItems)
+            ]);
+
+
+            // Construct detailed comment
+            $comment = "Website Booking (Post-Payment). ";
+            if (isset($metadata->notes) && $metadata->notes) {
+                $comment .= "Notes: " . $metadata->notes;
+            }
+
+            $nameParts = explode(' ', $metadata->customer_name ?? 'Guest User', 2);
+            $firstName = $nameParts[0];
+            $lastName = $nameParts[1] ?? '.';
+
+            // Build payload with CORRECT Swagger schema field names
+            $adobeParams = [
+                'bookingNumber' => 0, // Required for new bookings
+                'category' => $category,
+                'startdate' => $startDate, // lowercase!
+                'pickupoffice' => $pickupOffice, // lowercase!
+                'enddate' => $endDate, // lowercase!
+                'returnoffice' => $returnOffice, // lowercase!
+                'customerCode' => $this->adobeCarService->getCustomerCode(),
+                'name' => $firstName,
+                'lastName' => $lastName,
+                'fullName' => $metadata->customer_name ?? 'Guest User',
+                'email' => $metadata->customer_email ?? '',
+                'phone' => $metadata->customer_phone ?? '',
+                'country' => 'CR',
+                'language' => 'en',
+                'customerComment' => $comment,
+                'flightNumber' => $metadata->flight_number ?? '',
+                'items' => $bookingItems // MANDATORY items array
+            ];
+
+            Log::info('Adobe: Sending reservation request', ['data' => $adobeParams]);
+            $adobeResponse = $this->adobeCarService->createBooking($adobeParams);
+
+            if (isset($adobeResponse['result']) && $adobeResponse['result'] && isset($adobeResponse['data']['bookingNumber'])) {
+                $providerBookingRef = $adobeResponse['data']['bookingNumber'];
+                Log::info('Adobe: Reservation successful', ['booking_ref' => $providerBookingRef]);
+
+                $booking->update([
+                    'provider_booking_ref' => $providerBookingRef,
+                    'notes' => ($booking->notes ? $booking->notes . "\n" : "") . "Adobe Conf: " . $providerBookingRef
+                ]);
+            } else {
+                Log::error('Adobe: Reservation failed', ['response' => $adobeResponse]);
+                $booking->update([
+                    'notes' => ($booking->notes ? $booking->notes . "\n" : "") . "Adobe Reservation failed: " . json_encode($adobeResponse)
+                ]);
+            }
+        } catch (\Exception $e) {
+            Log::error('Adobe: Exception during reservation trigger', [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+            $booking->update([
+                'notes' => ($booking->notes ? $booking->notes . "\n" : "") . "Adobe Reservation Error: " . $e->getMessage()
             ]);
         }
     }

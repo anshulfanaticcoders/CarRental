@@ -7,6 +7,7 @@ use App\Models\BookingPayment;
 use App\Models\BookingExtra;
 use App\Models\Customer;
 use App\Models\PayableSetting;
+use App\Services\AdobeCarService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 use Stripe\Stripe;
@@ -78,6 +79,9 @@ class StripeCheckoutController extends Controller
                 'vehicle_brand' => $validated['vehicle']['brand'] ?? '',
                 'vehicle_model' => $validated['vehicle']['model'] ?? '',
                 'vehicle_image' => $validated['vehicle']['image'] ?? '',
+                'vehicle_category' => $validated['vehicle']['category'] ?? $validated['vehicle']['vehicle_category'] ?? '',
+                'vehicle_class' => $validated['vehicle']['class'] ?? '',
+                'adobe_category' => $validated['vehicle']['adobe_category'] ?? '', // Adobe single-letter category code
                 'package' => $validated['package'],
                 'pickup_date' => $validated['pickup_date'],
                 'pickup_time' => $validated['pickup_time'],
@@ -105,6 +109,7 @@ class StripeCheckoutController extends Controller
                 'rental_code' => !empty($validated['rentalCode']) ? $validated['rentalCode'] : ($validated['vehicle']['rentalCode'] ?? ''),
                 'vehicle_total' => $validated['vehicle_total'] ?? $validated['total_amount'],
             ];
+
 
             // Create Stripe Checkout Session
             $currentLocale = app()->getLocale();

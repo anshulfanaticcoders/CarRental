@@ -125,8 +125,9 @@ const adobeProtectionPlans = computed(() => {
     if (!isAdobeCars.value) return [];
     const protections = [];
     if (props.vehicle.pli !== undefined) protections.push({ code: 'PLI', name: 'Liability Protection', amount: parseFloat(props.vehicle.pli), required: true });
-    if (props.vehicle.ldw !== undefined) protections.push({ code: 'LDW', name: 'Car Protection', amount: parseFloat(props.vehicle.ldw), required: false });
-    if (props.vehicle.spp !== undefined) protections.push({ code: 'SPP', name: 'Extended Protection', amount: parseFloat(props.vehicle.spp), required: false });
+    // Adobe API returns LDW/SPP as Daily Rates, but PLI as Total. Multiply optional protections by days.
+    if (props.vehicle.ldw !== undefined) protections.push({ code: 'LDW', name: 'Car Protection', amount: parseFloat(props.vehicle.ldw) * props.numberOfDays, required: false });
+    if (props.vehicle.spp !== undefined) protections.push({ code: 'SPP', name: 'Extended Protection', amount: parseFloat(props.vehicle.spp) * props.numberOfDays, required: false });
     return protections;
 });
 
@@ -137,30 +138,36 @@ const adobeProtectionPlans = computed(() => {
 const adobePackages = computed(() => {
     if (!isAdobeCars.value) return [];
 
+    const packages = [];
+
     // 1. Basic Package (Base Rate)
-    const packages = [{
+    // Always present, acts as the base.
+    packages.push({
         type: 'BAS',
-        name: 'Basic Rate',
+        name: 'Basic Rental',
         subtitle: 'Base Rental',
         total: adobeBaseRate.value,
         deposit: 0,
-        benefits: ['Base rental rate only', 'Liability Protection (PLI) added separately'],
-        isBestValue: false
-    }];
+        benefits: ['Base rental rate', 'Mandatory Liability (PLI) billed separately'],
+        isBestValue: false,
+        isAddOn: false
+    });
 
-    // 2. Protection Plans as Packages (Exclude PLI as it's mandatory)
+    // 2. Protection Plans as Add-on Packages
     adobeProtectionPlans.value.filter(p => p.code !== 'PLI').forEach(plan => {
         packages.push({
             type: plan.code,
             name: plan.name,
-            subtitle: 'Protection Plan',
-            total: adobeBaseRate.value + plan.amount, // Sum of Totals
+            subtitle: 'Optional Protection',
+            total: plan.amount, // Just the add-on price
             deposit: 0,
             benefits: [
-                'Includes Liability Protection (PLI)',
-                plan.required ? 'Mandatory - Required by law' : 'Optional Protection'
+                'Optional Extra Protection',
+                plan.required ? 'Mandatory' : 'Click to Add'
             ],
-            isBestValue: plan.code === 'LDW' // Just an example, can be adjusted
+            isBestValue: plan.code === 'SPP',
+            isAddOn: true,
+            extraId: `adobe_protection_${plan.code}`
         });
     });
 
@@ -173,20 +180,40 @@ const adobeMandatoryProtection = computed(() => {
     return pli ? pli.amount : 0;
 });
 
-// Adobe Cars: Optional Extras
 const adobeOptionalExtras = computed(() => {
     if (!isAdobeCars.value) return [];
-    const extras = props.vehicle?.extras || [];
-    return extras.map(extra => ({
-        id: `adobe_extra_${extra.code}`,
-        code: extra.code,
-        name: extra.name || extra.displayName || extra.description || extra.code,
-        description: extra.description || extra.displayDescription || extra.name,
-        // Price in API is Total.
-        daily_rate: parseFloat(extra.price || extra.amount || 0) / props.numberOfDays,
-        price: parseFloat(extra.price || extra.amount || 0),
-        amount: extra.price || extra.amount
+
+    // 1. Protection Plans (Hidden Extras)
+    // We map them to extras so they participate in pricing logic (extrasTotal)
+    // but we use 'isHidden' to filter them out of the bottom list.
+    const options = adobeProtectionPlans.value.filter(p => p.code !== 'PLI').map(plan => ({
+        id: `adobe_protection_${plan.code}`,
+        code: plan.code,
+        name: plan.name,
+        description: 'Optional Protection',
+        price: parseFloat(plan.amount),
+        daily_rate: parseFloat(plan.amount) / props.numberOfDays,
+        amount: plan.amount,
+        isHidden: true,
+        isProtection: true
     }));
+
+    // 2. Standard Extras
+    const extras = props.vehicle?.extras || [];
+    extras.forEach(extra => {
+        options.push({
+            id: `adobe_extra_${extra.code}`,
+            code: extra.code,
+            name: extra.name || extra.displayName || extra.description || extra.code,
+            description: extra.description || extra.displayDescription || extra.name,
+            // Price in API is Total.
+            daily_rate: parseFloat(extra.price || extra.amount || 0) / props.numberOfDays,
+            price: parseFloat(extra.price || extra.amount || 0),
+            amount: extra.price || extra.amount
+        });
+    });
+
+    return options;
 });
 
 // LocautoRent: Optional extras (non-protection extras like GPS, child seat, etc.)
@@ -352,6 +379,28 @@ const pendingAmount = computed(() => {
 const selectPackage = (pkgType) => {
     currentPackage.value = pkgType;
     // Re-evaluate free extras is automatic via computed/isExtraFree
+};
+
+// Adobe Helper: Toggle Protection Add-on
+const toggleAdobeProtection = (pkg) => {
+    if (pkg.extraId) {
+        toggleExtra({ id: pkg.extraId });
+    }
+};
+
+const isAdobeProtectionSelected = (pkg) => {
+    return !!selectedExtras.value[pkg.extraId];
+};
+
+// Helper to get comma-separated string of selected protection codes (LDW, SPP)
+const getSelectedAdobeProtectionCodes = () => {
+    const codes = [];
+    for (const id in selectedExtras.value) {
+        if (id.startsWith('adobe_protection_')) {
+            codes.push(id.replace('adobe_protection_', ''));
+        }
+    }
+    return codes.join(',');
 };
 
 const getSelectedExtrasDetails = computed(() => {
@@ -551,24 +600,28 @@ const getIconColorClass = (name) => {
                     </div>
 
                     <div class="grid grid-cols-1 sm:grid-cols-2 gap-6">
-                        <div v-for="pkg in availablePackages" :key="pkg.type" @click="selectPackage(pkg.type)"
+                        <div v-for="pkg in availablePackages" :key="pkg.type"
+                            @click="isAdobeCars && pkg.isAddOn ? toggleAdobeProtection(pkg) : selectPackage(pkg.type)"
                             class="package-card bg-white rounded-2xl p-6 border-2 cursor-pointer transition-all relative"
-                            :class="currentPackage === pkg.type ? 'selected border-[#1e3a5f] shadow-xl' : 'border-gray-200 hover:border-[#1e3a5f]/50 hover:shadow-lg'">
+                            :class="(isAdobeCars && pkg.isAddOn ? isAdobeProtectionSelected(pkg) : currentPackage === pkg.type) ? 'selected border-[#1e3a5f] shadow-xl' : 'border-gray-200 hover:border-[#1e3a5f]/50 hover:shadow-lg'">
                             <!-- Popular Badge -->
                             <div v-if="pkg.type === 'PMP' || pkg.isBestValue"
                                 class="absolute top-0 right-0 bg-gradient-to-r from-yellow-400 to-yellow-500 text-xs font-bold px-3 py-1 rounded-bl-xl rounded-tr-2xl text-white uppercase tracking-wide">
-                                Popular
+                                {{ pkg.isBestValue ? 'Recommended' : 'Popular' }}
                             </div>
 
                             <!-- Header -->
                             <div class="flex justify-between items-start mb-4">
                                 <div>
                                     <span class="text-sm font-bold text-gray-900 block tracking-wide">{{
-                                        getPackageDisplayName(pkg.type) }}</span>
+                                        pkg.name || getPackageDisplayName(pkg.type) }}</span>
                                     <span class="text-xs text-gray-400 uppercase tracking-wider">{{
-                                        getPackageSubtitle(pkg.type) }}</span>
+                                        pkg.subtitle || getPackageSubtitle(pkg.type) }}</span>
                                 </div>
-                                <div class="radio-custom" :class="{ selected: currentPackage === pkg.type }"></div>
+                                <div v-if="isAdobeCars && pkg.isAddOn" class="checkbox-custom"
+                                    :class="{ selected: isAdobeProtectionSelected(pkg) }"></div>
+                                <div v-else class="radio-custom" :class="{ selected: currentPackage === pkg.type }">
+                                </div>
                             </div>
 
                             <!-- Price -->
@@ -707,47 +760,52 @@ const getIconColorClass = (name) => {
                 </div>
 
                 <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                    <div v-for="extra in (isLocautoRent ? locautoOptionalExtras : (isAdobeCars ? adobeOptionalExtras : optionalExtras))"
-                        :key="extra.id" @click="toggleExtra(extra)"
-                        class="extra-card bg-white rounded-2xl p-4 border-2 cursor-pointer transition-all"
-                        :class="{ 'selected border-[#1e3a5f] bg-gradient-to-br from-blue-50 to-blue-100': selectedExtras[extra.id], 'border-gray-200 hover:border-[#1e3a5f]/50 hover:shadow-lg': !selectedExtras[extra.id] }">
-                        <div class="flex flex-col gap-3">
-                            <!-- Top Row: Checkbox + Icon + Title -->
-                            <div class="flex items-center gap-3">
-                                <div class="checkbox-custom flex-shrink-0"
-                                    :class="{ selected: !!selectedExtras[extra.id] }"></div>
-                                <div class="w-11 h-11 rounded-full flex items-center justify-center flex-shrink-0"
-                                    :class="getIconBackgroundClass(extra.name)">
-                                    <component :is="getExtraIcon(extra.name)" class="w-5 h-5"
-                                        :class="getIconColorClass(extra.name)" />
+                    <template
+                        v-for="extra in (isLocautoRent ? locautoOptionalExtras : (isAdobeCars ? adobeOptionalExtras : optionalExtras))"
+                        :key="extra.id">
+                        <div v-if="!extra.isHidden" @click="toggleExtra(extra)"
+                            class="extra-card bg-white rounded-2xl p-4 border-2 cursor-pointer transition-all"
+                            :class="{ 'selected border-[#1e3a5f] bg-gradient-to-br from-blue-50 to-blue-100': selectedExtras[extra.id], 'border-gray-200 hover:border-[#1e3a5f]/50 hover:shadow-lg': !selectedExtras[extra.id] }">
+                            <div class="flex flex-col gap-3">
+                                <!-- Top Row: Checkbox + Icon + Title -->
+                                <div class="flex items-center gap-3">
+                                    <div class="checkbox-custom flex-shrink-0"
+                                        :class="{ selected: !!selectedExtras[extra.id] }"></div>
+                                    <div class="w-11 h-11 rounded-full flex items-center justify-center flex-shrink-0"
+                                        :class="getIconBackgroundClass(extra.name)">
+                                        <component :is="getExtraIcon(extra.name)" class="w-5 h-5"
+                                            :class="getIconColorClass(extra.name)" />
+                                    </div>
+                                    <h4 class="font-bold text-gray-900 text-[1rem] flex-1">{{ extra.name }}</h4>
                                 </div>
-                                <h4 class="font-bold text-gray-900 text-[1rem] flex-1">{{ extra.name }}</h4>
-                            </div>
 
-                            <!-- Middle: Description (Removed as per request) -->
-                            <!-- <p class="text-xs text-gray-500 pl-8">{{ extra.description }}</p> -->
+                                <!-- Middle: Description (Removed as per request) -->
+                                <!-- <p class="text-xs text-gray-500 pl-8">{{ extra.description }}</p> -->
 
-                            <!-- Bottom: Price -->
-                            <div class="flex justify-end pl-8 mt-auto">
-                                <div v-if="isExtraFree(extra.id)" class="text-right">
-                                    <span class="text-base font-bold text-green-600">Free</span>
-                                    <span class="text-gray-400 line-through text-xs block">
-                                        {{ formatPrice(extra.daily_rate !== undefined ? extra.daily_rate : (extra.price
-                                            /
-                                            numberOfDays)) }}/day
-                                    </span>
-                                </div>
-                                <div v-else class="text-right">
-                                    <span class="text-base font-bold text-gray-900">
-                                        {{ formatPrice(extra.daily_rate !== undefined ? extra.daily_rate : (extra.price
-                                            /
-                                            numberOfDays)) }}
-                                    </span>
-                                    <span class="text-xs text-gray-500 block">/day</span>
+                                <!-- Bottom: Price -->
+                                <div class="flex justify-end pl-8 mt-auto">
+                                    <div v-if="isExtraFree(extra.id)" class="text-right">
+                                        <span class="text-base font-bold text-green-600">Free</span>
+                                        <span class="text-gray-400 line-through text-xs block">
+                                            {{ formatPrice(extra.daily_rate !== undefined ? extra.daily_rate :
+                                                (extra.price
+                                                    /
+                                                    numberOfDays)) }}/day
+                                        </span>
+                                    </div>
+                                    <div v-else class="text-right">
+                                        <span class="text-base font-bold text-gray-900">
+                                            {{ formatPrice(extra.daily_rate !== undefined ? extra.daily_rate :
+                                                (extra.price
+                                                    /
+                                                    numberOfDays)) }}
+                                        </span>
+                                        <span class="text-xs text-gray-500 block">/day</span>
+                                    </div>
                                 </div>
                             </div>
                         </div>
-                    </div>
+                    </template>
                 </div>
             </section>
         </div>
@@ -981,7 +1039,7 @@ const getIconColorClass = (name) => {
                 <div class="space-y-3">
                     <button @click="$emit('proceed-to-checkout', {
                         package: isLocautoRent ? (selectedLocautoProtection ? 'POA' : 'BAS') : currentPackage,
-                        protection_code: isLocautoRent ? selectedLocautoProtection : null,
+                        protection_code: isLocautoRent ? selectedLocautoProtection : (isAdobeCars ? getSelectedAdobeProtectionCodes() : null),
                         protection_amount: isLocautoRent && selectedLocautoProtection
                             ? locautoProtectionPlans.find(p => p.code === selectedLocautoProtection)?.amount || 0
                             : 0,

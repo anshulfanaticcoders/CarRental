@@ -3,7 +3,7 @@
         {
             "code": "PLI",
             "quantity": 0,
-            "total": 213.57,
+            "total": 166.11,
             "order": 2,
             "type": "Proteccion",
             "included": false,
@@ -15,7 +15,7 @@
         {
             "code": "LDW",
             "quantity": 0,
-            "total": 122.04,
+            "total": 94.92,
             "order": 3,
             "type": "Proteccion",
             "included": false,
@@ -27,7 +27,7 @@
         {
             "code": "SPP",
             "quantity": 0,
-            "total": 183.06,
+            "total": 142.38,
             "order": 4,
             "type": "Proteccion",
             "included": false,
@@ -39,7 +39,7 @@
         {
             "code": "BOO",
             "quantity": 0,
-            "total": 10.17,
+            "total": 7.91,
             "order": 5,
             "type": "Adicionales",
             "included": false,
@@ -51,7 +51,7 @@
         {
             "code": "BSS",
             "quantity": 0,
-            "total": 30.51,
+            "total": 23.73,
             "order": 6,
             "type": "Adicionales",
             "included": false,
@@ -63,7 +63,7 @@
         {
             "code": "GPS",
             "quantity": 0,
-            "total": 91.53,
+            "total": 71.19,
             "order": 7,
             "type": "Adicionales",
             "included": false,
@@ -75,7 +75,7 @@
         {
             "code": "WIF",
             "quantity": 0,
-            "total": 101.7,
+            "total": 79.1,
             "order": 8,
             "type": "Adicionales",
             "included": false,
@@ -111,7 +111,7 @@
         {
             "code": "CAD",
             "quantity": 0,
-            "total": 40.68,
+            "total": 31.64,
             "order": 11,
             "type": "Adicionales",
             "included": false,
