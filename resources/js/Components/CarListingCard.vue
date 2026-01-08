@@ -1,5 +1,5 @@
 <script setup>
-import { computed, ref, onMounted, onUnmounted } from 'vue';
+import { computed, ref, onMounted, onUnmounted, watch } from 'vue';
 import { Link, usePage } from '@inertiajs/vue3';
 import { useCurrency } from '@/composables/useCurrency';
 
@@ -14,14 +14,24 @@ import check from "../../assets/Check.svg";
 import acIcon from "../../assets/ac.svg";
 import { Leaf, Heart } from "lucide-vue-next";
 
+// Check if vehicle is LocautoRent
+const isLocautoRent = computed(() => {
+    return props.vehicle?.source === 'locauto_rent';
+});
+
+// Check if vehicle is Adobe Cars
+const isAdobeCars = computed(() => {
+    return props.vehicle?.source === 'adobe';
+});
+
 // Helper for highlighting benefits
 const isKeyBenefit = (text) => {
     if (!text) return false;
     const lower = text.toLowerCase();
-    return lower.includes('excess') || 
-           lower.includes('deposit') || 
-           lower.includes('free') || 
-           lower.includes('unlimited');
+    return lower.includes('excess') ||
+        lower.includes('deposit') ||
+        lower.includes('free') ||
+        lower.includes('unlimited');
 };
 // Note: If some icons are missing, I'll use text or generic replacements for now.
 
@@ -98,10 +108,101 @@ const isGreenMotionOrUSave = computed(() => {
     return props.vehicle.source === 'greenmotion' || props.vehicle.source === 'usave';
 });
 
-// Check if vehicle is LocautoRent
-const isLocautoRent = computed(() => {
-    return props.vehicle.source === 'locauto_rent';
+// (Moved above)
+
+
+// Get Adobe Cars base daily rate (tdr)
+const adobeBaseRate = computed(() => {
+    if (!isAdobeCars.value) return 0;
+    return parseFloat(props.vehicle.tdr) || 0;
 });
+
+// Get Adobe Cars protection plans (PLI, LDW, SPP)
+const adobeProtectionPlans = computed(() => {
+    if (!isAdobeCars.value) return [];
+    const protections = [];
+
+    // PLI - Liability Protection (required)
+    if (props.vehicle.pli !== undefined) {
+        protections.push({
+            code: 'PLI',
+            name: 'Liability Protection',
+            amount: parseFloat(props.vehicle.pli),
+            required: true
+        });
+    }
+
+    // LDW - Car Protection
+    if (props.vehicle.ldw !== undefined) {
+        protections.push({
+            code: 'LDW',
+            name: 'Car Protection',
+            amount: parseFloat(props.vehicle.ldw),
+            required: false
+        });
+    }
+
+    // SPP - Extended Protection
+    if (props.vehicle.spp !== undefined) {
+        protections.push({
+            code: 'SPP',
+            name: 'Extended Protection',
+            amount: parseFloat(props.vehicle.spp),
+            required: false
+        });
+    }
+
+    return protections;
+});
+
+// Selected Adobe Cars protection plan
+const selectedAdobeProtection = ref(null);
+
+// (Default selection to PLI removed as per user request to show Basic first)
+
+
+// Adobe Products Unified (for consistent UI with GreenMotion)
+const adobeProducts = computed(() => {
+    if (!isAdobeCars.value) return [];
+
+    // 1. Basic Package (Base Rate)
+    const products = [{
+        type: 'BAS',
+        name: 'Basic Rate',
+        code: 'BAS', // Identifier
+        total: adobeBaseRate.value, // tdr is Total
+        benefits: ['Base rental rate only', 'Liability Protection (PLI) added separately'],
+        is_basic: true,
+        isSelected: !selectedAdobeProtection.value
+    }];
+
+    // 2. Protection Plans (Exclude PLI as it's mandatory and shown separately)
+    adobeProtectionPlans.value.filter(p => p.code !== 'PLI').forEach(plan => {
+        products.push({
+            type: plan.code,
+            name: plan.name,
+            code: plan.code,
+            total: adobeBaseRate.value + plan.amount, // Sum of Totals
+            benefits: [
+                'Includes Liability Protection (PLI)',
+                plan.required ? 'Mandatory - Required by law' : 'Optional Protection'
+            ],
+            is_basic: false,
+            original_plan: plan,
+            isSelected: selectedAdobeProtection.value?.code === plan.code
+        });
+    });
+
+    return products;
+});
+
+const handleAdobeSelection = (product) => {
+    if (product.is_basic) {
+        selectAdobeProtection(null);
+    } else {
+        selectAdobeProtection(product.original_plan);
+    }
+};
 
 // Get LocautoRent protection plans from extras (all 7 plans)
 const locautoProtectionPlans = computed(() => {
@@ -239,6 +340,21 @@ const selectLocautoProtection = (protection) => {
     });
 };
 
+// Select Adobe Cars protection plan (null = Basic rate only, no additional protection)
+const selectAdobeProtection = (protection) => {
+    selectedAdobeProtection.value = protection;
+    showAllPlans.value = false;
+    // Calculate total: base rate (Total) + selected protection amount (Total)
+    const totalAmount = adobeBaseRate.value + (protection?.amount || 0);
+    emit('select-package', {
+        vehicle: props.vehicle,
+        package: protection ? protection.code : 'BAS',
+        protection_code: protection?.code || null,
+        protection_amount: protection?.amount || 0,
+        total_price: totalAmount
+    });
+};
+
 // Close modal
 const closeModal = () => {
     showAllPlans.value = false;
@@ -316,20 +432,20 @@ const vehicleSpecs = computed(() => {
         bagDisplay: (() => {
             // GreenMotion / USave: Return formatted string ONLY if non-zero total
             if (v.luggageLarge !== undefined || v.luggageMed !== undefined || v.luggageSmall !== undefined) {
-                 const small = parseInt(v.luggageSmall || 0);
-                 const med = parseInt(v.luggageMed || 0);
-                 const large = parseInt(v.luggageLarge || 0);
-                 if (small + med + large === 0) return null; // Don't show if all are 0
-                 return `S:${small} M:${med} L:${large}`;
+                const small = parseInt(v.luggageSmall || 0);
+                const med = parseInt(v.luggageMed || 0);
+                const large = parseInt(v.luggageLarge || 0);
+                if (small + med + large === 0) return null; // Don't show if all are 0
+                return `S:${small} M:${med} L:${large}`;
             }
             // Wheelsys / External: Sum of bags
             if (v.bags !== undefined || v.suitcases !== undefined) {
-                const total = (parseInt(v.bags)||0) + (parseInt(v.suitcases)||0);
+                const total = (parseInt(v.bags) || 0) + (parseInt(v.suitcases) || 0);
                 return total > 0 ? total : null;
             }
             // Locauto / Internal / Adobe -> Return count if valid
             if (v.luggage || v.luggage_capacity) {
-                 return v.luggage || v.luggage_capacity;
+                return v.luggage || v.luggage_capacity;
             }
             return null;
         })(),
@@ -347,14 +463,14 @@ let sliderInterval = null;
 
 const allImages = computed(() => {
     if (props.vehicle.source !== 'internal') return [];
-    
+
     const primary = props.vehicle.images?.find(img => img.image_type === 'primary');
     const gallery = props.vehicle.images?.filter(img => img.image_type === 'gallery') || [];
-    
+
     const images = [];
     if (primary) images.push(primary.image_url);
     gallery.forEach(img => images.push(img.image_url));
-    
+
     return images.length > 0 ? images : ['/default-image.png'];
 });
 
@@ -396,63 +512,56 @@ onUnmounted(() => {
 </script>
 
 <template>
-    <div class="car-card group vehicle-card" :class="[viewMode === 'list' ? 'list-view' : '']" :data-vehicle-id="vehicle.id">
+    <div class="car-card group vehicle-card" :class="[viewMode === 'list' ? 'list-view' : '']"
+        :data-vehicle-id="vehicle.id">
         <!-- Image Section -->
         <div class="car-image" @mouseenter="isHovered = true" @mouseleave="isHovered = false">
             <template v-if="vehicle.source === 'internal' && allImages.length > 0">
                 <div class="slider-container h-full">
                     <Link
                         :href="route('vehicle.show', { locale: page.props.locale, id: vehicle.id, package: form.package_type, pickup_date: form.date_from, return_date: form.date_to })"
-                        class="block h-full relative"
-                        @click="$emit('saveSearchUrl')"
-                    >
-                        <div v-for="(img, index) in allImages" :key="index" 
-                             class="absolute inset-0 transition-opacity duration-700 ease-in-out"
-                             :class="currentImageIndex === index ? 'opacity-100' : 'opacity-0 pointer-events-none'">
-                            <img 
-                                :src="img" 
-                                :alt="`${vehicle.brand} ${vehicle.model} - Image ${index + 1}`"
-                                @error="handleImageError"
-                                class="w-full h-full object-cover"
-                                loading="lazy"
-                            />
+                        class="block h-full relative" @click="$emit('saveSearchUrl')">
+                        <div v-for="(img, index) in allImages" :key="index"
+                            class="absolute inset-0 transition-opacity duration-700 ease-in-out"
+                            :class="currentImageIndex === index ? 'opacity-100' : 'opacity-0 pointer-events-none'">
+                            <img :src="img" :alt="`${vehicle.brand} ${vehicle.model} - Image ${index + 1}`"
+                                @error="handleImageError" class="w-full h-full object-cover" loading="lazy" />
                         </div>
                     </Link>
 
                     <!-- Slider Controls (Visible on Hover) -->
                     <div class="slider-controls" v-if="allImages.length > 1">
                         <button @click.prevent.stop="prevImage" class="slider-arrow prev" aria-label="Previous image">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg>
+                            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24"
+                                fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"
+                                stroke-linejoin="round">
+                                <path d="m15 18-6-6 6-6" />
+                            </svg>
                         </button>
                         <button @click.prevent.stop="nextImage" class="slider-arrow next" aria-label="Next image">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"/></svg>
+                            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24"
+                                fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"
+                                stroke-linejoin="round">
+                                <path d="m9 18 6-6-6-6" />
+                            </svg>
                         </button>
                     </div>
 
                     <!-- Pagination Dots -->
                     <div class="slider-dots" v-if="allImages.length > 1">
-                        <button v-for="(_, index) in allImages" :key="index"
-                                @click.prevent.stop="goToImage(index)"
-                                class="slider-dot"
-                                :class="{ 'active': currentImageIndex === index }"
-                                :aria-label="`Go to image ${index + 1}`">
+                        <button v-for="(_, index) in allImages" :key="index" @click.prevent.stop="goToImage(index)"
+                            class="slider-dot" :class="{ 'active': currentImageIndex === index }"
+                            :aria-label="`Go to image ${index + 1}`">
                         </button>
                     </div>
                 </div>
             </template>
-            <Link v-else
-                :href="route(getProviderRoute(vehicle), getRouteParams(vehicle))"
-                class="block h-full"
-                @click="$emit('saveSearchUrl')"
-            >
-                <img 
-                    :src="getImageSource(vehicle)" 
-                    :alt="`${vehicle.brand} ${vehicle.model}`"
-                    @error="handleImageError"
-                    loading="lazy"
-                />
+            <Link v-else :href="route(getProviderRoute(vehicle), getRouteParams(vehicle))" class="block h-full"
+                @click="$emit('saveSearchUrl')">
+                <img :src="getImageSource(vehicle)" :alt="`${vehicle.brand} ${vehicle.model}`" @error="handleImageError"
+                    loading="lazy" />
             </Link>
-            
+
             <div class="car-badges">
                 <span v-if="vehicle.category" class="car-badge category">
                     {{ vehicle.category }}
@@ -462,17 +571,12 @@ onUnmounted(() => {
                 </span>
             </div>
 
-            <button 
-                class="car-favorite"
-                :class="{ 'is-active': favoriteStatus }"
+            <button class="car-favorite" :class="{ 'is-active': favoriteStatus }"
                 @click.prevent="$emit('toggleFavourite', vehicle)"
                 :aria-label="favoriteStatus ? 'Remove from favorites' : 'Add to favorites'"
-                v-if="vehicle.source === 'internal'"
-            >
-                <Heart 
-                    class="w-5 h-5 transition-all duration-300" 
-                    :class="{ 'fill-red-500 stroke-red-500 scale-110': favoriteStatus }"
-                />
+                v-if="vehicle.source === 'internal'">
+                <Heart class="w-5 h-5 transition-all duration-300"
+                    :class="{ 'fill-red-500 stroke-red-500 scale-110': favoriteStatus }" />
             </button>
         </div>
 
@@ -495,86 +599,105 @@ onUnmounted(() => {
                     <img :src="transmissionIcon" class="w-3.5 h-3.5 opacity-60" alt="" />
                     <span>{{ vehicleSpecs.transmission || 'Auto' }}</span>
                 </div>
-                
+
                 <!-- Seats (Passengers) -->
                 <div class="spec-tag" v-if="vehicleSpecs.passengers">
-                   <img :src="seatingIcon" class="w-3.5 h-3.5 opacity-60" alt="" />
+                    <img :src="seatingIcon" class="w-3.5 h-3.5 opacity-60" alt="" />
                     <span>{{ vehicleSpecs.passengers }} Seats</span>
                 </div>
 
                 <!-- Doors -->
-                 <div class="spec-tag" v-if="vehicleSpecs.doors">
+                <div class="spec-tag" v-if="vehicleSpecs.doors">
                     <img :src="doorIcon" class="w-3.5 h-3.5 opacity-60" alt="" />
                     <span>{{ vehicleSpecs.doors }} Doors</span>
                 </div>
-                
-                 <!-- Luggage (Added back) -->
+
+                <!-- Luggage (Added back) -->
                 <div class="spec-tag" v-if="vehicleSpecs.bagDisplay">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="w-3.5 h-3.5 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
+                    <svg xmlns="http://www.w3.org/2000/svg" class="w-3.5 h-3.5 text-gray-500" fill="none"
+                        viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
                     </svg>
                     <span>{{ vehicleSpecs.bagDisplay }}</span>
                 </div>
 
                 <!-- A/C -->
                 <div class="spec-tag" v-if="vehicleSpecs.airConditioning">
-                     <img :src="acIcon" class="w-3.5 h-3.5 opacity-60" alt="" />
+                    <img :src="acIcon" class="w-3.5 h-3.5 opacity-60" alt="" />
                     <span>A/C</span>
                 </div>
             </div>
 
             <!-- Features -->
             <div class="car-features">
-                 <!-- CO2 -->
+                <!-- CO2 -->
                 <span v-if="vehicleSpecs.co2" class="feature-tag info">
                     <component :is="Leaf" class="w-3 h-3" />
                     {{ vehicleSpecs.co2 }} g/km
                 </span>
 
-                 <!-- Free Cancellation -->
-                <span v-if="vehicle.benefits?.cancellation_available_per_day || vehicle.source === 'wheelsys'" class="feature-tag included">
+                <!-- Free Cancellation -->
+                <span v-if="vehicle.benefits?.cancellation_available_per_day || vehicle.source === 'wheelsys'"
+                    class="feature-tag included">
                     <img :src="check" class="w-3 h-3 text-green-600" alt="" />
                     Free Cancellation
                 </span>
 
-                 <!-- Unlimited Mileage -->
-                <span v-if="vehicle.mileage === 'Unlimited' || vehicle.benefits?.limited_km_per_day === false" class="feature-tag included">
+                <!-- Unlimited Mileage -->
+                <span v-if="vehicle.mileage === 'Unlimited' || vehicle.benefits?.limited_km_per_day === false"
+                    class="feature-tag included">
                     <img :src="check" class="w-3 h-3 text-green-600" alt="" />
                     Unlimited km
                 </span>
-                
+
                 <!-- Fuel Policy -->
-                 <span v-if="vehicle.fuel_policy" class="feature-tag info">
+                <span v-if="vehicle.fuel_policy" class="feature-tag info">
                     {{ vehicle.fuel_policy }}
                 </span>
             </div>
 
-            <!-- GreenMotion/USave/Locauto View Plans Actions -->
-             <div v-if="(isGreenMotionOrUSave && sortedProducts.length > 0) || (isLocautoRent && locautoProtectionPlans.length > 0)" class="mb-4">
-                <button
-                    @click="showAllPlans = true"
-                    class="w-full text-center text-xs font-semibold py-2.5 border border-dashed border-primary-200 bg-primary-50 text-primary-700 rounded-lg hover:bg-primary-100 hover:border-primary-300 transition-all flex items-center justify-center gap-2"
-                >
+            <!-- GreenMotion/USave/Locauto/Adobe View Plans Actions -->
+            <div v-if="(isGreenMotionOrUSave && sortedProducts.length > 0) || (isLocautoRent && locautoProtectionPlans.length > 0) || (isAdobeCars && adobeProtectionPlans.length > 0)"
+                class="mb-4">
+                <button @click="showAllPlans = true"
+                    class="w-full text-center text-xs font-semibold py-2.5 border border-dashed border-primary-200 bg-primary-50 text-primary-700 rounded-lg hover:bg-primary-100 hover:border-primary-300 transition-all flex items-center justify-center gap-2">
                     <span>View Protection Plans</span>
-                    <svg xmlns="http://www.w3.org/2000/svg" class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" /></svg>
+                    <svg xmlns="http://www.w3.org/2000/svg" class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24"
+                        stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+                    </svg>
                 </button>
             </div>
 
             <!-- Footer -->
             <div class="car-footer">
                 <div class="car-pricing">
-                     <div class="car-total">
+                    <div class="car-total">
                         <!-- GreenMotion/USave Price -->
                         <template v-if="isGreenMotionOrUSave">
                             <span class="car-price">
-                                {{ getCurrencySymbol(sortedProducts.find(p => p.type === selectedPackage.value)?.currency) }}{{ dailyPrice }}
+                                {{getCurrencySymbol(sortedProducts.find(p => p.type ===
+                                    selectedPackage.value)?.currency)}}{{ dailyPrice }}
                             </span>
                         </template>
 
                         <!-- Locauto Price -->
                         <template v-else-if="isLocautoRent">
                             <span class="car-price">
-                                {{ getCurrencySymbol(vehicle.currency) }}{{ selectedLocautoProtection ? (parseFloat(vehicle.price_per_day) + parseFloat(selectedLocautoProtection.amount)).toFixed(2) : parseFloat(vehicle.price_per_day).toFixed(2) }}
+                                {{ getCurrencySymbol(vehicle.currency) }}{{ selectedLocautoProtection ?
+                                    (parseFloat(vehicle.price_per_day) +
+                                        parseFloat(selectedLocautoProtection.amount)).toFixed(2) :
+                                    parseFloat(vehicle.price_per_day).toFixed(2) }}
+                            </span>
+                        </template>
+
+                        <!-- Adobe Price -->
+                        <template v-else-if="isAdobeCars">
+                            <span class="car-price">
+                                ${{ selectedAdobeProtection ? ((adobeBaseRate +
+                                    parseFloat(selectedAdobeProtection.amount)) / numberOfRentalDays).toFixed(2) :
+                                    (adobeBaseRate / numberOfRentalDays).toFixed(2) }}
                             </span>
                         </template>
 
@@ -585,46 +708,49 @@ onUnmounted(() => {
                             </span>
                         </template>
                     </div>
-                     <span class="car-currency">per day</span>
+                    <span class="car-currency">per day</span>
                 </div>
 
                 <!-- Book Buttons -->
                 <!-- GreenMotion -->
-                 <button
-                    v-if="isGreenMotionOrUSave"
-                    @click="selectPackage(selectedPackage)"
-                    class="header-btn primary"
-                >
+                <button v-if="isGreenMotionOrUSave" @click="selectPackage(selectedPackage)" class="header-btn primary">
                     Book Deal
                     <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3" />
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M14 5l7 7m0 0l-7 7m7-7H3" />
                     </svg>
                 </button>
 
-                 <!-- Locauto -->
-                <button
-                    v-else-if="isLocautoRent"
-                    @click="selectLocautoProtection(selectedLocautoProtection)"
-                    class="header-btn primary"
-                >
+                <!-- Locauto -->
+                <button v-else-if="isLocautoRent" @click="selectLocautoProtection(selectedLocautoProtection)"
+                    class="header-btn primary">
                     Book Deal
                     <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3" />
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M14 5l7 7m0 0l-7 7m7-7H3" />
                     </svg>
                 </button>
 
-                 <!-- Standard Link -->
-                <Link
-                    v-else
+                <!-- Adobe -->
+                <button v-else-if="isAdobeCars" @click="selectAdobeProtection(selectedAdobeProtection)"
+                    class="header-btn primary">
+                    Book Deal
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M14 5l7 7m0 0l-7 7m7-7H3" />
+                    </svg>
+                </button>
+
+                <!-- Standard Link -->
+                <Link v-else
                     :href="vehicle.source !== 'internal'
                         ? route(getProviderRoute(vehicle), getRouteParams(vehicle))
                         : route('vehicle.show', { locale: page.props.locale, id: vehicle.id, package: form.package_type, pickup_date: form.date_from, return_date: form.date_to })"
-                    class="header-btn primary"
-                    @click="$emit('saveSearchUrl')"
-                >
+                    class="header-btn primary" @click="$emit('saveSearchUrl')">
                     Book Deal
                     <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3" />
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M14 5l7 7m0 0l-7 7m7-7H3" />
                     </svg>
                 </Link>
             </div>
@@ -634,12 +760,8 @@ onUnmounted(() => {
     <!-- Modal: All 4 Plans -->
     <Teleport to="body">
         <div v-if="showAllPlans" class="plans-modal" @click.self="closeModal">
-             <div class="plans-modal-content">
-                <button
-                    @click="closeModal"
-                    class="modal-close-btn"
-                    aria-label="Close modal"
-                >✕</button>
+            <div class="plans-modal-content">
+                <button @click="closeModal" class="modal-close-btn" aria-label="Close modal">✕</button>
 
                 <div class="mb-6">
                     <h2 class="text-2xl font-bold text-gray-900 font-['Outfit']">Select Your Protection Package</h2>
@@ -650,82 +772,152 @@ onUnmounted(() => {
                 <div class="plans-grid">
                     <!-- GreenMotion/USave Plans -->
                     <template v-if="isGreenMotionOrUSave">
-                        <div
-                            v-for="product in sortedProducts"
-                            :key="product.type"
-                            class="plan-card"
+                        <div v-for="product in sortedProducts" :key="product.type" class="plan-card"
                             :class="{ 'selected': selectedPackage === product.type }"
-                            @click="selectPackage(product.type)"
-                        >
+                            @click="selectPackage(product.type)">
                             <div class="plan-header">
                                 <div>
                                     <h3 class="plan-name">{{ getPackageName(product.type) }}</h3>
                                     <p class="plan-type">{{ product.type }}</p>
                                 </div>
                                 <div class="plan-check" v-if="selectedPackage === product.type">
-                                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-4 h-4 text-white"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg>
+                                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"
+                                        class="w-4 h-4 text-white">
+                                        <path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z" />
+                                    </svg>
                                 </div>
                             </div>
-                            
+
                             <div class="plan-price-box">
                                 <div class="plan-daily-price">
-                                    {{ getCurrencySymbol(product.currency) }}{{ (parseFloat(product.total) / numberOfRentalDays).toFixed(2) }}
+                                    {{ getCurrencySymbol(product.currency) }}{{ (parseFloat(product.total) /
+                                        numberOfRentalDays).toFixed(2) }}
                                     <span>/day</span>
                                 </div>
                                 <div class="plan-total-price">
-                                    Total: {{ getCurrencySymbol(product.currency) }}{{ parseFloat(product.total).toFixed(2) }}
+                                    Total: {{ getCurrencySymbol(product.currency) }}{{
+                                        parseFloat(product.total).toFixed(2) }}
                                 </div>
                             </div>
 
-                             <ul class="plan-features">
+                            <ul class="plan-features">
                                 <li v-for="benefit in getBenefits(product)" :key="benefit">
                                     <img :src="check" class="w-4 h-4 opacity-100" />
-                                    <span :class="{'font-semibold text-gray-900': isKeyBenefit(benefit)}">{{ benefit }}</span>
+                                    <span :class="{ 'font-semibold text-gray-900': isKeyBenefit(benefit) }">{{ benefit
+                                        }}</span>
                                 </li>
                                 <li v-if="product.deposit">
                                     <img :src="check" class="w-4 h-4 opacity-100" />
-                                    <span :class="{'font-semibold text-gray-900': isKeyBenefit('Deposit')}">Deposit: {{ getCurrencySymbol(product.currency) }}{{ parseFloat(product.deposit).toFixed(2) }}</span>
+                                    <span :class="{ 'font-semibold text-gray-900': isKeyBenefit('Deposit') }">Deposit:
+                                        {{
+                                            getCurrencySymbol(product.currency) }}{{ parseFloat(product.deposit).toFixed(2)
+                                        }}</span>
                                 </li>
                             </ul>
 
-                             <button class="plan-select-btn">
+                            <button class="plan-select-btn">
                                 {{ selectedPackage === product.type ? 'Selected' : 'Select Package' }}
                             </button>
                         </div>
                     </template>
 
-                     <!-- LocautoRent Protection Plans -->
+                    <!-- LocautoRent Protection Plans -->
                     <template v-else-if="isLocautoRent">
-                         <!-- Basic Plan item -->
-                         <div class="plan-card" :class="{ 'selected': !selectedLocautoProtection }" @click="selectLocautoProtection(null)">
-                             <div class="plan-header">
-                                <div><h3 class="plan-name">Basic Coverage</h3><p class="plan-type">Standard</p></div>
-                                <div class="plan-check" v-if="!selectedLocautoProtection"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-4 h-4 text-white"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg></div>
-                             </div>
-                             <div class="plan-price-box">
-                                 <div class="plan-daily-price">{{ getCurrencySymbol(vehicle.currency) }}{{ parseFloat(vehicle.price_per_day).toFixed(2) }} <span>/day</span></div>
-                                 <div class="plan-total-price">Total: {{ getCurrencySymbol(vehicle.currency) }}{{ parseFloat(vehicle.total_price).toFixed(2) }}</div>
-                             </div>
-                             <ul class="plan-features">
-                                <li><img :src="check" class="w-4 h-4"/> <span>Standard protection included</span></li>
-                             </ul>
-                             <button class="plan-select-btn">{{ !selectedLocautoProtection ? 'Selected' : 'Select Package' }}</button>
-                         </div>
-                         <!-- Other items -->
-                         <div v-for="protection in locautoProtectionPlans" :key="protection.code" class="plan-card" :class="{ 'selected': selectedLocautoProtection?.code === protection.code }" @click="selectLocautoProtection(protection)">
-                             <div class="plan-header">
-                                <div><h3 class="plan-name">{{ getShortProtectionName(protection.description) }}</h3><p class="plan-type">{{ protection.code }}</p></div>
-                                <div class="plan-check" v-if="selectedLocautoProtection?.code === protection.code"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-4 h-4 text-white"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg></div>
-                             </div>
-                             <div class="plan-price-box">
-                                 <div class="plan-daily-price">{{ getCurrencySymbol(vehicle.currency) }}{{ (parseFloat(vehicle.price_per_day) + parseFloat(protection.amount)).toFixed(2) }} <span>/day</span></div>
-                                 <div class="plan-total-price">Total: {{ getCurrencySymbol(vehicle.currency) }}{{ (parseFloat(vehicle.total_price) + (parseFloat(protection.amount) * numberOfRentalDays)).toFixed(2) }}</div>
-                             </div>
-                             <ul class="plan-features">
-                                <li><img :src="check" class="w-4 h-4"/> <span>{{ protection.description }}</span></li>
-                             </ul>
-                             <button class="plan-select-btn">{{ selectedLocautoProtection?.code === protection.code ? 'Selected' : 'Select Package' }}</button>
-                         </div>
+                        <!-- Basic Plan item -->
+                        <div class="plan-card" :class="{ 'selected': !selectedLocautoProtection }"
+                            @click="selectLocautoProtection(null)">
+                            <div class="plan-header">
+                                <div>
+                                    <h3 class="plan-name">Basic Coverage</h3>
+                                    <p class="plan-type">Standard</p>
+                                </div>
+                                <div class="plan-check" v-if="!selectedLocautoProtection"><svg
+                                        xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"
+                                        class="w-4 h-4 text-white">
+                                        <path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z" />
+                                    </svg></div>
+                            </div>
+                            <div class="plan-price-box">
+                                <div class="plan-daily-price">{{ getCurrencySymbol(vehicle.currency) }}{{
+                                    parseFloat(vehicle.price_per_day).toFixed(2) }} <span>/day</span></div>
+                                <div class="plan-total-price">Total: {{ getCurrencySymbol(vehicle.currency) }}{{
+                                    parseFloat(vehicle.total_price).toFixed(2) }}</div>
+                            </div>
+                            <ul class="plan-features">
+                                <li><img :src="check" class="w-4 h-4" /> <span>Standard protection included</span></li>
+                            </ul>
+                            <button class="plan-select-btn">{{ !selectedLocautoProtection ? 'Selected' : 'SelectPackage'
+                            }}</button>
+                        </div>
+                        <!-- Other items -->
+                        <div v-for="protection in locautoProtectionPlans" :key="protection.code" class="plan-card"
+                            :class="{ 'selected': selectedLocautoProtection?.code === protection.code }"
+                            @click="selectLocautoProtection(protection)">
+                            <div class="plan-header">
+                                <div>
+                                    <h3 class="plan-name">{{ getShortProtectionName(protection.description) }}</h3>
+                                    <p class="plan-type">{{ protection.code }}</p>
+                                </div>
+                                <div class="plan-check" v-if="selectedLocautoProtection?.code === protection.code"><svg
+                                        xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"
+                                        class="w-4 h-4 text-white">
+                                        <path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z" />
+                                    </svg></div>
+                            </div>
+                            <div class="plan-price-box">
+                                <div class="plan-daily-price">{{ getCurrencySymbol(vehicle.currency) }}{{
+                                    (parseFloat(vehicle.price_per_day) + parseFloat(protection.amount)).toFixed(2) }}
+                                    <span>/day</span>
+                                </div>
+                                <div class="plan-total-price">Total: {{ getCurrencySymbol(vehicle.currency) }}{{
+                                    (parseFloat(vehicle.total_price) + (parseFloat(protection.amount) *
+                                        numberOfRentalDays)).toFixed(2) }}</div>
+                            </div>
+                            <ul class="plan-features">
+                                <li><img :src="check" class="w-4 h-4" /> <span>{{ protection.description }}</span></li>
+                            </ul>
+                            <button class="plan-select-btn">{{ selectedLocautoProtection?.code === protection.code ?
+                                'Selected' : 'Select Package' }}</button>
+                        </div>
+                    </template>
+
+                    <!-- Adobe Cars Protection Plans -->
+                    <template v-else-if="isAdobeCars">
+                        <div v-for="product in adobeProducts" :key="product.code" class="plan-card"
+                            :class="{ 'selected': product.isSelected }" @click="handleAdobeSelection(product)">
+                            <div class="plan-header">
+                                <div>
+                                    <h3 class="plan-name">{{ product.name }}</h3>
+                                    <p class="plan-type">{{ product.code }}</p>
+                                </div>
+                                <div class="plan-check" v-if="product.isSelected">
+                                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"
+                                        class="w-4 h-4 text-white">
+                                        <path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z" />
+                                    </svg>
+                                </div>
+                            </div>
+                            <div class="plan-price-box">
+                                <div class="plan-daily-price">
+                                    ${{ (product.total / numberOfRentalDays).toFixed(2) }}
+                                    <span>/day</span>
+                                </div>
+                                <div class="plan-total-price">
+                                    Total: ${{ product.total.toFixed(2) }}
+                                </div>
+                            </div>
+                            <ul class="plan-features">
+                                <li v-for="benefit in product.benefits" :key="benefit">
+                                    <img :src="check" class="w-4 h-4 opacity-100" />
+                                    <span :class="{ 'font-semibold text-gray-900': isKeyBenefit(benefit) }">{{ benefit
+                                    }}</span>
+                                </li>
+                            </ul>
+                            <button class="plan-select-btn">
+                                {{ product.isSelected ? 'Selected' : 'Select Package' }}
+                            </button>
+                        </div>
+
                     </template>
                 </div>
             </div>
@@ -739,396 +931,397 @@ onUnmounted(() => {
    ============================================ */
 
 .car-card {
-  background: var(--white);
-  border-radius: var(--radius-xl);
-  overflow: hidden;
-  box-shadow: var(--shadow-sm);
-  transition: all var(--duration-base) var(--ease-out);
-  border: 1px solid var(--gray-100);
-  display: flex;
-  flex-direction: column;
+    background: var(--white);
+    border-radius: var(--radius-xl);
+    overflow: hidden;
+    box-shadow: var(--shadow-sm);
+    transition: all var(--duration-base) var(--ease-out);
+    border: 1px solid var(--gray-100);
+    display: flex;
+    flex-direction: column;
 }
 
 .car-card.list-view {
-  flex-direction: row;
+    flex-direction: row;
 }
 
 @media (max-width: 640px) {
-  .car-card.list-view {
-    flex-direction: column;
-  }
+    .car-card.list-view {
+        flex-direction: column;
+    }
 }
 
 .car-card:hover {
-  box-shadow: var(--shadow-lg);
-  transform: translateY(-4px);
-  border-color: var(--primary-100);
+    box-shadow: var(--shadow-lg);
+    transform: translateY(-4px);
+    border-color: var(--primary-100);
 }
 
 /* Card Image */
 .car-image {
-  position: relative;
-  height: 180px;
-  background: linear-gradient(135deg, var(--gray-100) 0%, var(--gray-50) 100%);
-  overflow: hidden;
-  flex-shrink: 0;
+    position: relative;
+    height: 180px;
+    background: linear-gradient(135deg, var(--gray-100) 0%, var(--gray-50) 100%);
+    overflow: hidden;
+    flex-shrink: 0;
 }
 
 .car-card.list-view .car-image {
-  width: 300px;
-  height: auto;
-  min-height: 200px;
+    width: 300px;
+    height: auto;
+    min-height: 200px;
 }
 
 @media (max-width: 640px) {
-  .car-card.list-view .car-image {
-    width: 100%;
-    height: 180px;
-  }
+    .car-card.list-view .car-image {
+        width: 100%;
+        height: 180px;
+    }
 }
 
 .car-image img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  transition: transform var(--duration-base) var(--ease-out);
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    transition: transform var(--duration-base) var(--ease-out);
 }
 
 .car-card:hover .car-image img {
-  transform: scale(1.05);
+    transform: scale(1.05);
 }
 
 .car-badges {
-  position: absolute;
-  top: var(--space-3);
-  left: var(--space-3);
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-2);
-  z-index: 2;
+    position: absolute;
+    top: var(--space-3);
+    left: var(--space-3);
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2);
+    z-index: 2;
 }
 
 .car-badge {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--space-1);
-  padding: 4px 10px;
-  border-radius: var(--radius-full);
-  font-size: 11px;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.02em;
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-1);
+    padding: 4px 10px;
+    border-radius: var(--radius-full);
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.02em;
 }
 
 .car-badge.category {
-  background: rgba(255, 255, 255, 0.95);
-  color: var(--primary-700);
-  box-shadow: 0 2px 4px rgba(0,0,0,0.05);
-  backdrop-filter: blur(4px);
+    background: rgba(255, 255, 255, 0.95);
+    color: var(--primary-700);
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+    backdrop-filter: blur(4px);
 }
 
 .car-badge.deal {
-  background: var(--success-500);
-  color: var(--white);
-  box-shadow: 0 2px 4px rgba(22, 163, 74, 0.2);
+    background: var(--success-500);
+    color: var(--white);
+    box-shadow: 0 2px 4px rgba(22, 163, 74, 0.2);
 }
 
 .car-favorite {
-  position: absolute;
-  top: var(--space-3);
-  right: var(--space-3);
-  width: 36px;
-  height: 36px;
-  background: rgba(255, 255, 255, 0.95);
-  border: none;
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
-  color: var(--gray-400);
-  transition: all var(--duration-fast) var(--ease-out);
-  z-index: 2;
-  backdrop-filter: blur(4px);
+    position: absolute;
+    top: var(--space-3);
+    right: var(--space-3);
+    width: 36px;
+    height: 36px;
+    background: rgba(255, 255, 255, 0.95);
+    border: none;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+    color: var(--gray-400);
+    transition: all var(--duration-fast) var(--ease-out);
+    z-index: 2;
+    backdrop-filter: blur(4px);
 }
 
 .car-favorite:hover {
-  color: #ef4444;
-  transform: scale(1.1);
-  background: #fff;
-  box-shadow: 0 6px 16px rgba(239, 68, 68, 0.15);
+    color: #ef4444;
+    transform: scale(1.1);
+    background: #fff;
+    box-shadow: 0 6px 16px rgba(239, 68, 68, 0.15);
 }
 
 .car-favorite.is-active {
-  color: #ef4444;
-  background: #fff;
+    color: #ef4444;
+    background: #fff;
 }
 
 /* Slider Styles */
 .slider-container {
-  position: relative;
-  width: 100%;
-  height: 100%;
+    position: relative;
+    width: 100%;
+    height: 100%;
 }
 
 .slider-controls {
-  position: absolute;
-  top: 50%;
-  left: 0;
-  right: 0;
-  transform: translateY(-50%);
-  display: flex;
-  justify-content: space-between;
-  padding: 0 var(--space-2);
-  opacity: 0;
-  transition: opacity var(--duration-base);
-  pointer-events: none;
-  z-index: 5;
+    position: absolute;
+    top: 50%;
+    left: 0;
+    right: 0;
+    transform: translateY(-50%);
+    display: flex;
+    justify-content: space-between;
+    padding: 0 var(--space-2);
+    opacity: 0;
+    transition: opacity var(--duration-base);
+    pointer-events: none;
+    z-index: 5;
 }
 
 .car-image:hover .slider-controls {
-  opacity: 1;
+    opacity: 1;
 }
 
 .slider-arrow {
-  width: 32px;
-  height: 32px;
-  background: rgba(255, 255, 255, 0.9);
-  border: none;
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  box-shadow: 0 4px 10px rgba(0,0,0,0.15);
-  color: var(--primary-700);
-  transition: all var(--duration-fast);
-  pointer-events: auto;
+    width: 32px;
+    height: 32px;
+    background: rgba(255, 255, 255, 0.9);
+    border: none;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.15);
+    color: var(--primary-700);
+    transition: all var(--duration-fast);
+    pointer-events: auto;
 }
 
 .slider-arrow:hover {
-  background: var(--white);
-  color: var(--primary-500);
-  transform: scale(1.1);
+    background: var(--white);
+    color: var(--primary-500);
+    transform: scale(1.1);
 }
 
 .slider-arrow:active {
-  transform: scale(0.95);
+    transform: scale(0.95);
 }
 
 .slider-dots {
-  position: absolute;
-  bottom: var(--space-3);
-  left: 50%;
-  transform: translateX(-50%);
-  display: flex;
-  gap: 6px;
-  z-index: 5;
-  padding: 4px 8px;
-  background: rgba(0, 0, 0, 0.3);
-  border-radius: var(--radius-full);
-  backdrop-filter: blur(4px);
+    position: absolute;
+    bottom: var(--space-3);
+    left: 50%;
+    transform: translateX(-50%);
+    display: flex;
+    gap: 6px;
+    z-index: 5;
+    padding: 4px 8px;
+    background: rgba(0, 0, 0, 0.3);
+    border-radius: var(--radius-full);
+    backdrop-filter: blur(4px);
 }
 
 .slider-dot {
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  background: rgba(255, 255, 255, 0.5);
-  border: none;
-  padding: 0;
-  cursor: pointer;
-  transition: all var(--duration-base);
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.5);
+    border: none;
+    padding: 0;
+    cursor: pointer;
+    transition: all var(--duration-base);
 }
 
 .slider-dot.active {
-  background: var(--white);
-  width: 14px;
+    background: var(--white);
+    width: 14px;
 }
 
 /* Card Content */
 .car-content {
-  padding: var(--space-5);
-  flex: 1;
-  display: flex;
-  flex-direction: column;
+    padding: var(--space-5);
+    flex: 1;
+    display: flex;
+    flex-direction: column;
 }
 
 .car-header {
-  margin-bottom: var(--space-4);
+    margin-bottom: var(--space-4);
 }
 
 .car-name {
-  font-family: 'Outfit', sans-serif;
-  font-size: 18px;
-  font-weight: 700;
-  color: var(--gray-900);
-  margin-bottom: 2px;
-  line-height: 1.3;
+    font-family: 'Outfit', sans-serif;
+    font-size: 18px;
+    font-weight: 700;
+    color: var(--gray-900);
+    margin-bottom: 2px;
+    line-height: 1.3;
 }
 
 .car-class {
-  font-size: 13px;
-  font-weight: 500;
-  color: var(--gray-500);
-  text-transform: capitalize;
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--gray-500);
+    text-transform: capitalize;
 }
 
 /* Specs */
 .car-specs {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  margin-bottom: var(--space-4);
-  padding-bottom: var(--space-4);
-  border-bottom: 1px solid var(--gray-100);
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-bottom: var(--space-4);
+    padding-bottom: var(--space-4);
+    border-bottom: 1px solid var(--gray-100);
 }
 
 .spec-tag {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  padding: 6px 10px;
-  background: var(--gray-50);
-  border: 1px solid var(--gray-100);
-  border-radius: 8px;
-  font-size: 12px;
-  font-weight: 500;
-  color: var(--gray-700);
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 10px;
+    background: var(--gray-50);
+    border: 1px solid var(--gray-100);
+    border-radius: 8px;
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--gray-700);
 }
 
 /* Features */
 .car-features {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  margin-bottom: auto; /* Push footer down */
-  padding-bottom: var(--space-5);
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-bottom: auto;
+    /* Push footer down */
+    padding-bottom: var(--space-5);
 }
 
 .feature-tag {
-  display: inline-flex;
-  align-items: center;
-  gap: 5px;
-  padding: 4px 8px;
-  font-size: 11px;
-  font-weight: 600;
-  border-radius: 6px;
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 4px 8px;
+    font-size: 11px;
+    font-weight: 600;
+    border-radius: 6px;
 }
 
 .feature-tag.included {
-  background: #f0fdf4;
-  color: #16a34a;
+    background: #f0fdf4;
+    color: #16a34a;
 }
 
 .feature-tag.info {
-  background: #f0f9ff;
-  color: #0284c7;
+    background: #f0f9ff;
+    color: #0284c7;
 }
 
 /* Card Footer */
 .car-footer {
-  display: flex;
-  align-items: flex-end;
-  justify-content: space-between;
-  margin-top: var(--space-2);
-  padding-top: var(--space-4);
-  border-top: 1px solid var(--gray-100);
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    margin-top: var(--space-2);
+    padding-top: var(--space-4);
+    border-top: 1px solid var(--gray-100);
 }
 
 .car-pricing {
-  display: flex;
-  flex-direction: column;
+    display: flex;
+    flex-direction: column;
 }
 
 .car-total {
-  display: flex;
-  align-items: baseline;
-  gap: 2px;
+    display: flex;
+    align-items: baseline;
+    gap: 2px;
 }
 
 .car-price {
-  font-family: 'Outfit', sans-serif;
-  font-size: 22px;
-  font-weight: 700;
-  color: var(--gray-900);
-  letter-spacing: -0.02em;
+    font-family: 'Outfit', sans-serif;
+    font-size: 22px;
+    font-weight: 700;
+    color: var(--gray-900);
+    letter-spacing: -0.02em;
 }
 
 .car-currency {
-  font-size: 13px;
-  font-weight: 500;
-  color: var(--gray-500);
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--gray-500);
 }
 
 .header-btn.primary {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  padding: 10px 18px;
-  background: var(--primary-800);
-  color: white;
-  border-radius: 10px;
-  font-size: 14px;
-  font-weight: 600;
-  transition: all 0.2s;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 18px;
+    background: var(--primary-800);
+    color: white;
+    border-radius: 10px;
+    font-size: 14px;
+    font-weight: 600;
+    transition: all 0.2s;
 }
 
 .header-btn.primary:hover {
-  background: var(--primary-900);
-  transform: translateY(-1px);
-  box-shadow: 0 4px 12px rgba(21, 59, 79, 0.2);
+    background: var(--primary-900);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(21, 59, 79, 0.2);
 }
 
 .header-btn.primary svg {
-  width: 16px;
-  height: 16px;
+    width: 16px;
+    height: 16px;
 }
 
 /* Modal Styling from Vrooem */
 .plans-modal {
-  position: fixed;
-  inset: 0;
-  z-index: 3000;
-  background: rgba(15, 23, 42, 0.6);
-  backdrop-filter: blur(4px);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 1rem;
+    position: fixed;
+    inset: 0;
+    z-index: 3000;
+    background: rgba(15, 23, 42, 0.6);
+    backdrop-filter: blur(4px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 1rem;
 }
 
 .plans-modal-content {
-  background: white;
-  width: 100%;
-  max-width: 900px;
-  max-height: 90vh;
-  border-radius: 20px;
-  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
-  padding: 2rem;
-  overflow-y: auto;
-  position: relative;
+    background: white;
+    width: 100%;
+    max-width: 900px;
+    max-height: 90vh;
+    border-radius: 20px;
+    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+    padding: 2rem;
+    overflow-y: auto;
+    position: relative;
 }
 
 .modal-close-btn {
-  position: absolute;
-  top: 1.5rem;
-  right: 1.5rem;
-  width: 32px;
-  height: 32px;
-  border-radius: 50%;
-  background: #f1f5f9;
-  color: #64748b;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: all 0.2s;
+    position: absolute;
+    top: 1.5rem;
+    right: 1.5rem;
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    background: #f1f5f9;
+    color: #64748b;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s;
 }
 
 .modal-close-btn:hover {
-  background: #e2e8f0;
-  color: #0f172a;
+    background: #e2e8f0;
+    color: #0f172a;
 }
 
 .plans-grid {
@@ -1148,7 +1341,7 @@ onUnmounted(() => {
 
 .plan-card:hover {
     border-color: var(--primary-300);
-    box-shadow: 0 10px 30px rgba(0,0,0,0.05);
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.05);
 }
 
 .plan-card.selected {
@@ -1164,8 +1357,16 @@ onUnmounted(() => {
     margin-bottom: 1rem;
 }
 
-.plan-name { font-weight: 700; color: var(--gray-900); font-size: 1.125rem; }
-.plan-type { font-size: 0.875rem; color: var(--gray-500); }
+.plan-name {
+    font-weight: 700;
+    color: var(--gray-900);
+    font-size: 1.125rem;
+}
+
+.plan-type {
+    font-size: 0.875rem;
+    color: var(--gray-500);
+}
 
 .plan-check {
     width: 24px;
@@ -1183,12 +1384,40 @@ onUnmounted(() => {
     margin-bottom: 1rem;
 }
 
-.plan-daily-price { font-weight: 700; font-size: 1.5rem; color: var(--primary-700); }
-.plan-daily-price span { font-size: 0.875rem; font-weight: 500; color: var(--gray-500); }
-.plan-total-price { font-size: 0.875rem; font-weight: 600; color: var(--gray-700); margin-top: 0.25rem; }
+.plan-daily-price {
+    font-weight: 700;
+    font-size: 1.5rem;
+    color: var(--primary-700);
+}
 
-.plan-features { list-style: none; padding: 0; margin: 0 0 1.5rem 0; space-y: 0.5rem; }
-.plan-features li { display: flex; align-items: start; gap: 0.75rem; font-size: 0.875rem; color: var(--gray-600); margin-bottom: 0.5rem; }
+.plan-daily-price span {
+    font-size: 0.875rem;
+    font-weight: 500;
+    color: var(--gray-500);
+}
+
+.plan-total-price {
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: var(--gray-700);
+    margin-top: 0.25rem;
+}
+
+.plan-features {
+    list-style: none;
+    padding: 0;
+    margin: 0 0 1.5rem 0;
+    space-y: 0.5rem;
+}
+
+.plan-features li {
+    display: flex;
+    align-items: start;
+    gap: 0.75rem;
+    font-size: 0.875rem;
+    color: var(--gray-600);
+    margin-bottom: 0.5rem;
+}
 
 .plan-select-btn {
     width: 100%;
@@ -1208,8 +1437,8 @@ onUnmounted(() => {
     background: #f1f5f9;
     color: var(--gray-700);
 }
+
 .plan-card:not(.selected) .plan-select-btn:hover {
     background: #e2e8f0;
 }
-
 </style>

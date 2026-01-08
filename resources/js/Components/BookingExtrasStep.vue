@@ -1,5 +1,5 @@
 <script setup>
-import { ref, computed, watch } from "vue";
+import { ref, computed, watch, watchEffect } from "vue";
 import check from "../../assets/Check.svg";
 // Additional Icons
 import carIcon from "../../assets/carIcon.svg";
@@ -22,6 +22,16 @@ import {
     Gauge,
     Leaf
 } from "lucide-vue-next";
+
+// Check if vehicle is Adobe Cars
+const isAdobeCars = computed(() => {
+    return props.vehicle?.source === 'adobe';
+});
+
+// Check if vehicle is LocautoRent
+const isLocautoRent = computed(() => {
+    return props.vehicle?.source === 'locauto_rent';
+});
 
 const props = defineProps({
     vehicle: Object,
@@ -56,6 +66,9 @@ const props = defineProps({
 const emit = defineEmits(['back', 'proceed-to-checkout']);
 
 const currentPackage = ref(props.initialPackage || 'BAS');
+
+// (Forcing PLI removed as per user request to show Basic first)
+
 const selectedExtras = ref({});
 const selectedExtrasOrder = ref([]); // Track selection order for "First 2 Free" logic
 const showDetailsModal = ref(false);
@@ -67,10 +80,8 @@ watch(() => props.initialPackage, (newPackage) => {
 
 const packageOrder = ['BAS', 'PLU', 'PRE', 'PMP'];
 
-// Check if vehicle is LocautoRent
-const isLocautoRent = computed(() => {
-    return props.vehicle?.source === 'locauto_rent';
-});
+// (Moved above)
+
 
 // Get LocautoRent protection plans from extras (all 7 plans)
 const locautoProtectionPlans = computed(() => {
@@ -101,6 +112,83 @@ const locautoDontWorryPlan = computed(() => {
     return locautoProtectionPlans.value.find(p => p.code === '136') || null;
 });
 
+// (Moved above)
+
+
+// Adobe Cars Data
+const adobeBaseRate = computed(() => {
+    if (!isAdobeCars.value || !props.vehicle?.tdr) return 0;
+    return parseFloat(props.vehicle.tdr);
+});
+
+const adobeProtectionPlans = computed(() => {
+    if (!isAdobeCars.value) return [];
+    const protections = [];
+    if (props.vehicle.pli !== undefined) protections.push({ code: 'PLI', name: 'Liability Protection', amount: parseFloat(props.vehicle.pli), required: true });
+    if (props.vehicle.ldw !== undefined) protections.push({ code: 'LDW', name: 'Car Protection', amount: parseFloat(props.vehicle.ldw), required: false });
+    if (props.vehicle.spp !== undefined) protections.push({ code: 'SPP', name: 'Extended Protection', amount: parseFloat(props.vehicle.spp), required: false });
+    return protections;
+});
+
+// Selected Adobe Cars protection plan (managed via currentPackage for simplicity in template or separate ref?)
+// Ideally we re-use currentPackage to store the "code" (BAS, PLI, LDW, etc.)
+// But we need to handle the total calculation difference.
+
+const adobePackages = computed(() => {
+    if (!isAdobeCars.value) return [];
+
+    // 1. Basic Package (Base Rate)
+    const packages = [{
+        type: 'BAS',
+        name: 'Basic Rate',
+        subtitle: 'Base Rental',
+        total: adobeBaseRate.value,
+        deposit: 0,
+        benefits: ['Base rental rate only', 'Liability Protection (PLI) added separately'],
+        isBestValue: false
+    }];
+
+    // 2. Protection Plans as Packages (Exclude PLI as it's mandatory)
+    adobeProtectionPlans.value.filter(p => p.code !== 'PLI').forEach(plan => {
+        packages.push({
+            type: plan.code,
+            name: plan.name,
+            subtitle: 'Protection Plan',
+            total: adobeBaseRate.value + plan.amount, // Sum of Totals
+            deposit: 0,
+            benefits: [
+                'Includes Liability Protection (PLI)',
+                plan.required ? 'Mandatory - Required by law' : 'Optional Protection'
+            ],
+            isBestValue: plan.code === 'LDW' // Just an example, can be adjusted
+        });
+    });
+
+    return packages;
+});
+
+const adobeMandatoryProtection = computed(() => {
+    if (!isAdobeCars.value) return 0;
+    const pli = adobeProtectionPlans.value.find(p => p.code === 'PLI');
+    return pli ? pli.amount : 0;
+});
+
+// Adobe Cars: Optional Extras
+const adobeOptionalExtras = computed(() => {
+    if (!isAdobeCars.value) return [];
+    const extras = props.vehicle?.extras || [];
+    return extras.map(extra => ({
+        id: `adobe_extra_${extra.code}`,
+        code: extra.code,
+        name: extra.name || extra.displayName || extra.description || extra.code,
+        description: extra.description || extra.displayDescription || extra.name,
+        // Price in API is Total.
+        daily_rate: parseFloat(extra.price || extra.amount || 0) / props.numberOfDays,
+        price: parseFloat(extra.price || extra.amount || 0),
+        amount: extra.price || extra.amount
+    }));
+});
+
 // LocautoRent: Optional extras (non-protection extras like GPS, child seat, etc.)
 const locautoOptionalExtras = computed(() => {
     if (!isLocautoRent.value) return [];
@@ -120,6 +208,9 @@ const locautoOptionalExtras = computed(() => {
 });
 
 const availablePackages = computed(() => {
+    if (isAdobeCars.value) {
+        return adobePackages.value;
+    }
     if (!props.vehicle || !props.vehicle.products) return [];
     return packageOrder
         .map(type => props.vehicle.products.find(p => p.type === type))
@@ -127,6 +218,9 @@ const availablePackages = computed(() => {
 });
 
 const currentProduct = computed(() => {
+    if (isAdobeCars.value) {
+        return adobePackages.value.find(p => p.type === currentPackage.value);
+    }
     return availablePackages.value.find(p => p.type === currentPackage.value);
 });
 
@@ -136,6 +230,10 @@ const formatPrice = (val) => {
 
 const getBenefits = (product) => {
     if (!product) return [];
+
+    // Return pre-calculated benefits (e.g. for AdobeCars)
+    if (product.benefits && Array.isArray(product.benefits)) return product.benefits;
+
     const benefits = [];
     const type = product.type;
 
@@ -161,7 +259,7 @@ const getBenefits = (product) => {
     } else if (product.mileage && product.mileage !== 'Unlimited' && product.mileage !== 'unlimited') {
         benefits.push(`Mileage: ${product.mileage}`);
     } else if (product.mileage === 'Unlimited' || product.mileage === 'unlimited') {
-         // Fallback if costperextradistance logic doesn't catch it but string says separate
+        // Fallback if costperextradistance logic doesn't catch it but string says separate
         benefits.push('Unlimited mileage');
     }
 
@@ -204,10 +302,15 @@ const isExtraFree = (extraId) => {
 const extrasTotal = computed(() => {
     let total = 0;
     for (const [id, qty] of Object.entries(selectedExtras.value)) {
-        // Find extra from the correct source (LocautoRent uses locautoOptionalExtras, others use props.optionalExtras)
-        const extra = isLocautoRent.value
-            ? locautoOptionalExtras.value.find(e => e.id === id)
-            : props.optionalExtras.find(e => e.id === id);
+        // Find extra from the correct source
+        let extra = null;
+        if (isLocautoRent.value) {
+            extra = locautoOptionalExtras.value.find(e => e.id === id);
+        } else if (isAdobeCars.value) {
+            extra = adobeOptionalExtras.value.find(e => e.id === id);
+        } else {
+            extra = props.optionalExtras.find(e => e.id === id);
+        }
 
         if (extra) {
             if (isExtraFree(id)) {
@@ -231,9 +334,10 @@ const grandTotal = computed(() => {
             : 0;
         return (basePrice + protectionAmount + extrasTotal.value).toFixed(2);
     }
-    // For GreenMotion/USave
+    // For GreenMotion/USave and Adobe
     const pkgPrice = parseFloat(currentProduct.value?.total || 0);
-    return (pkgPrice + extrasTotal.value).toFixed(2);
+    const mandatoryExtra = isAdobeCars.value ? adobeMandatoryProtection.value : 0;
+    return (pkgPrice + mandatoryExtra + extrasTotal.value).toFixed(2);
 });
 
 const payableAmount = computed(() => {
@@ -253,10 +357,15 @@ const selectPackage = (pkgType) => {
 const getSelectedExtrasDetails = computed(() => {
     const details = [];
     for (const [id, qty] of Object.entries(selectedExtras.value)) {
-        // Find extra from the correct source (LocautoRent uses locautoOptionalExtras, others use props.optionalExtras)
-        const extra = isLocautoRent.value
-            ? locautoOptionalExtras.value.find(e => e.id === id)
-            : props.optionalExtras.find(e => e.id === id);
+        // Find extra from the correct source
+        let extra = null;
+        if (isLocautoRent.value) {
+            extra = locautoOptionalExtras.value.find(e => e.id === id);
+        } else if (isAdobeCars.value) {
+            extra = adobeOptionalExtras.value.find(e => e.id === id);
+        } else {
+            extra = props.optionalExtras.find(e => e.id === id);
+        }
 
         if (extra) {
             const isFree = isExtraFree(id);
@@ -301,20 +410,20 @@ const vehicleSpecs = computed(() => {
         bagDisplay: (() => {
             // GreenMotion / USave: Return formatted string ONLY if non-zero total
             if (v.luggageLarge !== undefined || v.luggageMed !== undefined || v.luggageSmall !== undefined) {
-                 const small = parseInt(v.luggageSmall || 0);
-                 const med = parseInt(v.luggageMed || 0);
-                 const large = parseInt(v.luggageLarge || 0);
-                 if (small + med + large === 0) return null; // Don't show if all are 0
-                 return `S:${small} M:${med} L:${large}`;
+                const small = parseInt(v.luggageSmall || 0);
+                const med = parseInt(v.luggageMed || 0);
+                const large = parseInt(v.luggageLarge || 0);
+                if (small + med + large === 0) return null; // Don't show if all are 0
+                return `S:${small} M:${med} L:${large}`;
             }
             // Wheelsys / External: Sum of bags
             if (v.bags !== undefined || v.suitcases !== undefined) {
-                const total = (parseInt(v.bags)||0) + (parseInt(v.suitcases)||0);
+                const total = (parseInt(v.bags) || 0) + (parseInt(v.suitcases) || 0);
                 return total > 0 ? total : null;
             }
             // Locauto / Internal / Adobe -> Return count if valid
             if (v.luggage || v.luggage_capacity) {
-                 return v.luggage || v.luggage_capacity;
+                return v.luggage || v.luggage_capacity;
             }
             return null;
         })(),
@@ -330,9 +439,9 @@ const isKeyBenefit = (text) => {
     if (!text) return false;
     const lower = text.toLowerCase();
     return lower.includes('excess') ||
-           lower.includes('deposit') ||
-           lower.includes('free') ||
-           lower.includes('unlimited');
+        lower.includes('deposit') ||
+        lower.includes('free') ||
+        lower.includes('unlimited');
 };
 
 // Get short protection name for LocautoRent (extract English name from "English / Italian" format)
@@ -351,7 +460,11 @@ const getPackageDisplayName = (type) => {
         'BAS': 'Basic',
         'PLU': 'Plus',
         'PRE': 'Premium',
-        'PMP': 'Premium Plus'
+        'PMP': 'Premium Plus',
+        // Adobe Codes
+        'PLI': 'Liability Protection',
+        'LDW': 'Car Protection',
+        'SPP': 'Extended Protection'
     };
     return names[type] || type;
 };
@@ -362,7 +475,11 @@ const getPackageSubtitle = (type) => {
         'BAS': 'Essential Cover',
         'PLU': 'Enhanced Cover',
         'PRE': 'Full Cover',
-        'PMP': 'Ultimate Cover'
+        'PMP': 'Ultimate Cover',
+        // Adobe Codes
+        'PLI': 'Essential Cover',
+        'LDW': 'Standard Cover',
+        'SPP': 'Maximum Cover'
     };
     return subtitles[type] || '';
 };
@@ -403,14 +520,19 @@ const getIconColorClass = (name) => {
         <!-- Left Column: Upgrades & Extras -->
         <div class="flex-1 space-y-8">
             <!-- Location Instructions -->
-            <div v-if="locationInstructions" class="info-card rounded-2xl p-6 flex items-start gap-4 shadow-lg relative overflow-hidden">
+            <div v-if="locationInstructions"
+                class="info-card rounded-2xl p-6 flex items-start gap-4 shadow-lg relative overflow-hidden">
                 <div class="absolute inset-0 bg-gradient-to-br from-[#1e3a5f] to-[#2d5a8f]"></div>
                 <div class="absolute inset-0 opacity-10">
-                    <div class="absolute top-0 right-0 w-64 h-64 bg-white rounded-full -translate-y-32 translate-x-32"></div>
+                    <div class="absolute top-0 right-0 w-64 h-64 bg-white rounded-full -translate-y-32 translate-x-32">
+                    </div>
                 </div>
-                <div class="relative z-10 w-12 h-12 bg-white/20 rounded-xl flex items-center justify-center flex-shrink-0 backdrop-blur-sm">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                <div
+                    class="relative z-10 w-12 h-12 bg-white/20 rounded-xl flex items-center justify-center flex-shrink-0 backdrop-blur-sm">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-white" fill="none" viewBox="0 0 24 24"
+                        stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                     </svg>
                 </div>
                 <div class="relative z-10 flex-1">
@@ -429,23 +551,22 @@ const getIconColorClass = (name) => {
                     </div>
 
                     <div class="grid grid-cols-1 sm:grid-cols-2 gap-6">
-                        <div
-                            v-for="pkg in availablePackages"
-                            :key="pkg.type"
-                            @click="selectPackage(pkg.type)"
+                        <div v-for="pkg in availablePackages" :key="pkg.type" @click="selectPackage(pkg.type)"
                             class="package-card bg-white rounded-2xl p-6 border-2 cursor-pointer transition-all relative"
-                            :class="currentPackage === pkg.type ? 'selected border-[#1e3a5f] shadow-xl' : 'border-gray-200 hover:border-[#1e3a5f]/50 hover:shadow-lg'"
-                        >
+                            :class="currentPackage === pkg.type ? 'selected border-[#1e3a5f] shadow-xl' : 'border-gray-200 hover:border-[#1e3a5f]/50 hover:shadow-lg'">
                             <!-- Popular Badge -->
-                            <div v-if="pkg.type === 'PMP'" class="absolute top-0 right-0 bg-gradient-to-r from-yellow-400 to-yellow-500 text-xs font-bold px-3 py-1 rounded-bl-xl rounded-tr-2xl text-white uppercase tracking-wide">
+                            <div v-if="pkg.type === 'PMP' || pkg.isBestValue"
+                                class="absolute top-0 right-0 bg-gradient-to-r from-yellow-400 to-yellow-500 text-xs font-bold px-3 py-1 rounded-bl-xl rounded-tr-2xl text-white uppercase tracking-wide">
                                 Popular
                             </div>
 
                             <!-- Header -->
                             <div class="flex justify-between items-start mb-4">
                                 <div>
-                                    <span class="text-sm font-bold text-gray-900 block tracking-wide">{{ getPackageDisplayName(pkg.type) }}</span>
-                                    <span class="text-xs text-gray-400 uppercase tracking-wider">{{ getPackageSubtitle(pkg.type) }}</span>
+                                    <span class="text-sm font-bold text-gray-900 block tracking-wide">{{
+                                        getPackageDisplayName(pkg.type) }}</span>
+                                    <span class="text-xs text-gray-400 uppercase tracking-wider">{{
+                                        getPackageSubtitle(pkg.type) }}</span>
                                 </div>
                                 <div class="radio-custom" :class="{ selected: currentPackage === pkg.type }"></div>
                             </div>
@@ -453,14 +574,16 @@ const getIconColorClass = (name) => {
                             <!-- Price -->
                             <div class="mb-4 pb-4 border-b border-gray-100">
                                 <div class="flex items-baseline gap-1 mb-2">
-                                    <span class="text-3xl font-bold" :class="currentPackage === pkg.type ? 'text-[#1e3a5f]' : 'text-gray-900'">
+                                    <span class="text-3xl font-bold"
+                                        :class="currentPackage === pkg.type ? 'text-[#1e3a5f]' : 'text-gray-900'">
                                         {{ formatPrice(pkg.total / numberOfDays) }}
                                     </span>
                                     <span class="text-sm text-gray-500">/day</span>
                                 </div>
                                 <div class="flex justify-between items-center">
                                     <span class="text-sm text-gray-600">Total:</span>
-                                    <span class="text-lg font-bold" :class="currentPackage === pkg.type ? 'text-[#1e3a5f]' : 'text-gray-900'">
+                                    <span class="text-lg font-bold"
+                                        :class="currentPackage === pkg.type ? 'text-[#1e3a5f]' : 'text-gray-900'">
                                         {{ formatPrice(pkg.total) }}
                                     </span>
                                 </div>
@@ -468,16 +591,19 @@ const getIconColorClass = (name) => {
 
                             <!-- Benefits List -->
                             <ul class="space-y-2.5">
-                                <li v-for="(benefit, idx) in getBenefits(pkg)" :key="idx" class="benefit-item flex items-start gap-2.5 text-sm" :style="{ animationDelay: `${idx * 0.05}s` }">
+                                <li v-for="(benefit, idx) in getBenefits(pkg)" :key="idx"
+                                    class="benefit-item flex items-start gap-2.5 text-sm"
+                                    :style="{ animationDelay: `${idx * 0.05}s` }">
                                     <img :src="check" class="w-4 h-4 mt-0.5 flex-shrink-0" alt="✓" />
-                                    <span
-                                        class="leading-snug"
-                                        :class="isKeyBenefit(benefit) ? 'font-bold text-gray-900' : 'text-gray-600'"
-                                    >{{ benefit }}</span>
+                                    <span class="leading-snug"
+                                        :class="isKeyBenefit(benefit) ? 'font-bold text-gray-900' : 'text-gray-600'">{{
+                                            benefit }}</span>
                                 </li>
                                 <li v-if="pkg.deposit" class="benefit-item text-sm flex items-start gap-2.5">
                                     <img :src="check" class="w-4 h-4 mt-0.5 flex-shrink-0" alt="✓" />
-                                    <span :class="isKeyBenefit('Deposit') ? 'font-bold text-gray-900' : 'text-gray-600'">Deposit: {{ formatPrice(pkg.deposit) }}</span>
+                                    <span
+                                        :class="isKeyBenefit('Deposit') ? 'font-bold text-gray-900' : 'text-gray-600'">Deposit:
+                                        {{ formatPrice(pkg.deposit) }}</span>
                                 </li>
                             </ul>
                         </div>
@@ -494,11 +620,9 @@ const getIconColorClass = (name) => {
 
                 <div class="grid grid-cols-1 sm:grid-cols-2 gap-6">
                     <!-- Basic Plan -->
-                    <div
-                        @click="selectedLocautoProtection = null"
+                    <div @click="selectedLocautoProtection = null"
                         class="package-card bg-white rounded-2xl p-6 border-2 cursor-pointer transition-all"
-                        :class="!selectedLocautoProtection ? 'selected border-[#1e3a5f] shadow-xl' : 'border-gray-200 hover:border-[#1e3a5f]/50 hover:shadow-lg'"
-                    >
+                        :class="!selectedLocautoProtection ? 'selected border-[#1e3a5f] shadow-xl' : 'border-gray-200 hover:border-[#1e3a5f]/50 hover:shadow-lg'">
                         <div class="flex justify-between items-start mb-4">
                             <div>
                                 <span class="text-sm font-bold text-gray-900 block tracking-wide">Basic</span>
@@ -509,14 +633,16 @@ const getIconColorClass = (name) => {
 
                         <div class="mb-4 pb-4 border-b border-gray-100">
                             <div class="flex items-baseline gap-1 mb-2">
-                                <span class="text-3xl font-bold" :class="!selectedLocautoProtection ? 'text-[#1e3a5f]' : 'text-gray-900'">
+                                <span class="text-3xl font-bold"
+                                    :class="!selectedLocautoProtection ? 'text-[#1e3a5f]' : 'text-gray-900'">
                                     {{ formatPrice(0) }}
                                 </span>
                                 <span class="text-sm text-gray-500">/day</span>
                             </div>
                             <div class="flex justify-between items-center">
                                 <span class="text-sm text-gray-600">Total:</span>
-                                <span class="text-lg font-bold" :class="!selectedLocautoProtection ? 'text-[#1e3a5f]' : 'text-gray-900'">
+                                <span class="text-lg font-bold"
+                                    :class="!selectedLocautoProtection ? 'text-[#1e3a5f]' : 'text-gray-900'">
                                     {{ formatPrice(0) }}
                                 </span>
                             </div>
@@ -531,31 +657,32 @@ const getIconColorClass = (name) => {
                     </div>
 
                     <!-- Protection Plans -->
-                    <div
-                        v-for="protection in locautoProtectionPlans"
-                        :key="protection.code"
+                    <div v-for="protection in locautoProtectionPlans" :key="protection.code"
                         @click="selectedLocautoProtection = protection.code"
                         class="package-card bg-white rounded-2xl p-6 border-2 cursor-pointer transition-all"
-                        :class="selectedLocautoProtection === protection.code ? 'selected border-[#1e3a5f] shadow-xl' : 'border-gray-200 hover:border-[#1e3a5f]/50 hover:shadow-lg'"
-                    >
+                        :class="selectedLocautoProtection === protection.code ? 'selected border-[#1e3a5f] shadow-xl' : 'border-gray-200 hover:border-[#1e3a5f]/50 hover:shadow-lg'">
                         <div class="flex justify-between items-start mb-4">
                             <div>
-                                <span class="text-sm font-bold text-gray-900 block tracking-wide">{{ getShortProtectionName(protection.description) }}</span>
+                                <span class="text-sm font-bold text-gray-900 block tracking-wide">{{
+                                    getShortProtectionName(protection.description) }}</span>
                                 <span class="text-xs text-gray-400 uppercase tracking-wider">Protection</span>
                             </div>
-                            <div class="radio-custom" :class="{ selected: selectedLocautoProtection === protection.code }"></div>
+                            <div class="radio-custom"
+                                :class="{ selected: selectedLocautoProtection === protection.code }"></div>
                         </div>
 
                         <div class="mb-4 pb-4 border-b border-gray-100">
                             <div class="flex items-baseline gap-1 mb-2">
-                                <span class="text-3xl font-bold" :class="selectedLocautoProtection === protection.code ? 'text-[#1e3a5f]' : 'text-gray-900'">
+                                <span class="text-3xl font-bold"
+                                    :class="selectedLocautoProtection === protection.code ? 'text-[#1e3a5f]' : 'text-gray-900'">
                                     {{ formatPrice(protection.amount) }}
                                 </span>
                                 <span class="text-sm text-gray-500">/day</span>
                             </div>
                             <div class="flex justify-between items-center">
                                 <span class="text-sm text-gray-600">Total:</span>
-                                <span class="text-lg font-bold" :class="selectedLocautoProtection === protection.code ? 'text-[#1e3a5f]' : 'text-gray-900'">
+                                <span class="text-lg font-bold"
+                                    :class="selectedLocautoProtection === protection.code ? 'text-[#1e3a5f]' : 'text-gray-900'">
                                     {{ formatPrice(protection.amount * numberOfDays) }}
                                 </span>
                             </div>
@@ -572,44 +699,49 @@ const getIconColorClass = (name) => {
             </section>
 
             <!-- 2. Extras Section -->
-            <section v-if="(optionalExtras && optionalExtras.length > 0) || (isLocautoRent && locautoOptionalExtras.length > 0)">
+            <section
+                v-if="(optionalExtras && optionalExtras.length > 0) || (isLocautoRent && locautoOptionalExtras.length > 0) || (isAdobeCars && adobeOptionalExtras.length > 0)">
                 <div class="mb-6">
                     <h2 class="font-display text-3xl font-bold text-gray-900 mb-2">Optional Extras</h2>
                     <p class="text-gray-600">Enhance your journey with these add-ons</p>
                 </div>
 
                 <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                    <div
-                        v-for="extra in isLocautoRent ? locautoOptionalExtras : optionalExtras"
-                        :key="extra.id"
-                        @click="toggleExtra(extra)"
+                    <div v-for="extra in (isLocautoRent ? locautoOptionalExtras : (isAdobeCars ? adobeOptionalExtras : optionalExtras))"
+                        :key="extra.id" @click="toggleExtra(extra)"
                         class="extra-card bg-white rounded-2xl p-4 border-2 cursor-pointer transition-all"
-                        :class="{ 'selected border-[#1e3a5f] bg-gradient-to-br from-blue-50 to-blue-100': selectedExtras[extra.id], 'border-gray-200 hover:border-[#1e3a5f]/50 hover:shadow-lg': !selectedExtras[extra.id] }"
-                    >
+                        :class="{ 'selected border-[#1e3a5f] bg-gradient-to-br from-blue-50 to-blue-100': selectedExtras[extra.id], 'border-gray-200 hover:border-[#1e3a5f]/50 hover:shadow-lg': !selectedExtras[extra.id] }">
                         <div class="flex flex-col gap-3">
                             <!-- Top Row: Checkbox + Icon + Title -->
                             <div class="flex items-center gap-3">
-                                <div class="checkbox-custom flex-shrink-0" :class="{ selected: !!selectedExtras[extra.id] }"></div>
-                                <div class="w-11 h-11 rounded-full flex items-center justify-center flex-shrink-0" :class="getIconBackgroundClass(extra.name)">
-                                    <component :is="getExtraIcon(extra.name)" class="w-5 h-5" :class="getIconColorClass(extra.name)" />
+                                <div class="checkbox-custom flex-shrink-0"
+                                    :class="{ selected: !!selectedExtras[extra.id] }"></div>
+                                <div class="w-11 h-11 rounded-full flex items-center justify-center flex-shrink-0"
+                                    :class="getIconBackgroundClass(extra.name)">
+                                    <component :is="getExtraIcon(extra.name)" class="w-5 h-5"
+                                        :class="getIconColorClass(extra.name)" />
                                 </div>
                                 <h4 class="font-bold text-gray-900 text-[1rem] flex-1">{{ extra.name }}</h4>
                             </div>
 
-                            <!-- Middle: Description -->
-                            <p class="text-xs text-gray-500 pl-8">{{ extra.description }}</p>
+                            <!-- Middle: Description (Removed as per request) -->
+                            <!-- <p class="text-xs text-gray-500 pl-8">{{ extra.description }}</p> -->
 
                             <!-- Bottom: Price -->
                             <div class="flex justify-end pl-8 mt-auto">
                                 <div v-if="isExtraFree(extra.id)" class="text-right">
                                     <span class="text-base font-bold text-green-600">Free</span>
                                     <span class="text-gray-400 line-through text-xs block">
-                                        {{ formatPrice(extra.daily_rate !== undefined ? extra.daily_rate : (extra.price / numberOfDays)) }}/day
+                                        {{ formatPrice(extra.daily_rate !== undefined ? extra.daily_rate : (extra.price
+                                            /
+                                            numberOfDays)) }}/day
                                     </span>
                                 </div>
                                 <div v-else class="text-right">
                                     <span class="text-base font-bold text-gray-900">
-                                        {{ formatPrice(extra.daily_rate !== undefined ? extra.daily_rate : (extra.price / numberOfDays)) }}
+                                        {{ formatPrice(extra.daily_rate !== undefined ? extra.daily_rate : (extra.price
+                                            /
+                                            numberOfDays)) }}
                                     </span>
                                     <span class="text-xs text-gray-500 block">/day</span>
                                 </div>
@@ -628,14 +760,19 @@ const getIconColorClass = (name) => {
                 <!-- Car Details -->
                 <div class="flex flex-col gap-4 mb-6 pb-6 border-b border-gray-100">
                     <div class="flex items-start gap-4">
-                        <div class="w-28 h-20 bg-gradient-to-br from-gray-50 to-gray-100 rounded-xl overflow-hidden flex-shrink-0">
-                            <img v-if="vehicle.image" :src="vehicle.image" alt="Car" class="w-full h-full object-cover" />
+                        <div
+                            class="w-28 h-20 bg-gradient-to-br from-gray-50 to-gray-100 rounded-xl overflow-hidden flex-shrink-0">
+                            <img v-if="vehicle.image" :src="vehicle.image" alt="Car"
+                                class="w-full h-full object-cover" />
                             <svg v-else class="w-full h-full p-3 text-gray-400" viewBox="0 0 24 24" fill="currentColor">
-                                <path d="M18.92 6.01C18.72 5.42 18.16 5 17.5 5h-11c-.66 0-1.21.42-1.42 1.01L3 12v8c0 .55.45 1 1 1h1c.55 0 1-.45 1-1v-1h12v1c0 .55.45 1 1 1h1c.55 0 1-.45 1-1v-8l-2.08-5.99zM6.5 16c-.83 0-1.5-.67-1.5-1.5S5.67 13 6.5 13s1.5.67 1.5 1.5S7.33 16 6.5 16zm11 0c-.83 0-1.5-.67-1.5-1.5s.67-1.5 1.5-1.5 1.5.67 1.5 1.5-.67 1.5-1.5 1.5zM5 11l1.5-4.5h11L19 11H5z"/>
+                                <path
+                                    d="M18.92 6.01C18.72 5.42 18.16 5 17.5 5h-11c-.66 0-1.21.42-1.42 1.01L3 12v8c0 .55.45 1 1 1h1c.55 0 1-.45 1-1v-1h12v1c0 .55.45 1 1 1h1c.55 0 1-.45 1-1v-8l-2.08-5.99zM6.5 16c-.83 0-1.5-.67-1.5-1.5S5.67 13 6.5 13s1.5.67 1.5 1.5S7.33 16 6.5 16zm11 0c-.83 0-1.5-.67-1.5-1.5s.67-1.5 1.5-1.5 1.5.67 1.5 1.5-.67 1.5-1.5 1.5zM5 11l1.5-4.5h11L19 11H5z" />
                             </svg>
                         </div>
                         <div class="flex-1">
-                            <div class="font-display font-bold text-gray-900 text-xl">{{ vehicle.brand }} {{ vehicle.model }}</div>
+                            <div class="font-display font-bold text-gray-900 text-xl">{{ vehicle.brand }} {{
+                                vehicle.model }}
+                            </div>
                             <div class="text-sm text-gray-500 mb-3">{{ vehicle.category || 'Economy' }}</div>
                         </div>
                     </div>
@@ -653,23 +790,32 @@ const getIconColorClass = (name) => {
                         <!-- Pickup -->
                         <div class="flex items-start gap-4 mb-8 relative">
                             <div class="relative flex-shrink-0">
-                                <div class="w-12 h-12 bg-gradient-to-br from-emerald-50 to-teal-50 rounded-full flex items-center justify-center border-2 border-emerald-200 shadow-lg shadow-emerald-100/50 relative overflow-hidden ripple-icon" style="color: rgb(5, 150, 105);">
-                                    <div class="absolute inset-0 bg-gradient-to-br from-emerald-400/10 to-teal-400/10"></div>
-                                    <svg xmlns="http://www.w3.org/2000/svg" class="w-6 h-6 text-emerald-600 relative z-10" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                                <div class="w-12 h-12 bg-gradient-to-br from-emerald-50 to-teal-50 rounded-full flex items-center justify-center border-2 border-emerald-200 shadow-lg shadow-emerald-100/50 relative overflow-hidden ripple-icon"
+                                    style="color: rgb(5, 150, 105);">
+                                    <div class="absolute inset-0 bg-gradient-to-br from-emerald-400/10 to-teal-400/10">
+                                    </div>
+                                    <svg xmlns="http://www.w3.org/2000/svg"
+                                        class="w-6 h-6 text-emerald-600 relative z-10" fill="none" viewBox="0 0 24 24"
+                                        stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                            d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                            d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
                                     </svg>
                                 </div>
                             </div>
 
                             <div class="flex-1">
-                                <span class="text-xs font-bold text-emerald-700 uppercase tracking-wider block mb-1">Pickup</span>
+                                <span
+                                    class="text-xs font-bold text-emerald-700 uppercase tracking-wider block mb-1">Pickup</span>
                                 <div class="font-bold text-gray-900 text-sm md:text-base leading-snug">
                                     {{ pickupLocation || locationName }}
                                 </div>
                                 <div class="text-xs text-gray-500 mt-1.5 font-medium flex items-center gap-1.5">
-                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5" fill="none"
+                                        viewBox="0 0 24 24" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                            d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
                                     </svg>
                                     {{ pickupDate }}
                                     <span class="text-gray-300">|</span>
@@ -681,23 +827,31 @@ const getIconColorClass = (name) => {
                         <!-- Dropoff -->
                         <div class="flex items-start gap-4 relative">
                             <div class="relative flex-shrink-0">
-                                <div class="w-12 h-12 bg-gradient-to-br from-rose-50 to-pink-50 rounded-full flex items-center justify-center border-2 border-rose-200 shadow-lg shadow-rose-100/50 relative overflow-hidden ripple-icon" style="color: rgb(225, 29, 72);">
-                                    <div class="absolute inset-0 bg-gradient-to-br from-rose-400/10 to-pink-400/10"></div>
-                                    <svg xmlns="http://www.w3.org/2000/svg" class="w-6 h-6 text-rose-600 relative z-10" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                                <div class="w-12 h-12 bg-gradient-to-br from-rose-50 to-pink-50 rounded-full flex items-center justify-center border-2 border-rose-200 shadow-lg shadow-rose-100/50 relative overflow-hidden ripple-icon"
+                                    style="color: rgb(225, 29, 72);">
+                                    <div class="absolute inset-0 bg-gradient-to-br from-rose-400/10 to-pink-400/10">
+                                    </div>
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="w-6 h-6 text-rose-600 relative z-10"
+                                        fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                            d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                            d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
                                     </svg>
                                 </div>
                             </div>
 
                             <div class="flex-1">
-                                <span class="text-xs font-bold text-rose-700 uppercase tracking-wider block mb-1">Dropoff</span>
+                                <span
+                                    class="text-xs font-bold text-rose-700 uppercase tracking-wider block mb-1">Dropoff</span>
                                 <div class="font-bold text-gray-900 text-sm md:text-base leading-snug">
                                     {{ dropoffLocation || pickupLocation || locationName }}
                                 </div>
                                 <div class="text-xs text-gray-500 mt-1.5 font-medium flex items-center gap-1.5">
-                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5" fill="none"
+                                        viewBox="0 0 24 24" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                            d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
                                     </svg>
                                     {{ dropoffDate }}
                                     <span class="text-gray-300">|</span>
@@ -711,44 +865,53 @@ const getIconColorClass = (name) => {
                 <!-- Specs Icons -->
                 <div class="flex flex-wrap gap-3 mb-6 pb-6 border-b border-gray-100">
                     <!-- Luggage -->
-                    <div v-if="vehicleSpecs.bagDisplay" class="spec-icon flex items-center gap-1.5 px-3 py-2 bg-gray-50 rounded-lg text-xs font-medium text-gray-700 transition-all hover:gap-2">
+                    <div v-if="vehicleSpecs.bagDisplay"
+                        class="spec-icon flex items-center gap-1.5 px-3 py-2 bg-gray-50 rounded-lg text-xs font-medium text-gray-700 transition-all hover:gap-2">
                         <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
                         </svg>
                         <span>{{ vehicleSpecs.bagDisplay }}</span>
                     </div>
                     <!-- Passengers -->
-                    <div v-if="vehicleSpecs.passengers" class="spec-icon flex items-center gap-1.5 px-3 py-2 bg-gray-50 rounded-lg text-xs font-medium text-gray-700 transition-all hover:gap-2">
+                    <div v-if="vehicleSpecs.passengers"
+                        class="spec-icon flex items-center gap-1.5 px-3 py-2 bg-gray-50 rounded-lg text-xs font-medium text-gray-700 transition-all hover:gap-2">
                         <img :src="seatingIcon" class="w-4 h-4" alt="Seats" />
                         <span>{{ vehicleSpecs.passengers }}</span>
                     </div>
                     <!-- Transmission -->
-                    <div v-if="vehicleSpecs.transmission" class="spec-icon flex items-center gap-1.5 px-3 py-2 bg-gray-50 rounded-lg text-xs font-medium text-gray-700 transition-all hover:gap-2">
+                    <div v-if="vehicleSpecs.transmission"
+                        class="spec-icon flex items-center gap-1.5 px-3 py-2 bg-gray-50 rounded-lg text-xs font-medium text-gray-700 transition-all hover:gap-2">
                         <img :src="transmissionIcon" class="w-4 h-4" alt="Trans" />
                         <span class="whitespace-nowrap">{{ vehicleSpecs.transmission }}</span>
                     </div>
                     <!-- Fuel -->
-                    <div v-if="vehicleSpecs.fuel" class="spec-icon flex items-center gap-1.5 px-3 py-2 bg-gray-50 rounded-lg text-xs font-medium text-gray-700 transition-all hover:gap-2">
+                    <div v-if="vehicleSpecs.fuel"
+                        class="spec-icon flex items-center gap-1.5 px-3 py-2 bg-gray-50 rounded-lg text-xs font-medium text-gray-700 transition-all hover:gap-2">
                         <img :src="fuelIcon" class="w-4 h-4" alt="Fuel" />
                         <span>{{ vehicleSpecs.fuel }}</span>
                     </div>
                     <!-- AC -->
-                    <div v-if="vehicleSpecs.airConditioning" class="spec-icon flex items-center gap-1.5 px-3 py-2 bg-gray-50 rounded-lg text-xs font-medium text-gray-700 transition-all hover:gap-2">
+                    <div v-if="vehicleSpecs.airConditioning"
+                        class="spec-icon flex items-center gap-1.5 px-3 py-2 bg-gray-50 rounded-lg text-xs font-medium text-gray-700 transition-all hover:gap-2">
                         <img :src="acIcon" class="w-4 h-4" alt="AC" />
                         <span>AC</span>
                     </div>
                     <!-- Doors -->
-                    <div v-if="vehicleSpecs.doors" class="spec-icon flex items-center gap-1.5 px-3 py-2 bg-gray-50 rounded-lg text-xs font-medium text-gray-700 transition-all hover:gap-2">
+                    <div v-if="vehicleSpecs.doors"
+                        class="spec-icon flex items-center gap-1.5 px-3 py-2 bg-gray-50 rounded-lg text-xs font-medium text-gray-700 transition-all hover:gap-2">
                         <img :src="doorIcon" class="w-4 h-4" alt="Doors" />
                         <span>{{ vehicleSpecs.doors }}</span>
                     </div>
                     <!-- Mileage -->
-                    <div v-if="currentProduct?.mileage" class="spec-icon flex items-center gap-1.5 px-3 py-2 bg-gray-50 rounded-lg text-xs font-medium text-gray-700 transition-all hover:gap-2">
+                    <div v-if="currentProduct?.mileage"
+                        class="spec-icon flex items-center gap-1.5 px-3 py-2 bg-gray-50 rounded-lg text-xs font-medium text-gray-700 transition-all hover:gap-2">
                         <component :is="Gauge" class="w-4 h-4" />
                         <span>{{ currentProduct.mileage }}</span>
                     </div>
                     <!-- CO2 -->
-                    <div v-if="vehicleSpecs.co2" class="spec-icon flex items-center gap-1.5 px-3 py-2 bg-green-50 rounded-lg text-xs font-medium text-green-700 transition-all hover:gap-2">
+                    <div v-if="vehicleSpecs.co2"
+                        class="spec-icon flex items-center gap-1.5 px-3 py-2 bg-green-50 rounded-lg text-xs font-medium text-green-700 transition-all hover:gap-2">
                         <component :is="Leaf" class="w-4 h-4 text-green-600" />
                         <span>{{ vehicleSpecs.co2 }} g/km</span>
                     </div>
@@ -760,8 +923,13 @@ const getIconColorClass = (name) => {
                         <span>Car Package ({{ currentPackage }})</span>
                         <span class="font-medium">{{ formatPrice(currentProduct?.total || 0) }}</span>
                     </div>
+                    <div v-if="isAdobeCars && adobeMandatoryProtection > 0" class="flex justify-between text-amber-600">
+                        <span>Mandatory Liability (PLI)</span>
+                        <span class="font-medium">+{{ formatPrice(adobeMandatoryProtection) }}</span>
+                    </div>
                     <!-- Selected Extras List -->
-                    <div v-for="item in getSelectedExtrasDetails" :key="item.id" class="flex justify-between text-blue-600">
+                    <div v-for="item in getSelectedExtrasDetails" :key="item.id"
+                        class="flex justify-between text-blue-600">
                         <span>{{ item.name }} <span v-if="item.qty > 1">x{{ item.qty }}</span></span>
                         <span class="font-medium">
                             <span v-if="item.isFree" class="text-green-600 font-bold">Free</span>
@@ -777,7 +945,8 @@ const getIconColorClass = (name) => {
                 </div>
 
                 <!-- Payable Amount -->
-                <div v-if="paymentPercentage > 0" class="bg-gradient-to-r from-green-50 to-emerald-50 border-2 border-green-200 rounded-2xl p-4 mb-3">
+                <div v-if="paymentPercentage > 0"
+                    class="bg-gradient-to-r from-green-50 to-emerald-50 border-2 border-green-200 rounded-2xl p-4 mb-3">
                     <div class="flex justify-between items-center">
                         <span class="font-bold text-green-800">Pay Now ({{ paymentPercentage }}%)</span>
                         <span class="text-2xl font-bold text-green-700">{{ formatPrice(payableAmount) }}</span>
@@ -785,21 +954,24 @@ const getIconColorClass = (name) => {
                 </div>
 
                 <!-- Running Text -->
-                <div v-if="paymentPercentage > 0" class="overflow-hidden rounded-xl mb-6" style="background: linear-gradient(135deg, #1e3a5f 0%, #2d5a8f 100%);">
+                <div v-if="paymentPercentage > 0" class="overflow-hidden rounded-xl mb-6"
+                    style="background: linear-gradient(135deg, #1e3a5f 0%, #2d5a8f 100%);">
                     <p class="py-3 whitespace-nowrap marquee-text text-sm font-medium text-white">
-                        💳 Pay {{ paymentPercentage }}% now and rest pay on arrival &nbsp;•&nbsp; 💳 Pay {{ paymentPercentage }}% now and rest pay on arrival &nbsp;•&nbsp; 💳 Pay {{ paymentPercentage }}% now and rest pay on arrival &nbsp;•&nbsp;
+                        💳 Pay {{ paymentPercentage }}% now and rest pay on arrival &nbsp;•&nbsp; 💳 Pay {{
+                            paymentPercentage
+                        }}% now and rest pay on arrival &nbsp;•&nbsp; 💳 Pay {{ paymentPercentage }}% now and rest pay
+                        on
+                        arrival &nbsp;•&nbsp;
                     </p>
                 </div>
 
                 <!-- View Booking Details Button -->
-                <button
-                    v-if="paymentPercentage > 0"
-                    @click="showDetailsModal = true"
-                    class="w-full text-sm py-3 mb-4 rounded-xl border-2 font-semibold transition-all flex items-center justify-center gap-2"
-                    style="border-color: #1e3a5f; color: #1e3a5f; hover:bg-[#1e3a5f]/10;"
-                >
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                <button v-if="paymentPercentage > 0" @click="showDetailsModal = true"
+                    class="w-full text-sm py-3 mb-4 rounded-xl border-2 font-semibold transition-all flex items-center justify-center gap-2 border-[#1e3a5f] text-[#1e3a5f] hover:bg-[#1e3a5f]/10">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24"
+                        stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                     </svg>
                     View Booking Details
                 </button>
@@ -807,30 +979,24 @@ const getIconColorClass = (name) => {
 
                 <!-- Action Buttons -->
                 <div class="space-y-3">
-                    <button
-                        @click="$emit('proceed-to-checkout', {
-                            package: isLocautoRent ? (selectedLocautoProtection ? 'POA' : 'BAS') : currentPackage,
-                            protection_code: isLocautoRent ? selectedLocautoProtection : null,
-                            protection_amount: isLocautoRent && selectedLocautoProtection
-                                ? locautoProtectionPlans.find(p => p.code === selectedLocautoProtection)?.amount || 0
-                                : 0,
-                            extras: selectedExtras,
-                            detailedExtras: getSelectedExtrasDetails,
-                            vehicle_total: isLocautoRent ? props.vehicle?.total_price : currentProduct?.total,
-                            totals: {
-                                grandTotal,
-                                payableAmount,
-                                pendingAmount
-                            }
-                        })"
-                        class="btn-primary w-full py-4 rounded-xl text-white font-bold text-lg shadow-lg"
-                    >
+                    <button @click="$emit('proceed-to-checkout', {
+                        package: isLocautoRent ? (selectedLocautoProtection ? 'POA' : 'BAS') : currentPackage,
+                        protection_code: isLocautoRent ? selectedLocautoProtection : null,
+                        protection_amount: isLocautoRent && selectedLocautoProtection
+                            ? locautoProtectionPlans.find(p => p.code === selectedLocautoProtection)?.amount || 0
+                            : 0,
+                        extras: selectedExtras,
+                        detailedExtras: getSelectedExtrasDetails,
+                        totals: {
+                            grandTotal,
+                            payableAmount,
+                            pendingAmount
+                        }
+                    })" class="btn-primary w-full py-4 rounded-xl text-white font-bold text-lg shadow-lg">
                         Proceed to Booking
                     </button>
-                    <button
-                        @click="$emit('back')"
-                        class="btn-secondary w-full py-3 rounded-xl border-2 border-gray-300 text-gray-700 font-semibold hover:bg-gray-50 transition-all"
-                    >
+                    <button @click="$emit('back')"
+                        class="btn-secondary w-full py-3 rounded-xl border-2 border-gray-300 text-gray-700 font-semibold hover:bg-gray-50 transition-all">
                         Back to Results
                     </button>
                 </div>
@@ -841,17 +1007,23 @@ const getIconColorClass = (name) => {
     <!-- Booking Details Modal -->
     <Teleport to="body">
         <Transition name="modal">
-            <div v-if="showDetailsModal" class="fixed inset-0 z-[100000] flex items-center justify-center p-4" @click.self="showDetailsModal = false">
+            <div v-if="showDetailsModal" class="fixed inset-0 z-[100000] flex items-center justify-center p-4"
+                @click.self="showDetailsModal = false">
                 <!-- Backdrop -->
                 <div class="absolute inset-0 bg-black/50 backdrop-blur-sm"></div>
                 <!-- Modal Content -->
-                <div class="modal-content relative bg-white rounded-3xl shadow-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto">
+                <div
+                    class="modal-content relative bg-white rounded-3xl shadow-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto">
                     <!-- Header -->
-                    <div class="sticky top-0 bg-white border-b px-6 py-5 flex justify-between items-center rounded-t-3xl z-10">
+                    <div
+                        class="sticky top-0 bg-white border-b px-6 py-5 flex justify-between items-center rounded-t-3xl z-10">
                         <h2 class="font-display text-2xl font-bold text-gray-900">Booking Details</h2>
-                        <button @click="showDetailsModal = false" class="p-2 hover:bg-gray-100 rounded-full transition-colors">
-                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                        <button @click="showDetailsModal = false"
+                            class="p-2 hover:bg-gray-100 rounded-full transition-colors">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-gray-500" fill="none"
+                                viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M6 18L18 6M6 6l12 12" />
                             </svg>
                         </button>
                     </div>
@@ -869,10 +1041,19 @@ const getIconColorClass = (name) => {
                         <div class="space-y-4">
                             <div class="flex justify-between text-sm">
                                 <span class="text-gray-600">Car Package ({{ currentPackage }})</span>
-                                <span class="font-semibold text-gray-900">{{ formatPrice(currentProduct?.total || 0) }}</span>
+                                <span class="font-semibold text-gray-900">{{ formatPrice(currentProduct?.total || 0)
+                                    }}</span>
                             </div>
-                            <div v-for="item in getSelectedExtrasDetails" :key="item.id" class="flex justify-between text-sm">
-                                <span class="text-gray-600">{{ item.name }} <span v-if="item.qty > 1" class="text-xs text-gray-400">x{{ item.qty }}</span></span>
+                            <div v-if="isAdobeCars && adobeMandatoryProtection > 0"
+                                class="flex justify-between text-sm">
+                                <span class="text-amber-600">Mandatory Liability (PLI)</span>
+                                <span class="font-semibold text-amber-600">+{{ formatPrice(adobeMandatoryProtection)
+                                    }}</span>
+                            </div>
+                            <div v-for="item in getSelectedExtrasDetails" :key="item.id"
+                                class="flex justify-between text-sm">
+                                <span class="text-gray-600">{{ item.name }} <span v-if="item.qty > 1"
+                                        class="text-xs text-gray-400">x{{ item.qty }}</span></span>
                                 <span class="font-semibold" :class="item.isFree ? 'text-green-600' : 'text-gray-800'">
                                     {{ item.isFree ? 'FREE' : formatPrice(item.total) }}
                                 </span>
@@ -901,10 +1082,8 @@ const getIconColorClass = (name) => {
 
                     <!-- Footer -->
                     <div class="sticky bottom-0 bg-white border-t px-6 py-5 rounded-b-3xl">
-                        <button
-                            @click="showDetailsModal = false"
-                            class="btn-primary w-full py-4 rounded-xl text-white font-bold shadow-lg"
-                        >
+                        <button @click="showDetailsModal = false"
+                            class="btn-primary w-full py-4 rounded-xl text-white font-bold shadow-lg">
                             Close
                         </button>
                     </div>
@@ -979,16 +1158,29 @@ const getIconColorClass = (name) => {
 }
 
 @keyframes radioPop {
-    0% { transform: translate(-50%, -50%) scale(0); }
-    50% { transform: translate(-50%, -50%) scale(1.2); }
-    100% { transform: translate(-50%, -50%) scale(1); }
+    0% {
+        transform: translate(-50%, -50%) scale(0);
+    }
+
+    50% {
+        transform: translate(-50%, -50%) scale(1.2);
+    }
+
+    100% {
+        transform: translate(-50%, -50%) scale(1);
+    }
 }
 
 
 /* Marquee Animation */
 @keyframes marquee {
-    0% { transform: translateX(0); }
-    100% { transform: translateX(-50%); }
+    0% {
+        transform: translateX(0);
+    }
+
+    100% {
+        transform: translateX(-50%);
+    }
 }
 
 .marquee-text {
@@ -1019,7 +1211,7 @@ const getIconColorClass = (name) => {
     left: -100%;
     width: 100%;
     height: 100%;
-    background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
     transition: left 0.5s ease;
 }
 
@@ -1048,6 +1240,7 @@ const getIconColorClass = (name) => {
         opacity: 0;
         transform: translateY(10px);
     }
+
     to {
         opacity: 1;
         transform: translateY(0);
@@ -1067,13 +1260,20 @@ const getIconColorClass = (name) => {
     right: -50%;
     width: 200%;
     height: 200%;
-    background: radial-gradient(circle, rgba(255,255,255,0.1) 0%, transparent 70%);
+    background: radial-gradient(circle, rgba(255, 255, 255, 0.1) 0%, transparent 70%);
     animation: float 6s ease-in-out infinite;
 }
 
 @keyframes float {
-    0%, 100% { transform: translate(0, 0); }
-    50% { transform: translate(-10%, -10%); }
+
+    0%,
+    100% {
+        transform: translate(0, 0);
+    }
+
+    50% {
+        transform: translate(-10%, -10%);
+    }
 }
 
 /* Spec Icons */
@@ -1153,23 +1353,53 @@ const getIconColorClass = (name) => {
 }
 
 /* Icon Color Helper Classes */
-.icon-bg-blue { background: linear-gradient(135deg, rgb(219 234 254) 0%, rgb(191 219 254) 100%); }
-.icon-text-blue { color: rgb(37 99 235); }
+.icon-bg-blue {
+    background: linear-gradient(135deg, rgb(219 234 254) 0%, rgb(191 219 254) 100%);
+}
 
-.icon-bg-pink { background: linear-gradient(135deg, rgb(252 231 243) 0%, rgb(251 207 232) 100%); }
-.icon-text-pink { color: rgb(219 39 119); }
+.icon-text-blue {
+    color: rgb(37 99 235);
+}
 
-.icon-bg-green { background: linear-gradient(135deg, rgb(220 252 231) 0%, rgb(187 247 208) 100%); }
-.icon-text-green { color: rgb(22 163 74); }
+.icon-bg-pink {
+    background: linear-gradient(135deg, rgb(252 231 243) 0%, rgb(251 207 232) 100%);
+}
 
-.icon-bg-purple { background: linear-gradient(135deg, rgb(243 232 255) 0%, rgb(233 213 255) 100%); }
-.icon-text-purple { color: rgb(147 51 234); }
+.icon-text-pink {
+    color: rgb(219 39 119);
+}
 
-.icon-bg-orange { background: linear-gradient(135deg, rgb(255 237 213) 0%, rgb(254 215 170) 100%); }
-.icon-text-orange { color: rgb(249 115 22); }
+.icon-bg-green {
+    background: linear-gradient(135deg, rgb(220 252 231) 0%, rgb(187 247 208) 100%);
+}
 
-.icon-bg-gray { background: linear-gradient(135deg, rgb(243 244 246) 0%, rgb(229 231 235) 100%); }
-.icon-text-gray { color: rgb(71 85 105); }
+.icon-text-green {
+    color: rgb(22 163 74);
+}
+
+.icon-bg-purple {
+    background: linear-gradient(135deg, rgb(243 232 255) 0%, rgb(233 213 255) 100%);
+}
+
+.icon-text-purple {
+    color: rgb(147 51 234);
+}
+
+.icon-bg-orange {
+    background: linear-gradient(135deg, rgb(255 237 213) 0%, rgb(254 215 170) 100%);
+}
+
+.icon-text-orange {
+    color: rgb(249 115 22);
+}
+
+.icon-bg-gray {
+    background: linear-gradient(135deg, rgb(243 244 246) 0%, rgb(229 231 235) 100%);
+}
+
+.icon-text-gray {
+    color: rgb(71 85 105);
+}
 
 /* Dashed Line Flow Animation */
 @keyframes dashed-flow {
@@ -1177,12 +1407,15 @@ const getIconColorClass = (name) => {
         transform: translateY(-100%);
         opacity: 0;
     }
+
     10% {
         opacity: 1;
     }
+
     90% {
         opacity: 1;
     }
+
     100% {
         transform: translateY(500%);
         opacity: 0;
@@ -1209,10 +1442,12 @@ const getIconColorClass = (name) => {
         transform: scale(1);
         opacity: 0.6;
     }
+
     50% {
         transform: scale(1.3);
         opacity: 0.3;
     }
+
     100% {
         transform: scale(1.6);
         opacity: 0;
