@@ -744,14 +744,6 @@ Route::group([
 
     });
 
-    // Stripe Routes
-    Route::get('/payment', [PaymentController::class, 'index'])->name('payment.index');
-    Route::post('/retry-payment', [PaymentController::class, 'retryPayment'])->name('payment.retry');
-    Route::post('/payment/charge', [PaymentController::class, 'charge'])->name('payment.charge');
-    Route::get('/payment/cancel', [PaymentController::class, 'cancel'])->name('payment.cancel');
-    Route::get('/payment/cancel/{booking_id}', [PaymentController::class, 'cancel'])->name('payment.cancel.with.booking');
-    Route::get('/booking-success/details', [PaymentController::class, 'success'])->name('booking-success.details');
-
     // Vendor Routes
     Route::middleware(['auth', 'role:vendor'])->group(function () {
         Route::inertia('vendor-approved', 'Vendor/VendorApproved');

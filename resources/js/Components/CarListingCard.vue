@@ -593,16 +593,14 @@ onUnmounted(() => {
         <div class="car-image" @mouseenter="isHovered = true" @mouseleave="isHovered = false">
             <template v-if="vehicle.source === 'internal' && allImages.length > 0">
                 <div class="slider-container h-full">
-                    <Link
-                        :href="route('vehicle.show', { locale: page.props.locale, id: vehicle.id, package: form.package_type, pickup_date: form.date_from, return_date: form.date_to })"
-                        class="block h-full relative" @click="$emit('saveSearchUrl')">
+                    <div class="block h-full relative">
                         <div v-for="(img, index) in allImages" :key="index"
                             class="absolute inset-0 transition-opacity duration-700 ease-in-out"
                             :class="currentImageIndex === index ? 'opacity-100' : 'opacity-0 pointer-events-none'">
                             <img :src="img" :alt="`${vehicle.brand} ${vehicle.model} - Image ${index + 1}`"
                                 @error="handleImageError" class="w-full h-full object-cover" loading="lazy" />
                         </div>
-                    </Link>
+                    </div>
 
                     <!-- Slider Controls (Visible on Hover) -->
                     <div class="slider-controls" v-if="allImages.length > 1">
@@ -631,11 +629,10 @@ onUnmounted(() => {
                     </div>
                 </div>
             </template>
-            <Link v-else :href="route(getProviderRoute(vehicle), getRouteParams(vehicle))" class="block h-full"
-                @click="$emit('saveSearchUrl')">
+            <div v-else class="block h-full">
                 <img :src="getImageSource(vehicle)" :alt="`${vehicle.brand} ${vehicle.model}`" @error="handleImageError"
                     loading="lazy" />
-            </Link>
+            </div>
 
             <div class="car-badges">
                 <span v-if="vehicle.category" class="car-badge category">
