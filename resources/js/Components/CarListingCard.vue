@@ -691,7 +691,7 @@ onUnmounted(() => {
                         <template v-if="isGreenMotionOrUSave">
                             <span class="car-price">
                                 {{getCurrencySymbol(sortedProducts.find(p => p.type ===
-                                    selectedPackage.value)?.currency)}}{{ dailyPrice }}
+                                    selectedPackage.value)?.currency || vehicle.currency)}}{{ dailyPrice }}
                             </span>
                         </template>
 

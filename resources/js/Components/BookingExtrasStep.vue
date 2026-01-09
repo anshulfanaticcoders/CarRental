@@ -84,6 +84,46 @@ const props = defineProps({
 
 const emit = defineEmits(['back', 'proceed-to-checkout']);
 
+// Currency symbols mapping
+const currencySymbols = {
+    'USD': '$',
+    'EUR': '€',
+    'GBP': '£',
+    'JPY': '¥',
+    'AUD': 'A$',
+    'CAD': 'C$',
+    'CHF': 'Fr',
+    'CNH': '¥',
+    'HKD': 'HK$',
+    'SGD': 'S$',
+    'SEK': 'kr',
+    'KRW': '₩',
+    'NOK': 'kr',
+    'NZD': 'NZ$',
+    'INR': '₹',
+    'MXN': '$',
+    'BRL': 'R$',
+    'RUB': '₽',
+    'ZAR': 'R',
+    'AED': 'د.إ',
+    'MAD': 'د.م.',
+    'TRY': '₺',
+    'JOD': 'د.ا.',
+    'ISK': 'kr.',
+    'AZN': '₼',
+    'MYR': 'RM',
+    'OMR': '﷼',
+    'UGX': 'USh',
+    'NIO': 'C$',
+    'ALL': 'L', // Albanian Lek
+};
+
+// Helper to get currency symbol from code
+const getCurrencySymbol = (currencyCode) => {
+    if (!currencyCode) return '€';
+    return currencySymbols[currencyCode.toUpperCase()] || currencyCode;
+};
+
 const currentPackage = ref(props.initialPackage || 'BAS');
 
 // (Forcing PLI removed as per user request to show Basic first)
@@ -331,7 +371,8 @@ const currentProduct = computed(() => {
 });
 
 const formatPrice = (val) => {
-    return `${props.currencySymbol}${parseFloat(val).toFixed(2)}`;
+    const currencyCode = props.vehicle?.currency || 'EUR';
+    return `${getCurrencySymbol(currencyCode)}${parseFloat(val).toFixed(2)}`;
 };
 
 const getBenefits = (product) => {
@@ -342,12 +383,13 @@ const getBenefits = (product) => {
 
     const benefits = [];
     const type = product.type;
+    const currencyCode = product?.currency || props.vehicle?.currency || 'EUR';
 
     // Dynamic from API
     if (product.excess !== undefined && parseFloat(product.excess) === 0) {
         benefits.push('Glass and tyres covered');
     } else if (product.excess !== undefined) {
-        benefits.push(`Excess: ${props.currencySymbol}${product.excess}`);
+        benefits.push(`Excess: ${getCurrencySymbol(currencyCode)}${product.excess}`);
     }
 
     if (product.debitcard === 'Y') {
