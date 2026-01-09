@@ -169,6 +169,52 @@ const adobeProducts = computed(() => {
     return products;
 });
 
+// Internal Vehicle Vendor Plans
+const internalVendorPlans = computed(() => {
+    if (props.vehicle.source !== 'internal') return [];
+
+    // Laravel returns relationship as camelCase 'vendorPlans' not 'vendor_plans'
+    const vendorPlans = props.vehicle?.vendorPlans || props.vehicle?.vendor_plans || [];
+    const products = [];
+
+    // Always add Basic package (base price_per_day)
+    products.push({
+        type: 'BAS',
+        name: 'Basic Rental',
+        subtitle: 'Standard Package',
+        total: (parseFloat(props.vehicle?.price_per_day) || 0) * numberOfRentalDays.value,
+        price_per_day: parseFloat(props.vehicle?.price_per_day) || 0,
+        deposit: parseFloat(props.vehicle?.security_deposit) || 0,
+        benefits: ['Base rental rate', 'Standard coverage'],
+        is_basic: true,
+        isSelected: !selectedInternalPlan.value,
+        currency: props.vehicle?.currency || 'USD'
+    });
+
+    // Add vendor plans if any exist
+    vendorPlans.forEach((plan, index) => {
+        const features = plan.features ? (typeof plan.features === 'string' ? JSON.parse(plan.features) : plan.features) : [];
+        products.push({
+            type: plan.plan_type || `PLAN_${index}`,
+            name: plan.plan_type || 'Custom Plan',
+            subtitle: plan.plan_description || 'Vendor Package',
+            total: (parseFloat(plan.price) || 0) * numberOfRentalDays.value,
+            price_per_day: parseFloat(plan.price) || 0,
+            deposit: parseFloat(props.vehicle?.security_deposit) || 0,
+            benefits: features.length > 0 ? features : ['Custom vendor package'],
+            is_basic: false,
+            isSelected: selectedInternalPlan.value?.id === plan.id,
+            vendorPlanId: plan.id,
+            currency: props.vehicle?.currency || 'USD'
+        });
+    });
+
+    return products;
+});
+
+// Selected internal vendor plan (null = Basic)
+const selectedInternalPlan = ref(null);
+
 const handleAdobeSelection = (product) => {
     if (product.is_basic) {
         selectAdobeProtection(null);
@@ -361,15 +407,32 @@ const closeModal = () => {
 
 // Select Internal Vehicle Package (emits for inline BookingExtrasStep)
 const selectInternalPackage = () => {
+    const selectedPlan = selectedInternalPlan.value;
     emit('select-package', {
         vehicle: props.vehicle,
-        package: 'BAS', // Internal vehicles default to Basic package
-        protection_code: null,
-        protection_amount: 0,
+        package: selectedPlan?.plan_type || 'BAS',
+        protection_code: selectedPlan?.id?.toString() || null,
+        protection_amount: selectedPlan?.price || 0,
+        vendor_plan_id: selectedPlan?.id || null,
         // Pass vendorPlans and addons for BookingExtrasStep to use
         vendorPlans: props.vehicle.vendor_plans || [],
         addons: props.vehicle.addons || []
     });
+};
+
+// Select internal plan from modal
+const selectInternalVendorPlan = (product) => {
+    if (product.is_basic) {
+        selectedInternalPlan.value = null;
+    } else {
+        selectedInternalPlan.value = {
+            id: product.vendorPlanId,
+            plan_type: product.type,
+            price: product.price_per_day
+        };
+    }
+    showAllPlans.value = false;
+    selectInternalPackage();
 };
 
 // Image Handling
@@ -669,8 +732,8 @@ onUnmounted(() => {
                 </span>
             </div>
 
-            <!-- GreenMotion/USave/Locauto/Adobe View Plans Actions -->
-            <div v-if="(isGreenMotionOrUSave && sortedProducts.length > 0) || (isLocautoRent && locautoProtectionPlans.length > 0) || (isAdobeCars && adobeProtectionPlans.length > 0)"
+            <!-- GreenMotion/USave/Locauto/Adobe/Internal View Plans Actions -->
+            <div v-if="(isGreenMotionOrUSave && sortedProducts.length > 0) || (isLocautoRent && locautoProtectionPlans.length > 0) || (isAdobeCars && adobeProtectionPlans.length > 0) || (vehicle.source === 'internal' && internalVendorPlans.length > 0)"
                 class="mb-4">
                 <button @click="showAllPlans = true"
                     class="w-full text-center text-xs font-semibold py-2.5 border border-dashed border-primary-200 bg-primary-50 text-primary-700 rounded-lg hover:bg-primary-100 hover:border-primary-300 transition-all flex items-center justify-center gap-2">
@@ -931,6 +994,50 @@ onUnmounted(() => {
                             </button>
                         </div>
 
+                    </template>
+
+                    <!-- Internal Vehicles Vendor Plans -->
+                    <template v-if="vehicle.source === 'internal'">
+                        <div v-for="product in internalVendorPlans" :key="product.type"
+                            class="plan-card" :class="{ 'selected': product.isSelected }"
+                            @click="selectInternalVendorPlan(product)">
+                            <div class="plan-header">
+                                <div>
+                                    <h3 class="plan-name">{{ product.name }}</h3>
+                                    <p class="plan-type">{{ product.subtitle }}</p>
+                                </div>
+                                <div class="plan-check" v-if="product.isSelected">
+                                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"
+                                        class="w-4 h-4 text-white">
+                                        <path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z" />
+                                    </svg>
+                                </div>
+                            </div>
+                            <div class="plan-price-box">
+                                <div class="plan-daily-price">
+                                    {{ getSelectedCurrencySymbol() }}{{ convertPrice(product.price_per_day, product.currency).toFixed(2) }}
+                                    <span>/day</span>
+                                </div>
+                                <div class="plan-total-price">
+                                    Total: {{ getSelectedCurrencySymbol() }}{{ convertPrice(product.total, product.currency).toFixed(2) }}
+                                </div>
+                            </div>
+                            <ul class="plan-features">
+                                <li v-for="benefit in product.benefits" :key="benefit">
+                                    <img :src="check" class="w-4 h-4 opacity-100" />
+                                    <span :class="{ 'font-semibold text-gray-900': isKeyBenefit(benefit) }">{{ benefit }}</span>
+                                </li>
+                                <li v-if="product.deposit">
+                                    <img :src="check" class="w-4 h-4 opacity-100" />
+                                    <span :class="{ 'font-semibold text-gray-900': isKeyBenefit('Deposit') }">Deposit:
+                                        {{ getSelectedCurrencySymbol() }}{{ convertPrice(product.deposit, product.currency).toFixed(2) }}
+                                    </span>
+                                </li>
+                            </ul>
+                            <button class="plan-select-btn">
+                                {{ product.isSelected ? 'Selected' : 'Select Package' }}
+                            </button>
+                        </div>
                     </template>
                 </div>
             </div>
