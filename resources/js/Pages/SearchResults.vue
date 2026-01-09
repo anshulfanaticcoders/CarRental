@@ -2021,7 +2021,6 @@ watch(
                             <span class="text-customPrimaryColor text-2xl font-bold font-['Outfit']">
                                 {{ getCurrencySymbol(selectedCurrency) }}{{ convertCurrency(vehicle.price_per_day, vehicle.currency).toFixed(2) }}
                             </span>
-                            <span class="text-xs text-gray-500">/day</span>
                         </div>
                     </template>
                 </CarListingCard>
@@ -2059,7 +2058,7 @@ watch(
             :initial-package="selectedPackage"
             :initial-protection-code="selectedProtectionCode"
             :optional-extras="optionalExtras"
-            :currency-symbol="getCurrencySymbol(selectedVehicle.currency || 'EUR')"
+            :currency-symbol="getCurrencySymbol(selectedCurrency)"
             :location-name="locationName"
             :pickup-location="form.where"
             :dropoff-location="form.dropoff_where || form.where"
@@ -2091,7 +2090,7 @@ watch(
             :pickup-location="form.where"
             :dropoff-location="form.dropoff_where || form.where"
             :number-of-days="numberOfRentalDays"
-            :currency-symbol="getCurrencySymbol(selectedVehicle.currency || 'EUR')"
+            :currency-symbol="getCurrencySymbol(selectedCurrency)"
             :payment-percentage="paymentPercentage"
             :totals="selectedCheckoutData.totals"
             :vehicle-total="selectedCheckoutData.vehicle_total"

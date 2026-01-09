@@ -1,7 +1,7 @@
 <script setup>
 import { computed, ref, onMounted, onUnmounted, watch } from 'vue';
 import { Link, usePage } from '@inertiajs/vue3';
-import { useCurrency } from '@/composables/useCurrency';
+import { useCurrencyConversion } from '@/composables/useCurrencyConversion';
 
 // Icons
 import carIcon from "../../assets/carIcon.svg";
@@ -48,40 +48,13 @@ const props = defineProps({
 
 const emit = defineEmits(['toggleFavourite', 'saveSearchUrl', 'select-package']);
 
-const { selectedCurrency } = useCurrency();
+const { selectedCurrency, convertPrice, getSelectedCurrencySymbol, getCurrencySymbol, fetchExchangeRates } = useCurrencyConversion();
 const page = usePage();
 
-// Currency symbol mapping
-const currencySymbols = {
-    'USD': '$',
-    'EUR': '€',
-    'GBP': '£',
-    'JPY': '¥',
-    'AUD': 'A$',
-    'CAD': 'C$',
-    'CHF': 'Fr',
-    'CNH': '¥',
-    'HKD': 'HK$',
-    'SGD': 'S$',
-    'SEK': 'kr',
-    'KRW': '₩',
-    'NOK': 'kr',
-    'NZD': 'NZ$',
-    'INR': '₹',
-    'MXN': '$',
-    'BRL': 'R$',
-    'ZAR': 'R',
-    'AED': 'د.إ',
-    'MAD': 'د.م.',
-    'TRY': '₺',
-    'ALL': 'L', // Albanian Lek
-};
-
-// Helper to get currency symbol from code
-const getCurrencySymbol = (currencyCode) => {
-    if (!currencyCode) return '$';
-    return currencySymbols[currencyCode.toUpperCase()] || currencyCode;
-};
+// Fetch exchange rates on mount
+onMounted(() => {
+    fetchExchangeRates();
+});
 
 // State for GreenMotion/USave plan selection
 const selectedPackage = ref('BAS'); // Default to Basic
@@ -240,7 +213,9 @@ const dailyPrice = computed(() => {
     if (!isGreenMotionOrUSave.value) return null;
     const product = sortedProducts.value.find(p => p.type === selectedPackage.value);
     if (!product) return '0.00';
-    return (parseFloat(product.total) / numberOfRentalDays.value).toFixed(2);
+    const originalPrice = parseFloat(product.total) / numberOfRentalDays.value;
+    const originalCurrency = product.currency || props.vehicle.currency || 'USD';
+    return convertPrice(originalPrice, originalCurrency).toFixed(2);
 });
 
 // Get Premium Plus daily price for display
@@ -248,7 +223,28 @@ const premiumPlusDailyPrice = computed(() => {
     if (!isGreenMotionOrUSave.value) return null;
     const product = sortedProducts.value.find(p => p.type === 'PMP');
     if (!product) return '0.00';
-    return (parseFloat(product.total) / numberOfRentalDays.value).toFixed(2);
+    const originalPrice = parseFloat(product.total) / numberOfRentalDays.value;
+    const originalCurrency = product.currency || props.vehicle.currency || 'USD';
+    return convertPrice(originalPrice, originalCurrency).toFixed(2);
+});
+
+// Get LocautoRent converted daily price
+const locautoDailyPrice = computed(() => {
+    if (!isLocautoRent.value) return '0.00';
+    const basePrice = parseFloat(props.vehicle.price_per_day) || 0;
+    const protectionPrice = selectedLocautoProtection.value ? parseFloat(selectedLocautoProtection.value.amount) : 0;
+    const originalPrice = basePrice + protectionPrice;
+    const originalCurrency = props.vehicle.currency || 'EUR';
+    return convertPrice(originalPrice, originalCurrency).toFixed(2);
+});
+
+// Get Adobe converted daily price
+const adobeDailyPrice = computed(() => {
+    if (!isAdobeCars.value) return '0.00';
+    const baseTotal = adobeBaseRate.value;
+    const protectionTotal = selectedAdobeProtection.value ? parseFloat(selectedAdobeProtection.value.amount) : 0;
+    const originalPrice = (baseTotal + protectionTotal) / numberOfRentalDays.value;
+    return convertPrice(originalPrice, 'USD').toFixed(2);
 });
 
 // Get package name from type
@@ -277,12 +273,14 @@ const getBenefits = (product) => {
     if (!product) return [];
     const benefits = [];
     const type = product.type;
+    const originalCurrency = product.currency || props.vehicle.currency || 'USD';
 
     // Dynamic from API
     if (product.excess !== undefined && parseFloat(product.excess) === 0) {
         benefits.push('Glass and tyres covered');
     } else if (product.excess !== undefined) {
-        benefits.push(`Excess: ${product.currency || ''}${product.excess}`);
+        const convertedExcess = convertPrice(product.excess, originalCurrency);
+        benefits.push(`Excess: ${getSelectedCurrencySymbol()}${convertedExcess.toFixed(2)}`);
     }
 
     if (product.debitcard === 'Y') {
@@ -316,9 +314,10 @@ const getBenefits = (product) => {
     return benefits;
 };
 
-// Format price with currency
+// Format price with currency (converted)
 const formatPrice = (price, currency) => {
-    return `${getCurrencySymbol(currency)}${parseFloat(price).toFixed(2)}`;
+    const converted = convertPrice(price, currency);
+    return `${getSelectedCurrencySymbol()}${converted.toFixed(2)}`;
 };
 
 // Select a package
@@ -690,27 +689,21 @@ onUnmounted(() => {
                         <!-- GreenMotion/USave Price -->
                         <template v-if="isGreenMotionOrUSave">
                             <span class="car-price">
-                                {{getCurrencySymbol(sortedProducts.find(p => p.type ===
-                                    selectedPackage.value)?.currency || vehicle.currency)}}{{ dailyPrice }}
+                                {{ getSelectedCurrencySymbol() }}{{ dailyPrice }}
                             </span>
                         </template>
 
                         <!-- Locauto Price -->
                         <template v-else-if="isLocautoRent">
                             <span class="car-price">
-                                {{ getCurrencySymbol(vehicle.currency) }}{{ selectedLocautoProtection ?
-                                    (parseFloat(vehicle.price_per_day) +
-                                        parseFloat(selectedLocautoProtection.amount)).toFixed(2) :
-                                    parseFloat(vehicle.price_per_day).toFixed(2) }}
+                                {{ getSelectedCurrencySymbol() }}{{ locautoDailyPrice }}
                             </span>
                         </template>
 
                         <!-- Adobe Price -->
                         <template v-else-if="isAdobeCars">
                             <span class="car-price">
-                                ${{ selectedAdobeProtection ? ((adobeBaseRate +
-                                    parseFloat(selectedAdobeProtection.amount)) / numberOfRentalDays).toFixed(2) :
-                                    (adobeBaseRate / numberOfRentalDays).toFixed(2) }}
+                                {{ getSelectedCurrencySymbol() }}{{ adobeDailyPrice }}
                             </span>
                         </template>
 
@@ -810,13 +803,13 @@ onUnmounted(() => {
 
                             <div class="plan-price-box">
                                 <div class="plan-daily-price">
-                                    {{ getCurrencySymbol(product.currency) }}{{ (parseFloat(product.total) /
-                                        numberOfRentalDays).toFixed(2) }}
+                                    {{ getSelectedCurrencySymbol() }}{{ convertPrice(parseFloat(product.total) /
+                                        numberOfRentalDays, product.currency || props.vehicle.currency || 'USD').toFixed(2) }}
                                     <span>/day</span>
                                 </div>
                                 <div class="plan-total-price">
-                                    Total: {{ getCurrencySymbol(product.currency) }}{{
-                                        parseFloat(product.total).toFixed(2) }}
+                                    Total: {{ getSelectedCurrencySymbol() }}{{
+                                        convertPrice(parseFloat(product.total), product.currency || props.vehicle.currency || 'USD').toFixed(2) }}
                                 </div>
                             </div>
 
@@ -830,7 +823,7 @@ onUnmounted(() => {
                                     <img :src="check" class="w-4 h-4 opacity-100" />
                                     <span :class="{ 'font-semibold text-gray-900': isKeyBenefit('Deposit') }">Deposit:
                                         {{
-                                            getCurrencySymbol(product.currency) }}{{ parseFloat(product.deposit).toFixed(2)
+                                            getSelectedCurrencySymbol() }}{{ convertPrice(parseFloat(product.deposit), product.currency || props.vehicle.currency || 'USD').toFixed(2)
                                         }}</span>
                                 </li>
                             </ul>
@@ -858,10 +851,10 @@ onUnmounted(() => {
                                     </svg></div>
                             </div>
                             <div class="plan-price-box">
-                                <div class="plan-daily-price">{{ getCurrencySymbol(vehicle.currency) }}{{
-                                    parseFloat(vehicle.price_per_day).toFixed(2) }} <span>/day</span></div>
-                                <div class="plan-total-price">Total: {{ getCurrencySymbol(vehicle.currency) }}{{
-                                    parseFloat(vehicle.total_price).toFixed(2) }}</div>
+                                <div class="plan-daily-price">{{ getSelectedCurrencySymbol() }}{{
+                                    convertPrice(parseFloat(vehicle.price_per_day), vehicle.currency || 'EUR').toFixed(2) }} <span>/day</span></div>
+                                <div class="plan-total-price">Total: {{ getSelectedCurrencySymbol() }}{{
+                                    convertPrice(parseFloat(vehicle.total_price), vehicle.currency || 'EUR').toFixed(2) }}</div>
                             </div>
                             <ul class="plan-features">
                                 <li><img :src="check" class="w-4 h-4" /> <span>Standard protection included</span></li>
@@ -885,13 +878,13 @@ onUnmounted(() => {
                                     </svg></div>
                             </div>
                             <div class="plan-price-box">
-                                <div class="plan-daily-price">{{ getCurrencySymbol(vehicle.currency) }}{{
-                                    (parseFloat(vehicle.price_per_day) + parseFloat(protection.amount)).toFixed(2) }}
+                                <div class="plan-daily-price">{{ getSelectedCurrencySymbol() }}{{
+                                    convertPrice(parseFloat(vehicle.price_per_day) + parseFloat(protection.amount), vehicle.currency || 'EUR').toFixed(2) }}
                                     <span>/day</span>
                                 </div>
-                                <div class="plan-total-price">Total: {{ getCurrencySymbol(vehicle.currency) }}{{
-                                    (parseFloat(vehicle.total_price) + (parseFloat(protection.amount) *
-                                        numberOfRentalDays)).toFixed(2) }}</div>
+                                <div class="plan-total-price">Total: {{ getSelectedCurrencySymbol() }}{{
+                                    convertPrice(parseFloat(vehicle.total_price) + (parseFloat(protection.amount) *
+                                        numberOfRentalDays), vehicle.currency || 'EUR').toFixed(2) }}</div>
                             </div>
                             <ul class="plan-features">
                                 <li><img :src="check" class="w-4 h-4" /> <span>{{ protection.description }}</span></li>
@@ -919,11 +912,11 @@ onUnmounted(() => {
                             </div>
                             <div class="plan-price-box">
                                 <div class="plan-daily-price">
-                                    ${{ (product.total / numberOfRentalDays).toFixed(2) }}
+                                    {{ getSelectedCurrencySymbol() }}{{ convertPrice(product.total / numberOfRentalDays, 'USD').toFixed(2) }}
                                     <span>/day</span>
                                 </div>
                                 <div class="plan-total-price">
-                                    Total: ${{ product.total.toFixed(2) }}
+                                    Total: {{ getSelectedCurrencySymbol() }}{{ convertPrice(product.total, 'USD').toFixed(2) }}
                                 </div>
                             </div>
                             <ul class="plan-features">

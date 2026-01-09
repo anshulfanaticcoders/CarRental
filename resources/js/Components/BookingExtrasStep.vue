@@ -1,5 +1,6 @@
 <script setup>
-import { ref, computed, watch, watchEffect } from "vue";
+import { ref, computed, watch, watchEffect, onMounted } from "vue";
+import { useCurrencyConversion } from '@/composables/useCurrencyConversion';
 import check from "../../assets/Check.svg";
 // Additional Icons
 import carIcon from "../../assets/carIcon.svg";
@@ -84,45 +85,13 @@ const props = defineProps({
 
 const emit = defineEmits(['back', 'proceed-to-checkout']);
 
-// Currency symbols mapping
-const currencySymbols = {
-    'USD': '$',
-    'EUR': '€',
-    'GBP': '£',
-    'JPY': '¥',
-    'AUD': 'A$',
-    'CAD': 'C$',
-    'CHF': 'Fr',
-    'CNH': '¥',
-    'HKD': 'HK$',
-    'SGD': 'S$',
-    'SEK': 'kr',
-    'KRW': '₩',
-    'NOK': 'kr',
-    'NZD': 'NZ$',
-    'INR': '₹',
-    'MXN': '$',
-    'BRL': 'R$',
-    'RUB': '₽',
-    'ZAR': 'R',
-    'AED': 'د.إ',
-    'MAD': 'د.م.',
-    'TRY': '₺',
-    'JOD': 'د.ا.',
-    'ISK': 'kr.',
-    'AZN': '₼',
-    'MYR': 'RM',
-    'OMR': '﷼',
-    'UGX': 'USh',
-    'NIO': 'C$',
-    'ALL': 'L', // Albanian Lek
-};
+// Currency conversion composable
+const { convertPrice, getSelectedCurrencySymbol, fetchExchangeRates } = useCurrencyConversion();
 
-// Helper to get currency symbol from code
-const getCurrencySymbol = (currencyCode) => {
-    if (!currencyCode) return '€';
-    return currencySymbols[currencyCode.toUpperCase()] || currencyCode;
-};
+// Fetch exchange rates on mount
+onMounted(() => {
+    fetchExchangeRates();
+});
 
 const currentPackage = ref(props.initialPackage || 'BAS');
 
@@ -372,7 +341,8 @@ const currentProduct = computed(() => {
 
 const formatPrice = (val) => {
     const currencyCode = props.vehicle?.currency || 'EUR';
-    return `${getCurrencySymbol(currencyCode)}${parseFloat(val).toFixed(2)}`;
+    const converted = convertPrice(parseFloat(val), currencyCode);
+    return `${getSelectedCurrencySymbol()}${converted.toFixed(2)}`;
 };
 
 const getBenefits = (product) => {
@@ -389,7 +359,8 @@ const getBenefits = (product) => {
     if (product.excess !== undefined && parseFloat(product.excess) === 0) {
         benefits.push('Glass and tyres covered');
     } else if (product.excess !== undefined) {
-        benefits.push(`Excess: ${getCurrencySymbol(currencyCode)}${product.excess}`);
+        const convertedExcess = convertPrice(product.excess, currencyCode);
+        benefits.push(`Excess: ${getSelectedCurrencySymbol()}${convertedExcess.toFixed(2)}`);
     }
 
     if (product.debitcard === 'Y') {
