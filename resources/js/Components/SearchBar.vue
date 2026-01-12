@@ -1,5 +1,5 @@
 <template>
-  <section class="full-w-container max-[768px]:pb-[2rem]" ref="searchBarContainer">
+  <section class="full-w-container max-[768px]:pb-[2rem] max-[768px]:w-full" ref="searchBarContainer">
     <div class="search_bar rounded-[20px] max-[768px]:border-[1px]">
       <div class="flex relative max-[768px]:flex-col max-[768px]:items-center">
         <div
@@ -14,7 +14,7 @@
           ]">
           
           <!-- Locations Section -->
-          <div class="col-span-6 flex gap-4 relative" :class="{'flex-col': !isProviderLocation, 'flex-row': isProviderLocation}">
+          <div class="col-span-6 flex gap-4 relative max-[768px]:flex-col max-[768px]:w-full" :class="{'flex-col': !isProviderLocation, 'flex-row': isProviderLocation}">
              <!-- Pickup Location -->
              <div class="w-full relative group">
                 <label class="block text-xs font-semibold text-customLightGrayColor uppercase tracking-wider mb-2 pl-1">{{ _t('homepage', 'pickup_return_location_label') }}</label>
@@ -226,7 +226,7 @@
 
         <!-- Search results dropdown -->
         <div v-if="showSearchBox && (searchResults.length > 0 || popularPlaces.length > 0 || searchPerformed)"
-          class="search-results absolute z-[9999] top-[105%] w-[50%] rounded-[12px] border border-gray-100 left-[20%] p-5 bg-white text-customDarkBlackColor max-h-[400px] overflow-y-auto shadow-xl max-[768px]:w-full max-[768px]:top-[45%] max-[768px]:left-0">
+          class="search-results absolute z-[9999] top-[105%] w-[50%] rounded-[12px] border border-gray-100 left-[20%] p-5 bg-white text-customDarkBlackColor max-h-[400px] overflow-y-auto shadow-xl max-[768px]:w-full max-[768px]:top-[25%] max-[768px]:left-0">
 
           <!-- Existing search results -->
           <div v-if="searchResults.length > 0">
@@ -267,7 +267,7 @@
         
         <!-- Dropoff search results dropdown -->
         <div v-if="showDropoffSearchBox && dropoffSearchResults.length > 0"
-          class="search-results absolute z-[9999] top-[105%] w-[50%] rounded-[12px] border-[1px] border-white left-[20%] p-5 bg-white text-customDarkBlackColor max-h-[400px] overflow-y-auto max-[768px]:w-full max-[768px]:top-[60%] max-[768px]:left-0">
+          class="search-results absolute z-[9999] top-[105%] w-[50%] rounded-[12px] border-[1px] border-white left-[20%] p-5 bg-white text-customDarkBlackColor max-h-[400px] overflow-y-auto max-[768px]:w-full max-[768px]:top-[46%] max-[768px]:left-0">
             <div v-for="result in dropoffSearchResults" :key="result.unified_location_id" @click="selectDropoffLocation(result)"
               class="p-2 hover:bg-customPrimaryColor hover:text-white cursor-pointer flex gap-3 group rounded-[12px] hover:scale-[1.02] transition-transform">
               <div class="h-10 w-10 md:h-12 md:w-12 bg-gray-100 text-gray-300 rounded flex justify-center items-center">

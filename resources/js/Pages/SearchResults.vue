@@ -2195,8 +2195,7 @@ watch(
                     <!-- Sort Dropdown -->
                     <div class="sort-dropdown-wrapper" ref="sortDropdownRef">
                         <button class="sort-dropdown" @click="showSortDropdown = !showSortDropdown">
-                            <span>Sort: {{ sortBy === 'recommended' ? 'Recommended' : (sortBy === 'price_asc' ?
-                                'Price:Low to High' : 'Price: High to Low') }}</span>
+                            <span>Sort: {{ sortBy === 'recommended' ? 'Recommended' : (sortBy === 'price_asc' ? 'Price:Low to High' : 'Price: High to Low') }}</span>
                             <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24"
                                 fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
                                 stroke-linejoin="round">
@@ -2537,41 +2536,6 @@ select:focus+.caret-rotate {
     transform: translateX(-100%);
 }
 
-@media screen and (max-width: 1024px) {
-    .search-header {
-        padding: 1.5rem 1rem 2rem;
-    }
-
-    .search-header-top {
-        flex-direction: column;
-        align-items: flex-start;
-        gap: 1rem;
-    }
-
-    .search-dates-badge {
-        width: 100%;
-        justify-content: space-between;
-        padding: 0.75rem 1.25rem;
-    }
-
-    .search-form-card {
-        margin-top: 1rem;
-        background: white;
-        border-radius: 1rem;
-        padding: 0.5rem;
-        box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1);
-    }
-
-    .searchbar-in-header :deep(.search_bar form) {
-        grid-template-columns: 1fr;
-        gap: 0.75rem;
-    }
-
-    .main-container {
-        padding: 1rem !important;
-    }
-}
-
 /* Fade-up animation styles */
 .fade-up-hidden {
     opacity: 0;
@@ -2661,6 +2625,13 @@ h6 {
     color: var(--accent-400);
 }
 
+@media (max-width: 768px) {
+    .search-location-icon {
+        width: 82px;
+        height: 54px;
+    }
+}
+
 .search-location-icon svg {
     width: 24px;
     height: 24px;
@@ -2718,10 +2689,16 @@ h6 {
     font-weight: 600;
 }
 
+@media (max-width: 768px) {
+    .days-badge {
+        text-align: center;
+    }
+}
+
 .search-form-card {
     background: transparent;
     border-radius: var(--radius-xl);
-    padding: var(--space-4);
+    padding: var(--space-4) 0;
     box-shadow: none;
 }
 
