@@ -864,12 +864,14 @@ onUnmounted(() => {
                             <div class="plan-price-box">
                                 <div class="plan-daily-price">
                                     {{ getSelectedCurrencySymbol() }}{{ convertPrice(parseFloat(product.total) /
-                                        numberOfRentalDays, product.currency || props.vehicle.currency || 'USD').toFixed(2) }}
+                                        numberOfRentalDays, product.currency || props.vehicle.currency || 'USD').toFixed(2)
+                                    }}
                                     <span>/day</span>
                                 </div>
                                 <div class="plan-total-price">
                                     Total: {{ getSelectedCurrencySymbol() }}{{
-                                        convertPrice(parseFloat(product.total), product.currency || props.vehicle.currency || 'USD').toFixed(2) }}
+                                        convertPrice(parseFloat(product.total), product.currency || props.vehicle.currency
+                                            || 'USD').toFixed(2) }}
                                 </div>
                             </div>
 
@@ -883,7 +885,8 @@ onUnmounted(() => {
                                     <img :src="check" class="w-4 h-4 opacity-100" />
                                     <span :class="{ 'font-semibold text-gray-900': isKeyBenefit('Deposit') }">Deposit:
                                         {{
-                                            getSelectedCurrencySymbol() }}{{ convertPrice(parseFloat(product.deposit), product.currency || props.vehicle.currency || 'USD').toFixed(2)
+                                            getSelectedCurrencySymbol() }}{{ convertPrice(parseFloat(product.deposit),
+                                            product.currency || props.vehicle.currency || 'USD').toFixed(2)
                                         }}</span>
                                 </li>
                             </ul>
@@ -912,9 +915,11 @@ onUnmounted(() => {
                             </div>
                             <div class="plan-price-box">
                                 <div class="plan-daily-price">{{ getSelectedCurrencySymbol() }}{{
-                                    convertPrice(parseFloat(vehicle.price_per_day), vehicle.currency || 'EUR').toFixed(2) }} <span>/day</span></div>
+                                    convertPrice(parseFloat(vehicle.price_per_day), vehicle.currency ||
+                                        'EUR').toFixed(2) }} <span>/day</span></div>
                                 <div class="plan-total-price">Total: {{ getSelectedCurrencySymbol() }}{{
-                                    convertPrice(parseFloat(vehicle.total_price), vehicle.currency || 'EUR').toFixed(2) }}</div>
+                                    convertPrice(parseFloat(vehicle.total_price), vehicle.currency || 'EUR').toFixed(2)
+                                }}</div>
                             </div>
                             <ul class="plan-features">
                                 <li><img :src="check" class="w-4 h-4" /> <span>Standard protection included</span></li>
@@ -939,7 +944,8 @@ onUnmounted(() => {
                             </div>
                             <div class="plan-price-box">
                                 <div class="plan-daily-price">{{ getSelectedCurrencySymbol() }}{{
-                                    convertPrice(parseFloat(vehicle.price_per_day) + parseFloat(protection.amount), vehicle.currency || 'EUR').toFixed(2) }}
+                                    convertPrice(parseFloat(vehicle.price_per_day) + parseFloat(protection.amount),
+                                        vehicle.currency || 'EUR').toFixed(2) }}
                                     <span>/day</span>
                                 </div>
                                 <div class="plan-total-price">Total: {{ getSelectedCurrencySymbol() }}{{
@@ -972,11 +978,13 @@ onUnmounted(() => {
                             </div>
                             <div class="plan-price-box">
                                 <div class="plan-daily-price">
-                                    {{ getSelectedCurrencySymbol() }}{{ convertPrice(product.total / numberOfRentalDays, 'USD').toFixed(2) }}
+                                    {{ getSelectedCurrencySymbol() }}{{ convertPrice(product.total / numberOfRentalDays,
+                                        'USD').toFixed(2) }}
                                     <span>/day</span>
                                 </div>
                                 <div class="plan-total-price">
-                                    Total: {{ getSelectedCurrencySymbol() }}{{ convertPrice(product.total, 'USD').toFixed(2) }}
+                                    Total: {{ getSelectedCurrencySymbol() }}{{ convertPrice(product.total,
+                                        'USD').toFixed(2) }}
                                 </div>
                             </div>
                             <ul class="plan-features">
@@ -995,9 +1003,8 @@ onUnmounted(() => {
 
                     <!-- Internal Vehicles Vendor Plans -->
                     <template v-if="vehicle.source === 'internal'">
-                        <div v-for="product in internalVendorPlans" :key="product.type"
-                            class="plan-card" :class="{ 'selected': product.isSelected }"
-                            @click="selectInternalVendorPlan(product)">
+                        <div v-for="product in internalVendorPlans" :key="product.type" class="plan-card"
+                            :class="{ 'selected': product.isSelected }" @click="selectInternalVendorPlan(product)">
                             <div class="plan-header">
                                 <div>
                                     <h3 class="plan-name">{{ product.name }}</h3>
@@ -1012,22 +1019,26 @@ onUnmounted(() => {
                             </div>
                             <div class="plan-price-box">
                                 <div class="plan-daily-price">
-                                    {{ getSelectedCurrencySymbol() }}{{ convertPrice(product.price_per_day, product.currency).toFixed(2) }}
+                                    {{ getSelectedCurrencySymbol() }}{{ convertPrice(product.price_per_day,
+                                        product.currency).toFixed(2) }}
                                     <span>/day</span>
                                 </div>
                                 <div class="plan-total-price">
-                                    Total: {{ getSelectedCurrencySymbol() }}{{ convertPrice(product.total, product.currency).toFixed(2) }}
+                                    Total: {{ getSelectedCurrencySymbol() }}{{ convertPrice(product.total,
+                                        product.currency).toFixed(2) }}
                                 </div>
                             </div>
                             <ul class="plan-features">
                                 <li v-for="benefit in product.benefits" :key="benefit">
                                     <img :src="check" class="w-4 h-4 opacity-100" />
-                                    <span :class="{ 'font-semibold text-gray-900': isKeyBenefit(benefit) }">{{ benefit }}</span>
+                                    <span :class="{ 'font-semibold text-gray-900': isKeyBenefit(benefit) }">{{ benefit
+                                    }}</span>
                                 </li>
                                 <li v-if="product.deposit">
                                     <img :src="check" class="w-4 h-4 opacity-100" />
                                     <span :class="{ 'font-semibold text-gray-900': isKeyBenefit('Deposit') }">Deposit:
-                                        {{ getSelectedCurrencySymbol() }}{{ convertPrice(product.deposit, product.currency).toFixed(2) }}
+                                        {{ getSelectedCurrencySymbol() }}{{ convertPrice(product.deposit,
+                                            product.currency).toFixed(2) }}
                                     </span>
                                 </li>
                             </ul>
@@ -1347,6 +1358,20 @@ onUnmounted(() => {
     border-top: 1px solid var(--gray-100);
 }
 
+@media (max-width: 480px) {
+    .car-footer {
+        flex-direction: column;
+        align-items: stretch;
+        gap: var(--space-4);
+    }
+
+    .car-pricing {
+        flex-direction: row;
+        align-items: baseline;
+        justify-content: space-between;
+    }
+}
+
 .car-pricing {
     display: flex;
     flex-direction: column;
@@ -1419,6 +1444,21 @@ onUnmounted(() => {
     padding: 2rem;
     overflow-y: auto;
     position: relative;
+}
+
+@media (max-width: 640px) {
+    .plans-modal-content {
+        padding: 1.5rem;
+        border-radius: 1.5rem 1.5rem 0 0;
+        max-height: 85vh;
+        position: absolute;
+        bottom: 0;
+    }
+
+    .modal-close-btn {
+        top: 1rem;
+        right: 1rem;
+    }
 }
 
 .modal-close-btn {
@@ -1524,7 +1564,9 @@ onUnmounted(() => {
     list-style: none;
     padding: 0;
     margin: 0 0 1.5rem 0;
-    space-y: 0.5rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
 }
 
 .plan-features li {

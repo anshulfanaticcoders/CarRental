@@ -88,9 +88,29 @@ const emit = defineEmits(['back', 'proceed-to-checkout']);
 // Currency conversion composable
 const { convertPrice, getSelectedCurrencySymbol, fetchExchangeRates } = useCurrencyConversion();
 
+// Sticky Bar Logic
+const summarySection = ref(null);
+const isSummaryVisible = ref(false);
+
+const scrollToSummary = () => {
+    summarySection.value?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+};
+
 // Fetch exchange rates on mount
 onMounted(() => {
     fetchExchangeRates();
+
+    // Setup Intersection Observer for summary visibility
+    const observer = new IntersectionObserver(
+        ([entry]) => {
+            isSummaryVisible.value = entry.isIntersecting;
+        },
+        { threshold: 0.1 }
+    );
+
+    if (summarySection.value) {
+        observer.observe(summarySection.value);
+    }
 });
 
 const currentPackage = ref(props.initialPackage || 'BAS');
@@ -100,6 +120,8 @@ const currentPackage = ref(props.initialPackage || 'BAS');
 const selectedExtras = ref({});
 const selectedExtrasOrder = ref([]); // Track selection order for "First 2 Free" logic
 const showDetailsModal = ref(false);
+
+// (Moved above)
 
 // Watch for changes to initialPackage prop
 watch(() => props.initialPackage, (newPackage) => {
@@ -907,7 +929,7 @@ const getIconColorClass = (name) => {
         </div>
 
         <!-- Right Column: Sticky Summary -->
-        <div class="lg:w-96 xl:w-[420px]">
+        <div class="lg:w-96 xl:w-[420px]" ref="summarySection">
             <div class="sticky-summary bg-white rounded-3xl shadow-2xl border border-gray-100 p-6">
                 <h3 class="font-display text-2xl font-bold text-gray-900 mb-6 pb-4 border-b">Booking Summary</h3>
 
@@ -1244,6 +1266,32 @@ const getIconColorClass = (name) => {
             </div>
         </Transition>
     </Teleport>
+
+    <!-- Mobile Sticky Price Bar -->
+    <Transition name="slide-up">
+        <div v-if="!isSummaryVisible"
+            class="fixed bottom-0 left-0 right-0 z-[100] bg-white/90 backdrop-blur-md border-t border-gray-100 p-4 lg:hidden shadow-[0_-10px_30px_rgba(0,0,0,0.08)]">
+            <div class="flex items-center justify-between gap-4 max-w-lg mx-auto">
+                <div class="flex flex-col">
+                    <span class="text-[10px] text-gray-500 font-bold uppercase tracking-wider">Total Price</span>
+                    <div class="flex items-baseline gap-1.5">
+                        <span class="text-xl font-bold text-gray-900">{{ formatPrice(grandTotal) }}</span>
+                    </div>
+                    <span v-if="paymentPercentage > 0" class="text-[10px] text-emerald-600 font-bold">
+                        Pay {{ formatPrice(payableAmount) }} Now ({{ paymentPercentage }}%)
+                    </span>
+                </div>
+                <button @click="scrollToSummary"
+                    class="bg-[#1e3a5f] text-white px-5 py-3 rounded-xl font-bold text-sm shadow-lg shadow-blue-100/50 active:scale-95 transition-all flex items-center gap-2">
+                    View Summary
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24"
+                        stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+                    </svg>
+                </button>
+            </div>
+        </div>
+    </Transition>
 </template>
 
 <style scoped>
@@ -1347,6 +1395,13 @@ const getIconColorClass = (name) => {
     position: sticky;
     top: 2rem;
     transition: all 0.3s ease;
+}
+
+@media (max-width: 1024px) {
+    .sticky-summary {
+        position: static;
+        margin-top: 2rem;
+    }
 }
 
 /* Button Animations */
@@ -1628,5 +1683,17 @@ const getIconColorClass = (name) => {
     border: 2px solid currentColor;
     animation: ripple 2s ease-out infinite;
     animation-delay: 1s;
+}
+
+/* Slide Up Transition */
+.slide-up-enter-active,
+.slide-up-leave-active {
+    transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.slide-up-enter-from,
+.slide-up-leave-to {
+    transform: translateY(100%);
+    opacity: 0;
 }
 </style>
