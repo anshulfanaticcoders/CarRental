@@ -683,7 +683,7 @@ const getIconColorClass = (name) => {
 </script>
 
 <template>
-    <div class="flex flex-col lg:flex-row gap-8 p-4 md:p-6">
+    <div class="flex flex-col lg:flex-row gap-8 px-0 md:p-6">
         <!-- Left Column: Upgrades & Extras -->
         <div class="flex-1 space-y-8">
             <!-- Location Instructions -->
@@ -1461,16 +1461,7 @@ const getIconColorClass = (name) => {
     overflow: hidden;
 }
 
-.info-card::before {
-    content: '';
-    position: absolute;
-    top: -50%;
-    right: -50%;
-    width: 200%;
-    height: 200%;
-    background: radial-gradient(circle, rgba(255, 255, 255, 0.1) 0%, transparent 70%);
-    animation: float 6s ease-in-out infinite;
-}
+
 
 @keyframes float {
 

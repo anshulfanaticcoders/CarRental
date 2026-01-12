@@ -411,8 +411,8 @@ useScrollAnimation('.blogs-trigger', '.more-button', {
 
 
         <section
-            class="mt-[-14rem] mb-[6rem] max-[768px]:mb-[0] max-[768px]:mt-[-1rem] max-[768px]:pt-[2rem] max-[768px]:bg-customPrimaryColor relative z-10 search-bar-section">
-                <SearchBar class="search-bar-animation" />
+            class="mt-[-14rem] mb-[6rem] max-[768px]:mb-[0] max-[768px]:mt-[-1rem] max-[768px]:px-[1.5rem] max-[768px]:pt-[2rem] max-[768px]:bg-customPrimaryColor relative z-10 search-bar-section">
+                <SearchBar class="search-bar-animation" :simple="true" />
         </section>
 
 
