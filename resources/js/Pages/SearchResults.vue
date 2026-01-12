@@ -2022,7 +2022,7 @@ watch(
 
     <!-- Main Content -->
     <div class="main-container"
-        :style="bookingStep !== 'results' ? 'display: block; max-width: 1440px; margin: 0 auto; padding: 2rem;' : ''">
+        :style="bookingStep !== 'results' ? 'display: block; max-width: 1440px; margin: 0 auto;' : ''">
         <!-- Filters Sidebar -->
         <aside class="filters-sidebar hidden xl:flex" v-if="bookingStep === 'results'">
             <div class="filters-header">
@@ -2706,7 +2706,7 @@ h6 {
 .main-container {
     max-width: 1440px;
     margin: 0 auto;
-    padding: var(--space-6);
+    padding: 2rem 1rem;
     display: block;
 }
 
