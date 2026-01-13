@@ -1,6 +1,29 @@
 <?php
 
 return [
+    // AllBookings.vue
+    'my_bookings' => 'Mes réservations',
+    'bookings_subtitle' => 'Gérez vos réservations de location de voitures',
+    'all_bookings' => 'Toutes les réservations',
+    'pending' => 'En attente',
+    'confirmed' => 'Confirmé',
+    'completed' => 'Terminé',
+    'cancelled' => 'Annulé',
+
+    // AllBookings.vue
+    'loading' => 'Chargement...',
+    'no_bookings_found' => 'Aucune réservation trouvée',
+    'no_bookings_yet' => 'Vous n\'avez pas encore fait de réservation.',
+    'no_status_bookings' => 'Aucune réservation {status} trouvée.',
+    'search_vehicles' => 'Rechercher des véhicules',
+    'pickup' => 'Ramassage',
+    'return' => 'Retour',
+    'total_amount' => 'Montant total',
+    'paid' => 'payé',
+    'complete_payment' => 'Effectuer le paiement',
+    'view_details' => 'Voir les détails',
+    'chat_with_owner' => 'Chat avec le propriétaire',
+
     // PendingBookings.vue
         'pending_bookings_header' => 'Réservations en attente',
         'no_pending_bookings_found' => 'Aucune réservation en attente trouvée.',

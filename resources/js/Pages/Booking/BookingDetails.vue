@@ -30,7 +30,7 @@ const statusTimeline = computed(() => {
 
   return statuses.map((status, index) => ({
     key: status,
-    label: status.charAt(0).toUpperCase() + status.slice(1),
+    label: _t('customerprofile', status),
     isActive: index <= currentIndex,
     isCurrent: index === currentIndex
   }));
@@ -165,7 +165,7 @@ const rentalPeriodDisplay = computed(() => {
 
 <template>
   <Head>
-    <title>Booking Details - {{ booking?.booking_number }}</title>
+    <title>{{ _t('customerprofile', 'booking_details') }} - {{ booking?.booking_number }}</title>
     <meta name="robots" content="noindex, nofollow">
   </Head>
 
@@ -187,7 +187,7 @@ const rentalPeriodDisplay = computed(() => {
               <span class="text-white/70">|</span>
               <span class="text-white/90">{{ booking?.booking_number }}</span>
             </div>
-            <h1 class="text-2xl md:text-3xl font-bold">Booking Details</h1>
+            <h1 class="text-2xl md:text-3xl font-bold">{{ _t('customerprofile', 'booking_details') }}</h1>
           </div>
 
           <!-- Action Buttons -->
@@ -204,8 +204,8 @@ const rentalPeriodDisplay = computed(() => {
                 <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
                 <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
               </svg>
-              <span class="hidden sm:inline">{{ isDownloading ? 'Downloading...' : 'Download PDF' }}</span>
-              <span class="sm:hidden">Download</span>
+              <span class="hidden sm:inline">{{ isDownloading ? _t('customerprofile', 'downloading_pdf') : _t('customerprofile', 'download_pdf') }}</span>
+              <span class="sm:hidden">{{ _t('customerprofile', 'download') }}</span>
             </button>
             <Link
               :href="route('profile.bookings.all', { locale })"
@@ -214,8 +214,8 @@ const rentalPeriodDisplay = computed(() => {
               <svg class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
               </svg>
-              <span class="hidden sm:inline">Back to Bookings</span>
-              <span class="sm:hidden">Back</span>
+              <span class="hidden sm:inline">{{ _t('customerprofile', 'back_to_bookings') }}</span>
+              <span class="sm:hidden">{{ _t('customerprofile', 'back') }}</span>
             </Link>
           </div>
         </div>
@@ -228,7 +228,7 @@ const rentalPeriodDisplay = computed(() => {
         <div class="lg:col-span-2 space-y-6">
           <!-- Status Timeline -->
           <div class="bg-white rounded-2xl shadow-sm p-6">
-            <h2 class="text-lg font-bold text-[#153B4F] mb-8">Booking Progress</h2>
+            <h2 class="text-lg font-bold text-[#153B4F] mb-8">{{ _t('customerprofile', 'booking_progress') }}</h2>
             <div class="flex items-center justify-between relative">
               <!-- Connection Line Background -->
               <div class="absolute top-5 left-0 right-0 h-1 bg-gray-200 -z-10 mx-12"></div>
@@ -272,7 +272,7 @@ const rentalPeriodDisplay = computed(() => {
 
           <!-- Trip Details -->
           <div class="bg-white rounded-2xl shadow-sm p-6">
-            <h2 class="text-lg font-bold text-[#153B4F] mb-6">Trip Details</h2>
+            <h2 class="text-lg font-bold text-[#153B4F] mb-6">{{ _t('customerprofile', 'trip_details') }}</h2>
 
             <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
               <!-- Pickup -->
@@ -283,7 +283,7 @@ const rentalPeriodDisplay = computed(() => {
                   </svg>
                 </div>
                 <div>
-                  <p class="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">Pickup</p>
+                  <p class="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">{{ _t('customerprofile', 'pickup') }}</p>
                   <p class="font-bold text-[#153B4F] text-lg">{{ booking?.pickup_location }}</p>
                   <p class="text-gray-600 mt-1">
                     {{ formatDate(booking?.pickup_date) }} at {{ formatTime(booking?.pickup_time) }}
@@ -299,7 +299,7 @@ const rentalPeriodDisplay = computed(() => {
                   </svg>
                 </div>
                 <div>
-                  <p class="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">Return</p>
+                  <p class="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">{{ _t('customerprofile', 'return') }}</p>
                   <p class="font-bold text-[#153B4F] text-lg">{{ booking?.return_location }}</p>
                   <p class="text-gray-600 mt-1">
                     {{ formatDate(booking?.return_date) }} at {{ formatTime(booking?.return_time) }}
@@ -313,34 +313,34 @@ const rentalPeriodDisplay = computed(() => {
               v-if="vehicle && vehicle.latitude && vehicle.longitude"
               class="mt-6"
             >
-              <p class="text-sm font-semibold text-[#153B4F] mb-3">Pickup Location</p>
+              <p class="text-sm font-semibold text-[#153B4F] mb-3">{{ _t('customerprofile', 'pickup_location') }}</p>
               <div id="booking-map" class="h-64 rounded-xl border border-gray-200"></div>
             </div>
           </div>
 
           <!-- Booking Reference -->
           <div class="bg-white rounded-2xl shadow-sm p-6">
-            <h2 class="text-lg font-bold text-[#153B4F] mb-6">Booking Information</h2>
+            <h2 class="text-lg font-bold text-[#153B4F] mb-6">{{ _t('customerprofile', 'booking_information') }}</h2>
 
             <div class="space-y-4">
               <div class="flex justify-between items-center py-3 border-b border-gray-100">
-                <span class="text-gray-600">Booking Number</span>
+                <span class="text-gray-600">{{ _t('customerprofile', 'booking_number') }}</span>
                 <span class="font-semibold text-[#153B4F]">{{ booking?.booking_number }}</span>
               </div>
               <div v-if="booking?.booking_reference" class="flex justify-between items-center py-3 border-b border-gray-100">
-                <span class="text-gray-600">Booking Reference</span>
+                <span class="text-gray-600">{{ _t('customerprofile', 'booking_reference') }}</span>
                 <span class="font-semibold text-[#153B4F]">{{ booking.booking_reference }}</span>
               </div>
               <div v-if="booking?.provider_source" class="flex justify-between items-center py-3 border-b border-gray-100">
-                <span class="text-gray-600">Provider</span>
+                <span class="text-gray-600">{{ _t('customerprofile', 'provider') }}</span>
                 <span class="font-semibold text-[#153B4F] capitalize">{{ booking.provider_source.replace('_', ' ') }}</span>
               </div>
               <div v-if="payment" class="flex justify-between items-center py-3 border-b border-gray-100">
-                <span class="text-gray-600">Payment Method</span>
+                <span class="text-gray-600">{{ _t('customerprofile', 'payment_method') }}</span>
                 <span class="font-semibold text-[#153B4F] capitalize">{{ payment.payment_method }}</span>
               </div>
               <div v-if="payment?.transaction_id" class="flex justify-between items-center py-3">
-                <span class="text-gray-600">Transaction ID</span>
+                <span class="text-gray-600">{{ _t('customerprofile', 'transaction_id') }}</span>
                 <span class="font-mono text-sm text-gray-500">{{ payment.transaction_id }}</span>
               </div>
             </div>
@@ -373,14 +373,14 @@ const rentalPeriodDisplay = computed(() => {
               <!-- Category Badge -->
               <div class="absolute bottom-4 left-4">
                 <span class="px-3 py-1.5 bg-white/95 backdrop-blur rounded-full text-sm font-semibold text-[#153B4F] shadow-sm">
-                  {{ vehicle?.category?.name || 'Standard' }}
+                  {{ vehicle?.category?.name || _t('customerprofile', 'standard_category') }}
                 </span>
               </div>
             </div>
 
             <div class="p-5">
               <h3 class="text-xl font-bold text-[#153B4F] mb-1">
-                {{ vehicle?.brand || booking?.vehicle_name?.split(' ')[0] || 'Vehicle' }}
+                {{ vehicle?.brand || booking?.vehicle_name?.split(' ')[0] || _t('customerprofile', 'vehicle') }}
                 <span v-if="vehicle?.model" class="font-normal">{{ vehicle.model }}</span>
               </h3>
 
@@ -390,23 +390,23 @@ const rentalPeriodDisplay = computed(() => {
                 <span class="text-gray-300">•</span>
                 <span class="capitalize">{{ vehicle.fuel }}</span>
                 <span class="text-gray-300">•</span>
-                <span>{{ vehicle.seating_capacity }} seats</span>
+                <span>{{ vehicle.seating_capacity }} {{ _t('customerprofile', 'seats') }}</span>
               </div>
             </div>
           </div>
 
           <!-- Payment Summary -->
           <div class="bg-gradient-to-br from-[#153B4F] to-[#245f7d] rounded-2xl shadow-lg p-6 text-white">
-            <h2 class="text-lg font-bold mb-6">Payment Summary</h2>
+            <h2 class="text-lg font-bold mb-6">{{ _t('customerprofile', 'payment_summary') }}</h2>
 
             <div class="space-y-3">
               <div class="flex justify-between items-center text-white/80">
-                <span>Base Price ({{ booking?.preferred_day || 'day' }})</span>
+                <span>{{ _t('customerprofile', 'base_price') }} ({{ booking?.preferred_day || 'day' }})</span>
                 <span>{{ getCurrencySymbol(booking?.booking_currency) }}{{ formatNumber(booking?.base_price) }}</span>
               </div>
 
               <div class="flex justify-between items-center text-white/80">
-                <span>Vehicle Subtotal ({{ rentalPeriodDisplay }})</span>
+                <span>{{ _t('customerprofile', 'vehicle_subtotal') }} ({{ rentalPeriodDisplay }})</span>
                 <span>{{ getCurrencySymbol(booking?.booking_currency) }}{{ formatNumber((booking?.base_price || 0) * (booking?.total_days || 0)) }}</span>
               </div>
 
@@ -417,7 +417,7 @@ const rentalPeriodDisplay = computed(() => {
 
               <!-- Extras -->
               <div v-if="booking?.extras?.length" class="pt-3 border-t border-white/20">
-                <p class="text-sm font-semibold text-white/90 mb-2">Extras</p>
+                <p class="text-sm font-semibold text-white/90 mb-2">{{ _t('customerprofile', 'extras') }}</p>
                 <div v-for="extra in booking.extras" :key="extra.id" class="flex justify-between items-center text-sm text-white/80 mb-1">
                   <span>{{ extra.extra_name }} × {{ extra.quantity }}</span>
                   <span>+{{ getCurrencySymbol(booking?.booking_currency) }}{{ formatNumber(extra.price * booking.total_days) }}</span>
@@ -425,17 +425,17 @@ const rentalPeriodDisplay = computed(() => {
               </div>
 
               <div v-if="booking?.discount_amount" class="flex justify-between items-center text-green-300">
-                <span>Discount</span>
+                <span>{{ _t('customerprofile', 'discount') }}</span>
                 <span>-{{ getCurrencySymbol(booking?.booking_currency) }}{{ formatNumber(booking.discount_amount) }}</span>
               </div>
 
               <div class="flex justify-between items-center text-white/80">
-                <span>Extra Charges</span>
+                <span>{{ _t('customerprofile', 'extra_charges') }}</span>
                 <span>{{ getCurrencySymbol(booking?.booking_currency) }}{{ formatNumber(booking?.extra_charges) }}</span>
               </div>
 
               <div class="flex justify-between items-center text-white/80">
-                <span>Tax</span>
+                <span>{{ _t('customerprofile', 'tax') }}</span>
                 <span>{{ getCurrencySymbol(booking?.booking_currency) }}{{ formatNumber(booking?.tax_amount) }}</span>
               </div>
             </div>
@@ -443,17 +443,17 @@ const rentalPeriodDisplay = computed(() => {
             <!-- Total -->
             <div class="mt-6 pt-4 border-t border-white/20">
               <div class="flex justify-between items-center mb-3">
-                <span class="text-white/80">Total Amount</span>
+                <span class="text-white/80">{{ _t('customerprofile', 'total_amount') }}</span>
                 <span class="text-2xl font-bold">{{ getCurrencySymbol(booking?.booking_currency) }}{{ formatNumber(booking?.total_amount) }}</span>
               </div>
 
               <div v-if="booking?.amount_paid > 0" class="flex justify-between items-center">
-                <span class="text-green-300">Amount Paid</span>
+                <span class="text-green-300">{{ _t('customerprofile', 'amount_paid') }}</span>
                 <span class="text-xl font-semibold text-green-300">{{ getCurrencySymbol(booking?.booking_currency) }}{{ formatNumber(booking.amount_paid) }}</span>
               </div>
 
               <div v-if="booking?.pending_amount > 0" class="flex justify-between items-center mt-2">
-                <span class="text-amber-300">Pending Amount</span>
+                <span class="text-amber-300">{{ _t('customerprofile', 'pending_amount') }}</span>
                 <span class="text-lg font-semibold text-amber-300">{{ getCurrencySymbol(booking?.booking_currency) }}{{ formatNumber(booking.pending_amount) }}</span>
               </div>
             </div>
@@ -469,7 +469,7 @@ const rentalPeriodDisplay = computed(() => {
               <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
               </svg>
-              Chat with Owner
+              {{ _t('customerprofile', 'chat_with_owner') }}
             </Link>
 
             <Link
@@ -480,7 +480,7 @@ const rentalPeriodDisplay = computed(() => {
               <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
               </svg>
-              Complete Payment
+              {{ _t('customerprofile', 'complete_payment') }}
             </Link>
           </div>
         </div>

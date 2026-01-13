@@ -1,6 +1,29 @@
 <?php
 
 return [
+  // AllBookings.vue
+    'my_bookings' => 'Mijn boekingen',
+    'bookings_subtitle' => 'Beheer uw autoverhuurboekingen',
+    'all_bookings' => 'Alle boekingen',
+    'pending' => 'In afwachting',
+    'confirmed' => 'Bevestigd',
+    'completed' => 'Voltooid',
+    'cancelled' => 'Geannuleerd',
+
+    // AllBookings.vue
+    'loading' => 'Laden...',
+    'no_bookings_found' => 'Geen boekingen gevonden',
+    'no_bookings_yet' => 'U heeft nog geen boekingen gemaakt.',
+    'no_status_bookings' => 'Geen {status} boekingen gevonden.',
+    'search_vehicles' => 'Zoek voertuigen',
+    'pickup' => 'Ophalen',
+    'return' => 'Retour',
+    'total_amount' => 'Totaalbedrag',
+    'paid' => 'betaald',
+    'complete_payment' => 'Betaling voltooien',
+    'view_details' => 'Details bekijken',
+    'chat_with_owner' => 'Chat met eigenaar',
+
   // PendingBookings.vue
         'pending_bookings_header' => 'In afwachting zijnde boekingen',
         'no_pending_bookings_found' => 'Geen in afwachting zijnde boekingen gevonden.',

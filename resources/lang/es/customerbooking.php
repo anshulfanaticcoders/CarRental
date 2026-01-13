@@ -1,6 +1,29 @@
 <?php
 
 return [
+    // AllBookings.vue
+    'my_bookings' => 'Mis Reservas',
+    'bookings_subtitle' => 'Gestiona tus reservas de alquiler de coches',
+    'all_bookings' => 'Todas las reservas',
+    'pending' => 'Pendiente',
+    'confirmed' => 'Confirmado',
+    'completed' => 'Completado',
+    'cancelled' => 'Cancelado',
+
+    // AllBookings.vue
+    'loading' => 'Cargando...',
+    'no_bookings_found' => 'No se encontraron reservas',
+    'no_bookings_yet' => 'Aún no has hecho ninguna reserva.',
+    'no_status_bookings' => 'No se encontraron reservas {status}.',
+    'search_vehicles' => 'Buscar vehículos',
+    'pickup' => 'Recogida',
+    'return' => 'Devolución',
+    'total_amount' => 'Importe Total',
+    'paid' => 'pagado',
+    'complete_payment' => 'Completar Pago',
+    'view_details' => 'Ver Detalles',
+    'chat_with_owner' => 'Chatear con el Propietario',
+
     // PendingBookings.vue
     'pending_bookings_header' => 'Reservas Pendientes',
     'no_pending_bookings_found' => 'No se encontraron reservas pendientes.',

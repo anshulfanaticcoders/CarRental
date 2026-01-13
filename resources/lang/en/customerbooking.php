@@ -1,6 +1,29 @@
 <?php
 
 return [
+    // AllBookings.vue
+    'my_bookings' => 'My Bookings',
+    'bookings_subtitle' => 'Manage your car rental bookings',
+    'all_bookings' => 'All Bookings',
+    'pending' => 'Pending',
+    'confirmed' => 'Confirmed',
+    'completed' => 'Completed',
+    'cancelled' => 'Cancelled',
+
+    // AllBookings.vue
+    'loading' => 'Loading...',
+    'no_bookings_found' => 'No bookings found',
+    'no_bookings_yet' => "You haven't made any bookings yet.",
+    'no_status_bookings' => 'No {status} bookings found.',
+    'search_vehicles' => 'Search Vehicles',
+    'pickup' => 'Pickup',
+    'return' => 'Return',
+    'total_amount' => 'Total Amount',
+    'paid' => 'paid',
+    'complete_payment' => 'Complete Payment',
+    'view_details' => 'View Details',
+    'chat_with_owner' => 'Chat with Owner',
+
     // PendingBookings.vue
     'pending_bookings_header' => 'Pending Bookings',
     'no_pending_bookings_found' => 'No pending bookings found.',

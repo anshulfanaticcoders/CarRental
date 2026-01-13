@@ -1,6 +1,29 @@
 <?php
 
 return [
+    // AllBookings.vue
+    'my_bookings' => 'حجوزاتي',
+    'bookings_subtitle' => 'إدارة حجوزات تأجير السيارات',
+    'all_bookings' => 'جميع الحجوزات',
+    'pending' => 'معلق',
+    'confirmed' => 'مؤكد',
+    'completed' => 'مكتمل',
+    'cancelled' => 'ملغي',
+
+    // AllBookings.vue
+    'loading' => 'جاري التحميل...',
+    'no_bookings_found' => 'لم يتم العثور على حجوزات',
+    'no_bookings_yet' => 'لم تقم بأي حجوزات بعد.',
+    'no_status_bookings' => 'لم يتم العثور على حجوزات {status}.',
+    'search_vehicles' => 'البحث عن مركبات',
+    'pickup' => 'الاستلام',
+    'return' => 'الإرجاع',
+    'total_amount' => 'المبلغ الإجمالي',
+    'paid' => 'مدفوع',
+    'complete_payment' => 'إكمال الدفع',
+    'view_details' => 'عرض التفاصيل',
+    'chat_with_owner' => 'دردشة مع المالك',
+
     // PendingBookings.vue
     'pending_bookings_header' => 'الحجوزات المعلقة',
     'no_pending_bookings_found' => 'لم يتم العثور على حجوزات معلقة.',

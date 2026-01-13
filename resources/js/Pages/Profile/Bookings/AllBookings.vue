@@ -168,7 +168,7 @@ const getCardDelay = (index) => {
     <div v-if="isLoading" class="fixed inset-0 z-50 flex items-center justify-center bg-white/80 backdrop-blur-sm">
       <div class="flex flex-col items-center gap-4">
         <div class="w-12 h-12 border-4 border-[#153B4F] border-t-transparent rounded-full animate-spin"></div>
-        <p class="text-gray-600 font-medium">Loading...</p>
+        <p class="text-gray-600 font-medium">{{ _t('customerbooking', 'loading') }}</p>
       </div>
     </div>
 
@@ -313,7 +313,7 @@ const getCardDelay = (index) => {
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
                   </svg>
-                  View Details
+                  {{ _t('customerbooking', 'view_details') }}
                 </Link>
               </div>
 
@@ -326,7 +326,7 @@ const getCardDelay = (index) => {
                 <span class="text-gray-300">•</span>
                 <span class="capitalize">{{ booking.vehicle.fuel }}</span>
                 <span class="text-gray-300">•</span>
-                <span>{{ booking.vehicle.seating_capacity }} seats</span>
+                <span>{{ booking.vehicle.seating_capacity }} {{ _t('customerbooking', 'seats_suffix') }}</span>
               </div>
 
               <!-- Pickup & Return Info -->
@@ -339,7 +339,7 @@ const getCardDelay = (index) => {
                     </svg>
                   </div>
                   <div>
-                    <p class="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">Pickup</p>
+                    <p class="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">{{ _t('customerbooking', 'pickup') }}</p>
                     <p class="font-medium text-gray-900">{{ booking.pickup_location }}</p>
                     <p class="text-sm text-gray-600 mt-1">
                       {{ formatDate(booking.pickup_date) }} at {{ formatTime(booking.pickup_time) }}
@@ -355,7 +355,7 @@ const getCardDelay = (index) => {
                     </svg>
                   </div>
                   <div>
-                    <p class="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">Return</p>
+                    <p class="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">{{ _t('customerbooking', 'return') }}</p>
                     <p class="font-medium text-gray-900">{{ booking.return_location }}</p>
                     <p class="text-sm text-gray-600 mt-1">
                       {{ formatDate(booking.return_date) }} at {{ formatTime(booking.return_time) }}
@@ -369,12 +369,12 @@ const getCardDelay = (index) => {
                 <div class="flex flex-wrap items-center justify-between gap-4">
                   <!-- Price -->
                   <div>
-                    <p class="text-sm text-gray-500">Total Amount</p>
+                    <p class="text-sm text-gray-500">{{ _t('customerbooking', 'total_amount') }}</p>
                     <p class="text-2xl font-bold text-[#153B4F]">
                       {{ getCurrencySymbol(booking.booking_currency) }}{{ formatNumber(booking.total_amount) }}
                     </p>
                     <p v-if="booking.amount_paid > 0" class="text-sm text-green-600 mt-1">
-                      {{ getCurrencySymbol(booking.booking_currency) }}{{ formatNumber(booking.amount_paid) }} paid
+                      {{ getCurrencySymbol(booking.booking_currency) }}{{ formatNumber(booking.amount_paid) }} {{ _t('customerbooking', 'paid') }}
                     </p>
                   </div>
 
@@ -389,7 +389,7 @@ const getCardDelay = (index) => {
                       <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
                       </svg>
-                      Complete Payment
+                      {{ _t('customerbooking', 'complete_payment') }}
                     </button>
 
                     <Link
