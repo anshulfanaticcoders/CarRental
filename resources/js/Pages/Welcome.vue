@@ -240,18 +240,34 @@ const navigateToSearch = (place) => {
 const updateSearchUrl = (place) => {
     const location = unifiedLocations.value.find(l => l.name === place.place_name);
 
+    // Set default dates (tomorrow and day after)
+    const today = new Date();
+    const pickupDate = new Date(today);
+    pickupDate.setDate(today.getDate() + 1);
+    const returnDate = new Date(pickupDate);
+    returnDate.setDate(pickupDate.getDate() + 1);
+
+    // Format date as YYYY-MM-DD for URL params
+    const formatUrlDate = (date) => {
+        const year = date.getFullYear();
+        const month = String(date.getMonth() + 1).padStart(2, '0');
+        const day = String(date.getDate()).padStart(2, '0');
+        return `${year}-${month}-${day}`;
+    };
+
+    const params = {
+        date_from: formatUrlDate(pickupDate),
+        date_to: formatUrlDate(returnDate),
+        start_time: '09:00',
+        end_time: '09:00',
+        age: 35,
+    };
+
     if (location && location.providers && location.providers.length > 0) {
         const provider = location.providers[0];
 
-        const today = new Date();
-        const pickupDate = new Date(today);
-        pickupDate.setDate(today.getDate() + 1);
-        const returnDate = new Date(pickupDate);
-        returnDate.setDate(pickupDate.getDate() + 1);
-
-        const formatDate = (date) => date.toISOString().split('T')[0];
-
-        const params = {
+        // Add location-specific params
+        Object.assign(params, {
             where: location.name,
             latitude: location.latitude,
             longitude: location.longitude,
@@ -259,20 +275,16 @@ const updateSearchUrl = (place) => {
             country: location.country,
             provider: provider.provider,
             provider_pickup_id: provider.pickup_id,
-            date_from: formatDate(pickupDate),
-            date_to: formatDate(returnDate),
-            start_time: '09:00',
-            end_time: '09:00',
-            age: 35,
-        };
-        const urlParams = new URLSearchParams(params).toString();
-        sessionStorage.setItem('searchurl', `/s?${urlParams}`);
+        });
     } else {
-        const urlParams = new URLSearchParams({
+        // Fallback to place_name only
+        Object.assign(params, {
             where: place.place_name,
-        }).toString();
-        sessionStorage.setItem('searchurl', `/s?${urlParams}`);
+        });
     }
+
+    const urlParams = new URLSearchParams(params).toString();
+    sessionStorage.setItem('searchurl', `/s?${urlParams}`);
 };
 
 

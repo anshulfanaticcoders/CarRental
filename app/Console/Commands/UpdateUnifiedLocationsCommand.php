@@ -21,7 +21,7 @@ class UpdateUnifiedLocationsCommand extends Command
     protected $description = 'Updates the unified_locations.json file with fuzzy matching to merge similar locations across providers.';
 
     protected $greenMotionService;
-    protected $okMobilityService;
+    // protected $okMobilityService; // DISABLED: OK Mobility commented out
     protected $locationSearchService;
     protected $locationMatchingService;
     protected $adobeCarService;
@@ -31,7 +31,7 @@ class UpdateUnifiedLocationsCommand extends Command
 
     public function __construct(
         \App\Services\GreenMotionService $greenMotionService,
-        \App\Services\OkMobilityService $okMobilityService,
+        // \App\Services\OkMobilityService $okMobilityService, // DISABLED: OK Mobility commented out
         \App\Services\LocationSearchService $locationSearchService,
         \App\Services\LocationMatchingService $locationMatchingService,
         \App\Services\AdobeCarService $adobeCarService,
@@ -41,7 +41,7 @@ class UpdateUnifiedLocationsCommand extends Command
     ) {
         parent::__construct();
         $this->greenMotionService = $greenMotionService;
-        $this->okMobilityService = $okMobilityService;
+        // $this->okMobilityService = $okMobilityService; // DISABLED: OK Mobility commented out
         $this->locationSearchService = $locationSearchService;
         $this->locationMatchingService = $locationMatchingService;
         $this->adobeCarService = $adobeCarService;
@@ -66,8 +66,10 @@ class UpdateUnifiedLocationsCommand extends Command
         $usaveLocations = $this->fetchProviderLocations('usave');
         $this->info('Fetched ' . count($usaveLocations) . ' U-SAVE locations.');
 
-        $okMobilityLocations = $this->fetchOkMobilityLocations();
-        $this->info('Fetched ' . count($okMobilityLocations) . ' OK Mobility locations.');
+        // OK Mobility DISABLED
+        // $okMobilityLocations = $this->fetchOkMobilityLocations();
+        // $this->info('Fetched ' . count($okMobilityLocations) . ' OK Mobility locations.');
+        $okMobilityLocations = []; // Empty array to maintain compatibility
 
         $adobeLocations = $this->fetchAdobeLocations();
         $this->info('Fetched ' . count($adobeLocations) . ' Adobe locations.');
@@ -83,6 +85,7 @@ class UpdateUnifiedLocationsCommand extends Command
 
         $unifiedLocations = $this->mergeAndNormalizeLocations($internalLocations, $greenMotionLocations, $usaveLocations, $okMobilityLocations, $adobeLocations, $locautoLocations, $wheelsysLocations, $renteonLocations);
         $this->info('Merged into ' . count($unifiedLocations) . ' unique unified locations.');
+        // $this->info('OK Mobility is currently DISABLED in this command.'); // Comment: OK Mobility commented out
 
         $this->saveUnifiedLocations(array_values($unifiedLocations));
 
@@ -332,6 +335,9 @@ class UpdateUnifiedLocationsCommand extends Command
         \Illuminate\Support\Facades\File::put($filePath, json_encode($locations, JSON_PRETTY_PRINT));
     }
 
+    // DISABLED: OK Mobility locations fetching
+    // Uncomment this method when OK Mobility is needed again
+    /*
     private function fetchOkMobilityLocations(): array
     {
         $this->info('Fetching OK Mobility locations...');
@@ -419,6 +425,7 @@ class UpdateUnifiedLocationsCommand extends Command
         $this->info('Processed ' . count($locations) . ' OK Mobility locations');
         return $locations;
     }
+    */
 
     private function fetchAdobeLocations(): array
     {
