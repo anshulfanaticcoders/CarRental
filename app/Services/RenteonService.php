@@ -93,34 +93,132 @@ class RenteonService
 
     /**
      * Search for available vehicles from Renteon API
-     * Note: Vehicle search endpoint not yet available in Renteon API
-     * This method is prepared for when the endpoint becomes available
+     * Calls the /api/bookings/search endpoint with POST
+     *
+     * @param string $pickupCode Pickup location code
+     * @param string $dropoffCode Dropoff location code
+     * @param string $startDate Pickup date (YYYY-MM-DD)
+     * @param string $startTime Pickup time (HH:MM)
+     * @param string $endDate Dropoff date (YYYY-MM-DD)
+     * @param string $endTime Dropoff time (HH:MM)
+     * @param array $options Additional options
+     * @param string|null $providerCode Specific provider to search (null for default from config)
+     * @return array|null Vehicle search results
      */
-    public function getVehicles($pickupCode, $dropoffCode, $startDate, $startTime, $endDate, $endTime, $options = [])
+    public function getVehicles($pickupCode, $dropoffCode, $startDate, $startTime, $endDate, $endTime, $options = [], $providerCode = null)
     {
-        $params = array_merge([
-            'pickup_location_code' => $pickupCode,
-            'dropoff_location_code' => $dropoffCode ?? $pickupCode,
-            'start_date' => $startDate,
-            'start_time' => $startTime,
-            'end_date' => $endDate,
-            'end_time' => $endTime,
-            'provider_code' => $this->providerCode,
-        ], $options);
+        $provider = $providerCode ?? $this->providerCode;
 
-        // TODO: Update with actual endpoint when Renteon provides vehicle search API
-        // For now, return null to indicate no vehicles available
-        // The endpoint structure should be something like:
-        // return $this->makeRequest('GET', 'api/vehicles/search', $params);
+        $data = [
+            'Provider' => $provider,
+            'PickupLocationCode' => $pickupCode,
+            'DropoffLocationCode' => $dropoffCode ?? $pickupCode,
+            'PickupDate' => $startDate,
+            'DropoffDate' => $endDate
+        ];
 
-        Log::info('Renteon vehicle search called (endpoint not yet available)', [
+        Log::info('Renteon vehicle search API call', [
+            'provider' => $provider,
             'pickup_code' => $pickupCode,
-            'dropoff_code' => $dropoffCode,
+            'dropoff_code' => $dropoffCode ?? $pickupCode,
             'start_date' => $startDate,
-            'end_date' => $endDate,
+            'end_date' => $endDate
         ]);
 
-        return null;
+        $response = $this->makeRequest('POST', 'api/bookings/search', $data);
+
+        if ($response === null) {
+            Log::warning('Renteon API returned null response', [
+                'pickup_code' => $pickupCode,
+                'provider' => $provider
+            ]);
+        } elseif (empty($response)) {
+            Log::info('Renteon API returned empty vehicle list', [
+                'pickup_code' => $pickupCode,
+                'provider' => $provider
+            ]);
+        }
+
+        return $response;
+    }
+
+    /**
+     * Search for available vehicles from all Renteon providers
+     * Aggregates results from all providers that have vehicles for the given location/dates
+     *
+     * @param string $pickupCode Pickup location code
+     * @param string $dropoffCode Dropoff location code
+     * @param string $startDate Pickup date (YYYY-MM-DD)
+     * @param string $startTime Pickup time (HH:MM)
+     * @param string $endDate Dropoff date (YYYY-MM-DD)
+     * @param string $endTime Dropoff time (HH:MM)
+     * @param array $options Additional options
+     * @param array $providerCodes Optional array of specific provider codes to search (empty = all providers)
+     * @return array Aggregated vehicle results from all providers
+     */
+    public function getVehiclesFromAllProviders($pickupCode, $dropoffCode, $startDate, $startTime, $endDate, $endTime, $options = [], $providerCodes = [])
+    {
+        // Get the list of providers to search
+        if (empty($providerCodes)) {
+            // Get all available providers from Renteon
+            $providers = $this->getProviders();
+            if (!$providers) {
+                Log::warning('Failed to get providers list from Renteon API');
+                return [];
+            }
+            $providerCodes = array_column($providers, 'Code');
+        }
+
+        Log::info('Renteon: Searching vehicles from multiple providers', [
+            'provider_count' => count($providerCodes),
+            'providers' => $providerCodes,
+            'pickup_code' => $pickupCode,
+            'start_date' => $startDate,
+            'end_date' => $endDate
+        ]);
+
+        $allVehicles = [];
+        $providersWithVehicles = [];
+        $providersWithoutVehicles = [];
+
+        // Search each provider for vehicles
+        foreach ($providerCodes as $providerCode) {
+            try {
+                $vehicles = $this->getVehicles(
+                    $pickupCode,
+                    $dropoffCode,
+                    $startDate,
+                    $startTime,
+                    $endDate,
+                    $endTime,
+                    $options,
+                    $providerCode
+                );
+
+                if ($vehicles && !empty($vehicles)) {
+                    // Add provider info to each vehicle
+                    foreach ($vehicles as &$vehicle) {
+                        $vehicle['provider_code'] = $providerCode;
+                        $vehicle['provider_source'] = 'renteon';
+                    }
+                    $allVehicles = array_merge($allVehicles, $vehicles);
+                    $providersWithVehicles[] = $providerCode;
+                } else {
+                    $providersWithoutVehicles[] = $providerCode;
+                }
+            } catch (\Exception $e) {
+                Log::warning("Error searching vehicles from provider {$providerCode}: " . $e->getMessage());
+                $providersWithoutVehicles[] = $providerCode;
+            }
+        }
+
+        Log::info('Renteon: Multi-provider search complete', [
+            'total_vehicles' => count($allVehicles),
+            'providers_with_vehicles' => $providersWithVehicles,
+            'providers_without_vehicles' => $providersWithoutVehicles
+        ]);
+
+        return $allVehicles;
     }
 
     /**
@@ -210,10 +308,55 @@ class RenteonService
 
     /**
      * Get available vehicles from Renteon and transform to unified format
+     * Uses the default provider from config
      */
     public function getTransformedVehicles($pickupCode, $dropoffCode, $startDate, $startTime, $endDate, $endTime, $options = [], $locationLat = null, $locationLng = null, $locationName = null, $rentalDays = 1)
     {
         $vehicles = $this->getVehicles($pickupCode, $dropoffCode, $startDate, $startTime, $endDate, $endTime, $options);
+
+        if (!$vehicles) {
+            return [];
+        }
+
+        // Transform each vehicle to unified format
+        $transformedVehicles = [];
+        foreach ($vehicles as $vehicle) {
+            $transformedVehicles[] = $this->transformVehicle($vehicle, $pickupCode, $locationLat, $locationLng, $locationName, $rentalDays);
+        }
+
+        return $transformedVehicles;
+    }
+
+    /**
+     * Get available vehicles from ALL Renteon providers and transform to unified format
+     * Aggregates vehicles from all providers that have availability
+     *
+     * @param string $pickupCode Pickup location code
+     * @param string $dropoffCode Dropoff location code
+     * @param string $startDate Pickup date (YYYY-MM-DD)
+     * @param string $startTime Pickup time (HH:MM)
+     * @param string $endDate Dropoff date (YYYY-MM-DD)
+     * @param string $endTime Dropoff time (HH:MM)
+     * @param array $options Additional options
+     * @param array $providerCodes Optional array of specific provider codes to search (empty = all providers)
+     * @param float|null $locationLat Location latitude
+     * @param float|null $locationLng Location longitude
+     * @param string|null $locationName Location name
+     * @param int $rentalDays Number of rental days
+     * @return array Transformed vehicles from all providers
+     */
+    public function getTransformedVehiclesFromAllProviders($pickupCode, $dropoffCode, $startDate, $startTime, $endDate, $endTime, $options = [], $providerCodes = [], $locationLat = null, $locationLng = null, $locationName = null, $rentalDays = 1)
+    {
+        $vehicles = $this->getVehiclesFromAllProviders(
+            $pickupCode,
+            $dropoffCode,
+            $startDate,
+            $startTime,
+            $endDate,
+            $endTime,
+            $options,
+            $providerCodes
+        );
 
         if (!$vehicles) {
             return [];
@@ -238,13 +381,20 @@ class RenteonService
         $sippCode = $vehicle['sipp_code'] ?? $vehicle['acriss_code'] ?? null;
         $parsedSipp = $this->parseSippCode($sippCode);
 
+        // Get provider code if available (for multi-provider searches)
+        $providerCode = $vehicle['provider_code'] ?? $this->providerCode;
+
         $brand = $vehicle['make'] ?? 'Renteon';
         $model = $vehicle['model'] ?? 'Renteon Vehicle';
         $category = $parsedSipp['category'] ?? ($vehicle['category'] ?? 'Unknown');
 
+        // Create unique ID that includes provider code to avoid conflicts
+        $vehicleId = $vehicle['id'] ?? md5($providerCode . '_' . $pickupCode . '_' . ($sippCode ?? 'unknown'));
+
         return [
-            'id' => 'renteon_' . ($vehicle['id'] ?? md5($pickupCode . '_' . ($sippCode ?? 'unknown'))),
+            'id' => 'renteon_' . $providerCode . '_' . $vehicleId,
             'source' => 'renteon',
+            'provider_code' => $providerCode,
             'brand' => $brand,
             'model' => $model,
             'category' => $category,

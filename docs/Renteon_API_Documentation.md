@@ -648,23 +648,53 @@ class RenteonService
 
 ## Next Steps for Integration
 
-### Still Needed (Not Yet Available)
+### Working Vehicle Search Endpoint ✅
+
+**Endpoint:** `POST /api/bookings/search`
+
+**Request Parameters:**
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| Provider | string | ✅ Yes | Provider code (e.g., "demo") |
+| PickupLocationCode | string | ✅ Yes | Pickup location code (e.g., "HR-SPL-SPU") |
+| DropoffLocationCode | string | ✅ Yes | Dropoff location code (same as pickup if not specified) |
+| PickupDate | string | ✅ Yes | Pickup date (YYYY-MM-DD format) |
+| DropoffDate | string | ✅ Yes | Dropoff date (YYYY-MM-DD format) |
+
+**Example Request:**
+```bash
+curl -X POST \
+  -u "vrooem.agg.api:T45h-G11!r$jj76" \
+  -H "Accept: application/json" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "Provider": "demo",
+    "PickupLocationCode": "HR-SPL-SPU",
+    "DropoffLocationCode": "HR-SPL-SPU",
+    "PickupDate": "2025-02-01",
+    "DropoffDate": "2025-02-05"
+  }' \
+  https://aggregator.renteon.com/api/bookings/search
+```
+
+**Response:**
+- Returns 200 OK with array of vehicles
+- Returns empty array `[]` if no vehicles available
+
+### ⚠️ Important Note: Demo Provider Returns No Vehicles
+
+The "demo" provider returns 0 vehicles for all searches. To get actual vehicle data:
+1. **Contact Renteon** to get credentials for a provider with active inventory
+2. **Request access** to a test provider with sample vehicles
+3. **Use mock data** for testing frontend integration
+
+### Still Needed from Renteon
 
 The following endpoints need to be obtained from Renteon:
-1. **Vehicle Availability/Search** - Search for available cars by dates/locations
-2. **Vehicle Details** - Get vehicle specs, features, images
-3. **Pricing/Rates** - Get rental rates for specific vehicles
-4. **Booking Creation** - Create new reservations
-5. **Booking Management** - View/modify/cancel bookings
-6. **Vehicle Images** - Get vehicle photos
-7. **Terms & Conditions** - Provider-specific rental terms
-
-### Recommended Actions
-
-1. Contact Renteon support for complete API documentation
-2. Obtain API keys for production/booking endpoints
-3. Request sandbox/testing environment for full integration
-4. Get webhook/documentation for booking status updates
+1. **Sample Vehicle Response** - Need to see actual vehicle data structure with pricing
+2. **Booking Creation** - Create new reservations (POST /api/bookings/search works, but booking endpoint needs verification)
+3. **Vehicle Images** - Get vehicle photos
+4. **Terms & Conditions** - Provider-specific rental terms
 
 ---
 

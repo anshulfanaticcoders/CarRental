@@ -1188,7 +1188,7 @@ class SearchController extends Controller
                 } // Close LocautoRent elseif
                 elseif ($providerToFetch === 'renteon') {
                     try {
-                        Log::info('Attempting to fetch Renteon vehicles for location ID: ' . $currentProviderLocationId);
+                        Log::info('Attempting to fetch Renteon vehicles from ALL providers for location ID: ' . $currentProviderLocationId);
                         Log::info('Search params: ', [
                             'pickup_id' => $currentProviderLocationId,
                             'date_from' => $validated['date_from'],
@@ -1197,7 +1197,8 @@ class SearchController extends Controller
                             'end_time' => $validated['end_time'] ?? '09:00'
                         ]);
 
-                        $renteonVehicles = $this->renteonService->getTransformedVehicles(
+                        // Search vehicles from ALL Renteon providers
+                        $renteonVehicles = $this->renteonService->getTransformedVehiclesFromAllProviders(
                             $currentProviderLocationId,
                             $validated['dropoff_location_id'] ?? $currentProviderLocationId,
                             $validated['date_from'],
@@ -1205,13 +1206,14 @@ class SearchController extends Controller
                             $validated['date_to'],
                             $validated['end_time'] ?? '09:00',
                             [], // Additional options
+                            [], // Empty providerCodes array = search ALL providers
                             $locationLat,
                             $locationLng,
                             $currentProviderLocationName,
                             $rentalDays
                         );
 
-                        Log::info('Renteon vehicles processed: ' . count($renteonVehicles));
+                        Log::info('Renteon vehicles processed from all providers: ' . count($renteonVehicles));
 
                         foreach ($renteonVehicles as $renteonVehicle) {
                             $providerVehicles->push((object) $renteonVehicle);

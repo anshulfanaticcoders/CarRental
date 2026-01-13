@@ -103,8 +103,8 @@ const showDetailsModal = ref(false);
         >
           View Full Details & Download PDF
         </button>
-        <Link 
-          :href="`/${locale}/profile/bookings/pending`"
+        <Link
+          :href="route('profile.bookings.all', { locale })"
           class="flex-1 flex justify-center py-3.5 px-4 border border-gray-300 rounded-lg shadow-sm text-sm font-semibold text-gray-700 bg-white hover:bg-gray-50 transition-all transform hover:-translate-y-0.5"
         >
           My Bookings

@@ -471,9 +471,7 @@ Route::group([
         return Inertia::render('Booking/Cancel');
     })->name('booking.cancel');
 
-    // Booking Details Route (Authenticated/Authorized)
-    Route::get('/booking/{id}', [BookingController::class, 'show'])->name('booking.show');
-
+    // Booking Details Route - moved to authenticated customer routes with locale prefix (line 849)
 
     // Public QR Code Tracking Routes (with locale prefix)
     Route::get('/affiliate/track/{trackingData}', [AffiliateQrCodeController::class, 'track'])->name('affiliate.qr.track');
@@ -838,31 +836,38 @@ Route::group([
         Route::post('/reviews', [ReviewController::class, 'store'])->name('reviews.store');
         Route::get('/profile/reviews', [ReviewController::class, 'userReviews'])->name('profile.reviews');
 
-        // Booking confirmation routes
-        Route::get('/profile/bookings/cancelled', [BookingController::class, 'getCancelledBookings'])->name('profile.bookings.cancelled');
+        // Old booking status routes - DEPRECATED (continued)
+        // Route::get('/profile/bookings/cancelled', [BookingController::class, 'getCancelledBookings'])->name('profile.bookings.cancelled');
 
         // Apply for vendor
         Route::post('/vendor/store', [VendorController::class, 'store'])->name('vendor.store');
         Route::get('/vendor/register', [VendorController::class, 'create'])->name('vendor.register');
 
         // Booking Routes
+        Route::get('/booking/{id}', [BookingController::class, 'show'])->name('booking.show');
+        Route::get('/booking/{id}/download-pdf', [BookingController::class, 'downloadPDF'])->name('booking.download.pdf');
         Route::post('/booking/allow-access', [BookingController::class, 'allowAccess'])->name('booking.allow_access');
         Route::post('/booking/cancel', [BookingController::class, 'cancelBooking'])->name('booking.cancel');
         Route::inertia('/booking-unsuccess', 'Booking/Unsuccess');
-        Route::get('/booking/{id}', [VehicleController::class, 'booking'])->name('booking.show');
+        // Duplicate route removed - booking.show is defined at line 475 pointing to BookingController@show
+        // Route::get('/booking/{id}', [VehicleController::class, 'booking'])->name('booking.show');
         Route::get('/booking', [BookingController::class, 'create'])->name('booking.create');
         Route::post('/booking', [BookingController::class, 'store'])->name('booking.store');
         Route::get('/customer/bookings', [BookingController::class, 'getCustomerBookingData'])->name('customer.bookings');
 
 
 
-        // Booking confirmation routes
-        Route::get('/profile/bookings/pending', [BookingController::class, 'getPendingBookings'])->name('profile.bookings.pending');
-        Route::get('/profile/bookings/confirmed', [BookingController::class, 'getConfirmedBookings'])->name('profile.bookings.confirmed');
-        Route::get('/profile/bookings/completed', [BookingController::class, 'getCompletedBookings'])->name('profile.bookings.completed');
-        Route::get('/profile/bookings/green-motion', [GreenMotionBookingController::class, 'getCustomerGreenMotionBookings'])->name('profile.bookings.green-motion');
-        Route::get('/profile/bookings/adobe', [AdobeBookingController::class, 'getCustomerAdobeBookings'])->name('profile.bookings.adobe');
-        Route::get('/profile/bookings/ok-mobility', [OkMobilityBookingController::class, 'getCustomerOkMobilityBookings'])->name('profile.bookings.ok-mobility');
+        // Unified booking route (replaces fragmented status routes)
+        Route::get('/profile/bookings', [BookingController::class, 'getAllCustomerBookings'])->name('profile.bookings.all');
+
+        // Old booking status routes - DEPRECATED, kept for any existing links/backward compatibility
+        // TODO: Remove in future release after verifying no external dependencies
+        // Route::get('/profile/bookings/pending', [BookingController::class, 'getPendingBookings'])->name('profile.bookings.pending');
+        // Route::get('/profile/bookings/confirmed', [BookingController::class, 'getConfirmedBookings'])->name('profile.bookings.confirmed');
+        // Route::get('/profile/bookings/completed', [BookingController::class, 'getCompletedBookings'])->name('profile.bookings.completed');
+        // Route::get('/profile/bookings/green-motion', [GreenMotionBookingController::class, 'getCustomerGreenMotionBookings'])->name('profile.bookings.green-motion');
+        // Route::get('/profile/bookings/adobe', [AdobeBookingController::class, 'getCustomerAdobeBookings'])->name('profile.bookings.adobe');
+        // Route::get('/profile/bookings/ok-mobility', [OkMobilityBookingController::class, 'getCustomerOkMobilityBookings'])->name('profile.bookings.ok-mobility');
 
         // Favourite vehicles
         Route::post('/vehicles/{vehicle}/favourite', [FavoriteController::class, 'favourite'])->name('vehicles.favourite');

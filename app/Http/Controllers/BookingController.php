@@ -417,8 +417,15 @@ class BookingController extends Controller
         ]);
     }
 
-    public function show(Request $request, $id)
+    public function show(Request $request, $locale, $id)
     {
+        \Log::info('Booking show accessed', [
+            'locale' => $locale,
+            'booking_id' => $id,
+            'user_id' => Auth::id(),
+            'user_role' => Auth::user()?->role,
+        ]);
+
         // Find the booking
         $booking = Booking::findOrFail($id);
 
@@ -488,6 +495,87 @@ class BookingController extends Controller
             'vendorProfile' => $vendorProfile,
             'plan' => $plan,
         ]);
+    }
+
+    /**
+     * Generate and download PDF for booking details
+     */
+    public function downloadPDF(Request $request, $locale, $id)
+    {
+        $booking = Booking::findOrFail($id);
+
+        // Authorize: Ensure the booking belongs to the current user
+        $userId = Auth::id();
+        $customer = Customer::where('user_id', $userId)->first();
+
+        if (!$customer || $booking->customer_id !== $customer->id) {
+            abort(403, 'Unauthorized action.');
+        }
+
+        // Eager load relationships
+        $booking->load(['payments', 'extras', 'customer', 'vendorProfile']);
+
+        // Check if internal vehicle exists
+        if ($booking->vehicle_id) {
+            $booking->load(['vehicle.images', 'vehicle.category', 'vehicle.vendorProfile']);
+        }
+
+        // Load vendor user if vendorProfile exists
+        if ($booking->vendorProfile) {
+            $booking->vendorProfile->load('user');
+        }
+
+        // Normalize Vehicle Data
+        $vehicleData = null;
+        $vendorProfile = null;
+
+        if ($booking->vehicle) {
+            $vehicleData = $booking->vehicle;
+            // Try to get vendorProfile from vehicle first, then from booking
+            $vendorProfile = $booking->vehicle->vendorProfile ?? $booking->vendorProfile;
+        } else {
+            // For external providers, still try to get vendorProfile from booking
+            $vendorProfile = $booking->vendorProfile;
+
+            $vehicleData = [
+                'brand' => explode(' ', $booking->vehicle_name)[0] ?? 'Vehicle',
+                'model' => $booking->vehicle_name,
+                'vehicle_name' => $booking->vehicle_name,
+                'transmission' => 'Manual',
+                'fuel' => 'Petrol',
+                'seating_capacity' => 5,
+                'images' => $booking->vehicle_image ? [
+                    ['image_url' => $booking->vehicle_image, 'image_type' => 'primary']
+                ] : [],
+                'category' => ['name' => 'Standard'],
+            ];
+        }
+
+        // Ensure vendorProfile has user loaded
+        if ($vendorProfile && !$vendorProfile->relationLoaded('user')) {
+            $vendorProfile->load('user');
+        }
+
+        // Get payment - try to get the successful one or just the first one
+        $payment = $booking->payments->where('status', 'success')->first()
+               ?? $booking->payments->where('status', 'succeeded')->first()
+               ?? $booking->payments->first()
+               ?? (object)[
+                   'currency' => $booking->booking_currency ?? 'USD',
+                   'amount' => $booking->total_amount,
+                   'status' => $booking->booking_status ?? 'pending',
+               ];
+
+        // Generate PDF
+        $pdf = app('dompdf.wrapper');
+        $pdf->loadView('pdfs.booking-receipt', [
+            'booking' => $booking,
+            'vehicle' => $vehicleData,
+            'payment' => $payment,
+            'vendorProfile' => $vendorProfile,
+        ]);
+
+        return $pdf->download("booking-{$booking->booking_number}.pdf");
     }
 
 
@@ -644,6 +732,26 @@ class BookingController extends Controller
 
         return Inertia::render('Profile/Bookings/CancelledBookings', [
             'bookings' => $cancelledBookings,
+        ]);
+    }
+
+    /**
+     * Get all customer bookings (unified page with client-side filtering)
+     */
+    public function getAllCustomerBookings(Request $request)
+    {
+        $userId = Auth::id();
+        $customer = Customer::where('user_id', $userId)->first();
+
+        $bookings = $customer ?
+            Booking::where('customer_id', $customer->id)
+                ->with('vehicle.images', 'vehicle.category', 'payments', 'vehicle.vendorProfile', 'extras')
+                ->orderBy('created_at', 'desc')
+                ->paginate(10) :
+            collect();
+
+        return Inertia::render('Profile/Bookings/AllBookings', [
+            'bookings' => $bookings,
         ]);
     }
 }
