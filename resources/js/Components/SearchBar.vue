@@ -26,6 +26,13 @@
                         :placeholder="isSearching ? _t('homepage', 'searching_placeholder') : _t('homepage', 'pickup_location_placeholder')"
                         class="bg-transparent border-none p-0 w-full text-customDarkBlackColor placeholder-gray-400 focus:ring-0 focus:border-none focus:outline-none text-sm font-medium" required />
                 </div>
+                <!-- Location Error Message -->
+                <div v-if="locationError" class="text-red-500 text-xs mt-1 pl-1 flex items-center gap-1">
+                  <svg class="w-3 h-3 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                    <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clip-rule="evenodd"/>
+                  </svg>
+                  {{ locationError }}
+                </div>
              </div>
 
              <!-- Dropoff Location -->
@@ -206,6 +213,13 @@
                   </Teleport>
               </div>
             </div>
+            <!-- Date Error Message -->
+            <div v-if="dateError" class="text-red-500 text-xs mt-1 pl-1 flex items-center gap-1">
+              <svg class="w-3 h-3 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clip-rule="evenodd"/>
+              </svg>
+              {{ _t('homepage', 'dates_required') || 'Rental dates are required' }}
+            </div>
           </div>
 
           <!-- Submit Button -->
@@ -289,9 +303,6 @@
               </div>
             </div>
         </div>
-
-         <!-- Error Dialog -->
-         <ErrorDialog :show="errorMessage !== ''" :message="errorMessage" @close="clearError" />
       </div>
     </div>
   </section>
@@ -422,23 +433,15 @@ const selectedLocationProviders = ref([]);
 const showProviderSelection = ref(false);
 const dropoffProvider = ref(null);
 const selectedPickupLocation = ref(null);
-
-
-// Compute error message to display in dialog
-const errorMessage = computed(() => {
-  if (dateError.value) {
-    return "Please fill in all fields: location and rental dates.";
-  }
-  if (locationError.value) {
-    return locationError.value;
-  }
-  return "";
-});
+const hasSelectedPickupLocation = ref(false); // Track if user selected from dropdown
+const hasSelectedDropoffLocation = ref(false); // Track if user selected dropoff from dropdown
 
 // Clear error messages
 const clearError = () => {
   dateError.value = false;
   locationError.value = null;
+  showSearchBox.value = false;
+  showDropoffSearchBox.value = false;
 };
 
 const handleInputClick = () => {
@@ -478,6 +481,22 @@ watch(selectedEndTime, (newVal) => {
     form.value.end_time = newVal;
 });
 
+// Watch for manual text changes to location field
+watch(() => form.value.where, (newVal, oldVal) => {
+    // If value changes and it's not from selectLocation (which sets the flag to true),
+    // it means user manually typed/pasted something
+    if (oldVal && newVal !== oldVal && hasSelectedPickupLocation.value) {
+        // Check if the new value matches the selected location
+        if (selectedPickupLocation.value) {
+            const expectedValue = selectedPickupLocation.value.name + (selectedPickupLocation.value.city ? `, ${selectedPickupLocation.value.city}` : '');
+            if (newVal !== expectedValue) {
+                // User modified the text manually
+                hasSelectedPickupLocation.value = false;
+            }
+        }
+    }
+});
+
 const showMobileDatePicker = ref(false);
 const mobileDateRange = ref(null);
 
@@ -507,6 +526,9 @@ const mobileTotalDays = computed(() => {
 });
 
 const handleSearchInput = () => {
+  // User manually typed something, reset the dropdown selection flag
+  hasSelectedPickupLocation.value = false;
+
   if (form.value.where.length === 0) {
     searchResults.value = [];
     searchPerformed.value = false;
@@ -555,12 +577,14 @@ const handleSearchInput = () => {
 
 const selectLocation = (result) => {
   selectedPickupLocation.value = result;
+  hasSelectedPickupLocation.value = true; // User selected from dropdown
+  locationError.value = null; // Clear any error
   form.value.where = result.name + (result.city ? `, ${result.city}` : '');
   form.value.latitude = result.latitude;
   form.value.longitude = result.longitude;
   form.value.city = result.city;
   form.value.country = result.country;
-  
+
   // Always set the unified_location_id for multi-provider matching
   form.value.unified_location_id = result.unified_location_id || null;
 
@@ -643,9 +667,10 @@ const fetchDropoffLocations = async (provider, locationId) => {
 };
 
 const selectDropoffLocation = (result) => {
+  hasSelectedDropoffLocation.value = true; // User selected dropoff from dropdown
   const locationName = result.name + (result.city ? `, ${result.city}` : '');
   form.value.dropoff_where = locationName;
-  
+
   const providerToFind = form.value.provider === 'mixed' ? dropoffProvider.value : form.value.provider;
   const providerData = result.providers.find(p => p.provider === providerToFind);
 
@@ -653,19 +678,29 @@ const selectDropoffLocation = (result) => {
     form.value.dropoff_location_id = providerData.pickup_id;
   } else {
     console.error('Selected provider not available at the chosen dropoff location.');
-    form.value.dropoff_location_id = null; 
+    form.value.dropoff_location_id = null;
   }
-  
+
   showDropoffSearchBox.value = false;
 };
 
 
 const submit = async () => {
+  // Validate dates
   if (!form.value.date_from || !form.value.date_to || !form.value.where) {
     dateError.value = true;
     return;
   }
+
+  // Validate that user selected from dropdown (not manually typed text)
+  if (!hasSelectedPickupLocation.value) {
+    locationError.value = 'Please select a location from the dropdown';
+    showSearchBox.value = true; // Show dropdown to help user
+    return;
+  }
+
   dateError.value = false;
+  locationError.value = null;
   isLoading.value = true;
 
   try {
@@ -791,37 +826,6 @@ onUnmounted(() => {
 // Removed individual date watchers as we now use dateRange watcher defined above.
 // Also removed invalid date range watcher as date picker handles much of this, but logic can be re-added inside the dateRange watcher if strict invalidation is needed.
 // VueDatePicker range mode generally prevents selecting end date before start date effectively.
-
-
-// Error Dialog Component
-const ErrorDialog = {
-  props: {
-    show: Boolean,
-    message: String,
-  },
-  emits: ['close'],
-  template: `
-    <div v-if="show" class="fixed inset-0 flex items-center justify-center z-50 bg-black bg-opacity-50">
-      <div class="bg-white rounded-lg p-6 w-[90%] max-w-[400px] shadow-lg">
-        <div class="flex justify-between items-center mb-4">
-          <h3 class="text-lg font-semibold text-red-600">Error</h3>
-          <button @click="$emit('close')" class="text-gray-500 hover:text-gray-700">
-            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
-            </svg>
-          </button>
-        </div>
-        <p class="text-gray-700">{{ message }}</p>
-        <div class="mt-6 flex justify-end">
-          <button @click="$emit('close')"
-            class="bg-customPrimaryColor text-customPrimaryColor-foreground px-4 py-2 rounded-lg hover:bg-opacity-90">
-            OK
-          </button>
-        </div>
-      </div>
-    </div>
-  `,
-};
 </script>
 
 <style>
