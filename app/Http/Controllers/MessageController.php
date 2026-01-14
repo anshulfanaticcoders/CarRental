@@ -83,7 +83,11 @@ class MessageController extends Controller
         })
         ->with(['vehicle.vendor.profile', 'vehicle.vendor.chatStatus', 'vehicle', 'vehicle.category', 'vehicle.images']) // Eager load more vehicle data
         ->orderBy('created_at', 'desc') // Get latest bookings first for a vendor
-        ->get();
+        ->get()
+        ->filter(function ($booking) {
+            // Only include bookings that have a vehicle (internal bookings only)
+            return $booking->vehicle !== null && $booking->vehicle->vendor_id !== null;
+        });
 
         // Group bookings by vendor to get unique vendors
         // vehicle.vendor_id is the user_id of the vendor
