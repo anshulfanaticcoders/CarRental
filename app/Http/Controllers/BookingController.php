@@ -442,7 +442,7 @@ class BookingController extends Controller
 
         // Check if internal vehicle exists
         if ($booking->vehicle_id) {
-            $booking->load(['vehicle.images', 'vehicle.category', 'vehicle.vendorProfile']);
+            $booking->load(['vehicle.images', 'vehicle.category', 'vehicle.vendorProfileData']);
         }
 
         // Normalize Vehicle Data
@@ -452,7 +452,12 @@ class BookingController extends Controller
         if ($booking->vehicle) {
             // Internal Vehicle
             $vehicleData = $booking->vehicle;
-            $vendorProfile = $booking->vehicle->vendorProfile;
+            $vendorProfile = $booking->vehicle->vendorProfileData;
+
+            // Load vendor user if vendorProfile exists
+            if ($vendorProfile && !$vendorProfile->relationLoaded('user')) {
+                $vendorProfile->load('user');
+            }
         } else {
             // External Vehicle (Fallback)
             $vehicleData = [
