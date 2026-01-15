@@ -474,22 +474,14 @@ useScrollAnimation('.blogs-trigger', '.more-button', {
                             </CarouselItem>
                         </template>
 
-                        <!-- Show "Coming Soon" when data is empty -->
+                        <!-- Show "COMING SOON" torch effect when data is empty -->
                         <template v-else-if="props.popularPlaces && props.popularPlaces.length === 0">
-                            <div class="w-full flex flex-col items-center justify-center py-20 px-4 text-center">
-                                <div class="bg-gray-50 rounded-full p-6 mb-4">
-                                    <svg xmlns="http://www.w3.org/2000/svg"
-                                        class="h-12 w-12 text-customPrimaryColor opacity-50" fill="none"
-                                        viewBox="0 0 24 24" stroke="currentColor">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
-                                            d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
-                                            d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
-                                    </svg>
-                                </div>
-                                <h4 class="text-2xl font-bold text-gray-900 mb-2">Destinations Coming Soon</h4>
-                                <p class="text-gray-500 max-w-md mx-auto">We're currently expanding our network. Stay
-                                    tuned for exciting new locations to explore!</p>
+                            <div
+                                class="w-full flex items-center justify-center py-20 px-4 text-center bg-gradient-to-r from-black to-gray-900 rounded-none overflow-hidden my-10">
+                                <h4
+                                    class="torch-text text-xl md:text-3xl font-black uppercase tracking-[1.5rem] md:tracking-[2.5rem] w-full transform translate-x-[1.25rem] md:translate-x-[2.1rem]">
+                                    Coming Soon
+                                </h4>
                             </div>
                         </template>
 
@@ -514,6 +506,7 @@ useScrollAnimation('.blogs-trigger', '.more-button', {
                     <CarouselPrevious v-if="props.popularPlaces && props.popularPlaces.length > 0" />
                     <CarouselNext v-if="props.popularPlaces && props.popularPlaces.length > 0" />
                 </Carousel>
+
 
             </div>
         </section>
@@ -822,5 +815,30 @@ useScrollAnimation('.blogs-trigger', '.more-button', {
 .category-card-hover:hover {
     transform: scale(1.01);
     filter: brightness(0.8);
+}
+
+.torch-text {
+    position: relative;
+    color: rgba(255, 255, 255, 0.05);
+    background: linear-gradient(to right,
+            transparent 0%,
+            rgba(255, 255, 255, 1) 50%,
+            transparent 100%);
+    background-size: 200% 100%;
+    background-clip: text;
+    -webkit-background-clip: text;
+    animation: torch-sweep 4s linear infinite;
+    display: inline-block;
+    white-space: nowrap;
+}
+
+@keyframes torch-sweep {
+    0% {
+        background-position: -150% 0;
+    }
+
+    100% {
+        background-position: 150% 0;
+    }
 }
 </style>
