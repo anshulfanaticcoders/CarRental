@@ -86,7 +86,7 @@ const _t = (key) => {
     if (props.translations && props.translations.homepage && props.translations.homepage[key]) {
         return props.translations.homepage[key];
     }
-    return key; 
+    return key;
 };
 
 const animatedTagline = computed(() => {
@@ -275,11 +275,14 @@ const updateSearchUrl = (place) => {
             country: location.country,
             provider: provider.provider,
             provider_pickup_id: provider.pickup_id,
+            dropoff_location_id: provider.pickup_id, // Same as pickup location
+            dropoff_where: location.name, // Display text for dropoff
         });
     } else {
         // Fallback to place_name only
         Object.assign(params, {
             where: place.place_name,
+            dropoff_where: place.place_name, // Ensure dropoff is also set
         });
     }
 
@@ -291,21 +294,21 @@ const updateSearchUrl = (place) => {
 
 // Animations
 useScrollAnimation('.hero_section', '.hero-content', {
-  opacity: 0,
-  y: -50,
-  duration: 1.2,
+    opacity: 0,
+    y: -50,
+    duration: 1.2,
 });
 
 useScrollAnimation('.hero_section', '.anim-title-word', {
-  y: 150,
-  opacity: 0,
-  stagger: 0.05,
-  duration: 1,
+    y: 150,
+    opacity: 0,
+    stagger: 0.05,
+    duration: 1,
 });
 
 useScrollAnimation('.hero_section', '.hero-image', {
-  opacity: 0,
-  duration: 1.5,
+    opacity: 0,
+    duration: 1.5,
 });
 
 useScrollAnimation('.search-bar-section', '.search-bar-animation', {
@@ -315,55 +318,55 @@ useScrollAnimation('.search-bar-section', '.search-bar-animation', {
 });
 
 useScrollAnimation('.why-choose-us-trigger', '.why-choose-us-title', {
-  opacity: 0,
-  y: 30,
+    opacity: 0,
+    y: 30,
 });
 
 useScrollAnimation('.why-choose-us-trigger', '.why-choose-us-card-left', {
-  opacity: 0,
-  x: -50,
+    opacity: 0,
+    x: -50,
 });
 
 useScrollAnimation('.why-choose-us-trigger', '.why-choose-us-image', {
-  opacity: 0,
-  scale: 0.8,
+    opacity: 0,
+    scale: 0.8,
 });
 
 useScrollAnimation('.why-choose-us-trigger', '.why-choose-us-card-right', {
-  opacity: 0,
-  x: 50,
+    opacity: 0,
+    x: 50,
 });
 
 useScrollAnimation('.popular-places-trigger', '.popular-place-card', {
-  opacity: 0,
-  y: 50,
-  stagger: 0.5,
+    opacity: 0,
+    y: 50,
+    stagger: 0.5,
 });
 
 // Blog Section Animations
 useScrollAnimation('.blogs-trigger', '.blog-title-section', {
-  opacity: 0,
-  y: 30,
-  duration: 1,
+    opacity: 0,
+    y: 30,
+    duration: 1,
 });
 
 useScrollAnimation('.blogs-trigger', '.blog-main-image', {
-  opacity: 0,
-  x: -50,
-  duration: 1.2,
+    opacity: 0,
+    x: -50,
+    duration: 1.2,
 });
 
 useScrollAnimation('.blogs-trigger', '.blog-item', {
-  opacity: 0,
-  x: 50,
-  duration: 0.8,
-  stagger: 0.2,
+    opacity: 0,
+    x: 50,
+    duration: 0.8,
+    stagger: 0.2,
 });
 
 useScrollAnimation('.blogs-trigger', '.more-button', {
-  opacity: 0,
-  y: 20,
-  duration: 0.6,
+    opacity: 0,
+    y: 20,
+    duration: 0.6,
 });
 </script>
 
@@ -386,9 +389,10 @@ useScrollAnimation('.blogs-trigger', '.more-button', {
     </Head>
     <!-- Inject all schemas passed in the 'schema' array prop -->
     <template v-if="schema && schema.length">
-        <SchemaInjector v-for="(individualSchema, index) in schema" :key="`schema-${index}`" :schema="individualSchema" />
+        <SchemaInjector v-for="(individualSchema, index) in schema" :key="`schema-${index}`"
+            :schema="individualSchema" />
     </template>
-    
+
     <!-- Schema for Organization (globally shared, if it exists) -->
     <SchemaInjector v-if="$page.props.organizationSchema" :schema="$page.props.organizationSchema" />
 
@@ -414,8 +418,8 @@ useScrollAnimation('.blogs-trigger', '.more-button', {
                 </div>
                 <div
                     class="column h-[46rem] w-full relative max-[768px]:h-auto max-[768px]:pb-[2rem] max-[768px]:px-[1.5rem] hero-image">
-                    <img class="rounded-bl-[20px] h-full w-full object-cover max-[768px]:rounded-[20px]" :src="heroImageSource"
-                        alt="Hero Image" />
+                    <img class="rounded-bl-[20px] h-full w-full object-cover max-[768px]:rounded-[20px]"
+                        :src="heroImageSource" alt="Hero Image" />
                     <div class="bg-customOverlayColor absolute top-0 w-full h-full rounded-bl-[20px]"></div>
                 </div>
             </div>
@@ -424,7 +428,7 @@ useScrollAnimation('.blogs-trigger', '.more-button', {
 
         <section
             class="mt-[-14rem] mb-[6rem] max-[768px]:mb-[0] max-[768px]:mt-[-1rem] max-[768px]:px-[1.5rem] max-[768px]:pt-[2rem] max-[768px]:bg-customPrimaryColor relative z-10 search-bar-section">
-                <SearchBar class="search-bar-animation" :simple="true" />
+            <SearchBar class="search-bar-animation" :simple="true" />
         </section>
 
 
@@ -436,10 +440,12 @@ useScrollAnimation('.blogs-trigger', '.more-button', {
 
 
         <!------------------------------- Top Destination Places -------------------------------------->
-        <section class="flex flex-col gap-2 py-customVerticalSpacing popular-places max-[768px]:py-[1rem] max-[768px]:gap-8 popular-places-trigger">
+        <section
+            class="flex flex-col gap-2 py-customVerticalSpacing popular-places max-[768px]:py-[1rem] max-[768px]:gap-8 popular-places-trigger">
             <div class="column ml-[2%]">
                 <span class="text-[1.15rem] text-customPrimaryColor">-{{ _p('top_destinations') }} -</span>
-                <h3 class="text-customDarkBlackColor max-[768px]:text-[1.75rem] max-[768px]:mt-[1rem]">{{ _p('popular_places') }}</h3>
+                <h3 class="text-customDarkBlackColor max-[768px]:text-[1.75rem] max-[768px]:mt-[1rem]">{{
+                    _p('popular_places') }}</h3>
             </div>
             <div class="column max-[768px]:px-[1.5rem]">
                 <Carousel class="relative w-full" :plugins="[plugin]">
@@ -447,22 +453,22 @@ useScrollAnimation('.blogs-trigger', '.more-button', {
                         <!-- Show actual places when data is loaded from props -->
                         <template v-if="props.popularPlaces && props.popularPlaces.length > 0">
                             <CarouselItem v-for="place in props.popularPlaces" :key="place.id"
-                                 class="pl-1 md:basis-1/2 lg:basis-1/5 popular-place-card">
+                                class="pl-1 md:basis-1/2 lg:basis-1/5 popular-place-card">
                                 <div class="p-1">
-                                    <a
-                                        :href="`/${page.props.locale}/s?where=${encodeURIComponent(place.place_name)}`"
+                                    <a :href="`/${page.props.locale}/s?where=${encodeURIComponent(place.place_name)}`"
                                         @click.prevent="navigateToSearch(place)">
-                                    <Card
-                                        class="h-[18rem] border-0 rounded-[0.75rem] transition-all duration-300 hover:mt-[-1rem] max-[768px]:hover:mt-0">
-                                        <CardContent class="flex flex-col gap-2 justify-center px-1 h-full">
-                                            <img :src="`${place.image}`" :alt="place.place_name"
-                                                class="rounded-[0.75rem] h-[12rem] w-full object-cover mb-2"  />
-                                            <div class="px-3">
-                                                <h3 class="text-lg font-medium">{{ place.place_name }}</h3>
-                                                <p class="text-sm text-customDarkBlackColor">{{ place.city }}, {{ place.country }}</p>
-                                            </div>
-                                        </CardContent>
-                                    </Card>
+                                        <Card
+                                            class="h-[18rem] border-0 rounded-[0.75rem] transition-all duration-300 hover:mt-[-1rem] max-[768px]:hover:mt-0">
+                                            <CardContent class="flex flex-col gap-2 justify-center px-1 h-full">
+                                                <img :src="`${place.image}`" :alt="place.place_name"
+                                                    class="rounded-[0.75rem] h-[12rem] w-full object-cover mb-2" />
+                                                <div class="px-3">
+                                                    <h3 class="text-lg font-medium">{{ place.place_name }}</h3>
+                                                    <p class="text-sm text-customDarkBlackColor">{{ place.city }}, {{
+                                                        place.country }}</p>
+                                                </div>
+                                            </CardContent>
+                                        </Card>
                                     </a>
                                 </div>
                             </CarouselItem>
@@ -517,20 +523,22 @@ useScrollAnimation('.blogs-trigger', '.more-button', {
                 max-[768px]:grid-cols-1">
                     <div class="col flex flex-col gap-10">
                         <div class="info-card flex gap-5 items-start why-choose-us-card-left">
-                            <img :src="locationMapIcon" alt=""  />
+                            <img :src="locationMapIcon" alt="" />
                             <div class="flex flex-col gap-3">
                                 <span
-                                    class="text-[1.5rem] text-customDarkBlackColor font-medium  max-[768px]:text-[1.25rem]">{{ _p('convenient_locations') }}</span>
+                                    class="text-[1.5rem] text-customDarkBlackColor font-medium  max-[768px]:text-[1.25rem]">{{
+                                    _p('convenient_locations') }}</span>
                                 <p class="text-customLightGrayColor text-[1.15rem]  max-[768px]:text-[0.95rem]">
                                     {{ _p('convenient_locations_text') }}
                                 </p>
                             </div>
                         </div>
                         <div class="info-card flex gap-5 items-start why-choose-us-card-left">
-                            <img :src="phoneIcon" alt=""  />
+                            <img :src="phoneIcon" alt="" />
                             <div class=" flex flex-col gap-3">
                                 <span
-                                    class="text-[1.5rem] text-customDarkBlackColor font-medium  max-[768px]:text-[1.25rem]">{{ _p('fast_booking') }}</span>
+                                    class="text-[1.5rem] text-customDarkBlackColor font-medium  max-[768px]:text-[1.25rem]">{{
+                                    _p('fast_booking') }}</span>
                                 <p class="text-customLightGrayColor text-[1.15rem]  max-[768px]:text-[0.95rem]">
                                     {{ _p('fast_booking_text') }}
                                 </p>
@@ -539,24 +547,26 @@ useScrollAnimation('.blogs-trigger', '.more-button', {
                     </div>
                     <div class="col flex justify-center why-choose-us-image">
                         <img class="rounded-[20px] h-full object-cover" :src="carImage" alt=""
-                            style="clip-path: polygon(30% 0%, 70% 0%, 100% 30%, 100% 70%, 70% 100%, 30% 100%, 0% 70%, 0% 30%);"  />
+                            style="clip-path: polygon(30% 0%, 70% 0%, 100% 30%, 100% 70%, 70% 100%, 30% 100%, 0% 70%, 0% 30%);" />
                     </div>
                     <div class="col flex flex-col gap-10">
                         <div class="info-card flex gap-5 items-start why-choose-us-card-right">
-                            <img :src="chipIcon" alt=""  />
+                            <img :src="chipIcon" alt="" />
                             <div class=" flex flex-col gap-3">
                                 <span
-                                    class="text-[1.5rem] text-customDarkBlackColor font-medium  max-[768px]:text-[1.25rem]">{{ _p('modern_fleet') }}</span>
+                                    class="text-[1.5rem] text-customDarkBlackColor font-medium  max-[768px]:text-[1.25rem]">{{
+                                    _p('modern_fleet') }}</span>
                                 <p class="text-customLightGrayColor text-[1.15rem]  max-[768px]:text-[0.95rem]">
                                     {{ _p('modern_fleet_text') }}
                                 </p>
                             </div>
                         </div>
                         <div class="info-card flex gap-5 items-start why-choose-us-card-right">
-                            <img :src="userCoverageIcon" alt=""  />
+                            <img :src="userCoverageIcon" alt="" />
                             <div class="flex flex-col gap-3 ">
                                 <span
-                                    class="text-[1.5rem] text-customDarkBlackColor font-medium  max-[768px]:text-[1.25rem]">{{ _p('insurance_coverage') }}</span>
+                                    class="text-[1.5rem] text-customDarkBlackColor font-medium  max-[768px]:text-[1.25rem]">{{
+                                    _p('insurance_coverage') }}</span>
                                 <p class="text-customLightGrayColor text-[1.15rem]  max-[768px]:text-[0.95rem]">
                                     {{ _p('insurance_coverage_text') }}
                                 </p>
@@ -597,19 +607,23 @@ useScrollAnimation('.blogs-trigger', '.more-button', {
             <!-- Blog Section -->
             <div class="flex gap-6 w-full full-w-container max-[768px]:flex-col blog-main-container">
                 <!-- First Blog (Large Left) -->
-                <Link :href="route('blog.show', { locale: page.props.locale, country: page.props.country || 'us', blog: blogs[0].translated_slug })" v-if="!isLoading && blogs.length > 0"
+                <Link
+                    :href="route('blog.show', { locale: page.props.locale, country: page.props.country || 'us', blog: blogs[0].translated_slug })"
+                    v-if="!isLoading && blogs.length > 0"
                     class="w-1/2 h-[574px] relative rounded-lg overflow-hidden shadow-md blog-container blog-main-image max-[768px]:w-full max-[768px]:h-[380px]">
-                <img :src="blogs[0].image" :alt="blogs[0].title" class="w-full h-full object-cover rounded-lg" >
+                    <img :src="blogs[0].image" :alt="blogs[0].title" class="w-full h-full object-cover rounded-lg">
 
-                <div class="absolute bottom-0 bg-gradient-to-t from-black/70 to-transparent p-4 text-white w-full">
-                    <p class="text-[1.25rem] flex items-center gap-1">
-                        <img :src=calendarWhiteIcon alt="" > {{ formatDate(blogs[0].created_at) }}
-                    </p>
-                    <h4 class="font-semibold text-[2rem] max-[768px]:text-[1.25rem]">{{ blogs[0].title }}</h4>
-                    <Link :href="route('blog.show', { locale: page.props.locale, country: page.props.country || 'us', blog: blogs[0].translated_slug })" class="inline-flex items-center mt-2 text-blue-400">
-                    <img :src=whiteGoIcon alt="" >
-                    </Link>
-                </div>
+                    <div class="absolute bottom-0 bg-gradient-to-t from-black/70 to-transparent p-4 text-white w-full">
+                        <p class="text-[1.25rem] flex items-center gap-1">
+                            <img :src=calendarWhiteIcon alt=""> {{ formatDate(blogs[0].created_at) }}
+                        </p>
+                        <h4 class="font-semibold text-[2rem] max-[768px]:text-[1.25rem]">{{ blogs[0].title }}</h4>
+                        <Link
+                            :href="route('blog.show', { locale: page.props.locale, country: page.props.country || 'us', blog: blogs[0].translated_slug })"
+                            class="inline-flex items-center mt-2 text-blue-400">
+                            <img :src=whiteGoIcon alt="">
+                        </Link>
+                    </div>
                 </Link>
 
                 <div v-else
@@ -623,9 +637,10 @@ useScrollAnimation('.blogs-trigger', '.more-button', {
                         class="relative rounded-lg h-[175px] flex justify-between gap-5 items-center blog-item">
                         <div v-if="!isLoading && blogs.length > index"
                             class="w-[30%] h-full blog-container max-[768px]:w-[40%] max-[768px]:h-[120px]">
-                            <Link :href="route('blog.show', { locale: page.props.locale, country: page.props.country || 'us', blog: blogs[index].translated_slug })">
-                            <img :src="blogs[index].image" :alt="blogs[index].title"
-                                class="w-full h-full object-cover rounded-lg transform transition-transform duration-300 ease-in-out hover:scale-105" >
+                            <Link
+                                :href="route('blog.show', { locale: page.props.locale, country: page.props.country || 'us', blog: blogs[index].translated_slug })">
+                                <img :src="blogs[index].image" :alt="blogs[index].title"
+                                    class="w-full h-full object-cover rounded-lg transform transition-transform duration-300 ease-in-out hover:scale-105">
                             </Link>
                         </div>
                         <div v-else class="w-[30%] h-full blog-container max-[768px]:w-[40%] max-[768px]:h-[120px]">
@@ -635,15 +650,16 @@ useScrollAnimation('.blogs-trigger', '.more-button', {
                         <div class="w-[70%]">
                             <p v-if="!isLoading && blogs.length > index"
                                 class="text-sm flex items-center gap-1 text-customLightGrayColor">
-                                <img :src=calendarIcon alt="" > {{ formatDate(blogs[index].created_at) }}
+                                <img :src=calendarIcon alt=""> {{ formatDate(blogs[index].created_at) }}
                             </p>
                             <h4 v-if="!isLoading && blogs.length > index"
                                 class="font-semibold text-[1.5rem] text-customDarkBlackColor max-[768px]:text-[1rem]">{{
                                     blogs[index].title }}</h4>
-                            <Link v-if="!isLoading && blogs.length > index" :href="route('blog.show', { locale: page.props.locale, country: page.props.country || 'us', blog: blogs[index].translated_slug })"
+                            <Link v-if="!isLoading && blogs.length > index"
+                                :href="route('blog.show', { locale: page.props.locale, country: page.props.country || 'us', blog: blogs[index].translated_slug })"
                                 class="inline-flex items-center mt-2 text-customPrimaryColor read-story">
-                            Read Story
-                            <img :src=goIcon alt="" class="w-[1.5rem]" >
+                                Read Story
+                                <img :src=goIcon alt="" class="w-[1.5rem]">
                             </Link>
                             <div v-else class="space-y-2">
                                 <Skeleton class="h-4 w-[70%]" />
@@ -655,7 +671,8 @@ useScrollAnimation('.blogs-trigger', '.more-button', {
             </div>
 
             <Link :href="route('blog', { locale: page.props.locale, country: page.props.country || 'us' })"
-                class="button-secondary more-button text-center w-[10rem] mt-6 hover:bg-customPrimaryColor hover:text-white">{{ _p('more_blogs') }}</Link>
+                class="button-secondary more-button text-center w-[10rem] mt-6 hover:bg-customPrimaryColor hover:text-white">
+                {{ _p('more_blogs') }}</Link>
         </section>
 
 
@@ -697,7 +714,18 @@ useScrollAnimation('.blogs-trigger', '.more-button', {
     display: none;
 }
 
-.hero-content, .hero-image, .search-bar-animation, .why-choose-us-title, .why-choose-us-card-left, .why-choose-us-image, .why-choose-us-card-right, .popular-place-card, .blog-title-section, .blog-main-image, .blog-item, .more-button {
+.hero-content,
+.hero-image,
+.search-bar-animation,
+.why-choose-us-title,
+.why-choose-us-card-left,
+.why-choose-us-image,
+.why-choose-us-card-right,
+.popular-place-card,
+.blog-title-section,
+.blog-main-image,
+.blog-item,
+.more-button {
     will-change: transform, opacity;
 }
 
@@ -751,12 +779,12 @@ useScrollAnimation('.blogs-trigger', '.more-button', {
 /* Fade transition styles */
 .fade-enter-active,
 .fade-leave-active {
-  transition: opacity 0.5s ease;
+    transition: opacity 0.5s ease;
 }
 
 .fade-enter-from,
 .fade-leave-to {
-  opacity: 0;
+    opacity: 0;
 }
 
 .clip-path-anim {

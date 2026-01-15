@@ -658,8 +658,8 @@ onUnmounted(() => {
             <div class="car-header">
                 <div class="flex justify-between items-start">
                     <div>
-                        <h3 class="car-name">{{ vehicle.brand }} {{ vehicle.model }}</h3>
-                        <p class="car-class">{{ vehicleSpecs.acriss || vehicle.sipp_code_one_letter || 'Car' }}</p>
+                        <h3 class="car-name">{{ vehicle?.brand }} {{ vehicle?.model }}</h3>
+                        <p class="car-class">{{ vehicleSpecs.acriss || vehicle?.sipp_code_one_letter || 'Car' }}</p>
                     </div>
                 </div>
             </div>
@@ -885,7 +885,7 @@ onUnmounted(() => {
                                 <li v-for="benefit in getBenefits(product)" :key="benefit">
                                     <img :src="check" class="w-4 h-4 opacity-100" />
                                     <span :class="{ 'font-semibold text-gray-900': isKeyBenefit(benefit) }">{{ benefit
-                                    }}</span>
+                                        }}</span>
                                 </li>
                                 <li v-if="product.deposit">
                                     <img :src="check" class="w-4 h-4 opacity-100" />
@@ -925,13 +925,13 @@ onUnmounted(() => {
                                         'EUR').toFixed(2) }} <span>/day</span></div>
                                 <div class="plan-total-price">Total: {{ getSelectedCurrencySymbol() }}{{
                                     convertPrice(parseFloat(vehicle.total_price), vehicle.currency || 'EUR').toFixed(2)
-                                    }}</div>
+                                }}</div>
                             </div>
                             <ul class="plan-features">
                                 <li><img :src="check" class="w-4 h-4" /> <span>Standard protection included</span></li>
                             </ul>
                             <button class="plan-select-btn">{{ !selectedLocautoProtection ? 'Selected' : 'SelectPackage'
-                                }}</button>
+                            }}</button>
                         </div>
                         <!-- Other items -->
                         <div v-for="protection in locautoProtectionPlans" :key="protection.code" class="plan-card"
@@ -997,7 +997,7 @@ onUnmounted(() => {
                                 <li v-for="benefit in product.benefits" :key="benefit">
                                     <img :src="check" class="w-4 h-4 opacity-100" />
                                     <span :class="{ 'font-semibold text-gray-900': isKeyBenefit(benefit) }">{{ benefit
-                                        }}</span>
+                                    }}</span>
                                 </li>
                             </ul>
                             <button class="plan-select-btn">
@@ -1038,7 +1038,7 @@ onUnmounted(() => {
                                 <li v-for="benefit in product.benefits" :key="benefit">
                                     <img :src="check" class="w-4 h-4 opacity-100" />
                                     <span :class="{ 'font-semibold text-gray-900': isKeyBenefit(benefit) }">{{ benefit
-                                        }}</span>
+                                    }}</span>
                                 </li>
                                 <li v-if="product.deposit">
                                     <img :src="check" class="w-4 h-4 opacity-100" />

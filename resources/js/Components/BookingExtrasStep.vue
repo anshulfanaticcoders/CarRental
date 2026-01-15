@@ -687,7 +687,7 @@ const cancellationDeadline = computed(() => {
         return null;
     }
 
-    const daysPrior = parseInt(props.vehicle.benefits.cancellation_available_per_day_date);
+    const daysPrior = parseInt(props.vehicle?.benefits?.cancellation_available_per_day_date);
     if (isNaN(daysPrior)) return null;
 
     const deadline = new Date(props.pickupDate);
@@ -774,19 +774,19 @@ const formatPaymentMethod = (method) => {
                             <h4 class="font-bold text-gray-900 text-xl leading-tight">
                                 {{ vehicle.vendorProfileData?.company_name || vehicle.vendor_profile_data?.company_name
                                     || vehicle.vendor?.profile?.company_name || vehicle.vendorProfile?.company_name ||
-                                vehicle.vendor_profile?.company_name || 'Vendor' }}
+                                    vehicle.vendor_profile?.company_name || 'Vendor' }}
                             </h4>
                             <p class="text-base text-gray-500 mt-1"
-                                v-if="vehicle.vendor?.profile?.about || vehicle.vendorProfile?.about || vehicle.vendor_profile?.about">
-                                {{ vehicle.vendor?.profile?.about || vehicle.vendorProfile?.about ||
-                                vehicle.vendor_profile?.about }}
+                                v-if="vehicle?.vendor?.profile?.about || vehicle?.vendorProfile?.about || vehicle?.vendor_profile?.about">
+                                {{ vehicle?.vendor?.profile?.about || vehicle?.vendorProfile?.about ||
+                                    vehicle?.vendor_profile?.about }}
                             </p>
                         </div>
                     </div>
                 </div>
 
                 <!-- 2. Guidelines Card -->
-                <div class="bg-white rounded-2xl p-6 border border-gray-200 shadow-sm" v-if="vehicle.guidelines">
+                <div class="bg-white rounded-2xl p-6 border border-gray-200 shadow-sm" v-if="vehicle?.guidelines">
                     <h5 class="text-base font-bold text-gray-900 uppercase tracking-wider mb-4 flex items-center gap-2">
                         <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-[#1e3a5f]" fill="none"
                             viewBox="0 0 24 24" stroke="currentColor">
@@ -797,13 +797,13 @@ const formatPaymentMethod = (method) => {
                     </h5>
                     <p
                         class="text-base text-gray-600 leading-relaxed bg-gray-50 p-5 rounded-lg border border-gray-100 whitespace-pre-line">
-                        {{ vehicle.guidelines }}
+                        {{ vehicle?.guidelines }}
                     </p>
                 </div>
 
                 <!-- 3. Benefits & Policy Card -->
                 <div class="bg-white rounded-2xl p-6 border border-gray-200 shadow-sm"
-                    v-if="vehicle.benefits || vehicle.security_deposit > 0">
+                    v-if="(vehicle && vehicle.benefits) || (vehicle && vehicle.security_deposit > 0)">
                     <h5 class="text-base font-bold text-gray-900 uppercase tracking-wider mb-6 flex items-center gap-2">
                         <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-[#1e3a5f]" fill="none"
                             viewBox="0 0 24 24" stroke="currentColor">
@@ -815,19 +815,19 @@ const formatPaymentMethod = (method) => {
 
                     <!-- Deposit Section -->
                     <div class="grid grid-cols-2 gap-6 mb-8 border-b border-gray-100 pb-6">
-                        <div v-if="vehicle.security_deposit > 0">
+                        <div v-if="vehicle?.security_deposit > 0">
                             <h5 class="text-sm font-bold text-gray-500 uppercase tracking-wider mb-1">Security Deposit
                             </h5>
                             <p class="text-xl font-bold text-gray-900">
-                                {{ formatPrice(vehicle.security_deposit) }}
+                                {{ formatPrice(vehicle?.security_deposit) }}
                             </p>
                         </div>
-                        <div v-if="vehicle.payment_method">
+                        <div v-if="vehicle?.payment_method">
                             <h5 class="text-sm font-bold text-gray-500 uppercase tracking-wider mb-1">Deposit Method
                             </h5>
                             <span
                                 class="inline-flex items-center px-3 py-1.5 rounded-md text-sm font-medium bg-blue-50 text-blue-700 border border-blue-100">
-                                {{ formatPaymentMethod(vehicle.payment_method) }}
+                                {{ formatPaymentMethod(vehicle?.payment_method) }}
                             </span>
                         </div>
                     </div>
@@ -837,7 +837,7 @@ const formatPaymentMethod = (method) => {
                         <!-- Cancellation -->
                         <div class="flex items-start gap-3">
                             <div class="mt-1">
-                                <svg v-if="vehicle.benefits.cancellation_available_per_day == 1"
+                                <svg v-if="vehicle?.benefits?.cancellation_available_per_day == 1"
                                     xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-green-500"
                                     viewBox="0 0 20 20" fill="currentColor">
                                     <path fill-rule="evenodd"
@@ -851,7 +851,7 @@ const formatPaymentMethod = (method) => {
                                 </svg>
                             </div>
                             <div>
-                                <template v-if="vehicle.benefits.cancellation_available_per_day == 1">
+                                <template v-if="vehicle?.benefits?.cancellation_available_per_day == 1">
                                     <span class="block text-base font-bold text-gray-900">Free Cancellation</span>
                                     <span v-if="cancellationDeadline" class="text-sm text-gray-500 block mt-0.5">Until
                                         {{ cancellationDeadline }}</span>
@@ -873,13 +873,13 @@ const formatPaymentMethod = (method) => {
                                 </svg>
                             </div>
                             <div>
-                                <span v-if="vehicle.benefits.limited_km_per_day == 1">
+                                <span v-if="vehicle?.benefits?.limited_km_per_day == 1">
                                     <span class="block text-base font-bold text-gray-900">Limited: {{
-                                        vehicle.benefits.limited_km_per_day_range
-                                        }} km/day</span>
-                                    <span v-if="vehicle.benefits.price_per_km_per_day"
+                                        vehicle?.benefits?.limited_km_per_day_range
+                                    }} km/day</span>
+                                    <span v-if="vehicle?.benefits?.price_per_km_per_day"
                                         class="text-base font-semibold text-gray-700 block mt-0.5">
-                                        +{{ formatPrice(vehicle.benefits.price_per_km_per_day) }}/km
+                                        +{{ formatPrice(vehicle?.benefits?.price_per_km_per_day) }}/km
                                     </span>
                                 </span>
                                 <span v-else class="block text-base font-bold text-gray-900">Unlimited Mileage</span>
@@ -887,7 +887,7 @@ const formatPaymentMethod = (method) => {
                         </div>
 
                         <!-- Min Age -->
-                        <div v-if="vehicle.benefits.minimum_driver_age" class="flex items-start gap-3">
+                        <div v-if="vehicle?.benefits?.minimum_driver_age" class="flex items-start gap-3">
                             <div class="mt-1">
                                 <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-orange-500" fill="none"
                                     viewBox="0 0 24 24" stroke="currentColor">
@@ -896,8 +896,8 @@ const formatPaymentMethod = (method) => {
                                 </svg>
                             </div>
                             <span class="text-base font-medium text-gray-900 mt-1">Min. Driver Age: {{
-                                vehicle.benefits.minimum_driver_age
-                                }}</span>
+                                vehicle?.benefits?.minimum_driver_age
+                            }}</span>
                         </div>
                     </div>
                 </div>
@@ -1140,10 +1140,10 @@ const formatPaymentMethod = (method) => {
                             </svg>
                         </div>
                         <div class="flex-1">
-                            <div class="font-display font-bold text-gray-900 text-xl">{{ vehicle.brand }} {{
-                                vehicle.model }}
+                            <div class="font-display font-bold text-gray-900 text-xl">{{ vehicle?.brand }} {{
+                                vehicle?.model }}
                             </div>
-                            <div class="text-sm text-gray-500 mb-3">{{ vehicle.category || 'Economy' }}</div>
+                            <div class="text-sm text-gray-500 mb-3">{{ vehicle?.category || 'Economy' }}</div>
                         </div>
                     </div>
 
@@ -1412,13 +1412,13 @@ const formatPaymentMethod = (method) => {
                             <div class="flex justify-between text-sm">
                                 <span class="text-gray-600">Car Package ({{ currentPackage }})</span>
                                 <span class="font-semibold text-gray-900">{{ formatPrice(currentProduct?.total || 0)
-                                }}</span>
+                                    }}</span>
                             </div>
                             <div v-if="isAdobeCars && adobeMandatoryProtection > 0"
                                 class="flex justify-between text-sm">
                                 <span class="text-amber-600">Mandatory Liability (PLI)</span>
                                 <span class="font-semibold text-amber-600">+{{ formatPrice(adobeMandatoryProtection)
-                                }}</span>
+                                    }}</span>
                             </div>
                             <div v-for="item in getSelectedExtrasDetails" :key="item.id"
                                 class="flex justify-between text-sm">

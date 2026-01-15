@@ -93,6 +93,47 @@ class SearchController extends Controller
         $rentalDays = max(1, (int) ceil($dtStart->diffInMinutes($dtEnd) / 1440));
         Log::info("Global rental duration: {$rentalDays} days.");
 
+        // Check if any location parameter is provided - if not, return empty results
+        $hasLocation = !empty($validated['where']) ||
+                       !empty($validated['location']) ||
+                       !empty($validated['city']) ||
+                       !empty($validated['state']) ||
+                       !empty($validated['country']) ||
+                       !empty($validated['latitude']) ||
+                       !empty($validated['provider_pickup_id']) ||
+                       !empty($validated['unified_location_id']);
+
+        if (!$hasLocation) {
+            Log::info('No location provided - returning empty vehicle results');
+            $emptyVehicles = new \Illuminate\Pagination\LengthAwarePaginator(
+                collect(),
+                0,
+                500,
+                1,
+                ['path' => $request->url(), 'query' => $request->query()]
+            );
+
+            return Inertia::render('SearchResults', [
+                'vehicles' => $emptyVehicles,
+                'okMobilityVehicles' => $emptyVehicles,
+                'renteonVehicles' => $emptyVehicles,
+                'filters' => $validated,
+                'pagination_links' => '',
+                'brands' => [],
+                'colors' => [],
+                'seatingCapacities' => [],
+                'transmissions' => [],
+                'fuels' => [],
+                'mileages' => [],
+                'categories' => [],
+                'schema' => null,
+                'seoMeta' => \App\Models\SeoMeta::with('translations')->where('url_slug', '/s')->first(),
+                'locale' => \Illuminate\Support\Facades\App::getLocale(),
+                'optionalExtras' => [],
+                'locationName' => null,
+            ]);
+        }
+
         $internalVehiclesQuery = Vehicle::query()->whereIn('status', ['available', 'rented'])
             ->with(['images', 'bookings', 'vendor.profile', 'vendorProfile', 'vendorProfileData', 'benefits', 'vendorPlans', 'addons']);
 

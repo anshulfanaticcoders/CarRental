@@ -1900,7 +1900,7 @@ watch(
                                                 @change="form.transmission = form.transmission === item.value ? '' : item.value"
                                                 class="w-5 h-5 rounded-full border-gray-300 text-[#245f7d] focus:ring-[#245f7d]">
                                             <span class="text-sm font-medium text-gray-700 capitalize">{{ item.label
-                                            }}</span>
+                                                }}</span>
                                         </div>
                                         <span class="text-xs text-gray-400 bg-gray-100 px-2 py-0.5 rounded-full">{{
                                             item.count }}</span>
@@ -1921,7 +1921,7 @@ watch(
                                                 @change="form.fuel = form.fuel === item.value ? '' : item.value"
                                                 class="w-5 h-5 rounded-full border-gray-300 text-[#245f7d] focus:ring-[#245f7d]">
                                             <span class="text-sm font-medium text-gray-700 capitalize">{{ item.label
-                                            }}</span>
+                                                }}</span>
                                         </div>
                                         <span class="text-xs text-gray-400 bg-gray-100 px-2 py-0.5 rounded-full">{{
                                             item.count }}</span>
@@ -1978,7 +1978,7 @@ watch(
                     <div class="search-location-text">
                         <h1>Car Rental in {{ form.where || 'Selected Location' }}</h1>
                         <p>{{ form.country || 'Morocco' }} • {{ vehicles?.total || clientFilteredVehicles?.length || 0
-                            }} cars available</p>
+                        }} cars available</p>
                     </div>
                 </div>
                 <div class="search-dates-badge">
@@ -2182,8 +2182,8 @@ watch(
                 <!-- Controls -->
                 <div class="results-controls">
                     <!-- Mobile Filter Button -->
-                    <button @click="toggleMobileFilters"
-                        class="flex xl:hidden items-center justify-center w-full h-[46px] gap-2 px-4 bg-white border border-gray-200 rounded-lg text-sm font-bold shadow-sm hover:bg-gray-50 transition-colors">
+                    <!-- Mobile Filter Button -->
+                    <button @click="toggleMobileFilters" class="xl:hidden mobile-filter-btn">
                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                 d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" />
@@ -2192,15 +2192,14 @@ watch(
                     </button>
 
                     <!-- Map Toggle Button -->
-                    <button @click="showMap = true"
-                        class="h-[46px] w-[46px] flex items-center justify-center bg-[#153B4F] border border-[#153B4F] rounded-lg text-white hover:bg-[#0f2936] transition-colors"
-                        title="Show Map">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none"
-                            stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <button @click="showMap = true" class="map-toggle-btn" title="Show Map">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none"
+                            stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
                             <polygon points="1 6 1 22 8 18 16 22 23 18 23 2 16 6 8 2 1 6"></polygon>
                             <line x1="8" y1="2" x2="8" y2="18"></line>
                             <line x1="16" y1="6" x2="16" y2="22"></line>
                         </svg>
+                        <span class="md:hidden lg:inline">Map View</span>
                     </button>
 
                     <!-- Sort Dropdown -->
@@ -2926,10 +2925,59 @@ h6 {
 @media (max-width: 640px) {
     .results-controls {
         display: grid;
-        grid-template-columns: 1fr 1fr;
-        gap: 12px;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 10px;
+        width: 100%;
+        padding: 0 4px;
+    }
+}
+
+.map-toggle-btn {
+    height: 48px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    background: #153B4F;
+    border: 1px solid #153B4F;
+    border-radius: 12px;
+    color: white;
+    font-size: 14px;
+    font-weight: 600;
+    transition: all 0.2s ease;
+    padding: 0 16px;
+    cursor: pointer;
+}
+
+.map-toggle-btn:hover {
+    background: #0f2936;
+    border-color: #0f2936;
+}
+
+@media (max-width: 640px) {
+    .map-toggle-btn {
         width: 100%;
     }
+}
+
+.mobile-filter-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 48px;
+    gap: 8px;
+    background: white;
+    border: 1px solid var(--gray-200);
+    border-radius: 12px;
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--gray-700);
+    box-shadow: var(--shadow-sm);
+    transition: all 0.2s ease;
+}
+
+.mobile-filter-btn:hover {
+    background: var(--gray-50);
 }
 
 .sort-dropdown {
@@ -2940,14 +2988,14 @@ h6 {
     padding: 0 var(--space-4);
     background: var(--white);
     border: 1px solid var(--gray-200);
-    border-radius: 0.5rem;
+    border-radius: 12px;
     font-size: 14px;
-    font-weight: 700;
+    font-weight: 600;
     color: var(--gray-700);
     cursor: pointer;
     font-family: inherit;
     transition: all var(--duration-fast);
-    height: 46px;
+    height: 48px;
     min-width: 200px;
 }
 
@@ -3018,14 +3066,13 @@ h6 {
 .view-toggle {
     display: flex;
     border: 1px solid var(--gray-200);
-    border-radius: var(--radius-md);
+    border-radius: 12px;
     overflow: hidden;
-    height: 46px;
+    height: 48px;
 }
 
 @media (max-width: 640px) {
     .view-toggle {
-        grid-column: span 2;
         justify-content: center;
         width: 100%;
     }
