@@ -680,6 +680,39 @@ const getIconColorClass = (name) => {
 
     return 'icon-text-gray';
 };
+const formatPaymentMethod = (method) => {
+    if (!method) return '';
+
+    let methods = [];
+    try {
+        // Check if it's a JSON string
+        if (typeof method === 'string' && (method.startsWith('[') || method.startsWith('{'))) {
+            const parsed = JSON.parse(method);
+            if (Array.isArray(parsed)) {
+                methods = parsed;
+            } else {
+                methods = [method];
+            }
+        } else if (Array.isArray(method)) {
+            methods = method;
+        } else {
+            methods = [method];
+        }
+    } catch (e) {
+        // Fallback if parsing fails
+        methods = [method];
+    }
+
+    // Format each method: replace underscores/dashes with space, capitalize words
+    return methods.map(m => {
+        return m.toString()
+            .replace(/[_-]/g, ' ')
+            .split(' ')
+            .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+            .join(' ');
+    }).join(', ');
+};
+
 </script>
 
 <template>
@@ -707,6 +740,89 @@ const getIconColorClass = (name) => {
                     <p class="text-sm text-white/90 leading-relaxed">{{ locationInstructions }}</p>
                 </div>
             </div>
+
+            <!-- Vendor Info & Guidelines (Internal Only) -->
+            <section v-if="isInternal" class="mb-8">
+                <div class="bg-white rounded-2xl p-6 border border-gray-200 shadow-sm relative overflow-hidden">
+                    <!-- Decorative Background -->
+                    <div
+                        class="absolute top-0 right-0 w-32 h-32 bg-gray-50 rounded-full -translate-y-16 translate-x-16 z-0">
+                    </div>
+
+                    <div class="relative z-10">
+                        <h3 class="font-display text-xl font-bold text-gray-900 border-b border-gray-100 pb-4 mb-6">
+                            Rental Information
+                        </h3>
+
+                        <div class="flex flex-col md:flex-row gap-8">
+                            <!-- Vendor Profile -->
+                            <div class="flex-1"
+                                v-if="vehicle.vendor?.profile || vehicle.vendorProfile || vehicle.vendor_profile">
+                                <div class="flex items-start gap-4 mb-4">
+                                    <img :src="(vehicle.vendor?.profile?.avatar || vehicle.vendorProfile?.avatar || vehicle.vendor_profile?.avatar) ? (vehicle.vendor?.profile?.avatar || vehicle.vendorProfile?.avatar || vehicle.vendor_profile?.avatar) : '/images/default-avatar.png'"
+                                        alt="Vendor"
+                                        class="w-14 h-14 rounded-full object-cover border border-gray-200 shadow-sm flex-shrink-0"
+                                        @error="$event.target.src = '/images/default-avatar.png'" />
+                                    <div>
+                                        <h4 class="font-bold text-gray-900 text-lg leading-tight">
+                                            {{ vehicle.vendorProfileData?.company_name ||
+                                                vehicle.vendor_profile_data?.company_name ||
+                                                vehicle.vendor?.profile?.company_name || vehicle.vendorProfile?.company_name
+                                                || vehicle.vendor_profile?.company_name || 'Vendor' }}
+                                        </h4>
+                                        <!-- Bio / About -->
+                                        <p class="text-sm text-gray-500 mt-1 line-clamp-3"
+                                            v-if="vehicle.vendor?.profile?.about || vehicle.vendorProfile?.about || vehicle.vendor_profile?.about">
+                                            {{ vehicle.vendor?.profile?.about || vehicle.vendorProfile?.about ||
+                                                vehicle.vendor_profile?.about }}
+                                        </p>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Guidelines & Deposit -->
+                            <div class="flex-1 space-y-4">
+                                <!-- Guidelines -->
+                                <div v-if="vehicle.guidelines">
+                                    <h5
+                                        class="text-sm font-bold text-gray-900 uppercase tracking-wider mb-2 flex items-center gap-2">
+                                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-[#1e3a5f]"
+                                            fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                        </svg>
+                                        Guidelines
+                                    </h5>
+                                    <p
+                                        class="text-sm text-gray-600 leading-relaxed bg-gray-50 p-3 rounded-lg border border-gray-100 whitespace-pre-line">
+                                        {{ vehicle.guidelines }}
+                                    </p>
+                                </div>
+
+                                <div class="grid grid-cols-2 gap-4">
+                                    <!-- Deposit -->
+                                    <div v-if="vehicle.security_deposit > 0">
+                                        <h5 class="text-xs font-bold text-gray-500 uppercase tracking-wider mb-1">
+                                            Security Deposit</h5>
+                                        <p class="text-lg font-bold text-gray-900">
+                                            {{ formatPrice(vehicle.security_deposit) }}
+                                        </p>
+                                    </div>
+                                    <!-- Payment Method -->
+                                    <div v-if="vehicle.payment_method">
+                                        <h5 class="text-xs font-bold text-gray-500 uppercase tracking-wider mb-1">
+                                            Deposit Method</h5>
+                                        <span
+                                            class="inline-flex items-center px-2.5 py-1 rounded-md text-xs font-medium bg-blue-50 text-blue-700 border border-blue-100">
+                                            {{ formatPaymentMethod(vehicle.payment_method) }}
+                                        </span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
 
             <!-- 1. Package Upgrade Section -->
             <section>
@@ -1217,13 +1333,13 @@ const getIconColorClass = (name) => {
                             <div class="flex justify-between text-sm">
                                 <span class="text-gray-600">Car Package ({{ currentPackage }})</span>
                                 <span class="font-semibold text-gray-900">{{ formatPrice(currentProduct?.total || 0)
-                                    }}</span>
+                                }}</span>
                             </div>
                             <div v-if="isAdobeCars && adobeMandatoryProtection > 0"
                                 class="flex justify-between text-sm">
                                 <span class="text-amber-600">Mandatory Liability (PLI)</span>
                                 <span class="font-semibold text-amber-600">+{{ formatPrice(adobeMandatoryProtection)
-                                    }}</span>
+                                }}</span>
                             </div>
                             <div v-for="item in getSelectedExtrasDetails" :key="item.id"
                                 class="flex justify-between text-sm">

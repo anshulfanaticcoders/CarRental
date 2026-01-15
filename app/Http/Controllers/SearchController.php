@@ -94,7 +94,7 @@ class SearchController extends Controller
         Log::info("Global rental duration: {$rentalDays} days.");
 
         $internalVehiclesQuery = Vehicle::query()->whereIn('status', ['available', 'rented'])
-            ->with(['images', 'bookings', 'vendorProfile', 'benefits', 'vendorPlans', 'addons']);
+            ->with(['images', 'bookings', 'vendor.profile', 'vendorProfile', 'vendorProfileData', 'benefits', 'vendorPlans', 'addons']);
 
         // Apply date filters to internal vehicles
         if (!empty($validated['date_from']) && !empty($validated['date_to'])) {
