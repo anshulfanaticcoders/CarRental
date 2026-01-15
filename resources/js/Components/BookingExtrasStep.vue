@@ -680,6 +680,22 @@ const getIconColorClass = (name) => {
 
     return 'icon-text-gray';
 };
+// Calculate cancellation deadline
+const cancellationDeadline = computed(() => {
+    // Only proceed if free cancellation is available and we have a policy duration
+    if (!isInternal.value || !props.vehicle?.benefits?.cancellation_available_per_day || !props.vehicle?.benefits?.cancellation_available_per_day_date || !props.pickupDate) {
+        return null;
+    }
+
+    const daysPrior = parseInt(props.vehicle.benefits.cancellation_available_per_day_date);
+    if (isNaN(daysPrior)) return null;
+
+    const deadline = new Date(props.pickupDate);
+    deadline.setDate(deadline.getDate() - daysPrior);
+
+    return deadline.toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' });
+});
+
 const formatPaymentMethod = (method) => {
     if (!method) return '';
 
@@ -742,83 +758,146 @@ const formatPaymentMethod = (method) => {
             </div>
 
             <!-- Vendor Info & Guidelines (Internal Only) -->
-            <section v-if="isInternal" class="mb-8">
-                <div class="bg-white rounded-2xl p-6 border border-gray-200 shadow-sm relative overflow-hidden">
-                    <!-- Decorative Background -->
-                    <div
-                        class="absolute top-0 right-0 w-32 h-32 bg-gray-50 rounded-full -translate-y-16 translate-x-16 z-0">
+            <section v-if="isInternal" class="mb-8 space-y-6">
+                <!-- 1. Vendor Information Card -->
+                <div class="bg-white rounded-2xl p-6 border border-gray-200 shadow-sm"
+                    v-if="vehicle.vendor?.profile || vehicle.vendorProfile || vehicle.vendor_profile">
+                    <h3 class="font-display text-xl font-bold text-gray-900 border-b border-gray-100 pb-4 mb-6">
+                        Rental Information
+                    </h3>
+                    <div class="flex items-start gap-4">
+                        <img :src="(vehicle.vendor?.profile?.avatar || vehicle.vendorProfile?.avatar || vehicle.vendor_profile?.avatar) ? (vehicle.vendor?.profile?.avatar || vehicle.vendorProfile?.avatar || vehicle.vendor_profile?.avatar) : '/images/default-avatar.png'"
+                            alt="Vendor"
+                            class="w-16 h-16 rounded-full object-cover border border-gray-200 shadow-sm flex-shrink-0"
+                            @error="$event.target.src = '/images/default-avatar.png'" />
+                        <div>
+                            <h4 class="font-bold text-gray-900 text-xl leading-tight">
+                                {{ vehicle.vendorProfileData?.company_name || vehicle.vendor_profile_data?.company_name
+                                    || vehicle.vendor?.profile?.company_name || vehicle.vendorProfile?.company_name ||
+                                vehicle.vendor_profile?.company_name || 'Vendor' }}
+                            </h4>
+                            <p class="text-base text-gray-500 mt-1"
+                                v-if="vehicle.vendor?.profile?.about || vehicle.vendorProfile?.about || vehicle.vendor_profile?.about">
+                                {{ vehicle.vendor?.profile?.about || vehicle.vendorProfile?.about ||
+                                vehicle.vendor_profile?.about }}
+                            </p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 2. Guidelines Card -->
+                <div class="bg-white rounded-2xl p-6 border border-gray-200 shadow-sm" v-if="vehicle.guidelines">
+                    <h5 class="text-base font-bold text-gray-900 uppercase tracking-wider mb-4 flex items-center gap-2">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-[#1e3a5f]" fill="none"
+                            viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                        Guidelines
+                    </h5>
+                    <p
+                        class="text-base text-gray-600 leading-relaxed bg-gray-50 p-5 rounded-lg border border-gray-100 whitespace-pre-line">
+                        {{ vehicle.guidelines }}
+                    </p>
+                </div>
+
+                <!-- 3. Benefits & Policy Card -->
+                <div class="bg-white rounded-2xl p-6 border border-gray-200 shadow-sm"
+                    v-if="vehicle.benefits || vehicle.security_deposit > 0">
+                    <h5 class="text-base font-bold text-gray-900 uppercase tracking-wider mb-6 flex items-center gap-2">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-[#1e3a5f]" fill="none"
+                            viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                        Benefits & Policy
+                    </h5>
+
+                    <!-- Deposit Section -->
+                    <div class="grid grid-cols-2 gap-6 mb-8 border-b border-gray-100 pb-6">
+                        <div v-if="vehicle.security_deposit > 0">
+                            <h5 class="text-sm font-bold text-gray-500 uppercase tracking-wider mb-1">Security Deposit
+                            </h5>
+                            <p class="text-xl font-bold text-gray-900">
+                                {{ formatPrice(vehicle.security_deposit) }}
+                            </p>
+                        </div>
+                        <div v-if="vehicle.payment_method">
+                            <h5 class="text-sm font-bold text-gray-500 uppercase tracking-wider mb-1">Deposit Method
+                            </h5>
+                            <span
+                                class="inline-flex items-center px-3 py-1.5 rounded-md text-sm font-medium bg-blue-50 text-blue-700 border border-blue-100">
+                                {{ formatPaymentMethod(vehicle.payment_method) }}
+                            </span>
+                        </div>
                     </div>
 
-                    <div class="relative z-10">
-                        <h3 class="font-display text-xl font-bold text-gray-900 border-b border-gray-100 pb-4 mb-6">
-                            Rental Information
-                        </h3>
-
-                        <div class="flex flex-col md:flex-row gap-8">
-                            <!-- Vendor Profile -->
-                            <div class="flex-1"
-                                v-if="vehicle.vendor?.profile || vehicle.vendorProfile || vehicle.vendor_profile">
-                                <div class="flex items-start gap-4 mb-4">
-                                    <img :src="(vehicle.vendor?.profile?.avatar || vehicle.vendorProfile?.avatar || vehicle.vendor_profile?.avatar) ? (vehicle.vendor?.profile?.avatar || vehicle.vendorProfile?.avatar || vehicle.vendor_profile?.avatar) : '/images/default-avatar.png'"
-                                        alt="Vendor"
-                                        class="w-14 h-14 rounded-full object-cover border border-gray-200 shadow-sm flex-shrink-0"
-                                        @error="$event.target.src = '/images/default-avatar.png'" />
-                                    <div>
-                                        <h4 class="font-bold text-gray-900 text-lg leading-tight">
-                                            {{ vehicle.vendorProfileData?.company_name ||
-                                                vehicle.vendor_profile_data?.company_name ||
-                                                vehicle.vendor?.profile?.company_name || vehicle.vendorProfile?.company_name
-                                                || vehicle.vendor_profile?.company_name || 'Vendor' }}
-                                        </h4>
-                                        <!-- Bio / About -->
-                                        <p class="text-sm text-gray-500 mt-1 line-clamp-3"
-                                            v-if="vehicle.vendor?.profile?.about || vehicle.vendorProfile?.about || vehicle.vendor_profile?.about">
-                                            {{ vehicle.vendor?.profile?.about || vehicle.vendorProfile?.about ||
-                                                vehicle.vendor_profile?.about }}
-                                        </p>
-                                    </div>
-                                </div>
+                    <!-- Benefits Grid -->
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-y-6 gap-x-8">
+                        <!-- Cancellation -->
+                        <div class="flex items-start gap-3">
+                            <div class="mt-1">
+                                <svg v-if="vehicle.benefits.cancellation_available_per_day == 1"
+                                    xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-green-500"
+                                    viewBox="0 0 20 20" fill="currentColor">
+                                    <path fill-rule="evenodd"
+                                        d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
+                                        clip-rule="evenodd" />
+                                </svg>
+                                <svg v-else xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-gray-400" fill="none"
+                                    viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                        d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                </svg>
                             </div>
-
-                            <!-- Guidelines & Deposit -->
-                            <div class="flex-1 space-y-4">
-                                <!-- Guidelines -->
-                                <div v-if="vehicle.guidelines">
-                                    <h5
-                                        class="text-sm font-bold text-gray-900 uppercase tracking-wider mb-2 flex items-center gap-2">
-                                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-[#1e3a5f]"
-                                            fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                                d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                                        </svg>
-                                        Guidelines
-                                    </h5>
-                                    <p
-                                        class="text-sm text-gray-600 leading-relaxed bg-gray-50 p-3 rounded-lg border border-gray-100 whitespace-pre-line">
-                                        {{ vehicle.guidelines }}
-                                    </p>
-                                </div>
-
-                                <div class="grid grid-cols-2 gap-4">
-                                    <!-- Deposit -->
-                                    <div v-if="vehicle.security_deposit > 0">
-                                        <h5 class="text-xs font-bold text-gray-500 uppercase tracking-wider mb-1">
-                                            Security Deposit</h5>
-                                        <p class="text-lg font-bold text-gray-900">
-                                            {{ formatPrice(vehicle.security_deposit) }}
-                                        </p>
-                                    </div>
-                                    <!-- Payment Method -->
-                                    <div v-if="vehicle.payment_method">
-                                        <h5 class="text-xs font-bold text-gray-500 uppercase tracking-wider mb-1">
-                                            Deposit Method</h5>
-                                        <span
-                                            class="inline-flex items-center px-2.5 py-1 rounded-md text-xs font-medium bg-blue-50 text-blue-700 border border-blue-100">
-                                            {{ formatPaymentMethod(vehicle.payment_method) }}
-                                        </span>
-                                    </div>
-                                </div>
+                            <div>
+                                <template v-if="vehicle.benefits.cancellation_available_per_day == 1">
+                                    <span class="block text-base font-bold text-gray-900">Free Cancellation</span>
+                                    <span v-if="cancellationDeadline" class="text-sm text-gray-500 block mt-0.5">Until
+                                        {{ cancellationDeadline }}</span>
+                                </template>
+                                <template v-else>
+                                    <span class="block text-base font-medium text-gray-900">Cancellation Policy
+                                        Applies</span>
+                                </template>
                             </div>
+                        </div>
+
+                        <!-- Mileage -->
+                        <div class="flex items-start gap-3">
+                            <div class="mt-1">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-blue-500" fill="none"
+                                    viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                        d="M13 10V3L4 14h7v7l9-11h-7z" />
+                                </svg>
+                            </div>
+                            <div>
+                                <span v-if="vehicle.benefits.limited_km_per_day == 1">
+                                    <span class="block text-base font-bold text-gray-900">Limited: {{
+                                        vehicle.benefits.limited_km_per_day_range
+                                        }} km/day</span>
+                                    <span v-if="vehicle.benefits.price_per_km_per_day"
+                                        class="text-base font-semibold text-gray-700 block mt-0.5">
+                                        +{{ formatPrice(vehicle.benefits.price_per_km_per_day) }}/km
+                                    </span>
+                                </span>
+                                <span v-else class="block text-base font-bold text-gray-900">Unlimited Mileage</span>
+                            </div>
+                        </div>
+
+                        <!-- Min Age -->
+                        <div v-if="vehicle.benefits.minimum_driver_age" class="flex items-start gap-3">
+                            <div class="mt-1">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-orange-500" fill="none"
+                                    viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                        d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                                </svg>
+                            </div>
+                            <span class="text-base font-medium text-gray-900 mt-1">Min. Driver Age: {{
+                                vehicle.benefits.minimum_driver_age
+                                }}</span>
                         </div>
                     </div>
                 </div>

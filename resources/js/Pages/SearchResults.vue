@@ -1358,11 +1358,30 @@ const priceUnit = computed(() => {
 });
 
 const formatDate = (dateStr) => {
-    const date = new Date(dateStr);
+    // Handle Date objects directly (for fallbacks) or string dates
+    const date = dateStr instanceof Date ? dateStr : new Date(dateStr);
+
+    // Check if date is valid
+    if (isNaN(date.getTime())) {
+        return 'Select Date';
+    }
+
     return `${String(date.getMonth() + 1).padStart(2, "0")}/${String(
         date.getDate()
     ).padStart(2, "0")}/${date.getFullYear()}`;
 };
+
+const displayDateFrom = computed(() => {
+    if (form.date_from) return form.date_from;
+    return new Date(); // Today
+});
+
+const displayDateTo = computed(() => {
+    if (form.date_to) return form.date_to;
+    const tomorrow = new Date();
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    return tomorrow; // Tomorrow
+});
 const showRentalDates = ref(false);
 
 const searchQuery = computed(() => {
@@ -1881,7 +1900,7 @@ watch(
                                                 @change="form.transmission = form.transmission === item.value ? '' : item.value"
                                                 class="w-5 h-5 rounded-full border-gray-300 text-[#245f7d] focus:ring-[#245f7d]">
                                             <span class="text-sm font-medium text-gray-700 capitalize">{{ item.label
-                                                }}</span>
+                                            }}</span>
                                         </div>
                                         <span class="text-xs text-gray-400 bg-gray-100 px-2 py-0.5 rounded-full">{{
                                             item.count }}</span>
@@ -1902,7 +1921,7 @@ watch(
                                                 @change="form.fuel = form.fuel === item.value ? '' : item.value"
                                                 class="w-5 h-5 rounded-full border-gray-300 text-[#245f7d] focus:ring-[#245f7d]">
                                             <span class="text-sm font-medium text-gray-700 capitalize">{{ item.label
-                                                }}</span>
+                                            }}</span>
                                         </div>
                                         <span class="text-xs text-gray-400 bg-gray-100 px-2 py-0.5 rounded-full">{{
                                             item.count }}</span>
@@ -1959,7 +1978,7 @@ watch(
                     <div class="search-location-text">
                         <h1>Car Rental in {{ form.where || 'Selected Location' }}</h1>
                         <p>{{ form.country || 'Morocco' }} • {{ vehicles?.total || clientFilteredVehicles?.length || 0
-                        }} cars available</p>
+                            }} cars available</p>
                     </div>
                 </div>
                 <div class="search-dates-badge">
@@ -1971,7 +1990,7 @@ watch(
                             <line x1="8" x2="8" y1="2" y2="6" />
                             <line x1="3" x2="21" y1="10" y2="10" />
                         </svg>
-                        <span>{{ formatDate(form.date_from) }}</span>
+                        <span>{{ formatDate(displayDateFrom) }}</span>
                     </div>
                     <div class="date-separator"></div>
                     <div class="date-item">
@@ -1982,7 +2001,7 @@ watch(
                             <line x1="8" x2="8" y1="2" y2="6" />
                             <line x1="3" x2="21" y1="10" y2="10" />
                         </svg>
-                        <span>{{ formatDate(form.date_to) }}</span>
+                        <span>{{ formatDate(displayDateTo) }}</span>
                     </div>
                     <span class="days-badge">{{ numberOfRentalDays }} days</span>
                 </div>
