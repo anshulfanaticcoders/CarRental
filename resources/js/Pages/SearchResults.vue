@@ -1028,69 +1028,24 @@ const resetFilters = () => {
 };
 
 const createPopupContent = (vehicle, primaryImage, popupPrice, detailRoute) => {
-    if (vehicle.source === 'okmobility') {
-        return `
-            <div class="text-center popup-content">
-                <img src="${primaryImage}" alt="${vehicle.brand} ${vehicle.model}" class="popup-image !w-40 !h-20" />
-                <p class="font-semibold !w-40">${vehicle.brand} ${vehicle.model}</p>
-                ${vehicle.sipp_code ? `<p class="!w-40 text-sm">SIPP: ${vehicle.sipp_code}</p>` : ''}
-                <p class="!w-40">${vehicle.full_vehicle_address || ''}</p>
-                ${vehicle.station ? `<p class="!w-40 text-sm"><strong>Station:</strong> ${vehicle.station}</p>` : ''}
-                <p class="!w-40 font-semibold">Price: ${popupPrice}</p>
-                <a href="${detailRoute}"
-                   class="text-blue-500 hover:text-blue-700 block mt-2"
-                   onclick="event.preventDefault(); window.location.href = this.href;">
-                    View Details
-                </a>
-            </div>
-        `;
-    } else if (vehicle.source === 'wheelsys') {
-        return `
-            <div class="text-center popup-content">
-                <img src="${primaryImage}" alt="${vehicle.brand} ${vehicle.model}" class="popup-image !w-40 !h-20" />
-                <p class="font-semibold !w-40">${vehicle.brand} ${vehicle.model}</p>
-                ${vehicle.acriss_code || vehicle.group_code ? `<p class="!w-40 text-sm">${vehicle.acriss_code || vehicle.group_code}</p>` : ''}
-                <p class="!w-40">${vehicle.full_vehicle_address || ''}</p>
-                <p class="!w-40 font-semibold">Price: ${popupPrice}</p>
-                <a href="${detailRoute}"
-                   class="text-blue-500 hover:text-blue-700 block mt-2"
-                   onclick="event.preventDefault(); window.location.href = this.href;">
-                    View Details
-                </a>
-            </div>
-        `;
-    } else if (vehicle.source === 'locauto_rent') {
-        return `
-            <div class="text-center popup-content">
-                <img src="${primaryImage}" alt="${vehicle.brand} ${vehicle.model}" class="popup-image !w-40 !h-20" />
-                <p class="font-semibold !w-40">${vehicle.brand} ${vehicle.model}</p>
-                ${vehicle.sipp_code ? `<p class="!w-40 text-sm">SIPP: ${vehicle.sipp_code}</p>` : ''}
-                
-                <p class="!w-40">${vehicle.full_vehicle_address || ''}</p>
-                <p class="!w-40 font-semibold">Price: ${popupPrice}</p>
-                <a href="${detailRoute}"
-                   class="text-blue-500 hover:text-blue-700 block mt-2"
-                   onclick="event.preventDefault(); window.location.href = this.href;">
-                    View Details
-                </a>
-            </div>
-        `;
-    } else {
-        return `
-            <div class="text-center popup-content">
-                <img src="${primaryImage}" alt="${vehicle.brand} ${vehicle.model}" class="popup-image !w-40 !h-20" />
-                ${vehicle.source === 'internal' && vehicle.average_rating ? `<p class="rating !w-40">${vehicle.average_rating.toFixed(1)} ★ (${vehicle.review_count} reviews)</p>` : ''}
-                <p class="font-semibold !w-40">${vehicle.brand} ${vehicle.model}</p>
-                <p class="!w-40">${vehicle.full_vehicle_address || ''}</p>
-                <p class="!w-40">Price: ${popupPrice}</p>
-                <a href="${detailRoute}"
-                   class="text-blue-500 hover:text-blue-700"
-                   onclick="event.preventDefault(); window.location.href = this.href;">
-                    View Details
-                </a>
-            </div>
-        `;
-    }
+    // Shared content generator for consistency
+    const content = `
+        <div class="text-center popup-content">
+            <img src="${primaryImage}" alt="${vehicle.brand} ${vehicle.model}" class="popup-image !w-40 !h-20" />
+            ${vehicle.source === 'internal' && vehicle.average_rating ? `<p class="rating !w-40">${vehicle.average_rating.toFixed(1)} ★ (${vehicle.review_count} reviews)</p>` : ''}
+            <p class="font-semibold !w-40">${vehicle.brand} ${vehicle.model}</p>
+            ${vehicle.sipp_code ? `<p class="!w-40 text-sm">SIPP: ${vehicle.sipp_code}</p>` : ''}
+            ${vehicle.acriss_code || vehicle.group_code ? `<p class="!w-40 text-sm">${vehicle.acriss_code || vehicle.group_code}</p>` : ''}
+            <p class="!w-40">${vehicle.full_vehicle_address || ''}</p>
+            ${vehicle.station ? `<p class="!w-40 text-sm"><strong>Station:</strong> ${vehicle.station}</p>` : ''}
+            <p class="!w-40 font-semibold">Price: ${popupPrice}</p>
+            <button onclick="window.selectVehicleFromMap('${vehicle.id}')"
+               class="text-white bg-[#153B4F] hover:bg-[#0f2936] block mt-2 px-4 py-2 rounded text-sm font-semibold w-full">
+                Book Deal
+            </button>
+        </div>
+    `;
+    return content;
 };
 
 const addMarkers = () => {
@@ -1720,6 +1675,22 @@ onMounted(() => {
     // Load currency data in background
     loadCurrencyData();
 
+    // Expose selectVehicleFromMap to window for Leadlet popup
+    window.selectVehicleFromMap = (vehicleId) => {
+        const vehicle = allVehiclesForMap.value.find(v => v.id == vehicleId);
+        if (vehicle) {
+            handlePackageSelection({
+                vehicle: vehicle,
+                package: 'BAS', // Default logic
+                protection_code: null
+            });
+            // Close mobile map modal if open, though handlePackageSelection scrolls up and changes step
+            showMap.value = false;
+        } else {
+            console.error("Vehicle not found for map selection:", vehicleId);
+        }
+    };
+
     // Fetch payment percentage
     axios.get('/api/payment-percentage').then(response => {
         if (response.data && response.data.payment_percentage !== undefined) {
@@ -1728,6 +1699,15 @@ onMounted(() => {
     }).catch(error => {
         console.error('Error fetching payment percentage:', error);
     });
+});
+
+onUnmounted(() => {
+    window.removeEventListener('scroll', handleScroll);
+    if (observer.value) {
+        observer.value.disconnect();
+    }
+    // Cleanup global handler
+    delete window.selectVehicleFromMap;
 });
 
 const handleImageError = (event) => {
@@ -1901,7 +1881,7 @@ watch(
                                                 @change="form.transmission = form.transmission === item.value ? '' : item.value"
                                                 class="w-5 h-5 rounded-full border-gray-300 text-[#245f7d] focus:ring-[#245f7d]">
                                             <span class="text-sm font-medium text-gray-700 capitalize">{{ item.label
-                                            }}</span>
+                                                }}</span>
                                         </div>
                                         <span class="text-xs text-gray-400 bg-gray-100 px-2 py-0.5 rounded-full">{{
                                             item.count }}</span>
@@ -1922,7 +1902,7 @@ watch(
                                                 @change="form.fuel = form.fuel === item.value ? '' : item.value"
                                                 class="w-5 h-5 rounded-full border-gray-300 text-[#245f7d] focus:ring-[#245f7d]">
                                             <span class="text-sm font-medium text-gray-700 capitalize">{{ item.label
-                                            }}</span>
+                                                }}</span>
                                         </div>
                                         <span class="text-xs text-gray-400 bg-gray-100 px-2 py-0.5 rounded-full">{{
                                             item.count }}</span>
@@ -1979,7 +1959,7 @@ watch(
                     <div class="search-location-text">
                         <h1>Car Rental in {{ form.where || 'Selected Location' }}</h1>
                         <p>{{ form.country || 'Morocco' }} • {{ vehicles?.total || clientFilteredVehicles?.length || 0
-                            }} cars available</p>
+                        }} cars available</p>
                     </div>
                 </div>
                 <div class="search-dates-badge">
@@ -2192,10 +2172,23 @@ watch(
                         Filters
                     </button>
 
+                    <!-- Map Toggle Button -->
+                    <button @click="showMap = true"
+                        class="h-[46px] w-[46px] flex items-center justify-center bg-[#153B4F] border border-[#153B4F] rounded-lg text-white hover:bg-[#0f2936] transition-colors"
+                        title="Show Map">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none"
+                            stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <polygon points="1 6 1 22 8 18 16 22 23 18 23 2 16 6 8 2 1 6"></polygon>
+                            <line x1="8" y1="2" x2="8" y2="18"></line>
+                            <line x1="16" y1="6" x2="16" y2="22"></line>
+                        </svg>
+                    </button>
+
                     <!-- Sort Dropdown -->
                     <div class="sort-dropdown-wrapper" ref="sortDropdownRef">
                         <button class="sort-dropdown" @click="showSortDropdown = !showSortDropdown">
-                            <span>Sort: {{ sortBy === 'recommended' ? 'Recommended' : (sortBy === 'price_asc' ? 'Price:Low to High' : 'Price: High to Low') }}</span>
+                            <span>Sort: {{ sortBy === 'recommended' ? 'Recommended' : (sortBy === 'price_asc' ?
+                                'Price:Low to High' : 'Price: High to Low') }}</span>
                             <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24"
                                 fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
                                 stroke-linejoin="round">
