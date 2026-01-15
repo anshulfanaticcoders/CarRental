@@ -394,6 +394,185 @@ const form = useForm({
     dropoff_where: usePage().props.filters?.dropoff_where || "",
 });
 
+class ValidationError extends Error {
+    constructor(message, field) {
+        super(message);
+        this.name = "ValidationError";
+        this.field = field;
+    }
+}
+
+const dateValidationError = ref("");
+const isSanitizingDates = ref(false);
+const lastValidDates = ref({
+    date_from: "",
+    date_to: "",
+});
+
+const getTodayStart = () => {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    return today;
+};
+
+const formatDateForInput = (date) => {
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, "0");
+    const day = String(date.getDate()).padStart(2, "0");
+    return `${year}-${month}-${day}`;
+};
+
+const parseDateInput = (value) => {
+    if (value instanceof Date) {
+        return new Date(value.getFullYear(), value.getMonth(), value.getDate());
+    }
+
+    if (typeof value !== "string" || value.trim() === "") {
+        return null;
+    }
+
+    const [datePart] = value.split("T");
+    const parts = datePart.split("-");
+    if (parts.length !== 3) return null;
+
+    const [yearStr, monthStr, dayStr] = parts;
+    const year = Number(yearStr);
+    const month = Number(monthStr);
+    const day = Number(dayStr);
+    if (!Number.isFinite(year) || !Number.isFinite(month) || !Number.isFinite(day)) {
+        return null;
+    }
+
+    const parsed = new Date(year, month - 1, day);
+    if (
+        parsed.getFullYear() !== year ||
+        parsed.getMonth() !== month - 1 ||
+        parsed.getDate() !== day
+    ) {
+        return null;
+    }
+
+    return parsed;
+};
+
+const validateSearchDates = ({ date_from, date_to }) => {
+    const today = getTodayStart();
+    const normalize = (value, field) => {
+        if (typeof value === "undefined") {
+            return { ok: true, value: undefined };
+        }
+        if (value === "" || value === null) {
+            return { ok: true, value: "" };
+        }
+        const parsed = parseDateInput(value);
+        if (!parsed) {
+            return {
+                ok: false,
+                error: new ValidationError("Please enter a valid date.", field),
+            };
+        }
+        if (parsed < today) {
+            return {
+                ok: false,
+                error: new ValidationError(
+                    "Dates can't be in the past. Please choose today or later.",
+                    field
+                ),
+            };
+        }
+        return { ok: true, value: formatDateForInput(parsed) };
+    };
+
+    const fromResult = normalize(date_from, "date_from");
+    if (!fromResult.ok) return fromResult;
+
+    const toResult = normalize(date_to, "date_to");
+    if (!toResult.ok) return toResult;
+
+    return {
+        ok: true,
+        value: {
+            date_from: fromResult.value,
+            date_to: toResult.value,
+        },
+    };
+};
+
+const getDateParamsFromUrl = (rawUrl) => {
+    if (!rawUrl || typeof rawUrl !== "string") {
+        return { date_from: undefined, date_to: undefined };
+    }
+
+    const [, queryString = ""] = rawUrl.split("?");
+    if (!queryString) {
+        return { date_from: undefined, date_to: undefined };
+    }
+
+    const params = new URLSearchParams(queryString);
+    const dateFrom = params.get("date_from");
+    const dateTo = params.get("date_to");
+
+    return {
+        date_from: dateFrom === null ? undefined : dateFrom,
+        date_to: dateTo === null ? undefined : dateTo,
+    };
+};
+
+const applyValidatedDates = (proposedDates) => {
+    if (isSanitizingDates.value) return;
+    isSanitizingDates.value = true;
+
+    let errorMessage = "";
+    const nextDates = {
+        date_from: form.date_from,
+        date_to: form.date_to,
+    };
+
+    const fromResult = validateSearchDates({ date_from: proposedDates?.date_from });
+    if (fromResult.ok) {
+        if (typeof fromResult.value.date_from !== "undefined") {
+            nextDates.date_from = fromResult.value.date_from;
+            if (nextDates.date_from) {
+                lastValidDates.value.date_from = nextDates.date_from;
+            }
+        }
+    } else {
+        errorMessage = fromResult.error.message;
+        nextDates.date_from = lastValidDates.value.date_from || formatDateForInput(getTodayStart());
+        if (!lastValidDates.value.date_from) {
+            lastValidDates.value.date_from = nextDates.date_from;
+        }
+    }
+
+    const toResult = validateSearchDates({ date_to: proposedDates?.date_to });
+    if (toResult.ok) {
+        if (typeof toResult.value.date_to !== "undefined") {
+            nextDates.date_to = toResult.value.date_to;
+            if (nextDates.date_to) {
+                lastValidDates.value.date_to = nextDates.date_to;
+            }
+        }
+    } else {
+        if (!errorMessage) {
+            errorMessage = toResult.error.message;
+        }
+        nextDates.date_to = lastValidDates.value.date_to || formatDateForInput(getTodayStart());
+        if (!lastValidDates.value.date_to) {
+            lastValidDates.value.date_to = nextDates.date_to;
+        }
+    }
+
+    if (nextDates.date_from !== form.date_from) {
+        form.date_from = nextDates.date_from;
+    }
+    if (nextDates.date_to !== form.date_to) {
+        form.date_to = nextDates.date_to;
+    }
+
+    dateValidationError.value = errorMessage;
+    isSanitizingDates.value = false;
+};
+
 const numberOfRentalDays = computed(() => {
     if (!form.date_from || !form.date_to) return 1;
     const start = new Date(`${form.date_from}T${form.start_time || '00:00'}`);
@@ -402,6 +581,18 @@ const numberOfRentalDays = computed(() => {
     const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
     return diffDays || 1;
 });
+
+watch(
+    () => [usePage().url, usePage().props.filters?.date_from, usePage().props.filters?.date_to],
+    ([rawUrl, propDateFrom, propDateTo]) => {
+        const { date_from, date_to } = getDateParamsFromUrl(rawUrl);
+        applyValidatedDates({
+            date_from: typeof date_from === "undefined" ? propDateFrom : date_from,
+            date_to: typeof date_to === "undefined" ? propDateTo : date_to,
+        });
+    },
+    { immediate: true }
+);
 
 
 const submitFilters = debounce(() => {
@@ -1387,8 +1578,8 @@ const showRentalDates = ref(false);
 const searchQuery = computed(() => {
     return {
         where: usePage().props.filters?.where || "",
-        date_from: usePage().props.filters?.date_from || "",
-        date_to: usePage().props.filters?.date_to || "",
+        date_from: form.date_from || "",
+        date_to: form.date_to || "",
         latitude: usePage().props.filters?.latitude || "",
         longitude: usePage().props.filters?.longitude || "",
         radius: usePage().props.filters?.radius || "",
@@ -1422,8 +1613,7 @@ const handleSearchUpdate = (params) => {
     form.latitude = params.latitude || null;
     form.longitude = params.longitude || null;
     form.radius = params.radius || null;
-    form.date_from = params.date_from || "";
-    form.date_to = params.date_to || "";
+    applyValidatedDates({ date_from: params.date_from, date_to: params.date_to });
     // Update missing location fields
     form.city = params.city || "";
     form.state = params.state || "";
@@ -2010,6 +2200,9 @@ watch(
             <div class="search-form-card">
                 <SearchBar class="searchbar-in-header" :prefill="searchQuery" :simple="true"
                     @update-search-params="handleSearchUpdate" />
+                <div v-if="dateValidationError" class="mt-2 text-sm text-red-600">
+                    {{ dateValidationError }}
+                </div>
                 <SchemaInjector v-if="$page.props.organizationSchema" :schema="$page.props.organizationSchema" />
             </div>
         </div>
