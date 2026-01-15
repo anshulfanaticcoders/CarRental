@@ -447,8 +447,10 @@ useScrollAnimation('.blogs-trigger', '.more-button', {
                 <h3 class="text-customDarkBlackColor max-[768px]:text-[1.75rem] max-[768px]:mt-[1rem]">{{
                     _p('popular_places') }}</h3>
             </div>
-            <div class="column max-[768px]:px-[1.5rem]">
-                <Carousel class="relative w-full" :plugins="[plugin]">
+            <div class="column"
+                :class="{ 'max-[768px]:px-[1.5rem]': !props.popularPlaces || props.popularPlaces.length > 0 }">
+                <Carousel v-if="!props.popularPlaces || props.popularPlaces.length > 0" class="relative w-full"
+                    :plugins="[plugin]">
                     <CarouselContent class="pl-10 pt-[2rem] max-[768px]:pr-10 max-[768px]:pl-2 max-[768px]:pt-0">
                         <!-- Show actual places when data is loaded from props -->
                         <template v-if="props.popularPlaces && props.popularPlaces.length > 0">
@@ -474,16 +476,7 @@ useScrollAnimation('.blogs-trigger', '.more-button', {
                             </CarouselItem>
                         </template>
 
-                        <!-- Show "COMING SOON" torch effect when data is empty -->
-                        <template v-else-if="props.popularPlaces && props.popularPlaces.length === 0">
-                            <div
-                                class="w-full flex items-center justify-center py-20 px-4 text-center bg-gradient-to-r from-black to-gray-900 rounded-none overflow-hidden my-10">
-                                <h4
-                                    class="torch-text text-xl md:text-3xl font-black uppercase tracking-[1.5rem] md:tracking-[2.5rem] w-full transform translate-x-[1.25rem] md:translate-x-[2.1rem]">
-                                    Coming Soon
-                                </h4>
-                            </div>
-                        </template>
+
 
                         <!-- Show skeleton loaders when data is loading (null/undefined) -->
                         <template v-else>
@@ -507,9 +500,22 @@ useScrollAnimation('.blogs-trigger', '.more-button', {
                     <CarouselNext v-if="props.popularPlaces && props.popularPlaces.length > 0" />
                 </Carousel>
 
+                <!-- Full-width "COMING SOON" fallback (outside Carousel) -->
+                <div v-else-if="props.popularPlaces && props.popularPlaces.length === 0"
+                    class="w-screen relative left-1/2 -ml-[50vw] h-[150px] md:h-[200px] flex items-center justify-center bg-white border-y border-gray-100 overflow-hidden my-0">
+                    <h4
+                        class="torch-text text-xl md:text-3xl font-black uppercase tracking-[1.5rem] md:tracking-[2.5rem] text-center w-full transform translate-x-[0.75rem] md:translate-x-[1.25rem]">
+                        Coming Soon
+                    </h4>
+                </div>
+
 
             </div>
         </section>
+
+
+
+
         <!------------------------------ <Start>  -------------------------------------------------->
         <!------------------------------ <End>  -------------------------------------------------->
 
@@ -819,26 +825,27 @@ useScrollAnimation('.blogs-trigger', '.more-button', {
 
 .torch-text {
     position: relative;
-    color: rgba(255, 255, 255, 0.05);
     background: linear-gradient(to right,
-            transparent 0%,
-            rgba(255, 255, 255, 1) 50%,
-            transparent 100%);
-    background-size: 200% 100%;
+            rgba(0, 0, 0, 0.05) 0%,
+            rgba(0, 0, 0, 1) 50%,
+            rgba(0, 0, 0, 0.05) 100%);
+    background-size: 300% 100%;
     background-clip: text;
     -webkit-background-clip: text;
-    animation: torch-sweep 4s linear infinite;
+    -webkit-text-fill-color: transparent;
+    animation: torch-sweep 8s linear infinite;
     display: inline-block;
     white-space: nowrap;
+    filter: drop-shadow(2px 2px 4px rgba(0, 0, 0, 0.15));
 }
 
 @keyframes torch-sweep {
     0% {
-        background-position: -150% 0;
+        background-position: -200% 0;
     }
 
     100% {
-        background-position: 150% 0;
+        background-position: 200% 0;
     }
 }
 </style>
