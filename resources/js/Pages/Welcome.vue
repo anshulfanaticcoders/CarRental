@@ -474,7 +474,26 @@ useScrollAnimation('.blogs-trigger', '.more-button', {
                             </CarouselItem>
                         </template>
 
-                        <!-- Show skeleton loaders when data is loading -->
+                        <!-- Show "Coming Soon" when data is empty -->
+                        <template v-else-if="props.popularPlaces && props.popularPlaces.length === 0">
+                            <div class="w-full flex flex-col items-center justify-center py-20 px-4 text-center">
+                                <div class="bg-gray-50 rounded-full p-6 mb-4">
+                                    <svg xmlns="http://www.w3.org/2000/svg"
+                                        class="h-12 w-12 text-customPrimaryColor opacity-50" fill="none"
+                                        viewBox="0 0 24 24" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
+                                            d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
+                                            d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                                    </svg>
+                                </div>
+                                <h4 class="text-2xl font-bold text-gray-900 mb-2">Destinations Coming Soon</h4>
+                                <p class="text-gray-500 max-w-md mx-auto">We're currently expanding our network. Stay
+                                    tuned for exciting new locations to explore!</p>
+                            </div>
+                        </template>
+
+                        <!-- Show skeleton loaders when data is loading (null/undefined) -->
                         <template v-else>
                             <CarouselItem v-for="index in 5" :key="index" class="pl-1 md:basis-1/2 lg:basis-1/5">
                                 <div class="p-1">
@@ -492,8 +511,8 @@ useScrollAnimation('.blogs-trigger', '.more-button', {
                         </template>
                     </CarouselContent>
 
-                    <CarouselPrevious />
-                    <CarouselNext />
+                    <CarouselPrevious v-if="props.popularPlaces && props.popularPlaces.length > 0" />
+                    <CarouselNext v-if="props.popularPlaces && props.popularPlaces.length > 0" />
                 </Carousel>
 
             </div>
@@ -527,7 +546,7 @@ useScrollAnimation('.blogs-trigger', '.more-button', {
                             <div class="flex flex-col gap-3">
                                 <span
                                     class="text-[1.5rem] text-customDarkBlackColor font-medium  max-[768px]:text-[1.25rem]">{{
-                                    _p('convenient_locations') }}</span>
+                                        _p('convenient_locations') }}</span>
                                 <p class="text-customLightGrayColor text-[1.15rem]  max-[768px]:text-[0.95rem]">
                                     {{ _p('convenient_locations_text') }}
                                 </p>
@@ -538,7 +557,7 @@ useScrollAnimation('.blogs-trigger', '.more-button', {
                             <div class=" flex flex-col gap-3">
                                 <span
                                     class="text-[1.5rem] text-customDarkBlackColor font-medium  max-[768px]:text-[1.25rem]">{{
-                                    _p('fast_booking') }}</span>
+                                        _p('fast_booking') }}</span>
                                 <p class="text-customLightGrayColor text-[1.15rem]  max-[768px]:text-[0.95rem]">
                                     {{ _p('fast_booking_text') }}
                                 </p>
@@ -555,7 +574,7 @@ useScrollAnimation('.blogs-trigger', '.more-button', {
                             <div class=" flex flex-col gap-3">
                                 <span
                                     class="text-[1.5rem] text-customDarkBlackColor font-medium  max-[768px]:text-[1.25rem]">{{
-                                    _p('modern_fleet') }}</span>
+                                        _p('modern_fleet') }}</span>
                                 <p class="text-customLightGrayColor text-[1.15rem]  max-[768px]:text-[0.95rem]">
                                     {{ _p('modern_fleet_text') }}
                                 </p>
@@ -566,7 +585,7 @@ useScrollAnimation('.blogs-trigger', '.more-button', {
                             <div class="flex flex-col gap-3 ">
                                 <span
                                     class="text-[1.5rem] text-customDarkBlackColor font-medium  max-[768px]:text-[1.25rem]">{{
-                                    _p('insurance_coverage') }}</span>
+                                        _p('insurance_coverage') }}</span>
                                 <p class="text-customLightGrayColor text-[1.15rem]  max-[768px]:text-[0.95rem]">
                                     {{ _p('insurance_coverage_text') }}
                                 </p>
