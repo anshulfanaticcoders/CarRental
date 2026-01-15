@@ -440,7 +440,7 @@ useScrollAnimation('.blogs-trigger', '.more-button', {
 
 
         <!------------------------------- Top Destination Places -------------------------------------->
-        <section
+        <section v-if="!props.popularPlaces || props.popularPlaces.length > 0"
             class="flex flex-col gap-2 py-customVerticalSpacing popular-places max-[768px]:py-[1rem] max-[768px]:gap-8 popular-places-trigger">
             <div class="column ml-[2%]">
                 <span class="text-[1.15rem] text-customPrimaryColor">-{{ _p('top_destinations') }} -</span>
@@ -497,19 +497,7 @@ useScrollAnimation('.blogs-trigger', '.more-button', {
                     </CarouselContent>
 
                     <CarouselPrevious v-if="props.popularPlaces && props.popularPlaces.length > 0" />
-                    <CarouselNext v-if="props.popularPlaces && props.popularPlaces.length > 0" />
                 </Carousel>
-
-                <!-- Full-width "COMING SOON" fallback (outside Carousel) -->
-                <div v-else-if="props.popularPlaces && props.popularPlaces.length === 0"
-                    class="w-screen relative left-1/2 -ml-[50vw] h-[150px] md:h-[200px] flex items-center justify-center bg-white border-y border-gray-100 overflow-hidden my-0">
-                    <h4
-                        class="torch-text text-xl md:text-3xl font-black uppercase tracking-[1.5rem] md:tracking-[2.5rem] text-center w-full transform translate-x-[0.75rem] md:translate-x-[1.25rem]">
-                        Coming Soon
-                    </h4>
-                </div>
-
-
             </div>
         </section>
 
@@ -821,31 +809,5 @@ useScrollAnimation('.blogs-trigger', '.more-button', {
 .category-card-hover:hover {
     transform: scale(1.01);
     filter: brightness(0.8);
-}
-
-.torch-text {
-    position: relative;
-    background: linear-gradient(to right,
-            rgba(0, 0, 0, 0.05) 0%,
-            rgba(0, 0, 0, 1) 50%,
-            rgba(0, 0, 0, 0.05) 100%);
-    background-size: 300% 100%;
-    background-clip: text;
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-    animation: torch-sweep 8s linear infinite;
-    display: inline-block;
-    white-space: nowrap;
-    filter: drop-shadow(2px 2px 4px rgba(0, 0, 0, 0.15));
-}
-
-@keyframes torch-sweep {
-    0% {
-        background-position: -200% 0;
-    }
-
-    100% {
-        background-position: 200% 0;
-    }
 }
 </style>
