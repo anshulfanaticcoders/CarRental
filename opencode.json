@@ -1,0 +1,79 @@
+{
+  "$schema": "https://opencode.ai/config.json",
+  "mcp": {
+    "github": {
+      "type": "remote",
+      "url": "https://api.githubcopilot.com/mcp/",
+      "headers": {
+        "Authorization": "Bearer {env:GITHUB_PERSONAL_ACCESS_TOKEN}"
+      },
+      "enabled": true
+    },
+    "playwright": {
+      "type": "local",
+      "command": ["npx", "@playwright/mcp@latest"],
+      "enabled": true
+    },
+    "supabase": {
+      "type": "remote",
+      "url": "https://mcp.supabase.com/mcp",
+      "enabled": true
+    },
+    "linear": {
+      "type": "remote",
+      "url": "https://mcp.linear.app/mcp",
+      "oauth": {},
+      "enabled": true
+    },
+    "slack": {
+      "type": "remote",
+      "url": "https://mcp.slack.com/mcp",
+      "oauth": {},
+      "enabled": true
+    },
+    "firebase": {
+      "type": "remote",
+      "url": "https://mcp.firebase.google.com/mcp",
+      "oauth": {},
+      "enabled": true
+    },
+    "asana": {
+      "type": "remote",
+      "url": "https://mcp.asana.com/mcp",
+      "oauth": {},
+      "enabled": true
+    },
+    "gitlab": {
+      "type": "remote",
+      "url": "https://mcp.gitlab.com/mcp",
+      "oauth": {},
+      "enabled": true
+    },
+    "context7": {
+      "type": "remote",
+      "url": "https://mcp.context7.com/mcp",
+      "enabled": true
+    },
+    "greptile": {
+      "type": "remote",
+      "url": "https://mcp.greptile.com/mcp",
+      "enabled": true
+    },
+    "laravel-boost": {
+      "type": "remote",
+      "url": "https://mcp.laravel-boost.com/mcp",
+      "enabled": true
+    },
+    "stripe": {
+      "type": "remote",
+      "url": "https://mcp.stripe.com/mcp",
+      "oauth": {},
+      "enabled": true
+    },
+    "serena": {
+      "type": "remote",
+      "url": "https://mcp.serenajs.com/mcp",
+      "enabled": true
+    }
+  }
+}

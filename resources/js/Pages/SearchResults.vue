@@ -2,10 +2,12 @@
 import { Link, useForm, usePage, router, Head } from "@inertiajs/vue3";
 import { computed, onMounted, onUnmounted, provide, ref, watch } from "vue";
 import axios from 'axios';
+import { toast as sonnerToast } from "vue-sonner";
 import SchemaInjector from '@/Components/SchemaInjector.vue'; // Import SchemaInjector
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import AuthenticatedHeaderLayout from "@/Layouts/AuthenticatedHeaderLayout.vue";
+import { Toaster } from "@/Components/ui/sonner";
 import Footer from "@/Components/Footer.vue";
 import goIcon from "../../assets/goIcon.svg";
 import carIcon from "../../assets/carIcon.svg";
@@ -40,6 +42,14 @@ import Dropdown from "@/Components/Dropdown.vue";
 import moneyExchangeSymbol from '../../assets/money-exchange-symbol.svg';
 
 import { useCurrency } from '@/composables/useCurrency';
+import {
+    Breadcrumb,
+    BreadcrumbItem,
+    BreadcrumbLink,
+    BreadcrumbList,
+    BreadcrumbPage,
+    BreadcrumbSeparator,
+} from '@/Components/ui/breadcrumb';
 
 const { selectedCurrency, supportedCurrencies, changeCurrency, loading: currencyLoading } = useCurrency();
 
@@ -403,6 +413,7 @@ class ValidationError extends Error {
 }
 
 const dateValidationError = ref("");
+const pastDateErrorMessage = "Dates can't be in the past. Please choose today or later.";
 const isSanitizingDates = ref(false);
 const lastValidDates = ref({
     date_from: "",
@@ -475,7 +486,7 @@ const validateSearchDates = ({ date_from, date_to }) => {
             return {
                 ok: false,
                 error: new ValidationError(
-                    "Dates can't be in the past. Please choose today or later.",
+                    pastDateErrorMessage,
                     field
                 ),
             };
@@ -556,7 +567,14 @@ const applyValidatedDates = (proposedDates) => {
         if (!errorMessage) {
             errorMessage = toResult.error.message;
         }
-        nextDates.date_to = lastValidDates.value.date_to || formatDateForInput(getTodayStart());
+        let fallbackDateTo = formatDateForInput(getTodayStart());
+        const startDateObj = parseDateInput(nextDates.date_from);
+        if (startDateObj) {
+            const nextDayEntry = new Date(startDateObj);
+            nextDayEntry.setDate(nextDayEntry.getDate() + 1);
+            fallbackDateTo = formatDateForInput(nextDayEntry);
+        }
+        nextDates.date_to = lastValidDates.value.date_to || fallbackDateTo;
         if (!lastValidDates.value.date_to) {
             lastValidDates.value.date_to = nextDates.date_to;
         }
@@ -572,6 +590,13 @@ const applyValidatedDates = (proposedDates) => {
     dateValidationError.value = errorMessage;
     isSanitizingDates.value = false;
 };
+
+watch(dateValidationError, (newValue) => {
+    if (newValue !== pastDateErrorMessage) return;
+
+    sonnerToast.error(newValue);
+    dateValidationError.value = "";
+});
 
 const numberOfRentalDays = computed(() => {
     if (!form.date_from || !form.date_to) return 1;
@@ -1998,6 +2023,7 @@ watch(
         <meta name="twitter:image" :content="seoImageUrl" />
     </Head>
     <AuthenticatedHeaderLayout />
+    <Toaster class="pointer-events-auto" />
 
     <!-- Mobile Filters Left Sidebar (Moved to root for Z-Index) -->
 
@@ -2090,7 +2116,7 @@ watch(
                                                 @change="form.transmission = form.transmission === item.value ? '' : item.value"
                                                 class="w-5 h-5 rounded-full border-gray-300 text-[#245f7d] focus:ring-[#245f7d]">
                                             <span class="text-sm font-medium text-gray-700 capitalize">{{ item.label
-                                                }}</span>
+                                            }}</span>
                                         </div>
                                         <span class="text-xs text-gray-400 bg-gray-100 px-2 py-0.5 rounded-full">{{
                                             item.count }}</span>
@@ -2111,7 +2137,7 @@ watch(
                                                 @change="form.fuel = form.fuel === item.value ? '' : item.value"
                                                 class="w-5 h-5 rounded-full border-gray-300 text-[#245f7d] focus:ring-[#245f7d]">
                                             <span class="text-sm font-medium text-gray-700 capitalize">{{ item.label
-                                                }}</span>
+                                            }}</span>
                                         </div>
                                         <span class="text-xs text-gray-400 bg-gray-100 px-2 py-0.5 rounded-full">{{
                                             item.count }}</span>
@@ -2168,7 +2194,7 @@ watch(
                     <div class="search-location-text">
                         <h1>Car Rental in {{ form.where || 'Selected Location' }}</h1>
                         <p>{{ form.country || 'Morocco' }} • {{ vehicles?.total || clientFilteredVehicles?.length || 0
-                        }} cars available</p>
+                            }} cars available</p>
                     </div>
                 </div>
                 <div class="search-dates-badge">
@@ -2200,9 +2226,6 @@ watch(
             <div class="search-form-card">
                 <SearchBar class="searchbar-in-header" :prefill="searchQuery" :simple="true"
                     @update-search-params="handleSearchUpdate" />
-                <div v-if="dateValidationError" class="mt-2 text-sm text-red-600">
-                    {{ dateValidationError }}
-                </div>
                 <SchemaInjector v-if="$page.props.organizationSchema" :schema="$page.props.organizationSchema" />
             </div>
         </div>
@@ -2213,6 +2236,19 @@ watch(
 
 
     <!-- Main Content -->
+    <div class="main-container mx-auto px-4 py-4" v-if="bookingStep === 'results'">
+        <Breadcrumb>
+            <BreadcrumbList>
+                <BreadcrumbItem>
+                    <BreadcrumbLink href="/">Home</BreadcrumbLink>
+                </BreadcrumbItem>
+                <BreadcrumbSeparator />
+                <BreadcrumbItem>
+                    <BreadcrumbPage>Search Results</BreadcrumbPage>
+                </BreadcrumbItem>
+            </BreadcrumbList>
+        </Breadcrumb>
+    </div>
     <div class="main-container"
         :style="bookingStep !== 'results' ? 'display: block; max-width: 1440px; margin: 0 auto;' : ''">
         <!-- Filters Sidebar -->

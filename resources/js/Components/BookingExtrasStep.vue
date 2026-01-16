@@ -23,6 +23,14 @@ import {
     Gauge,
     Leaf
 } from "lucide-vue-next";
+import {
+    Breadcrumb,
+    BreadcrumbItem,
+    BreadcrumbLink,
+    BreadcrumbList,
+    BreadcrumbPage,
+    BreadcrumbSeparator,
+} from '@/Components/ui/breadcrumb';
 
 // Check if vehicle is Adobe Cars
 const isAdobeCars = computed(() => {
@@ -732,6 +740,23 @@ const formatPaymentMethod = (method) => {
 </script>
 
 <template>
+    <div class=" px-0 md:p-6 pb-0">
+        <Breadcrumb class="mb-4">
+            <BreadcrumbList>
+                <BreadcrumbItem>
+                    <BreadcrumbLink href="/">Home</BreadcrumbLink>
+                </BreadcrumbItem>
+                <BreadcrumbSeparator />
+                <BreadcrumbItem>
+                    <BreadcrumbLink href="#" @click.prevent="$emit('back')">Search Results</BreadcrumbLink>
+                </BreadcrumbItem>
+                <BreadcrumbSeparator />
+                <BreadcrumbItem>
+                    <BreadcrumbPage>Booking Options</BreadcrumbPage>
+                </BreadcrumbItem>
+            </BreadcrumbList>
+        </Breadcrumb>
+    </div>
     <div class="flex flex-col lg:flex-row gap-8 px-0 md:p-6">
         <!-- Left Column: Upgrades & Extras -->
         <div class="flex-1 space-y-8">
